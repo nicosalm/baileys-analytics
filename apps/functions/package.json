@@ -1,0 +1,25 @@
+{
+  "name": "@baileys/functions",
+  "version": "0.0.1",
+  "private": true,
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "func start",
+    "predev": "npm run build",
+    "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "@baileys/shared-types": "workspace:*",
+    "@baileys/constants": "workspace:*",
+    "@baileys/utils": "workspace:*",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "azure-functions-core-tools": "^4.x",
+    "typescript": "^5.0.0"
+  }
+}
