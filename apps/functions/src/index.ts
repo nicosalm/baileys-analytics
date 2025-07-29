@@ -4,3 +4,4 @@ export * from './sync-properties';
 export * from './fetch-bookings';
 export * from './sync-bookings';
 export * from './tax-report';
+export * from './tax-report-csv';
