@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import axios from 'axios';
 import { query } from './services/database';
 import { randomBytes } from 'crypto';
+import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type OAuthState =
   | { status: 'pending'; authUrl: string }
@@ -23,43 +24,32 @@ const REDIRECT_URI = process.env.OAUTH_REDIRECT_URI || 'https://grub-live-enormo
 
 const generateState = (): string => randomBytes(16).toString('hex');
 
-const storeOAuthState = async (state: string, email: string): Promise<void> => {
-  await query(
-    `INSERT INTO oauth_states (state, email, created_at)
-     VALUES ($1, $2, CURRENT_TIMESTAMP)
-     ON CONFLICT (state) DO UPDATE SET email = $2`,
-    [state, email]
-  );
-};
-
-const verifyOAuthState = async (state: string): Promise<string | null> => {
-  const result = await query<{ email: string }>(
-    `DELETE FROM oauth_states
-     WHERE state = $1 AND created_at > CURRENT_TIMESTAMP - INTERVAL '10 minutes'
-     RETURNING email`,
-    [state]
-  );
-
-  return result.success && result.data.length > 0
-    ? result.data[0].email
-    : null;
-};
-
 export async function oauthInitiate(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  try {
-    const email = request.query.get('email');
-    if (!email) {
-      return {
-        status: 400,
-        jsonBody: { status: 'error', error: 'Email is required' }
-      };
-    }
+  if (request.method === 'OPTIONS') {
+    return handleOptions();
+  }
 
+  // Check authentication
+  const authCheck = await requireAuth(request);
+  if (!authCheck.authenticated) {
+    return authCheck.response;
+  }
+
+  const { auth } = authCheck.request;
+
+  try {
     const state = generateState();
-    await storeOAuthState(state, email);
+
+    // Store state with user_id
+    await query(
+      `INSERT INTO oauth_states (state, email, user_id, created_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       ON CONFLICT (state) DO UPDATE SET email = $2, user_id = $3`,
+      [state, auth.email, auth.userId]
+    );
 
     const authUrl = new URL(`${OWNERREZ_OAUTH_BASE}/authorize`);
     authUrl.searchParams.append('client_id', CLIENT_ID);
@@ -75,11 +65,13 @@ export async function oauthInitiate(
 
     return {
       status: 200,
+      headers: corsHeaders(),
       jsonBody: response
     };
   } catch (error) {
     return {
       status: 500,
+      headers: corsHeaders(),
       jsonBody: {
         status: 'error',
         error: error instanceof Error ? error.message : 'Failed to initiate OAuth'
@@ -96,7 +88,6 @@ export async function oauthCallback(
     const code = request.query.get('code');
     const state = request.query.get('state');
     const error = request.query.get('error');
-    const userId = request.query.get('user_id'); // New parameter
 
     if (error) {
       return {
@@ -263,7 +254,7 @@ export async function oauthCallback(
 }
 
 app.http('oauth-initiate', {
-  methods: ['GET'],
+  methods: ['GET', 'OPTIONS'],
   route: 'oauth/initiate',
   authLevel: 'anonymous',
   handler: oauthInitiate
