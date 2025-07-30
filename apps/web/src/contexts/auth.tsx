@@ -120,6 +120,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth()
   }, [])
 
+  // Auto-refresh token before expiry
+  useEffect(() => {
+    if (state.status === 'authenticated') {
+      const timer = setTimeout(async () => {
+        const refreshResult = await api.refresh(state.tokens.refresh)
+        if (refreshResult.success) {
+          await handleAuthResponse(refreshResult.data)
+        }
+      }, 14 * 60 * 1000) // 14 minutes (token expires at 15)
+
+      return () => clearTimeout(timer)
+    }
+  }, [state])
+
   return (
     <AuthContext.Provider value={{ state, login, signup, logout }}>
       {children}

@@ -9,6 +9,7 @@ import {
   cleanupExpiredTokens
 } from './services/auth';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { authLimiter, withRateLimit } from './middleware/rateLimiter';
 
 type SignupRequest = {
   email: string;
@@ -339,19 +340,23 @@ export async function logout(
   }
 }
 
-// Register endpoints
+// Register endpoints with rate limiting
 app.http('auth-signup', {
   methods: ['POST', 'OPTIONS'],
   route: 'auth/signup',
   authLevel: 'anonymous',
-  handler: signup
+  handler: (req, ctx) => req.method === 'OPTIONS'
+    ? handleOptions()
+    : withRateLimit(authLimiter, signup)(req, ctx)
 });
 
 app.http('auth-login', {
   methods: ['POST', 'OPTIONS'],
   route: 'auth/login',
   authLevel: 'anonymous',
-  handler: login
+  handler: (req, ctx) => req.method === 'OPTIONS'
+    ? handleOptions()
+    : withRateLimit(authLimiter, login)(req, ctx)
 });
 
 app.http('auth-refresh', {

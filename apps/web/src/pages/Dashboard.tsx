@@ -1,16 +1,38 @@
 import { useAuth } from '@/contexts/auth'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+
+type SyncStatus = {
+  lastPropertySync: string | null
+  lastBookingSync: string | null
+  propertyCount: number
+  bookingCount: number
+}
 
 export const Dashboard = () => {
   const { state, logout } = useAuth()
   const navigate = useNavigate()
   const [connecting, setConnecting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
 
   if (state.status !== 'authenticated') return null
 
   const { user } = state
+
+  useEffect(() => {
+    if (user.hasOwnerRezConnection) {
+      loadSyncStatus()
+    }
+  }, [user.hasOwnerRezConnection])
+
+  const loadSyncStatus = async () => {
+    const result = await api.getSyncStatus()
+    if (result.success) {
+      setSyncStatus(result.data)
+    }
+  }
 
   const handleConnectOwnerRez = async () => {
     setConnecting(true)
@@ -24,9 +46,27 @@ export const Dashboard = () => {
     }
   }
 
+  const handleManualSync = async () => {
+    setSyncing(true)
+    const result = await api.manualSync()
+
+    if (result.success) {
+      alert('Sync completed successfully')
+      loadSyncStatus()
+    } else {
+      alert('Sync failed')
+    }
+    setSyncing(false)
+  }
+
   const handleLogout = async () => {
     await logout()
     navigate('/')
+  }
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'Never'
+    return new Date(dateStr).toLocaleString()
   }
 
   return (
@@ -61,6 +101,30 @@ export const Dashboard = () => {
         ) : (
           <div className="mt-8">
             <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
+
+            {syncStatus && (
+              <div className="mb-6 p-4 bg-gray-50 rounded">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-bold mb-2">Sync Status</h3>
+                    <div className="text-sm space-y-1">
+                      <p>Properties: {syncStatus.propertyCount}</p>
+                      <p>Active Bookings: {syncStatus.bookingCount}</p>
+                      <p>Last Property Sync: {formatDate(syncStatus.lastPropertySync)}</p>
+                      <p>Last Booking Sync: {formatDate(syncStatus.lastBookingSync)}</p>
+                    </div>
+                  </div>
+                  {/* DEV ONLY - Remove for production */}
+                  <button
+                    onClick={handleManualSync}
+                    disabled={syncing}
+                    className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+                  >
+                    {syncing ? 'Syncing...' : 'Manual Sync'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid md:grid-cols-2 gap-6">
               <Link to="/dashboard/tax-report" className="p-6 border rounded hover:border-blue-600">

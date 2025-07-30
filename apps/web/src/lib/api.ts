@@ -157,6 +157,14 @@ class ApiClient {
 
     return this.request(`/tax-report?${params}`)
   }
+
+  async manualSync(): Promise<ApiResult<any>> {
+    return this.request('/manual-sync', { method: 'POST' })
+  }
+
+  async getSyncStatus(): Promise<ApiResult<any>> {
+    return this.request('/sync-status')
+  }
 }
 
 export const api = new ApiClient()

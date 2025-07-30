@@ -9,3 +9,4 @@ export * from './auto-sync';
 export * from './manual-sync';
 export * from './oauth';
 export * from './auth';
+export * from './sync-status';
