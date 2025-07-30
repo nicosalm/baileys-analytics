@@ -4,3 +4,4 @@ packages:
 
 onlyBuiltDependencies:
   - azure-functions-core-tools
+  - esbuild
