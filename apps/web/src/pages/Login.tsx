@@ -1,27 +1,29 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { useToast } from '@/contexts/toast'
+import { Spinner } from '@/components/Spinner'
 
 export const Login = () => {
   const navigate = useNavigate()
   const { login } = useAuth()
+  const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setLoading(true)
 
     const success = await login(email, password)
     setLoading(false)
 
     if (success) {
+      addToast('success', 'Welcome back!')
       navigate('/dashboard')
     } else {
-      setError('Invalid email or password')
+      addToast('error', 'Invalid email or password')
     }
   }
 
@@ -55,16 +57,12 @@ export const Login = () => {
             />
           </div>
 
-          {error && (
-            <div className="text-red-600">{error}</div>
-          )}
-
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+            className="w-full py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center justify-center"
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? <Spinner size="sm" /> : 'Login'}
           </button>
         </form>
 

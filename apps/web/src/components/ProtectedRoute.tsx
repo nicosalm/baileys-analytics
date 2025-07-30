@@ -1,11 +1,16 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { Spinner } from '@/components/Spinner'
 
 export const ProtectedRoute = () => {
   const { state } = useAuth()
 
   if (state.status === 'loading') {
-    return <div className="p-4">Loading...</div>
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    )
   }
 
   if (state.status === 'unauthenticated') {

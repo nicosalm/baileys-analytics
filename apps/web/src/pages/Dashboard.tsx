@@ -1,7 +1,9 @@
 import { useAuth } from '@/contexts/auth'
+import { useToast } from '@/contexts/toast'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { useState, useEffect } from 'react'
+import { FileText, Settings, RefreshCw, LogOut, Link2 } from 'lucide-react'
 
 type SyncStatus = {
   lastPropertySync: string | null
@@ -12,6 +14,7 @@ type SyncStatus = {
 
 export const Dashboard = () => {
   const { state, logout } = useAuth()
+  const { addToast } = useToast()
   const navigate = useNavigate()
   const [connecting, setConnecting] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -41,7 +44,7 @@ export const Dashboard = () => {
     if (result.success) {
       window.location.href = result.data.authUrl
     } else {
-      alert('Failed to start OwnerRez connection')
+      addToast('error', 'Failed to start OwnerRez connection')
       setConnecting(false)
     }
   }
@@ -51,16 +54,17 @@ export const Dashboard = () => {
     const result = await api.manualSync()
 
     if (result.success) {
-      alert('Sync completed successfully')
+      addToast('success', 'Sync completed successfully')
       loadSyncStatus()
     } else {
-      alert('Sync failed')
+      addToast('error', 'Sync failed')
     }
     setSyncing(false)
   }
 
   const handleLogout = async () => {
     await logout()
+    addToast('info', 'Logged out successfully')
     navigate('/')
   }
 
@@ -76,7 +80,8 @@ export const Dashboard = () => {
           <h1 className="text-xl font-bold">Baileys Analytics</h1>
           <div className="flex items-center space-x-4">
             <span>{user.email}</span>
-            <button onClick={handleLogout} className="text-blue-600">
+            <button onClick={handleLogout} className="text-blue-600 flex items-center">
+              <LogOut className="w-4 h-4 mr-1" />
               Logout
             </button>
           </div>
@@ -93,8 +98,9 @@ export const Dashboard = () => {
             <button
               onClick={handleConnectOwnerRez}
               disabled={connecting}
-              className="px-6 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+              className="px-6 py-2 bg-blue-600 text-white rounded disabled:opacity-50 flex items-center"
             >
+              <Link2 className="w-4 h-4 mr-2" />
               {connecting ? 'Connecting...' : 'Connect OwnerRez'}
             </button>
           </div>
@@ -118,8 +124,9 @@ export const Dashboard = () => {
                   <button
                     onClick={handleManualSync}
                     disabled={syncing}
-                    className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+                    className="px-4 py-2 bg-blue-600 text-white rounded text-sm disabled:opacity-50 flex items-center"
                   >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
                     {syncing ? 'Syncing...' : 'Manual Sync'}
                   </button>
                 </div>
@@ -127,18 +134,24 @@ export const Dashboard = () => {
             )}
 
             <div className="grid md:grid-cols-2 gap-6">
-              <Link to="/dashboard/tax-report" className="p-6 border rounded hover:border-blue-600">
-                <h3 className="text-xl font-bold mb-2">Tax Reports</h3>
-                <p className="text-gray-600">
-                  Generate and download tax reports by property and month
-                </p>
+              <Link to="/dashboard/tax-report" className="p-6 border rounded hover:border-blue-600 flex">
+                <FileText className="w-8 h-8 text-blue-600 mr-4 flex-shrink-0" />
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Tax Reports</h3>
+                  <p className="text-gray-600">
+                    Generate and download tax reports by property and month
+                  </p>
+                </div>
               </Link>
 
-              <Link to="/dashboard/settings" className="p-6 border rounded hover:border-blue-600">
-                <h3 className="text-xl font-bold mb-2">Settings</h3>
-                <p className="text-gray-600">
-                  Manage your account and tax configurations
-                </p>
+              <Link to="/dashboard/settings" className="p-6 border rounded hover:border-blue-600 flex">
+                <Settings className="w-8 h-8 text-blue-600 mr-4 flex-shrink-0" />
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Settings</h3>
+                  <p className="text-gray-600">
+                    Manage your account and tax configurations
+                  </p>
+                </div>
               </Link>
             </div>
 
