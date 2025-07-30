@@ -96,6 +96,7 @@ export async function oauthCallback(
     const code = request.query.get('code');
     const state = request.query.get('state');
     const error = request.query.get('error');
+    const userId = request.query.get('user_id'); // New parameter
 
     if (error) {
       return {
@@ -113,14 +114,23 @@ export async function oauthCallback(
       };
     }
 
-    const email = await verifyOAuthState(state);
-    if (!email) {
+    // Verify state and get email
+    const stateResult = await query<{ email: string; user_id?: string }>(
+      `DELETE FROM oauth_states
+       WHERE state = $1 AND created_at > CURRENT_TIMESTAMP - INTERVAL '10 minutes'
+       RETURNING email, user_id`,
+      [state]
+    );
+
+    if (!stateResult.success || stateResult.data.length === 0) {
       return {
         status: 400,
         headers: { 'Content-Type': 'text/html' },
         body: '<html><body><h2>Invalid State</h2><p>State verification failed</p></body></html>'
       };
     }
+
+    const { email, user_id } = stateResult.data[0];
 
     // Exchange code for token
     const tokenResponse = await axios.post<TokenResponse>(
@@ -146,8 +156,8 @@ export async function oauthCallback(
 
     const { id: ownerrezUserId, company_name } = userResponse.data;
 
-    // Create or update tenant with OAuth tokens
-    const result = await query<{ id: string }>(
+    // Create or update tenant
+    const tenantResult = await query<{ id: string }>(
       `INSERT INTO tenants (email, company_name, ownerrez_user_id)
        VALUES ($1, $2, $3)
        ON CONFLICT (email) DO UPDATE
@@ -158,11 +168,11 @@ export async function oauthCallback(
       [email, company_name, ownerrezUserId.toString()]
     );
 
-    if (!result.success) {
+    if (!tenantResult.success) {
       throw new Error('Failed to create tenant');
     }
 
-    const tenantId = result.data[0].id;
+    const tenantId = tenantResult.data[0].id;
 
     // Store OAuth tokens
     await query(
@@ -181,6 +191,20 @@ export async function oauthCallback(
         new Date(Date.now() + expires_in * 1000)
       ]
     );
+
+    // If we have a user_id, link the tenant to the user
+    if (user_id) {
+      await query(
+        `UPDATE users SET tenant_id = $1 WHERE id = $2`,
+        [tenantId, user_id]
+      );
+
+      // Also update the tenant with the user_id
+      await query(
+        `UPDATE tenants SET user_id = $1 WHERE id = $2`,
+        [user_id, tenantId]
+      );
+    }
 
     // Return success page
     return {
@@ -210,7 +234,11 @@ export async function oauthCallback(
             <script>
               // Notify parent window if opened as popup
               if (window.opener) {
-                window.opener.postMessage({ type: 'oauth-success', tenantId: '${tenantId}' }, '*');
+                window.opener.postMessage({
+                  type: 'oauth-success',
+                  tenantId: '${tenantId}',
+                  userId: '${user_id || ''}'
+                }, '*');
               }
             </script>
           </body>

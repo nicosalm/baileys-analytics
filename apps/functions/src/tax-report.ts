@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
+import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type TaxReportState =
   | { status: 'loading' }
@@ -36,17 +37,39 @@ type MonthlyTaxData = {
   bookingCount: number;
 };
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000001';
-
 export async function taxReport(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
+  if (request.method === 'OPTIONS') {
+    return handleOptions();
+  }
+
+  // Check authentication
+  const authCheck = await requireAuth(request);
+  if (!authCheck.authenticated) {
+    return authCheck.response;
+  }
+
+  const { auth } = authCheck.request;
+
+  // Require tenant connection
+  if (!auth.tenantId) {
+    return {
+      status: 403,
+      headers: corsHeaders(),
+      jsonBody: {
+        error: 'OwnerRez connection required',
+        code: 'NO_OWNERREZ_CONNECTION'
+      }
+    };
+  }
+
   try {
     const fromDate = request.query.get('from') || '2024-01-01';
     const toDate = request.query.get('to') || '2024-12-31';
 
-    // Get summary
+    // Get summary using the authenticated tenant ID
     const summaryResult = await query<{
       total_tax: string;
       total_rent: string;
@@ -62,7 +85,7 @@ export async function taxReport(
         AND b.arrival >= $2
         AND b.arrival <= $3
         AND b.status != 'canceled'`,
-      [TENANT_ID, fromDate, toDate]
+      [auth.tenantId, fromDate, toDate]
     );
 
     if (!summaryResult.success) {
@@ -92,7 +115,7 @@ export async function taxReport(
         AND b.status != 'canceled'
       GROUP BY p.id, p.name
       ORDER BY total_tax DESC`,
-      [TENANT_ID, fromDate, toDate]
+      [auth.tenantId, fromDate, toDate]
     );
 
     if (!byPropertyResult.success) {
@@ -119,7 +142,7 @@ export async function taxReport(
         AND b.status != 'canceled'
       GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
       ORDER BY month`,
-      [TENANT_ID, fromDate, toDate]
+      [auth.tenantId, fromDate, toDate]
     );
 
     if (!byMonthResult.success) {
@@ -155,6 +178,7 @@ export async function taxReport(
 
     return {
       status: 200,
+      headers: corsHeaders(),
       jsonBody: {
         status: 'success',
         data: reportData
@@ -167,6 +191,7 @@ export async function taxReport(
 
     return {
       status: 500,
+      headers: corsHeaders(),
       jsonBody: {
         status: 'error',
         error: errorMessage
@@ -176,7 +201,7 @@ export async function taxReport(
 }
 
 app.http('tax-report', {
-  methods: ['GET'],
+  methods: ['GET', 'OPTIONS'],
   authLevel: 'anonymous',
   handler: taxReport
 });

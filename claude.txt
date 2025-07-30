@@ -1,0 +1,85 @@
+## Context for Future Claude Instance
+
+**Project**: Baileys Analytics - Multi-tenant SaaS for vacation rental tax reporting via OwnerRez integration
+
+**Current State**: Backend API complete, no frontend. Ready for React dashboard development.
+
+**Key Technical Decisions**:
+1. **Monorepo with pnpm** - Shared packages for types/utils/constants
+2. **Azure Functions v4** - Serverless backend, Node.js 22 compatible
+3. **PostgreSQL with tenant isolation** - Every table has tenant_id
+4. **Functional TypeScript patterns** - Discriminated unions, immutable data, Result types
+5. **OAuth + PAT auth** - PAT for dev (jerry@***REMOVED***), OAuth for production
+
+**Database State**:
+- 5 properties synced (Carraig cottages in Door County, WI)
+- 133 bookings with 600+ charge line items
+- Tax data showing ~15-17% rates, $39k collected on $162k rent
+- Hardcoded tenant: 00000000-0000-0000-0000-000000000001
+
+**Working Endpoints**:
+```
+GET  /api/test-ownerrez          - Connection test
+POST /api/sync-properties        - Sync all properties
+POST /api/sync-bookings          - Sync recent bookings
+GET  /api/tax-report             - JSON tax summary
+GET  /api/tax-report-csv         - CSV export
+POST /api/manual-sync            - Trigger full sync
+GET  /api/oauth/initiate         - Start OAuth flow
+GET  /api/oauth/callback         - OAuth redirect handler
+Timer: auto-sync (every 12 hours)
+```
+
+**Code Philosophy** (from human):
+- Make illegal states unrepresentable (discriminated unions)
+- Transform data with pipelines (map/filter/reduce)
+- Small, composable functions
+- Pattern matching over if/else chains
+- No unnecessary comments or emojis
+- Clarity over cleverness
+
+**Next Priority Tasks**:
+1. **React Dashboard** - Visualize tax data with Chart.js
+2. **JWT Auth** - Protect API endpoints
+3. **Tax Config UI** - Let users define custom tax rates
+4. **Deployment** - Azure setup with proper secrets
+
+**Pain Points**:
+- Timer triggers need Azure Storage (use manual-sync locally)
+- OAuth needs real OwnerRez account to test
+- Local PostgreSQL conflicts (check port 5432)
+
+**Environment Setup**:
+```bash
+# Database
+docker run --name baileys-postgres -e POSTGRES_PASSWORD=localdev123 -e POSTGRES_DB=baileys_analytics -p 5432:5432 -d postgres:15
+
+# Required secrets in local.settings.json:
+OWNERREZ_PAT=***REMOVED***
+DATABASE_URL=postgresql://postgres:localdev123@localhost:5432/baileys_analytics
+OWNERREZ_CLIENT_ID=c_al1awlmdhsarr5osu921t6d5tcakke5l
+OWNERREZ_CLIENT_SECRET=(in 1password or ask human)
+OAUTH_REDIRECT_URI=https://grub-live-enormously.ngrok-free.app/api/oauth/callback
+```
+
+**Critical Implementation Details**:
+
+1. **OwnerRez Auth**: Uses Basic Auth with email:PAT, not Bearer tokens
+2. **Property Mapping**: OwnerRez IDs (233857-233861) mapped to UUIDs internally
+3. **Booking Sync**: Only fetches last 7 days to catch updates
+4. **Charge Types**: 'tax', 'rent', 'surcharge' etc - tax calculations based on type='tax'
+5. **Transaction Pattern**: All booking updates wrapped in DB transactions
+
+**What Works Well**:
+- Property/booking sync is solid
+- Tax calculations match OwnerRez data
+- CSV export ready for tax filing
+- OAuth flow complete (untested)
+
+**What Needs Work**:
+- No frontend yet
+- No user authentication
+- Tax configs hardcoded (need UI)
+- Single tenant (Jerry) hardcoded
+
+**Project Vision**: Jerry Connor (client) wants to make this a $20/month SaaS for other OwnerRez users. Currently handling his 5 properties, designed to scale to hundreds of users.

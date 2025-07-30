@@ -8,3 +8,4 @@ export * from './tax-report-csv';
 export * from './auto-sync';
 export * from './manual-sync';
 export * from './oauth';
+export * from './auth';

@@ -1,0 +1,3483 @@
+============================================
+File: ./setup.sh
+============================================
+#!/bin/bash
+
+echo "Setting up Baileys Analytics monorepo..."
+
+# Initialize git if not already done
+if [ ! -d .git ]; then
+    git init
+    echo "Git repository initialized"
+fi
+
+# Create directory structure
+mkdir -p apps/functions/src
+mkdir -p packages/shared-types/src
+mkdir -p packages/constants/src
+mkdir -p packages/utils/src
+
+# Create root package.json
+cat > package.json << 'EOF'
+{
+  "name": "baileys-analytics",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Multi-tenant vacation rental analytics platform",
+  "scripts": {
+    "dev": "echo 'Run pnpm dev in specific workspace'",
+    "build": "echo 'Run pnpm build in specific workspace'",
+    "test": "echo 'No tests yet'"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
+EOF
+
+# Create pnpm workspace configuration
+cat > pnpm-workspace.yaml << 'EOF'
+packages:
+  - 'apps/*'
+  - 'packages/*'
+EOF
+
+# Create root TypeScript config
+cat > tsconfig.json << 'EOF'
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "declaration": true,
+    "declarationMap": true,
+    "incremental": true,
+    "composite": true
+  },
+  "references": [
+    { "path": "./packages/shared-types" },
+    { "path": "./packages/constants" },
+    { "path": "./packages/utils" },
+    { "path": "./apps/functions" }
+  ]
+}
+EOF
+
+# Create .gitignore
+cat > .gitignore << 'EOF'
+# Dependencies
+node_modules/
+.pnp.*
+.yarn/*
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Azure Functions
+local.settings.json
+.python_packages/
+EOF
+
+# Create README
+cat > README.md << 'EOF'
+# Baileys Analytics
+
+Multi-tenant vacation rental analytics platform with automated tax reporting for OwnerRez users.
+
+## Features
+
+- **Automated Data Sync**: Pulls properties and bookings from OwnerRez every 12 hours
+- **Tax Reporting**: Generate detailed tax reports by property and month
+- **CSV Export**: Download tax data for easy filing
+- **Multi-tenant**: Each user's data is completely isolated
+- **OAuth Integration**: Secure connection to OwnerRez accounts
+
+## Quick Start
+
+1. **Prerequisites**
+   - Node.js 20+
+   - Docker (for PostgreSQL)
+   - pnpm (`npm install -g pnpm`)
+   - OwnerRez account with API access
+
+2. **Setup**
+   ```bash
+   # Clone repository
+   git clone https://github.com/yourusername/baileys-analytics-platform.git
+   cd baileys-analytics-platform
+
+   # Run setup script
+   ./setup.sh
+
+   # Install dependencies
+   pnpm install
+
+   # Start database
+   docker run --name baileys-postgres \
+     -e POSTGRES_PASSWORD=localdev123 \
+     -e POSTGRES_DB=baileys_analytics \
+     -p 5432:5432 -d postgres:15
+
+   # Apply database schema
+   psql -h localhost -U postgres -d baileys_analytics -f schema.sql
+   psql -h localhost -U postgres -d baileys_analytics -f oauth-schema.sql
+   ```
+
+3. **Configure**
+
+   Add your credentials to `apps/functions/local.settings.json`:
+   ```json
+   {
+     "Values": {
+       "OWNERREZ_PAT": "your-personal-access-token",
+       "DATABASE_URL": "postgresql://postgres:localdev123@localhost:5432/baileys_analytics",
+       "OWNERREZ_CLIENT_ID": "your-oauth-client-id",
+       "OWNERREZ_CLIENT_SECRET": "your-oauth-client-secret",
+       "OAUTH_REDIRECT_URI": "http://localhost:7071/api/oauth/callback"
+     }
+   }
+   ```
+
+4. **Run**
+   ```bash
+   cd apps/functions
+   pnpm dev
+   ```
+
+## Usage
+
+### Sync Your Data
+
+```bash
+# Sync properties
+curl -X POST http://localhost:7071/api/sync-properties
+
+# Sync bookings
+curl -X POST http://localhost:7071/api/sync-bookings
+```
+
+### Generate Tax Reports
+
+```bash
+# JSON report
+curl "http://localhost:7071/api/tax-report?from=2024-01-01&to=2024-12-31"
+
+# CSV export
+curl "http://localhost:7071/api/tax-report-csv?from=2024-01-01&to=2024-12-31" -o taxes-2024.csv
+```
+
+## API Documentation
+
+See [TECHNICAL.md](TECHNICAL.md) for detailed API documentation.
+
+## License
+
+MIT
+EOF
+
+# Create shared-types package
+cat > packages/shared-types/package.json << 'EOF'
+{
+  "name": "@baileys/shared-types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}
+EOF
+
+cat > packages/shared-types/tsconfig.json << 'EOF'
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "composite": true
+  },
+  "include": ["src/**/*"]
+}
+EOF
+
+cat > packages/shared-types/src/index.ts << 'EOF'
+// Shared TypeScript types for Baileys Analytics
+
+export interface User {
+  id: string;
+  email: string;
+  tenantId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Property {
+  id: string;
+  tenantId: string;
+  ownerRezId: string;
+  name: string;
+  address: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Booking {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  ownerRezBookingId: string;
+  checkIn: Date;
+  checkOut: Date;
+  totalAmount: number;
+  guestName: string;
+  guestEmail?: string;
+  status: 'confirmed' | 'cancelled' | 'pending';
+  createdAt: Date;
+  updatedAt: Date;
+}
+EOF
+
+# Create constants package
+cat > packages/constants/package.json << 'EOF'
+{
+  "name": "@baileys/constants",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  }
+}
+EOF
+
+cat > packages/constants/tsconfig.json << 'EOF'
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "composite": true
+  },
+  "include": ["src/**/*"]
+}
+EOF
+
+cat > packages/constants/src/index.ts << 'EOF'
+// Constants for Baileys Analytics
+
+export const API_VERSION = 'v1';
+
+export const OWNERREZ_API = {
+  BASE_URL: 'https://api.ownerrez.com/v2',
+  ENDPOINTS: {
+    PROPERTIES: '/properties',
+    BOOKINGS: '/bookings',
+    GUESTS: '/guests',
+  },
+} as const;
+
+export const TAX_TYPES = {
+  STATE: 'state',
+  COUNTY: 'county',
+  CITY: 'city',
+  TOURISM: 'tourism',
+  OCCUPANCY: 'occupancy',
+} as const;
+
+export const BOOKING_STATUS = {
+  CONFIRMED: 'confirmed',
+  CANCELLED: 'cancelled',
+  PENDING: 'pending',
+} as const;
+EOF
+
+# Create utils package
+cat > packages/utils/package.json << 'EOF'
+{
+  "name": "@baileys/utils",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "@baileys/shared-types": "workspace:*",
+    "@baileys/constants": "workspace:*"
+  }
+}
+EOF
+
+cat > packages/utils/tsconfig.json << 'EOF'
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "composite": true
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../shared-types" },
+    { "path": "../constants" }
+  ]
+}
+EOF
+
+cat > packages/utils/src/index.ts << 'EOF'
+// Utility functions for Baileys Analytics
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
+export function calculateNights(checkIn: Date, checkOut: Date): number {
+  const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+export function calculateTax(amount: number, taxRate: number): number {
+  return Math.round(amount * taxRate * 100) / 100;
+}
+EOF
+
+# Create basic Azure Functions app
+cat > apps/functions/package.json << 'EOF'
+{
+  "name": "@baileys/functions",
+  "version": "0.0.1",
+  "private": true,
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "func start",
+    "predev": "npm run build",
+    "test": "echo 'No tests yet'"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "@baileys/shared-types": "workspace:*",
+    "@baileys/constants": "workspace:*",
+    "@baileys/utils": "workspace:*",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "azure-functions-core-tools": "^4.x",
+    "typescript": "^5.0.0"
+  }
+}
+EOF
+
+cat > apps/functions/tsconfig.json << 'EOF'
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2022",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "sourceMap": true
+  },
+  "include": ["src/**/*"],
+  "references": [
+    { "path": "../../packages/shared-types" },
+    { "path": "../../packages/constants" },
+    { "path": "../../packages/utils" }
+  ]
+}
+EOF
+
+cat > apps/functions/host.json << 'EOF'
+{
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[4.*, 5.0.0)"
+  }
+}
+EOF
+
+# Create a test function to verify OwnerRez connection
+cat > apps/functions/src/test-ownerrez.ts << 'EOF'
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import axios from 'axios';
+import { OWNERREZ_API } from '@baileys/constants';
+
+export async function testOwnerRez(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const token = process.env.OWNERREZ_PAT;
+
+  if (!token) {
+    return {
+      status: 500,
+      body: 'OWNERREZ_PAT environment variable not set'
+    };
+  }
+
+  try {
+    context.log('Testing OwnerRez API connection...');
+
+    const response = await axios.get(`${OWNERREZ_API.BASE_URL}/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    return {
+      status: 200,
+      jsonBody: {
+        message: 'OwnerRez API connection successful!',
+        user: response.data
+      }
+    };
+  } catch (error) {
+    context.error('OwnerRez API error:', error);
+    return {
+      status: 500,
+      body: `Error connecting to OwnerRez: ${error.message}`
+    };
+  }
+}
+
+app.http('test-ownerrez', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: testOwnerRez
+});
+EOF
+
+# Create environment example file
+cat > .env.example << 'EOF'
+# OwnerRez API Credentials
+OWNERREZ_PAT=your_personal_access_token_here
+OWNERREZ_CLIENT_ID=your_oauth_client_id
+OWNERREZ_CLIENT_SECRET=your_oauth_client_secret
+
+# Database (for later)
+DATABASE_URL=postgresql://user:password@localhost:5432/baileys_analytics
+
+# Azure (for later)
+AZURE_STORAGE_CONNECTION_STRING=
+EOF
+
+# Create local.settings.json for Azure Functions
+cat > apps/functions/local.settings.json << 'EOF'
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "OWNERREZ_PAT": "YOUR_PAT_HERE"
+  }
+}
+EOF
+
+echo "Basic monorepo structure created!"
+echo ""
+echo "Next steps:"
+echo "1. Install pnpm globally: npm install -g pnpm"
+echo "2. Install dependencies: pnpm install"
+echo "3. Add your OwnerRez PAT to apps/functions/local.settings.json"
+echo "4. Build packages: pnpm -r build"
+echo "5. Test OwnerRez connection: cd apps/functions && pnpm dev"
+echo ""
+echo "Then visit: http://localhost:7071/api/test-ownerrez"
+EOF
+
+chmod +x setup.sh
+
+
+============================================
+File: ./pnpm-lock.yaml
+============================================
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.0
+        version: 20.19.9
+      typescript:
+        specifier: ^5.3.3
+        version: 5.8.3
+
+  apps/functions:
+    dependencies:
+      '@azure/functions':
+        specifier: ^4.0.0
+        version: 4.7.3
+      '@baileys/constants':
+        specifier: workspace:*
+        version: link:../../packages/constants
+      '@baileys/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
+      '@baileys/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
+      '@types/pg':
+        specifier: ^8.15.5
+        version: 8.15.5
+      axios:
+        specifier: ^1.6.0
+        version: 1.11.0
+      pg:
+        specifier: ^8.16.3
+        version: 8.16.3
+    devDependencies:
+      '@types/node':
+        specifier: 20.x
+        version: 20.19.9
+      azure-functions-core-tools:
+        specifier: ^4.x
+        version: 4.1.0
+      typescript:
+        specifier: ^5.0.0
+        version: 5.8.3
+
+  packages/constants: {}
+
+  packages/shared-types: {}
+
+  packages/utils:
+    dependencies:
+      '@baileys/constants':
+        specifier: workspace:*
+        version: link:../constants
+      '@baileys/shared-types':
+        specifier: workspace:*
+        version: link:../shared-types
+
+packages:
+
+  '@azure/functions@4.7.3':
+    resolution: {integrity: sha512-NwizjL8qcujVq+Yl3iL6TvtEC9v4CWZgipd0UPa5PvM2a5Uiqd1Uk8wGCYPhfskGy+1YpBLyQje1SRdlLzB6Jw==}
+    engines: {node: '>=18.0'}
+    deprecated: Incompatible with Node 18
+
+  '@types/node@20.19.9':
+    resolution: {integrity: sha512-cuVNgarYWZqxRJDQHEB58GEONhOK79QVR/qYx4S7kcUObQvUwvFnYxJuuHUKm2aieN9X3yZB4LZsuYNU1Qphsw==}
+
+  '@types/pg@8.15.5':
+    resolution: {integrity: sha512-LF7lF6zWEKxuT3/OR8wAZGzkg4ENGXFNyiV/JeOt9z5B+0ZVwbql9McqX5c/WStFq1GaGso7H1AzP/qSzmlCKQ==}
+
+  '@types/yauzl@2.10.3':
+    resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
+
+  agent-base@6.0.2:
+    resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
+    engines: {node: '>= 6.0.0'}
+
+  ansi-styles@4.3.0:
+    resolution: {integrity: sha512-zbB9rCJAT1rbjiVDb2hqKFHNYLxgtk8NURxZ3IZwD3F6NtxbXZQCnnSi1Lkx+IDohdPlFp222wVALIheZJQSEg==}
+    engines: {node: '>=8'}
+
+  asynckit@0.4.0:
+    resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
+
+  axios@1.11.0:
+    resolution: {integrity: sha512-1Lx3WLFQWm3ooKDYZD1eXmoGO9fxYQjrycfHFC8P0sCfQVXyROp0p9PFWBehewBOdCwHc+f/b8I0fMto5eSfwA==}
+
+  azure-functions-core-tools@4.1.0:
+    resolution: {integrity: sha512-5ylnpK5jsMmF6RXodVp2AfMTNQcL6fv6Brs+NRGntC1XbMFz5JG5chZeoydLRvaBuNjN7ZokXLSy7Sx5l7DEdg==}
+    engines: {node: '>=6.9.1'}
+    os: [win32, darwin, linux]
+    hasBin: true
+
+  balanced-match@1.0.2:
+    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
+
+  brace-expansion@2.0.2:
+    resolution: {integrity: sha512-Jt0vHyM+jmUBqojB7E1NIYadt0vI0Qxjxd2TErW94wDz+E2LAm5vKMXXwg6ZZBTHPuUlDgQHKXvjGBdfcF1ZDQ==}
+
+  buffer-crc32@0.2.13:
+    resolution: {integrity: sha512-VO9Ht/+p3SN7SKWqcrgEzjGbRSJYTx+Q1pTQC0wrWqHx0vpJraQ6GtHx8tvcg1rlK1byhU5gccxgOgj7B0TDkQ==}
+
+  call-bind-apply-helpers@1.0.2:
+    resolution: {integrity: sha512-Sp1ablJ0ivDkSzjcaJdxEunN5/XvksFJ2sMBFfq6x0ryhQV/2b/KwFe21cMpmHtPOSij8K99/wSfoEuTObmuMQ==}
+    engines: {node: '>= 0.4'}
+
+  chalk@3.0.0:
+    resolution: {integrity: sha512-4D3B6Wf41KOYRFdszmDqMCGq5VV/uMAB273JILmO+3jAlh8X4qDtdtgCR3fxtbLEMzSx22QdhnDcJvu2u1fVwg==}
+    engines: {node: '>=8'}
+
+  color-convert@2.0.1:
+    resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
+    engines: {node: '>=7.0.0'}
+
+  color-name@1.1.4:
+    resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==}
+
+  combined-stream@1.0.8:
+    resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
+    engines: {node: '>= 0.8'}
+
+  cookie@0.7.2:
+    resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
+    engines: {node: '>= 0.6'}
+
+  debug@4.4.1:
+    resolution: {integrity: sha512-KcKCqiftBJcZr++7ykoDIEwSa3XWowTfNPo92BYxjXiyYEVrUQh2aLyhxBCwww+heortUFxEJYcRzosstTEBYQ==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
+  delayed-stream@1.0.0:
+    resolution: {integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==}
+    engines: {node: '>=0.4.0'}
+
+  dunder-proto@1.0.1:
+    resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
+    engines: {node: '>= 0.4'}
+
+  end-of-stream@1.4.5:
+    resolution: {integrity: sha512-ooEGc6HP26xXq/N+GCGOT0JKCLDGrq2bQUZrQ7gyrJiZANJ/8YDTxTpQBXGMn+WbIQXNVpyWymm7KYVICQnyOg==}
+
+  es-define-property@1.0.1:
+    resolution: {integrity: sha512-e3nRfgfUZ4rNGL232gUgX06QNyyez04KdjFrF+LTRoOXmrOgFKDg4BCdsjW8EnT69eqdYGmRpJwiPVYNrCaW3g==}
+    engines: {node: '>= 0.4'}
+
+  es-errors@1.3.0:
+    resolution: {integrity: sha512-Zf5H2Kxt2xjTvbJvP2ZWLEICxA6j+hAmMzIlypy4xcBg1vKVnx89Wy0GbS+kf5cwCVFFzdCFh2XSCFNULS6csw==}
+    engines: {node: '>= 0.4'}
+
+  es-object-atoms@1.1.1:
+    resolution: {integrity: sha512-FGgH2h8zKNim9ljj7dankFPcICIK9Cp5bm+c2gQSYePhpaG5+esrLODihIorn+Pe6FGJzWhXQotPv73jTaldXA==}
+    engines: {node: '>= 0.4'}
+
+  es-set-tostringtag@2.1.0:
+    resolution: {integrity: sha512-j6vWzfrGVfyXxge+O0x5sh6cvxAog0a/4Rdd2K36zCMV5eJ+/+tOAngRO8cODMNWbVRdVlmGZQL2YS3yR8bIUA==}
+    engines: {node: '>= 0.4'}
+
+  extract-zip@2.0.1:
+    resolution: {integrity: sha512-GDhU9ntwuKyGXdZBUgTIe+vXnWj0fppUEtMDL0+idd5Sta8TGpHssn/eusA9mrPr9qNDym6SxAYZjNvCn/9RBg==}
+    engines: {node: '>= 10.17.0'}
+    hasBin: true
+
+  fd-slicer@1.1.0:
+    resolution: {integrity: sha512-cE1qsB/VwyQozZ+q1dGxR8LBYNZeofhEdUNGSMbQD3Gw2lAzX9Zb3uIU6Ebc/Fmyjo9AWWfnn0AUCHqtevs/8g==}
+
+  follow-redirects@1.15.9:
+    resolution: {integrity: sha512-gew4GsXizNgdoRyqmyfMHyAmXsZDk6mHkSxZFCzW9gwlbtOW44CDtYavM+y+72qD/Vq2l550kMF52DT8fOLJqQ==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
+
+  form-data@4.0.4:
+    resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
+    engines: {node: '>= 6'}
+
+  fs.realpath@1.0.0:
+    resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
+
+  function-bind@1.1.2:
+    resolution: {integrity: sha512-7XHNxH7qX9xG5mIwxkhumTox/MIRNcOgDrxWsMt2pAr23WHp6MrRlN7FBSFpCpr+oVO0F744iUgR82nJMfG2SA==}
+
+  get-intrinsic@1.3.0:
+    resolution: {integrity: sha512-9fSjSaos/fRIVIp+xSJlE6lfwhES7LNtKaCBIamHsjr2na1BiABJPo0mOjjz8GJDURarmCPGqaiVg5mfjb98CQ==}
+    engines: {node: '>= 0.4'}
+
+  get-proto@1.0.1:
+    resolution: {integrity: sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g==}
+    engines: {node: '>= 0.4'}
+
+  get-stream@5.2.0:
+    resolution: {integrity: sha512-nBF+F1rAZVCu/p7rjzgA+Yb4lfYXrpl7a6VmJrU8wF9I1CKvP/QwPNZHnOlwbTkY6dvtFIzFMSyQXbLoTQPRpA==}
+    engines: {node: '>=8'}
+
+  glob@9.3.5:
+    resolution: {integrity: sha512-e1LleDykUz2Iu+MTYdkSsuWX8lvAjAcs0Xef0lNIu0S2wOAzuTxCJtcd9S3cijlwYF18EsU3rzb8jPVobxDh9Q==}
+    engines: {node: '>=16 || 14 >=14.17'}
+
+  gopd@1.2.0:
+    resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
+    engines: {node: '>= 0.4'}
+
+  has-flag@4.0.0:
+    resolution: {integrity: sha512-EykJT/Q1KjTWctppgIAgfSO0tKVuZUjhgMr17kqTumMl6Afv3EISleU7qZUzoXDFTAHTDC4NOoG/ZxU3EvlMPQ==}
+    engines: {node: '>=8'}
+
+  has-symbols@1.1.0:
+    resolution: {integrity: sha512-1cDNdwJ2Jaohmb3sg4OmKaMBwuC48sYni5HUw2DvsC8LjGTLK9h+eb1X6RyuOHe4hT0ULCW68iomhjUoKUqlPQ==}
+    engines: {node: '>= 0.4'}
+
+  has-tostringtag@1.0.2:
+    resolution: {integrity: sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==}
+    engines: {node: '>= 0.4'}
+
+  hasown@2.0.2:
+    resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
+    engines: {node: '>= 0.4'}
+
+  https-proxy-agent@5.0.1:
+    resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
+    engines: {node: '>= 6'}
+
+  long@4.0.0:
+    resolution: {integrity: sha512-XsP+KhQif4bjX1kbuSiySJFNAehNxgLb6hPRGJ9QsUr8ajHkuXGdrHmFUTUUXhDwVX2R5bY4JNZEwbUiMhV+MA==}
+
+  lru-cache@10.4.3:
+    resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
+
+  math-intrinsics@1.1.0:
+    resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
+    engines: {node: '>= 0.4'}
+
+  mime-db@1.52.0:
+    resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
+    engines: {node: '>= 0.6'}
+
+  mime-types@2.1.35:
+    resolution: {integrity: sha512-ZDY+bPm5zTTF+YpCrAU9nK0UgICYPT0QtT1NZWFv4s++TNkcgVaT0g6+4R2uI4MjQjzysHB1zxuWL50hzaeXiw==}
+    engines: {node: '>= 0.6'}
+
+  minimatch@8.0.4:
+    resolution: {integrity: sha512-W0Wvr9HyFXZRGIDgCicunpQ299OKXs9RgZfaukz4qAW/pJhcpUfupc9c+OObPOFueNy8VSrZgEmDtk6Kh4WzDA==}
+    engines: {node: '>=16 || 14 >=14.17'}
+
+  minipass@4.2.8:
+    resolution: {integrity: sha512-fNzuVyifolSLFL4NzpF+wEF4qrgqaaKX0haXPQEdQ7NKAN+WecoKMHV09YcuL/DHxrUsYQOK3MiuDf7Ip2OXfQ==}
+    engines: {node: '>=8'}
+
+  minipass@7.1.2:
+    resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
+    engines: {node: '>=16 || 14 >=14.17'}
+
+  ms@2.1.3:
+    resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
+
+  once@1.4.0:
+    resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
+
+  path-scurry@1.11.1:
+    resolution: {integrity: sha512-Xa4Nw17FS9ApQFJ9umLiJS4orGjm7ZzwUrwamcGQuHSzDyth9boKDaycYdDcZDuqYATXw4HFXgaqWTctW/v1HA==}
+    engines: {node: '>=16 || 14 >=14.18'}
+
+  pend@1.2.0:
+    resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
+
+  pg-cloudflare@1.2.7:
+    resolution: {integrity: sha512-YgCtzMH0ptvZJslLM1ffsY4EuGaU0cx4XSdXLRFae8bPP4dS5xL1tNB3k2o/N64cHJpwU7dxKli/nZ2lUa5fLg==}
+
+  pg-connection-string@2.9.1:
+    resolution: {integrity: sha512-nkc6NpDcvPVpZXxrreI/FOtX3XemeLl8E0qFr6F2Lrm/I8WOnaWNhIPK2Z7OHpw7gh5XJThi6j6ppgNoaT1w4w==}
+
+  pg-int8@1.0.1:
+    resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
+    engines: {node: '>=4.0.0'}
+
+  pg-pool@3.10.1:
+    resolution: {integrity: sha512-Tu8jMlcX+9d8+QVzKIvM/uJtp07PKr82IUOYEphaWcoBhIYkoHpLXN3qO59nAI11ripznDsEzEv8nUxBVWajGg==}
+    peerDependencies:
+      pg: '>=8.0'
+
+  pg-protocol@1.10.3:
+    resolution: {integrity: sha512-6DIBgBQaTKDJyxnXaLiLR8wBpQQcGWuAESkRBX/t6OwA8YsqP+iVSiond2EDy6Y/dsGk8rh/jtax3js5NeV7JQ==}
+
+  pg-types@2.2.0:
+    resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
+    engines: {node: '>=4'}
+
+  pg@8.16.3:
+    resolution: {integrity: sha512-enxc1h0jA/aq5oSDMvqyW3q89ra6XIIDZgCX9vkMrnz5DFTw/Ny3Li2lFQ+pt3L6MCgm/5o2o8HW9hiJji+xvw==}
+    engines: {node: '>= 16.0.0'}
+    peerDependencies:
+      pg-native: '>=3.0.1'
+    peerDependenciesMeta:
+      pg-native:
+        optional: true
+
+  pgpass@1.0.5:
+    resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
+
+  postgres-array@2.0.0:
+    resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
+    engines: {node: '>=4'}
+
+  postgres-bytea@1.0.0:
+    resolution: {integrity: sha512-xy3pmLuQqRBZBXDULy7KbaitYqLcmxigw14Q5sj8QBVLqEwXfeybIKVWiqAXTlcvdvb0+xkOtDbfQMOf4lST1w==}
+    engines: {node: '>=0.10.0'}
+
+  postgres-date@1.0.7:
+    resolution: {integrity: sha512-suDmjLVQg78nMK2UZ454hAG+OAW+HQPZ6n++TNDUX+L0+uUlLywnoxJKDou51Zm+zTCjrCl0Nq6J9C5hP9vK/Q==}
+    engines: {node: '>=0.10.0'}
+
+  postgres-interval@1.2.0:
+    resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
+    engines: {node: '>=0.10.0'}
+
+  progress@2.0.3:
+    resolution: {integrity: sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==}
+    engines: {node: '>=0.4.0'}
+
+  proxy-from-env@1.1.0:
+    resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+
+  pump@3.0.3:
+    resolution: {integrity: sha512-todwxLMY7/heScKmntwQG8CXVkWUOdYxIvY2s0VWAAMh/nd8SoYiRaKjlr7+iCs984f2P8zvrfWcDDYVb73NfA==}
+
+  rimraf@4.4.1:
+    resolution: {integrity: sha512-Gk8NlF062+T9CqNGn6h4tls3k6T1+/nXdOcSZVikNVtlRdYpA7wRJJMoXmuvOnLW844rPjdQ7JgXCYM6PPC/og==}
+    engines: {node: '>=14'}
+    hasBin: true
+
+  split2@4.2.0:
+    resolution: {integrity: sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==}
+    engines: {node: '>= 10.x'}
+
+  supports-color@7.2.0:
+    resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
+    engines: {node: '>=8'}
+
+  typescript@5.8.3:
+    resolution: {integrity: sha512-p1diW6TqL9L07nNxvRMM7hMMw4c5XOo/1ibL4aAIGmSAt9slTE1Xgw5KWuof2uTOvCg9BY7ZRi+GaF+7sfgPeQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
+  undici@7.12.0:
+    resolution: {integrity: sha512-GrKEsc3ughskmGA9jevVlIOPMiiAHJ4OFUtaAH+NhfTUSiZ1wMPIQqQvAJUrJspFXJt3EBWgpAeoHEDVT1IBug==}
+    engines: {node: '>=20.18.1'}
+
+  wrappy@1.0.2:
+    resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  xtend@4.0.2:
+    resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
+    engines: {node: '>=0.4'}
+
+  yauzl@2.10.0:
+    resolution: {integrity: sha512-p4a9I6X6nu6IhoGmBqAcbJy1mlC4j27vEPZX9F4L4/vZT3Lyq1VkFHw/V/PUcB9Buo+DG3iHkT0x3Qya58zc3g==}
+
+snapshots:
+
+  '@azure/functions@4.7.3':
+    dependencies:
+      cookie: 0.7.2
+      long: 4.0.0
+      undici: 7.12.0
+
+  '@types/node@20.19.9':
+    dependencies:
+      undici-types: 6.21.0
+
+  '@types/pg@8.15.5':
+    dependencies:
+      '@types/node': 20.19.9
+      pg-protocol: 1.10.3
+      pg-types: 2.2.0
+
+  '@types/yauzl@2.10.3':
+    dependencies:
+      '@types/node': 20.19.9
+    optional: true
+
+  agent-base@6.0.2:
+    dependencies:
+      debug: 4.4.1
+    transitivePeerDependencies:
+      - supports-color
+
+  ansi-styles@4.3.0:
+    dependencies:
+      color-convert: 2.0.1
+
+  asynckit@0.4.0: {}
+
+  axios@1.11.0:
+    dependencies:
+      follow-redirects: 1.15.9
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  azure-functions-core-tools@4.1.0:
+    dependencies:
+      chalk: 3.0.0
+      extract-zip: 2.0.1
+      https-proxy-agent: 5.0.1
+      progress: 2.0.3
+      rimraf: 4.4.1
+    transitivePeerDependencies:
+      - supports-color
+
+  balanced-match@1.0.2: {}
+
+  brace-expansion@2.0.2:
+    dependencies:
+      balanced-match: 1.0.2
+
+  buffer-crc32@0.2.13: {}
+
+  call-bind-apply-helpers@1.0.2:
+    dependencies:
+      es-errors: 1.3.0
+      function-bind: 1.1.2
+
+  chalk@3.0.0:
+    dependencies:
+      ansi-styles: 4.3.0
+      supports-color: 7.2.0
+
+  color-convert@2.0.1:
+    dependencies:
+      color-name: 1.1.4
+
+  color-name@1.1.4: {}
+
+  combined-stream@1.0.8:
+    dependencies:
+      delayed-stream: 1.0.0
+
+  cookie@0.7.2: {}
+
+  debug@4.4.1:
+    dependencies:
+      ms: 2.1.3
+
+  delayed-stream@1.0.0: {}
+
+  dunder-proto@1.0.1:
+    dependencies:
+      call-bind-apply-helpers: 1.0.2
+      es-errors: 1.3.0
+      gopd: 1.2.0
+
+  end-of-stream@1.4.5:
+    dependencies:
+      once: 1.4.0
+
+  es-define-property@1.0.1: {}
+
+  es-errors@1.3.0: {}
+
+  es-object-atoms@1.1.1:
+    dependencies:
+      es-errors: 1.3.0
+
+  es-set-tostringtag@2.1.0:
+    dependencies:
+      es-errors: 1.3.0
+      get-intrinsic: 1.3.0
+      has-tostringtag: 1.0.2
+      hasown: 2.0.2
+
+  extract-zip@2.0.1:
+    dependencies:
+      debug: 4.4.1
+      get-stream: 5.2.0
+      yauzl: 2.10.0
+    optionalDependencies:
+      '@types/yauzl': 2.10.3
+    transitivePeerDependencies:
+      - supports-color
+
+  fd-slicer@1.1.0:
+    dependencies:
+      pend: 1.2.0
+
+  follow-redirects@1.15.9: {}
+
+  form-data@4.0.4:
+    dependencies:
+      asynckit: 0.4.0
+      combined-stream: 1.0.8
+      es-set-tostringtag: 2.1.0
+      hasown: 2.0.2
+      mime-types: 2.1.35
+
+  fs.realpath@1.0.0: {}
+
+  function-bind@1.1.2: {}
+
+  get-intrinsic@1.3.0:
+    dependencies:
+      call-bind-apply-helpers: 1.0.2
+      es-define-property: 1.0.1
+      es-errors: 1.3.0
+      es-object-atoms: 1.1.1
+      function-bind: 1.1.2
+      get-proto: 1.0.1
+      gopd: 1.2.0
+      has-symbols: 1.1.0
+      hasown: 2.0.2
+      math-intrinsics: 1.1.0
+
+  get-proto@1.0.1:
+    dependencies:
+      dunder-proto: 1.0.1
+      es-object-atoms: 1.1.1
+
+  get-stream@5.2.0:
+    dependencies:
+      pump: 3.0.3
+
+  glob@9.3.5:
+    dependencies:
+      fs.realpath: 1.0.0
+      minimatch: 8.0.4
+      minipass: 4.2.8
+      path-scurry: 1.11.1
+
+  gopd@1.2.0: {}
+
+  has-flag@4.0.0: {}
+
+  has-symbols@1.1.0: {}
+
+  has-tostringtag@1.0.2:
+    dependencies:
+      has-symbols: 1.1.0
+
+  hasown@2.0.2:
+    dependencies:
+      function-bind: 1.1.2
+
+  https-proxy-agent@5.0.1:
+    dependencies:
+      agent-base: 6.0.2
+      debug: 4.4.1
+    transitivePeerDependencies:
+      - supports-color
+
+  long@4.0.0: {}
+
+  lru-cache@10.4.3: {}
+
+  math-intrinsics@1.1.0: {}
+
+  mime-db@1.52.0: {}
+
+  mime-types@2.1.35:
+    dependencies:
+      mime-db: 1.52.0
+
+  minimatch@8.0.4:
+    dependencies:
+      brace-expansion: 2.0.2
+
+  minipass@4.2.8: {}
+
+  minipass@7.1.2: {}
+
+  ms@2.1.3: {}
+
+  once@1.4.0:
+    dependencies:
+      wrappy: 1.0.2
+
+  path-scurry@1.11.1:
+    dependencies:
+      lru-cache: 10.4.3
+      minipass: 7.1.2
+
+  pend@1.2.0: {}
+
+  pg-cloudflare@1.2.7:
+    optional: true
+
+  pg-connection-string@2.9.1: {}
+
+  pg-int8@1.0.1: {}
+
+  pg-pool@3.10.1(pg@8.16.3):
+    dependencies:
+      pg: 8.16.3
+
+  pg-protocol@1.10.3: {}
+
+  pg-types@2.2.0:
+    dependencies:
+      pg-int8: 1.0.1
+      postgres-array: 2.0.0
+      postgres-bytea: 1.0.0
+      postgres-date: 1.0.7
+      postgres-interval: 1.2.0
+
+  pg@8.16.3:
+    dependencies:
+      pg-connection-string: 2.9.1
+      pg-pool: 3.10.1(pg@8.16.3)
+      pg-protocol: 1.10.3
+      pg-types: 2.2.0
+      pgpass: 1.0.5
+    optionalDependencies:
+      pg-cloudflare: 1.2.7
+
+  pgpass@1.0.5:
+    dependencies:
+      split2: 4.2.0
+
+  postgres-array@2.0.0: {}
+
+  postgres-bytea@1.0.0: {}
+
+  postgres-date@1.0.7: {}
+
+  postgres-interval@1.2.0:
+    dependencies:
+      xtend: 4.0.2
+
+  progress@2.0.3: {}
+
+  proxy-from-env@1.1.0: {}
+
+  pump@3.0.3:
+    dependencies:
+      end-of-stream: 1.4.5
+      once: 1.4.0
+
+  rimraf@4.4.1:
+    dependencies:
+      glob: 9.3.5
+
+  split2@4.2.0: {}
+
+  supports-color@7.2.0:
+    dependencies:
+      has-flag: 4.0.0
+
+  typescript@5.8.3: {}
+
+  undici-types@6.21.0: {}
+
+  undici@7.12.0: {}
+
+  wrappy@1.0.2: {}
+
+  xtend@4.0.2: {}
+
+  yauzl@2.10.0:
+    dependencies:
+      buffer-crc32: 0.2.13
+      fd-slicer: 1.1.0
+
+
+============================================
+File: ./oauth-schema.sql
+============================================
+-- OAuth state tracking (temporary during auth flow)
+CREATE TABLE IF NOT EXISTS oauth_states (
+    state VARCHAR(255) PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- OAuth tokens for each tenant
+CREATE TABLE IF NOT EXISTS oauth_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tenant_id)
+);
+
+-- Index for token lookup
+CREATE INDEX IF NOT EXISTS idx_oauth_tokens_tenant_id ON oauth_tokens(tenant_id);
+
+-- Cleanup old OAuth states periodically
+CREATE INDEX IF NOT EXISTS idx_oauth_states_created_at ON oauth_states(created_at);
+
+
+============================================
+File: ./LICENSE
+============================================
+MIT License
+
+Copyright (c) 2025 Nico Salm
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+============================================
+File: ./claude.txt
+============================================
+## Context for Future Claude Instance
+
+**Project**: Baileys Analytics - Multi-tenant SaaS for vacation rental tax reporting via OwnerRez integration
+
+**Current State**: Backend API complete, no frontend. Ready for React dashboard development.
+
+**Key Technical Decisions**:
+1. **Monorepo with pnpm** - Shared packages for types/utils/constants
+2. **Azure Functions v4** - Serverless backend, Node.js 22 compatible
+3. **PostgreSQL with tenant isolation** - Every table has tenant_id
+4. **Functional TypeScript patterns** - Discriminated unions, immutable data, Result types
+5. **OAuth + PAT auth** - PAT for dev (jerry@***REMOVED***), OAuth for production
+
+**Database State**:
+- 5 properties synced (Carraig cottages in Door County, WI)
+- 133 bookings with 600+ charge line items
+- Tax data showing ~15-17% rates, $39k collected on $162k rent
+- Hardcoded tenant: 00000000-0000-0000-0000-000000000001
+
+**Working Endpoints**:
+```
+GET  /api/test-ownerrez          - Connection test
+POST /api/sync-properties        - Sync all properties
+POST /api/sync-bookings          - Sync recent bookings
+GET  /api/tax-report             - JSON tax summary
+GET  /api/tax-report-csv         - CSV export
+POST /api/manual-sync            - Trigger full sync
+GET  /api/oauth/initiate         - Start OAuth flow
+GET  /api/oauth/callback         - OAuth redirect handler
+Timer: auto-sync (every 12 hours)
+```
+
+**Code Philosophy** (from human):
+- Make illegal states unrepresentable (discriminated unions)
+- Transform data with pipelines (map/filter/reduce)
+- Small, composable functions
+- Pattern matching over if/else chains
+- No unnecessary comments or emojis
+- Clarity over cleverness
+
+**Next Priority Tasks**:
+1. **React Dashboard** - Visualize tax data with Chart.js
+2. **JWT Auth** - Protect API endpoints
+3. **Tax Config UI** - Let users define custom tax rates
+4. **Deployment** - Azure setup with proper secrets
+
+**Pain Points**:
+- Timer triggers need Azure Storage (use manual-sync locally)
+- OAuth needs real OwnerRez account to test
+- Local PostgreSQL conflicts (check port 5432)
+
+**Environment Setup**:
+```bash
+# Database
+docker run --name baileys-postgres -e POSTGRES_PASSWORD=localdev123 -e POSTGRES_DB=baileys_analytics -p 5432:5432 -d postgres:15
+
+# Required secrets in local.settings.json:
+OWNERREZ_PAT=***REMOVED***
+DATABASE_URL=postgresql://postgres:localdev123@localhost:5432/baileys_analytics
+OWNERREZ_CLIENT_ID=c_al1awlmdhsarr5osu921t6d5tcakke5l
+OWNERREZ_CLIENT_SECRET=(in 1password or ask human)
+OAUTH_REDIRECT_URI=https://grub-live-enormously.ngrok-free.app/api/oauth/callback
+```
+
+**Critical Implementation Details**:
+
+1. **OwnerRez Auth**: Uses Basic Auth with email:PAT, not Bearer tokens
+2. **Property Mapping**: OwnerRez IDs (233857-233861) mapped to UUIDs internally
+3. **Booking Sync**: Only fetches last 7 days to catch updates
+4. **Charge Types**: 'tax', 'rent', 'surcharge' etc - tax calculations based on type='tax'
+5. **Transaction Pattern**: All booking updates wrapped in DB transactions
+
+**What Works Well**:
+- Property/booking sync is solid
+- Tax calculations match OwnerRez data
+- CSV export ready for tax filing
+- OAuth flow complete (untested)
+
+**What Needs Work**:
+- No frontend yet
+- No user authentication
+- Tax configs hardcoded (need UI)
+- Single tenant (Jerry) hardcoded
+
+**Project Vision**: Jerry Connor (client) wants to make this a $20/month SaaS for other OwnerRez users. Currently handling his 5 properties, designed to scale to hundreds of users.
+
+
+============================================
+File: ./schema.sql
+============================================
+-- Multi-tenant schema for Baileys Analytics
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Tenants (each OwnerRez account)
+CREATE TABLE tenants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    company_name VARCHAR(255),
+    ownerrez_user_id VARCHAR(50) UNIQUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Properties
+CREATE TABLE properties (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    ownerrez_id VARCHAR(50) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    address TEXT,
+    city VARCHAR(100),
+    state VARCHAR(50),
+    postal_code VARCHAR(20),
+    bedrooms INTEGER,
+    bathrooms INTEGER,
+    max_guests INTEGER,
+    latitude DECIMAL(10, 7),
+    longitude DECIMAL(10, 7),
+    thumbnail_url TEXT,
+    public_url TEXT,
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tenant_id, ownerrez_id)
+);
+
+-- Bookings
+CREATE TABLE bookings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+    ownerrez_booking_id VARCHAR(50) NOT NULL,
+    arrival DATE NOT NULL,
+    departure DATE NOT NULL,
+    adults INTEGER DEFAULT 0,
+    children INTEGER DEFAULT 0,
+    infants INTEGER DEFAULT 0,
+    pets INTEGER DEFAULT 0,
+    guest_name VARCHAR(255),
+    guest_email VARCHAR(255),
+    total_amount DECIMAL(10, 2),
+    status VARCHAR(50),
+    platform VARCHAR(100),
+    platform_reservation_number VARCHAR(100),
+    booked_utc TIMESTAMP WITH TIME ZONE,
+    canceled_utc TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tenant_id, ownerrez_booking_id)
+);
+
+-- Booking charges (line items including taxes)
+CREATE TABLE booking_charges (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL, -- 'rent', 'tax', 'fee', etc.
+    description TEXT,
+    amount DECIMAL(10, 2) NOT NULL,
+    is_taxable BOOLEAN DEFAULT false,
+    tax_id VARCHAR(50),
+    position INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tax configurations (user-defined tax rates)
+CREATE TABLE tax_configs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    rate DECIMAL(5, 4) NOT NULL, -- e.g., 0.0550 for 5.5%
+    type VARCHAR(50), -- 'state', 'county', 'city', 'tourism', etc.
+    applies_to_properties UUID[] DEFAULT '{}', -- array of property IDs
+    active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance
+CREATE INDEX idx_properties_tenant_id ON properties(tenant_id);
+CREATE INDEX idx_bookings_tenant_id ON bookings(tenant_id);
+CREATE INDEX idx_bookings_property_id ON bookings(property_id);
+CREATE INDEX idx_bookings_arrival_departure ON bookings(tenant_id, arrival, departure);
+CREATE INDEX idx_booking_charges_booking_id ON booking_charges(booking_id);
+CREATE INDEX idx_tax_configs_tenant_id ON tax_configs(tenant_id);
+
+-- Updated timestamp trigger
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_properties_updated_at BEFORE UPDATE ON properties
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_tax_configs_updated_at BEFORE UPDATE ON tax_configs
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+
+============================================
+File: ./.gitignore
+============================================
+# Dependencies
+node_modules/
+.pnp.*
+.yarn/*
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Azure Functions
+local.settings.json
+.python_packages/
+
+
+============================================
+File: ./packages/shared-types/src/index.ts
+============================================
+// Shared TypeScript types for Baileys Analytics
+
+export interface User {
+  id: string;
+  email: string;
+  tenantId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Property {
+  id: string;
+  tenantId: string;
+  ownerRezId: string;
+  name: string;
+  address: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Booking {
+  id: string;
+  tenantId: string;
+  propertyId: string;
+  ownerRezBookingId: string;
+  checkIn: Date;
+  checkOut: Date;
+  totalAmount: number;
+  guestName: string;
+  guestEmail?: string;
+  status: 'confirmed' | 'cancelled' | 'pending';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+
+============================================
+File: ./packages/constants/src/index.ts
+============================================
+// Constants for Baileys Analytics
+
+export const API_VERSION = 'v1';
+
+export const OWNERREZ_API = {
+  BASE_URL: 'https://api.ownerrez.com/v2',
+  ENDPOINTS: {
+    PROPERTIES: '/properties',
+    BOOKINGS: '/bookings',
+    GUESTS: '/guests',
+  },
+} as const;
+
+export const TAX_TYPES = {
+  STATE: 'state',
+  COUNTY: 'county',
+  CITY: 'city',
+  TOURISM: 'tourism',
+  OCCUPANCY: 'occupancy',
+} as const;
+
+export const BOOKING_STATUS = {
+  CONFIRMED: 'confirmed',
+  CANCELLED: 'cancelled',
+  PENDING: 'pending',
+} as const;
+
+
+============================================
+File: ./packages/utils/src/index.ts
+============================================
+// Utility functions for Baileys Analytics
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
+export function calculateNights(checkIn: Date, checkOut: Date): number {
+  const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+export function calculateTax(amount: number, taxRate: number): number {
+  return Math.round(amount * taxRate * 100) / 100;
+}
+
+
+============================================
+File: ./.env.example
+============================================
+# OwnerRez API Credentials
+OWNERREZ_PAT=your_personal_access_token_here
+OWNERREZ_CLIENT_ID=your_oauth_client_id
+OWNERREZ_CLIENT_SECRET=your_oauth_client_secret
+
+# Database (for later)
+DATABASE_URL=postgresql://user:password@localhost:5432/baileys_analytics
+
+# Azure (for later)
+AZURE_STORAGE_CONNECTION_STRING=
+
+
+============================================
+File: ./apps/functions/src/sync-bookings.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import axios from 'axios';
+import { OWNERREZ_API } from '@baileys/constants';
+import { query, transaction } from './services/database';
+
+type BookingCharge = {
+  amount: number;
+  description: string;
+  type: string;
+  is_taxable: boolean;
+  tax_id?: number;
+  position: number;
+};
+
+type OwnerRezBooking = {
+  id: number;
+  property_id: number;
+  guest_id: number;
+  arrival: string;
+  departure: string;
+  adults: number;
+  children: number;
+  infants: number;
+  pets: number;
+  status: string;
+  total_amount: number;
+  charges?: BookingCharge[];
+  guest?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
+  listing_site?: string;
+  platform_reservation_number?: string;
+  booked_utc: string;
+  canceled_utc?: string;
+};
+
+type SyncState =
+  | { status: 'loading' }
+  | { status: 'success'; bookingsSynced: number; chargesSynced: number }
+  | { status: 'error'; error: string; details?: unknown };
+
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+async function getPropertyMapping(tenantId: string): Promise<Map<string, string>> {
+  const result = await query<{ ownerrez_id: string; id: string }>(
+    'SELECT id, ownerrez_id FROM properties WHERE tenant_id = $1',
+    [tenantId]
+  );
+
+  if (!result.success) {
+    throw new Error(`Failed to fetch properties: ${result.error}`);
+  }
+
+  const mapping = new Map<string, string>();
+  result.data.forEach(row => {
+    mapping.set(row.ownerrez_id, row.id);
+  });
+
+  return mapping;
+}
+
+async function syncBookingWithCharges(booking: OwnerRezBooking, propertyId: string): Promise<{ chargeCount: number }> {
+  const transactionResult = await transaction(async (client) => {
+    // Insert or update booking
+    const bookingResult = await client.query(
+      `INSERT INTO bookings (
+        tenant_id, property_id, ownerrez_booking_id,
+        arrival, departure, adults, children, infants, pets,
+        guest_name, guest_email, total_amount, status,
+        platform, platform_reservation_number,
+        booked_utc, canceled_utc
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      ON CONFLICT (tenant_id, ownerrez_booking_id) DO UPDATE SET
+        property_id = EXCLUDED.property_id,
+        arrival = EXCLUDED.arrival,
+        departure = EXCLUDED.departure,
+        adults = EXCLUDED.adults,
+        children = EXCLUDED.children,
+        infants = EXCLUDED.infants,
+        pets = EXCLUDED.pets,
+        guest_name = EXCLUDED.guest_name,
+        guest_email = EXCLUDED.guest_email,
+        total_amount = EXCLUDED.total_amount,
+        status = EXCLUDED.status,
+        platform = EXCLUDED.platform,
+        platform_reservation_number = EXCLUDED.platform_reservation_number,
+        booked_utc = EXCLUDED.booked_utc,
+        canceled_utc = EXCLUDED.canceled_utc,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING id`,
+      [
+        TENANT_ID,
+        propertyId,
+        booking.id.toString(),
+        booking.arrival,
+        booking.departure,
+        booking.adults || 0,
+        booking.children || 0,
+        booking.infants || 0,
+        booking.pets || 0,
+        booking.guest ? `${booking.guest.first_name} ${booking.guest.last_name}` : null,
+        null, // guest email not in the response
+        booking.total_amount,
+        booking.status,
+        booking.listing_site,
+        booking.platform_reservation_number,
+        booking.booked_utc,
+        booking.canceled_utc
+      ]
+    );
+
+    const bookingId = bookingResult.rows[0].id;
+
+    // Delete existing charges for this booking
+    await client.query(
+      'DELETE FROM booking_charges WHERE booking_id = $1',
+      [bookingId]
+    );
+
+    // Insert new charges
+    let chargeCount = 0;
+    if (booking.charges && booking.charges.length > 0) {
+      for (const charge of booking.charges) {
+        await client.query(
+          `INSERT INTO booking_charges (
+            booking_id, type, description, amount,
+            is_taxable, tax_id, position
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [
+            bookingId,
+            charge.type,
+            charge.description,
+            charge.amount,
+            charge.is_taxable,
+            charge.tax_id?.toString(),
+            charge.position
+          ]
+        );
+        chargeCount++;
+      }
+    }
+
+    return { bookingId, chargeCount };
+  });
+
+  if (!transactionResult.success) {
+    throw new Error(`Failed to sync booking: ${transactionResult.error}`);
+  }
+
+  return { chargeCount: transactionResult.data.chargeCount };
+}
+
+export async function syncBookings(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const token = process.env.OWNERREZ_PAT;
+
+  if (!token) {
+    return {
+      status: 500,
+      body: 'OWNERREZ_PAT environment variable not set'
+    };
+  }
+
+  try {
+    // Get property mapping
+    const propertyMapping = await getPropertyMapping(TENANT_ID);
+    const ownerRezPropertyIds = Array.from(propertyMapping.keys()).join(',');
+
+    // Fetch bookings from the last 90 days by default
+    const fromDate = request.query.get('from') ||
+      new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const toDate = request.query.get('to') ||
+      new Date().toISOString().split('T')[0];
+
+    context.log('Syncing bookings:', { fromDate, toDate, properties: ownerRezPropertyIds });
+
+    const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: {
+        'Accept': 'application/json'
+      },
+      params: {
+        property_ids: ownerRezPropertyIds,
+        from: fromDate,
+        to: toDate,
+        include_charges: true,
+        include_guest: true,
+        limit: 500
+      }
+    });
+
+    let bookingsSynced = 0;
+    let totalChargesSynced = 0;
+
+    for (const booking of response.data.items) {
+      const propertyId = propertyMapping.get(booking.property_id.toString());
+      if (!propertyId) {
+        context.warn(`Property not found for OwnerRez ID: ${booking.property_id}`);
+        continue;
+      }
+
+      const { chargeCount } = await syncBookingWithCharges(booking, propertyId);
+      bookingsSynced++;
+      totalChargesSynced += chargeCount;
+    }
+
+    const state: SyncState = {
+      status: 'success',
+      bookingsSynced,
+      chargesSynced: totalChargesSynced
+    };
+
+    return {
+      status: 200,
+      jsonBody: state
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    context.error('Sync failed:', error);
+
+    return {
+      status: 500,
+      jsonBody: {
+        status: 'error',
+        error: errorMessage
+      }
+    };
+  }
+}
+
+app.http('sync-bookings', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  handler: syncBookings
+});
+
+
+============================================
+File: ./apps/functions/src/oauth.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import axios from 'axios';
+import { query } from './services/database';
+import { randomBytes } from 'crypto';
+
+type OAuthState =
+  | { status: 'pending'; authUrl: string }
+  | { status: 'success'; tenantId: string }
+  | { status: 'error'; error: string };
+
+type TokenResponse = {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token: string;
+  scope: string;
+};
+
+const OWNERREZ_OAUTH_BASE = 'https://app.ownerrez.com/oauth';
+const CLIENT_ID = process.env.OWNERREZ_CLIENT_ID || '';
+const CLIENT_SECRET = process.env.OWNERREZ_CLIENT_SECRET || '';
+const REDIRECT_URI = process.env.OAUTH_REDIRECT_URI || 'https://grub-live-enormously.ngrok-free.app/api/oauth/callback';
+
+const generateState = (): string => randomBytes(16).toString('hex');
+
+const storeOAuthState = async (state: string, email: string): Promise<void> => {
+  await query(
+    `INSERT INTO oauth_states (state, email, created_at)
+     VALUES ($1, $2, CURRENT_TIMESTAMP)
+     ON CONFLICT (state) DO UPDATE SET email = $2`,
+    [state, email]
+  );
+};
+
+const verifyOAuthState = async (state: string): Promise<string | null> => {
+  const result = await query<{ email: string }>(
+    `DELETE FROM oauth_states
+     WHERE state = $1 AND created_at > CURRENT_TIMESTAMP - INTERVAL '10 minutes'
+     RETURNING email`,
+    [state]
+  );
+
+  return result.success && result.data.length > 0
+    ? result.data[0].email
+    : null;
+};
+
+export async function oauthInitiate(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const email = request.query.get('email');
+    if (!email) {
+      return {
+        status: 400,
+        jsonBody: { status: 'error', error: 'Email is required' }
+      };
+    }
+
+    const state = generateState();
+    await storeOAuthState(state, email);
+
+    const authUrl = new URL(`${OWNERREZ_OAUTH_BASE}/authorize`);
+    authUrl.searchParams.append('client_id', CLIENT_ID);
+    authUrl.searchParams.append('response_type', 'code');
+    authUrl.searchParams.append('redirect_uri', REDIRECT_URI);
+    authUrl.searchParams.append('scope', 'properties bookings');
+    authUrl.searchParams.append('state', state);
+
+    const response: OAuthState = {
+      status: 'pending',
+      authUrl: authUrl.toString()
+    };
+
+    return {
+      status: 200,
+      jsonBody: response
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      jsonBody: {
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Failed to initiate OAuth'
+      }
+    };
+  }
+}
+
+export async function oauthCallback(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const code = request.query.get('code');
+    const state = request.query.get('state');
+    const error = request.query.get('error');
+
+    if (error) {
+      return {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+        body: `<html><body><h2>Authorization Failed</h2><p>${error}</p></body></html>`
+      };
+    }
+
+    if (!code || !state) {
+      return {
+        status: 400,
+        headers: { 'Content-Type': 'text/html' },
+        body: '<html><body><h2>Invalid Request</h2><p>Missing code or state</p></body></html>'
+      };
+    }
+
+    const email = await verifyOAuthState(state);
+    if (!email) {
+      return {
+        status: 400,
+        headers: { 'Content-Type': 'text/html' },
+        body: '<html><body><h2>Invalid State</h2><p>State verification failed</p></body></html>'
+      };
+    }
+
+    // Exchange code for token
+    const tokenResponse = await axios.post<TokenResponse>(
+      `${OWNERREZ_OAUTH_BASE}/token`,
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: REDIRECT_URI,
+        client_id: CLIENT_ID,
+        client_secret: CLIENT_SECRET
+      }),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      }
+    );
+
+    const { access_token, refresh_token, expires_in } = tokenResponse.data;
+
+    // Get user info using the token
+    const userResponse = await axios.get('https://api.ownerrez.com/v2/users/me', {
+      headers: { 'Authorization': `Bearer ${access_token}` }
+    });
+
+    const { id: ownerrezUserId, company_name } = userResponse.data;
+
+    // Create or update tenant with OAuth tokens
+    const result = await query<{ id: string }>(
+      `INSERT INTO tenants (email, company_name, ownerrez_user_id)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (email) DO UPDATE
+       SET company_name = $2,
+           ownerrez_user_id = $3,
+           updated_at = CURRENT_TIMESTAMP
+       RETURNING id`,
+      [email, company_name, ownerrezUserId.toString()]
+    );
+
+    if (!result.success) {
+      throw new Error('Failed to create tenant');
+    }
+
+    const tenantId = result.data[0].id;
+
+    // Store OAuth tokens
+    await query(
+      `INSERT INTO oauth_tokens (
+        tenant_id, access_token, refresh_token, expires_at
+      ) VALUES ($1, $2, $3, $4)
+      ON CONFLICT (tenant_id) DO UPDATE
+      SET access_token = $2,
+          refresh_token = $3,
+          expires_at = $4,
+          updated_at = CURRENT_TIMESTAMP`,
+      [
+        tenantId,
+        access_token,
+        refresh_token,
+        new Date(Date.now() + expires_in * 1000)
+      ]
+    );
+
+    // Return success page
+    return {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' },
+      body: `
+        <html>
+          <head>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                     display: flex; align-items: center; justify-content: center;
+                     height: 100vh; margin: 0; background: #f5f5f5; }
+              .container { text-align: center; background: white; padding: 40px;
+                          border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+              h2 { color: #22c55e; margin: 0 0 16px 0; }
+              p { color: #666; margin: 0 0 24px 0; }
+              .close { background: #3b82f6; color: white; border: none;
+                      padding: 12px 24px; border-radius: 6px; cursor: pointer; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h2>✓ Successfully Connected</h2>
+              <p>Your OwnerRez account has been connected to Baileys Analytics.</p>
+              <button class="close" onclick="window.close()">Close Window</button>
+            </div>
+            <script>
+              // Notify parent window if opened as popup
+              if (window.opener) {
+                window.opener.postMessage({ type: 'oauth-success', tenantId: '${tenantId}' }, '*');
+              }
+            </script>
+          </body>
+        </html>
+      `
+    };
+  } catch (error) {
+    context.error('OAuth callback error:', error);
+    return {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' },
+      body: `
+        <html>
+          <body>
+            <h2>Connection Failed</h2>
+            <p>${error instanceof Error ? error.message : 'Unknown error'}</p>
+          </body>
+        </html>
+      `
+    };
+  }
+}
+
+app.http('oauth-initiate', {
+  methods: ['GET'],
+  route: 'oauth/initiate',
+  authLevel: 'anonymous',
+  handler: oauthInitiate
+});
+
+app.http('oauth-callback', {
+  methods: ['GET'],
+  route: 'oauth/callback',
+  authLevel: 'anonymous',
+  handler: oauthCallback
+});
+
+
+============================================
+File: ./apps/functions/src/tax-report.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { query } from './services/database';
+
+type TaxReportState =
+  | { status: 'loading' }
+  | { status: 'success'; data: TaxReportData }
+  | { status: 'error'; error: string };
+
+type TaxReportData = {
+  summary: {
+    totalTax: number;
+    totalRent: number;
+    totalBookings: number;
+    dateRange: {
+      from: string;
+      to: string;
+    };
+  };
+  byProperty: PropertyTaxData[];
+  byMonth: MonthlyTaxData[];
+};
+
+type PropertyTaxData = {
+  propertyId: string;
+  propertyName: string;
+  totalTax: number;
+  totalRent: number;
+  bookingCount: number;
+  taxRate: number;
+};
+
+type MonthlyTaxData = {
+  month: string;
+  totalTax: number;
+  totalRent: number;
+  bookingCount: number;
+};
+
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+export async function taxReport(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const fromDate = request.query.get('from') || '2024-01-01';
+    const toDate = request.query.get('to') || '2024-12-31';
+
+    // Get summary
+    const summaryResult = await query<{
+      total_tax: string;
+      total_rent: string;
+      total_bookings: string;
+    }>(
+      `SELECT
+        COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_tax,
+        COALESCE(SUM(CASE WHEN bc.type = 'rent' THEN bc.amount ELSE 0 END), 0) as total_rent,
+        COUNT(DISTINCT b.id) as total_bookings
+      FROM bookings b
+      LEFT JOIN booking_charges bc ON b.id = bc.booking_id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'`,
+      [TENANT_ID, fromDate, toDate]
+    );
+
+    if (!summaryResult.success) {
+      throw new Error(`Failed to get summary: ${summaryResult.error}`);
+    }
+
+    // Get by property
+    const byPropertyResult = await query<{
+      property_id: string;
+      property_name: string;
+      total_tax: string;
+      total_rent: string;
+      booking_count: string;
+    }>(
+      `SELECT
+        p.id as property_id,
+        p.name as property_name,
+        COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_tax,
+        COALESCE(SUM(CASE WHEN bc.type = 'rent' THEN bc.amount ELSE 0 END), 0) as total_rent,
+        COUNT(DISTINCT b.id) as booking_count
+      FROM properties p
+      LEFT JOIN bookings b ON p.id = b.property_id
+      LEFT JOIN booking_charges bc ON b.id = bc.booking_id
+      WHERE p.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+      GROUP BY p.id, p.name
+      ORDER BY total_tax DESC`,
+      [TENANT_ID, fromDate, toDate]
+    );
+
+    if (!byPropertyResult.success) {
+      throw new Error(`Failed to get property data: ${byPropertyResult.error}`);
+    }
+
+    // Get by month
+    const byMonthResult = await query<{
+      month: string;
+      total_tax: string;
+      total_rent: string;
+      booking_count: string;
+    }>(
+      `SELECT
+        TO_CHAR(b.arrival, 'YYYY-MM') as month,
+        COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_tax,
+        COALESCE(SUM(CASE WHEN bc.type = 'rent' THEN bc.amount ELSE 0 END), 0) as total_rent,
+        COUNT(DISTINCT b.id) as booking_count
+      FROM bookings b
+      LEFT JOIN booking_charges bc ON b.id = bc.booking_id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+      GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+      ORDER BY month`,
+      [TENANT_ID, fromDate, toDate]
+    );
+
+    if (!byMonthResult.success) {
+      throw new Error(`Failed to get monthly data: ${byMonthResult.error}`);
+    }
+
+    const summary = summaryResult.data[0];
+
+    const reportData: TaxReportData = {
+      summary: {
+        totalTax: parseFloat(summary.total_tax),
+        totalRent: parseFloat(summary.total_rent),
+        totalBookings: parseInt(summary.total_bookings),
+        dateRange: { from: fromDate, to: toDate }
+      },
+      byProperty: byPropertyResult.data.map(row => ({
+        propertyId: row.property_id,
+        propertyName: row.property_name,
+        totalTax: parseFloat(row.total_tax),
+        totalRent: parseFloat(row.total_rent),
+        bookingCount: parseInt(row.booking_count),
+        taxRate: parseFloat(row.total_rent) > 0
+          ? (parseFloat(row.total_tax) / parseFloat(row.total_rent)) * 100
+          : 0
+      })),
+      byMonth: byMonthResult.data.map(row => ({
+        month: row.month,
+        totalTax: parseFloat(row.total_tax),
+        totalRent: parseFloat(row.total_rent),
+        bookingCount: parseInt(row.booking_count)
+      }))
+    };
+
+    return {
+      status: 200,
+      jsonBody: {
+        status: 'success',
+        data: reportData
+      }
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    context.error('Tax report failed:', error);
+
+    return {
+      status: 500,
+      jsonBody: {
+        status: 'error',
+        error: errorMessage
+      }
+    };
+  }
+}
+
+app.http('tax-report', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: taxReport
+});
+
+
+============================================
+File: ./apps/functions/src/tax-report-csv.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { query } from './services/database';
+
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+type TaxReportRow = {
+  booking_id: string;
+  property_name: string;
+  arrival: string;
+  departure: string;
+  guest_name: string;
+  platform: string;
+  rent_amount: string;
+  tax_amount: string;
+  total_amount: string;
+};
+
+function escapeCSV(value: string | null): string {
+  if (!value) return '';
+  const str = value.toString();
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function rowToCSV(row: TaxReportRow): string {
+  return [
+    escapeCSV(row.booking_id),
+    escapeCSV(row.property_name),
+    escapeCSV(row.arrival),
+    escapeCSV(row.departure),
+    escapeCSV(row.guest_name),
+    escapeCSV(row.platform),
+    row.rent_amount,
+    row.tax_amount,
+    row.total_amount
+  ].join(',');
+}
+
+export async function taxReportCSV(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const fromDate = request.query.get('from') || '2024-01-01';
+    const toDate = request.query.get('to') || '2024-12-31';
+
+    const result = await query<TaxReportRow>(
+      `SELECT
+        b.ownerrez_booking_id as booking_id,
+        p.name as property_name,
+        b.arrival::text,
+        b.departure::text,
+        b.guest_name,
+        COALESCE(b.platform, 'Direct') as platform,
+        COALESCE(SUM(CASE WHEN bc.type = 'rent' THEN bc.amount ELSE 0 END), 0)::text as rent_amount,
+        COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0)::text as tax_amount,
+        b.total_amount::text
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      LEFT JOIN booking_charges bc ON b.id = bc.booking_id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+      GROUP BY b.id, b.ownerrez_booking_id, p.name, b.arrival, b.departure,
+               b.guest_name, b.platform, b.total_amount
+      ORDER BY b.arrival, p.name`,
+      [TENANT_ID, fromDate, toDate]
+    );
+
+    if (!result.success) {
+      throw new Error(`Failed to generate report: ${result.error}`);
+    }
+
+    const headers = [
+      'Booking ID',
+      'Property',
+      'Check In',
+      'Check Out',
+      'Guest Name',
+      'Platform',
+      'Rent Amount',
+      'Tax Amount',
+      'Total Amount'
+    ].join(',');
+
+    const rows = result.data.map(rowToCSV);
+    const csv = [headers, ...rows].join('\n');
+
+    const filename = `tax-report-${fromDate}-to-${toDate}.csv`;
+
+    return {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="${filename}"`
+      },
+      body: csv
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    context.error('CSV generation failed:', error);
+
+    return {
+      status: 500,
+      body: `Error generating CSV: ${errorMessage}`
+    };
+  }
+}
+
+app.http('tax-report-csv', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: taxReportCSV
+});
+
+
+============================================
+File: ./apps/functions/src/fetch-bookings.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import axios from 'axios';
+import { OWNERREZ_API } from '@baileys/constants';
+
+type BookingCharge = {
+  amount: number;
+  description: string;
+  type: 'rent' | 'tax' | 'fee' | 'surcharge' | 'damage_waiver' | 'other';
+  is_taxable: boolean;
+  tax_id?: number;
+  position: number;
+};
+
+type OwnerRezBooking = {
+  id: number;
+  property_id: number;
+  guest_id: number;
+  arrival: string;
+  departure: string;
+  adults: number;
+  children: number;
+  infants: number;
+  pets: number;
+  status: string;
+  total_amount: number;
+  charges?: BookingCharge[];
+  guest?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+  };
+  listing_site?: string;
+  platform_reservation_number?: string;
+  booked_utc: string;
+  canceled_utc?: string;
+};
+
+type FetchBookingsState =
+  | { status: 'loading' }
+  | { status: 'success'; bookings: any[]; totalCount: number }
+  | { status: 'error'; error: string; details?: unknown };
+
+export async function fetchBookings(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const token = process.env.OWNERREZ_PAT;
+
+  if (!token) {
+    return {
+      status: 500,
+      body: 'OWNERREZ_PAT environment variable not set'
+    };
+  }
+
+  try {
+    const propertyIds = request.query.get('property_ids') || '';
+    const fromDate = request.query.get('from') || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+
+    context.log('Fetching bookings:', { propertyIds, fromDate, toDate });
+
+    const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: {
+        'Accept': 'application/json'
+      },
+      params: {
+        property_ids: propertyIds,
+        from: fromDate,
+        to: toDate,
+        include_charges: true,
+        include_guest: true,
+        limit: 100
+      }
+    });
+
+    context.log('Sample booking:', JSON.stringify(response.data.items[0], null, 2));
+
+    const state: FetchBookingsState = {
+      status: 'success',
+      bookings: response.data.items,
+      totalCount: response.data.items.length
+    };
+
+    return {
+      status: 200,
+      jsonBody: state
+    };
+
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 500;
+      const statusText = error.response?.statusText || 'Unknown error';
+      context.error('OwnerRez API error:', {
+        status,
+        statusText,
+        data: error.response?.data
+      });
+
+      return {
+        status,
+        jsonBody: {
+          status: 'error',
+          error: `OwnerRez API Error: ${status} ${statusText}`,
+          details: error.response?.data
+        }
+      };
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      status: 500,
+      jsonBody: {
+        status: 'error',
+        error: errorMessage
+      }
+    };
+  }
+}
+
+app.http('fetch-bookings', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: fetchBookings
+});
+
+
+============================================
+File: ./apps/functions/src/test-ownerrez.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import axios from 'axios';
+import { OWNERREZ_API } from '@baileys/constants';
+
+export async function testOwnerRez(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const token = process.env.OWNERREZ_PAT;
+
+  if (!token) {
+    return {
+      status: 500,
+      body: 'OWNERREZ_PAT environment variable not set'
+    };
+  }
+
+  try {
+    context.log('Testing OwnerRez API connection...');
+
+    const response = await axios.get(`${OWNERREZ_API.BASE_URL}/users/me`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+
+    return {
+      status: 200,
+      jsonBody: {
+        message: 'OwnerRez API connection successful!',
+        user: response.data
+      }
+    };
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status || 500;
+      const statusText = error.response?.statusText || 'Unknown error';
+      context.error('OwnerRez API error:', {
+        status,
+        statusText,
+        data: error.response?.data
+      });
+
+      return {
+        status,
+        jsonBody: {
+          error: `OwnerRez API Error: ${status} ${statusText}`,
+          details: error.response?.data
+        }
+      };
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return {
+      status: 500,
+      body: `Error connecting to OwnerRez: ${errorMessage}`
+    };
+  }
+}
+
+app.http('test-ownerrez', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: testOwnerRez
+});
+
+
+============================================
+File: ./apps/functions/src/auto-sync.ts
+============================================
+import { app, Timer, InvocationContext } from '@azure/functions';
+import axios from 'axios';
+import { OWNERREZ_API } from '@baileys/constants';
+import { query, transaction, DbResult } from './services/database';
+
+type PropertySyncState =
+  | { status: 'idle' }
+  | { status: 'syncing' }
+  | { status: 'success'; synced: number }
+  | { status: 'error'; error: string };
+
+type BookingSyncState =
+  | { status: 'idle' }
+  | { status: 'syncing' }
+  | { status: 'success'; synced: number; charges: number }
+  | { status: 'error'; error: string };
+
+type SyncState = {
+  properties: PropertySyncState;
+  bookings: BookingSyncState;
+  startedAt: Date;
+  completedAt?: Date;
+  duration?: number;
+};
+
+type OwnerRezProperty = {
+  id: number;
+  name: string;
+  active: boolean;
+  address?: {
+    street1?: string;
+    city?: string;
+    state?: string;
+    postal_code?: string;
+  };
+  bedrooms: number;
+  bathrooms: number;
+  max_guests: number;
+  latitude?: number;
+  longitude?: number;
+  thumbnail_url?: string;
+  public_url?: string;
+};
+
+type PropertyMapping = Map<string, string>;
+
+const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
+const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
+  try {
+    const response = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: { 'Accept': 'application/json' },
+      params: { active: true }
+    });
+    return { success: true, data: response.data.items };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch properties'
+    };
+  }
+};
+
+const upsertProperty = async (property: OwnerRezProperty): Promise<DbResult<void>> => {
+  const result = await query(
+    `INSERT INTO properties (
+      tenant_id, ownerrez_id, name, address, city, state, postal_code,
+      bedrooms, bathrooms, max_guests, latitude, longitude,
+      thumbnail_url, public_url, active
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    ON CONFLICT (tenant_id, ownerrez_id) DO UPDATE SET
+      name = EXCLUDED.name,
+      active = EXCLUDED.active,
+      updated_at = CURRENT_TIMESTAMP`,
+    [
+      TENANT_ID,
+      property.id.toString(),
+      property.name,
+      property.address?.street1 || '',
+      property.address?.city || '',
+      property.address?.state || '',
+      property.address?.postal_code || '',
+      property.bedrooms,
+      property.bathrooms,
+      property.max_guests,
+      property.latitude,
+      property.longitude,
+      property.thumbnail_url,
+      property.public_url,
+      property.active
+    ]
+  );
+
+  return result.success
+    ? { success: true, data: undefined }
+    : { success: false, error: result.error };
+};
+
+const syncProperties = async (token: string): Promise<PropertySyncState> => {
+  const fetchResult = await fetchProperties(token);
+
+  if (!fetchResult.success) {
+    return { status: 'error', error: fetchResult.error };
+  }
+
+  const results = await Promise.all(
+    fetchResult.data.map(upsertProperty)
+  );
+
+  const synced = results.filter(r => r.success).length;
+  const errors = results.filter(r => !r.success);
+
+  if (errors.length > 0) {
+    return {
+      status: 'error',
+      error: `Synced ${synced} properties, but ${errors.length} failed`
+    };
+  }
+
+  return { status: 'success', synced };
+};
+
+const getPropertyMapping = async (): Promise<DbResult<PropertyMapping>> => {
+  const result = await query<{ ownerrez_id: string; id: string }>(
+    'SELECT id, ownerrez_id FROM properties WHERE tenant_id = $1',
+    [TENANT_ID]
+  );
+
+  if (!result.success) {
+    return result;
+  }
+
+  const mapping = new Map(
+    result.data.map(p => [p.ownerrez_id, p.id])
+  );
+
+  return { success: true, data: mapping };
+};
+
+const fetchRecentBookings = async (
+  token: string,
+  propertyIds: string[]
+): Promise<DbResult<any[]>> => {
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  try {
+    const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: { 'Accept': 'application/json' },
+      params: {
+        property_ids: propertyIds.join(','),
+        since_utc: since,
+        include_charges: true,
+        include_guest: true,
+        limit: 200
+      }
+    });
+    return { success: true, data: response.data.items };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch bookings'
+    };
+  }
+};
+
+const upsertBookingWithCharges = async (
+  booking: any,
+  propertyId: string
+): Promise<DbResult<number>> => {
+  return transaction(async (client) => {
+    const bookingResult = await client.query(
+      `INSERT INTO bookings (
+        tenant_id, property_id, ownerrez_booking_id,
+        arrival, departure, adults, children, infants, pets,
+        guest_name, total_amount, status, platform,
+        booked_utc, canceled_utc
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ON CONFLICT (tenant_id, ownerrez_booking_id) DO UPDATE SET
+        status = EXCLUDED.status,
+        canceled_utc = EXCLUDED.canceled_utc,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING id`,
+      [
+        TENANT_ID,
+        propertyId,
+        booking.id.toString(),
+        booking.arrival,
+        booking.departure,
+        booking.adults || 0,
+        booking.children || 0,
+        booking.infants || 0,
+        booking.pets || 0,
+        booking.guest ? `${booking.guest.first_name} ${booking.guest.last_name}` : null,
+        booking.total_amount,
+        booking.status,
+        booking.listing_site,
+        booking.booked_utc,
+        booking.canceled_utc
+      ]
+    );
+
+    const bookingId = bookingResult.rows[0].id;
+
+    await client.query('DELETE FROM booking_charges WHERE booking_id = $1', [bookingId]);
+
+    let chargeCount = 0;
+    if (booking.charges) {
+      for (const charge of booking.charges) {
+        await client.query(
+          `INSERT INTO booking_charges (
+            booking_id, type, description, amount, is_taxable, position
+          ) VALUES ($1, $2, $3, $4, $5, $6)`,
+          [bookingId, charge.type, charge.description, charge.amount, charge.is_taxable, charge.position]
+        );
+        chargeCount++;
+      }
+    }
+
+    return chargeCount;
+  });
+};
+
+const syncBookings = async (token: string): Promise<BookingSyncState> => {
+  const mappingResult = await getPropertyMapping();
+
+  if (!mappingResult.success) {
+    return { status: 'error', error: 'Failed to get property mapping' };
+  }
+
+  const propertyIds = Array.from(mappingResult.data.keys());
+  const bookingsResult = await fetchRecentBookings(token, propertyIds);
+
+  if (!bookingsResult.success) {
+    return { status: 'error', error: bookingsResult.error };
+  }
+
+  const bookingsToSync = bookingsResult.data
+    .filter(b => mappingResult.data.has(b.property_id.toString()))
+    .map(b => ({
+      booking: b,
+      propertyId: mappingResult.data.get(b.property_id.toString())!
+    }));
+
+  const results = await Promise.all(
+    bookingsToSync.map(({ booking, propertyId }) =>
+      upsertBookingWithCharges(booking, propertyId)
+    )
+  );
+
+  const successful = results.filter(r => r.success);
+  const totalCharges = successful.reduce(
+    (sum, r) => sum + (r.success ? r.data : 0),
+    0
+  );
+
+  return {
+    status: 'success',
+    synced: successful.length,
+    charges: totalCharges
+  };
+};
+
+export const performSync = async (token: string): Promise<SyncState> => {
+  const startedAt = new Date();
+
+  const state: SyncState = {
+    properties: { status: 'syncing' },
+    bookings: { status: 'syncing' },
+    startedAt
+  };
+
+  state.properties = await syncProperties(token);
+  state.bookings = await syncBookings(token);
+
+  state.completedAt = new Date();
+  state.duration = state.completedAt.getTime() - startedAt.getTime();
+
+  return state;
+};
+
+export async function autoSync(myTimer: Timer, context: InvocationContext): Promise<void> {
+  context.log('Auto-sync started at:', new Date().toISOString());
+
+  const token = process.env.OWNERREZ_PAT;
+  if (!token) {
+    context.error('OWNERREZ_PAT not configured');
+    return;
+  }
+
+  const result = await performSync(token);
+
+  context.log('Auto-sync completed:', {
+    properties: result.properties,
+    bookings: result.bookings,
+    duration: `${result.duration}ms`
+  });
+}
+
+// Run every 12 hours
+app.timer('auto-sync', {
+  schedule: '0 0 */12 * * *',
+  handler: autoSync
+});
+
+
+============================================
+File: ./apps/functions/src/sync-properties.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import axios from 'axios';
+import { OWNERREZ_API } from '@baileys/constants';
+import { query, transaction } from './services/database';
+
+type SyncState =
+  | { status: 'loading' }
+  | { status: 'success'; propertiesSynced: number; tenantId: string }
+  | { status: 'error'; error: string; details?: unknown };
+
+const JERRY_TENANT_ID = '00000000-0000-0000-0000-000000000001'; // Temporary hardcoded ID
+
+async function ensureTenant(email: string, ownerrezUserId: string, companyName?: string): Promise<string> {
+  const existingResult = await query<{ id: string }>(
+    'SELECT id FROM tenants WHERE email = $1',
+    [email]
+  );
+
+  if (existingResult.success && existingResult.data.length > 0) {
+    return existingResult.data[0].id;
+  }
+
+  const insertResult = await query<{ id: string }>(
+    `INSERT INTO tenants (id, email, company_name, ownerrez_user_id)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (email) DO UPDATE
+     SET company_name = EXCLUDED.company_name,
+         ownerrez_user_id = EXCLUDED.ownerrez_user_id
+     RETURNING id`,
+    [JERRY_TENANT_ID, email, companyName, ownerrezUserId]
+  );
+
+  if (!insertResult.success) {
+    throw new Error(`Failed to create tenant: ${insertResult.error}`);
+  }
+
+  return insertResult.data[0].id;
+}
+
+async function syncProperty(tenantId: string, property: any): Promise<void> {
+  const result = await query(
+    `INSERT INTO properties (
+      tenant_id, ownerrez_id, name, address, city, state, postal_code,
+      bedrooms, bathrooms, max_guests, latitude, longitude,
+      thumbnail_url, public_url, active
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    ON CONFLICT (tenant_id, ownerrez_id) DO UPDATE SET
+      name = EXCLUDED.name,
+      address = EXCLUDED.address,
+      city = EXCLUDED.city,
+      state = EXCLUDED.state,
+      postal_code = EXCLUDED.postal_code,
+      bedrooms = EXCLUDED.bedrooms,
+      bathrooms = EXCLUDED.bathrooms,
+      max_guests = EXCLUDED.max_guests,
+      latitude = EXCLUDED.latitude,
+      longitude = EXCLUDED.longitude,
+      thumbnail_url = EXCLUDED.thumbnail_url,
+      public_url = EXCLUDED.public_url,
+      active = EXCLUDED.active,
+      updated_at = CURRENT_TIMESTAMP`,
+    [
+      tenantId,
+      property.id.toString(),
+      property.name,
+      property.address?.street1 || '',
+      property.address?.city || '',
+      property.address?.state || '',
+      property.address?.postal_code || '',
+      property.bedrooms,
+      property.bathrooms,
+      property.max_guests,
+      property.latitude,
+      property.longitude,
+      property.thumbnail_url,
+      property.public_url,
+      property.active
+    ]
+  );
+
+  if (!result.success) {
+    throw new Error(`Failed to sync property ${property.name}: ${result.error}`);
+  }
+}
+
+export async function syncProperties(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const token = process.env.OWNERREZ_PAT;
+
+  if (!token) {
+    return {
+      status: 500,
+      body: 'OWNERREZ_PAT environment variable not set'
+    };
+  }
+
+  try {
+    // Fetch user info
+    const userResponse = await axios.get(`${OWNERREZ_API.BASE_URL}/users/me`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const { email_address, id: ownerrezUserId, company_name } = userResponse.data;
+
+    // Ensure tenant exists
+    const tenantId = await ensureTenant(email_address, ownerrezUserId.toString(), company_name);
+
+    // Fetch properties
+    const propertiesResponse = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: { 'Accept': 'application/json' },
+      params: { active: true }
+    });
+
+    // Sync each property
+    let syncedCount = 0;
+    for (const property of propertiesResponse.data.items) {
+      await syncProperty(tenantId, property);
+      syncedCount++;
+    }
+
+    const state: SyncState = {
+      status: 'success',
+      propertiesSynced: syncedCount,
+      tenantId
+    };
+
+    return {
+      status: 200,
+      jsonBody: state
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    context.error('Sync failed:', error);
+
+    return {
+      status: 500,
+      jsonBody: {
+        status: 'error',
+        error: errorMessage
+      }
+    };
+  }
+}
+
+app.http('sync-properties', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  handler: syncProperties
+});
+
+
+============================================
+File: ./apps/functions/src/fetch-properties.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import axios, { AxiosError } from 'axios';
+import { OWNERREZ_API } from '@baileys/constants';
+
+type OwnerRezAddress = {
+  street1?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+};
+
+type OwnerRezProperty = {
+  id: number;
+  name: string;
+  address: OwnerRezAddress;
+  bedrooms: number;
+  bathrooms: number;
+  max_guests: number;
+  active: boolean;
+  latitude?: number;
+  longitude?: number;
+  thumbnail_url?: string;
+  public_url?: string;
+};
+
+type OwnerRezResponse = {
+  status: string;
+  total_count: number;
+  page_count: number;
+  items: OwnerRezProperty[];
+};
+
+type FetchPropertiesState =
+  | { status: 'loading' }
+  | { status: 'success'; data: TransformedProperty[]; totalCount: number }
+  | { status: 'error'; error: string; details?: unknown };
+
+type TransformedProperty = {
+  ownerRezId: string;
+  name: string;
+  address: string;
+  bedrooms: number;
+  bathrooms: number;
+  maxGuests: number;
+  active: boolean;
+  coordinates?: { lat: number; lng: number };
+  thumbnailUrl?: string;
+  publicUrl?: string;
+};
+
+const formatAddress = (address: OwnerRezAddress): string => {
+  return [
+    address.street1,
+    address.city,
+    address.state,
+    address.postal_code
+  ]
+    .filter(Boolean)
+    .join(', ');
+};
+
+const transformProperty = (prop: OwnerRezProperty): TransformedProperty => {
+  const base: TransformedProperty = {
+    ownerRezId: prop.id.toString(),
+    name: prop.name,
+    address: formatAddress(prop.address),
+    bedrooms: prop.bedrooms,
+    bathrooms: prop.bathrooms,
+    maxGuests: prop.max_guests,
+    active: prop.active
+  };
+
+  if (prop.latitude && prop.longitude) {
+    base.coordinates = { lat: prop.latitude, lng: prop.longitude };
+  }
+
+  if (prop.thumbnail_url) {
+    base.thumbnailUrl = prop.thumbnail_url;
+  }
+
+  if (prop.public_url) {
+    base.publicUrl = prop.public_url;
+  }
+
+  return base;
+};
+
+const transformProperties = (response: OwnerRezResponse): FetchPropertiesState => ({
+  status: 'success',
+  data: response.items.map(transformProperty),
+  totalCount: response.total_count
+});
+
+const getErrorDetails = (error: unknown): { message: string; details?: unknown } => {
+  if (axios.isAxiosError(error)) {
+    return {
+      message: `OwnerRez API Error: ${error.response?.status} ${error.response?.statusText}`,
+      details: error.response?.data
+    };
+  }
+
+  if (error instanceof Error) {
+    return { message: error.message };
+  }
+
+  return { message: 'Unknown error occurred' };
+};
+
+const stateToHttpResponse = (state: FetchPropertiesState): HttpResponseInit => {
+  switch (state.status) {
+    case 'success':
+      return {
+        status: 200,
+        jsonBody: {
+          totalCount: state.totalCount,
+          properties: state.data
+        }
+      };
+
+    case 'error':
+      const errorResponse: any = {
+        error: state.error
+      };
+
+      if (state.details) {
+        errorResponse.details = state.details;
+      }
+
+      return {
+        status: 500,
+        jsonBody: errorResponse
+      };
+
+    case 'loading':
+      return {
+        status: 500,
+        body: 'Unexpected loading state'
+      };
+  }
+};
+
+export async function fetchProperties(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const token = process.env.OWNERREZ_PAT;
+
+  if (!token) {
+    return stateToHttpResponse({
+      status: 'error',
+      error: 'OWNERREZ_PAT environment variable not set'
+    });
+  }
+
+  try {
+    const response = await axios.get<OwnerRezResponse>(`${OWNERREZ_API.BASE_URL}/properties`, {
+      auth: {
+        username: 'jerry@***REMOVED***',
+        password: token
+      },
+      headers: {
+        'Accept': 'application/json'
+      },
+      params: {
+        active: true,
+        include_fields: true,
+        include_tags: true
+      }
+    });
+
+    const state = transformProperties(response.data);
+    return stateToHttpResponse(state);
+
+  } catch (error) {
+    const { message, details } = getErrorDetails(error);
+    context.error('Failed to fetch properties:', { message, details });
+
+    return stateToHttpResponse({
+      status: 'error',
+      error: message,
+      details
+    });
+  }
+}
+
+app.http('fetch-properties', {
+  methods: ['GET'],
+  authLevel: 'anonymous',
+  handler: fetchProperties
+});
+
+
+============================================
+File: ./apps/functions/src/manual-sync.ts
+============================================
+import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { performSync } from './auto-sync';
+
+export async function manualSync(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const token = process.env.OWNERREZ_PAT;
+
+  if (!token) {
+    return {
+      status: 500,
+      body: 'OWNERREZ_PAT environment variable not set'
+    };
+  }
+
+  try {
+    const result = await performSync(token);
+
+    return {
+      status: 200,
+      jsonBody: result
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    return {
+      status: 500,
+      jsonBody: {
+        error: errorMessage
+      }
+    };
+  }
+}
+
+app.http('manual-sync', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  handler: manualSync
+});
+
+
+============================================
+File: ./apps/functions/src/index.ts
+============================================
+export * from './test-ownerrez';
+export * from './fetch-properties';
+export * from './sync-properties';
+export * from './fetch-bookings';
+export * from './sync-bookings';
+export * from './tax-report';
+export * from './tax-report-csv';
+export * from './auto-sync';
+export * from './manual-sync';
+export * from './oauth';
+
+
+============================================
+File: ./apps/functions/src/services/database.ts
+============================================
+import { Pool, QueryResultRow } from 'pg';
+
+const pool = new Pool({
+  host: '127.0.0.1',
+  port: 5432,
+  database: 'baileys_analytics',
+  user: 'postgres',
+  password: 'localdev123',
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+export type DbResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
+export const query = async <T extends QueryResultRow = any>(
+  text: string,
+  params?: any[]
+): Promise<DbResult<T[]>> => {
+  try {
+    const result = await pool.query<T>(text, params);
+    return { success: true, data: result.rows };
+  } catch (error) {
+    console.error('Database query error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown database error'
+    };
+  }
+};
+
+export const transaction = async <T>(
+  callback: (client: any) => Promise<T>
+): Promise<DbResult<T>> => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return { success: true, data: result };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Transaction error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Transaction failed'
+    };
+  } finally {
+    client.release();
+  }
+};
+
+
+============================================
+File: ./pnpm-workspace.yaml
+============================================
+packages:
+  - apps/*
+  - packages/*
+
+onlyBuiltDependencies:
+  - azure-functions-core-tools
+
+
