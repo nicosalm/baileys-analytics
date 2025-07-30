@@ -4,6 +4,7 @@ Multi-tenant vacation rental analytics platform with automated tax reporting for
 
 ## Features
 
+- **User Authentication**: Secure signup/login with JWT tokens
 - **Automated Data Sync**: Pulls properties and bookings from OwnerRez every 12 hours
 - **Tax Reporting**: Generate detailed tax reports by property and month
 - **CSV Export**: Download tax data for easy filing
@@ -38,7 +39,7 @@ Multi-tenant vacation rental analytics platform with automated tax reporting for
 
    # Apply database schema
    psql -h localhost -U postgres -d baileys_analytics -f schema.sql
-   psql -h localhost -U postgres -d baileys_analytics -f oauth-schema.sql
+   psql -h localhost -U postgres -d baileys_analytics -f user-auth-schema.sql
    ```
 
 3. **Configure**
@@ -51,7 +52,9 @@ Multi-tenant vacation rental analytics platform with automated tax reporting for
        "DATABASE_URL": "postgresql://postgres:localdev123@localhost:5432/baileys_analytics",
        "OWNERREZ_CLIENT_ID": "your-oauth-client-id",
        "OWNERREZ_CLIENT_SECRET": "your-oauth-client-secret",
-       "OAUTH_REDIRECT_URI": "http://localhost:7071/api/oauth/callback"
+       "OAUTH_REDIRECT_URI": "http://localhost:7071/api/oauth/callback",
+       "JWT_SECRET": "your-super-secret-jwt-key",
+       "FRONTEND_URL": "http://localhost:5173"
      }
    }
    ```
@@ -64,24 +67,40 @@ Multi-tenant vacation rental analytics platform with automated tax reporting for
 
 ## Usage
 
-### Sync Your Data
+### Authentication
 
 ```bash
-# Sync properties
-curl -X POST http://localhost:7071/api/sync-properties
+# Sign up
+curl -X POST http://localhost:7071/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}'
 
-# Sync bookings
-curl -X POST http://localhost:7071/api/sync-bookings
+# Login
+curl -X POST http://localhost:7071/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password123"}'
+```
+
+### Connect OwnerRez
+
+After login, use the OAuth flow to connect your OwnerRez account:
+```bash
+# Get OAuth URL (requires auth token)
+curl -X GET http://localhost:7071/api/oauth/initiate \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Generate Tax Reports
 
 ```bash
-# JSON report
-curl "http://localhost:7071/api/tax-report?from=2024-01-01&to=2024-12-31"
+# JSON report (requires auth + OwnerRez connection)
+curl "http://localhost:7071/api/tax-report?from=2024-01-01&to=2024-12-31" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 
 # CSV export
-curl "http://localhost:7071/api/tax-report-csv?from=2024-01-01&to=2024-12-31" -o taxes-2024.csv
+curl "http://localhost:7071/api/tax-report-csv?from=2024-01-01&to=2024-12-31" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -o taxes-2024.csv
 ```
 
 ## API Documentation
