@@ -30,10 +30,10 @@ export const Landing = () => {
       <main className="max-w-6xl mx-auto p-4 py-16">
         <section className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4">
-            Automated Tax Reporting for Vacation Rentals
+            Comprehensive Analytics for Vacation Rentals
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            Connect your OwnerRez account and generate tax reports in seconds
+            Connect your OwnerRez account for automated tax reporting, property insights, and revenue analytics
           </p>
           {!isAuthenticated && (
             <Link to="/signup" className="px-6 py-3 bg-blue-600 text-white rounded text-lg">
@@ -44,22 +44,62 @@ export const Landing = () => {
 
         <section className="grid md:grid-cols-3 gap-8 mb-16">
           <div className="p-6 border rounded">
+            <h3 className="text-xl font-bold mb-2">Tax Reporting</h3>
+            <p className="text-gray-600">
+              Automated tax calculations by property and month with CSV export
+            </p>
+          </div>
+          <div className="p-6 border rounded">
+            <h3 className="text-xl font-bold mb-2">Property Analytics</h3>
+            <p className="text-gray-600">
+              Compare performance, occupancy rates, and revenue across properties
+            </p>
+          </div>
+          <div className="p-6 border rounded">
+            <h3 className="text-xl font-bold mb-2">Revenue Tracking</h3>
+            <p className="text-gray-600">
+              Monitor income by source, track trends, and identify growth opportunities
+            </p>
+          </div>
+          <div className="p-6 border rounded">
+            <h3 className="text-xl font-bold mb-2">Occupancy Insights</h3>
+            <p className="text-gray-600">
+              Visualize booking patterns and optimize pricing for peak seasons
+            </p>
+          </div>
+          <div className="p-6 border rounded">
             <h3 className="text-xl font-bold mb-2">Automated Sync</h3>
             <p className="text-gray-600">
               Properties and bookings sync automatically every 12 hours
             </p>
           </div>
           <div className="p-6 border rounded">
-            <h3 className="text-xl font-bold mb-2">Tax Calculations</h3>
+            <h3 className="text-xl font-bold mb-2">Multi-Property Support</h3>
             <p className="text-gray-600">
-              Accurate tax breakdowns by property and month
+              Manage unlimited properties with tenant-isolated data
             </p>
           </div>
-          <div className="p-6 border rounded">
-            <h3 className="text-xl font-bold mb-2">CSV Export</h3>
-            <p className="text-gray-600">
-              Download reports for easy tax filing
-            </p>
+        </section>
+
+        <section className="mb-16 bg-gray-50 p-8 rounded-lg">
+          <h3 className="text-2xl font-bold mb-6 text-center">Powerful Dashboard Features</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-bold mb-2">Advanced Filtering</h4>
+              <p className="text-gray-600">Filter by date ranges, properties, and custom tags</p>
+            </div>
+            <div>
+              <h4 className="font-bold mb-2">Visual Analytics</h4>
+              <p className="text-gray-600">Interactive charts for trends, comparisons, and distributions</p>
+            </div>
+            <div>
+              <h4 className="font-bold mb-2">Real-Time Calculations</h4>
+              <p className="text-gray-600">Accurate metrics updated with every sync</p>
+            </div>
+            <div>
+              <h4 className="font-bold mb-2">Export Ready</h4>
+              <p className="text-gray-600">Download reports for tax filing and analysis</p>
+            </div>
           </div>
         </section>
 
