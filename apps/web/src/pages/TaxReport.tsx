@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { formatCurrency } from '@baileys/utils'
+import { PropertyTaxChart, MonthlyTrendChart, PropertyDistributionChart } from '@/components/TaxCharts'
+import { Download, TrendingUp, Home, Calendar } from 'lucide-react'
+import { Spinner } from '@/components/Spinner'
 
 type TaxReportData = {
   summary: {
@@ -105,88 +108,82 @@ export const TaxReport = () => {
           </div>
         </div>
 
+        {loading && (
+          <div className="flex justify-center py-12">
+            <Spinner size="lg" />
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 p-4 bg-red-50 text-red-600 rounded">{error}</div>
         )}
 
-        {data && (
+        {data && !loading && (
           <>
             <div className="mb-6 p-6 bg-gray-50 rounded">
               <h2 className="text-xl font-bold mb-4">Summary</h2>
               <div className="grid md:grid-cols-3 gap-4">
-                <div>
-                  <div className="text-sm text-gray-600">Total Tax Collected</div>
+                <div className="bg-white p-4 rounded border">
+                  <div className="flex items-center text-sm text-gray-600 mb-1">
+                    <TrendingUp className="w-4 h-4 mr-1" />
+                    Total Tax Collected
+                  </div>
                   <div className="text-2xl font-bold">{formatCurrency(data.summary.totalTax)}</div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-600">Total Rent</div>
+                <div className="bg-white p-4 rounded border">
+                  <div className="flex items-center text-sm text-gray-600 mb-1">
+                    <Home className="w-4 h-4 mr-1" />
+                    Total Rent
+                  </div>
                   <div className="text-2xl font-bold">{formatCurrency(data.summary.totalRent)}</div>
                 </div>
-                <div>
-                  <div className="text-sm text-gray-600">Total Bookings</div>
+                <div className="bg-white p-4 rounded border">
+                  <div className="flex items-center text-sm text-gray-600 mb-1">
+                    <Calendar className="w-4 h-4 mr-1" />
+                    Total Bookings
+                  </div>
                   <div className="text-2xl font-bold">{data.summary.totalBookings}</div>
                 </div>
               </div>
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-4">By Property</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full border">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="p-2 text-left">Property</th>
-                      <th className="p-2 text-right">Tax Collected</th>
-                      <th className="p-2 text-right">Rent</th>
-                      <th className="p-2 text-right">Tax Rate</th>
-                      <th className="p-2 text-right">Bookings</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.byProperty.map((property) => (
-                      <tr key={property.propertyId} className="border-b">
-                        <td className="p-2">{property.propertyName}</td>
-                        <td className="p-2 text-right">{formatCurrency(property.totalTax)}</td>
-                        <td className="p-2 text-right">{formatCurrency(property.totalRent)}</td>
-                        <td className="p-2 text-right">{property.taxRate.toFixed(2)}%</td>
-                        <td className="p-2 text-right">{property.bookingCount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="mb-6 grid md:grid-cols-2 gap-6">
+              <div className="bg-white p-4 rounded border">
+                <h3 className="text-lg font-bold mb-4">Monthly Trends</h3>
+                <MonthlyTrendChart data={data.byMonth} />
+              </div>
+              <div className="bg-white p-4 rounded border">
+                <h3 className="text-lg font-bold mb-4">Property Comparison</h3>
+                <PropertyTaxChart data={data.byProperty} />
               </div>
             </div>
 
-            <div className="mb-6">
-              <h2 className="text-xl font-bold mb-4">By Month</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full border">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="p-2 text-left">Month</th>
-                      <th className="p-2 text-right">Tax Collected</th>
-                      <th className="p-2 text-right">Rent</th>
-                      <th className="p-2 text-right">Bookings</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.byMonth.map((month) => (
-                      <tr key={month.month} className="border-b">
-                        <td className="p-2">{month.month}</td>
-                        <td className="p-2 text-right">{formatCurrency(month.totalTax)}</td>
-                        <td className="p-2 text-right">{formatCurrency(month.totalRent)}</td>
-                        <td className="p-2 text-right">{month.bookingCount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="mb-6 grid md:grid-cols-2 gap-6">
+              <div className="bg-white p-4 rounded border">
+                <h3 className="text-lg font-bold mb-4">Tax Distribution by Property</h3>
+                <PropertyDistributionChart data={data.byProperty} />
+              </div>
+              <div className="bg-white p-4 rounded border">
+                <h3 className="text-lg font-bold mb-4">Average Tax Rate</h3>
+                <div className="h-80 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="text-5xl font-bold text-blue-600">
+                      {(data.summary.totalRent > 0
+                        ? (data.summary.totalTax / data.summary.totalRent * 100)
+                        : 0
+                      ).toFixed(2)}%
+                    </div>
+                    <div className="text-gray-600 mt-2">Effective Tax Rate</div>
+                  </div>
+                </div>
               </div>
             </div>
 
             <button
               onClick={handleDownloadCSV}
-              className="px-6 py-2 bg-green-600 text-white rounded"
+              className="px-6 py-2 bg-green-600 text-white rounded flex items-center"
             >
+              <Download className="w-4 h-4 mr-2" />
               Download CSV
             </button>
           </>
