@@ -165,6 +165,38 @@ class ApiClient {
   async getSyncStatus(): Promise<ApiResult<any>> {
     return this.request('/sync-status')
   }
+
+  async getProperties(): Promise<ApiResult<any>> {
+    return this.request('/properties')
+  }
+
+  async getPropertyMetrics(from?: string, to?: string): Promise<ApiResult<any>> {
+    const params = new URLSearchParams()
+    if (from) params.append('from', from)
+    if (to) params.append('to', to)
+
+    return this.request(`/property-metrics?${params}`)
+  }
+
+  async getRevenue(from?: string, to?: string): Promise<ApiResult<any>> {
+    const params = new URLSearchParams()
+    if (from) params.append('from', from)
+    if (to) params.append('to', to)
+
+    return this.request(`/revenue?${params}`)
+  }
+
+  async getOccupancy(from?: string, to?: string): Promise<ApiResult<any>> {
+    const params = new URLSearchParams()
+    if (from) params.append('from', from)
+    if (to) params.append('to', to)
+
+    return this.request(`/occupancy?${params}`)
+  }
+
+  async getTags(): Promise<ApiResult<any>> {
+    return this.request('/tags')
+  }
 }
 
 export const api = new ApiClient()

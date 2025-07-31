@@ -12,12 +12,12 @@
   },
   "dependencies": {
     "@azure/functions": "^4.0.0",
-    "@baileys/constants": "workspace:*",
     "@baileys/shared-types": "workspace:*",
+    "@baileys/constants": "workspace:*",
     "@baileys/utils": "workspace:*",
     "@types/pg": "^8.15.5",
     "axios": "^1.6.0",
-    "jose": "^5.10.0",
+    "jose": "^5.2.0",
     "pg": "^8.16.3"
   },
   "devDependencies": {

@@ -4,8 +4,7 @@ import { ToastProvider } from '@/contexts/toast'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
-import { Dashboard } from '@/pages/Dashboard'
-import { TaxReport } from '@/pages/TaxReport'
+import { DashboardLayout } from '@/pages/DashboardLayout'
 import { Settings } from '@/pages/Settings'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 
@@ -20,8 +19,7 @@ export const App = () => {
             <Route path="/signup" element={<Signup />} />
 
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/tax-report" element={<TaxReport />} />
+              <Route path="/dashboard" element={<DashboardLayout />} />
               <Route path="/dashboard/settings" element={<Settings />} />
             </Route>
 
