@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
 import { query, transaction } from './services/database';
+import { syncPropertyTags } from './services/tagSync';
 
 type SyncState =
   | { status: 'loading' }
@@ -38,7 +39,7 @@ async function ensureTenant(email: string, ownerrezUserId: string, companyName?:
 }
 
 async function syncProperty(tenantId: string, property: any): Promise<void> {
-  const result = await query(
+  const result = await query<{ id: string }>(
     `INSERT INTO properties (
       tenant_id, ownerrez_id, name, address, city, state, postal_code,
       bedrooms, bathrooms, max_guests, latitude, longitude,
@@ -58,7 +59,8 @@ async function syncProperty(tenantId: string, property: any): Promise<void> {
       thumbnail_url = EXCLUDED.thumbnail_url,
       public_url = EXCLUDED.public_url,
       active = EXCLUDED.active,
-      updated_at = CURRENT_TIMESTAMP`,
+      updated_at = CURRENT_TIMESTAMP
+    RETURNING id`,
     [
       tenantId,
       property.id.toString(),
@@ -80,6 +82,12 @@ async function syncProperty(tenantId: string, property: any): Promise<void> {
 
   if (!result.success) {
     throw new Error(`Failed to sync property ${property.name}: ${result.error}`);
+  }
+
+  // Sync tags if present
+  if (property.tags && result.data.length > 0) {
+    const propertyId = result.data[0].id;
+    await syncPropertyTags(propertyId, property.tags, tenantId);
   }
 }
 
@@ -118,7 +126,7 @@ export async function syncProperties(
         password: token
       },
       headers: { 'Accept': 'application/json' },
-      params: { active: true }
+      params: { active: true, include_tags: true }
     });
 
     // Sync each property

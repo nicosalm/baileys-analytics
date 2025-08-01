@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
 import { query, transaction } from './services/database';
+import { syncBookingTags } from './services/tagSync';
 
 type BookingCharge = {
   amount: number;
@@ -34,6 +35,7 @@ type OwnerRezBooking = {
   platform_reservation_number?: string;
   booked_utc: string;
   canceled_utc?: string;
+  tags?: Array<{ id: number; name: string; color?: string }>;
 };
 
 type SyncState =
@@ -149,6 +151,11 @@ async function syncBookingWithCharges(booking: OwnerRezBooking, propertyId: stri
     throw new Error(`Failed to sync booking: ${transactionResult.error}`);
   }
 
+  // Sync tags outside of transaction
+  if (booking.tags && transactionResult.data.bookingId) {
+    await syncBookingTags(transactionResult.data.bookingId, booking.tags, TENANT_ID);
+  }
+
   return { chargeCount: transactionResult.data.chargeCount };
 }
 
@@ -192,6 +199,7 @@ export async function syncBookings(
         to: toDate,
         include_charges: true,
         include_guest: true,
+        include_tags: true,
         limit: 500
       }
     });

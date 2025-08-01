@@ -17,7 +17,11 @@ export const TaxDashboard = () => {
   const loadReport = async () => {
     setLoading(true)
 
-    const result = await api.getTaxReport(filters.dateRange.from, filters.dateRange.to)
+    const result = await api.getTaxReport(
+      filters.dateRange.from,
+      filters.dateRange.to,
+      filters.selectedTags.map(t => t.id)
+    )
 
     if (result.success && result.data.status === 'success') {
       setData(result.data.data)
@@ -30,13 +34,16 @@ export const TaxDashboard = () => {
 
   useEffect(() => {
     loadReport()
-  }, [filters.dateRange])
+  }, [filters.dateRange, filters.selectedTags])
 
   const handleDownloadCSV = () => {
     const params = new URLSearchParams({
       from: filters.dateRange.from,
       to: filters.dateRange.to
     })
+    if (filters.selectedTags.length > 0) {
+      params.append('tags', filters.selectedTags.map(t => t.id).join(','))
+    }
     window.location.href = `/api/tax-report-csv?${params}`
   }
 

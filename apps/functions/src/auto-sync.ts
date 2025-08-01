@@ -2,6 +2,7 @@ import { app, Timer, InvocationContext } from '@azure/functions';
 import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
 import { query, transaction, DbResult } from './services/database';
+import { syncPropertyTags, syncBookingTags } from './services/tagSync';
 
 type PropertySyncState =
   | { status: 'idle' }
@@ -40,6 +41,7 @@ type OwnerRezProperty = {
   longitude?: number;
   thumbnail_url?: string;
   public_url?: string;
+  tags?: Array<{ id: number; name: string; color?: string }>;
 };
 
 type PropertyMapping = Map<string, string>;
@@ -54,7 +56,7 @@ const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty
         password: token
       },
       headers: { 'Accept': 'application/json' },
-      params: { active: true }
+      params: { active: true, include_tags: true }
     });
     return { success: true, data: response.data.items };
   } catch (error) {
@@ -66,7 +68,7 @@ const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty
 };
 
 const upsertProperty = async (property: OwnerRezProperty): Promise<DbResult<void>> => {
-  const result = await query(
+  const result = await query<{ id: string }>(
     `INSERT INTO properties (
       tenant_id, ownerrez_id, name, address, city, state, postal_code,
       bedrooms, bathrooms, max_guests, latitude, longitude,
@@ -75,7 +77,8 @@ const upsertProperty = async (property: OwnerRezProperty): Promise<DbResult<void
     ON CONFLICT (tenant_id, ownerrez_id) DO UPDATE SET
       name = EXCLUDED.name,
       active = EXCLUDED.active,
-      updated_at = CURRENT_TIMESTAMP`,
+      updated_at = CURRENT_TIMESTAMP
+    RETURNING id`,
     [
       TENANT_ID,
       property.id.toString(),
@@ -95,9 +98,17 @@ const upsertProperty = async (property: OwnerRezProperty): Promise<DbResult<void
     ]
   );
 
-  return result.success
-    ? { success: true, data: undefined }
-    : { success: false, error: result.error };
+  if (!result.success) {
+    return { success: false, error: result.error };
+  }
+
+  // Sync tags if present
+  if (property.tags && result.data.length > 0) {
+    const propertyId = result.data[0].id;
+    await syncPropertyTags(propertyId, property.tags, TENANT_ID);
+  }
+
+  return { success: true, data: undefined };
 };
 
 const syncProperties = async (token: string): Promise<PropertySyncState> => {
@@ -159,6 +170,7 @@ const fetchRecentBookings = async (
         since_utc: since,
         include_charges: true,
         include_guest: true,
+        include_tags: true,
         limit: 200
       }
     });
@@ -222,6 +234,11 @@ const upsertBookingWithCharges = async (
         );
         chargeCount++;
       }
+    }
+
+    // Sync tags outside of the return
+    if (booking.tags) {
+      await syncBookingTags(bookingId, booking.tags, TENANT_ID);
     }
 
     return chargeCount;
@@ -304,7 +321,7 @@ export async function autoSync(myTimer: Timer, context: InvocationContext): Prom
   });
 }
 
-// Run every 12 hours
+// run every 12 hours
 app.timer('auto-sync', {
   schedule: '0 0 */12 * * *',
   handler: autoSync

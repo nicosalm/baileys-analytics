@@ -1,23 +1,34 @@
-// apps/web/src/components/FilterBar.tsx
 import { useDashboard } from '@/contexts/dashboard'
 import { Calendar, Tag as TagIcon, X } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Tag } from '@/types/dashboard'
-
-// Mock tags for now - these would come from API
-const mockTags: Tag[] = [
-  { id: '1', name: 'ACH', type: 'payment' },
-  { id: '2', name: 'Zelle', type: 'payment' },
-  { id: '3', name: 'PayPal', type: 'payment' },
-  { id: '4', name: 'Venmo', type: 'payment' },
-  { id: '5', name: 'Beachfront', type: 'property' },
-  { id: '6', name: 'Pet Friendly', type: 'property' },
-  { id: '7', name: 'Hot Tub', type: 'property' }
-]
+import { api } from '@/lib/api'
+import { useToast } from '@/contexts/toast'
+import { Spinner } from '@/components/Spinner'
 
 export const FilterBar = () => {
   const { filters, updateDateRange, toggleTag, clearTags } = useDashboard()
+  const { addToast } = useToast()
   const [showTags, setShowTags] = useState(false)
+  const [availableTags, setAvailableTags] = useState<Tag[]>([])
+  const [loadingTags, setLoadingTags] = useState(false)
+
+  useEffect(() => {
+    const loadTags = async () => {
+      setLoadingTags(true)
+      const result = await api.getTags()
+
+      if (result.success) {
+        setAvailableTags(result.data)
+      } else {
+        addToast('error', 'Failed to load tags')
+      }
+
+      setLoadingTags(false)
+    }
+
+    loadTags()
+  }, [])
 
   return (
     <div className="bg-white border-b">
@@ -63,18 +74,26 @@ export const FilterBar = () => {
                   )}
                 </div>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {mockTags.map(tag => (
-                    <label key={tag.id} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={filters.selectedTags.some(t => t.id === tag.id)}
-                        onChange={() => toggleTag(tag)}
-                        className="mr-2"
-                      />
-                      <span className="text-sm">{tag.name}</span>
-                      <span className="ml-auto text-xs text-gray-500">{tag.type}</span>
-                    </label>
-                  ))}
+                  {loadingTags ? (
+                    <div className="flex justify-center py-4">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : availableTags.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-2">No tags available</p>
+                  ) : (
+                    availableTags.map(tag => (
+                      <label key={tag.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={filters.selectedTags.some(t => t.id === tag.id)}
+                          onChange={() => toggleTag(tag)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">{tag.name}</span>
+                        <span className="ml-auto text-xs text-gray-500">{tag.type}</span>
+                      </label>
+                    ))
+                  )}
                 </div>
               </div>
             )}

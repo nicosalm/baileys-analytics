@@ -6,7 +6,9 @@ export type DateRange = {
 export type Tag = {
   id: string
   name: string
-  type: 'property' | 'booking' | 'payment' | 'custom'
+  type: 'property' | 'booking' | 'payment' | 'guest' | 'custom'
+  color?: string
+  usageCount?: number
 }
 
 export type FilterState = {

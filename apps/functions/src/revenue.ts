@@ -31,6 +31,7 @@ export async function getRevenue(
   try {
     const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+    const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 
     // Get overall revenue metrics
     const summaryResult = await query<{
@@ -47,8 +48,15 @@ export async function getRevenue(
       WHERE b.tenant_id = $1
         AND b.arrival >= $2
         AND b.arrival <= $3
-        AND b.status != 'canceled'`,
-      [auth.tenantId, fromDate, toDate]
+        AND b.status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = b.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}`,
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     if (!summaryResult.success) {
@@ -68,9 +76,16 @@ export async function getRevenue(
         AND arrival >= $2
         AND arrival <= $3
         AND status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = bookings.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}
       GROUP BY platform
       ORDER BY revenue DESC`,
-      [auth.tenantId, fromDate, toDate]
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     // Get revenue by month
@@ -86,9 +101,16 @@ export async function getRevenue(
         AND arrival >= $2
         AND arrival <= $3
         AND status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = bookings.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}
       GROUP BY TO_CHAR(arrival, 'YYYY-MM')
       ORDER BY month`,
-      [auth.tenantId, fromDate, toDate]
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     const summary = summaryResult.data[0];

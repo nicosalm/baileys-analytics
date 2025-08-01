@@ -40,7 +40,11 @@ export const PropertiesDashboard = () => {
 
   const loadMetrics = async () => {
     setLoading(true)
-    const result = await api.getPropertyMetrics(filters.dateRange.from, filters.dateRange.to)
+    const result = await api.getPropertyMetrics(
+      filters.dateRange.from,
+      filters.dateRange.to,
+      filters.selectedTags.map(t => t.id)
+    )
 
     if (result.success) {
       setProperties(result.data)
@@ -52,7 +56,7 @@ export const PropertiesDashboard = () => {
 
   useEffect(() => {
     loadMetrics()
-  }, [filters.dateRange])
+  }, [filters.dateRange, filters.selectedTags])
 
   if (loading) {
     return (

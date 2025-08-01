@@ -41,6 +41,7 @@ export async function getPropertyMetrics(
   try {
     const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+    const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 
     const result = await query<{
       property_id: string;
@@ -75,6 +76,11 @@ export async function getPropertyMetrics(
           AND b.arrival <= $3
           AND b.departure >= $2
           AND b.status != 'canceled'
+          ${tagIds.length > 0 ? `AND EXISTS (
+            SELECT 1 FROM booking_tags bt
+            WHERE bt.booking_id = b.id
+            AND bt.tag_id = ANY($4::uuid[])
+          )` : ''}
         WHERE p.tenant_id = $1 AND p.active = true
         GROUP BY p.id, p.name
       )
@@ -88,7 +94,9 @@ export async function getPropertyMetrics(
       FROM property_bookings pb
       CROSS JOIN date_range dr
       ORDER BY pb.total_revenue DESC`,
-      [auth.tenantId, fromDate, toDate]
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     if (!result.success) {

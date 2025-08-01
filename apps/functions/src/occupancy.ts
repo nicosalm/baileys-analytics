@@ -31,6 +31,7 @@ export async function getOccupancy(
   try {
     const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+    const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 
     // Calculate total available nights
     const daysInRange = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -63,8 +64,15 @@ export async function getOccupancy(
       WHERE tenant_id = $1
         AND arrival <= $3
         AND departure >= $2
-        AND status != 'canceled'`,
-      [auth.tenantId, fromDate, toDate]
+        AND status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = bookings.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}`,
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     if (!overallResult.success) {
@@ -104,10 +112,17 @@ export async function getOccupancy(
         AND b.arrival <= $3
         AND b.departure >= $2
         AND b.status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = b.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}
       WHERE p.tenant_id = $1 AND p.active = true
       GROUP BY p.id, p.name
       ORDER BY p.name`,
-      [auth.tenantId, fromDate, toDate]
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     // Get occupancy by month
@@ -131,6 +146,11 @@ export async function getOccupancy(
           AND b.status != 'canceled'
           AND calendar_date >= b.arrival
           AND calendar_date < b.departure
+          ${tagIds.length > 0 ? `AND EXISTS (
+            SELECT 1 FROM booking_tags bt
+            WHERE bt.booking_id = b.id
+            AND bt.tag_id = ANY($4::uuid[])
+          )` : ''}
         GROUP BY TO_CHAR(calendar_date, 'YYYY-MM')
       )
       SELECT
@@ -141,7 +161,9 @@ export async function getOccupancy(
       LEFT JOIN monthly_bookings mb ON m.month = mb.month
       GROUP BY m.month, m.days_in_month, mb.booked_property_nights
       ORDER BY m.month`,
-      [auth.tenantId, fromDate, toDate]
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     return {

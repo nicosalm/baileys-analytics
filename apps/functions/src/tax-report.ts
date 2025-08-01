@@ -68,6 +68,7 @@ export async function taxReport(
   try {
     const fromDate = request.query.get('from') || '2024-01-01';
     const toDate = request.query.get('to') || '2024-12-31';
+    const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 
     // Get summary using the authenticated tenant ID
     const summaryResult = await query<{
@@ -84,8 +85,15 @@ export async function taxReport(
       WHERE b.tenant_id = $1
         AND b.arrival >= $2
         AND b.arrival <= $3
-        AND b.status != 'canceled'`,
-      [auth.tenantId, fromDate, toDate]
+        AND b.status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = b.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}`,
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     if (!summaryResult.success) {
@@ -113,9 +121,16 @@ export async function taxReport(
         AND b.arrival >= $2
         AND b.arrival <= $3
         AND b.status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = b.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}
       GROUP BY p.id, p.name
       ORDER BY total_tax DESC`,
-      [auth.tenantId, fromDate, toDate]
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     if (!byPropertyResult.success) {
@@ -140,9 +155,16 @@ export async function taxReport(
         AND b.arrival >= $2
         AND b.arrival <= $3
         AND b.status != 'canceled'
+        ${tagIds.length > 0 ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = b.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}
       GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
       ORDER BY month`,
-      [auth.tenantId, fromDate, toDate]
+      tagIds.length > 0
+        ? [auth.tenantId, fromDate, toDate, tagIds]
+        : [auth.tenantId, fromDate, toDate]
     );
 
     if (!byMonthResult.success) {

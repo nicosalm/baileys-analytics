@@ -15,7 +15,11 @@ export const OccupancyDashboard = () => {
 
   const loadOccupancy = async () => {
     setLoading(true)
-    const result = await api.getOccupancy(filters.dateRange.from, filters.dateRange.to)
+    const result = await api.getOccupancy(
+      filters.dateRange.from,
+      filters.dateRange.to,
+      filters.selectedTags.map(t => t.id)
+    )
 
     if (result.success) {
       setData(result.data)
@@ -27,7 +31,7 @@ export const OccupancyDashboard = () => {
 
   useEffect(() => {
     loadOccupancy()
-  }, [filters.dateRange])
+  }, [filters.dateRange, filters.selectedTags])
 
   if (loading) {
     return (
