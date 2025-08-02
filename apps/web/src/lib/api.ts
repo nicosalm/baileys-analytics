@@ -37,7 +37,7 @@ class ApiClient {
     this.accessToken = token
   }
 
-  private async request<T>(
+  async request<T>(
     path: string,
     options: RequestInit = {}
   ): Promise<ApiResult<T>> {

@@ -1,12 +1,15 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
+import { DrillDownProvider } from '@/contexts/drillDown'
 import { useNavigate } from 'react-router-dom'
 import { LogOut, FileText, Home, TrendingUp, Calendar, Users, DollarSign, BarChart3 } from 'lucide-react'
 import { TaxDashboard } from '@/components/dashboards/TaxDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { RevenueDashboard } from '@/components/dashboards/RevenueDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
+import { SeasonalDashboard } from '@/components/dashboards/SeasonalDashboard'
 import { FilterBar } from '@/components/FilterBar'
+import { DrillDownView } from '@/components/DrillDownView'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
 
@@ -25,13 +28,35 @@ const DashboardContent = () => {
 
   switch (activeTab) {
     case 'tax':
-      return <TaxDashboard />
+      return (
+        <DrillDownView>
+          <TaxDashboard />
+        </DrillDownView>
+      )
     case 'properties':
-      return <PropertiesDashboard />
+      return (
+        <DrillDownView>
+          <PropertiesDashboard />
+        </DrillDownView>
+      )
     case 'revenue':
-      return <RevenueDashboard />
+      return (
+        <DrillDownView>
+          <RevenueDashboard />
+        </DrillDownView>
+      )
     case 'occupancy':
-      return <OccupancyDashboard />
+      return (
+        <DrillDownView>
+          <OccupancyDashboard />
+        </DrillDownView>
+      )
+    case 'seasonal':
+      return (
+        <DrillDownView>
+          <SeasonalDashboard />
+        </DrillDownView>
+      )
     default:
       return <div className="p-8 text-center text-gray-500">Coming soon...</div>
   }
@@ -113,29 +138,31 @@ export const DashboardLayout = () => {
 
   return (
     <DashboardProvider>
-      <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="flex justify-between items-center">
-              <h1 className="text-xl font-bold">Baileys Analytics</h1>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">{user.email}</span>
-                <button onClick={handleLogout} className="text-blue-600 flex items-center text-sm">
-                  <LogOut className="w-4 h-4 mr-1" />
-                  Logout
-                </button>
+      <DrillDownProvider>
+        <div className="min-h-screen bg-gray-50">
+          <nav className="bg-white shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 py-4">
+              <div className="flex justify-between items-center">
+                <h1 className="text-xl font-bold">Baileys Analytics</h1>
+                <div className="flex items-center space-x-4">
+                  <span className="text-sm text-gray-600">{user.email}</span>
+                  <button onClick={handleLogout} className="text-blue-600 flex items-center text-sm">
+                    <LogOut className="w-4 h-4 mr-1" />
+                    Logout
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        </nav>
+          </nav>
 
-        <DashboardTabs />
-        <FilterBar />
+          <DashboardTabs />
+          <FilterBar />
 
-        <main className="max-w-7xl mx-auto p-4">
-          <DashboardContent />
-        </main>
-      </div>
+          <main className="max-w-7xl mx-auto p-4">
+            <DashboardContent />
+          </main>
+        </div>
+      </DrillDownProvider>
     </DashboardProvider>
   )
 }

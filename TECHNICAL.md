@@ -2,213 +2,267 @@
 
 ## Architecture Overview
 
-- **Backend**: Azure Functions v4 (Node.js)
-- **Database**: PostgreSQL with multi-tenant isolation
-- **Authentication**: JWT tokens with jose library
-- **Frontend**: React + Vite + TypeScript (coming soon)
-- **Package Manager**: pnpm monorepo
+Baileys Analytics is a multi-tenant vacation rental analytics platform built with modern web technologies and functional programming principles.
 
-## API Endpoints
+### Core Technologies
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Recharts
+- **Backend**: Azure Functions v4, Node.js 20, TypeScript
+- **Database**: PostgreSQL 15 with UUID support
+- **Authentication**: JWT with refresh token rotation
+- **State Management**: React Context with discriminated unions
 
-### Authentication Endpoints
-
-#### POST /api/auth/signup
-Create a new user account.
-```json
-Request:
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-
-Response:
-{
-  "userId": "uuid",
-  "email": "user@example.com",
-  "accessToken": "jwt...",
-  "refreshToken": "jwt..."
-}
-```
-
-#### POST /api/auth/login
-Authenticate and receive tokens.
-```json
-Request:
-{
-  "email": "user@example.com",
-  "password": "password123"
-}
-
-Response:
-{
-  "userId": "uuid",
-  "email": "user@example.com",
-  "tenantId": "uuid|null",
-  "accessToken": "jwt...",
-  "refreshToken": "jwt..."
-}
-```
-
-#### POST /api/auth/refresh
-Exchange refresh token for new token pair.
-```json
-Request:
-{
-  "refreshToken": "jwt..."
-}
-
-Response:
-{
-  "userId": "uuid",
-  "email": "user@example.com",
-  "tenantId": "uuid|null",
-  "accessToken": "jwt...",
-  "refreshToken": "jwt..."
-}
-```
-
-#### GET /api/auth/me
-Get current user info (requires auth).
-```
-Headers:
-Authorization: Bearer <accessToken>
-
-Response:
-{
-  "id": "uuid",
-  "email": "user@example.com",
-  "tenantId": "uuid|null",
-  "companyName": "string|null",
-  "hasOwnerRezConnection": boolean,
-  "createdAt": "ISO-8601"
-}
-```
-
-### OAuth Endpoints
-
-#### GET /api/oauth/initiate
-Start OwnerRez OAuth flow (requires auth).
-```
-Headers:
-Authorization: Bearer <accessToken>
-
-Response:
-{
-  "status": "pending",
-  "authUrl": "https://app.ownerrez.com/oauth/authorize?..."
-}
-```
-
-#### GET /api/oauth/callback
-OAuth redirect handler (browser-based).
-
-### Data Sync Endpoints
-
-#### POST /api/sync-properties
-Sync all properties from OwnerRez (dev only).
-
-#### POST /api/sync-bookings
-Sync recent bookings from OwnerRez (dev only).
-
-#### POST /api/manual-sync
-Trigger full sync manually.
-
-### Reporting Endpoints
-
-#### GET /api/tax-report
-Generate tax report (requires auth + OwnerRez connection).
-```
-Headers:
-Authorization: Bearer <accessToken>
-
-Query params:
-- from: YYYY-MM-DD (default: 2024-01-01)
-- to: YYYY-MM-DD (default: 2024-12-31)
-
-Response:
-{
-  "status": "success",
-  "data": {
-    "summary": {
-      "totalTax": number,
-      "totalRent": number,
-      "totalBookings": number,
-      "dateRange": { "from": "YYYY-MM-DD", "to": "YYYY-MM-DD" }
-    },
-    "byProperty": [...],
-    "byMonth": [...]
-  }
-}
-```
-
-#### GET /api/tax-report-csv
-Export tax report as CSV (requires auth + OwnerRez connection).
+### Design Principles
+1. **Functional Programming**: Pure functions, immutable data transformations
+2. **Type Safety**: Discriminated unions for state management
+3. **Error Handling**: Result types for explicit error handling
+4. **Composability**: Small, focused functions that compose well
+5. **No Magic**: Explicit over implicit, no hidden behavior
 
 ## Database Schema
 
 ### Core Tables
-- `users` - User accounts with email/password
-- `tenants` - OwnerRez accounts (one per user)
-- `properties` - Vacation rental properties
-- `bookings` - Reservation data
-- `booking_charges` - Line items including taxes
-- `tax_configs` - Custom tax rates (future)
+- `tenants`: Multi-tenant isolation (one per OwnerRez account)
+- `users`: Authentication and user management
+- `properties`: Vacation rental properties
+- `bookings`: Reservations with guest information
+- `booking_charges`: Line items including taxes and fees
+- `tags`: Flexible categorization system
+- `property_tags`, `booking_tags`: Many-to-many relationships
 
-### Auth Tables
-- `refresh_tokens` - JWT refresh token storage
-- `oauth_tokens` - OwnerRez OAuth tokens
-- `oauth_states` - Temporary OAuth flow state
+### Authentication Tables
+- `refresh_tokens`: JWT refresh token storage
+- `oauth_states`: Temporary OAuth flow state
+- `oauth_tokens`: OwnerRez OAuth tokens per tenant
+
+## API Endpoints
+
+### Authentication
+```
+POST   /api/auth/signup         - Create new user account
+POST   /api/auth/login          - Login with email/password
+POST   /api/auth/refresh        - Refresh access token
+GET    /api/auth/me            - Get current user info
+POST   /api/auth/logout        - Revoke refresh tokens
+```
+
+### OAuth Integration
+```
+GET    /api/oauth/initiate     - Start OwnerRez OAuth flow
+GET    /api/oauth/callback     - OAuth callback handler
+```
+
+### Data Sync
+```
+POST   /api/sync-properties    - Sync properties from OwnerRez
+POST   /api/sync-bookings      - Sync bookings with charges
+POST   /api/manual-sync        - Trigger full sync manually
+GET    /api/sync-status        - Check last sync times
+```
+
+### Analytics Dashboards
+```
+GET    /api/tax-report         - Tax summary with filters
+GET    /api/tax-report-csv     - Export tax report as CSV
+GET    /api/property-metrics   - Property performance metrics
+GET    /api/revenue            - Revenue analytics
+GET    /api/occupancy          - Occupancy calculations
+GET    /api/tags               - Available tags with usage
+```
+
+### Drill-Down Views
+```
+GET    /api/property/{id}/detail              - Property details with trends
+GET    /api/booking/{id}/detail               - Full booking information
+GET    /api/month-detail?year=&month=         - Monthly overview
+GET    /api/property/{id}/month/{year}/{month} - Property-month intersection
+```
+
+### Query Parameters
+All dashboard endpoints support:
+- `from`: Start date (YYYY-MM-DD)
+- `to`: End date (YYYY-MM-DD)
+- `tags`: Comma-separated tag IDs for filtering
 
 ## Authentication Flow
 
-1. User signs up with email/password
-2. User logs in and receives JWT tokens
-3. Access token (15 min) used for API calls
-4. Refresh token (7 days) used to get new access token
-5. User connects OwnerRez via OAuth
-6. Tenant created and linked to user
-7. User can now access tax reports
+### JWT Implementation
+1. **Access Token**: 15-minute expiry, contains userId, email, tenantId
+2. **Refresh Token**: 7-day expiry, stored in database with hash
+3. **Auto-refresh**: Frontend refreshes tokens before expiry
+4. **Secure Storage**: Tokens in memory, refresh token in httpOnly cookie (future)
+
+### OAuth Flow
+1. User initiates connection from dashboard
+2. Generate state token, store with user email
+3. Redirect to OwnerRez authorization
+4. Callback verifies state, exchanges code for tokens
+5. Create/update tenant, link to user
+6. Store OAuth tokens for API access
+
+## State Management
+
+### Discriminated Unions Pattern
+```typescript
+type AuthState =
+  | { status: 'loading' }
+  | { status: 'unauthenticated' }
+  | { status: 'authenticated'; user: User; tokens: TokenPair }
+
+type DrillDownLevel =
+  | { type: 'root' }
+  | { type: 'property'; propertyId: string; propertyName: string }
+  | { type: 'month'; month: string; year: string }
+  | { type: 'booking'; bookingId: string }
+```
+
+### Context Providers
+- **AuthProvider**: Authentication state and methods
+- **DashboardProvider**: Active tab and filter state
+- **DrillDownProvider**: Navigation state and breadcrumbs
+- **ToastProvider**: User notifications
+
+## Data Flow
+
+### Sync Process
+1. **Properties Sync**
+   - Fetch from OwnerRez with tags
+   - Upsert properties maintaining relationships
+   - Sync property tags
+
+2. **Bookings Sync**
+   - Fetch recent bookings (7 days by default)
+   - Transaction: booking + charges + tags
+   - Calculate derived metrics
+
+3. **Auto-sync**
+   - Timer trigger every 12 hours
+   - Properties first, then bookings
+   - Error resilience with partial success
+
+### Tag System
+1. **Tag Types**: property, booking, payment, guest, custom
+2. **Type Inference**: Automatic based on name patterns
+3. **Sync**: Tags created on first encounter
+4. **Filtering**: Efficient EXISTS subqueries
+
+## Performance Optimizations
+
+### Database
+- Comprehensive indexes on foreign keys and filters
+- Materialized calculations in queries
+- Connection pooling (20 connections max)
+- Prepared statements for repeated queries
+
+### Frontend
+- Lazy loading of dashboard components
+- On-demand data fetching for drill-downs
+- Memoized calculations in components
+- Debounced filter updates
+
+### API
+- Parallel query execution where possible
+- Efficient date range calculations
+- Minimal data transformation in handlers
+- Result streaming for large datasets
 
 ## Security
 
-- Passwords hashed with SHA256 + salt
-- JWT tokens signed with HS256
-- Refresh tokens stored hashed in database
-- All endpoints require HTTPS in production
-- CORS configured for frontend origin
+### Authentication
+- Bcrypt password hashing with salt
+- JWT with HS256 signing
+- Refresh token rotation
+- Rate limiting on auth endpoints
 
-## Environment Variables
+### Data Isolation
+- Tenant ID in all queries
+- Row-level security via application
+- No cross-tenant data access
+- Cascade deletes maintain integrity
 
-```bash
-# Database
-DATABASE_URL=postgresql://user:pass@host:5432/db
+### API Security
+- Bearer token authentication
+- CORS with specific origins
+- Input validation and sanitization
+- SQL injection prevention via parameterized queries
 
-# OwnerRez API
-OWNERREZ_PAT=pat_xxxx              # For development
-OWNERREZ_CLIENT_ID=c_xxxx          # OAuth client
-OWNERREZ_CLIENT_SECRET=secret      # OAuth secret
-OAUTH_REDIRECT_URI=https://...     # OAuth callback
+## Error Handling
 
-# Security
-JWT_SECRET=your-secret-key         # JWT signing key
-FRONTEND_URL=http://localhost:5173 # CORS origin
-
-# Azure
-AZURE_STORAGE_CONNECTION_STRING=   # For timer triggers
+### Result Type Pattern
+```typescript
+type DbResult<T> =
+  | { success: true; data: T }
+  | { success: false; error: string }
 ```
 
-## Development Tips
+### Error Responses
+- Consistent error format
+- Appropriate HTTP status codes
+- User-friendly error messages
+- Detailed logging for debugging
 
-- Timer triggers require Azure Storage emulator
-- Use `manual-sync` endpoint for local testing
-- JWT tokens expire quickly (15 min) by design
-- Check PostgreSQL is running on port 5432
-- OwnerRez API uses Basic Auth, not Bearer
+## Testing Strategy
 
-### Design Patterns
-- Discriminated unions for state management
-- Functional programming with immutable data transformations
-- Result types for explicit error handling
-- Small, composable functions
-- No unnecessary comments or emojis
+### Unit Tests
+- Pure functions in utils package
+- State reducers and transformations
+- Date calculations and formatting
 
+### Integration Tests
+- API endpoint testing
+- Database transaction verification
+- OAuth flow simulation
+
+### E2E Tests
+- Complete user flows
+- Drill-down navigation
+- Data sync verification
+
+## Deployment
+
+### Azure Functions
+- Node.js 20 runtime
+- Consumption plan
+- Application Insights integration
+- Environment variables in App Settings
+
+### Frontend
+- Static site deployment
+- CDN distribution
+- Build optimization with Vite
+- Environment-specific configs
+
+### Database
+- Azure Database for PostgreSQL
+- Automated backups
+- Connection string in Key Vault
+- SSL enforcement
+
+## Monitoring
+
+### Application Insights
+- Request tracking
+- Custom metrics for sync
+- Error tracking with context
+- Performance monitoring
+
+### Health Checks
+- Database connectivity
+- OwnerRez API availability
+- Sync status monitoring
+- Token expiry warnings
+
+## Future Enhancements
+
+### Planned Features
+1. **Seasonal Analysis**: Year-over-year comparisons
+2. **Guest Demographics**: Repeat guest tracking
+3. **Financial Metrics**: P&L with expense tracking
+4. **Mobile App**: React Native implementation
+5. **Webhooks**: Real-time updates from OwnerRez
+
+### Technical Improvements
+1. **GraphQL API**: Replace REST with GraphQL
+2. **Redis Cache**: Improve performance
+3. **Event Sourcing**: Audit trail for all changes
+4. **Microservices**: Split into domain services
+5. **Kubernetes**: Container orchestration

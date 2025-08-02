@@ -7,30 +7,42 @@ import { useDashboard } from '@/contexts/dashboard'
 import { api } from '@/lib/api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
+import { useDrillDown } from '@/contexts/drillDown'
 
-const PropertyCard = ({ property }: { property: PropertyMetrics }) => (
-  <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer">
-    <h3 className="text-lg font-bold mb-4">{property.propertyName}</h3>
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <div className="text-sm text-gray-600">Revenue</div>
-        <div className="text-xl font-semibold">{formatCurrency(property.revenue)}</div>
-      </div>
-      <div>
-        <div className="text-sm text-gray-600">Bookings</div>
-        <div className="text-xl font-semibold">{property.bookings}</div>
-      </div>
-      <div>
-        <div className="text-sm text-gray-600">Occupancy</div>
-        <div className="text-xl font-semibold">{(property.occupancyRate * 100).toFixed(0)}%</div>
-      </div>
-      <div>
-        <div className="text-sm text-gray-600">Avg Nightly</div>
-        <div className="text-xl font-semibold">{formatCurrency(property.avgNightlyRate)}</div>
+const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
+  const { dispatch } = useDrillDown()
+
+  return (
+    <div
+      className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer"
+      onClick={() => dispatch({
+        type: 'DRILL_TO_PROPERTY',
+        propertyId: property.propertyId,
+        propertyName: property.propertyName
+      })}
+    >
+      <h3 className="text-lg font-bold mb-4">{property.propertyName}</h3>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <div className="text-sm text-gray-600">Revenue</div>
+          <div className="text-xl font-semibold">{formatCurrency(property.revenue)}</div>
+        </div>
+        <div>
+          <div className="text-sm text-gray-600">Bookings</div>
+          <div className="text-xl font-semibold">{property.bookings}</div>
+        </div>
+        <div>
+          <div className="text-sm text-gray-600">Occupancy</div>
+          <div className="text-xl font-semibold">{(property.occupancyRate * 100).toFixed(0)}%</div>
+        </div>
+        <div>
+          <div className="text-sm text-gray-600">Avg Nightly</div>
+          <div className="text-xl font-semibold">{formatCurrency(property.avgNightlyRate)}</div>
+        </div>
       </div>
     </div>
-  </div>
-)
+  )
+}
 
 export const PropertiesDashboard = () => {
   const { filters } = useDashboard()

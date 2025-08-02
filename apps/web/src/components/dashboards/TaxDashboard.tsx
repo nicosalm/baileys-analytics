@@ -7,10 +7,12 @@ import { Spinner } from '@/components/Spinner'
 import { useDashboard } from '@/contexts/dashboard'
 import { useToast } from '@/contexts/toast'
 import { TaxReportData } from '@/types/dashboard'
+import { useDrillDown } from '@/contexts/drillDown'
 
 export const TaxDashboard = () => {
   const { filters } = useDashboard()
   const { addToast } = useToast()
+  const { dispatch } = useDrillDown()
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<TaxReportData | null>(null)
 
@@ -97,11 +99,26 @@ export const TaxDashboard = () => {
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4">Monthly Trends</h3>
-          <MonthlyTrendChart data={data.byMonth} />
+          <MonthlyTrendChart
+            data={data.byMonth}
+            onMonthClick={(month) => {
+              const [year, monthNum] = month.split('-')
+              dispatch({ type: 'DRILL_TO_MONTH', month: monthNum, year })
+            }}
+          />
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4">Property Comparison</h3>
-          <PropertyTaxChart data={data.byProperty} />
+          <PropertyTaxChart
+            data={data.byProperty}
+            onPropertyClick={(property) => {
+              dispatch({
+                type: 'DRILL_TO_PROPERTY',
+                propertyId: property.propertyId,
+                propertyName: property.propertyName
+              })
+            }}
+          />
         </div>
       </div>
 

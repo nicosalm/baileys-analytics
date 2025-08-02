@@ -2,6 +2,7 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { formatCurrency } from '@baileys/utils'
 
 type PropertyData = {
+    propertyId: string
     propertyName: string
     totalTax: number
     totalRent: number
@@ -16,12 +17,32 @@ type MonthlyData = {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
 
-export const PropertyTaxChart = ({ data }: { data: PropertyData[] }) => {
+export const PropertyTaxChart = ({
+    data,
+    onPropertyClick
+}: {
+    data: PropertyData[]
+    onPropertyClick?: (property: PropertyData) => void
+}) => {
     const chartData = data.map(p => ({
+        ...p,
         name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
         tax: p.totalTax,
         rent: p.totalRent
     }))
+
+    const handleClick = (data: any) => {
+        if (onPropertyClick && data && data.payload) {
+            const property = data.payload as typeof chartData[0]
+            onPropertyClick({
+                propertyId: property.propertyId,
+                propertyName: property.propertyName,
+                totalTax: property.tax,
+                totalRent: property.rent,
+                taxRate: property.taxRate
+            })
+        }
+    }
 
     return (
         <div className="h-80">
@@ -31,15 +52,21 @@ export const PropertyTaxChart = ({ data }: { data: PropertyData[] }) => {
                     <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
                     <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
                     <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="rent" fill="#3B82F6" name="Rent" />
-                    <Bar dataKey="tax" fill="#EF4444" name="Tax" />
+                    <Bar dataKey="rent" fill="#3B82F6" name="Rent" cursor="pointer" onClick={handleClick} />
+                    <Bar dataKey="tax" fill="#EF4444" name="Tax" cursor="pointer" onClick={handleClick} />
                 </BarChart>
             </ResponsiveContainer>
         </div>
     )
 }
 
-export const MonthlyTrendChart = ({ data }: { data: MonthlyData[] }) => {
+export const MonthlyTrendChart = ({
+    data,
+    onMonthClick
+}: {
+    data: MonthlyData[]
+    onMonthClick?: (month: string) => void
+}) => {
     const chartData = data.map(m => ({
         month: m.month,
         tax: m.totalTax,
@@ -47,10 +74,16 @@ export const MonthlyTrendChart = ({ data }: { data: MonthlyData[] }) => {
         taxRate: m.totalRent > 0 ? (m.totalTax / m.totalRent) * 100 : 0
     }))
 
+    const handleClick = (data: any) => {
+        if (onMonthClick && data && data.activeLabel) {
+            onMonthClick(data.activeLabel)
+        }
+    }
+
     return (
         <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
+                <LineChart data={chartData} onClick={handleClick}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis yAxisId="left" tickFormatter={(value) => `$${value.toLocaleString()}`} />
@@ -61,21 +94,62 @@ export const MonthlyTrendChart = ({ data }: { data: MonthlyData[] }) => {
                             return formatCurrency(Number(value))
                         }}
                     />
-                    <Line yAxisId="left" type="monotone" dataKey="rent" stroke="#3B82F6" name="Rent" strokeWidth={2} />
-                    <Line yAxisId="left" type="monotone" dataKey="tax" stroke="#EF4444" name="Tax" strokeWidth={2} />
-                    <Line yAxisId="right" type="monotone" dataKey="taxRate" stroke="#10B981" name="Tax Rate" strokeWidth={2} strokeDasharray="5 5" />
+                    <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="rent"
+                        stroke="#3B82F6"
+                        name="Rent"
+                        strokeWidth={2}
+                        cursor="pointer"
+                        activeDot={{ r: 6 }}
+                    />
+                    <Line
+                        yAxisId="left"
+                        type="monotone"
+                        dataKey="tax"
+                        stroke="#EF4444"
+                        name="Tax"
+                        strokeWidth={2}
+                        cursor="pointer"
+                        activeDot={{ r: 6 }}
+                    />
+                    <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="taxRate"
+                        stroke="#10B981"
+                        name="Tax Rate"
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        cursor="pointer"
+                        activeDot={{ r: 6 }}
+                    />
                 </LineChart>
             </ResponsiveContainer>
         </div>
     )
 }
 
-export const PropertyDistributionChart = ({ data }: { data: PropertyData[] }) => {
+export const PropertyDistributionChart = ({
+    data,
+    onPropertyClick
+}: {
+    data: PropertyData[]
+    onPropertyClick?: (property: PropertyData) => void
+}) => {
     const pieData = data.map((p, index) => ({
         name: p.propertyName,
         value: p.totalTax,
-        color: COLORS[index % COLORS.length]
+        color: COLORS[index % COLORS.length],
+        propertyData: p
     }))
+
+    const handleClick = (data: any) => {
+        if (onPropertyClick && data) {
+            onPropertyClick(data.propertyData)
+        }
+    }
 
     return (
         <div className="h-80">
@@ -90,6 +164,8 @@ export const PropertyDistributionChart = ({ data }: { data: PropertyData[] }) =>
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
+                        cursor="pointer"
+                        onClick={handleClick}
                     >
                         {pieData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
