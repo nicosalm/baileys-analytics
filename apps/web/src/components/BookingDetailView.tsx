@@ -31,7 +31,39 @@ type BookingDetail = {
     id: string
     name: string
     type: string
+    color?: string
   }>
+}
+
+const getTagColor = (tag: { type: string; color?: string }) => {
+  // Normalize to return same shape regardless of whether tag.color exists
+  if (tag.color) {
+    return {
+      bg: '',
+      text: '',
+      border: '',
+      backgroundColor: `${tag.color}20`, // Add transparency
+      color: tag.color,
+      borderColor: tag.color
+    }
+  }
+
+  const typeColors = {
+    payment: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
+    guest: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
+    booking: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
+    property: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' },
+    custom: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-300' }
+  }
+
+  const defaultColors = typeColors[tag.type as keyof typeof typeColors] || typeColors.custom
+
+  return {
+    ...defaultColors,
+    backgroundColor: '',
+    color: '',
+    borderColor: ''
+  }
 }
 
 export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
@@ -47,6 +79,7 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
       if (result.success) {
         setData(result.data)
       }
+
       setLoading(false)
     }
 
@@ -63,7 +96,16 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
 
   if (!data) return null
 
-  const nights = Math.ceil((new Date(data.booking.departure).getTime() - new Date(data.booking.arrival).getTime()) / (1000 * 60 * 60 * 24))
+  const nights = Math.ceil(
+    (new Date(data.booking.departure).getTime() - new Date(data.booking.arrival).getTime()) /
+      (1000 * 60 * 60 * 24)
+  )
+
+  const tagsByType = data.tags.reduce((acc, tag) => {
+    if (!acc[tag.type]) acc[tag.type] = []
+    acc[tag.type].push(tag)
+    return acc
+  }, {} as Record<string, typeof data.tags>)
 
   return (
     <div className="space-y-6">
@@ -93,11 +135,15 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
             </div>
             <div>
               <span className="text-gray-600">Status:</span>
-              <span className={`ml-2 px-2 py-1 text-xs rounded ${
-                data.booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                data.booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
+              <span
+                className={`ml-2 px-2 py-1 text-xs rounded ${
+                  data.booking.status === 'confirmed'
+                    ? 'bg-green-100 text-green-800'
+                    : data.booking.status === 'cancelled'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
                 {data.booking.status}
               </span>
             </div>
@@ -114,10 +160,12 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
               <span className="text-gray-600">Property:</span> {data.booking.propertyName}
             </div>
             <div>
-              <span className="text-gray-600">Check In:</span> {new Date(data.booking.arrival).toLocaleDateString()}
+              <span className="text-gray-600">Check In:</span>{' '}
+              {new Date(data.booking.arrival).toLocaleDateString()}
             </div>
             <div>
-              <span className="text-gray-600">Check Out:</span> {new Date(data.booking.departure).toLocaleDateString()}
+              <span className="text-gray-600">Check Out:</span>{' '}
+              {new Date(data.booking.departure).toLocaleDateString()}
             </div>
             <div>
               <span className="text-gray-600">Nights:</span> {nights}
@@ -128,7 +176,8 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
               </div>
             )}
             <div>
-              <span className="text-gray-600">Booked:</span> {new Date(data.booking.bookedDate).toLocaleDateString()}
+              <span className="text-gray-600">Booked:</span>{' '}
+              {new Date(data.booking.bookedDate).toLocaleDateString()}
             </div>
           </div>
         </div>
@@ -144,12 +193,17 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
             <div key={charge.id} className="flex justify-between py-2 border-b">
               <div>
                 <span className="font-medium">{charge.description}</span>
-                <span className={`ml-2 text-xs px-2 py-1 rounded ${
-                  charge.type === 'rent' ? 'bg-blue-100 text-blue-800' :
-                  charge.type === 'tax' ? 'bg-red-100 text-red-800' :
-                  charge.type === 'fee' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
+                <span
+                  className={`ml-2 text-xs px-2 py-1 rounded ${
+                    charge.type === 'rent'
+                      ? 'bg-blue-100 text-blue-800'
+                      : charge.type === 'tax'
+                      ? 'bg-red-100 text-red-800'
+                      : charge.type === 'fee'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}
+                >
                   {charge.type}
                 </span>
                 {charge.isTaxable && (
@@ -172,14 +226,36 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
             <Tag className="w-5 h-5 mr-2" />
             Tags
           </h3>
-          <div className="flex flex-wrap gap-2">
-            {data.tags.map(tag => (
-              <span
-                key={tag.id}
-                className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-              >
-                {tag.name}
-              </span>
+          <div className="space-y-3">
+            {Object.entries(tagsByType).map(([type, tags]) => (
+              <div key={type}>
+                <h4 className="text-sm font-medium text-gray-600 mb-2 capitalize">{type} Tags</h4>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map(tag => {
+                    const colors = getTagColor(tag)
+                    return tag.color ? (
+                      <span
+                        key={tag.id}
+                        className="px-3 py-1 rounded-full text-sm border"
+                        style={{
+                          backgroundColor: colors.backgroundColor,
+                          color: colors.color,
+                          borderColor: colors.borderColor
+                        }}
+                      >
+                        {tag.name}
+                      </span>
+                    ) : (
+                      <span
+                        key={tag.id}
+                        className={`px-3 py-1 rounded-full text-sm border ${colors.bg} ${colors.text} ${colors.border}`}
+                      >
+                        {tag.name}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -187,3 +263,4 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
     </div>
   )
 }
+

@@ -1,8 +1,8 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
-import { DrillDownProvider } from '@/contexts/drillDown'
-import { useNavigate } from 'react-router-dom'
-import { LogOut, FileText, Home, TrendingUp, Calendar, Users, DollarSign, BarChart3 } from 'lucide-react'
+import { DrillDownProvider, useDrillDown } from '@/contexts/drillDown'
+import { useNavigate, Link } from 'react-router-dom'
+import { LogOut, FileText, Home, TrendingUp, Calendar, Users, DollarSign, BarChart3, Settings } from 'lucide-react'
 import { TaxDashboard } from '@/components/dashboards/TaxDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { RevenueDashboard } from '@/components/dashboards/RevenueDashboard'
@@ -64,6 +64,13 @@ const DashboardContent = () => {
 
 const DashboardTabs = () => {
   const { activeTab, setActiveTab } = useDashboard()
+  const { dispatch } = useDrillDown()
+
+  const handleTabClick = (tabId: DashboardTab) => {
+    // Reset drill-down state when switching tabs
+    dispatch({ type: 'RESET' })
+    setActiveTab(tabId)
+  }
 
   return (
     <div className="border-b">
@@ -72,7 +79,7 @@ const DashboardTabs = () => {
           {tabConfig.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
-              onClick={() => setActiveTab(id)}
+              onClick={() => handleTabClick(id)}
               className={`
                 py-4 px-1 border-b-2 font-medium text-sm flex items-center
                 ${activeTab === id
@@ -146,6 +153,13 @@ export const DashboardLayout = () => {
                 <h1 className="text-xl font-bold">Baileys Analytics</h1>
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">{user.email}</span>
+                  <Link
+                    to="/dashboard/settings"
+                    className="text-gray-600 hover:text-gray-800"
+                    title="Settings"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </Link>
                   <button onClick={handleLogout} className="text-blue-600 flex items-center text-sm">
                     <LogOut className="w-4 h-4 mr-1" />
                     Logout

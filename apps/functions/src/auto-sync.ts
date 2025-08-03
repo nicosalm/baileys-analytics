@@ -5,69 +5,142 @@ import { query, transaction, DbResult } from './services/database';
 import { syncPropertyTags, syncBookingTags } from './services/tagSync';
 
 type PropertySyncState =
-  | { status: 'idle' }
-  | { status: 'syncing' }
   | { status: 'success'; synced: number }
-  | { status: 'error'; error: string };
+  | { status: 'error'; error: string }
 
 type BookingSyncState =
-  | { status: 'idle' }
-  | { status: 'syncing' }
   | { status: 'success'; synced: number; charges: number }
-  | { status: 'error'; error: string };
+  | { status: 'error'; error: string }
 
 type SyncState = {
-  properties: PropertySyncState;
-  bookings: BookingSyncState;
-  startedAt: Date;
-  completedAt?: Date;
-  duration?: number;
-};
+  properties: PropertySyncState
+  bookings: BookingSyncState
+  startedAt: Date
+  completedAt: Date
+  duration: number
+}
+
+type TenantWithToken = {
+  tenantId: string
+  token: string
+}
 
 type OwnerRezProperty = {
-  id: number;
-  name: string;
-  active: boolean;
+  id: number
+  name: string
+  active: boolean
   address?: {
-    street1?: string;
-    city?: string;
-    state?: string;
-    postal_code?: string;
-  };
-  bedrooms: number;
-  bathrooms: number;
-  max_guests: number;
-  latitude?: number;
-  longitude?: number;
-  thumbnail_url?: string;
-  public_url?: string;
-  tags?: Array<{ id: number; name: string; color?: string }>;
-};
+    street1?: string
+    city?: string
+    state?: string
+    postal_code?: string
+  }
+  bedrooms: number
+  bathrooms: number
+  max_guests: number
+  latitude?: number
+  longitude?: number
+  thumbnail_url?: string
+  public_url?: string
+  tags?: Array<{ id: number; name: string; color?: string }>
+}
 
-type PropertyMapping = Map<string, string>;
+type OwnerRezBooking = {
+  id: number
+  property_id: number
+  arrival: string
+  departure: string
+  adults?: number
+  children?: number
+  infants?: number
+  pets?: number
+  guest?: {
+    first_name: string
+    last_name: string
+  }
+  total_amount: number
+  status: string
+  listing_site?: string
+  booked_utc: string
+  canceled_utc?: string
+  charges?: Array<{
+    type: string
+    description: string
+    amount: number
+    is_taxable: boolean
+    position: number
+  }>
+  tags?: Array<{ id: number; name: string; color?: string }>
+}
 
-const TENANT_ID = '00000000-0000-0000-0000-000000000001';
+type PropertyMapping = Map<string, string>
+
+const getActiveTenantsWithTokens = async (): Promise<DbResult<TenantWithToken[]>> => {
+  const result = await query<{ tenant_id: string; access_token: string }>(
+    `SELECT t.id as tenant_id, ot.access_token
+     FROM tenants t
+     JOIN oauth_tokens ot ON t.id = ot.tenant_id
+     WHERE ot.expires_at > CURRENT_TIMESTAMP`
+  )
+
+  if (result.success && result.data.length > 0) {
+    return {
+      success: true,
+      data: result.data.map(r => ({ tenantId: r.tenant_id, token: r.access_token }))
+    }
+  }
+
+  // Fallback to PAT if no OAuth tokens (for manual setup/dev)
+  const pat = process.env.OWNERREZ_PAT
+  if (pat) {
+    const tenantsResult = await query<{ id: string }>(
+      'SELECT id FROM tenants LIMIT 10'
+    )
+
+    if (tenantsResult.success && tenantsResult.data.length > 0) {
+      return {
+        success: true,
+        data: tenantsResult.data.map(r => ({ tenantId: r.id, token: pat }))
+      }
+    }
+  }
+
+  return { success: false, error: 'No tenants with valid tokens found' }
+}
 
 const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
   try {
+    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
+
+    const headers = isPAT
+      ? { 'Accept': 'application/json' }
+      : {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+
+    const auth = isPAT
+      ? { username: 'martina@***REMOVED***', password: token }
+      : undefined
+
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
-      auth: {
-        username: 'martina@***REMOVED***',
-        password: token
-      },
-      headers: { 'Accept': 'application/json' },
+      headers,
+      auth,
       params: { active: true, include_tags: true }
-    });
-    return { success: true, data: response.data.items };
+    })
+    return { success: true, data: response.data.items || [] }
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch properties'
-    };
+    }
   }
-};
+}
 
-const upsertProperty = async (property: OwnerRezProperty): Promise<DbResult<void>> => {
+const upsertProperty = async (
+  property: OwnerRezProperty,
+  tenantId: string
+): Promise<DbResult<string>> => {
   const result = await query<{ id: string }>(
     `INSERT INTO properties (
       tenant_id, ownerrez_id, name, address, city, state, postal_code,
@@ -80,7 +153,7 @@ const upsertProperty = async (property: OwnerRezProperty): Promise<DbResult<void
       updated_at = CURRENT_TIMESTAMP
     RETURNING id`,
     [
-      TENANT_ID,
+      tenantId,
       property.id.toString(),
       property.name,
       property.address?.street1 || '',
@@ -96,99 +169,146 @@ const upsertProperty = async (property: OwnerRezProperty): Promise<DbResult<void
       property.public_url,
       property.active
     ]
-  );
+  )
 
-  if (!result.success) {
-    return { success: false, error: result.error };
+  if (!result.success) return result
+
+  const propertyId = result.data[0].id
+
+  if (property.tags) {
+    await syncPropertyTags(propertyId, property.tags, tenantId)
   }
 
-  // Sync tags if present
-  if (property.tags && result.data.length > 0) {
-    const propertyId = result.data[0].id;
-    await syncPropertyTags(propertyId, property.tags, TENANT_ID);
-  }
+  return { success: true, data: propertyId }
+}
 
-  return { success: true, data: undefined };
-};
-
-const syncProperties = async (token: string): Promise<PropertySyncState> => {
-  const fetchResult = await fetchProperties(token);
-
+const syncProperties = async (
+  token: string,
+  tenantId: string
+): Promise<PropertySyncState> => {
+  const fetchResult = await fetchProperties(token)
   if (!fetchResult.success) {
-    return { status: 'error', error: fetchResult.error };
+    return { status: 'error', error: fetchResult.error }
   }
 
   const results = await Promise.all(
-    fetchResult.data.map(upsertProperty)
-  );
+    fetchResult.data.map(property => upsertProperty(property, tenantId))
+  )
 
-  const synced = results.filter(r => r.success).length;
-  const errors = results.filter(r => !r.success);
+  const synced = results.filter(r => r.success).length
+  const errors = results.filter(r => !r.success)
 
-  if (errors.length > 0) {
-    return {
-      status: 'error',
-      error: `Synced ${synced} properties, but ${errors.length} failed`
-    };
-  }
+  return errors.length > 0
+    ? { status: 'error', error: `Synced ${synced} properties, but ${errors.length} failed` }
+    : { status: 'success', synced }
+}
 
-  return { status: 'success', synced };
-};
-
-const getPropertyMapping = async (): Promise<DbResult<PropertyMapping>> => {
+const getPropertyMapping = async (tenantId: string): Promise<DbResult<PropertyMapping>> => {
   const result = await query<{ ownerrez_id: string; id: string }>(
     'SELECT id, ownerrez_id FROM properties WHERE tenant_id = $1',
-    [TENANT_ID]
-  );
+    [tenantId]
+  )
 
-  if (!result.success) {
-    return result;
-  }
+  if (!result.success) return result
 
-  const mapping = new Map(
-    result.data.map(p => [p.ownerrez_id, p.id])
-  );
+  const mapping = new Map(result.data.map(p => [p.ownerrez_id, p.id]))
+  return { success: true, data: mapping }
+}
 
-  return { success: true, data: mapping };
-};
+const determineBookingDateRange = async (tenantId: string): Promise<{ from: string; to: string; isHistorical: boolean }> => {
+  const result = await query<{ oldest_booking: string | null }>(
+    'SELECT MIN(arrival) as oldest_booking FROM bookings WHERE tenant_id = $1',
+    [tenantId]
+  )
 
-const fetchRecentBookings = async (
+  const hasBookings = result.success && result.data[0].oldest_booking
+  const now = Date.now()
+
+  return hasBookings
+    ? {
+        from: new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0],
+        isHistorical: false
+      }
+    : {
+        from: new Date(now - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        to: new Date().toISOString().split('T')[0],
+        isHistorical: true
+      }
+}
+
+const fetchBookingsBatch = async (
   token: string,
-  propertyIds: string[]
-): Promise<DbResult<any[]>> => {
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-
+  propertyIds: string[],
+  dateRange: { from: string; to: string }
+): Promise<DbResult<OwnerRezBooking[]>> => {
   try {
+    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
+
+    const headers = isPAT
+      ? { 'Accept': 'application/json' }
+      : {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+
+    const auth = isPAT
+      ? { username: 'martina@***REMOVED***', password: token }
+      : undefined
+
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
-      auth: {
-        username: 'martina@***REMOVED***',
-        password: token
-      },
-      headers: { 'Accept': 'application/json' },
+      headers,
+      auth,
       params: {
         property_ids: propertyIds.join(','),
-        since_utc: since,
+        from: dateRange.from,
+        to: dateRange.to,
         include_charges: true,
         include_guest: true,
         include_tags: true,
-        limit: 200
+        limit: 500
       }
-    });
-    return { success: true, data: response.data.items };
+    })
+    return { success: true, data: response.data.items || [] }
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch bookings'
-    };
+    }
   }
-};
+}
 
-const upsertBookingWithCharges = async (
-  booking: any,
-  propertyId: string
-): Promise<DbResult<number>> => {
+const fetchAllBookings = async (
+  token: string,
+  propertyIds: string[],
+  dateRange: { from: string; to: string }
+): Promise<DbResult<OwnerRezBooking[]>> => {
+  const batchSize = 50
+  const batches = Array.from(
+    { length: Math.ceil(propertyIds.length / batchSize) },
+    (_, i) => propertyIds.slice(i * batchSize, (i + 1) * batchSize)
+  )
+
+  const results = await Promise.all(
+    batches.map(batch => fetchBookingsBatch(token, batch, dateRange))
+  )
+
+  const failures = results.filter(r => !r.success)
+  if (failures.length > 0) {
+    return { success: false, error: failures[0].error }
+  }
+
+  const allBookings = results.flatMap(r => r.success ? r.data : [])
+  return { success: true, data: allBookings }
+}
+
+const upsertBooking = async (
+  booking: OwnerRezBooking,
+  propertyId: string,
+  tenantId: string
+): Promise<DbResult<{ bookingId: string; chargeCount: number }>> => {
   return transaction(async (client) => {
-    const bookingResult = await client.query(
+    const result = await client.query(
       `INSERT INTO bookings (
         tenant_id, property_id, ownerrez_booking_id,
         arrival, departure, adults, children, infants, pets,
@@ -201,7 +321,7 @@ const upsertBookingWithCharges = async (
         updated_at = CURRENT_TIMESTAMP
       RETURNING id`,
       [
-        TENANT_ID,
+        tenantId,
         propertyId,
         booking.id.toString(),
         booking.arrival,
@@ -217,13 +337,13 @@ const upsertBookingWithCharges = async (
         booking.booked_utc,
         booking.canceled_utc
       ]
-    );
+    )
 
-    const bookingId = bookingResult.rows[0].id;
+    const bookingId = result.rows[0].id
 
-    await client.query('DELETE FROM booking_charges WHERE booking_id = $1', [bookingId]);
+    await client.query('DELETE FROM booking_charges WHERE booking_id = $1', [bookingId])
 
-    let chargeCount = 0;
+    let chargeCount = 0
     if (booking.charges) {
       for (const charge of booking.charges) {
         await client.query(
@@ -231,98 +351,124 @@ const upsertBookingWithCharges = async (
             booking_id, type, description, amount, is_taxable, position
           ) VALUES ($1, $2, $3, $4, $5, $6)`,
           [bookingId, charge.type, charge.description, charge.amount, charge.is_taxable, charge.position]
-        );
-        chargeCount++;
+        )
+        chargeCount++
       }
     }
 
-    // Sync tags outside of the return
     if (booking.tags) {
-      await syncBookingTags(bookingId, booking.tags, TENANT_ID);
+      await syncBookingTags(bookingId, booking.tags, tenantId)
     }
 
-    return chargeCount;
-  });
-};
+    return { bookingId, chargeCount }
+  })
+}
 
-const syncBookings = async (token: string): Promise<BookingSyncState> => {
-  const mappingResult = await getPropertyMapping();
-
+const syncBookings = async (
+  token: string,
+  tenantId: string
+): Promise<BookingSyncState> => {
+  const mappingResult = await getPropertyMapping(tenantId)
   if (!mappingResult.success) {
-    return { status: 'error', error: 'Failed to get property mapping' };
+    return { status: 'error', error: 'Failed to get property mapping' }
   }
 
-  const propertyIds = Array.from(mappingResult.data.keys());
-  const bookingsResult = await fetchRecentBookings(token, propertyIds);
+  const propertyIds = Array.from(mappingResult.data.keys())
+  const dateRange = await determineBookingDateRange(tenantId)
 
+  const bookingsResult = await fetchAllBookings(token, propertyIds, dateRange)
   if (!bookingsResult.success) {
-    return { status: 'error', error: bookingsResult.error };
+    return { status: 'error', error: bookingsResult.error }
   }
 
-  const bookingsToSync = bookingsResult.data
-    .filter(b => mappingResult.data.has(b.property_id.toString()))
-    .map(b => ({
-      booking: b,
-      propertyId: mappingResult.data.get(b.property_id.toString())!
-    }));
+  const validBookings = bookingsResult.data.filter(b =>
+    mappingResult.data.has(b.property_id.toString())
+  )
 
   const results = await Promise.all(
-    bookingsToSync.map(({ booking, propertyId }) =>
-      upsertBookingWithCharges(booking, propertyId)
+    validBookings.map(booking =>
+      upsertBooking(
+        booking,
+        mappingResult.data.get(booking.property_id.toString())!,
+        tenantId
+      )
     )
-  );
+  )
 
-  const successful = results.filter(r => r.success);
+  const successful = results.filter(r => r.success)
   const totalCharges = successful.reduce(
-    (sum, r) => sum + (r.success ? r.data : 0),
+    (sum, r) => sum + (r.success ? r.data.chargeCount : 0),
     0
-  );
+  )
 
   return {
     status: 'success',
     synced: successful.length,
     charges: totalCharges
-  };
-};
-
-export const performSync = async (token: string): Promise<SyncState> => {
-  const startedAt = new Date();
-
-  const state: SyncState = {
-    properties: { status: 'syncing' },
-    bookings: { status: 'syncing' },
-    startedAt
-  };
-
-  state.properties = await syncProperties(token);
-  state.bookings = await syncBookings(token);
-
-  state.completedAt = new Date();
-  state.duration = state.completedAt.getTime() - startedAt.getTime();
-
-  return state;
-};
-
-export async function autoSync(myTimer: Timer, context: InvocationContext): Promise<void> {
-  context.log('Auto-sync started at:', new Date().toISOString());
-
-  const token = process.env.OWNERREZ_PAT;
-  if (!token) {
-    context.error('OWNERREZ_PAT not configured');
-    return;
   }
-
-  const result = await performSync(token);
-
-  context.log('Auto-sync completed:', {
-    properties: result.properties,
-    bookings: result.bookings,
-    duration: `${result.duration}ms`
-  });
 }
 
-// run every 12 hours
+const syncTenant = async (tenant: TenantWithToken): Promise<SyncState> => {
+  const startedAt = new Date()
+
+  const properties = await syncProperties(tenant.token, tenant.tenantId)
+  const bookings = await syncBookings(tenant.token, tenant.tenantId)
+
+  const completedAt = new Date()
+
+  return {
+    properties,
+    bookings,
+    startedAt,
+    completedAt,
+    duration: completedAt.getTime() - startedAt.getTime()
+  }
+}
+
+export const performSync = async (
+  token: string,
+  tenantId: string
+): Promise<SyncState> => {
+  return syncTenant({ token, tenantId })
+}
+
+export async function autoSync(
+  myTimer: Timer,
+  context: InvocationContext
+): Promise<void> {
+  context.log('Auto-sync started at:', new Date().toISOString())
+
+  const tenantsResult = await getActiveTenantsWithTokens()
+
+  if (!tenantsResult.success || tenantsResult.data.length === 0) {
+    context.log('No tenants with valid OAuth tokens found')
+    return
+  }
+
+  const syncResults = await Promise.allSettled(
+    tenantsResult.data.map(async (tenant) => {
+      try {
+        const result = await syncTenant(tenant)
+        context.log(`Tenant ${tenant.tenantId} sync completed:`, {
+          properties: result.properties,
+          bookings: result.bookings,
+          duration: `${result.duration}ms`
+        })
+        return { tenantId: tenant.tenantId, result }
+      } catch (error) {
+        context.error(`Failed to sync tenant ${tenant.tenantId}:`, error)
+        throw error
+      }
+    })
+  )
+
+  const successful = syncResults.filter(r => r.status === 'fulfilled').length
+  const failed = syncResults.filter(r => r.status === 'rejected').length
+
+  context.log(`Auto-sync completed: ${successful} successful, ${failed} failed`)
+}
+
 app.timer('auto-sync', {
   schedule: '0 0 */12 * * *',
   handler: autoSync
-});
+})

@@ -163,6 +163,14 @@ class ApiClient {
     return this.request('/manual-sync', { method: 'POST' })
   }
 
+  async historicalSync(fromDate?: string, toDate?: string): Promise<ApiResult<any>> {
+    const params = new URLSearchParams({ type: 'historical' })
+    if (fromDate) params.append('from', fromDate)
+    if (toDate) params.append('to', toDate)
+
+    return this.request(`/manual-sync?${params}`, { method: 'POST' })
+  }
+
   async getSyncStatus(): Promise<ApiResult<any>> {
     return this.request('/sync-status')
   }
@@ -201,6 +209,14 @@ class ApiClient {
   async getTags(): Promise<ApiResult<any>> {
     return this.request('/tags')
   }
+
+  async getSeasonalAnalysis(year?: number): Promise<ApiResult<any>> {
+    const params = new URLSearchParams()
+    if (year) params.append('year', year.toString())
+
+    return this.request(`/seasonal-analysis?${params}`)
+  }
 }
 
 export const api = new ApiClient()
+

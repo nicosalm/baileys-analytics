@@ -1,5 +1,5 @@
 import { useDashboard } from '@/contexts/dashboard'
-import { Calendar, Tag as TagIcon, X } from 'lucide-react'
+import { Calendar, Tag as TagIcon, X, RefreshCw } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Tag } from '@/types/dashboard'
 import { api } from '@/lib/api'
@@ -7,7 +7,7 @@ import { useToast } from '@/contexts/toast'
 import { Spinner } from '@/components/Spinner'
 
 export const FilterBar = () => {
-  const { filters, updateDateRange, toggleTag, clearTags } = useDashboard()
+  const { filters, updateDateRange, toggleTag, clearTags, resetDateRange, activeTab } = useDashboard()
   const { addToast } = useToast()
   const [showTags, setShowTags] = useState(false)
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
@@ -30,26 +30,41 @@ export const FilterBar = () => {
     loadTags()
   }, [])
 
+  // Don't show date range filter for seasonal tab
+  const showDateRange = activeTab !== 'seasonal'
+
   return (
     <div className="bg-white border-b">
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <input
-              type="date"
-              value={filters.dateRange.from}
-              onChange={(e) => updateDateRange({ ...filters.dateRange, from: e.target.value })}
-              className="px-3 py-1 border rounded text-sm"
-            />
-            <span className="text-gray-500">to</span>
-            <input
-              type="date"
-              value={filters.dateRange.to}
-              onChange={(e) => updateDateRange({ ...filters.dateRange, to: e.target.value })}
-              className="px-3 py-1 border rounded text-sm"
-            />
-          </div>
+          {showDateRange && (
+            <>
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-4 h-4 text-gray-500" />
+                <input
+                  type="date"
+                  value={filters.dateRange.from}
+                  onChange={(e) => updateDateRange({ ...filters.dateRange, from: e.target.value })}
+                  className="px-3 py-1 border rounded text-sm"
+                />
+                <span className="text-gray-500">to</span>
+                <input
+                  type="date"
+                  value={filters.dateRange.to}
+                  onChange={(e) => updateDateRange({ ...filters.dateRange, to: e.target.value })}
+                  className="px-3 py-1 border rounded text-sm"
+                />
+              </div>
+
+              <button
+                onClick={resetDateRange}
+                className="flex items-center px-3 py-1 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+                title="Reset to current year"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </button>
+            </>
+          )}
 
           {availableTags.length > 0 && (
             <>

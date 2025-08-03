@@ -1,4 +1,3 @@
-// apps/web/src/contexts/dashboard.tsx
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 import { DashboardTab, FilterState, Tag, DateRange } from '@/types/dashboard'
 
@@ -7,6 +6,7 @@ type DashboardContextValue = {
   setActiveTab: (tab: DashboardTab) => void
   filters: FilterState
   updateDateRange: (range: DateRange) => void
+  resetDateRange: () => void
   toggleTag: (tag: Tag) => void
   clearTags: () => void
   toggleProperty: (propertyId: string) => void
@@ -21,11 +21,13 @@ export const useDashboard = () => {
   return context
 }
 
+const getDefaultDateRange = (): DateRange => ({
+  from: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+  to: new Date().toISOString().split('T')[0]
+})
+
 const initialFilters: FilterState = {
-  dateRange: {
-    from: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0]
-  },
+  dateRange: getDefaultDateRange(),
   selectedTags: [],
   selectedProperties: []
 }
@@ -36,6 +38,10 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
 
   const updateDateRange = useCallback((range: DateRange) => {
     setFilters(prev => ({ ...prev, dateRange: range }))
+  }, [])
+
+  const resetDateRange = useCallback(() => {
+    setFilters(prev => ({ ...prev, dateRange: getDefaultDateRange() }))
   }, [])
 
   const toggleTag = useCallback((tag: Tag) => {
@@ -70,6 +76,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
       setActiveTab,
       filters,
       updateDateRange,
+      resetDateRange,
       toggleTag,
       clearTags,
       toggleProperty,

@@ -86,16 +86,19 @@ export const SeasonalDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Seasonal Analysis</h2>
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-          className="px-3 py-2 border rounded"
-        >
-          {[...Array(5)].map((_, i) => {
-            const year = new Date().getFullYear() - i
-            return <option key={year} value={year}>{year}</option>
-          })}
-        </select>
+        <div className="flex items-center space-x-2">
+          <label className="text-sm text-gray-600">Year:</label>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+            className="px-3 py-2 border rounded"
+          >
+            {[...Array(5)].map((_, i) => {
+              const year = new Date().getFullYear() - i
+              return <option key={year} value={year}>{year}</option>
+            })}
+          </select>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
