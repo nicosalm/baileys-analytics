@@ -52,7 +52,7 @@ const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty
   try {
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
       auth: {
-        username: 'jerry@***REMOVED***',
+        username: 'martina@***REMOVED***',
         password: token
       },
       headers: { 'Accept': 'application/json' },
@@ -161,7 +161,7 @@ const fetchRecentBookings = async (
   try {
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
       auth: {
-        username: 'jerry@***REMOVED***',
+        username: 'martina@***REMOVED***',
         password: token
       },
       headers: { 'Accept': 'application/json' },

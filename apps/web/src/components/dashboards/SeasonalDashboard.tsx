@@ -3,20 +3,19 @@ import { api } from '@/lib/api'
 import { formatCurrency } from '@baileys/utils'
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
-import { TrendingUp, TrendingDown, Calendar, Sun, Snowflake, DollarSign } from 'lucide-react'
+import { TrendingUp, TrendingDown, Calendar, Sun, Snowflake } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
-import { useDashboard } from '@/contexts/dashboard'
 import { useToast } from '@/contexts/toast'
+import { useDrillDown } from '@/contexts/drillDown'
 import { SeasonalData } from '@/types/seasonal'
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export const SeasonalDashboard = () => {
-  const { filters } = useDashboard()
   const { addToast } = useToast()
+  const { dispatch } = useDrillDown()
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<SeasonalData | null>(null)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
@@ -179,14 +178,29 @@ export const SeasonalDashboard = () => {
           <h3 className="text-lg font-bold mb-4">Monthly Revenue Comparison</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyComparison}>
+              <BarChart
+                data={monthlyComparison}
+                onClick={(data: any) => {
+                  if (data && data.activeLabel) {
+                    const monthData = monthlyComparison.find(m => m.month === data.activeLabel)
+                    if (monthData) {
+                      const monthNum = MONTHS.indexOf(monthData.month) + 1
+                      dispatch({
+                        type: 'DRILL_TO_MONTH',
+                        month: monthNum.toString().padStart(2, '0'),
+                        year: selectedYear.toString()
+                      })
+                    }
+                  }
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Legend />
-                <Bar dataKey="previous" fill="#E5E7EB" name={`${selectedYear - 1}`} />
-                <Bar dataKey="current" fill="#3B82F6" name={`${selectedYear}`} />
+                <Bar dataKey="previous" fill="#E5E7EB" name={`${selectedYear - 1}`} cursor="pointer" />
+                <Bar dataKey="current" fill="#3B82F6" name={`${selectedYear}`} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -213,7 +227,15 @@ export const SeasonalDashboard = () => {
           <h3 className="text-lg font-bold mb-4">Property Seasonality</h3>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {data.propertySeasonality.map(property => (
-              <div key={property.propertyId} className="p-3 border rounded">
+              <div
+                key={property.propertyId}
+                className="p-3 border rounded hover:bg-gray-50 cursor-pointer"
+                onClick={() => dispatch({
+                  type: 'DRILL_TO_PROPERTY',
+                  propertyId: property.propertyId,
+                  propertyName: property.propertyName
+                })}
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <h4 className="font-medium">{property.propertyName}</h4>
@@ -246,7 +268,20 @@ export const SeasonalDashboard = () => {
             </h4>
             <div className="space-y-2">
               {data.priceOptimization.underpriced.slice(0, 5).map((opp, index) => (
-                <div key={index} className="p-2 bg-green-50 rounded">
+                <div
+                  key={index}
+                  className="p-2 bg-green-50 rounded hover:bg-green-100 cursor-pointer"
+                  onClick={() => {
+                    const monthNum = MONTHS.indexOf(opp.month.slice(0, 3)) + 1
+                    dispatch({
+                      type: 'DRILL_TO_PROPERTY_MONTH',
+                      propertyId: opp.propertyId,
+                      propertyName: opp.propertyName,
+                      month: monthNum.toString().padStart(2, '0'),
+                      year: selectedYear.toString()
+                    })
+                  }}
+                >
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-medium text-sm">{opp.propertyName}</p>
@@ -273,7 +308,20 @@ export const SeasonalDashboard = () => {
             </h4>
             <div className="space-y-2">
               {data.priceOptimization.overpriced.slice(0, 5).map((opp, index) => (
-                <div key={index} className="p-2 bg-red-50 rounded">
+                <div
+                  key={index}
+                  className="p-2 bg-red-50 rounded hover:bg-red-100 cursor-pointer"
+                  onClick={() => {
+                    const monthNum = MONTHS.indexOf(opp.month.slice(0, 3)) + 1
+                    dispatch({
+                      type: 'DRILL_TO_PROPERTY_MONTH',
+                      propertyId: opp.propertyId,
+                      propertyName: opp.propertyName,
+                      month: monthNum.toString().padStart(2, '0'),
+                      year: selectedYear.toString()
+                    })
+                  }}
+                >
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="font-medium text-sm">{opp.propertyName}</p>

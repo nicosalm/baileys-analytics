@@ -246,15 +246,23 @@ export async function getSeasonalAnalysis(
           '1 day'::interval
         ) date_series
         GROUP BY TO_CHAR(date_series, 'MM')
+      ),
+      year_count AS (
+        SELECT COUNT(DISTINCT EXTRACT(YEAR FROM arrival)) as years
+        FROM bookings
+        WHERE tenant_id = $1
+          AND status != 'canceled'
+          AND arrival >= CURRENT_DATE - INTERVAL '3 years'
       )
       SELECT
         ma.month,
-        ma.month_name,
+        TRIM(ma.month_name) as month_name,
         (ma.total_nights::float / mc.total_days)::text as avg_occupancy,
-        (ma.total_revenue / COUNT(*) OVER ())::text as avg_revenue,
+        (ma.total_revenue / yc.years)::text as avg_revenue,
         ma.booking_count::text
       FROM monthly_aggregates ma
       JOIN monthly_capacity mc ON ma.month = mc.month
+      CROSS JOIN year_count yc
       ORDER BY ma.month`,
       [auth.tenantId]
     );
@@ -273,26 +281,35 @@ export async function getSeasonalAnalysis(
           p.name as property_name,
           EXTRACT(MONTH FROM b.arrival) as month,
           SUM(b.departure - b.arrival) as nights,
-          SUM(b.total_amount) as revenue,
-          DATE_PART('days',
-            DATE_TRUNC('month', b.arrival) + INTERVAL '1 month' - DATE_TRUNC('month', b.arrival)
-          ) * COUNT(DISTINCT DATE_TRUNC('year', b.arrival)) as available_days
+          SUM(b.total_amount) as revenue
         FROM properties p
         LEFT JOIN bookings b ON p.id = b.property_id
           AND b.status != 'canceled'
           AND b.arrival >= CURRENT_DATE - INTERVAL '2 years'
         WHERE p.tenant_id = $1 AND p.active = true
         GROUP BY p.id, p.name, EXTRACT(MONTH FROM b.arrival)
+      ),
+      month_capacity AS (
+        SELECT
+          property_id,
+          month,
+          DATE_PART('days',
+            DATE_TRUNC('month', make_date(2024, month::int, 1)) + INTERVAL '1 month' -
+            DATE_TRUNC('month', make_date(2024, month::int, 1))
+          ) * 2 as available_days -- 2 years of data
+        FROM property_monthly
+        WHERE month IS NOT NULL
       )
       SELECT
-        property_id,
-        property_name,
-        month::text,
-        (nights::float / NULLIF(available_days, 0))::text as occupancy,
-        revenue::text
-      FROM property_monthly
-      WHERE month IS NOT NULL
-      ORDER BY property_id, month`,
+        pm.property_id,
+        pm.property_name,
+        pm.month::text,
+        (pm.nights::float / NULLIF(mc.available_days, 0))::text as occupancy,
+        pm.revenue::text
+      FROM property_monthly pm
+      JOIN month_capacity mc ON pm.property_id = mc.property_id AND pm.month = mc.month
+      WHERE pm.month IS NOT NULL
+      ORDER BY pm.property_id, pm.month`,
       [auth.tenantId]
     );
 
@@ -315,8 +332,7 @@ export async function getSeasonalAnalysis(
           TO_CHAR(b.arrival, 'Month') as month_name,
           AVG(b.total_amount / (b.departure - b.arrival)) as avg_nightly_rate,
           SUM(b.departure - b.arrival)::float /
-            (DATE_PART('days', DATE_TRUNC('month', b.arrival) + INTERVAL '1 month' - DATE_TRUNC('month', b.arrival)) *
-             COUNT(DISTINCT DATE_TRUNC('year', b.arrival))) as occupancy_rate
+            (DATE_PART('days', DATE_TRUNC('month', MIN(b.arrival)) + INTERVAL '1 month' - DATE_TRUNC('month', MIN(b.arrival)))) as occupancy_rate
         FROM properties p
         JOIN bookings b ON p.id = b.property_id
         WHERE p.tenant_id = $1
@@ -338,7 +354,7 @@ export async function getSeasonalAnalysis(
         pms.property_id,
         pms.property_name,
         pms.month,
-        pms.month_name,
+        TRIM(pms.month_name) as month_name,
         pms.avg_nightly_rate::text,
         pms.occupancy_rate::text,
         ms.market_avg_rate::text,

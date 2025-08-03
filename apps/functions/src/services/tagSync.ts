@@ -17,6 +17,11 @@ export async function ensureTags(
   const mapping = new Map<string, string>();
 
   for (const tag of tags) {
+    if (!tag || typeof tag.id !== 'number' || !tag.name) {
+      console.warn(`Skipping invalid tag:`, tag);
+      continue;
+    }
+
     const result = await query<{ id: string }>(
       `INSERT INTO tags (tenant_id, ownerrez_id, name, type, color)
        VALUES ($1, $2, $3, $4, $5)
@@ -35,6 +40,7 @@ export async function ensureTags(
 
   return mapping;
 }
+
 
 // Sync tags for a property
 export async function syncPropertyTags(

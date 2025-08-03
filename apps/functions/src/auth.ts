@@ -340,6 +340,82 @@ export async function logout(
   }
 }
 
+export async function createTestUser(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  try {
+    const email = 'martina@***REMOVED***';
+    const password = 'password123'; // Change this!
+
+    // Find tenant
+    const tenantResult = await query<{ id: string }>(
+      `SELECT id FROM tenants WHERE LOWER(email) = LOWER($1)`,
+      [email]
+    );
+
+    if (!tenantResult.success || tenantResult.data.length === 0) {
+      return {
+        status: 400,
+        jsonBody: { error: 'Tenant not found' }
+      };
+    }
+
+    const tenantId = tenantResult.data[0].id;
+
+    // Delete existing user
+    await query(
+      `DELETE FROM users WHERE LOWER(email) = LOWER($1)`,
+      [email]
+    );
+
+    // Create new user
+    const passwordHash = await hashPassword(password);
+    const createResult = await query<{ id: string }>(
+      `INSERT INTO users (email, password_hash, tenant_id)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [email.toLowerCase(), passwordHash, tenantId]
+    );
+
+    if (!createResult.success) {
+      return {
+        status: 500,
+        jsonBody: {
+          error: 'Failed to create user',
+          details: createResult.error,
+          email: email.toLowerCase(),
+          tenantId: tenantId
+        }
+      };
+    }
+
+    const userId = createResult.data[0].id;
+
+    // Update tenant
+    await query(
+      `UPDATE tenants SET user_id = $1 WHERE id = $2`,
+      [userId, tenantId]
+    );
+
+    return {
+      status: 200,
+      jsonBody: {
+        message: 'User created successfully',
+        email: email,
+        password: password,
+        instruction: 'Now you can login at http://localhost:5173'
+      }
+    };
+  } catch (error) {
+    return {
+      status: 500,
+      jsonBody: { error: error instanceof Error ? error.message : 'Failed' }
+    };
+  }
+}
+
+
 // Register endpoints with rate limiting
 app.http('auth-signup', {
   methods: ['POST', 'OPTIONS'],
@@ -378,4 +454,10 @@ app.http('auth-logout', {
   route: 'auth/logout',
   authLevel: 'anonymous',
   handler: logout
+});
+
+app.http('create-test-user', {
+  methods: ['POST'],
+  authLevel: 'anonymous',
+  handler: createTestUser
 });

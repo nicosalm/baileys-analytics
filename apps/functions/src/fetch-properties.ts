@@ -156,7 +156,7 @@ export async function fetchProperties(
   try {
     const response = await axios.get<OwnerRezResponse>(`${OWNERREZ_API.BASE_URL}/properties`, {
       auth: {
-        username: 'jerry@***REMOVED***',
+        username: 'martina@***REMOVED***',
         password: token
       },
       headers: {
