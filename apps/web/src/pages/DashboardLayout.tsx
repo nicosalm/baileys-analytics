@@ -9,6 +9,7 @@ import { RevenueDashboard } from '@/components/dashboards/RevenueDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
 import { SeasonalDashboard } from '@/components/dashboards/SeasonalDashboard'
 import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
+import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
 import { FilterBar } from '@/components/FilterBar'
 import { DrillDownView } from '@/components/DrillDownView'
 import { DashboardTab } from '@/types/dashboard'
@@ -62,6 +63,12 @@ const DashboardContent = () => {
         return (
         <DrillDownView>
             <GuestsDashboard />
+        </DrillDownView>
+        )
+    case 'financial':
+        return (
+        <DrillDownView>
+            <FinancialDashboard />
         </DrillDownView>
         )
     default:
