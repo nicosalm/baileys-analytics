@@ -8,6 +8,7 @@ import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard
 import { RevenueDashboard } from '@/components/dashboards/RevenueDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
 import { SeasonalDashboard } from '@/components/dashboards/SeasonalDashboard'
+import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
 import { FilterBar } from '@/components/FilterBar'
 import { DrillDownView } from '@/components/DrillDownView'
 import { DashboardTab } from '@/types/dashboard'
@@ -57,6 +58,12 @@ const DashboardContent = () => {
           <SeasonalDashboard />
         </DrillDownView>
       )
+    case 'guests':
+        return (
+        <DrillDownView>
+            <GuestsDashboard />
+        </DrillDownView>
+        )
     default:
       return <div className="p-8 text-center text-gray-500">Coming soon...</div>
   }

@@ -3,6 +3,7 @@ export type DrillDownLevel =
   | { type: 'property'; propertyId: string; propertyName: string }
   | { type: 'month'; month: string; year: string }
   | { type: 'booking'; bookingId: string }
+  | { type: 'guest'; guestId: string; guestName: string }
   | { type: 'property-month'; propertyId: string; propertyName: string; month: string; year: string }
 
 export type DrillDownContext = {
@@ -14,6 +15,7 @@ export type DrillDownAction =
   | { type: 'DRILL_TO_PROPERTY'; propertyId: string; propertyName: string }
   | { type: 'DRILL_TO_MONTH'; month: string; year: string }
   | { type: 'DRILL_TO_BOOKING'; bookingId: string }
+  | { type: 'DRILL_TO_GUEST'; guestId: string; guestName: string }
   | { type: 'DRILL_TO_PROPERTY_MONTH'; propertyId: string; propertyName: string; month: string; year: string }
   | { type: 'NAVIGATE_TO_LEVEL'; level: DrillDownLevel }
   | { type: 'RESET' }
@@ -47,6 +49,15 @@ export const drillDownReducer = (
         breadcrumbs: [
           ...state.breadcrumbs,
           { label: `Booking ${action.bookingId}`, level: { type: 'booking', bookingId: action.bookingId } }
+        ]
+      }
+
+    case 'DRILL_TO_GUEST':
+      return {
+        level: { type: 'guest', guestId: action.guestId, guestName: action.guestName },
+        breadcrumbs: [
+          ...state.breadcrumbs,
+          { label: action.guestName, level: { type: 'guest', guestId: action.guestId, guestName: action.guestName } }
         ]
       }
 

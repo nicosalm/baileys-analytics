@@ -216,6 +216,15 @@ class ApiClient {
 
     return this.request(`/seasonal-analysis?${params}`)
   }
+
+  async getGuests(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
+    const params = new URLSearchParams()
+    if (from) params.append('from', from)
+    if (to) params.append('to', to)
+    if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+
+    return this.request(`/guests?${params}`)
+  }
 }
 
 export const api = new ApiClient()
