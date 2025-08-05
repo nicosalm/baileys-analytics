@@ -47,27 +47,35 @@ type OwnerRezBooking = {
   tags?: OwnerRezTag[]
 }
 
-type SyncResult = {
-  bookingsSynced: number
-  chargesSynced: number
+type SyncResult =
+  | { status: 'success'; bookingsSynced: number; chargesSynced: number }
+  | { status: 'error'; error: string }
+
+type PropertyMapping = ReadonlyMap<string, string>
+
+type DateRange = {
+  from: string
+  to: string
 }
 
-type PropertyMapping = Map<string, string>
+type TenantCredentials = {
+  tenantId: string
+  token: string
+}
 
-const getTenantToken = async (tenantId: string): Promise<DbResult<string>> => {
+const getTenantCredentials = async (tenantId: string): Promise<DbResult<TenantCredentials>> => {
   const result = await query<{ access_token: string }>(
     'SELECT access_token FROM oauth_tokens WHERE tenant_id = $1',
     [tenantId]
   )
 
   if (result.success && result.data.length > 0) {
-    return { success: true, data: result.data[0].access_token }
+    return { success: true, data: { tenantId, token: result.data[0].access_token } }
   }
 
-  // Fallback to PAT if no OAuth token (for manual setup/dev)
   const pat = process.env.OWNERREZ_PAT
   if (pat) {
-    return { success: true, data: pat }
+    return { success: true, data: { tenantId, token: pat } }
   }
 
   return { success: false, error: 'No OAuth token or PAT found' }
@@ -85,33 +93,37 @@ const getPropertyMapping = async (tenantId: string): Promise<DbResult<PropertyMa
   return { success: true, data: mapping }
 }
 
-const parseBookingDates = (from?: string, to?: string) => ({
+const parseBookingDates = (from?: string, to?: string): DateRange => ({
   from: from || new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   to: to || new Date().toISOString().split('T')[0]
 })
 
-const fetchBookingsBatch = async (
-  token: string,
-  propertyIds: string[],
-  dateRange: { from: string; to: string }
-): Promise<DbResult<OwnerRezBooking[]>> => {
-  try {
-    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
+const buildAuthHeaders = (token: string) => {
+  const isPAT = !token.startsWith('ey')
 
-    const headers = isPAT
-      ? { 'Accept': 'application/json' }
-      : {
+  return isPAT
+    ? {
+        headers: { 'Accept': 'application/json' },
+        auth: { username: 'martina@***REMOVED***', password: token }
+      }
+    : {
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
         }
+      }
+}
 
-    const auth = isPAT
-      ? { username: 'martina@***REMOVED***', password: token }
-      : undefined
+const fetchBookingsBatch = async (
+  token: string,
+  propertyIds: readonly string[],
+  dateRange: DateRange
+): Promise<DbResult<OwnerRezBooking[]>> => {
+  try {
+    const authConfig = buildAuthHeaders(token)
 
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
-      headers,
-      auth,
+      ...authConfig,
       params: {
         property_ids: propertyIds.join(','),
         from: dateRange.from,
@@ -134,17 +146,18 @@ const fetchBookingsBatch = async (
   }
 }
 
-const fetchAllBookings = async (
-  token: string,
-  propertyIds: string[],
-  dateRange: { from: string; to: string }
-): Promise<DbResult<OwnerRezBooking[]>> => {
-  const batchSize = 50
-  const batches = Array.from(
-    { length: Math.ceil(propertyIds.length / batchSize) },
-    (_, i) => propertyIds.slice(i * batchSize, (i + 1) * batchSize)
+const chunkArray = <T>(array: readonly T[], size: number): T[][] =>
+  Array.from(
+    { length: Math.ceil(array.length / size) },
+    (_, i) => array.slice(i * size, (i + 1) * size)
   )
 
+const fetchAllBookings = async (
+  token: string,
+  propertyIds: readonly string[],
+  dateRange: DateRange
+): Promise<DbResult<OwnerRezBooking[]>> => {
+  const batches = chunkArray(propertyIds, 50)
   const results = await Promise.all(
     batches.map(batch => fetchBookingsBatch(token, batch, dateRange))
   )
@@ -161,11 +174,48 @@ const fetchAllBookings = async (
 const buildGuestName = (guest?: OwnerRezGuest): string | null =>
   guest ? `${guest.first_name} ${guest.last_name}` : null
 
+const createBookingRecord = (
+  booking: OwnerRezBooking,
+  propertyId: string,
+  tenantId: string
+) => ({
+  tenant_id: tenantId,
+  property_id: propertyId,
+  ownerrez_booking_id: booking.id.toString(),
+  arrival: booking.arrival,
+  departure: booking.departure,
+  adults: booking.adults || 0,
+  children: booking.children || 0,
+  infants: booking.infants || 0,
+  pets: booking.pets || 0,
+  guest_name: buildGuestName(booking.guest),
+  guest_email: null,
+  total_amount: booking.total_amount,
+  status: booking.status,
+  platform: booking.listing_site,
+  platform_reservation_number: booking.platform_reservation_number,
+  booked_utc: booking.booked_utc,
+  canceled_utc: booking.canceled_utc
+})
+
+const createChargeRecords = (bookingId: string, charges: BookingCharge[] = []) =>
+  charges.map(charge => ({
+    booking_id: bookingId,
+    type: charge.type,
+    description: charge.description,
+    amount: charge.amount,
+    is_taxable: charge.is_taxable,
+    tax_id: charge.tax_id?.toString() ?? null,
+    position: charge.position
+  }))
+
 const upsertBooking = async (
   booking: OwnerRezBooking,
   propertyId: string,
   tenantId: string
 ): Promise<DbResult<string>> => {
+  const bookingRecord = createBookingRecord(booking, propertyId, tenantId)
+
   const result = await query<{ id: string }>(
     `INSERT INTO bookings (
       tenant_id, property_id, ownerrez_booking_id,
@@ -192,25 +242,7 @@ const upsertBooking = async (
       canceled_utc = EXCLUDED.canceled_utc,
       updated_at = CURRENT_TIMESTAMP
     RETURNING id`,
-    [
-      tenantId,
-      propertyId,
-      booking.id.toString(),
-      booking.arrival,
-      booking.departure,
-      booking.adults || 0,
-      booking.children || 0,
-      booking.infants || 0,
-      booking.pets || 0,
-      buildGuestName(booking.guest),
-      null,
-      booking.total_amount,
-      booking.status,
-      booking.listing_site,
-      booking.platform_reservation_number,
-      booking.booked_utc,
-      booking.canceled_utc
-    ]
+    Object.values(bookingRecord)
   )
 
   return result.success && result.data.length > 0
@@ -229,27 +261,19 @@ const syncBookingCharges = async (
   return transaction(async (client) => {
     await client.query('DELETE FROM booking_charges WHERE booking_id = $1', [bookingId])
 
-    let count = 0
-    for (const charge of charges) {
+    const chargeRecords = createChargeRecords(bookingId, charges)
+
+    for (const charge of chargeRecords) {
       await client.query(
         `INSERT INTO booking_charges (
           booking_id, type, description, amount,
           is_taxable, tax_id, position
         ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [
-          bookingId,
-          charge.type,
-          charge.description,
-          charge.amount,
-          charge.is_taxable,
-          charge.tax_id?.toString() ?? null,
-          charge.position
-        ]
+        Object.values(charge)
       )
-      count++
     }
 
-    return count
+    return charges.length
   })
 }
 
@@ -273,16 +297,16 @@ const syncSingleBooking = async (
   }
 }
 
-const processBookings = async (
-  bookings: OwnerRezBooking[],
+const processBookingBatch = async (
+  bookings: readonly OwnerRezBooking[],
   propertyMapping: PropertyMapping,
   tenantId: string
-): Promise<SyncResult> => {
+): Promise<readonly DbResult<{ chargeCount: number }>[]> => {
   const validBookings = bookings.filter(b =>
     b && typeof b.property_id === 'number' && propertyMapping.has(b.property_id.toString())
   )
 
-  const results = await Promise.all(
+  return Promise.all(
     validBookings.map(booking =>
       syncSingleBooking(
         booking,
@@ -291,7 +315,11 @@ const processBookings = async (
       )
     )
   )
+}
 
+const aggregateSyncResults = (
+  results: readonly DbResult<{ chargeCount: number }>[]
+): { bookingsSynced: number; chargesSynced: number } => {
   const successful = results.filter(r => r.success)
   const totalCharges = successful.reduce(
     (sum, r) => sum + (r.success ? r.data.chargeCount : 0),
@@ -301,6 +329,44 @@ const processBookings = async (
   return {
     bookingsSynced: successful.length,
     chargesSynced: totalCharges
+  }
+}
+
+const performSync = async (
+  credentials: TenantCredentials,
+  propertyMapping: PropertyMapping,
+  dateRange: DateRange
+): Promise<SyncResult> => {
+  const propertyIds = Array.from(propertyMapping.keys())
+
+  if (propertyIds.length === 0) {
+    return {
+      status: 'error',
+      error: 'No properties found. Please run sync-properties first.'
+    }
+  }
+
+  const bookingsResult = await fetchAllBookings(
+    credentials.token,
+    propertyIds,
+    dateRange
+  )
+
+  if (!bookingsResult.success) {
+    return { status: 'error', error: bookingsResult.error }
+  }
+
+  const results = await processBookingBatch(
+    bookingsResult.data,
+    propertyMapping,
+    credentials.tenantId
+  )
+
+  const summary = aggregateSyncResults(results)
+
+  return {
+    status: 'success',
+    ...summary
   }
 }
 
@@ -356,12 +422,12 @@ export async function syncBookings(
   }
 
   try {
-    const tokenResult = await getTenantToken(auth.tenantId)
-    if (!tokenResult.success) {
+    const credentialsResult = await getTenantCredentials(auth.tenantId)
+    if (!credentialsResult.success) {
       return {
         status: 403,
         headers: corsHeaders(),
-        jsonBody: { error: tokenResult.error }
+        jsonBody: { error: credentialsResult.error }
       }
     }
 
@@ -371,17 +437,6 @@ export async function syncBookings(
         status: 500,
         headers: corsHeaders(),
         jsonBody: { status: 'error', error: mappingResult.error }
-      }
-    }
-
-    if (mappingResult.data.size === 0) {
-      return {
-        status: 500,
-        headers: corsHeaders(),
-        jsonBody: {
-          status: 'error',
-          error: 'No properties found. Please run sync-properties first.'
-        }
       }
     }
 
@@ -395,35 +450,16 @@ export async function syncBookings(
       propertyCount: mappingResult.data.size
     })
 
-    const bookingsResult = await fetchAllBookings(
-      tokenResult.data,
-      Array.from(mappingResult.data.keys()),
+    const syncResult = await performSync(
+      credentialsResult.data,
+      mappingResult.data,
       dateRange
     )
 
-    if (!bookingsResult.success) {
-      return {
-        status: 500,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: bookingsResult.error }
-      }
-    }
-
-    context.log(`Found ${bookingsResult.data.length} bookings to sync`)
-
-    const syncResult = await processBookings(
-      bookingsResult.data,
-      mappingResult.data,
-      auth.tenantId
-    )
-
     return {
-      status: 200,
+      status: syncResult.status === 'error' ? 500 : 200,
       headers: corsHeaders(),
-      jsonBody: {
-        status: 'success',
-        ...syncResult
-      }
+      jsonBody: syncResult
     }
 
   } catch (error) {

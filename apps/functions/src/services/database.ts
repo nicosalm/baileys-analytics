@@ -51,3 +51,14 @@ export const transaction = async <T>(
     client.release();
   }
 };
+
+export const withConnection = async <T>(
+  callback: (client: any) => Promise<DbResult<T>>
+): Promise<DbResult<T>> => {
+  const client = await pool.connect();
+  try {
+    return await callback(client);
+  } finally {
+    client.release();
+  }
+};

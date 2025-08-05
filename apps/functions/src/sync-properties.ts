@@ -33,48 +33,55 @@ type OwnerRezProperty = {
   tags?: OwnerRezTag[]
 }
 
-type SyncResult = {
-  propertiesSynced: number
+type SyncResult =
+  | { status: 'success'; propertiesSynced: number; tenantId: string }
+  | { status: 'error'; error: string }
+
+type TenantCredentials = {
   tenantId: string
+  token: string
 }
 
-const getTenantToken = async (tenantId: string): Promise<DbResult<string>> => {
+const getTenantCredentials = async (tenantId: string): Promise<DbResult<TenantCredentials>> => {
   const result = await query<{ access_token: string }>(
     'SELECT access_token FROM oauth_tokens WHERE tenant_id = $1',
     [tenantId]
   )
 
   if (result.success && result.data.length > 0) {
-    return { success: true, data: result.data[0].access_token }
+    return { success: true, data: { tenantId, token: result.data[0].access_token } }
   }
 
-  // Fallback to PAT if no OAuth token (for manual setup/dev)
   const pat = process.env.OWNERREZ_PAT
   if (pat) {
-    return { success: true, data: pat }
+    return { success: true, data: { tenantId, token: pat } }
   }
 
   return { success: false, error: 'No OAuth token or PAT found. Please reconnect OwnerRez.' }
 }
 
-const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
-  try {
-    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
+const buildAuthHeaders = (token: string) => {
+  const isPAT = !token.startsWith('ey')
 
-    const headers = isPAT
-      ? { 'Accept': 'application/json' }
-      : {
+  return isPAT
+    ? {
+        headers: { 'Accept': 'application/json' },
+        auth: { username: 'martina@***REMOVED***', password: token }
+      }
+    : {
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
         }
+      }
+}
 
-    const auth = isPAT
-      ? { username: 'martina@***REMOVED***', password: token }
-      : undefined
+const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
+  try {
+    const authConfig = buildAuthHeaders(token)
 
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
-      headers,
-      auth,
+      ...authConfig,
       params: {
         active: true,
         include_tags: true
@@ -92,10 +99,30 @@ const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty
   }
 }
 
+const createPropertyRecord = (property: OwnerRezProperty, tenantId: string) => ({
+  tenant_id: tenantId,
+  ownerrez_id: property.id.toString(),
+  name: property.name,
+  address: property.address?.street1 || '',
+  city: property.address?.city || '',
+  state: property.address?.state || '',
+  postal_code: property.address?.postal_code || '',
+  bedrooms: property.bedrooms || 0,
+  bathrooms: property.bathrooms || 0,
+  max_guests: property.max_guests || 0,
+  latitude: property.latitude,
+  longitude: property.longitude,
+  thumbnail_url: property.thumbnail_url,
+  public_url: property.public_url,
+  active: property.active !== false
+})
+
 const upsertProperty = async (
   property: OwnerRezProperty,
   tenantId: string
 ): Promise<DbResult<string>> => {
+  const record = createPropertyRecord(property, tenantId)
+
   const result = await query<{ id: string }>(
     `INSERT INTO properties (
       tenant_id, ownerrez_id, name, address, city, state, postal_code,
@@ -118,23 +145,7 @@ const upsertProperty = async (
       active = EXCLUDED.active,
       updated_at = CURRENT_TIMESTAMP
     RETURNING id`,
-    [
-      tenantId,
-      property.id.toString(),
-      property.name,
-      property.address?.street1 || '',
-      property.address?.city || '',
-      property.address?.state || '',
-      property.address?.postal_code || '',
-      property.bedrooms || 0,
-      property.bathrooms || 0,
-      property.max_guests || 0,
-      property.latitude,
-      property.longitude,
-      property.thumbnail_url,
-      property.public_url,
-      property.active !== false
-    ]
+    Object.values(record)
   )
 
   return result.success && result.data.length > 0
@@ -157,43 +168,31 @@ const syncSingleProperty = async (
 }
 
 const syncAllProperties = async (
-  properties: OwnerRezProperty[],
+  properties: readonly OwnerRezProperty[],
   tenantId: string
-): Promise<SyncResult> => {
+): Promise<{ propertiesSynced: number }> => {
   const results = await Promise.all(
     properties.map(property => syncSingleProperty(property, tenantId))
   )
 
-  const syncedCount = results.filter(r => r.success).length
-
   return {
-    propertiesSynced: syncedCount,
-    tenantId
+    propertiesSynced: results.filter(r => r.success).length
   }
 }
 
-const handleSyncError = (
-  error: unknown,
-  context: InvocationContext
-): HttpResponseInit => {
-  if (axios.isAxiosError(error)) {
-    context.error('OwnerRez API error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data
-    })
+const performSync = async (credentials: TenantCredentials): Promise<SyncResult> => {
+  const propertiesResult = await fetchProperties(credentials.token)
+
+  if (!propertiesResult.success) {
+    return { status: 'error', error: propertiesResult.error }
   }
 
-  const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-  context.error('Sync failed:', error)
+  const syncResult = await syncAllProperties(propertiesResult.data, credentials.tenantId)
 
   return {
-    status: 500,
-    headers: corsHeaders(),
-    jsonBody: {
-      status: 'error',
-      error: errorMessage
-    }
+    status: 'success',
+    propertiesSynced: syncResult.propertiesSynced,
+    tenantId: credentials.tenantId
   }
 }
 
@@ -223,40 +222,37 @@ export async function syncProperties(
     }
   }
 
-  try {
-    const tokenResult = await getTenantToken(auth.tenantId)
-    if (!tokenResult.success) {
-      return {
-        status: 403,
-        headers: corsHeaders(),
-        jsonBody: { error: tokenResult.error }
-      }
+  const credentialsResult = await getTenantCredentials(auth.tenantId)
+  if (!credentialsResult.success) {
+    return {
+      status: 403,
+      headers: corsHeaders(),
+      jsonBody: { error: credentialsResult.error }
     }
+  }
 
-    const propertiesResult = await fetchProperties(tokenResult.data)
-    if (!propertiesResult.success) {
-      return {
-        status: 500,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: propertiesResult.error }
-      }
+  context.log('Syncing properties for tenant:', auth.tenantId)
+
+  const syncResult = await performSync(credentialsResult.data)
+
+  if (syncResult.status === 'error') {
+    if (axios.isAxiosError(syncResult.error)) {
+      context.error('OwnerRez API error:', syncResult.error)
     }
-
-    context.log(`Found ${propertiesResult.data.length} properties to sync`)
-
-    const syncResult = await syncAllProperties(propertiesResult.data, auth.tenantId)
 
     return {
-      status: 200,
+      status: 500,
       headers: corsHeaders(),
-      jsonBody: {
-        status: 'success',
-        ...syncResult
-      }
+      jsonBody: syncResult
     }
+  }
 
-  } catch (error) {
-    return handleSyncError(error, context)
+  context.log(`Synced ${syncResult.propertiesSynced} properties`)
+
+  return {
+    status: 200,
+    headers: corsHeaders(),
+    jsonBody: syncResult
   }
 }
 

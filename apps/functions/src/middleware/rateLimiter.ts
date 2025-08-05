@@ -2,52 +2,58 @@ import { HttpRequest, HttpResponseInit } from '@azure/functions';
 import { corsHeaders } from './auth';
 
 type RateLimitConfig = {
-  windowMs: number;
-  maxRequests: number;
-};
+  windowMs: number
+  maxRequests: number
+}
+
+type RateLimitAttempt = {
+  count: number
+  resetAt: number
+}
+
+type RateLimitCheck =
+  | { allowed: true }
+  | { allowed: false; response: HttpResponseInit }
 
 class RateLimiter {
-  private attempts = new Map<string, { count: number; resetAt: number }>();
+  private attempts = new Map<string, RateLimitAttempt>()
 
   constructor(private config: RateLimitConfig) {}
 
   private getKey(request: HttpRequest): string {
-    // Use IP + endpoint as key
     const ip = request.headers.get('x-forwarded-for') ||
                request.headers.get('x-real-ip') ||
-               'unknown';
-    const path = new URL(request.url).pathname;
-    return `${ip}:${path}`;
+               'unknown'
+    const path = new URL(request.url).pathname
+    return `${ip}:${path}`
   }
 
-  private cleanup() {
-    const now = Date.now();
-    for (const [key, value] of this.attempts.entries()) {
-      if (value.resetAt < now) {
-        this.attempts.delete(key);
-      }
-    }
+  private cleanup(): void {
+    const now = Date.now()
+    const keysToDelete = Array.from(this.attempts.entries())
+      .filter(([_, value]) => value.resetAt < now)
+      .map(([key]) => key)
+
+    keysToDelete.forEach(key => this.attempts.delete(key))
   }
 
-  check(request: HttpRequest): { allowed: boolean; response?: HttpResponseInit } {
-    this.cleanup();
+  check(request: HttpRequest): RateLimitCheck {
+    this.cleanup()
 
-    const key = this.getKey(request);
-    const now = Date.now();
-
-    const attempt = this.attempts.get(key);
+    const key = this.getKey(request)
+    const now = Date.now()
+    const attempt = this.attempts.get(key)
 
     if (!attempt || attempt.resetAt < now) {
-      // New window
       this.attempts.set(key, {
         count: 1,
         resetAt: now + this.config.windowMs
-      });
-      return { allowed: true };
+      })
+      return { allowed: true }
     }
 
     if (attempt.count >= this.config.maxRequests) {
-      const retryAfter = Math.ceil((attempt.resetAt - now) / 1000);
+      const retryAfter = Math.ceil((attempt.resetAt - now) / 1000)
       return {
         allowed: false,
         response: {
@@ -61,37 +67,39 @@ class RateLimiter {
             retryAfter
           }
         }
-      };
+      }
     }
 
-    attempt.count++;
-    return { allowed: true };
+    this.attempts.set(key, {
+      ...attempt,
+      count: attempt.count + 1
+    })
+
+    return { allowed: true }
   }
 }
 
-// Different limiters for different endpoints
 export const authLimiter = new RateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5 // 5 attempts per 15 min
-});
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 5
+})
 
 export const apiLimiter = new RateLimiter({
-  windowMs: 60 * 1000, // 1 minute
-  maxRequests: 30 // 30 requests per minute
-});
+  windowMs: 60 * 1000,
+  maxRequests: 30
+})
 
-// Middleware function
 export const withRateLimit = (
   limiter: RateLimiter,
   handler: Function
 ) => {
   return async (request: HttpRequest, context: any) => {
-    const { allowed, response } = limiter.check(request);
+    const result = limiter.check(request)
 
-    if (!allowed) {
-      return response;
+    if (!result.allowed) {
+      return result.response
     }
 
-    return handler(request, context);
-  };
-};
+    return handler(request, context)
+  }
+}
