@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { formatCurrency } from '@baileys/utils'
 import {
@@ -6,6 +6,7 @@ import {
   TrendingUp, Clock, AlertCircle
 } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import { VirtualTable } from '@/components/VirtualTable'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useToast } from '@/contexts/toast'
 import {
@@ -119,6 +120,9 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<GuestDetail | null>(null)
   const [activeTab, setActiveTab] = useState<'bookings' | 'properties' | 'analytics'>('bookings')
+  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
+  const [sortBy, setSortBy] = useState<string>('arrival')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   useEffect(() => {
     let cancelled = false;
@@ -129,25 +133,19 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
       setLoading(true)
       setError(null)
 
-      console.log('Loading guest detail for:', guestId)
-
       try {
         const result = await api.request<GuestDetail>(`/guest/${encodeURIComponent(guestId)}/detail`)
 
-        if (cancelled) return; // Don't update state if component unmounted
-
-        console.log('API result:', result)
+        if (cancelled) return;
 
         if (result.success) {
           setData(result.data)
         } else {
           const errorMsg = result.error || 'Failed to load guest details'
           setError(errorMsg)
-          // Only show toast for non-404 errors to avoid spam
           if (result.status !== 404) {
             addToast('error', `Failed to load guest: ${errorMsg}`)
           }
-          console.error('Failed to load guest detail:', result.error, 'Status:', result.status)
         }
       } catch (err) {
         if (cancelled) return;
@@ -155,7 +153,6 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
         const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred'
         setError(errorMsg)
         addToast('error', `Error loading guest: ${errorMsg}`)
-        console.error('Error loading guest detail:', err)
       } finally {
         if (!cancelled) {
           setLoading(false)
@@ -165,11 +162,209 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
 
     loadGuestDetail()
 
-    // Cleanup function to prevent state updates after unmount
     return () => {
       cancelled = true;
     }
-  }, [guestId]) // Remove addToast from dependencies
+  }, [guestId])
+
+  // Sort bookings
+  const sortedBookings = useMemo(() => {
+    if (!data) return []
+
+    return [...data.bookings].sort((a, b) => {
+      const aVal = a[sortBy as keyof typeof a]
+      const bVal = b[sortBy as keyof typeof b]
+
+      if (aVal === undefined && bVal === undefined) return 0
+      if (aVal === undefined) return 1
+      if (bVal === undefined) return -1
+
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      }
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+    })
+  }, [data, sortBy, sortOrder])
+
+  // Handle sort
+  const handleSort = useCallback((column: string) => {
+    if (column === sortBy) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }, [sortBy])
+
+  // Handle booking click
+  const handleBookingClick = useCallback((booking: GuestDetail['bookings'][0]) => {
+    dispatch({ type: 'DRILL_TO_BOOKING', bookingId: booking.id })
+  }, [dispatch])
+
+  // Handle property click
+  const handlePropertyClick = useCallback((propertyId: string, propertyName: string) => {
+    dispatch({
+      type: 'DRILL_TO_PROPERTY',
+      propertyId,
+      propertyName
+    })
+  }, [dispatch])
+
+  // Handle export
+  const handleExportBookings = useCallback(() => {
+    if (!data) return
+
+    const exportData = selectedBookings.size > 0
+      ? sortedBookings.filter(b => selectedBookings.has(b.id))
+      : sortedBookings
+
+    // Convert to CSV
+    const headers = ['Property', 'Check In', 'Check Out', 'Nights', 'Amount', 'Platform', 'Status']
+    const rows = exportData.map(b => [
+      b.propertyName,
+      new Date(b.arrival).toLocaleDateString(),
+      new Date(b.departure).toLocaleDateString(),
+      b.nights,
+      b.totalAmount,
+      b.platform || 'Direct',
+      b.status
+    ])
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${data.guest.name.replace(/\s+/g, '-')}-bookings.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    addToast('success', `Exported ${exportData.length} bookings`)
+  }, [selectedBookings, sortedBookings, data, addToast])
+
+  // Define columns for bookings table
+  const bookingColumns = useMemo(() => [
+    {
+      key: 'propertyName',
+      header: 'Property',
+      sortable: true,
+      width: 200,
+      render: (booking: GuestDetail['bookings'][0]) => (
+        <div
+          className="font-medium text-blue-600 hover:underline cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation()
+            handlePropertyClick(booking.propertyId, booking.propertyName)
+          }}
+        >
+          {booking.propertyName}
+        </div>
+      )
+    },
+    {
+      key: 'arrival',
+      header: 'Check In',
+      sortable: true,
+      width: 120,
+      render: (booking: GuestDetail['bookings'][0]) =>
+        new Date(booking.arrival).toLocaleDateString()
+    },
+    {
+      key: 'departure',
+      header: 'Check Out',
+      sortable: true,
+      width: 120,
+      render: (booking: GuestDetail['bookings'][0]) =>
+        new Date(booking.departure).toLocaleDateString()
+    },
+    {
+      key: 'nights',
+      header: 'Nights',
+      sortable: true,
+      width: 80,
+      render: (booking: GuestDetail['bookings'][0]) => (
+        <span className="font-medium">{booking.nights}</span>
+      )
+    },
+    {
+      key: 'totalAmount',
+      header: 'Amount',
+      sortable: true,
+      width: 120,
+      render: (booking: GuestDetail['bookings'][0]) => (
+        <span className="font-medium text-green-600">
+          {formatCurrency(booking.totalAmount)}
+        </span>
+      )
+    },
+    {
+      key: 'platform',
+      header: 'Platform',
+      sortable: true,
+      width: 100,
+      render: (booking: GuestDetail['bookings'][0]) => (
+        <span className="text-sm">{booking.platform || 'Direct'}</span>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      width: 100,
+      render: (booking: GuestDetail['bookings'][0]) => (
+        <BookingStatusBadge status={booking.status} />
+      )
+    }
+  ], [handlePropertyClick])
+
+  // Define columns for properties table
+  const propertyColumns = useMemo(() => [
+    {
+      key: 'propertyName',
+      header: 'Property',
+      sortable: true,
+      width: 250,
+      render: (property: GuestDetail['properties'][0]) => (
+        <div className="font-medium">{property.propertyName}</div>
+      )
+    },
+    {
+      key: 'bookingCount',
+      header: 'Stays',
+      sortable: true,
+      width: 80,
+      render: (property: GuestDetail['properties'][0]) => (
+        <span className="font-medium">{property.bookingCount}</span>
+      )
+    },
+    {
+      key: 'totalSpent',
+      header: 'Total Spent',
+      sortable: true,
+      width: 120,
+      render: (property: GuestDetail['properties'][0]) => (
+        <span className="font-medium text-green-600">
+          {formatCurrency(property.totalSpent)}
+        </span>
+      )
+    },
+    {
+      key: 'avgNightlyRate',
+      header: 'Avg/Night',
+      sortable: true,
+      width: 100,
+      render: (property: GuestDetail['properties'][0]) =>
+        formatCurrency(property.avgNightlyRate)
+    },
+    {
+      key: 'lastStay',
+      header: 'Last Stay',
+      sortable: true,
+      width: 120,
+      render: (property: GuestDetail['properties'][0]) =>
+        new Date(property.lastStay).toLocaleDateString()
+    }
+  ], [])
 
   if (loading) {
     return (
@@ -205,19 +400,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
     )
   }
 
-  const { guest, bookings, properties, spendingTrend, tags, paymentMethods } = data
-
-  const handleBookingClick = (bookingId: string) => {
-    dispatch({ type: 'DRILL_TO_BOOKING', bookingId })
-  }
-
-  const handlePropertyClick = (propertyId: string, propertyName: string) => {
-    dispatch({
-      type: 'DRILL_TO_PROPERTY',
-      propertyId,
-      propertyName
-    })
-  }
+  const { guest, properties, spendingTrend, tags, paymentMethods } = data
 
   const tagsByType = tags.reduce((acc, tag) => {
     if (!acc[tag.type]) acc[tag.type] = []
@@ -403,73 +586,75 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
 
         <div className="p-6">
           {activeTab === 'bookings' && (
-            <div className="overflow-x-auto">
-              {bookings && bookings.length > 0 ? (
-                <table className="min-w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-2">Property</th>
-                      <th className="text-left py-2">Check In</th>
-                      <th className="text-left py-2">Check Out</th>
-                      <th className="text-center py-2">Nights</th>
-                      <th className="text-right py-2">Amount</th>
-                      <th className="text-left py-2">Platform</th>
-                      <th className="text-left py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((booking, index) => (
-                      <tr
-                        key={`${booking.id}-${index}`}
-                        className="border-b hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleBookingClick(booking.id)}
-                      >
-                        <td className="py-2">{booking.propertyName}</td>
-                        <td className="py-2">{new Date(booking.arrival).toLocaleDateString()}</td>
-                        <td className="py-2">{new Date(booking.departure).toLocaleDateString()}</td>
-                        <td className="py-2 text-center">{booking.nights}</td>
-                        <td className="py-2 text-right">{formatCurrency(booking.totalAmount)}</td>
-                        <td className="py-2">{booking.platform || 'Direct'}</td>
-                        <td className="py-2">
-                          <BookingStatusBadge status={booking.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <p className="text-gray-500">No bookings found</p>
-              )}
-            </div>
+            <VirtualTable
+              data={sortedBookings}
+              columns={bookingColumns}
+              height={400}
+              loading={loading}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleSort}
+              onRowClick={handleBookingClick}
+              getRowId={(booking) => booking.id}
+              enablePagination={sortedBookings.length > 20}
+              pageSize={20}
+              enableSearch={true}
+              searchKeys={['propertyName']}
+              enableExport={true}
+              onExport={handleExportBookings}
+              selectable={true}
+              selectedRows={selectedBookings}
+              onSelectionChange={setSelectedBookings}
+              emptyMessage="No bookings found"
+              rowClassName={(booking) =>
+                booking.status === 'cancelled' ? 'opacity-50' : ''
+              }
+            />
           )}
 
           {activeTab === 'properties' && (
-            <div className="space-y-3">
-              {properties && properties.length > 0 ? (
-                properties.map((property, index) => (
-                  <div
-                    key={`${property.propertyId}-${index}`}
-                    className="p-4 border rounded hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handlePropertyClick(property.propertyId, property.propertyName)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{property.propertyName}</h4>
-                        <p className="text-sm text-gray-600">
-                          {property.bookingCount} stays • Last: {new Date(property.lastStay).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-medium">{formatCurrency(property.totalSpent)}</div>
-                        <div className="text-sm text-gray-500">{formatCurrency(property.avgNightlyRate)}/night</div>
+            properties && properties.length > 10 ? (
+              <VirtualTable
+                data={properties}
+                columns={propertyColumns}
+                height={400}
+                onRowClick={(property) => handlePropertyClick(property.propertyId, property.propertyName)}
+                getRowId={(property) => property.propertyId}
+                sortBy="totalSpent"
+                sortOrder="desc"
+                onSort={handleSort}
+                enablePagination={properties.length > 20}
+                pageSize={20}
+                emptyMessage="No properties found"
+              />
+            ) : (
+              <div className="space-y-3">
+                {properties && properties.length > 0 ? (
+                  properties.map((property) => (
+                    <div
+                      key={property.propertyId}
+                      className="p-4 border rounded hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handlePropertyClick(property.propertyId, property.propertyName)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-medium">{property.propertyName}</h4>
+                          <p className="text-sm text-gray-600">
+                            {property.bookingCount} stays • Last: {new Date(property.lastStay).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">{formatCurrency(property.totalSpent)}</div>
+                          <div className="text-sm text-gray-500">{formatCurrency(property.avgNightlyRate)}/night</div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500">No properties found</p>
-              )}
-            </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No properties found</p>
+                )}
+              </div>
+            )
           )}
 
           {activeTab === 'analytics' && (

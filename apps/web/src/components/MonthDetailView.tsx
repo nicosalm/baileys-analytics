@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency } from '@baileys/utils'
-import { Calendar, TrendingUp } from 'lucide-react'
+import { formatCurrency, formatPercentage } from '@baileys/utils'
+import { Calendar, TrendingUp, Home, Download } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import { VirtualTable } from '@/components/VirtualTable'
 import { useDrillDown } from '@/contexts/drillDown'
+import { useToast } from '@/contexts/toast'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 
 type MonthDetail = {
@@ -12,6 +14,8 @@ type MonthDetail = {
     totalTax: number
     totalBookings: number
     avgNightlyRate: number
+    occupancyRate: number
+    totalNights: number
   }
   byProperty: Array<{
     propertyId: string
@@ -19,24 +23,37 @@ type MonthDetail = {
     revenue: number
     bookings: number
     tax: number
+    occupancyRate: number
+    avgNightlyRate: number
   }>
   bookings: Array<{
     id: string
+    propertyId: string
     propertyName: string
     guestName: string
+    guestEmail?: string
     arrival: string
     departure: string
+    nights: number
     totalAmount: number
+    taxAmount: number
     status: string
+    platform?: string
+    bookedDate: string
   }>
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
 
 export const MonthDetailView = ({ month, year }: { month: string; year: string }) => {
   const { dispatch } = useDrillDown()
+  const { addToast } = useToast()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<MonthDetail | null>(null)
+  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
+  const [sortBy, setSortBy] = useState<string>('arrival')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [propertyFilter, setPropertyFilter] = useState<string>('all')
 
   useEffect(() => {
     const loadMonthDetail = async () => {
@@ -48,12 +65,253 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
 
       if (result.success) {
         setData(result.data)
+      } else {
+        addToast('error', 'Failed to load month details')
       }
       setLoading(false)
     }
 
     loadMonthDetail()
   }, [month, year])
+
+  // Filter bookings by property
+  const filteredBookings = useMemo(() => {
+    if (!data) return []
+    if (propertyFilter === 'all') return data.bookings
+    return data.bookings.filter(b => b.propertyId === propertyFilter)
+  }, [data, propertyFilter])
+
+  // Sort bookings
+  const sortedBookings = useMemo(() => {
+    return [...filteredBookings].sort((a, b) => {
+      const aVal = a[sortBy as keyof typeof a]
+      const bVal = b[sortBy as keyof typeof b]
+
+      // Handle undefined values
+      if (aVal === undefined && bVal === undefined) return 0
+      if (aVal === undefined) return 1
+      if (bVal === undefined) return -1
+
+      if (sortOrder === 'asc') {
+        return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+      }
+      return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+    })
+  }, [filteredBookings, sortBy, sortOrder])
+
+  // Handle sort
+  const handleSort = useCallback((column: string) => {
+    if (column === sortBy) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortBy(column)
+      setSortOrder('desc')
+    }
+  }, [sortBy])
+
+  // Handle export
+  const handleExport = useCallback(() => {
+    const exportData = selectedBookings.size > 0
+      ? sortedBookings.filter(b => selectedBookings.has(b.id))
+      : sortedBookings
+
+    // Convert to CSV
+    const headers = ['Property', 'Guest', 'Email', 'Check In', 'Check Out', 'Nights', 'Amount', 'Tax', 'Status', 'Platform']
+    const rows = exportData.map(b => [
+      b.propertyName,
+      b.guestName,
+      b.guestEmail || '',
+      new Date(b.arrival).toLocaleDateString(),
+      new Date(b.departure).toLocaleDateString(),
+      b.nights,
+      b.totalAmount,
+      b.taxAmount,
+      b.status,
+      b.platform || 'Direct'
+    ])
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bookings-${year}-${month}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    addToast('success', `Exported ${exportData.length} bookings`)
+  }, [selectedBookings, sortedBookings, year, month, addToast])
+
+  // Define columns for bookings table
+  const bookingColumns = useMemo(() => [
+    {
+      key: 'propertyName',
+      header: 'Property',
+      sortable: true,
+      width: 200,
+      render: (booking: MonthDetail['bookings'][0]) => (
+        <div
+          className="font-medium text-blue-600 hover:underline cursor-pointer"
+          onClick={(e) => {
+            e.stopPropagation()
+            dispatch({
+              type: 'DRILL_TO_PROPERTY',
+              propertyId: booking.propertyId,
+              propertyName: booking.propertyName
+            })
+          }}
+        >
+          {booking.propertyName}
+        </div>
+      )
+    },
+    {
+      key: 'guestName',
+      header: 'Guest',
+      sortable: true,
+      width: 200,
+      render: (booking: MonthDetail['bookings'][0]) => (
+        <div>
+          <div className="font-medium">{booking.guestName}</div>
+          {booking.guestEmail && (
+            <div className="text-xs text-gray-500">{booking.guestEmail}</div>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'arrival',
+      header: 'Check In',
+      sortable: true,
+      width: 120,
+      render: (booking: MonthDetail['bookings'][0]) =>
+        new Date(booking.arrival).toLocaleDateString()
+    },
+    {
+      key: 'departure',
+      header: 'Check Out',
+      sortable: true,
+      width: 120,
+      render: (booking: MonthDetail['bookings'][0]) =>
+        new Date(booking.departure).toLocaleDateString()
+    },
+    {
+      key: 'nights',
+      header: 'Nights',
+      sortable: true,
+      width: 80,
+      render: (booking: MonthDetail['bookings'][0]) => (
+        <span className="font-medium">{booking.nights}</span>
+      )
+    },
+    {
+      key: 'totalAmount',
+      header: 'Amount',
+      sortable: true,
+      width: 120,
+      render: (booking: MonthDetail['bookings'][0]) => (
+        <span className="font-medium text-green-600">
+          {formatCurrency(booking.totalAmount)}
+        </span>
+      )
+    },
+    {
+      key: 'taxAmount',
+      header: 'Tax',
+      sortable: true,
+      width: 100,
+      render: (booking: MonthDetail['bookings'][0]) =>
+        formatCurrency(booking.taxAmount)
+    },
+    {
+      key: 'platform',
+      header: 'Platform',
+      sortable: true,
+      width: 100,
+      render: (booking: MonthDetail['bookings'][0]) => (
+        <span className="text-sm">{booking.platform || 'Direct'}</span>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      width: 100,
+      render: (booking: MonthDetail['bookings'][0]) => (
+        <span className={`px-2 py-1 text-xs rounded-full ${
+          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+          'bg-gray-100 text-gray-800'
+        }`}>
+          {booking.status}
+        </span>
+      )
+    }
+  ], [dispatch])
+
+  // Define columns for property summary table
+  const propertyColumns = useMemo(() => [
+    {
+      key: 'propertyName',
+      header: 'Property',
+      sortable: true,
+      width: 250,
+      render: (property: MonthDetail['byProperty'][0]) => (
+        <div className="font-medium">{property.propertyName}</div>
+      )
+    },
+    {
+      key: 'bookings',
+      header: 'Bookings',
+      sortable: true,
+      width: 100,
+      render: (property: MonthDetail['byProperty'][0]) => (
+        <span className="font-medium">{property.bookings}</span>
+      )
+    },
+    {
+      key: 'revenue',
+      header: 'Revenue',
+      sortable: true,
+      width: 120,
+      render: (property: MonthDetail['byProperty'][0]) => (
+        <span className="font-medium text-green-600">
+          {formatCurrency(property.revenue)}
+        </span>
+      )
+    },
+    {
+      key: 'tax',
+      header: 'Tax',
+      sortable: true,
+      width: 100,
+      render: (property: MonthDetail['byProperty'][0]) =>
+        formatCurrency(property.tax)
+    },
+    {
+      key: 'avgNightlyRate',
+      header: 'Avg Rate',
+      sortable: true,
+      width: 100,
+      render: (property: MonthDetail['byProperty'][0]) =>
+        formatCurrency(property.avgNightlyRate)
+    },
+    {
+      key: 'occupancyRate',
+      header: 'Occupancy',
+      sortable: true,
+      width: 100,
+      render: (property: MonthDetail['byProperty'][0]) => (
+        <span className={`font-medium ${
+          property.occupancyRate > 0.8 ? 'text-green-600' :
+          property.occupancyRate > 0.6 ? 'text-yellow-600' :
+          'text-red-600'
+        }`}>
+          {formatPercentage(property.occupancyRate * 100, 0)}
+        </span>
+      )
+    }
+  ], [])
 
   if (loading) {
     return (
@@ -73,6 +331,20 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
     color: COLORS[index % COLORS.length]
   }))
 
+  const handlePropertyClick = (property: MonthDetail['byProperty'][0]) => {
+    dispatch({
+      type: 'DRILL_TO_PROPERTY_MONTH',
+      propertyId: property.propertyId,
+      propertyName: property.propertyName,
+      month,
+      year
+    })
+  }
+
+  const handleBookingClick = (booking: MonthDetail['bookings'][0]) => {
+    dispatch({ type: 'DRILL_TO_BOOKING', bookingId: booking.id })
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">{monthName} Overview</h2>
@@ -84,10 +356,16 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
             Total Revenue
           </div>
           <div className="text-3xl font-bold">{formatCurrency(data.summary.totalRevenue)}</div>
+          <div className="text-sm text-gray-500 mt-1">
+            {formatCurrency(data.summary.avgNightlyRate)}/night avg
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-600 mb-2">Total Tax</div>
           <div className="text-3xl font-bold">{formatCurrency(data.summary.totalTax)}</div>
+          <div className="text-sm text-gray-500 mt-1">
+            {formatPercentage((data.summary.totalTax / data.summary.totalRevenue) * 100, 1)} of revenue
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -95,10 +373,25 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
             Total Bookings
           </div>
           <div className="text-3xl font-bold">{data.summary.totalBookings}</div>
+          <div className="text-sm text-gray-500 mt-1">
+            {data.summary.totalNights} nights
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <div className="text-sm text-gray-600 mb-2">Avg Nightly Rate</div>
-          <div className="text-3xl font-bold">{formatCurrency(data.summary.avgNightlyRate)}</div>
+          <div className="flex items-center text-sm text-gray-600 mb-2">
+            <Home className="w-4 h-4 mr-1" />
+            Occupancy Rate
+          </div>
+          <div className={`text-3xl font-bold ${
+            data.summary.occupancyRate > 0.8 ? 'text-green-600' :
+            data.summary.occupancyRate > 0.6 ? 'text-yellow-600' :
+            'text-red-600'
+          }`}>
+            {formatPercentage(data.summary.occupancyRate * 100, 0)}
+          </div>
+          <div className="text-sm text-gray-500 mt-1">
+            across {data.byProperty.length} properties
+          </div>
         </div>
       </div>
 
@@ -115,19 +408,9 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
-                  cursor="pointer"
-                  onClick={(data: any) => {
-                    const property = data.byProperty.find((p: any) => p.propertyName === data.name)
-                    if (property) {
-                      dispatch({
-                        type: 'DRILL_TO_PROPERTY_MONTH',
-                        propertyId: property.propertyId,
-                        propertyName: property.propertyName,
-                        month,
-                        year
-                      })
-                    }
-                  }}
+                  label={({ name, percent }) =>
+                    `${name.length > 15 ? name.substring(0, 12) + '...' : name} ${formatPercentage((percent || 0) * 100, 0)}`
+                  }
                 >
                   {pieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
@@ -141,73 +424,98 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
 
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4">Property Performance</h3>
-          <div className="space-y-2">
-            {data.byProperty.map(property => (
-              <div
-                key={property.propertyId}
-                className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 cursor-pointer"
-                onClick={() => dispatch({
-                  type: 'DRILL_TO_PROPERTY_MONTH',
-                  propertyId: property.propertyId,
-                  propertyName: property.propertyName,
-                  month,
-                  year
-                })}
-              >
-                <div>
-                  <div className="font-medium">{property.propertyName}</div>
-                  <div className="text-sm text-gray-600">{property.bookings} bookings</div>
+          {data.byProperty.length <= 10 ? (
+            // Simple list for small number of properties
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {data.byProperty.map(property => (
+                <div
+                  key={property.propertyId}
+                  className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handlePropertyClick(property)}
+                >
+                  <div>
+                    <div className="font-medium">{property.propertyName}</div>
+                    <div className="text-sm text-gray-600">{property.bookings} bookings</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">{formatCurrency(property.revenue)}</div>
+                    <div className="text-sm text-gray-600">{formatCurrency(property.tax)} tax</div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-medium">{formatCurrency(property.revenue)}</div>
-                  <div className="text-sm text-gray-600">{formatCurrency(property.tax)} tax</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            // VirtualTable for many properties
+            <VirtualTable
+              data={data.byProperty}
+              columns={propertyColumns}
+              height={320}
+              rowHeight={48}
+              onRowClick={handlePropertyClick}
+              getRowId={(property) => property.propertyId}
+              sortBy="revenue"
+              sortOrder="desc"
+              onSort={handleSort}
+              emptyMessage="No properties found"
+            />
+          )}
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-bold mb-4">All Bookings</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2">Property</th>
-                <th className="text-left py-2">Guest</th>
-                <th className="text-left py-2">Check In</th>
-                <th className="text-left py-2">Check Out</th>
-                <th className="text-right py-2">Amount</th>
-                <th className="text-left py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.bookings.map(booking => (
-                <tr
-                  key={booking.id}
-                  className="border-b hover:bg-gray-50 cursor-pointer"
-                  onClick={() => dispatch({ type: 'DRILL_TO_BOOKING', bookingId: booking.id })}
+      <div className="bg-white rounded-lg shadow">
+        <div className="p-4 border-b">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-bold">All Bookings ({sortedBookings.length})</h3>
+            <div className="flex items-center space-x-4">
+              {data.byProperty.length > 1 && (
+                <select
+                  value={propertyFilter}
+                  onChange={(e) => setPropertyFilter(e.target.value)}
+                  className="px-3 py-1 border rounded text-sm"
                 >
-                  <td className="py-2">{booking.propertyName}</td>
-                  <td className="py-2">{booking.guestName}</td>
-                  <td className="py-2">{new Date(booking.arrival).toLocaleDateString()}</td>
-                  <td className="py-2">{new Date(booking.departure).toLocaleDateString()}</td>
-                  <td className="py-2 text-right">{formatCurrency(booking.totalAmount)}</td>
-                  <td className="py-2">
-                    <span className={`px-2 py-1 text-xs rounded ${
-                      booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {booking.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <option value="all">All Properties</option>
+                  {data.byProperty.map(p => (
+                    <option key={p.propertyId} value={p.propertyId}>
+                      {p.propertyName}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={handleExport}
+                className="flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+              >
+                <Download className="w-4 h-4 mr-1" />
+                Export
+              </button>
+            </div>
+          </div>
         </div>
+
+        <VirtualTable
+          data={sortedBookings}
+          columns={bookingColumns}
+          height={600}
+          loading={loading}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          onRowClick={handleBookingClick}
+          getRowId={(booking) => booking.id}
+          enablePagination={sortedBookings.length > 50}
+          pageSize={30}
+          enableSearch={true}
+          searchKeys={['guestName', 'propertyName', 'guestEmail']}
+          enableExport={true}
+          onExport={handleExport}
+          selectable={true}
+          selectedRows={selectedBookings}
+          onSelectionChange={setSelectedBookings}
+          emptyMessage="No bookings found"
+          rowClassName={(booking) =>
+            booking.status === 'cancelled' ? 'opacity-50' : ''
+          }
+        />
       </div>
     </div>
   )

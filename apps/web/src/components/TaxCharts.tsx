@@ -42,8 +42,8 @@ export const PropertyTaxChart = ({
     }))
 
     const handleClick = (data: any) => {
-        if (onPropertyClick && data && data.activePayload && data.activePayload[0]) {
-            const property = data.activePayload[0].payload
+        if (onPropertyClick && data && data.payload) {
+            const property = data.payload
             onPropertyClick({
                 propertyId: property.propertyId,
                 propertyName: property.fullName,
@@ -58,7 +58,10 @@ export const PropertyTaxChart = ({
     return (
         <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} onClick={handleClick} margin={{ left: 10, right: 10, top: 10, bottom: 60 }}>
+                <BarChart
+                    data={chartData}
+                    margin={{ left: 10, right: 10, top: 10, bottom: 60 }}
+                >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                         dataKey="name"
@@ -88,8 +91,20 @@ export const PropertyTaxChart = ({
                         }}
                     />
                     <Legend />
-                    <Bar dataKey="rent" fill="#3B82F6" name="Rent" cursor="pointer" />
-                    <Bar dataKey="tax" fill="#10B981" name="Tax" cursor="pointer" />
+                    <Bar
+                        dataKey="rent"
+                        fill="#3B82F6"
+                        name="Rent"
+                        cursor="pointer"
+                        onClick={handleClick}
+                    />
+                    <Bar
+                        dataKey="tax"
+                        fill="#10B981"
+                        name="Tax"
+                        cursor="pointer"
+                        onClick={handleClick}
+                    />
                 </BarChart>
             </ResponsiveContainer>
         </div>
@@ -113,15 +128,23 @@ export const MonthlyTrendChart = ({
     }))
 
     const handleClick = (data: any) => {
-        if (onMonthClick && data && data.activePayload && data.activePayload[0]) {
-            onMonthClick(data.activePayload[0].payload.month)
+        if (onMonthClick && data && data.activeLabel) {
+            // Find the original month string from the display label
+            const monthData = chartData.find(m => m.displayMonth === data.activeLabel)
+            if (monthData) {
+                onMonthClick(monthData.month)
+            }
         }
     }
 
     return (
         <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} onClick={handleClick} margin={{ left: 10, right: 10, top: 10, bottom: 20 }}>
+                <LineChart
+                    data={chartData}
+                    onClick={handleClick}
+                    margin={{ left: 10, right: 10, top: 10, bottom: 20 }}
+                >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                         dataKey="displayMonth"

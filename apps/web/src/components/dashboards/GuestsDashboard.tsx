@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { formatCurrency, formatPercentage, ensureNumber, isValidDateRange } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import { VirtualTable } from '@/components/VirtualTable'
 import { useToast } from '@/contexts/toast'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useDashboard } from '@/contexts/dashboard'
@@ -73,83 +74,20 @@ const MetricsCard = ({
     value,
     subtext
 }: {
-        icon: React.ComponentType<{ className?: string }>
-        label: string
-        value: string | number
-        subtext?: string
-    }) => (
-        <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center text-sm text-gray-600 mb-2">
-                <Icon className="w-4 h-4 mr-1" />
-                {label}
-            </div>
-            <div className="text-3xl font-bold">{value}</div>
-            {subtext && <div className="text-sm text-gray-500 mt-1">{subtext}</div>}
+    icon: React.ComponentType<{ className?: string }>
+    label: string
+    value: string | number
+    subtext?: string
+}) => (
+    <div className="bg-white p-6 rounded-lg shadow">
+        <div className="flex items-center text-sm text-gray-600 mb-2">
+            <Icon className="w-4 h-4 mr-1" />
+            {label}
         </div>
-    )
-
-const GuestRow = ({
-    guest,
-    onGuestClick,
-    onTagClick
-}: {
-        guest: GuestListItem
-        onGuestClick: (guest: GuestListItem) => void
-        onTagClick: (tag: GuestListItem['tags'][0]) => void
-    }) => (
-        <tr
-            className="border-b hover:bg-gray-50 cursor-pointer"
-            onClick={() => onGuestClick(guest)}
-        >
-            <td className="py-3 px-4">
-                <div className="font-medium">{guest.name}</div>
-                {guest.email && <div className="text-sm text-gray-500">{guest.email}</div>}
-            </td>
-            <td className="py-3 px-4 text-center">{guest.bookingCount}</td>
-            <td className="py-3 px-4 text-right">{formatCurrency(guest.totalSpent)}</td>
-            <td className="py-3 px-4 text-right">{formatCurrency(guest.avgNightlyRate)}</td>
-            <td className="py-3 px-4">
-                <div className="text-sm">
-                    <div>{new Date(guest.firstVisit).toLocaleDateString()}</div>
-                    <div className="text-gray-500">{new Date(guest.lastVisit).toLocaleDateString()}</div>
-                </div>
-            </td>
-            <td className="py-3 px-4">
-                <div className="flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()}>
-                    {guest.tags.map(tag => {
-                        const style = tag.color ? {
-                            backgroundColor: `${tag.color}20`,
-                            color: tag.color,
-                            borderColor: tag.color
-                        } : undefined
-
-                        return tag.color ? (
-                            <span
-                                key={tag.id}
-                                className="px-2 py-0.5 text-xs rounded-full border cursor-pointer hover:opacity-80"
-                                style={style}
-                                onClick={() => onTagClick(tag)}
-                            >
-                                {tag.name}
-                            </span>
-                        ) : (
-                                <span
-                                    key={tag.id}
-                                    className={`px-2 py-0.5 text-xs rounded-full border cursor-pointer hover:opacity-80 ${
-                                        tag.type === 'payment' ? 'bg-green-100 text-green-800 border-green-300' :
-                                        tag.type === 'guest' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                                        'bg-gray-100 text-gray-800 border-gray-300'
-                                        }`}
-                                    onClick={() => onTagClick(tag)}
-                                >
-                                    {tag.name}
-                                </span>
-                            )
-                    })}
-                </div>
-            </td>
-        </tr>
-    )
+        <div className="text-3xl font-bold">{value}</div>
+        {subtext && <div className="text-sm text-gray-500 mt-1">{subtext}</div>}
+    </div>
+)
 
 export const GuestsDashboard = () => {
     const { addToast } = useToast()
@@ -157,8 +95,10 @@ export const GuestsDashboard = () => {
     const { filters } = useDashboard()
     const [loading, setLoading] = useState(false)
     const [data, setData] = useState<GuestsData | null>(null)
-    const [sortBy, setSortBy] = useState<'name' | 'bookings' | 'spent' | 'recent'>('spent')
-    const [filterTag, setFilterTag] = useState<string | null>(null)
+    const [sortBy, setSortBy] = useState<string>('totalSpent')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+    const [selectedGuests, setSelectedGuests] = useState<Set<string>>(new Set())
+    const [viewMode, setViewMode] = useState<'all' | 'vip' | 'repeat'>('all')
 
     const loadGuestsData = async () => {
         if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
@@ -186,7 +126,189 @@ export const GuestsDashboard = () => {
         loadGuestsData()
     }, [filters.dateRange, filters.selectedTags])
 
-    if (loading) {
+    // Filter guests based on view mode
+    const filteredGuests = useMemo(() => {
+        if (!data) return []
+
+        let filtered = [...data.guests]
+
+        switch (viewMode) {
+            case 'vip':
+                filtered = filtered.filter(g => g.totalSpent > 5000 || g.bookingCount > 5)
+                break
+            case 'repeat':
+                filtered = filtered.filter(g => g.bookingCount > 1)
+                break
+        }
+
+        return filtered
+    }, [data, viewMode])
+
+    // Sort guests
+    const sortedGuests = useMemo(() => {
+        return [...filteredGuests].sort((a, b) => {
+            const aVal = a[sortBy as keyof typeof a]
+            const bVal = b[sortBy as keyof typeof b]
+
+            // Handle undefined values
+            if (aVal === undefined && bVal === undefined) return 0
+            if (aVal === undefined) return 1
+            if (bVal === undefined) return -1
+
+            if (sortOrder === 'asc') {
+                return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+            }
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+        })
+    }, [filteredGuests, sortBy, sortOrder])
+
+    // Handle guest click
+    const handleGuestClick = useCallback((guest: GuestListItem) => {
+        dispatch({
+            type: 'DRILL_TO_GUEST',
+            guestId: guest.id,
+            guestName: guest.name
+        })
+    }, [dispatch])
+
+    // Handle sort
+    const handleSort = useCallback((column: string) => {
+        if (column === sortBy) {
+            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+        } else {
+            setSortBy(column)
+            setSortOrder('desc')
+        }
+    }, [sortBy])
+
+    // Handle export
+    const handleExport = useCallback(() => {
+        const exportData = selectedGuests.size > 0
+            ? sortedGuests.filter(g => selectedGuests.has(g.id))
+            : sortedGuests
+
+        // Convert to CSV
+        const headers = ['Name', 'Email', 'Bookings', 'Total Spent', 'Avg/Night', 'First Visit', 'Last Visit']
+        const rows = exportData.map(g => [
+            g.name,
+            g.email || '',
+            g.bookingCount,
+            g.totalSpent,
+            g.avgNightlyRate,
+            new Date(g.firstVisit).toLocaleDateString(),
+            new Date(g.lastVisit).toLocaleDateString()
+        ])
+
+        const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `guests-export-${new Date().toISOString().split('T')[0]}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+
+        addToast('success', `Exported ${exportData.length} guests`)
+    }, [selectedGuests, sortedGuests, addToast])
+
+    // Define columns for VirtualTable
+    const columns = useMemo(() => [
+        {
+            key: 'name',
+            header: 'Guest',
+            sortable: true,
+            width: 250,
+            render: (guest: GuestListItem) => (
+                <div>
+                    <div className="font-medium">{guest.name}</div>
+                    {guest.email && <div className="text-sm text-gray-500">{guest.email}</div>}
+                </div>
+            )
+        },
+        {
+            key: 'bookingCount',
+            header: 'Bookings',
+            sortable: true,
+            width: 100,
+            render: (guest: GuestListItem) => (
+                <span className="font-medium">{guest.bookingCount}</span>
+            )
+        },
+        {
+            key: 'totalSpent',
+            header: 'Total Spent',
+            sortable: true,
+            width: 150,
+            render: (guest: GuestListItem) => (
+                <span className="font-medium text-green-600">
+                    {formatCurrency(guest.totalSpent)}
+                </span>
+            )
+        },
+        {
+            key: 'avgNightlyRate',
+            header: 'Avg/Night',
+            sortable: true,
+            width: 120,
+            render: (guest: GuestListItem) => formatCurrency(guest.avgNightlyRate)
+        },
+        {
+            key: 'firstVisit',
+            header: 'First Visit',
+            sortable: true,
+            width: 120,
+            render: (guest: GuestListItem) => new Date(guest.firstVisit).toLocaleDateString()
+        },
+        {
+            key: 'lastVisit',
+            header: 'Last Visit',
+            sortable: true,
+            width: 120,
+            render: (guest: GuestListItem) => new Date(guest.lastVisit).toLocaleDateString()
+        },
+        {
+            key: 'tags',
+            header: 'Tags',
+            width: 200,
+            render: (guest: GuestListItem) => (
+                <div className="flex flex-wrap gap-1">
+                    {guest.tags.slice(0, 3).map(tag => {
+                        const style = tag.color ? {
+                            backgroundColor: `${tag.color}20`,
+                            color: tag.color,
+                            borderColor: tag.color
+                        } : undefined
+
+                        return tag.color ? (
+                            <span
+                                key={tag.id}
+                                className="px-2 py-0.5 text-xs rounded-full border"
+                                style={style}
+                            >
+                                {tag.name}
+                            </span>
+                        ) : (
+                            <span
+                                key={tag.id}
+                                className={`px-2 py-0.5 text-xs rounded-full border ${
+                                    tag.type === 'payment' ? 'bg-green-100 text-green-800 border-green-300' :
+                                    tag.type === 'guest' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                                    'bg-gray-100 text-gray-800 border-gray-300'
+                                }`}
+                            >
+                                {tag.name}
+                            </span>
+                        )
+                    })}
+                    {guest.tags.length > 3 && (
+                        <span className="text-xs text-gray-500">+{guest.tags.length - 3}</span>
+                    )}
+                </div>
+            )
+        }
+    ], [])
+
+    if (loading && !data) {
         return (
             <div className="flex justify-center py-12">
                 <Spinner size="lg" />
@@ -196,49 +318,18 @@ export const GuestsDashboard = () => {
 
     if (!data) return null
 
-    const handleGuestClick = (guest: GuestListItem) => {
-        dispatch({
-            type: 'DRILL_TO_GUEST',
-            guestId: guest.id,
-            guestName: guest.name
-        })
-    }
-
-    const handleTagFilter = (tag: GuestListItem['tags'][0]) => {
-        setFilterTag(filterTag === tag.id ? null : tag.id)
-    }
-
-    const sortedGuests = [...data.guests].sort((a, b) => {
-        switch (sortBy) {
-            case 'name':
-                return a.name.localeCompare(b.name)
-            case 'bookings':
-                return b.bookingCount - a.bookingCount
-            case 'spent':
-                return b.totalSpent - a.totalSpent
-            case 'recent':
-                return new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime()
-            default:
-                return 0
-        }
-    })
-
-    const filteredGuests = filterTag
-        ? sortedGuests.filter(g => g.tags.some(t => t.id === filterTag))
-        : sortedGuests
-
     const sourceChartData = data.metrics.guestsBySource.map((source, index) => ({
         ...source,
         color: COLORS[index % COLORS.length]
     }))
 
     const tagChartData = data.metrics.tagDistribution
-    .slice(0, 10)
-    .map((tag, index) => ({
-        name: tag.name,
-        value: tag.count,
-        color: tag.color || COLORS[index % COLORS.length]
-    }))
+        .slice(0, 10)
+        .map((tag, index) => ({
+            name: tag.name,
+            value: tag.count,
+            color: tag.color || COLORS[index % COLORS.length]
+        }))
 
     return (
         <div className="space-y-6">
@@ -338,14 +429,7 @@ export const GuestsDashboard = () => {
                                 <XAxis type="number" />
                                 <YAxis dataKey="name" type="category" width={100} />
                                 <Tooltip />
-                                <Bar
-                                    dataKey="value"
-                                    fill="#3B82F6"
-                                    cursor="pointer"
-                                    onClick={(data: any) => setFilterTag(
-                                        filterTag === data.name ? null : data.name
-                                    )}
-                                />
+                                <Bar dataKey="value" fill="#3B82F6" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -367,55 +451,74 @@ export const GuestsDashboard = () => {
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-bold">All Guests</h3>
-                    <div className="flex items-center space-x-4">
-                        {filterTag && (
+            <div className="bg-white rounded-lg shadow">
+                <div className="p-4 border-b">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-lg font-bold">All Guests ({sortedGuests.length})</h3>
+                        <div className="flex items-center space-x-2">
                             <button
-                                onClick={() => setFilterTag(null)}
-                                className="text-sm text-blue-600 hover:underline"
+                                onClick={() => setViewMode('all')}
+                                className={`px-3 py-1 rounded text-sm ${
+                                    viewMode === 'all'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-200 hover:bg-gray-300'
+                                }`}
                             >
-                                Clear filter
+                                All
                             </button>
-                        )}
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                            className="px-3 py-1 border rounded text-sm"
-                        >
-                            <option value="spent">Top Spenders</option>
-                            <option value="bookings">Most Bookings</option>
-                            <option value="recent">Most Recent</option>
-                            <option value="name">Name (A-Z)</option>
-                        </select>
+                            <button
+                                onClick={() => setViewMode('repeat')}
+                                className={`px-3 py-1 rounded text-sm ${
+                                    viewMode === 'repeat'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-200 hover:bg-gray-300'
+                                }`}
+                            >
+                                Repeat
+                            </button>
+                            <button
+                                onClick={() => setViewMode('vip')}
+                                className={`px-3 py-1 rounded text-sm ${
+                                    viewMode === 'vip'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-200 hover:bg-gray-300'
+                                }`}
+                            >
+                                VIP
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                    <table className="min-w-full">
-                        <thead>
-                            <tr className="border-b">
-                                <th className="text-left py-2 px-4">Guest</th>
-                                <th className="text-center py-2 px-4">Bookings</th>
-                                <th className="text-right py-2 px-4">Total Spent</th>
-                                <th className="text-right py-2 px-4">Avg/Night</th>
-                                <th className="text-left py-2 px-4">First/Last Visit</th>
-                                <th className="text-left py-2 px-4">Tags</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredGuests.map(guest => (
-                                <GuestRow
-                                    key={guest.id}
-                                    guest={guest}
-                                    onGuestClick={handleGuestClick}
-                                    onTagClick={handleTagFilter}
-                                />
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <VirtualTable
+                    data={sortedGuests}
+                    columns={columns}
+                    height={600}
+                    loading={loading}
+                    sortBy={sortBy}
+                    sortOrder={sortOrder}
+                    onSort={handleSort}
+                    onRowClick={handleGuestClick}
+                    getRowId={(guest) => guest.id}
+                    enablePagination={sortedGuests.length > 100}
+                    pageSize={50}
+                    enableSearch={true}
+                    searchKeys={['name', 'email']}
+                    enableExport={true}
+                    onExport={handleExport}
+                    enableRefresh={true}
+                    onRefresh={loadGuestsData}
+                    showRowNumbers={true}
+                    selectable={true}
+                    selectedRows={selectedGuests}
+                    onSelectionChange={setSelectedGuests}
+                    emptyMessage="No guests found"
+                    rowClassName={(guest) => {
+                        if (guest.totalSpent > 10000) return 'bg-yellow-50'
+                        if (guest.bookingCount > 10) return 'bg-purple-50'
+                        return ''
+                    }}
+                />
             </div>
         </div>
     )

@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { isValidDateRange, formatCurrency, formatCompactCurrency, calculatePercentage, ensureNumber, safeDivide, formatPercentage, sumBy } from '@baileys/utils'
-
 import {
     DollarSign, TrendingUp, PiggyBank,
     Receipt, CreditCard, Calculator, AlertCircle,
     ArrowUpRight, ArrowDownRight, Wallet, Target,
-    ChevronRight
+    ChevronRight, Download, FileText
 } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import { VirtualTable } from '@/components/VirtualTable'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import {
-    Line, Bar, AreaChart, Area,
+    Line, Bar, BarChart,
     PieChart, Pie, Cell, ComposedChart,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     Legend
@@ -105,14 +105,14 @@ const MetricCard = ({
     target,
     loading = false
 }: {
-        icon: React.ComponentType<{ className?: string }>
-        label: string
-        value: number
-        change?: number
-        format?: 'currency' | 'percent' | 'number' | 'days'
-        target?: number
-        loading?: boolean
-    }) => {
+    icon: React.ComponentType<{ className?: string }>
+    label: string
+    value: number
+    change?: number
+    format?: 'currency' | 'percent' | 'number' | 'days'
+    target?: number
+    loading?: boolean
+}) => {
     const formatValue = (val: number) => {
         switch (format) {
             case 'currency':
@@ -180,6 +180,10 @@ export const FinancialDashboard = () => {
     const [loading, setLoading] = useState(true)
     const [data, setData] = useState<FinancialData | null>(null)
     const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'expenses' | 'platform'>('overview')
+    const [viewMode, setViewMode] = useState<'charts' | 'tables'>('charts')
+    const [selectedPlatforms, setSelectedPlatforms] = useState<Set<string>>(new Set())
+    const [sortBy, setSortBy] = useState<string>('netRevenue')
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
     const loadFinancialData = async () => {
         if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
@@ -213,6 +217,240 @@ export const FinancialDashboard = () => {
         loadFinancialData()
     }, [filters.dateRange, filters.selectedTags])
 
+    // Sort platforms
+    const sortedPlatforms = useMemo(() => {
+        if (!data) return []
+
+        return [...data.platforms].sort((a, b) => {
+            const aVal = a[sortBy as keyof typeof a]
+            const bVal = b[sortBy as keyof typeof b]
+
+            if (aVal === undefined && bVal === undefined) return 0
+            if (aVal === undefined) return 1
+            if (bVal === undefined) return -1
+
+            if (sortOrder === 'asc') {
+                return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
+            }
+            return aVal < bVal ? 1 : aVal > bVal ? -1 : 0
+        })
+    }, [data, sortBy, sortOrder])
+
+    // Handle sort
+    const handleSort = useCallback((column: string) => {
+        if (column === sortBy) {
+            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+        } else {
+            setSortBy(column)
+            setSortOrder('desc')
+        }
+    }, [sortBy])
+
+    // Handle export
+    const handleExportPlatforms = useCallback(() => {
+        if (!data) return
+
+        const exportData = selectedPlatforms.size > 0
+            ? sortedPlatforms.filter(p => selectedPlatforms.has(p.platform))
+            : sortedPlatforms
+
+        // Convert to CSV
+        const headers = ['Platform', 'Gross Revenue', 'Fees', 'Net Revenue', 'Fee Rate', 'Bookings', 'Avg/Booking']
+        const rows = exportData.map(p => [
+            p.platform,
+            p.grossRevenue,
+            p.fees,
+            p.netRevenue,
+            formatPercentage(p.feeRate, 1),
+            p.bookingCount,
+            safeDivide(p.netRevenue, p.bookingCount, 0)
+        ])
+
+        const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
+        const blob = new Blob([csv], { type: 'text/csv' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `platform-financials-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`
+        a.click()
+        URL.revokeObjectURL(url)
+
+        addToast('success', `Exported ${exportData.length} platforms`)
+    }, [selectedPlatforms, sortedPlatforms, filters.dateRange, addToast])
+
+    // Define columns for platform table
+    const platformColumns = useMemo(() => [
+        {
+            key: 'platform',
+            header: 'Platform',
+            sortable: true,
+            width: 150,
+            render: (platform: PlatformFinancials) => (
+                <div className="font-medium">{platform.platform}</div>
+            )
+        },
+        {
+            key: 'grossRevenue',
+            header: 'Gross Revenue',
+            sortable: true,
+            width: 150,
+            render: (platform: PlatformFinancials) => (
+                <span className="font-medium">{formatCurrency(platform.grossRevenue)}</span>
+            )
+        },
+        {
+            key: 'fees',
+            header: 'Fees',
+            sortable: true,
+            width: 120,
+            render: (platform: PlatformFinancials) => (
+                <span className="text-red-600">-{formatCurrency(platform.fees)}</span>
+            )
+        },
+        {
+            key: 'netRevenue',
+            header: 'Net Revenue',
+            sortable: true,
+            width: 150,
+            render: (platform: PlatformFinancials) => (
+                <span className="font-medium text-green-600">
+                    {formatCurrency(platform.netRevenue)}
+                </span>
+            )
+        },
+        {
+            key: 'feeRate',
+            header: 'Fee Rate',
+            sortable: true,
+            width: 100,
+            render: (platform: PlatformFinancials) => (
+                <span className={`font-medium ${
+                    platform.feeRate > 5 ? 'text-red-600' :
+                    platform.feeRate > 3 ? 'text-yellow-600' :
+                    'text-green-600'
+                }`}>
+                    {formatPercentage(platform.feeRate, 1)}
+                </span>
+            )
+        },
+        {
+            key: 'bookingCount',
+            header: 'Bookings',
+            sortable: true,
+            width: 100,
+            render: (platform: PlatformFinancials) => (
+                <span className="font-medium">{platform.bookingCount}</span>
+            )
+        },
+        {
+            key: 'avgPerBooking',
+            header: 'Avg/Booking',
+            sortable: false,
+            width: 120,
+            render: (platform: PlatformFinancials) => (
+                <span>{formatCurrency(safeDivide(platform.netRevenue, platform.bookingCount, 0))}</span>
+            )
+        }
+    ], [])
+
+    // Define columns for budget table
+    const budgetColumns = useMemo(() => [
+        {
+            key: 'category',
+            header: 'Category',
+            sortable: true,
+            width: 200,
+            render: (item: BudgetComparison) => (
+                <div className="font-medium">{item.category}</div>
+            )
+        },
+        {
+            key: 'budgeted',
+            header: 'Budgeted',
+            sortable: true,
+            width: 120,
+            render: (item: BudgetComparison) => formatCurrency(item.budgeted)
+        },
+        {
+            key: 'actual',
+            header: 'Actual',
+            sortable: true,
+            width: 120,
+            render: (item: BudgetComparison) => formatCurrency(item.actual)
+        },
+        {
+            key: 'variance',
+            header: 'Variance',
+            sortable: true,
+            width: 120,
+            render: (item: BudgetComparison) => (
+                <span className={item.variance >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {item.variance >= 0 ? '+' : ''}{formatCurrency(item.variance)}
+                </span>
+            )
+        },
+        {
+            key: 'variancePercent',
+            header: '%',
+            sortable: true,
+            width: 80,
+            render: (item: BudgetComparison) => (
+                <span className={item.variancePercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {item.variancePercent >= 0 ? '+' : ''}{formatPercentage(item.variancePercent, 1)}
+                </span>
+            )
+        }
+    ], [])
+
+    // Define columns for cash flow table
+    const cashFlowColumns = useMemo(() => [
+        {
+            key: 'date',
+            header: 'Date',
+            sortable: true,
+            width: 120,
+            render: (item: CashFlowData) => new Date(item.date).toLocaleDateString()
+        },
+        {
+            key: 'inflow',
+            header: 'Inflow',
+            sortable: true,
+            width: 120,
+            render: (item: CashFlowData) => (
+                <span className="text-green-600">{formatCurrency(item.inflow)}</span>
+            )
+        },
+        {
+            key: 'outflow',
+            header: 'Outflow',
+            sortable: true,
+            width: 120,
+            render: (item: CashFlowData) => (
+                <span className="text-red-600">{formatCurrency(item.outflow)}</span>
+            )
+        },
+        {
+            key: 'netFlow',
+            header: 'Net Flow',
+            sortable: true,
+            width: 120,
+            render: (item: CashFlowData) => (
+                <span className={item.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {formatCurrency(item.netFlow)}
+                </span>
+            )
+        },
+        {
+            key: 'balance',
+            header: 'Balance',
+            sortable: true,
+            width: 120,
+            render: (item: CashFlowData) => (
+                <span className="font-medium">{formatCurrency(item.balance)}</span>
+            )
+        }
+    ], [])
+
     if (loading) {
         return (
             <div className="flex justify-center py-12">
@@ -240,8 +478,17 @@ export const FinancialDashboard = () => {
 
     return (
         <div className="space-y-6">
-            <div>
+            <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold">Financial Dashboard</h2>
+                {activeTab === 'overview' && (
+                    <button
+                        onClick={() => setViewMode(viewMode === 'charts' ? 'tables' : 'charts')}
+                        className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 flex items-center"
+                    >
+                        <FileText className="w-4 h-4 mr-2" />
+                        {viewMode === 'charts' ? 'Table View' : 'Chart View'}
+                    </button>
+                )}
             </div>
 
             {/* Key Financial Metrics */}
@@ -343,8 +590,8 @@ export const FinancialDashboard = () => {
                             </div>
                         </>
                     ) : (
-                            <p className="text-gray-500 text-center py-8">No expense data available</p>
-                        )}
+                        <p className="text-gray-500 text-center py-8">No expense data available</p>
+                    )}
                 </div>
 
                 {/* Key Performance Indicators */}
@@ -384,10 +631,10 @@ export const FinancialDashboard = () => {
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
                                 className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
-activeTab === tab
-? 'border-blue-500 text-blue-600'
-: 'border-transparent text-gray-500 hover:text-gray-700'
-}`}
+                                    activeTab === tab
+                                        ? 'border-blue-500 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
                             >
                                 {tab === 'cashflow' ? 'Cash Flow' : tab}
                             </button>
@@ -399,71 +646,78 @@ activeTab === tab
                     {/* Overview Tab */}
                     {activeTab === 'overview' && (
                         <div className="space-y-6">
-                            {/* Monthly Profitability Trend */}
-                            <div>
-                                <h4 className="font-medium mb-4">Monthly Profitability Trend</h4>
-                                {monthlyProfitability && monthlyProfitability.length > 0 ? (
-                                    <div className="h-64">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <ComposedChart data={monthlyProfitability}>
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <XAxis dataKey="month" />
-                                                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                                                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                                                <Legend />
-                                                <Bar dataKey="revenue" fill="#3B82F6" name="Revenue" />
-                                                <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
-                                                <Line
-                                                    type="monotone"
-                                                    dataKey="profit"
-                                                    stroke="#10B981"
-                                                    strokeWidth={2}
-                                                    name="Net Profit"
-                                                />
-                                            </ComposedChart>
-                                        </ResponsiveContainer>
+                            {viewMode === 'charts' ? (
+                                <>
+                                    {/* Monthly Profitability Trend */}
+                                    <div>
+                                        <h4 className="font-medium mb-4">Monthly Profitability Trend</h4>
+                                        {monthlyProfitability && monthlyProfitability.length > 0 ? (
+                                            <div className="h-64">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <ComposedChart data={monthlyProfitability}>
+                                                        <CartesianGrid strokeDasharray="3 3" />
+                                                        <XAxis dataKey="month" />
+                                                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                                                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                                        <Legend />
+                                                        <Bar dataKey="revenue" fill="#3B82F6" name="Revenue" />
+                                                        <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
+                                                        <Line
+                                                            type="monotone"
+                                                            dataKey="profit"
+                                                            stroke="#10B981"
+                                                            strokeWidth={2}
+                                                            name="Net Profit"
+                                                        />
+                                                    </ComposedChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500 text-center py-8">No profitability data available</p>
+                                        )}
                                     </div>
-                                ) : (
-                                        <p className="text-gray-500 text-center py-8">No profitability data available</p>
-                                    )}
-                            </div>
 
-                            {/* Budget vs Actual */}
-                            <div>
-                                <h4 className="font-medium mb-4">Budget vs Actual</h4>
-                                {budget && budget.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full">
-                                            <thead>
-                                                <tr className="border-b">
-                                                    <th className="text-left py-2">Category</th>
-                                                    <th className="text-right py-2">Budgeted</th>
-                                                    <th className="text-right py-2">Actual</th>
-                                                    <th className="text-right py-2">Variance</th>
-                                                    <th className="text-right py-2">%</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {budget.map(item => (
-                                                    <tr key={item.category} className="border-b">
-                                                        <td className="py-2">{item.category}</td>
-                                                        <td className="py-2 text-right">{formatCurrency(item.budgeted)}</td>
-                                                        <td className="py-2 text-right">{formatCurrency(item.actual)}</td>
-                                                        <td className={`py-2 text-right ${item.variance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {item.variance >= 0 ? '+' : ''}{formatCurrency(item.variance)}
-                                                        </td>
-                                                        <td className={`py-2 text-right ${item.variancePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {item.variancePercent >= 0 ? '+' : ''}{formatPercentage(item.variancePercent, 1)}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                    {/* Budget vs Actual Chart */}
+                                    <div>
+                                        <h4 className="font-medium mb-4">Budget vs Actual</h4>
+                                        {budget && budget.length > 0 ? (
+                                            <div className="h-64">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={budget}>
+                                                        <CartesianGrid strokeDasharray="3 3" />
+                                                        <XAxis dataKey="category" angle={-45} textAnchor="end" height={80} />
+                                                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                                                        <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                                        <Legend />
+                                                        <Bar dataKey="budgeted" fill="#E5E7EB" name="Budgeted" />
+                                                        <Bar dataKey="actual" fill="#3B82F6" name="Actual" />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        ) : (
+                                            <p className="text-gray-500 text-center py-8">No budget data available</p>
+                                        )}
                                     </div>
-                                ) : (
+                                </>
+                            ) : (
+                                // Table view for Overview
+                                <div>
+                                    <h4 className="font-medium mb-4">Budget vs Actual</h4>
+                                    {budget && budget.length > 0 ? (
+                                        <VirtualTable
+                                            data={budget}
+                                            columns={budgetColumns}
+                                            height={400}
+                                            getRowId={(item) => item.category}
+                                            enablePagination={budget.length > 20}
+                                            pageSize={20}
+                                            emptyMessage="No budget data available"
+                                        />
+                                    ) : (
                                         <p className="text-gray-500 text-center py-8">No budget data available</p>
                                     )}
-                            </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -500,49 +754,27 @@ activeTab === tab
                                 </div>
                             </div>
 
-                            {/* Cash Flow Trend */}
+                            {/* Cash Flow Table */}
                             <div>
-                                <h4 className="font-medium mb-4">Cash Flow Trend</h4>
+                                <h4 className="font-medium mb-4">Cash Flow Details</h4>
                                 {cashFlow && cashFlow.length > 0 ? (
-                                    <div className="h-64">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={cashFlow}>
-                                                <CartesianGrid strokeDasharray="3 3" />
-                                                <XAxis dataKey="date" />
-                                                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                                                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                                                <Legend />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="inflow"
-                                                    stackId="1"
-                                                    stroke="#10B981"
-                                                    fill="#10B981"
-                                                    fillOpacity={0.6}
-                                                    name="Inflow"
-                                                />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="outflow"
-                                                    stackId="2"
-                                                    stroke="#EF4444"
-                                                    fill="#EF4444"
-                                                    fillOpacity={0.6}
-                                                    name="Outflow"
-                                                />
-                                                <Line
-                                                    type="monotone"
-                                                    dataKey="balance"
-                                                    stroke="#3B82F6"
-                                                    strokeWidth={2}
-                                                    name="Balance"
-                                                />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
+                                    <VirtualTable
+                                        data={cashFlow}
+                                        columns={cashFlowColumns}
+                                        height={400}
+                                        getRowId={(item) => item.date}
+                                        enablePagination={cashFlow.length > 30}
+                                        pageSize={30}
+                                        sortBy="date"
+                                        sortOrder="desc"
+                                        onSort={handleSort}
+                                        emptyMessage="No cash flow data available"
+                                        enableSearch={true}
+                                        searchKeys={['date']}
+                                    />
                                 ) : (
-                                        <p className="text-gray-500 text-center py-8">No cash flow data available</p>
-                                    )}
+                                    <p className="text-gray-500 text-center py-8">No cash flow data available</p>
+                                )}
                             </div>
 
                             {/* Pending Receivables */}
@@ -558,15 +790,15 @@ activeTab === tab
                                         </div>
                                     </div>
                                 ) : (
-                                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                            <div className="flex items-center">
-                                                <DollarSign className="w-5 h-5 text-green-600 mr-2" />
-                                                <span className="text-green-800">
-                                                    All payments are up to date
-                                                </span>
-                                            </div>
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                        <div className="flex items-center">
+                                            <DollarSign className="w-5 h-5 text-green-600 mr-2" />
+                                            <span className="text-green-800">
+                                                All payments are up to date
+                                            </span>
                                         </div>
-                                    )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -605,8 +837,8 @@ activeTab === tab
                                         ))}
                                     </div>
                                 ) : (
-                                        <p className="text-gray-500 text-center py-8">No expense data available</p>
-                                    )}
+                                    <p className="text-gray-500 text-center py-8">No expense data available</p>
+                                )}
                             </div>
 
                             {/* Total Expenses Summary */}
@@ -628,79 +860,77 @@ activeTab === tab
                     {/* Platform Tab */}
                     {activeTab === 'platform' && (
                         <div className="space-y-6">
-                            {/* Platform Financial Performance */}
+                            {/* Platform Financial Performance Table */}
                             <div>
-                                <h4 className="font-medium mb-4">Platform Financial Performance</h4>
-                                {platforms && platforms.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full">
-                                            <thead>
-                                                <tr className="border-b">
-                                                    <th className="text-left py-2">Platform</th>
-                                                    <th className="text-right py-2">Gross Revenue</th>
-                                                    <th className="text-right py-2">Fees</th>
-                                                    <th className="text-right py-2">Net Revenue</th>
-                                                    <th className="text-right py-2">Fee Rate</th>
-                                                    <th className="text-right py-2">Bookings</th>
-                                                    <th className="text-right py-2">Avg/Booking</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {platforms.map(platform => (
-                                                    <tr key={platform.platform} className="border-b">
-                                                        <td className="py-2 font-medium">{platform.platform}</td>
-                                                        <td className="py-2 text-right">{formatCurrency(platform.grossRevenue)}</td>
-                                                        <td className="py-2 text-right text-red-600">
-                                                            -{formatCurrency(platform.fees)}
-                                                        </td>
-                                                        <td className="py-2 text-right font-medium">
-                                                            {formatCurrency(platform.netRevenue)}
-                                                        </td>
-                                                        <td className="py-2 text-right">{formatPercentage(platform.feeRate, 1)}</td>
-                                                        <td className="py-2 text-right">{platform.bookingCount}</td>
-                                                        <td className="py-2 text-right">
-                                                            {formatCurrency(safeDivide(platform.netRevenue, platform.bookingCount, 0))}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                <tr className="font-bold">
-                                                    <td className="py-2">Total</td>
-                                                    <td className="py-2 text-right">
-                                                        {formatCurrency(sumBy(platforms, p => p.grossRevenue))}
-                                                    </td>
-                                                    <td className="py-2 text-right text-red-600">
-                                                        -{formatCurrency(sumBy(platforms, p => p.fees))}
-                                                    </td>
-                                                    <td className="py-2 text-right">
-                                                        {formatCurrency(sumBy(platforms, p => p.netRevenue))}
-                                                    </td>
-                                                    <td className="py-2 text-right">
-                                                        {platforms.length > 0
-                                                            ? formatPercentage(
-                                                                calculatePercentage(
-                                                                    sumBy(platforms, p => p.fees),
-                                                                    sumBy(platforms, p => p.grossRevenue)
-                                                                ), 1)
-                                                            : '0.0%'}
-                                                    </td>
-                                                    <td className="py-2 text-right">
-                                                        {sumBy(platforms, p => p.bookingCount)}
-                                                    </td>
-                                                    <td className="py-2 text-right">
-                                                        {formatCurrency(
-                                                            safeDivide(
-                                                                sumBy(platforms, p => p.netRevenue),
-                                                                sumBy(platforms, p => p.bookingCount)
-                                                            )
-                                                        )}
-                                                    </td>                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                        <p className="text-gray-500 text-center py-8">No platform data available</p>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h4 className="font-medium">Platform Financial Performance</h4>
+                                    {platforms && platforms.length > 0 && (
+                                        <button
+                                            onClick={handleExportPlatforms}
+                                            className="flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                                        >
+                                            <Download className="w-4 h-4 mr-1" />
+                                            Export
+                                        </button>
                                     )}
+                                </div>
+                                {platforms && platforms.length > 0 ? (
+                                    <VirtualTable
+                                        data={sortedPlatforms}
+                                        columns={platformColumns}
+                                        height={400}
+                                        loading={loading}
+                                        sortBy={sortBy}
+                                        sortOrder={sortOrder}
+                                        onSort={handleSort}
+                                        getRowId={(platform) => platform.platform}
+                                        enablePagination={sortedPlatforms.length > 10}
+                                        pageSize={10}
+                                        enableSearch={true}
+                                        searchKeys={['platform']}
+                                        enableExport={true}
+                                        onExport={handleExportPlatforms}
+                                        selectable={true}
+                                        selectedRows={selectedPlatforms}
+                                        onSelectionChange={setSelectedPlatforms}
+                                        emptyMessage="No platform data available"
+                                        showRowNumbers={true}
+                                    />
+                                ) : (
+                                    <p className="text-gray-500 text-center py-8">No platform data available</p>
+                                )}
                             </div>
+
+                            {/* Platform Totals */}
+                            {platforms && platforms.length > 0 && (
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <div className="grid md:grid-cols-4 gap-4 text-sm">
+                                        <div>
+                                            <span className="text-gray-600">Total Gross Revenue</span>
+                                            <p className="font-bold text-lg">{formatCurrency(sumBy(platforms, p => p.grossRevenue))}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-600">Total Fees</span>
+                                            <p className="font-bold text-lg text-red-600">-{formatCurrency(sumBy(platforms, p => p.fees))}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-600">Total Net Revenue</span>
+                                            <p className="font-bold text-lg text-green-600">{formatCurrency(sumBy(platforms, p => p.netRevenue))}</p>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-600">Avg Fee Rate</span>
+                                            <p className="font-bold text-lg">
+                                                {formatPercentage(
+                                                    calculatePercentage(
+                                                        sumBy(platforms, p => p.fees),
+                                                        sumBy(platforms, p => p.grossRevenue)
+                                                    ), 1
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Platform Revenue Distribution */}
                             {platforms && platforms.length > 0 && (
@@ -737,7 +967,7 @@ activeTab === tab
                                     <div>
                                         <h4 className="font-medium mb-4">Platform Efficiency</h4>
                                         <div className="space-y-3">
-                                            {platforms.map((platform) => (
+                                            {platforms.map((platform, index) => (
                                                 <div key={platform.platform} className="p-3 border rounded">
                                                     <div className="flex justify-between items-center mb-2">
                                                         <span className="font-medium">{platform.platform}</span>
@@ -746,8 +976,11 @@ activeTab === tab
                                                     <div className="flex items-center">
                                                         <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
                                                             <div
-                                                                className="h-2 rounded-full bg-gradient-to-r from-green-500 to-green-600"
-                                                                style={{ width: `${100 - platform.feeRate}%` }}
+                                                                className="h-2 rounded-full"
+                                                                style={{
+                                                                    width: `${100 - platform.feeRate}%`,
+                                                                    backgroundColor: COLORS[index % COLORS.length]
+                                                                }}
                                                             />
                                                         </div>
                                                         <span className="text-sm font-medium">{(100 - platform.feeRate).toFixed(1)}%</span>
@@ -774,38 +1007,38 @@ activeTab === tab
                         { label: 'Profitability', score: 88, status: 'Excellent', color: 'green' },
                         { label: 'Growth', score: 72, status: 'Moderate', color: 'yellow' }
                     ].map(item => (
-                            <div key={item.label} className="text-center">
-                                <div className="relative inline-flex items-center justify-center">
-                                    <svg className="w-20 h-20">
-                                        <circle
-                                            className="text-gray-200"
-                                            strokeWidth="8"
-                                            stroke="currentColor"
-                                            fill="transparent"
-                                            r="32"
-                                            cx="40"
-                                            cy="40"
-                                        />
-                                        <circle
-                                            className={`text-${item.color}-500`}
-                                            strokeWidth="8"
-                                            strokeDasharray={201}
-                                            strokeDashoffset={201 - (201 * item.score) / 100}
-                                            strokeLinecap="round"
-                                            stroke="currentColor"
-                                            fill="transparent"
-                                            r="32"
-                                            cx="40"
-                                            cy="40"
-                                            transform="rotate(-90 40 40)"
-                                        />
-                                    </svg>
-                                    <span className="absolute text-xl font-bold">{item.score}</span>
-                                </div>
-                                <div className="mt-2 font-medium">{item.label}</div>
-                                <div className="text-sm text-gray-600">{item.status}</div>
+                        <div key={item.label} className="text-center">
+                            <div className="relative inline-flex items-center justify-center">
+                                <svg className="w-20 h-20">
+                                    <circle
+                                        className="text-gray-200"
+                                        strokeWidth="8"
+                                        stroke="currentColor"
+                                        fill="transparent"
+                                        r="32"
+                                        cx="40"
+                                        cy="40"
+                                    />
+                                    <circle
+                                        className={`text-${item.color}-500`}
+                                        strokeWidth="8"
+                                        strokeDasharray={201}
+                                        strokeDashoffset={201 - (201 * item.score) / 100}
+                                        strokeLinecap="round"
+                                        stroke="currentColor"
+                                        fill="transparent"
+                                        r="32"
+                                        cx="40"
+                                        cy="40"
+                                        transform="rotate(-90 40 40)"
+                                    />
+                                </svg>
+                                <span className="absolute text-xl font-bold">{item.score}</span>
                             </div>
-                        ))}
+                            <div className="mt-2 font-medium">{item.label}</div>
+                            <div className="text-sm text-gray-600">{item.status}</div>
+                        </div>
+                    ))}
                 </div>
             </div>
 
