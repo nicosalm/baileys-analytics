@@ -1,4 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { safeDivide } from '@baileys/utils';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
@@ -322,7 +323,7 @@ export async function getGuests(
       metrics: {
         totalGuests,
         repeatGuests,
-        repeatRate: totalGuests > 0 ? repeatGuests / totalGuests : 0,
+        repeatRate: safeDivide(repeatGuests, totalGuests),
         avgStayLength: parseFloat(metrics.avg_stay_length) || 0,
         avgSpend: parseFloat(metrics.avg_spend) || 0,
         totalRevenue: parseFloat(metrics.total_revenue) || 0,

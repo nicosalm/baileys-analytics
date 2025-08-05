@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, calculateGrowthRate, formatPercentage, formatGrowth, ensureNumber } from '@baileys/utils'
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -77,10 +77,7 @@ export const SeasonalDashboard = () => {
     return null
   }
 
-  const formatGrowthPercent = (value: number) => {
-    const formatted = (value * 100).toFixed(1)
-    return value >= 0 ? `+${formatted}%` : `${formatted}%`
-  }
+  const yearGrowthRate = calculateGrowthRate(data.yearOverYear.currentYear, data.yearOverYear.previousYear)
 
   return (
     <div className="space-y-6">
@@ -112,7 +109,7 @@ export const SeasonalDashboard = () => {
             {getSeasonEmoji(data.seasonalPatterns.peakMonths[0]?.month || '')}
           </div>
           <div className="text-sm text-gray-500">
-            {(data.seasonalPatterns.avgPeakOccupancy * 100).toFixed(0)}% occupancy
+            {formatPercentage(data.seasonalPatterns.avgPeakOccupancy * 100, 0)} occupancy
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -125,7 +122,7 @@ export const SeasonalDashboard = () => {
             {getSeasonEmoji(data.seasonalPatterns.lowMonths[0]?.month || '')}
           </div>
           <div className="text-sm text-gray-500">
-            {(data.seasonalPatterns.avgLowOccupancy * 100).toFixed(0)}% occupancy
+            {formatPercentage(data.seasonalPatterns.avgLowOccupancy * 100, 0)} occupancy
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -134,11 +131,8 @@ export const SeasonalDashboard = () => {
             YoY Revenue
           </div>
           <div className="text-2xl font-bold flex items-center">
-            {formatGrowthPercent(
-              (data.yearOverYear.currentYear - data.yearOverYear.previousYear) /
-              data.yearOverYear.previousYear
-            )}
-            {data.yearOverYear.currentYear > data.yearOverYear.previousYear
+            {formatGrowth(yearGrowthRate / 100)}
+            {yearGrowthRate >= 0
               ? <TrendingUp className="w-5 h-5 ml-2 text-green-600" />
               : <TrendingDown className="w-5 h-5 ml-2 text-red-600" />
             }
@@ -147,7 +141,7 @@ export const SeasonalDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-600 mb-2">Seasonality Index</div>
           <div className="text-2xl font-bold">
-            {(data.seasonalPatterns.seasonalityIndex * 100).toFixed(0)}%
+            {formatPercentage(data.seasonalPatterns.seasonalityIndex * 100, 0)}
           </div>
           <div className="text-sm text-gray-500">
             {data.seasonalPatterns.seasonalityIndex > 0.5 ? 'High' : 'Low'} variation
@@ -164,9 +158,9 @@ export const SeasonalDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
                 <YAxis yAxisId="left" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatPercentage(value, 0)} />
                 <Tooltip formatter={(value, name) =>
-                  name === 'occupancy' ? `${value}%` : formatCurrency(Number(value))
+                  name === 'occupancy' ? formatPercentage(Number(value), 0) : formatCurrency(ensureNumber(value))
                 } />
                 <Legend />
                 <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#3B82F6" name="Revenue" strokeWidth={2} />
@@ -200,7 +194,7 @@ export const SeasonalDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
                 <Legend />
                 <Bar dataKey="previous" fill="#E5E7EB" name={`${selectedYear - 1}`} cursor="pointer" />
                 <Bar dataKey="current" fill="#3B82F6" name={`${selectedYear}`} cursor="pointer" />
@@ -220,7 +214,7 @@ export const SeasonalDashboard = () => {
                 <PolarAngleAxis dataKey="month" />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} />
                 <Radar name="Occupancy %" dataKey="occupancy" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
-                <Tooltip formatter={(value) => `${value}%`} />
+                <Tooltip formatter={(value) => formatPercentage(Number(value), 0)} />
               </RadarChart>
             </ResponsiveContainer>
           </div>
@@ -248,7 +242,7 @@ export const SeasonalDashboard = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-medium">
-                      Seasonality: {(property.seasonalityScore * 100).toFixed(0)}%
+                      Seasonality: {formatPercentage(property.seasonalityScore * 100, 0)}
                     </div>
                     <div className="text-xs text-gray-500">
                       {property.seasonalityScore > 0.5 ? 'High' : 'Low'} variation

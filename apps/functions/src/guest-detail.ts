@@ -1,4 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { calculateNightsBetween, safeDivide } from '@baileys/utils';
 import { query, DbResult } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
@@ -221,7 +222,7 @@ const fetchGuestBookings = async (
     propertyName: b.property_name,
     arrival: b.arrival,
     departure: b.departure,
-    nights: Math.ceil((new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)),
+    nights: calculateNightsBetween(b.arrival, b.departure),
     totalAmount: parseFloat(b.total_amount),
     status: b.status,
     platform: b.platform || undefined
@@ -272,9 +273,7 @@ const fetchPropertyStays = async (
     propertyName: p.property_name,
     bookingCount: parseInt(p.booking_count),
     totalSpent: parseFloat(p.total_spent),
-    avgNightlyRate: parseInt(p.total_nights) > 0
-      ? parseFloat(p.total_spent) / parseInt(p.total_nights)
-      : 0,
+    avgNightlyRate: safeDivide(parseFloat(p.total_spent), parseInt(p.total_nights)),
     lastStay: p.last_stay
   }))
 
@@ -454,8 +453,8 @@ const buildGuestInfo = (
     totalSpent,
     bookingCount,
     canceledCount: parseInt(summary.canceled_count),
-    avgNightlyRate: totalNights > 0 ? totalSpent / totalNights : 0,
-    avgStayLength: bookingCount > 0 ? totalNights / bookingCount : 0,
+    avgNightlyRate: safeDivide(totalSpent, totalNights),
+    avgStayLength: safeDivide(totalNights, bookingCount),
     totalNights,
     favoriteProperty: favoriteProperty || undefined
   }

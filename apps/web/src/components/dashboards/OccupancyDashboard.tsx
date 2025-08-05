@@ -6,6 +6,7 @@ import { useDashboard } from '@/contexts/dashboard'
 import { api } from '@/lib/api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
+import { formatPercentage, minBy, isValidDateRange } from '@baileys/utils'
 
 export const OccupancyDashboard = () => {
   const { filters } = useDashboard()
@@ -14,6 +15,11 @@ export const OccupancyDashboard = () => {
   const [data, setData] = useState<OccupancyMetrics | null>(null)
 
   const loadOccupancy = async () => {
+    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+      addToast('error', 'Invalid date range selected')
+      return
+    }
+
     setLoading(true)
     const result = await api.getOccupancy(
       filters.dateRange.from,
@@ -60,10 +66,7 @@ export const OccupancyDashboard = () => {
     return '#EF4444'
   }
 
-  // Find lowest occupancy month
-  const lowestMonth = data.byMonth.reduce((lowest, current) =>
-    current.rate < lowest.rate ? current : lowest
-  , data.byMonth[0] || { month: '', rate: 1 })
+  const lowestMonth = minBy(data.byMonth, m => m.rate) || { month: '', rate: 1 }
 
   return (
     <div className="space-y-6">
@@ -76,7 +79,7 @@ export const OccupancyDashboard = () => {
             Overall Occupancy
           </div>
           <div className="text-3xl font-bold" style={{ color: getOccupancyColor(data.overall) }}>
-            {(data.overall * 100).toFixed(0)}%
+            {formatPercentage(data.overall * 100, 0)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -99,7 +102,7 @@ export const OccupancyDashboard = () => {
             Low Season
           </div>
           <div className="text-3xl font-bold">{lowestMonth.month}</div>
-          <div className="text-sm text-gray-500">{(lowestMonth.rate * 100).toFixed(0)}% occupancy</div>
+          <div className="text-sm text-gray-500">{formatPercentage(lowestMonth.rate * 100, 0)} occupancy</div>
         </div>
       </div>
 
@@ -111,8 +114,8 @@ export const OccupancyDashboard = () => {
               <LineChart data={monthlyChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `${value}%`} domain={[0, 100]} />
-                <Tooltip formatter={(value) => `${value}%`} />
+                <YAxis tickFormatter={(value) => formatPercentage(value, 0)} domain={[0, 100]} />
+                <Tooltip formatter={(value) => formatPercentage(Number(value), 0)} />
                 <Line
                   type="monotone"
                   dataKey="rate"
@@ -131,9 +134,9 @@ export const OccupancyDashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={propertyChartData} layout="horizontal">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => formatPercentage(value, 0)} />
                 <YAxis dataKey="name" type="category" />
-                <Tooltip formatter={(value) => `${value}%`} />
+                <Tooltip formatter={(value) => formatPercentage(Number(value), 0)} />
                 <Bar dataKey="occupancy" stackId="a" fill="#3B82F6" name="Occupied" />
                 <Bar dataKey="available" stackId="a" fill="#E5E7EB" name="Available" />
               </BarChart>

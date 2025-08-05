@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { PropertyMetrics } from '@/types/dashboard'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, formatPercentage, sumBy, calculateAverage, maxBy, isValidDateRange } from '@baileys/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Home } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
@@ -33,7 +33,7 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
         </div>
         <div>
           <div className="text-sm text-gray-600">Occupancy</div>
-          <div className="text-xl font-semibold">{(property.occupancyRate * 100).toFixed(0)}%</div>
+          <div className="text-xl font-semibold">{formatPercentage(property.occupancyRate * 100, 0)}</div>
         </div>
         <div>
           <div className="text-sm text-gray-600">Avg Nightly</div>
@@ -51,6 +51,11 @@ export const PropertiesDashboard = () => {
   const [properties, setProperties] = useState<PropertyMetrics[]>([])
 
   const loadMetrics = async () => {
+    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+      addToast('error', 'Invalid date range selected')
+      return
+    }
+
     setLoading(true)
     const result = await api.getPropertyMetrics(
       filters.dateRange.from,
@@ -85,13 +90,21 @@ export const PropertiesDashboard = () => {
     bookings: p.bookings
   }))
 
+  const maxRevenue = maxBy(properties, p => p.revenue)?.revenue || 1
+  const maxAvgRate = maxBy(properties, p => p.avgNightlyRate)?.avgNightlyRate || 1
+  const maxBookings = maxBy(properties, p => p.bookings)?.bookings || 1
+
   const radarData = properties.map(p => ({
     property: p.propertyName,
-    revenue: (p.revenue / Math.max(...properties.map(x => x.revenue))) * 100,
+    revenue: (p.revenue / maxRevenue) * 100,
     occupancy: p.occupancyRate * 100,
-    avgRate: (p.avgNightlyRate / Math.max(...properties.map(x => x.avgNightlyRate))) * 100,
-    bookings: (p.bookings / Math.max(...properties.map(x => x.bookings))) * 100
+    avgRate: (p.avgNightlyRate / maxAvgRate) * 100,
+    bookings: (p.bookings / maxBookings) * 100
   }))
+
+  const totalRevenue = sumBy(properties, p => p.revenue)
+  const totalBookings = sumBy(properties, p => p.bookings)
+  const avgOccupancy = calculateAverage(properties.map(p => p.occupancyRate))
 
   return (
     <div className="space-y-6">
@@ -113,7 +126,7 @@ export const PropertiesDashboard = () => {
             Total Revenue
           </div>
           <div className="text-3xl font-bold">
-            {formatCurrency(properties.reduce((sum, p) => sum + p.revenue, 0))}
+            {formatCurrency(totalRevenue)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -122,9 +135,7 @@ export const PropertiesDashboard = () => {
             Avg Occupancy
           </div>
           <div className="text-3xl font-bold">
-            {properties.length > 0
-              ? (properties.reduce((sum, p) => sum + p.occupancyRate, 0) / properties.length * 100).toFixed(0)
-              : 0}%
+            {formatPercentage(avgOccupancy * 100, 0)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -133,7 +144,7 @@ export const PropertiesDashboard = () => {
             Total Bookings
           </div>
           <div className="text-3xl font-bold">
-            {properties.reduce((sum, p) => sum + p.bookings, 0)}
+            {totalBookings}
           </div>
         </div>
       </div>
@@ -153,7 +164,7 @@ export const PropertiesDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis yAxisId="left" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatPercentage(value, 0)} />
                 <Tooltip />
                 <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Revenue" />
                 <Bar yAxisId="right" dataKey="occupancy" fill="#10B981" name="Occupancy %" />

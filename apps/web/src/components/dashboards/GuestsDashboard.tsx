@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, formatPercentage, ensureNumber, isValidDateRange } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
@@ -136,10 +136,10 @@ const GuestRow = ({
                                 <span
                                     key={tag.id}
                                     className={`px-2 py-0.5 text-xs rounded-full border cursor-pointer hover:opacity-80 ${
-tag.type === 'payment' ? 'bg-green-100 text-green-800 border-green-300' :
-tag.type === 'guest' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-'bg-gray-100 text-gray-800 border-gray-300'
-}`}
+                                        tag.type === 'payment' ? 'bg-green-100 text-green-800 border-green-300' :
+                                        tag.type === 'guest' ? 'bg-purple-100 text-purple-800 border-purple-300' :
+                                        'bg-gray-100 text-gray-800 border-gray-300'
+                                        }`}
                                     onClick={() => onTagClick(tag)}
                                 >
                                     {tag.name}
@@ -161,6 +161,11 @@ export const GuestsDashboard = () => {
     const [filterTag, setFilterTag] = useState<string | null>(null)
 
     const loadGuestsData = async () => {
+        if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+            addToast('error', 'Invalid date range selected')
+            return
+        }
+
         setLoading(true)
 
         const result = await api.getGuests(
@@ -249,7 +254,7 @@ export const GuestsDashboard = () => {
                     icon={UserCheck}
                     label="Repeat Guests"
                     value={data.metrics.repeatGuests}
-                    subtext={`${(data.metrics.repeatRate * 100).toFixed(0)}% repeat rate`}
+                    subtext={`${formatPercentage(data.metrics.repeatRate * 100, 0)} repeat rate`}
                 />
                 <MetricsCard
                     icon={Calendar}
@@ -275,7 +280,7 @@ export const GuestsDashboard = () => {
                                     cy="50%"
                                     labelLine={false}
                                     label={(entry) =>
-                                        `${entry.source} ${entry.percent ? (entry.percent * 100).toFixed(0) : 0}%`
+                                        `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`
                                     }
                                     outerRadius={80}
                                     fill="#8884d8"
@@ -354,7 +359,7 @@ export const GuestsDashboard = () => {
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="source" />
                                 <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
                                 <Bar dataKey="revenue" fill="#10B981" />
                             </BarChart>
                         </ResponsiveContainer>

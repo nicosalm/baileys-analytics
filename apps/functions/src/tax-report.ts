@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query, DbResult } from './services/database';
+import { calculatePercentage } from '@baileys/utils';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type TaxReportState =
@@ -153,9 +154,7 @@ const fetchPropertyTaxData = async (params: QueryParams): Promise<DbResult<reado
     totalTax: parseFloat(row.total_tax),
     totalRent: parseFloat(row.total_rent),
     bookingCount: parseInt(row.booking_count),
-    taxRate: parseFloat(row.total_rent) > 0
-      ? (parseFloat(row.total_tax) / parseFloat(row.total_rent)) * 100
-      : 0
+    taxRate: calculatePercentage(parseFloat(row.total_tax), parseFloat(row.total_rent))
   }))
 
   return { success: true, data }

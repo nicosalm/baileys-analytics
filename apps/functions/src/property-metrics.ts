@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query, DbResult } from './services/database';
+import { safeDivide } from '@baileys/utils';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type PropertyMetrics = {
@@ -120,9 +121,9 @@ const calculatePropertyMetrics = (row: {
     propertyName: row.property_name,
     revenue,
     bookings,
-    occupancyRate: availableNights > 0 ? nights / availableNights : 0,
-    avgNightlyRate: nights > 0 ? revenue / nights : 0,
-    avgStayLength: bookings > 0 ? nights / bookings : 0
+    occupancyRate: safeDivide(nights, availableNights),
+    avgNightlyRate: safeDivide(revenue, nights, 0),
+    avgStayLength: safeDivide(nights, bookings, 0)
   }
 }
 

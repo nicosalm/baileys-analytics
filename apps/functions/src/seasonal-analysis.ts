@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
+import { calculateGrowthRate, safeDivide, calculateAverage, calculateStandardDeviation } from '@baileys/utils';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type SeasonalData = {
@@ -388,21 +389,13 @@ export async function getSeasonalAnalysis(
         bookings: parseInt(m.previous_bookings),
         occupancy: parseFloat(m.previous_occupancy),
         avgNightlyRate: parseFloat(m.previous_avg_rate)
-      },
-      yoyGrowth: {
-        revenue: parseFloat(m.previous_revenue) > 0
-          ? (parseFloat(m.current_revenue) - parseFloat(m.previous_revenue)) / parseFloat(m.previous_revenue)
-          : 0,
-        bookings: parseInt(m.previous_bookings) > 0
-          ? (parseInt(m.current_bookings) - parseInt(m.previous_bookings)) / parseInt(m.previous_bookings)
-          : 0,
-        occupancy: parseFloat(m.previous_occupancy) > 0
-          ? (parseFloat(m.current_occupancy) - parseFloat(m.previous_occupancy)) / parseFloat(m.previous_occupancy)
-          : 0,
-        avgNightlyRate: parseFloat(m.previous_avg_rate) > 0
-          ? (parseFloat(m.current_avg_rate) - parseFloat(m.previous_avg_rate)) / parseFloat(m.previous_avg_rate)
-          : 0
-      }
+        },
+        yoyGrowth: {
+            revenue: calculateGrowthRate(parseFloat(m.current_revenue), parseFloat(m.previous_revenue)) / 100,
+            bookings: calculateGrowthRate(parseInt(m.current_bookings), parseInt(m.previous_bookings)) / 100,
+            occupancy: calculateGrowthRate(parseFloat(m.current_occupancy), parseFloat(m.previous_occupancy)) / 100,
+            avgNightlyRate: calculateGrowthRate(parseFloat(m.current_avg_rate), parseFloat(m.previous_avg_rate)) / 100
+        }
     })) : [];
 
     // Calculate seasonal patterns
@@ -421,11 +414,9 @@ export async function getSeasonalAnalysis(
       score: parseFloat(m.avg_occupancy)
     }));
 
-    const avgPeakOccupancy = peakMonths.reduce((sum, m) => sum + m.score, 0) / peakMonths.length;
-    const avgLowOccupancy = lowMonths.reduce((sum, m) => sum + m.score, 0) / lowMonths.length;
-    const seasonalityIndex = avgPeakOccupancy > 0
-      ? (avgPeakOccupancy - avgLowOccupancy) / avgPeakOccupancy
-      : 0;
+    const avgPeakOccupancy = safeDivide(peakMonths.reduce((sum, m) => sum + m.score, 0), peakMonths.length);
+    const avgLowOccupancy = safeDivide(lowMonths.reduce((sum, m) => sum + m.score, 0), lowMonths.length);
+    const seasonalityIndex = safeDivide(avgPeakOccupancy - avgLowOccupancy, avgPeakOccupancy);
 
     // Process property seasonality
     const propertyMap = new Map<string, {
@@ -459,9 +450,10 @@ export async function getSeasonalAnalysis(
       const peakMonth = sortedMonths[0];
       const lowMonth = sortedMonths[sortedMonths.length - 1];
 
-      const avgOccupancy = property.monthlyOccupancy.reduce((sum: number, m) => sum + m.occupancy, 0) / property.monthlyOccupancy.length;
-      const variance = property.monthlyOccupancy.reduce((sum: number, m) => sum + Math.pow(m.occupancy - avgOccupancy, 2), 0) / property.monthlyOccupancy.length;
-      const seasonalityScore = Math.sqrt(variance) / avgOccupancy;
+      const occupancies = property.monthlyOccupancy.map(m => m.occupancy);
+      const avgOccupancy = calculateAverage(occupancies);
+      const stdDev = calculateStandardDeviation(occupancies);
+      const seasonalityScore = safeDivide(stdDev, avgOccupancy);
 
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

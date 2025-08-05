@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, formatPercentage, isValidDateRange } from '@baileys/utils'
 import { PropertyTaxChart, MonthlyTrendChart, PropertyDistributionChart } from '@/components/TaxCharts'
 import { Download, TrendingUp, Home, Calendar } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
@@ -17,6 +17,11 @@ export const TaxDashboard = () => {
   const [data, setData] = useState<TaxReportData | null>(null)
 
   const loadReport = async () => {
+    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+      addToast('error', 'Invalid date range selected')
+      return
+    }
+
     setLoading(true)
 
     const result = await api.getTaxReport(
@@ -59,13 +64,17 @@ export const TaxDashboard = () => {
 
   if (!data) return null
 
+  const effectiveTaxRate = data.summary.totalRent > 0
+    ? (data.summary.totalTax / data.summary.totalRent) * 100
+    : 0
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Tax Report</h2>
         <button
           onClick={handleDownloadCSV}
-          className="px-4 py-2 bg-green-600 text-white rounded flex items-center"
+          className="px-4 py-2 bg-green-600 text-white rounded flex items-center hover:bg-green-700 transition-colors"
         >
           <Download className="w-4 h-4 mr-2" />
           Export CSV
@@ -92,7 +101,7 @@ export const TaxDashboard = () => {
             <Calendar className="w-4 h-4 mr-1" />
             Total Bookings
           </div>
-          <div className="text-3xl font-bold">{data.summary.totalBookings}</div>
+          <div className="text-3xl font-bold">{data.summary.totalBookings.toLocaleString()}</div>
         </div>
       </div>
 
@@ -132,10 +141,7 @@ export const TaxDashboard = () => {
           <div className="h-80 flex items-center justify-center">
             <div className="text-center">
               <div className="text-6xl font-bold text-blue-600">
-                {(data.summary.totalRent > 0
-                  ? (data.summary.totalTax / data.summary.totalRent * 100)
-                  : 0
-                ).toFixed(2)}%
+                {formatPercentage(effectiveTaxRate, 2)}
               </div>
               <div className="text-gray-600 mt-2">Average across all properties</div>
             </div>

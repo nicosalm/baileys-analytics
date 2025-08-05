@@ -1,4 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
+import { safeDivide, calculatePercentage, calculateGrowthRate } from '@baileys/utils';
 import { query, DbResult } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
@@ -128,8 +129,8 @@ async function getExpenseData(
         return {
             category: row.category_name,
             amount: current,
-            percentage: total > 0 ? (current / total) * 100 : 0,
-            trend: previous > 0 ? ((current - previous) / previous) * 100 : 0
+            percentage: calculatePercentage(current, total),
+            trend: calculateGrowthRate(current, previous)
         };
     });
 
@@ -432,7 +433,7 @@ export async function getFinancialsEnhanced(
 
         // Calculate profitability metrics
         const netIncome = netRevenue - totalExpenses;
-        const profitMargin = grossRevenue > 0 ? (netIncome / grossRevenue) * 100 : 0;
+        const profitMargin = calculatePercentage(netIncome, grossRevenue);
 
         // Property count for KPIs
         const propertyCount = propertyResult.success ? parseInt(propertyResult.data[0].count) : 1;
@@ -440,9 +441,9 @@ export async function getFinancialsEnhanced(
         const availableRoomNights = propertyCount * daysInPeriod;
 
         // Calculate KPIs
-        const revpar = availableRoomNights > 0 ? grossRevenue / availableRoomNights : 0;
-        const goppar = availableRoomNights > 0 ? netIncome / availableRoomNights : 0;
-        const expenseRatio = grossRevenue > 0 ? (totalExpenses / grossRevenue) * 100 : 0;
+        const revpar = safeDivide(grossRevenue, availableRoomNights, 0);
+        const goppar = safeDivide(netIncome, availableRoomNights, 0);
+        const expenseRatio = calculatePercentage(totalExpenses, grossRevenue)
         const breakEvenOccupancy = grossRevenue > 0 ? (totalExpenses / (grossRevenue / availableRoomNights)) / daysInPeriod : 0;
 
         // Build response

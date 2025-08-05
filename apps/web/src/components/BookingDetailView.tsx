@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, calculateNightsBetween } from '@baileys/utils'
 import { Calendar, User, DollarSign, Tag } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 
@@ -96,10 +96,7 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
 
   if (!data) return null
 
-  const nights = Math.ceil(
-    (new Date(data.booking.departure).getTime() - new Date(data.booking.arrival).getTime()) /
-      (1000 * 60 * 60 * 24)
-  )
+    const nights = calculateNightsBetween(data.booking.arrival, data.booking.departure)
 
   const tagsByType = data.tags.reduce((acc, tag) => {
     if (!acc[tag.type]) acc[tag.type] = []

@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
+import { calculateNightsBetween, safeDivide, getDaysInMonth } from '@baileys/utils';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 export async function getPropertyDetail(
@@ -121,8 +122,8 @@ export async function getPropertyDetail(
     // Calculate occupancy for monthly data
     const monthlyData = monthlyResult.success ? monthlyResult.data.map(row => {
       const [year, month] = row.month.split('-');
-      const daysInMonth = new Date(parseInt(year), parseInt(month), 0).getDate();
-      const occupancy = (parseInt(row.nights) / daysInMonth) * 100;
+        const daysInMonth = getDaysInMonth(parseInt(year), parseInt(month));
+        const occupancy = safeDivide(parseInt(row.nights), daysInMonth) * 100;
 
       return {
         month: row.month,
@@ -156,8 +157,8 @@ export async function getPropertyDetail(
     }
 
     const metrics = metricsResult.data[0];
-    const totalDays = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    const occupancyRate = parseInt(metrics.total_nights) / totalDays;
+    const totalDays = calculateNightsBetween(fromDate, toDate) + 1;
+    const occupancyRate = safeDivide(parseInt(metrics.total_nights), totalDays);
 
     return {
       status: 200,

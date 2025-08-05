@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, formatPercentage } from '@baileys/utils'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
@@ -123,7 +123,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <Users className="w-4 h-4 mr-1" />
             Occupancy Rate
           </div>
-          <div className="text-3xl font-bold">{(data.metrics.occupancyRate * 100).toFixed(0)}%</div>
+          <div className="text-3xl font-bold"><div className="text-3xl font-bold">{formatPercentage(data.metrics.occupancyRate * 100, 0)}</div></div>
         </div>
       </div>
 
@@ -138,8 +138,8 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
                   dataKey="month"
                   tickFormatter={(value) => value.slice(5)}
                 />
-                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <YAxis tickFormatter={(value) => formatPercentage(value, 0)} />
+                <Tooltip formatter={(value) => formatPercentage(Number(value), 0)} />
                 <Line
                   type="monotone"
                   dataKey="revenue"

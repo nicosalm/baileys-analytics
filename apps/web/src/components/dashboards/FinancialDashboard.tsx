@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency } from '@baileys/utils'
+import { isValidDateRange, formatCurrency, formatCompactCurrency, calculatePercentage, ensureNumber, safeDivide, formatPercentage, sumBy } from '@baileys/utils'
+
 import {
     DollarSign, TrendingUp, PiggyBank,
     Receipt, CreditCard, Calculator, AlertCircle,
@@ -115,9 +116,9 @@ const MetricCard = ({
     const formatValue = (val: number) => {
         switch (format) {
             case 'currency':
-                return formatCurrency(val)
+                return val >= 10000 ? formatCompactCurrency(val) : formatCurrency(val)
             case 'percent':
-                return `${val.toFixed(1)}%`
+                return formatPercentage(val, 1)
             case 'days':
                 return `${val.toFixed(0)} days`
             default:
@@ -163,7 +164,7 @@ const MetricCard = ({
                     <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
                             className={`h-2 rounded-full ${value >= target ? 'bg-green-500' : 'bg-yellow-500'}`}
-                            style={{ width: `${Math.min((value / target) * 100, 100)}%` }}
+                            style={{ width: `${Math.min(calculatePercentage(value, target), 100)}%` }}
                         />
                     </div>
                 </div>
@@ -181,6 +182,11 @@ export const FinancialDashboard = () => {
     const [activeTab, setActiveTab] = useState<'overview' | 'cashflow' | 'expenses' | 'platform'>('overview')
 
     const loadFinancialData = async () => {
+        if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+            addToast('error', 'Invalid date range selected');
+            return;
+        }
+
         setLoading(true)
         try {
             const result = await api.getFinancials(
@@ -236,7 +242,6 @@ export const FinancialDashboard = () => {
         <div className="space-y-6">
             <div>
                 <h2 className="text-2xl font-bold">Financial Dashboard</h2>
-                <p className="text-gray-600">Complete financial overview and profitability analysis</p>
             </div>
 
             {/* Key Financial Metrics */}
@@ -360,7 +365,7 @@ export const FinancialDashboard = () => {
                         </div>
                         <div className="flex justify-between">
                             <span className="text-gray-600">Expense Ratio</span>
-                            <span className="font-medium">{metrics.kpis.expenseRatio}%</span>
+                            <span className="font-medium">{formatPercentage(metrics.kpis.expenseRatio, 0)}</span>
                         </div>
                         <div className="flex justify-between pt-3 border-t">
                             <span className="font-medium">EBITDA</span>
@@ -448,7 +453,7 @@ activeTab === tab
                                                             {item.variance >= 0 ? '+' : ''}{formatCurrency(item.variance)}
                                                         </td>
                                                         <td className={`py-2 text-right ${item.variancePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {item.variancePercent >= 0 ? '+' : ''}{item.variancePercent.toFixed(1)}%
+                                                            {item.variancePercent >= 0 ? '+' : ''}{formatPercentage(item.variancePercent, 1)}
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -470,7 +475,9 @@ activeTab === tab
                                 <div className="p-4 bg-green-50 rounded-lg">
                                     <div className="text-sm text-green-600">Cash Inflow</div>
                                     <div className="text-2xl font-bold text-green-700">
-                                        {formatCurrency(metrics.cashFlow.inflow)}
+                                        {metrics.cashFlow.inflow >= 10000
+                                            ? formatCompactCurrency(metrics.cashFlow.inflow)
+                                            : formatCurrency(metrics.cashFlow.inflow)}
                                     </div>
                                 </div>
                                 <div className="p-4 bg-red-50 rounded-lg">
@@ -649,42 +656,44 @@ activeTab === tab
                                                         <td className="py-2 text-right font-medium">
                                                             {formatCurrency(platform.netRevenue)}
                                                         </td>
-                                                        <td className="py-2 text-right">{platform.feeRate}%</td>
+                                                        <td className="py-2 text-right">{formatPercentage(platform.feeRate, 1)}</td>
                                                         <td className="py-2 text-right">{platform.bookingCount}</td>
                                                         <td className="py-2 text-right">
-                                                            {formatCurrency(platform.netRevenue / platform.bookingCount)}
+                                                            {formatCurrency(safeDivide(platform.netRevenue, platform.bookingCount, 0))}
                                                         </td>
                                                     </tr>
                                                 ))}
                                                 <tr className="font-bold">
                                                     <td className="py-2">Total</td>
                                                     <td className="py-2 text-right">
-                                                        {formatCurrency(platforms.reduce((sum, p) => sum + p.grossRevenue, 0))}
+                                                        {formatCurrency(sumBy(platforms, p => p.grossRevenue))}
                                                     </td>
                                                     <td className="py-2 text-right text-red-600">
-                                                        -{formatCurrency(platforms.reduce((sum, p) => sum + p.fees, 0))}
+                                                        -{formatCurrency(sumBy(platforms, p => p.fees))}
                                                     </td>
                                                     <td className="py-2 text-right">
-                                                        {formatCurrency(platforms.reduce((sum, p) => sum + p.netRevenue, 0))}
+                                                        {formatCurrency(sumBy(platforms, p => p.netRevenue))}
                                                     </td>
                                                     <td className="py-2 text-right">
                                                         {platforms.length > 0
-                                                            ? (platforms.reduce((sum, p) => sum + p.fees, 0) /
-                                                                platforms.reduce((sum, p) => sum + p.grossRevenue, 0) * 100).toFixed(1)
-                                                            : '0.0'}%
+                                                            ? formatPercentage(
+                                                                calculatePercentage(
+                                                                    sumBy(platforms, p => p.fees),
+                                                                    sumBy(platforms, p => p.grossRevenue)
+                                                                ), 1)
+                                                            : '0.0%'}
                                                     </td>
                                                     <td className="py-2 text-right">
-                                                        {platforms.reduce((sum, p) => sum + p.bookingCount, 0)}
+                                                        {sumBy(platforms, p => p.bookingCount)}
                                                     </td>
                                                     <td className="py-2 text-right">
-                                                        {platforms.reduce((sum, p) => sum + p.bookingCount, 0) > 0
-                                                            ? formatCurrency(
-                                                                platforms.reduce((sum, p) => sum + p.netRevenue, 0) /
-                                                                    platforms.reduce((sum, p) => sum + p.bookingCount, 0)
+                                                        {formatCurrency(
+                                                            safeDivide(
+                                                                sumBy(platforms, p => p.netRevenue),
+                                                                sumBy(platforms, p => p.bookingCount)
                                                             )
-                                                            : '$0'}
-                                                    </td>
-                                                </tr>
+                                                        )}
+                                                    </td>                                                </tr>
                                             </tbody>
                                         </table>
                                     </div>
@@ -710,10 +719,7 @@ activeTab === tab
                                                         cx="50%"
                                                         cy="50%"
                                                         labelLine={false}
-                                                        label={(entry: any) => {
-                                                            const percent = entry.percent || 0;
-                                                            return `${entry.name} ${(percent * 100).toFixed(0)}%`;
-                                                        }}
+                                                        label={(entry: any) => `${entry.name} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
                                                         outerRadius={80}
                                                         fill="#8884d8"
                                                         dataKey="value"
@@ -722,7 +728,7 @@ activeTab === tab
                                                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                         ))}
                                                     </Pie>
-                                                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                                                    <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
                                                 </PieChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -735,7 +741,7 @@ activeTab === tab
                                                 <div key={platform.platform} className="p-3 border rounded">
                                                     <div className="flex justify-between items-center mb-2">
                                                         <span className="font-medium">{platform.platform}</span>
-                                                        <span className="text-sm text-gray-600">{platform.feeRate}% fees</span>
+                                                        <span className="text-sm text-gray-600">{formatPercentage(platform.feeRate, 1)} fees</span>
                                                     </div>
                                                     <div className="flex items-center">
                                                         <div className="flex-1 bg-gray-200 rounded-full h-2 mr-3">
@@ -833,5 +839,3 @@ activeTab === tab
         </div>
     )
 }
-
-export default FinancialDashboard

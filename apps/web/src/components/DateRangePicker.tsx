@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Calendar, AlertCircle, RefreshCw } from 'lucide-react'
+import { calculateNightsBetween, addDays, formatDateRange } from '@baileys/utils'
 
-// Result type for explicit error handling
 type Result<T, E> =
   | { type: 'success'; value: T }
   | { type: 'error'; error: E }
@@ -18,16 +18,9 @@ type ValidationError =
   | { type: 'BEFORE_MIN_DATE'; field: 'from' | 'to'; minDate: string }
   | { type: 'EXCEEDS_MAX_DAYS'; maxDays: number; actualDays: number }
 
-// Pure validation functions
 const isValidDateFormat = (dateStr: string): boolean => {
   const date = new Date(dateStr)
   return !isNaN(date.getTime()) && dateStr.match(/^\d{4}-\d{2}-\d{2}$/) !== null
-}
-
-const calculateDaysBetween = (from: string, to: string): number => {
-  const fromDate = new Date(from)
-  const toDate = new Date(to)
-  return Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
 }
 
 const formatDate = (date: Date): string => {
@@ -37,12 +30,9 @@ const formatDate = (date: Date): string => {
 const getToday = (): string => formatDate(new Date())
 
 const getTwoYearsAgo = (): string => {
-  const date = new Date()
-  date.setFullYear(date.getFullYear() - 2)
-  return formatDate(date)
+  return formatDate(addDays(new Date(), -365 * 2))
 }
 
-// Main validation function using Result type
 const validateDateRange = (
   range: DateRange,
   constraints: {
@@ -52,7 +42,6 @@ const validateDateRange = (
     allowFutureDates?: boolean
   } = {}
 ): Result<DateRange, ValidationError> => {
-  // Check format validity
   if (!isValidDateFormat(range.from)) {
     return { type: 'error', error: { type: 'INVALID_FORMAT', field: 'from' } }
   }
@@ -64,12 +53,10 @@ const validateDateRange = (
   const toDate = new Date(range.to)
   const today = new Date(getToday())
 
-  // Check if end is before start
   if (toDate < fromDate) {
     return { type: 'error', error: { type: 'END_BEFORE_START' } }
   }
 
-  // Check future dates
   if (!constraints.allowFutureDates) {
     if (fromDate > today) {
       return { type: 'error', error: { type: 'FUTURE_DATE', field: 'from', maxDate: getToday() } }
@@ -79,7 +66,6 @@ const validateDateRange = (
     }
   }
 
-  // Check minimum date
   if (constraints.minDate) {
     const minDate = new Date(constraints.minDate)
     if (fromDate < minDate) {
@@ -90,7 +76,6 @@ const validateDateRange = (
     }
   }
 
-  // Check maximum date
   const effectiveMaxDate = constraints.maxDate || getToday()
   const maxDate = new Date(effectiveMaxDate)
   if (fromDate > maxDate) {
@@ -100,9 +85,8 @@ const validateDateRange = (
     return { type: 'error', error: { type: 'FUTURE_DATE', field: 'to', maxDate: effectiveMaxDate } }
   }
 
-  // Check maximum days
   if (constraints.maxDays) {
-    const days = calculateDaysBetween(range.from, range.to)
+    const days = calculateNightsBetween(range.from, range.to) + 1
     if (days > constraints.maxDays) {
       return { type: 'error', error: { type: 'EXCEEDS_MAX_DAYS', maxDays: constraints.maxDays, actualDays: days } }
     }
@@ -111,7 +95,6 @@ const validateDateRange = (
   return { type: 'success', value: range }
 }
 
-// Error message formatting
 const formatValidationError = (error: ValidationError): string => {
   switch (error.type) {
     case 'INVALID_FORMAT':
@@ -127,7 +110,6 @@ const formatValidationError = (error: ValidationError): string => {
   }
 }
 
-// Debounced date range picker component
 interface DateRangePickerProps {
   value: DateRange
   onChange: (range: DateRange) => void
@@ -137,6 +119,7 @@ interface DateRangePickerProps {
   allowFutureDates?: boolean
   debounceMs?: number
   className?: string
+  showFormattedRange?: boolean
 }
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
@@ -147,18 +130,17 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   maxDays = 365,
   allowFutureDates = false,
   debounceMs = 500,
-  className = ''
+  className = '',
+  showFormattedRange = false
 }) => {
   const [localRange, setLocalRange] = useState(value)
   const [validation, setValidation] = useState<Result<DateRange, ValidationError>>({ type: 'success', value })
   const debounceTimeout = useRef<NodeJS.Timeout>()
 
-  // Update local range when value changes externally
   useEffect(() => {
     setLocalRange(value)
   }, [value])
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (debounceTimeout.current) {
@@ -167,7 +149,6 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
     }
   }, [])
 
-  // Validate and debounce changes
   const handleRangeChange = useCallback((newRange: DateRange) => {
     setLocalRange(newRange)
 
@@ -180,12 +161,10 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
     setValidation(validationResult)
 
-    // Clear existing timeout
     if (debounceTimeout.current) {
       clearTimeout(debounceTimeout.current)
     }
 
-    // Only propagate valid changes after debounce
     if (validationResult.type === 'success') {
       debounceTimeout.current = setTimeout(() => {
         onChange(validationResult.value)
@@ -206,7 +185,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   }
 
   const isError = validation.type === 'error'
-  const dayCount = isError ? 0 : calculateDaysBetween(localRange.from, localRange.to)
+  const dayCount = isError ? 0 : calculateNightsBetween(localRange.from, localRange.to) + 1
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -236,15 +215,15 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
 
           <input
             type="date"
-            value={localRange.from}
-            onChange={(e) => handleDateChange('from', e.target.value)}
-            min={minDate}
-            max={localRange.to || maxDate}
+            value={localRange.to}
+            onChange={(e) => handleDateChange('to', e.target.value)}
+            min={localRange.from || minDate}
+            max={maxDate}
             className={`px-2 py-1 text-sm border-0 focus:outline-none ${
               isError && validation.error.type !== 'END_BEFORE_START' &&
-              (validation.error.type === 'INVALID_FORMAT' && validation.error.field === 'from' ||
-               validation.error.type === 'FUTURE_DATE' && validation.error.field === 'from' ||
-               validation.error.type === 'BEFORE_MIN_DATE' && validation.error.field === 'from')
+              (validation.error.type === 'INVALID_FORMAT' && validation.error.field === 'to' ||
+               validation.error.type === 'FUTURE_DATE' && validation.error.field === 'to' ||
+               validation.error.type === 'BEFORE_MIN_DATE' && validation.error.field === 'to')
                 ? 'text-red-600'
                 : ''
             }`}
@@ -270,6 +249,12 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
         <div className="flex items-center text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
           <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
           {formatValidationError(validation.error)}
+        </div>
+      )}
+
+      {!isError && showFormattedRange && (
+        <div className="text-sm text-gray-600">
+          {formatDateRange(localRange.from, localRange.to)}
         </div>
       )}
     </div>

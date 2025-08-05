@@ -1,11 +1,12 @@
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { formatCurrency } from '@baileys/utils'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
+import { formatCurrency, formatPercentage, calculatePercentage, ensureNumber } from '@baileys/utils'
 
 type PropertyData = {
     propertyId: string
     propertyName: string
     totalTax: number
     totalRent: number
+    bookingCount: number
     taxRate: number
 }
 
@@ -13,9 +14,16 @@ type MonthlyData = {
     month: string
     totalTax: number
     totalRent: number
+    bookingCount: number
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+
+const formatMonthLabel = (month: string) => {
+    const [year, monthNum] = month.split('-')
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${monthNames[parseInt(monthNum) - 1]} ${year.slice(2)}`
+}
 
 export const PropertyTaxChart = ({
     data,
@@ -26,19 +34,22 @@ export const PropertyTaxChart = ({
 }) => {
     const chartData = data.map(p => ({
         ...p,
-        name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
+        name: p.propertyName.length > 15 ? p.propertyName.substring(0, 12) + '...' : p.propertyName,
+        fullName: p.propertyName,
         tax: p.totalTax,
-        rent: p.totalRent
+        rent: p.totalRent,
+        bookings: p.bookingCount
     }))
 
     const handleClick = (data: any) => {
-        if (onPropertyClick && data && data.payload) {
-            const property = data.payload as typeof chartData[0]
+        if (onPropertyClick && data && data.activePayload && data.activePayload[0]) {
+            const property = data.activePayload[0].payload
             onPropertyClick({
                 propertyId: property.propertyId,
-                propertyName: property.propertyName,
+                propertyName: property.fullName,
                 totalTax: property.tax,
                 totalRent: property.rent,
+                bookingCount: property.bookings,
                 taxRate: property.taxRate
             })
         }
@@ -47,13 +58,38 @@ export const PropertyTaxChart = ({
     return (
         <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
+                <BarChart data={chartData} onClick={handleClick} margin={{ left: 10, right: 10, top: 10, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                    <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="rent" fill="#3B82F6" name="Rent" cursor="pointer" onClick={handleClick} />
-                    <Bar dataKey="tax" fill="#EF4444" name="Tax" cursor="pointer" onClick={handleClick} />
+                    <XAxis
+                        dataKey="name"
+                        angle={-45}
+                        textAnchor="end"
+                        interval={0}
+                        height={80}
+                    />
+                    <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                    <Tooltip
+                        formatter={(value) => formatCurrency(ensureNumber(value))}
+                        content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                                const data = payload[0].payload
+                                return (
+                                    <div className="bg-white p-3 border rounded shadow-lg">
+                                        <p className="font-medium">{data.fullName}</p>
+                                        <p className="text-sm">Rent: {formatCurrency(data.rent)}</p>
+                                        <p className="text-sm">Tax: {formatCurrency(data.tax)}</p>
+                                        <p className="text-sm text-gray-600">
+                                            Rate: {formatPercentage(calculatePercentage(data.tax, data.rent), 2)}
+                                        </p>
+                                    </div>
+                                )
+                            }
+                            return null
+                        }}
+                    />
+                    <Legend />
+                    <Bar dataKey="rent" fill="#3B82F6" name="Rent" cursor="pointer" />
+                    <Bar dataKey="tax" fill="#10B981" name="Tax" cursor="pointer" />
                 </BarChart>
             </ResponsiveContainer>
         </div>
@@ -68,32 +104,41 @@ export const MonthlyTrendChart = ({
     onMonthClick?: (month: string) => void
 }) => {
     const chartData = data.map(m => ({
-        month: m.month,
+        ...m,
+        displayMonth: formatMonthLabel(m.month),
         tax: m.totalTax,
         rent: m.totalRent,
-        taxRate: m.totalRent > 0 ? (m.totalTax / m.totalRent) * 100 : 0
+        bookings: m.bookingCount,
+        taxRate: calculatePercentage(m.totalTax, m.totalRent)
     }))
 
     const handleClick = (data: any) => {
-        if (onMonthClick && data && data.activeLabel) {
-            onMonthClick(data.activeLabel)
+        if (onMonthClick && data && data.activePayload && data.activePayload[0]) {
+            onMonthClick(data.activePayload[0].payload.month)
         }
     }
 
     return (
         <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} onClick={handleClick}>
+                <LineChart data={chartData} onClick={handleClick} margin={{ left: 10, right: 10, top: 10, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis yAxisId="left" tickFormatter={(value) => `$${value.toLocaleString()}`} />
-                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value.toFixed(1)}%`} />
+                    <XAxis
+                        dataKey="displayMonth"
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                    />
+                    <YAxis yAxisId="left" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatPercentage(value, 0)} />
                     <Tooltip
                         formatter={(value, name) => {
-                            if (name === 'Tax Rate') return `${Number(value).toFixed(2)}%`
-                            return formatCurrency(Number(value))
+                            if (name === 'Tax Rate') return formatPercentage(ensureNumber(value), 2)
+                            return formatCurrency(ensureNumber(value))
                         }}
+                        labelFormatter={(label) => label}
                     />
+                    <Legend />
                     <Line
                         yAxisId="left"
                         type="monotone"
@@ -102,27 +147,30 @@ export const MonthlyTrendChart = ({
                         name="Rent"
                         strokeWidth={2}
                         cursor="pointer"
+                        dot={{ fill: '#3B82F6', r: 4 }}
                         activeDot={{ r: 6 }}
                     />
                     <Line
                         yAxisId="left"
                         type="monotone"
                         dataKey="tax"
-                        stroke="#EF4444"
+                        stroke="#10B981"
                         name="Tax"
                         strokeWidth={2}
                         cursor="pointer"
+                        dot={{ fill: '#10B981', r: 4 }}
                         activeDot={{ r: 6 }}
                     />
                     <Line
                         yAxisId="right"
                         type="monotone"
                         dataKey="taxRate"
-                        stroke="#10B981"
+                        stroke="#F59E0B"
                         name="Tax Rate"
                         strokeWidth={2}
                         strokeDasharray="5 5"
                         cursor="pointer"
+                        dot={{ fill: '#F59E0B', r: 3 }}
                         activeDot={{ r: 6 }}
                     />
                 </LineChart>
@@ -139,7 +187,8 @@ export const PropertyDistributionChart = ({
     onPropertyClick?: (property: PropertyData) => void
 }) => {
     const pieData = data.map((p, index) => ({
-        name: p.propertyName,
+        name: p.propertyName.length > 20 ? p.propertyName.substring(0, 17) + '...' : p.propertyName,
+        fullName: p.propertyName,
         value: p.totalTax,
         color: COLORS[index % COLORS.length],
         propertyData: p
@@ -160,7 +209,9 @@ export const PropertyDistributionChart = ({
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ percent }) => percent != null ? `${(percent * 100).toFixed(0)}%` : ''}
+                        label={({ name, percent }) =>
+                            `${name} ${formatPercentage((percent || 0) * 100, 0)}`
+                        }
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -171,7 +222,21 @@ export const PropertyDistributionChart = ({
                             <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                     </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Tooltip
+                        formatter={(value) => formatCurrency(ensureNumber(value))}
+                        content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                                const data = payload[0].payload
+                                return (
+                                    <div className="bg-white p-3 border rounded shadow-lg">
+                                        <p className="font-medium">{data.fullName}</p>
+                                        <p className="text-sm">Tax: {formatCurrency(data.value)}</p>
+                                    </div>
+                                )
+                            }
+                            return null
+                        }}
+                    />
                 </PieChart>
             </ResponsiveContainer>
         </div>

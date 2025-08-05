@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query, DbResult } from './services/database';
+import { safeDivide, calculateOccupancyRate, calculateNightsBetween } from '@baileys/utils';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type OccupancyData = {
@@ -36,7 +37,7 @@ const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams =
 })
 
 const calculateDaysInRange = (fromDate: string, toDate: string): number =>
-  Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+  calculateNightsBetween(fromDate, toDate) + 1
 
 const buildTagFilter = (tagIds: readonly string[]): string =>
   tagIds.length > 0
@@ -194,9 +195,7 @@ const transformPropertyOccupancy = (
   data.map(row => ({
     propertyId: row.property_id,
     propertyName: row.property_name,
-    rate: parseInt(row.property_days) > 0
-      ? parseInt(row.booked_nights) / parseInt(row.property_days)
-      : 0
+    rate: calculateOccupancyRate(parseInt(row.booked_nights), parseInt(row.property_days))
   }))
 
 const transformMonthlyOccupancy = (
@@ -208,9 +207,7 @@ const transformMonthlyOccupancy = (
 ): readonly MonthlyOccupancy[] =>
   data.map(row => ({
     month: row.month,
-    rate: parseInt(row.days_in_month) > 0
-      ? parseInt(row.booked_nights) / parseInt(row.days_in_month)
-      : 0
+    rate: safeDivide(parseInt(row.booked_nights), parseInt(row.days_in_month))
   }))
 
 const fetchOccupancyData = async (params: QueryParams): Promise<DbResult<OccupancyData>> => {
@@ -233,7 +230,7 @@ const fetchOccupancyData = async (params: QueryParams): Promise<DbResult<Occupan
 
   const totalAvailableNights = daysInRange * propertyCountResult.data
   const bookedNights = overallResult.data
-  const overallOccupancy = totalAvailableNights > 0 ? bookedNights / totalAvailableNights : 0
+    const overallOccupancy = safeDivide(bookedNights, totalAvailableNights)
 
   return {
     success: true,

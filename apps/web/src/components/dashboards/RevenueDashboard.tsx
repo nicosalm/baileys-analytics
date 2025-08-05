@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { RevenueMetrics } from '@/types/dashboard'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, calculateGrowthRate, formatPercentage, formatGrowth, calculateAverage, ensureNumber, isValidDateRange } from '@baileys/utils'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
@@ -17,6 +17,11 @@ export const RevenueDashboard = () => {
   const [data, setData] = useState<RevenueMetrics | null>(null)
 
   const loadRevenue = async () => {
+    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+      addToast('error', 'Invalid date range selected')
+      return
+    }
+
     setLoading(true)
     const result = await api.getRevenue(
       filters.dateRange.from,
@@ -47,9 +52,13 @@ export const RevenueDashboard = () => {
   if (!data) return null
 
   const monthlyGrowth = data.byMonth.length > 1
-    ? ((data.byMonth[data.byMonth.length - 1].amount - data.byMonth[data.byMonth.length - 2].amount)
-        / data.byMonth[data.byMonth.length - 2].amount) * 100
+    ? calculateGrowthRate(
+        data.byMonth[data.byMonth.length - 1].amount,
+        data.byMonth[data.byMonth.length - 2].amount
+      )
     : 0
+
+  const avgMonthlyRevenue = calculateAverage(data.byMonth.map(m => m.amount))
 
   const cumulativeData = data.byMonth.reduce((acc, month, index) => {
     const cumulative = index === 0
@@ -83,8 +92,8 @@ export const RevenueDashboard = () => {
             Growth Rate
           </div>
           <div className="text-3xl font-bold flex items-center">
-            {monthlyGrowth > 0 ? '+' : ''}{monthlyGrowth.toFixed(1)}%
-            {monthlyGrowth > 0
+            {formatGrowth(monthlyGrowth / 100)}
+            {monthlyGrowth >= 0
               ? <TrendingUp className="w-6 h-6 ml-2 text-green-600" />
               : <TrendingDown className="w-6 h-6 ml-2 text-red-600" />
             }
@@ -93,7 +102,7 @@ export const RevenueDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-600 mb-2">Avg Monthly</div>
           <div className="text-3xl font-bold">
-            {formatCurrency(data.gross / data.byMonth.length)}
+            {formatCurrency(avgMonthlyRevenue)}
           </div>
         </div>
       </div>
@@ -107,7 +116,7 @@ export const RevenueDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tickFormatter={(value) => value.slice(5)} />
                 <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
                 <Area type="monotone" dataKey="revenue" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} name="Monthly" />
                 <Area type="monotone" dataKey="cumulative" stroke="#10B981" fill="#10B981" fillOpacity={0.3} name="Cumulative" />
               </AreaChart>
@@ -125,7 +134,7 @@ export const RevenueDashboard = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ source, percent }) => `${source} ${percent !== undefined ? (percent * 100).toFixed(0) : 0}%`}
+                  label={({ source, percent }) => `${source} ${formatPercentage((percent || 0) * 100, 0)}`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="amount"
@@ -134,7 +143,7 @@ export const RevenueDashboard = () => {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
               </PieChart>
             </ResponsiveContainer>
           </div>
