@@ -2,13 +2,16 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
 import { formatCurrency } from '@baileys/utils'
 import {
-  User, Calendar, DollarSign, Tag, Mail,
+  User, Calendar, DollarSign, Tag as TagIcon, Mail,
   TrendingUp, Clock, AlertCircle
 } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
+import { StatusBadge } from '@/components/StatusBadge'
+import { Tag } from '@/components/Tag'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useToast } from '@/contexts/toast'
+import { METRIC_COLORS } from '@/lib/theme'
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -78,41 +81,6 @@ const InfoRow = ({ label, value }: { label: string; value: string | number }) =>
   </div>
 )
 
-const BookingStatusBadge = ({ status }: { status: string }) => {
-  const styles = {
-    confirmed: 'bg-green-100 text-green-800',
-    cancelled: 'bg-red-100 text-red-800',
-    canceled: 'bg-red-100 text-red-800',
-    pending: 'bg-yellow-100 text-yellow-800'
-  }
-
-  return (
-    <span className={`px-2 py-1 text-xs rounded ${styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800'}`}>
-      {status}
-    </span>
-  )
-}
-
-const getTagStyle = (tag: { type: string; color?: string }) => {
-  if (tag.color) {
-    return {
-      backgroundColor: `${tag.color}20`,
-      color: tag.color,
-      borderColor: tag.color
-    }
-  }
-
-  const typeColors = {
-    payment: 'bg-green-100 text-green-800 border-green-300',
-    guest: 'bg-purple-100 text-purple-800 border-purple-300',
-    booking: 'bg-blue-100 text-blue-800 border-blue-300',
-    property: 'bg-orange-100 text-orange-800 border-orange-300',
-    custom: 'bg-gray-100 text-gray-800 border-gray-300'
-  }
-
-  return typeColors[tag.type as keyof typeof typeColors] || typeColors.custom
-}
-
 export const GuestDetailView = ({ guestId }: { guestId: string }) => {
   const { dispatch } = useDrillDown()
   const { addToast } = useToast()
@@ -167,7 +135,6 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
     }
   }, [guestId])
 
-  // Sort bookings
   const sortedBookings = useMemo(() => {
     if (!data) return []
 
@@ -186,7 +153,6 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
     })
   }, [data, sortBy, sortOrder])
 
-  // Handle sort
   const handleSort = useCallback((column: string) => {
     if (column === sortBy) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -196,12 +162,10 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
     }
   }, [sortBy])
 
-  // Handle booking click
   const handleBookingClick = useCallback((booking: GuestDetail['bookings'][0]) => {
     dispatch({ type: 'DRILL_TO_BOOKING', bookingId: booking.id })
   }, [dispatch])
 
-  // Handle property click
   const handlePropertyClick = useCallback((propertyId: string, propertyName: string) => {
     dispatch({
       type: 'DRILL_TO_PROPERTY',
@@ -210,7 +174,6 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
     })
   }, [dispatch])
 
-  // Handle export
   const handleExportBookings = useCallback(() => {
     if (!data) return
 
@@ -218,7 +181,6 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
       ? sortedBookings.filter(b => selectedBookings.has(b.id))
       : sortedBookings
 
-    // Convert to CSV
     const headers = ['Property', 'Check In', 'Check Out', 'Nights', 'Amount', 'Platform', 'Status']
     const rows = exportData.map(b => [
       b.propertyName,
@@ -242,7 +204,6 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
     addToast('success', `Exported ${exportData.length} bookings`)
   }, [selectedBookings, sortedBookings, data, addToast])
 
-  // Define columns for bookings table
   const bookingColumns = useMemo(() => [
     {
       key: 'propertyName',
@@ -312,12 +273,11 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
       sortable: true,
       width: 100,
       render: (booking: GuestDetail['bookings'][0]) => (
-        <BookingStatusBadge status={booking.status} />
+        <StatusBadge status={booking.status} />
       )
     }
   ], [handlePropertyClick])
 
-  // Define columns for properties table
   const propertyColumns = useMemo(() => [
     {
       key: 'propertyName',
@@ -504,7 +464,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
 
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4 flex items-center">
-            <Tag className="w-5 h-5 mr-2" />
+            <TagIcon className="w-5 h-5 mr-2" />
             Tags
           </h3>
           {tags && Object.keys(tagsByType).length > 0 ? (
@@ -513,25 +473,9 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                 <div key={type}>
                   <h4 className="text-sm font-medium text-gray-600 mb-2 capitalize">{type}</h4>
                   <div className="flex flex-wrap gap-2">
-                    {typeTags.map(tag => {
-                      const style = getTagStyle(tag)
-                      return typeof style === 'string' ? (
-                        <span
-                          key={tag.id}
-                          className={`px-2 py-1 rounded-full text-xs border ${style}`}
-                        >
-                          {tag.name}
-                        </span>
-                      ) : (
-                        <span
-                          key={tag.id}
-                          className="px-2 py-1 rounded-full text-xs border"
-                          style={style}
-                        >
-                          {tag.name}
-                        </span>
-                      )
-                    })}
+                    {typeTags.map(tag => (
+                      <Tag key={tag.id} tag={tag} size="sm" />
+                    ))}
                   </div>
                 </div>
               ))}
@@ -555,9 +499,9 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                 <Line
                   type="monotone"
                   dataKey="amount"
-                  stroke="#3B82F6"
+                  stroke={METRIC_COLORS.revenue}
                   strokeWidth={2}
-                  dot={{ fill: '#3B82F6' }}
+                  dot={{ fill: METRIC_COLORS.revenue }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -689,7 +633,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                   <div className="p-4 bg-gray-50 rounded">
                     <div className="text-sm text-gray-600">Seasonality</div>
                     <div className="font-medium">
-                      {/* Could add seasonal analysis based on booking months */}
+                      {/* TODO could add seasonal analysis based on booking months */}
                       Year-round
                     </div>
                   </div>
@@ -728,7 +672,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                         <XAxis dataKey="month" />
                         <YAxis />
                         <Tooltip />
-                        <Bar dataKey="bookings" fill="#10B981" name="Bookings per Month" />
+                        <Bar dataKey="bookings" fill={METRIC_COLORS.bookings} name="Bookings per Month" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

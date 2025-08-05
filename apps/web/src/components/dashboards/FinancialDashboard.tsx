@@ -11,6 +11,7 @@ import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
+import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
 import {
     Line, Bar, BarChart,
     PieChart, Pie, Cell, ComposedChart,
@@ -93,9 +94,6 @@ type FinancialData = {
     monthlyProfitability: MonthlyProfitability[]
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
-
-// Metric Card Component
 const MetricCard = ({
     icon: Icon,
     label,
@@ -173,7 +171,6 @@ const MetricCard = ({
     )
 }
 
-// Main Financial Dashboard Component
 export const FinancialDashboard = () => {
     const { addToast } = useToast()
     const { filters } = useDashboard()
@@ -217,7 +214,6 @@ export const FinancialDashboard = () => {
         loadFinancialData()
     }, [filters.dateRange, filters.selectedTags])
 
-    // Sort platforms
     const sortedPlatforms = useMemo(() => {
         if (!data) return []
 
@@ -236,7 +232,6 @@ export const FinancialDashboard = () => {
         })
     }, [data, sortBy, sortOrder])
 
-    // Handle sort
     const handleSort = useCallback((column: string) => {
         if (column === sortBy) {
             setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -246,7 +241,6 @@ export const FinancialDashboard = () => {
         }
     }, [sortBy])
 
-    // Handle export
     const handleExportPlatforms = useCallback(() => {
         if (!data) return
 
@@ -254,7 +248,6 @@ export const FinancialDashboard = () => {
             ? sortedPlatforms.filter(p => selectedPlatforms.has(p.platform))
             : sortedPlatforms
 
-        // Convert to CSV
         const headers = ['Platform', 'Gross Revenue', 'Fees', 'Net Revenue', 'Fee Rate', 'Bookings', 'Avg/Booking']
         const rows = exportData.map(p => [
             p.platform,
@@ -278,7 +271,6 @@ export const FinancialDashboard = () => {
         addToast('success', `Exported ${exportData.length} platforms`)
     }, [selectedPlatforms, sortedPlatforms, filters.dateRange, addToast])
 
-    // Define columns for platform table
     const platformColumns = useMemo(() => [
         {
             key: 'platform',
@@ -353,7 +345,6 @@ export const FinancialDashboard = () => {
         }
     ], [])
 
-    // Define columns for budget table
     const budgetColumns = useMemo(() => [
         {
             key: 'category',
@@ -402,7 +393,6 @@ export const FinancialDashboard = () => {
         }
     ], [])
 
-    // Define columns for cash flow table
     const cashFlowColumns = useMemo(() => [
         {
             key: 'date',
@@ -473,7 +463,7 @@ export const FinancialDashboard = () => {
     const expenseDonutData = metrics.expenses.categories.map((cat, index) => ({
         name: cat.category,
         value: cat.amount,
-        color: COLORS[index % COLORS.length]
+        color: CHART_COLORS[index % CHART_COLORS.length]
     }))
 
     return (
@@ -491,7 +481,6 @@ export const FinancialDashboard = () => {
                 )}
             </div>
 
-            {/* Key Financial Metrics */}
             <div className="grid md:grid-cols-4 gap-4">
                 <MetricCard
                     icon={DollarSign}
@@ -525,9 +514,7 @@ export const FinancialDashboard = () => {
                 />
             </div>
 
-            {/* Revenue, Expenses, and KPIs */}
             <div className="grid md:grid-cols-3 gap-6">
-                {/* Revenue Breakdown */}
                 <div className="bg-white p-6 rounded-lg shadow">
                     <h3 className="text-lg font-bold mb-4">Revenue Breakdown</h3>
                     <div className="space-y-3">
@@ -552,7 +539,6 @@ export const FinancialDashboard = () => {
                     </div>
                 </div>
 
-                {/* Operating Expenses */}
                 <div className="bg-white p-6 rounded-lg shadow">
                     <h3 className="text-lg font-bold mb-4">Operating Expenses</h3>
                     {metrics.expenses.categories.length > 0 ? (
@@ -582,7 +568,7 @@ export const FinancialDashboard = () => {
                                     <div key={cat.category} className="flex items-center">
                                         <div
                                             className="w-3 h-3 rounded-full mr-2"
-                                            style={{ backgroundColor: COLORS[index] }}
+                                            style={{ backgroundColor: CHART_COLORS[index] }}
                                         />
                                         <span className="text-gray-600">{cat.category}: {cat.percentage}%</span>
                                     </div>
@@ -594,7 +580,6 @@ export const FinancialDashboard = () => {
                     )}
                 </div>
 
-                {/* Key Performance Indicators */}
                 <div className="bg-white p-6 rounded-lg shadow">
                     <h3 className="text-lg font-bold mb-4">Key Performance Indicators</h3>
                     <div className="space-y-3">
@@ -622,7 +607,6 @@ export const FinancialDashboard = () => {
                 </div>
             </div>
 
-            {/* Tabbed Content */}
             <div className="bg-white rounded-lg shadow">
                 <div className="border-b">
                     <div className="flex space-x-8 px-6">
@@ -643,12 +627,10 @@ export const FinancialDashboard = () => {
                 </div>
 
                 <div className="p-6">
-                    {/* Overview Tab */}
                     {activeTab === 'overview' && (
                         <div className="space-y-6">
                             {viewMode === 'charts' ? (
                                 <>
-                                    {/* Monthly Profitability Trend */}
                                     <div>
                                         <h4 className="font-medium mb-4">Monthly Profitability Trend</h4>
                                         {monthlyProfitability && monthlyProfitability.length > 0 ? (
@@ -657,15 +639,15 @@ export const FinancialDashboard = () => {
                                                     <ComposedChart data={monthlyProfitability}>
                                                         <CartesianGrid strokeDasharray="3 3" />
                                                         <XAxis dataKey="month" />
-                                                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                                                        <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
                                                         <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                                                         <Legend />
-                                                        <Bar dataKey="revenue" fill="#3B82F6" name="Revenue" />
-                                                        <Bar dataKey="expenses" fill="#EF4444" name="Expenses" />
+                                                        <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
+                                                        <Bar dataKey="expenses" fill={METRIC_COLORS.expenses} name="Expenses" />
                                                         <Line
                                                             type="monotone"
                                                             dataKey="profit"
-                                                            stroke="#10B981"
+                                                            stroke={METRIC_COLORS.profit}
                                                             strokeWidth={2}
                                                             name="Net Profit"
                                                         />
@@ -677,7 +659,6 @@ export const FinancialDashboard = () => {
                                         )}
                                     </div>
 
-                                    {/* Budget vs Actual Chart */}
                                     <div>
                                         <h4 className="font-medium mb-4">Budget vs Actual</h4>
                                         {budget && budget.length > 0 ? (
@@ -686,11 +667,11 @@ export const FinancialDashboard = () => {
                                                     <BarChart data={budget}>
                                                         <CartesianGrid strokeDasharray="3 3" />
                                                         <XAxis dataKey="category" angle={-45} textAnchor="end" height={80} />
-                                                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                                                        <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
                                                         <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                                                         <Legend />
                                                         <Bar dataKey="budgeted" fill="#E5E7EB" name="Budgeted" />
-                                                        <Bar dataKey="actual" fill="#3B82F6" name="Actual" />
+                                                        <Bar dataKey="actual" fill={METRIC_COLORS.revenue} name="Actual" />
                                                     </BarChart>
                                                 </ResponsiveContainer>
                                             </div>
@@ -700,7 +681,6 @@ export const FinancialDashboard = () => {
                                     </div>
                                 </>
                             ) : (
-                                // Table view for Overview
                                 <div>
                                     <h4 className="font-medium mb-4">Budget vs Actual</h4>
                                     {budget && budget.length > 0 ? (
@@ -721,10 +701,8 @@ export const FinancialDashboard = () => {
                         </div>
                     )}
 
-                    {/* Cash Flow Tab */}
                     {activeTab === 'cashflow' && (
                         <div className="space-y-6">
-                            {/* Cash Flow Summary Cards */}
                             <div className="grid md:grid-cols-4 gap-4">
                                 <div className="p-4 bg-green-50 rounded-lg">
                                     <div className="text-sm text-green-600">Cash Inflow</div>
@@ -754,7 +732,6 @@ export const FinancialDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* Cash Flow Table */}
                             <div>
                                 <h4 className="font-medium mb-4">Cash Flow Details</h4>
                                 {cashFlow && cashFlow.length > 0 ? (
@@ -777,7 +754,6 @@ export const FinancialDashboard = () => {
                                 )}
                             </div>
 
-                            {/* Pending Receivables */}
                             <div>
                                 <h4 className="font-medium mb-4">Pending Receivables</h4>
                                 {metrics.revenue.pending > 0 ? (
@@ -803,10 +779,8 @@ export const FinancialDashboard = () => {
                         </div>
                     )}
 
-                    {/* Expenses Tab */}
                     {activeTab === 'expenses' && (
                         <div className="space-y-6">
-                            {/* Expense Categories Breakdown */}
                             <div>
                                 <h4 className="font-medium mb-4">Expense Categories Breakdown</h4>
                                 {metrics.expenses.categories.length > 0 ? (
@@ -829,7 +803,7 @@ export const FinancialDashboard = () => {
                                                         className="h-2 rounded-full"
                                                         style={{
                                                             width: `${category.percentage}%`,
-                                                            backgroundColor: COLORS[index % COLORS.length]
+                                                            backgroundColor: CHART_COLORS[index % CHART_COLORS.length]
                                                         }}
                                                     />
                                                 </div>
@@ -841,7 +815,6 @@ export const FinancialDashboard = () => {
                                 )}
                             </div>
 
-                            {/* Total Expenses Summary */}
                             <div className="bg-gray-50 rounded-lg p-6">
                                 <div className="flex justify-between items-center">
                                     <div>
@@ -857,10 +830,8 @@ export const FinancialDashboard = () => {
                         </div>
                     )}
 
-                    {/* Platform Tab */}
                     {activeTab === 'platform' && (
                         <div className="space-y-6">
-                            {/* Platform Financial Performance Table */}
                             <div>
                                 <div className="flex justify-between items-center mb-4">
                                     <h4 className="font-medium">Platform Financial Performance</h4>
@@ -901,7 +872,6 @@ export const FinancialDashboard = () => {
                                 )}
                             </div>
 
-                            {/* Platform Totals */}
                             {platforms && platforms.length > 0 && (
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <div className="grid md:grid-cols-4 gap-4 text-sm">
@@ -932,7 +902,6 @@ export const FinancialDashboard = () => {
                                 </div>
                             )}
 
-                            {/* Platform Revenue Distribution */}
                             {platforms && platforms.length > 0 && (
                                 <div className="grid md:grid-cols-2 gap-6">
                                     <div>
@@ -944,7 +913,7 @@ export const FinancialDashboard = () => {
                                                         data={platforms.map((p, index) => ({
                                                             name: p.platform,
                                                             value: p.netRevenue,
-                                                            color: COLORS[index % COLORS.length]
+                                                            color: CHART_COLORS[index % CHART_COLORS.length]
                                                         }))}
                                                         cx="50%"
                                                         cy="50%"
@@ -955,7 +924,7 @@ export const FinancialDashboard = () => {
                                                         dataKey="value"
                                                     >
                                                         {platforms.map((_, index) => (
-                                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                                                         ))}
                                                     </Pie>
                                                     <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
@@ -979,7 +948,7 @@ export const FinancialDashboard = () => {
                                                                 className="h-2 rounded-full"
                                                                 style={{
                                                                     width: `${100 - platform.feeRate}%`,
-                                                                    backgroundColor: COLORS[index % COLORS.length]
+                                                                    backgroundColor: CHART_COLORS[index % CHART_COLORS.length]
                                                                 }}
                                                             />
                                                         </div>
@@ -996,7 +965,6 @@ export const FinancialDashboard = () => {
                 </div>
             </div>
 
-            {/* Financial Health Score */}
             <div className="bg-white p-6 rounded-lg shadow">
                 <h3 className="text-lg font-bold mb-4">Financial Health Score</h3>
                 <div className="grid md:grid-cols-5 gap-4">
@@ -1042,7 +1010,6 @@ export const FinancialDashboard = () => {
                 </div>
             </div>
 
-            {/* Quick Actions */}
             <div className="grid md:grid-cols-4 gap-4">
                 <button className="p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow text-left group">
                     <Receipt className="w-6 h-6 text-blue-600 mb-2" />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { PropertyMetrics } from '@/types/dashboard'
-import { formatCurrency, formatPercentage, sumBy, calculateAverage, maxBy, isValidDateRange } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy, isValidDateRange } from '@baileys/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Home } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
@@ -8,6 +8,7 @@ import { api } from '@/lib/api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
 import { useDrillDown } from '@/contexts/drillDown'
+import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
 
 const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
   const { dispatch } = useDrillDown()
@@ -33,7 +34,9 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
         </div>
         <div>
           <div className="text-sm text-gray-600">Occupancy</div>
-          <div className="text-xl font-semibold">{formatPercentage(property.occupancyRate * 100, 0)}</div>
+          <div className={`text-xl font-semibold ${getOccupancyColor(property.occupancyRate)}`}>
+            {formatPercentage(property.occupancyRate * 100, 0)}
+          </div>
         </div>
         <div>
           <div className="text-sm text-gray-600">Avg Nightly</div>
@@ -126,7 +129,7 @@ export const PropertiesDashboard = () => {
             Total Revenue
           </div>
           <div className="text-3xl font-bold">
-            {formatCurrency(totalRevenue)}
+            {formatCompactCurrency(totalRevenue)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -134,7 +137,7 @@ export const PropertiesDashboard = () => {
             <Calendar className="w-4 h-4 mr-1" />
             Avg Occupancy
           </div>
-          <div className="text-3xl font-bold">
+          <div className={`text-3xl font-bold ${getOccupancyColor(avgOccupancy)}`}>
             {formatPercentage(avgOccupancy * 100, 0)}
           </div>
         </div>
@@ -163,11 +166,11 @@ export const PropertiesDashboard = () => {
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
-                <YAxis yAxisId="left" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
                 <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatPercentage(value, 0)} />
                 <Tooltip />
-                <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" name="Revenue" />
-                <Bar yAxisId="right" dataKey="occupancy" fill="#10B981" name="Occupancy %" />
+                <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
+                <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Occupancy %" />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -181,9 +184,9 @@ export const PropertiesDashboard = () => {
                 <PolarGrid />
                 <PolarAngleAxis dataKey="property" />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                <Radar name="Revenue" dataKey="revenue" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
-                <Radar name="Occupancy" dataKey="occupancy" stroke="#10B981" fill="#10B981" fillOpacity={0.3} />
-                <Radar name="Avg Rate" dataKey="avgRate" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.3} />
+                <Radar name="Revenue" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
+                <Radar name="Occupancy" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
+                <Radar name="Avg Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
                 <Tooltip />
               </RadarChart>
             </ResponsiveContainer>

@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency, formatPercentage } from '@baileys/utils'
+import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { Calendar, TrendingUp, Home, Download } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
+import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useToast } from '@/contexts/toast'
+import { getChartColor, getOccupancyColor } from '@/lib/theme'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 
 type MonthDetail = {
@@ -43,8 +45,6 @@ type MonthDetail = {
   }>
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
-
 export const MonthDetailView = ({ month, year }: { month: string; year: string }) => {
   const { dispatch } = useDrillDown()
   const { addToast } = useToast()
@@ -74,20 +74,17 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
     loadMonthDetail()
   }, [month, year])
 
-  // Filter bookings by property
   const filteredBookings = useMemo(() => {
     if (!data) return []
     if (propertyFilter === 'all') return data.bookings
     return data.bookings.filter(b => b.propertyId === propertyFilter)
   }, [data, propertyFilter])
 
-  // Sort bookings
   const sortedBookings = useMemo(() => {
     return [...filteredBookings].sort((a, b) => {
       const aVal = a[sortBy as keyof typeof a]
       const bVal = b[sortBy as keyof typeof b]
 
-      // Handle undefined values
       if (aVal === undefined && bVal === undefined) return 0
       if (aVal === undefined) return 1
       if (bVal === undefined) return -1
@@ -99,7 +96,6 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
     })
   }, [filteredBookings, sortBy, sortOrder])
 
-  // Handle sort
   const handleSort = useCallback((column: string) => {
     if (column === sortBy) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -109,13 +105,11 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
     }
   }, [sortBy])
 
-  // Handle export
   const handleExport = useCallback(() => {
     const exportData = selectedBookings.size > 0
       ? sortedBookings.filter(b => selectedBookings.has(b.id))
       : sortedBookings
 
-    // Convert to CSV
     const headers = ['Property', 'Guest', 'Email', 'Check In', 'Check Out', 'Nights', 'Amount', 'Tax', 'Status', 'Platform']
     const rows = exportData.map(b => [
       b.propertyName,
@@ -142,7 +136,6 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
     addToast('success', `Exported ${exportData.length} bookings`)
   }, [selectedBookings, sortedBookings, year, month, addToast])
 
-  // Define columns for bookings table
   const bookingColumns = useMemo(() => [
     {
       key: 'propertyName',
@@ -238,18 +231,11 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
       sortable: true,
       width: 100,
       render: (booking: MonthDetail['bookings'][0]) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {booking.status}
-        </span>
+        <StatusBadge status={booking.status} />
       )
     }
   ], [dispatch])
 
-  // Define columns for property summary table
   const propertyColumns = useMemo(() => [
     {
       key: 'propertyName',
@@ -302,11 +288,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
       sortable: true,
       width: 100,
       render: (property: MonthDetail['byProperty'][0]) => (
-        <span className={`font-medium ${
-          property.occupancyRate > 0.8 ? 'text-green-600' :
-          property.occupancyRate > 0.6 ? 'text-yellow-600' :
-          'text-red-600'
-        }`}>
+        <span className={`font-medium ${getOccupancyColor(property.occupancyRate)}`}>
           {formatPercentage(property.occupancyRate * 100, 0)}
         </span>
       )
@@ -328,7 +310,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
   const pieData = data.byProperty.map((p, index) => ({
     name: p.propertyName,
     value: p.revenue,
-    color: COLORS[index % COLORS.length]
+    color: getChartColor(index)
   }))
 
   const handlePropertyClick = (property: MonthDetail['byProperty'][0]) => {
@@ -355,7 +337,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
             <TrendingUp className="w-4 h-4 mr-1" />
             Total Revenue
           </div>
-          <div className="text-3xl font-bold">{formatCurrency(data.summary.totalRevenue)}</div>
+          <div className="text-3xl font-bold">{formatCompactCurrency(data.summary.totalRevenue)}</div>
           <div className="text-sm text-gray-500 mt-1">
             {formatCurrency(data.summary.avgNightlyRate)}/night avg
           </div>
@@ -382,11 +364,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
             <Home className="w-4 h-4 mr-1" />
             Occupancy Rate
           </div>
-          <div className={`text-3xl font-bold ${
-            data.summary.occupancyRate > 0.8 ? 'text-green-600' :
-            data.summary.occupancyRate > 0.6 ? 'text-yellow-600' :
-            'text-red-600'
-          }`}>
+          <div className={`text-3xl font-bold ${getOccupancyColor(data.summary.occupancyRate)}`}>
             {formatPercentage(data.summary.occupancyRate * 100, 0)}
           </div>
           <div className="text-sm text-gray-500 mt-1">
@@ -425,7 +403,6 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4">Property Performance</h3>
           {data.byProperty.length <= 10 ? (
-            // Simple list for small number of properties
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {data.byProperty.map(property => (
                 <div
@@ -445,7 +422,6 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
               ))}
             </div>
           ) : (
-            // VirtualTable for many properties
             <VirtualTable
               data={data.byProperty}
               columns={propertyColumns}

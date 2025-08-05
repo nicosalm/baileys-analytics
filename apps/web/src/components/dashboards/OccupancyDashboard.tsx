@@ -7,10 +7,13 @@ import { api } from '@/lib/api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
 import { formatPercentage, minBy, isValidDateRange } from '@baileys/utils'
+import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
+import { useDrillDown } from '@/contexts/drillDown'
 
 export const OccupancyDashboard = () => {
   const { filters } = useDashboard()
   const { addToast } = useToast()
+  const { dispatch } = useDrillDown()
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<OccupancyMetrics | null>(null)
 
@@ -51,22 +54,32 @@ export const OccupancyDashboard = () => {
 
   const propertyChartData = data.byProperty.map(p => ({
     name: p.propertyName || `Property ${p.propertyId}`,
+    propertyId: p.propertyId,
     occupancy: p.rate * 100,
     available: (1 - p.rate) * 100
   }))
 
   const monthlyChartData = data.byMonth.map(m => ({
     month: m.month.slice(5),
+    fullMonth: m.month,
     rate: m.rate * 100
   }))
 
-  const getOccupancyColor = (rate: number) => {
-    if (rate >= 0.8) return '#10B981'
-    if (rate >= 0.6) return '#F59E0B'
-    return '#EF4444'
-  }
-
   const lowestMonth = minBy(data.byMonth, m => m.rate) || { month: '', rate: 1 }
+
+  const handleMonthClick = (data: any) => {
+    if (data && data.activeLabel) {
+      const monthData = monthlyChartData.find(m => m.month === data.activeLabel)
+      if (monthData) {
+        const [year, month] = monthData.fullMonth.split('-')
+        dispatch({
+          type: 'DRILL_TO_MONTH',
+          month,
+          year
+        })
+      }
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -78,7 +91,7 @@ export const OccupancyDashboard = () => {
             <TrendingUp className="w-4 h-4 mr-1" />
             Overall Occupancy
           </div>
-          <div className="text-3xl font-bold" style={{ color: getOccupancyColor(data.overall) }}>
+          <div className={`text-3xl font-bold ${getOccupancyColor(data.overall)}`}>
             {formatPercentage(data.overall * 100, 0)}
           </div>
         </div>
@@ -111,7 +124,7 @@ export const OccupancyDashboard = () => {
           <h3 className="text-lg font-bold mb-4">Monthly Occupancy Trend</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyChartData}>
+              <LineChart data={monthlyChartData} onClick={handleMonthClick}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(value) => formatPercentage(value, 0)} domain={[0, 100]} />
@@ -119,9 +132,10 @@ export const OccupancyDashboard = () => {
                 <Line
                   type="monotone"
                   dataKey="rate"
-                  stroke="#3B82F6"
+                  stroke={METRIC_COLORS.occupancy}
                   strokeWidth={3}
-                  dot={{ fill: '#3B82F6', r: 6 }}
+                  dot={{ fill: METRIC_COLORS.occupancy, r: 6, cursor: 'pointer' }}
+                  activeDot={{ r: 8 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -135,9 +149,23 @@ export const OccupancyDashboard = () => {
               <BarChart data={propertyChartData} layout="horizontal">
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => formatPercentage(value, 0)} />
-                <YAxis dataKey="name" type="category" />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  tick={{ cursor: 'pointer' }}
+                  onClick={(data) => {
+                    const property = propertyChartData.find(p => p.name === data.value)
+                    if (property) {
+                      dispatch({
+                        type: 'DRILL_TO_PROPERTY',
+                        propertyId: property.propertyId,
+                        propertyName: property.name
+                      })
+                    }
+                  }}
+                />
                 <Tooltip formatter={(value) => formatPercentage(Number(value), 0)} />
-                <Bar dataKey="occupancy" stackId="a" fill="#3B82F6" name="Occupied" />
+                <Bar dataKey="occupancy" stackId="a" fill={METRIC_COLORS.occupancy} name="Occupied" />
                 <Bar dataKey="available" stackId="a" fill="#E5E7EB" name="Available" />
               </BarChart>
             </ResponsiveContainer>

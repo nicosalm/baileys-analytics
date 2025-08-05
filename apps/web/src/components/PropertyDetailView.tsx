@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency, formatPercentage } from '@baileys/utils'
+import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users, Download, Home, Bed, Bath } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
+import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useDashboard } from '@/contexts/dashboard'
 import { useToast } from '@/contexts/toast'
+import { METRIC_COLORS, getChartColor, getOccupancyColor } from '@/lib/theme'
 
 type PropertyDetail = {
   property: {
@@ -76,17 +78,11 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
         setLoading(true)
         setError(null)
 
-        console.log('Loading property detail for:', propertyId)
-        console.log('Date range:', filters.dateRange)
-
         const result = await api.request<PropertyDetail>(
           `/property/${propertyId}/detail?from=${filters.dateRange.from}&to=${filters.dateRange.to}`
         )
 
-        console.log('API result:', result)
-
         if (result.success && result.data) {
-          // Ensure all required fields have default values
           const processedData = {
             ...result.data,
             metrics: {
@@ -113,7 +109,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
           addToast('error', errorMsg)
         }
       } catch (err) {
-        console.error('Error loading property detail:', err)
         const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred'
         setError(errorMsg)
         addToast('error', errorMsg)
@@ -127,7 +122,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
     }
   }, [propertyId, filters.dateRange, addToast])
 
-  // Sort bookings
   const sortedBookings = useMemo(() => {
     if (!data?.recentBookings) return []
 
@@ -146,7 +140,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
     })
   }, [data?.recentBookings, sortBy, sortOrder])
 
-  // Handle sort
   const handleSort = useCallback((column: string) => {
     if (column === sortBy) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -156,7 +149,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
     }
   }, [sortBy])
 
-  // Handle export
   const handleExportBookings = useCallback(() => {
     if (!data) return
 
@@ -164,7 +156,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
       ? sortedBookings.filter(b => selectedBookings.has(b.id))
       : sortedBookings
 
-    // Convert to CSV
     const headers = ['Guest', 'Email', 'Check In', 'Check Out', 'Nights', 'Amount', 'Platform', 'Status', 'Booked Date']
     const rows = exportData.map(b => [
       b.guestName,
@@ -190,7 +181,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
     addToast('success', `Exported ${exportData.length} bookings`)
   }, [selectedBookings, sortedBookings, data, filters.dateRange, addToast])
 
-  // Define columns for bookings table
   const bookingColumns = useMemo(() => [
     {
       key: 'guestName',
@@ -269,13 +259,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
       sortable: true,
       width: 100,
       render: (booking: PropertyDetail['recentBookings'][0]) => (
-        <span className={`px-2 py-1 text-xs rounded-full ${
-          booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-          booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {booking.status}
-        </span>
+        <StatusBadge status={booking.status} />
       )
     },
     {
@@ -288,7 +272,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
     }
   ], [dispatch])
 
-  // Define columns for monthly data table
   const monthlyColumns = useMemo(() => [
     {
       key: 'month',
@@ -394,14 +377,6 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
     dispatch({ type: 'DRILL_TO_BOOKING', bookingId: booking.id })
   }
 
-  const getOccupancyColor = (rate: number) => {
-    if (rate >= 0.8) return 'text-green-600'
-    if (rate >= 0.6) return 'text-yellow-600'
-    return 'text-red-600'
-  }
-
-  const PLATFORM_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']
-
   return (
     <div className="space-y-6">
       <div>
@@ -432,7 +407,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <DollarSign className="w-4 h-4 mr-1" />
             Total Revenue
           </div>
-          <div className="text-3xl font-bold">{formatCurrency(data.metrics.totalRevenue)}</div>
+          <div className="text-3xl font-bold">{formatCompactCurrency(data.metrics.totalRevenue)}</div>
           <div className="text-sm text-gray-500 mt-1">
             {formatCurrency(data.metrics.avgNightlyRate)}/night avg
           </div>
@@ -491,7 +466,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#3B82F6"
+                    stroke={METRIC_COLORS.revenue}
                     strokeWidth={2}
                     dot={{ cursor: 'pointer' }}
                     activeDot={{ onClick: handleMonthClick }}
@@ -515,7 +490,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
                   <Tooltip formatter={(value) => `${value}%`} />
                   <Bar
                     dataKey="occupancy"
-                    fill="#10B981"
+                    fill={METRIC_COLORS.occupancy}
                     cursor="pointer"
                     onClick={handleMonthClick}
                   />
@@ -545,7 +520,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
                           className="h-2 rounded-full"
                           style={{
                             width: `${percentage}%`,
-                            backgroundColor: PLATFORM_COLORS[index % PLATFORM_COLORS.length]
+                            backgroundColor: getChartColor(index)
                           }}
                         />
                       </div>

@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { api } from '@/lib/api'
 import { formatCurrency, calculateNightsBetween } from '@baileys/utils'
-import { Calendar, User, DollarSign, Tag, AlertCircle } from 'lucide-react'
+import { Calendar, User, DollarSign, Tag as TagIcon, AlertCircle } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
+import { StatusBadge } from '@/components/StatusBadge'
+import { Tag } from '@/components/Tag'
 
 type BookingDetail = {
   booking: {
@@ -36,37 +38,6 @@ type BookingDetail = {
   }>
 }
 
-const getTagColor = (tag: { type: string; color?: string }) => {
-  // Normalize to return same shape regardless of whether tag.color exists
-  if (tag.color) {
-    return {
-      bg: '',
-      text: '',
-      border: '',
-      backgroundColor: `${tag.color}20`, // Add transparency
-      color: tag.color,
-      borderColor: tag.color
-    }
-  }
-
-  const typeColors = {
-    payment: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300' },
-    guest: { bg: 'bg-purple-100', text: 'text-purple-800', border: 'border-purple-300' },
-    booking: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300' },
-    property: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300' },
-    custom: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-300' }
-  }
-
-  const defaultColors = typeColors[tag.type as keyof typeof typeColors] || typeColors.custom
-
-  return {
-    ...defaultColors,
-    backgroundColor: '',
-    color: '',
-    borderColor: ''
-  }
-}
-
 export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<BookingDetail | null>(null)
@@ -95,7 +66,6 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
     loadBookingDetail()
   }, [bookingId])
 
-  // Define columns for charges table
   const chargeColumns = useMemo(() => [
     {
       key: 'description',
@@ -182,7 +152,6 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
     return acc
   }, {} as Record<string, typeof data.tags>)
 
-  // Calculate totals for charges
   const subtotal = data.charges
     .filter(c => c.type === 'rent')
     .reduce((sum, c) => sum + c.amount, 0)
@@ -200,17 +169,9 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
       <div>
         <h2 className="text-2xl font-bold">Booking Details</h2>
         <p className="text-gray-600">Booking ID: {data.booking.ownerrezBookingId}</p>
-        <span
-          className={`inline-block mt-2 px-3 py-1 text-sm rounded-full ${
-            data.booking.status === 'confirmed'
-              ? 'bg-green-100 text-green-800'
-              : data.booking.status === 'cancelled'
-              ? 'bg-red-100 text-red-800'
-              : 'bg-gray-100 text-gray-800'
-          }`}
-        >
-          {data.booking.status}
-        </span>
+        <div className="mt-2">
+          <StatusBadge status={data.booking.status} />
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -289,7 +250,6 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
         </h3>
 
         {data.charges.length <= 20 ? (
-          // For small datasets, use simple table
           <div className="space-y-2">
             {data.charges.map(charge => (
               <div key={charge.id} className="flex justify-between py-2 border-b">
@@ -316,7 +276,6 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
               </div>
             ))}
 
-            {/* Summary */}
             <div className="pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
@@ -337,7 +296,6 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
             </div>
           </div>
         ) : (
-          // For large datasets, use VirtualTable
           <>
             <VirtualTable
               data={data.charges}
@@ -352,7 +310,6 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
               pageSize={20}
             />
 
-            {/* Summary below table */}
             <div className="mt-4 p-4 bg-gray-50 rounded space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal (Rent)</span>
@@ -378,7 +335,7 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
       {data.tags.length > 0 && (
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4 flex items-center">
-            <Tag className="w-5 h-5 mr-2" />
+            <TagIcon className="w-5 h-5 mr-2" />
             Tags
           </h3>
           <div className="space-y-3">
@@ -386,29 +343,9 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
               <div key={type}>
                 <h4 className="text-sm font-medium text-gray-600 mb-2 capitalize">{type} Tags</h4>
                 <div className="flex flex-wrap gap-2">
-                  {tags.map(tag => {
-                    const colors = getTagColor(tag)
-                    return tag.color ? (
-                      <span
-                        key={tag.id}
-                        className="px-3 py-1 rounded-full text-sm border"
-                        style={{
-                          backgroundColor: colors.backgroundColor,
-                          color: colors.color,
-                          borderColor: colors.borderColor
-                        }}
-                      >
-                        {tag.name}
-                      </span>
-                    ) : (
-                      <span
-                        key={tag.id}
-                        className={`px-3 py-1 rounded-full text-sm border ${colors.bg} ${colors.text} ${colors.border}`}
-                      >
-                        {tag.name}
-                      </span>
-                    )
-                  })}
+                  {tags.map(tag => (
+                    <Tag key={tag.id} tag={tag} />
+                  ))}
                 </div>
               </div>
             ))}

@@ -1,34 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Tag as TagIcon, X } from 'lucide-react'
+import { Tag as TagIcon } from 'lucide-react'
 import { DateRangePicker } from '@/components/DateRangePicker'
-import { Tag } from '@/types/dashboard'
+import { Tag } from '@/components/Tag'
+import { Tag as TagType } from '@/types/dashboard'
 import { useDashboard } from '@/contexts/dashboard'
 import { api } from '@/lib/api'
 
-// Helper functions
-const getTagStyle = (tag: Tag): string => {
-  const baseStyle = 'inline-flex items-center px-2 py-1 rounded-full text-xs border cursor-pointer transition-all'
-
-  if (tag.color) {
-    return baseStyle
-  }
-
-  const typeStyles = {
-    payment: 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200',
-    guest: 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200',
-    booking: 'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200',
-    property: 'bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-200',
-    custom: 'bg-gray-100 text-gray-800 border-gray-300 hover:bg-gray-200'
-  }
-
-  return `${baseStyle} ${typeStyles[tag.type] || typeStyles.custom}`
-}
-
-// Tag selector component
 interface TagSelectorProps {
-  availableTags: Tag[]
-  selectedTags: Tag[]
-  onToggleTag: (tag: Tag) => void
+  availableTags: TagType[]
+  selectedTags: TagType[]
+  onToggleTag: (tag: TagType) => void
   onClearTags: () => void
   loading?: boolean
 }
@@ -43,7 +24,6 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -55,12 +35,11 @@ const TagSelector: React.FC<TagSelectorProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Group tags by type
   const tagsByType = availableTags.reduce((acc, tag) => {
     if (!acc[tag.type]) acc[tag.type] = []
     acc[tag.type].push(tag)
     return acc
-  }, {} as Record<string, Tag[]>)
+  }, {} as Record<string, TagType[]>)
 
   const typeLabels = {
     property: 'Property Tags',
@@ -109,35 +88,17 @@ const TagSelector: React.FC<TagSelectorProps> = ({
                   <div className="flex flex-wrap gap-2">
                     {tags.map(tag => {
                       const isSelected = selectedTags.some(t => t.id === tag.id)
-                      const style = getTagStyle(tag)
-
-                      return tag.color ? (
-                        <button
-                          key={tag.id}
-                          onClick={() => onToggleTag(tag)}
-                          className={`${style} ${isSelected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}`}
-                          style={{
-                            backgroundColor: isSelected ? tag.color : `${tag.color}20`,
-                            color: tag.color,
-                            borderColor: tag.color
-                          }}
-                        >
-                          {tag.name}
+                      return (
+                        <span key={tag.id} className="inline-flex items-center">
+                          <Tag
+                            tag={tag}
+                            onClick={() => onToggleTag(tag)}
+                            selected={isSelected}
+                          />
                           {tag.usageCount !== undefined && (
-                            <span className="ml-1 opacity-60">({tag.usageCount})</span>
+                            <span className="ml-1 text-xs opacity-60">({tag.usageCount})</span>
                           )}
-                        </button>
-                      ) : (
-                        <button
-                          key={tag.id}
-                          onClick={() => onToggleTag(tag)}
-                          className={`${style} ${isSelected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}`}
-                        >
-                          {tag.name}
-                          {tag.usageCount !== undefined && (
-                            <span className="ml-1 opacity-60">({tag.usageCount})</span>
-                          )}
-                        </button>
+                        </span>
                       )
                     })}
                   </div>
@@ -151,7 +112,6 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   )
 }
 
-// Main FilterBar component that integrates with DashboardContext
 export const FilterBar: React.FC = () => {
   const {
     activeTab,
@@ -161,10 +121,9 @@ export const FilterBar: React.FC = () => {
     clearTags
   } = useDashboard()
 
-  const [availableTags, setAvailableTags] = useState<Tag[]>([])
+  const [availableTags, setAvailableTags] = useState<TagType[]>([])
   const [tagsLoading, setTagsLoading] = useState(false)
 
-  // Load available tags from API
   useEffect(() => {
     const loadTags = async () => {
       setTagsLoading(true)
@@ -182,7 +141,6 @@ export const FilterBar: React.FC = () => {
     loadTags()
   }, [])
 
-  // Don't show date range for seasonal tab
   const showDateRange = activeTab !== 'seasonal'
 
   const removeTag = (tagId: string) => {
@@ -200,7 +158,7 @@ export const FilterBar: React.FC = () => {
             <DateRangePicker
               value={filters.dateRange}
               onChange={updateDateRange}
-              maxDays={730} // 2 years
+              maxDays={730}
               debounceMs={500}
             />
           )}
@@ -217,39 +175,13 @@ export const FilterBar: React.FC = () => {
 
               {filters.selectedTags.length > 0 && (
                 <div className="flex flex-wrap items-center gap-2">
-                  {filters.selectedTags.map(tag => {
-                    const style = getTagStyle(tag)
-
-                    return tag.color ? (
-                      <span
-                        key={tag.id}
-                        className={`${style} pr-1`}
-                        style={{
-                          backgroundColor: `${tag.color}20`,
-                          color: tag.color,
-                          borderColor: tag.color
-                        }}
-                      >
-                        {tag.name}
-                        <button
-                          onClick={() => removeTag(tag.id)}
-                          className="ml-1 hover:opacity-70"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ) : (
-                      <span key={tag.id} className={`${style} pr-1`}>
-                        {tag.name}
-                        <button
-                          onClick={() => removeTag(tag.id)}
-                          className="ml-1 hover:opacity-70"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )
-                  })}
+                  {filters.selectedTags.map(tag => (
+                    <Tag
+                      key={tag.id}
+                      tag={tag}
+                      onRemove={() => removeTag(tag.id)}
+                    />
+                  ))}
                 </div>
               )}
             </div>

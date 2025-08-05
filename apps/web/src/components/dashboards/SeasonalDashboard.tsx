@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency, calculateGrowthRate, formatPercentage, formatGrowth, ensureNumber } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, calculateGrowthRate, formatPercentage, formatGrowth, ensureNumber } from '@baileys/utils'
 import {
   LineChart, Line, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -157,7 +157,7 @@ export const SeasonalDashboard = () => {
               <LineChart data={yearOverYearChart}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="year" />
-                <YAxis yAxisId="left" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
                 <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatPercentage(value, 0)} />
                 <Tooltip formatter={(value, name) =>
                   name === 'occupancy' ? formatPercentage(Number(value), 0) : formatCurrency(ensureNumber(value))
@@ -193,7 +193,7 @@ export const SeasonalDashboard = () => {
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
                 <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
                 <Legend />
                 <Bar dataKey="previous" fill="#E5E7EB" name={`${selectedYear - 1}`} cursor="pointer" />

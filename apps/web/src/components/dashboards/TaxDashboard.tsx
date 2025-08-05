@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency, formatPercentage, isValidDateRange } from '@baileys/utils'
+import { formatCurrency, formatPercentage, formatCompactCurrency, isValidDateRange } from '@baileys/utils'
 import { PropertyTaxChart, MonthlyTrendChart, PropertyDistributionChart } from '@/components/TaxCharts'
 import { VirtualTable } from '@/components/VirtualTable'
 import { Download, TrendingUp, Home, Calendar, FileText } from 'lucide-react'
@@ -48,7 +48,6 @@ export const TaxDashboard = () => {
     loadReport()
   }, [filters.dateRange, filters.selectedTags])
 
-  // Sort properties
   const sortedProperties = useMemo(() => {
     if (!data) return []
 
@@ -67,7 +66,6 @@ export const TaxDashboard = () => {
     })
   }, [data, sortBy, sortOrder])
 
-  // Handle sort
   const handleSort = useCallback((column: string) => {
     if (column === sortBy) {
       setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -93,7 +91,6 @@ export const TaxDashboard = () => {
       ? sortedProperties.filter(p => selectedProperties.has(p.propertyId))
       : sortedProperties
 
-    // Convert to CSV
     const headers = ['Property', 'Total Tax', 'Total Rent', 'Bookings', 'Tax Rate']
     const rows = exportData.map(p => [
       p.propertyName,
@@ -115,7 +112,6 @@ export const TaxDashboard = () => {
     addToast('success', `Exported ${exportData.length} properties`)
   }, [selectedProperties, sortedProperties, filters.dateRange, addToast])
 
-  // Define columns for property table
   const propertyColumns = useMemo(() => [
     {
       key: 'propertyName',
@@ -172,7 +168,6 @@ export const TaxDashboard = () => {
     }
   ], [])
 
-  // Define columns for monthly table
   const monthlyColumns = useMemo(() => {
     if (!data) return []
 
@@ -252,7 +247,6 @@ export const TaxDashboard = () => {
     ? (data.summary.totalTax / data.summary.totalRent) * 100
     : 0
 
-  // Handle property click for drill-down
   const handlePropertyClick = (property: typeof sortedProperties[0]) => {
     dispatch({
       type: 'DRILL_TO_PROPERTY',
@@ -261,7 +255,6 @@ export const TaxDashboard = () => {
     })
   }
 
-  // Handle month click for drill-down
   const handleMonthClick = (monthData: TaxReportData['byMonth'][0]) => {
     const [year, monthNum] = monthData.month.split('-')
     dispatch({
@@ -299,7 +292,7 @@ export const TaxDashboard = () => {
             <TrendingUp className="w-4 h-4 mr-1" />
             Total Tax Collected
           </div>
-          <div className="text-3xl font-bold">{formatCurrency(data.summary.totalTax)}</div>
+          <div className="text-3xl font-bold">{formatCompactCurrency(data.summary.totalTax)}</div>
           <div className="text-sm text-gray-500 mt-1">
             {formatPercentage(effectiveTaxRate, 2)} effective rate
           </div>
@@ -309,7 +302,7 @@ export const TaxDashboard = () => {
             <Home className="w-4 h-4 mr-1" />
             Total Rent
           </div>
-          <div className="text-3xl font-bold">{formatCurrency(data.summary.totalRent)}</div>
+          <div className="text-3xl font-bold">{formatCompactCurrency(data.summary.totalRent)}</div>
           <div className="text-sm text-gray-500 mt-1">
             across {data.byProperty.length} properties
           </div>

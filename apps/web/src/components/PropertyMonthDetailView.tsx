@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import { formatCurrency } from '@baileys/utils'
 import { Calendar, DollarSign } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
+import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
 
 type PropertyMonthDetail = {
@@ -136,13 +137,7 @@ export const PropertyMonthDetailView = ({
                   <td className="py-2 text-right">{formatCurrency(booking.totalAmount)}</td>
                   <td className="py-2 text-right">{formatCurrency(booking.taxAmount)}</td>
                   <td className="py-2">
-                    <span className={`px-2 py-1 text-xs rounded ${
-                      booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                      booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {booking.status}
-                    </span>
+                    <StatusBadge status={booking.status} />
                   </td>
                 </tr>
               ))}

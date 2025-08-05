@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency, formatPercentage, ensureNumber, isValidDateRange } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, formatPercentage, ensureNumber, isValidDateRange } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
+import { TagList } from '@/components/Tag'
 import { useToast } from '@/contexts/toast'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useDashboard } from '@/contexts/dashboard'
+import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
 import {
     BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -66,8 +68,6 @@ type GuestsData = {
     guests: GuestListItem[]
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6']
-
 const MetricsCard = ({
     icon: Icon,
     label,
@@ -126,7 +126,6 @@ export const GuestsDashboard = () => {
         loadGuestsData()
     }, [filters.dateRange, filters.selectedTags])
 
-    // Filter guests based on view mode
     const filteredGuests = useMemo(() => {
         if (!data) return []
 
@@ -144,13 +143,11 @@ export const GuestsDashboard = () => {
         return filtered
     }, [data, viewMode])
 
-    // Sort guests
     const sortedGuests = useMemo(() => {
         return [...filteredGuests].sort((a, b) => {
             const aVal = a[sortBy as keyof typeof a]
             const bVal = b[sortBy as keyof typeof b]
 
-            // Handle undefined values
             if (aVal === undefined && bVal === undefined) return 0
             if (aVal === undefined) return 1
             if (bVal === undefined) return -1
@@ -162,7 +159,6 @@ export const GuestsDashboard = () => {
         })
     }, [filteredGuests, sortBy, sortOrder])
 
-    // Handle guest click
     const handleGuestClick = useCallback((guest: GuestListItem) => {
         dispatch({
             type: 'DRILL_TO_GUEST',
@@ -171,7 +167,6 @@ export const GuestsDashboard = () => {
         })
     }, [dispatch])
 
-    // Handle sort
     const handleSort = useCallback((column: string) => {
         if (column === sortBy) {
             setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
@@ -181,13 +176,11 @@ export const GuestsDashboard = () => {
         }
     }, [sortBy])
 
-    // Handle export
     const handleExport = useCallback(() => {
         const exportData = selectedGuests.size > 0
             ? sortedGuests.filter(g => selectedGuests.has(g.id))
             : sortedGuests
 
-        // Convert to CSV
         const headers = ['Name', 'Email', 'Bookings', 'Total Spent', 'Avg/Night', 'First Visit', 'Last Visit']
         const rows = exportData.map(g => [
             g.name,
@@ -211,7 +204,6 @@ export const GuestsDashboard = () => {
         addToast('success', `Exported ${exportData.length} guests`)
     }, [selectedGuests, sortedGuests, addToast])
 
-    // Define columns for VirtualTable
     const columns = useMemo(() => [
         {
             key: 'name',
@@ -271,39 +263,7 @@ export const GuestsDashboard = () => {
             header: 'Tags',
             width: 200,
             render: (guest: GuestListItem) => (
-                <div className="flex flex-wrap gap-1">
-                    {guest.tags.slice(0, 3).map(tag => {
-                        const style = tag.color ? {
-                            backgroundColor: `${tag.color}20`,
-                            color: tag.color,
-                            borderColor: tag.color
-                        } : undefined
-
-                        return tag.color ? (
-                            <span
-                                key={tag.id}
-                                className="px-2 py-0.5 text-xs rounded-full border"
-                                style={style}
-                            >
-                                {tag.name}
-                            </span>
-                        ) : (
-                            <span
-                                key={tag.id}
-                                className={`px-2 py-0.5 text-xs rounded-full border ${
-                                    tag.type === 'payment' ? 'bg-green-100 text-green-800 border-green-300' :
-                                    tag.type === 'guest' ? 'bg-purple-100 text-purple-800 border-purple-300' :
-                                    'bg-gray-100 text-gray-800 border-gray-300'
-                                }`}
-                            >
-                                {tag.name}
-                            </span>
-                        )
-                    })}
-                    {guest.tags.length > 3 && (
-                        <span className="text-xs text-gray-500">+{guest.tags.length - 3}</span>
-                    )}
-                </div>
+                <TagList tags={guest.tags} maxDisplay={3} />
             )
         }
     ], [])
@@ -320,7 +280,7 @@ export const GuestsDashboard = () => {
 
     const sourceChartData = data.metrics.guestsBySource.map((source, index) => ({
         ...source,
-        color: COLORS[index % COLORS.length]
+        color: CHART_COLORS[index % CHART_COLORS.length]
     }))
 
     const tagChartData = data.metrics.tagDistribution
@@ -328,7 +288,7 @@ export const GuestsDashboard = () => {
         .map((tag, index) => ({
             name: tag.name,
             value: tag.count,
-            color: tag.color || COLORS[index % COLORS.length]
+            color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
         }))
 
     return (
@@ -429,7 +389,7 @@ export const GuestsDashboard = () => {
                                 <XAxis type="number" />
                                 <YAxis dataKey="name" type="category" width={100} />
                                 <Tooltip />
-                                <Bar dataKey="value" fill="#3B82F6" />
+                                <Bar dataKey="value" fill={METRIC_COLORS.revenue} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -442,9 +402,9 @@ export const GuestsDashboard = () => {
                             <BarChart data={sourceChartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="source" />
-                                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                                <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
                                 <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
-                                <Bar dataKey="revenue" fill="#10B981" />
+                                <Bar dataKey="revenue" fill={METRIC_COLORS.profit} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

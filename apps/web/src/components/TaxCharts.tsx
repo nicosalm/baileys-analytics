@@ -1,5 +1,6 @@
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { formatCurrency, formatPercentage, calculatePercentage, ensureNumber } from '@baileys/utils'
+import { METRIC_COLORS, getChartColor } from '@/lib/theme'
 
 type PropertyData = {
     propertyId: string
@@ -16,8 +17,6 @@ type MonthlyData = {
     totalRent: number
     bookingCount: number
 }
-
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
 
 const formatMonthLabel = (month: string) => {
     const [year, monthNum] = month.split('-')
@@ -93,14 +92,14 @@ export const PropertyTaxChart = ({
                     <Legend />
                     <Bar
                         dataKey="rent"
-                        fill="#3B82F6"
+                        fill={METRIC_COLORS.revenue}
                         name="Rent"
                         cursor="pointer"
                         onClick={handleClick}
                     />
                     <Bar
                         dataKey="tax"
-                        fill="#10B981"
+                        fill={METRIC_COLORS.tax}
                         name="Tax"
                         cursor="pointer"
                         onClick={handleClick}
@@ -129,7 +128,6 @@ export const MonthlyTrendChart = ({
 
     const handleClick = (data: any) => {
         if (onMonthClick && data && data.activeLabel) {
-            // Find the original month string from the display label
             const monthData = chartData.find(m => m.displayMonth === data.activeLabel)
             if (monthData) {
                 onMonthClick(monthData.month)
@@ -166,34 +164,34 @@ export const MonthlyTrendChart = ({
                         yAxisId="left"
                         type="monotone"
                         dataKey="rent"
-                        stroke="#3B82F6"
+                        stroke={METRIC_COLORS.revenue}
                         name="Rent"
                         strokeWidth={2}
                         cursor="pointer"
-                        dot={{ fill: '#3B82F6', r: 4 }}
+                        dot={{ fill: METRIC_COLORS.revenue, r: 4 }}
                         activeDot={{ r: 6 }}
                     />
                     <Line
                         yAxisId="left"
                         type="monotone"
                         dataKey="tax"
-                        stroke="#10B981"
+                        stroke={METRIC_COLORS.tax}
                         name="Tax"
                         strokeWidth={2}
                         cursor="pointer"
-                        dot={{ fill: '#10B981', r: 4 }}
+                        dot={{ fill: METRIC_COLORS.tax, r: 4 }}
                         activeDot={{ r: 6 }}
                     />
                     <Line
                         yAxisId="right"
                         type="monotone"
                         dataKey="taxRate"
-                        stroke="#F59E0B"
+                        stroke={METRIC_COLORS.bookings}
                         name="Tax Rate"
                         strokeWidth={2}
                         strokeDasharray="5 5"
                         cursor="pointer"
-                        dot={{ fill: '#F59E0B', r: 3 }}
+                        dot={{ fill: METRIC_COLORS.bookings, r: 3 }}
                         activeDot={{ r: 6 }}
                     />
                 </LineChart>
@@ -213,7 +211,7 @@ export const PropertyDistributionChart = ({
         name: p.propertyName.length > 20 ? p.propertyName.substring(0, 17) + '...' : p.propertyName,
         fullName: p.propertyName,
         value: p.totalTax,
-        color: COLORS[index % COLORS.length],
+        color: getChartColor(index),
         propertyData: p
     }))
 

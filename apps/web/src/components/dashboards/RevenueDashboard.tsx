@@ -1,14 +1,13 @@
 import { useState, useEffect } from 'react'
 import { RevenueMetrics } from '@/types/dashboard'
-import { formatCurrency, calculateGrowthRate, formatPercentage, formatGrowth, calculateAverage, ensureNumber, isValidDateRange } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, calculateGrowthRate, formatPercentage, formatGrowth, calculateAverage, ensureNumber, isValidDateRange } from '@baileys/utils'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { api } from '@/lib/api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
-
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444']
+import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
 
 export const RevenueDashboard = () => {
   const { filters } = useDashboard()
@@ -77,14 +76,14 @@ export const RevenueDashboard = () => {
             <DollarSign className="w-4 h-4 mr-1" />
             Gross Revenue
           </div>
-          <div className="text-3xl font-bold">{formatCurrency(data.gross)}</div>
+          <div className="text-3xl font-bold">{formatCompactCurrency(data.gross)}</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <CreditCard className="w-4 h-4 mr-1" />
             Net Revenue
           </div>
-          <div className="text-3xl font-bold">{formatCurrency(data.net)}</div>
+          <div className="text-3xl font-bold">{formatCompactCurrency(data.net)}</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -102,7 +101,7 @@ export const RevenueDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-600 mb-2">Avg Monthly</div>
           <div className="text-3xl font-bold">
-            {formatCurrency(avgMonthlyRevenue)}
+            {formatCompactCurrency(avgMonthlyRevenue)}
           </div>
         </div>
       </div>
@@ -115,10 +114,10 @@ export const RevenueDashboard = () => {
               <AreaChart data={cumulativeData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" tickFormatter={(value) => value.slice(5)} />
-                <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
                 <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
-                <Area type="monotone" dataKey="revenue" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} name="Monthly" />
-                <Area type="monotone" dataKey="cumulative" stroke="#10B981" fill="#10B981" fillOpacity={0.3} name="Cumulative" />
+                <Area type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} name="Monthly" />
+                <Area type="monotone" dataKey="cumulative" stroke={METRIC_COLORS.profit} fill={METRIC_COLORS.profit} fillOpacity={0.3} name="Cumulative" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -140,7 +139,7 @@ export const RevenueDashboard = () => {
                   dataKey="amount"
                 >
                   {data.bySource.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
