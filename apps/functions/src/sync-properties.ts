@@ -2,7 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
 import { query, DbResult } from './services/database';
-import { syncPropertyTags } from './services/tagSync';
+import { syncPropertyTags, bulkSyncPropertyTags } from './services/tagSync';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type OwnerRezAddress = {
@@ -217,35 +217,38 @@ const convertPropertyTags = (
     .filter((tag): tag is OwnerRezTag => tag !== undefined)
 }
 
-const syncSingleProperty = async (
-  property: OwnerRezProperty,
-  tenantId: string,
-  tagDefinitions: TagMapping
-): Promise<DbResult<void>> => {
-  const result = await upsertProperty(property, tenantId)
-  if (!result.success) return result
-
-  if (property.tags) {
-    const tagObjects = convertPropertyTags(property.tags, tagDefinitions)
-    if (tagObjects.length > 0) {
-      await syncPropertyTags(result.data, tagObjects, tenantId)
-    }
-  }
-
-  return { success: true, data: undefined }
-}
-
 const syncAllProperties = async (
   properties: readonly OwnerRezProperty[],
   tenantId: string,
   tagDefinitions: TagMapping
 ): Promise<{ propertiesSynced: number }> => {
-  const results = await Promise.all(
-    properties.map(property => syncSingleProperty(property, tenantId, tagDefinitions))
-  )
+  // First, upsert all properties
+  const syncResults: Array<{ result: DbResult<string>, property: OwnerRezProperty }> = []
+
+  for (const property of properties) {
+    const result = await upsertProperty(property, tenantId)
+    syncResults.push({ result, property })
+  }
+
+  // Collect all properties with tags for bulk sync
+  const propertyTagsMap = new Map<string, OwnerRezTag[]>()
+
+  for (const { result, property } of syncResults) {
+    if (result.success && property.tags) {
+      const tagObjects = convertPropertyTags(property.tags, tagDefinitions)
+      if (tagObjects.length > 0) {
+        propertyTagsMap.set(result.data, tagObjects)
+      }
+    }
+  }
+
+  // Bulk sync all tags at once
+  if (propertyTagsMap.size > 0) {
+    await bulkSyncPropertyTags(propertyTagsMap, tenantId)
+  }
 
   return {
-    propertiesSynced: results.filter(r => r.success).length
+    propertiesSynced: syncResults.filter(({ result }) => result.success).length
   }
 }
 

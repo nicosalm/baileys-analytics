@@ -50,6 +50,18 @@ type GuestListItem = {
   }>;
 };
 
+type PaginatedResponse = {
+  metrics: GuestMetrics;
+  guests: GuestListItem[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+};
+
 export async function getGuests(
   request: HttpRequest,
   context: InvocationContext
@@ -82,6 +94,9 @@ export async function getGuests(
     const startDate = url.searchParams.get('from');
     const endDate = url.searchParams.get('to');
     const tagIds = url.searchParams.get('tags')?.split(',').filter(Boolean) || [];
+    const page = parseInt(url.searchParams.get('page') || '1');
+    const pageSize = parseInt(url.searchParams.get('pageSize') || '50');
+    const offset = (page - 1) * pageSize;
 
     // Build date filter
     let dateFilter = '';
@@ -240,7 +255,21 @@ export async function getGuests(
       queryParams
     );
 
-    // Get all guests list
+    // Get total count for pagination
+    const countResult = await query<{ count: string }>(
+      `SELECT COUNT(DISTINCT (guest_name, COALESCE(guest_email, ''))) as count
+      FROM bookings b
+      WHERE tenant_id = $1
+        AND status != 'canceled'
+        ${dateFilter}
+        ${tagFilter}`,
+      queryParams
+    );
+
+    const totalItems = countResult.success ? parseInt(countResult.data[0].count) : 0;
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    // Get paginated guests list
     const guestsListResult = await query<{
       guest_name: string;
       guest_email: string;
@@ -270,11 +299,13 @@ export async function getGuests(
         GROUP BY b.guest_name, b.guest_email
       )
       SELECT * FROM guest_data
-      ORDER BY total_spent DESC`,
+      ORDER BY total_spent DESC
+      LIMIT ${pageSize}
+      OFFSET ${offset}`,
       queryParams
     );
 
-    // Get tags for each guest
+    // Get tags for the current page of guests only
     const guestTagsResult = await query<{
       guest_name: string;
       guest_email: string;
@@ -283,7 +314,25 @@ export async function getGuests(
       tag_type: string;
       tag_color: string;
     }>(
-      `SELECT DISTINCT
+      `WITH current_page_guests AS (
+        SELECT DISTINCT guest_name, guest_email
+        FROM (
+          SELECT
+            b.guest_name,
+            b.guest_email,
+            SUM(b.total_amount) as total_spent
+          FROM bookings b
+          WHERE b.tenant_id = $1
+            AND b.status != 'canceled'
+            ${dateFilter}
+            ${tagFilter}
+          GROUP BY b.guest_name, b.guest_email
+          ORDER BY total_spent DESC
+          LIMIT ${pageSize}
+          OFFSET ${offset}
+        ) g
+      )
+      SELECT DISTINCT
         b.guest_name,
         b.guest_email,
         t.id as tag_id,
@@ -293,6 +342,8 @@ export async function getGuests(
       FROM bookings b
       JOIN booking_tags bt ON b.id = bt.booking_id
       JOIN tags t ON bt.tag_id = t.id
+      JOIN current_page_guests cpg ON b.guest_name = cpg.guest_name
+        AND COALESCE(b.guest_email, '') = COALESCE(cpg.guest_email, '')
       WHERE b.tenant_id = $1
         AND b.status != 'canceled'
         ${dateFilter}
@@ -319,7 +370,7 @@ export async function getGuests(
     }
 
     // Build response
-    const response = {
+    const response: PaginatedResponse = {
       metrics: {
         totalGuests,
         repeatGuests,
@@ -362,7 +413,14 @@ export async function getGuests(
           properties: g.properties ? g.properties.split(', ') : [],
           tags: guestTagsMap.get(guestKey) || []
         };
-      }) : []
+      }) : [],
+      pagination: {
+        page,
+        pageSize,
+        totalItems,
+        totalPages,
+        hasMore: page < totalPages
+      }
     };
 
     return {

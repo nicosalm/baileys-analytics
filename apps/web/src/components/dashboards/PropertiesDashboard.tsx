@@ -35,7 +35,7 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
         <div>
           <div className="text-sm text-gray-600">Occupancy</div>
           <div className={`text-xl font-semibold ${getOccupancyColor(property.occupancyRate)}`}>
-            {formatPercentage(property.occupancyRate * 100, 0)}
+            {formatPercentage(property.occupancyRate, 0)}
           </div>
         </div>
         <div>
@@ -138,7 +138,7 @@ export const PropertiesDashboard = () => {
             Avg Occupancy
           </div>
           <div className={`text-3xl font-bold ${getOccupancyColor(avgOccupancy)}`}>
-            {formatPercentage(avgOccupancy * 100, 0)}
+            {formatPercentage(avgOccupancy, 0)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">

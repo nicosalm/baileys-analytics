@@ -11,6 +11,8 @@ type PropertyMetrics = {
   occupancyRate: number
   avgNightlyRate: number
   avgStayLength: number
+  bookedNights: number
+  availableNights: number
 }
 
 type QueryParams = {
@@ -48,6 +50,7 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
   booking_count: string
   total_nights: string
   available_nights: string
+  created_at: string
 }[]>> => {
   const tagFilter = buildTagFilter(params.tagIds)
   const queryParams = buildQueryParams(params)
@@ -59,20 +62,32 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
     booking_count: string
     total_nights: string
     available_nights: string
+    created_at: string
   }>(
-    `WITH date_range AS (
+    `WITH property_availability AS (
+      -- Calculate actual available nights per property
       SELECT
-        $2::date as start_date,
-        $3::date as end_date,
-        ($3::date - $2::date + 1) as total_days
+        p.id,
+        p.name,
+        p.created_at,
+        COUNT(*) as available_nights
+      FROM properties p
+      CROSS JOIN generate_series(
+        GREATEST($2::date, p.created_at::date),
+        LEAST($3::date, CURRENT_DATE),
+        '1 day'::interval
+      ) AS date_series
+      WHERE p.tenant_id = $1
+        AND p.active = true
+      GROUP BY p.id, p.name, p.created_at
     ),
     property_bookings AS (
       SELECT
         p.id as property_id,
-        p.name as property_name,
         COUNT(DISTINCT b.id) as booking_count,
         COALESCE(SUM(b.total_amount), 0) as total_revenue,
         COALESCE(SUM(
+          -- Calculate nights only within the reporting period
           CASE
             WHEN b.arrival <= $3 AND b.departure >= $2 THEN
               LEAST(b.departure, $3::date) - GREATEST(b.arrival, $2::date)
@@ -87,18 +102,19 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
         AND b.status != 'canceled'
         ${tagFilter}
       WHERE p.tenant_id = $1 AND p.active = true
-      GROUP BY p.id, p.name
+      GROUP BY p.id
     )
     SELECT
-      pb.property_id,
-      pb.property_name,
-      pb.total_revenue::text,
-      pb.booking_count::text,
-      pb.total_nights::text,
-      dr.total_days::text as available_nights
-    FROM property_bookings pb
-    CROSS JOIN date_range dr
-    ORDER BY pb.total_revenue DESC`,
+      pa.id as property_id,
+      pa.name as property_name,
+      COALESCE(pb.total_revenue, 0)::text as total_revenue,
+      COALESCE(pb.booking_count, 0)::text as booking_count,
+      COALESCE(pb.total_nights, 0)::text as total_nights,
+      pa.available_nights::text as available_nights,
+      pa.created_at::text
+    FROM property_availability pa
+    LEFT JOIN property_bookings pb ON pa.id = pb.property_id
+    ORDER BY COALESCE(pb.total_revenue, 0) DESC`,
     queryParams
   )
 }
@@ -110,6 +126,7 @@ const calculatePropertyMetrics = (row: {
   booking_count: string
   total_nights: string
   available_nights: string
+  created_at: string
 }): PropertyMetrics => {
   const revenue = parseFloat(row.total_revenue)
   const bookings = parseInt(row.booking_count)
@@ -123,7 +140,9 @@ const calculatePropertyMetrics = (row: {
     bookings,
     occupancyRate: safeDivide(nights, availableNights),
     avgNightlyRate: safeDivide(revenue, nights, 0),
-    avgStayLength: safeDivide(nights, bookings, 0)
+    avgStayLength: safeDivide(nights, bookings, 0),
+    bookedNights: nights,
+    availableNights
   }
 }
 
@@ -135,6 +154,7 @@ const transformMetrics = (
     booking_count: string
     total_nights: string
     available_nights: string
+    created_at: string
   }[]
 ): readonly PropertyMetrics[] =>
   data.map(calculatePropertyMetrics)

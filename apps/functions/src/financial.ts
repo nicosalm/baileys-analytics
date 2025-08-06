@@ -382,7 +382,7 @@ export async function getFinancialsEnhanced(
             cashFlowResult,
             propertyResult
         ] = await Promise.all([
-            // Get revenue data (existing query)
+            // Get revenue data with platform fees from table
             query<{
                 gross_revenue: string;
                 total_fees: string;
@@ -390,25 +390,59 @@ export async function getFinancialsEnhanced(
                 pending_payments: string;
                 collected_revenue: string;
             }>(`
+                WITH platform_fee_lookup AS (
+                    SELECT DISTINCT ON (platform_name)
+                        platform_name,
+                        fee_type,
+                        fee_value
+                    FROM platform_fees
+                    WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
+                        AND is_active = true
+                        AND effective_from <= $3::date
+                        AND (effective_to IS NULL OR effective_to >= $2::date)
+                    ORDER BY platform_name, tenant_id DESC, effective_from DESC
+                ),
+                booking_summary AS (
+                    SELECT
+                        b.id,
+                        b.total_amount,
+                        b.arrival,
+                        b.platform,
+                        CASE
+                            WHEN b.platform ILIKE '%airbnb%' THEN 'airbnb'
+                            WHEN b.platform ILIKE '%vrbo%' THEN 'vrbo'
+                            WHEN b.platform ILIKE '%booking%' THEN 'booking.com'
+                            ELSE 'direct'
+                        END as platform_key
+                    FROM bookings b
+                    WHERE b.tenant_id = $1
+                        AND b.arrival >= $2
+                        AND b.arrival <= $3
+                        AND b.status != 'canceled'
+                ),
+                tax_summary AS (
+                    SELECT
+                        booking_id,
+                        SUM(amount) as tax_total
+                    FROM booking_charges
+                    WHERE type = 'tax'
+                    GROUP BY booking_id
+                )
                 SELECT
-                    COALESCE(SUM(b.total_amount), 0) as gross_revenue,
+                    COALESCE(SUM(bs.total_amount), 0) as gross_revenue,
                     COALESCE(SUM(
                         CASE
-                            WHEN b.platform ILIKE '%airbnb%' THEN b.total_amount * 0.03
-                            WHEN b.platform ILIKE '%vrbo%' THEN b.total_amount * 0.05
-                            WHEN b.platform ILIKE '%booking%' THEN b.total_amount * 0.15
+                            WHEN pf.fee_type = 'percentage' THEN bs.total_amount * pf.fee_value
+                            WHEN pf.fee_type = 'flat' THEN pf.fee_value
                             ELSE 0
                         END
                     ), 0) as total_fees,
-                    COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_taxes,
-                    COALESCE(SUM(CASE WHEN b.arrival > CURRENT_DATE - INTERVAL '30 days' THEN b.total_amount ELSE 0 END), 0) as pending_payments,
-                    COALESCE(SUM(CASE WHEN b.arrival <= CURRENT_DATE - INTERVAL '7 days' THEN b.total_amount ELSE 0 END), 0) as collected_revenue
-                FROM bookings b
-                LEFT JOIN booking_charges bc ON b.id = bc.booking_id
-                WHERE b.tenant_id = $1
-                    AND b.arrival >= $2
-                    AND b.arrival <= $3
-                    AND b.status != 'canceled'`,
+                    COALESCE(SUM(ts.tax_total), 0) as total_taxes,
+                    COALESCE(SUM(CASE WHEN bs.arrival > CURRENT_DATE - INTERVAL '30 days' THEN bs.total_amount ELSE 0 END), 0) as pending_payments,
+                    COALESCE(SUM(CASE WHEN bs.arrival <= CURRENT_DATE - INTERVAL '7 days' THEN bs.total_amount ELSE 0 END), 0) as collected_revenue
+                FROM booking_summary bs
+                LEFT JOIN tax_summary ts ON bs.id = ts.booking_id
+                LEFT JOIN platform_fee_lookup pf ON bs.platform_key = pf.platform_name`,
                 [auth.tenantId, fromDate, toDate]
             ),
             getExpenseData(auth.tenantId, fromDate, toDate),

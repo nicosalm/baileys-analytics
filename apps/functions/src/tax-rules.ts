@@ -15,6 +15,35 @@ interface TaxRuleFormData {
   isActive: boolean
 }
 
+// Validation function
+const validateTaxRule = (data: any): { valid: boolean; error?: string } => {
+  if (!data.name || typeof data.name !== 'string') {
+    return { valid: false, error: 'Name is required' }
+  }
+
+  if (!data.effectiveFrom) {
+    return { valid: false, error: 'Effective from date is required' }
+  }
+
+  if (!data.method || typeof data.method !== 'object') {
+    return { valid: false, error: 'Tax method is required' }
+  }
+
+  if (!data.appliesTo || typeof data.appliesTo !== 'object') {
+    return { valid: false, error: 'Applies to configuration is required' }
+  }
+
+  if (typeof data.priority !== 'number') {
+    return { valid: false, error: 'Priority must be a number' }
+  }
+
+  if (typeof data.isActive !== 'boolean') {
+    return { valid: false, error: 'isActive must be a boolean' }
+  }
+
+  return { valid: true }
+}
+
 // GET /api/tax-rules
 async function getTaxRules(
   request: HttpRequest,
@@ -69,6 +98,16 @@ async function createTaxRule(
   const { auth } = authCheck.request
   const body = await request.json() as TaxRuleFormData
 
+  // Validate the tax rule
+  const validation = validateTaxRule(body)
+  if (!validation.valid) {
+    return {
+      status: 400,
+      headers: corsHeaders(),
+      jsonBody: { status: 'error', error: validation.error }
+    }
+  }
+
   const id = uuidv4()
   const now = new Date().toISOString()
 
@@ -80,9 +119,9 @@ async function createTaxRule(
     ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
     RETURNING *`,
     [
-      id, auth.tenantId, body.name, body.description,
+      id, auth.tenantId, body.name, body.description || null,
       JSON.stringify(body.method), JSON.stringify(body.appliesTo),
-      body.jurisdiction, body.effectiveFrom, body.effectiveTo,
+      body.jurisdiction || null, body.effectiveFrom, body.effectiveTo || null,
       body.priority, body.isActive, now, now
     ]
   )
@@ -123,6 +162,16 @@ async function updateTaxRule(
   const ruleId = request.params.id
   const body = await request.json() as TaxRuleFormData
 
+  // Validate the tax rule
+  const validation = validateTaxRule(body)
+  if (!validation.valid) {
+    return {
+      status: 400,
+      headers: corsHeaders(),
+      jsonBody: { status: 'error', error: validation.error }
+    }
+  }
+
   const result = await query(
     `UPDATE tax_rules SET
       name = $3, description = $4, method = $5, applies_to = $6,
@@ -131,9 +180,9 @@ async function updateTaxRule(
     WHERE id = $1 AND tenant_id = $2
     RETURNING *`,
     [
-      ruleId, auth.tenantId, body.name, body.description,
+      ruleId, auth.tenantId, body.name, body.description || null,
       JSON.stringify(body.method), JSON.stringify(body.appliesTo),
-      body.jurisdiction, body.effectiveFrom, body.effectiveTo,
+      body.jurisdiction || null, body.effectiveFrom, body.effectiveTo || null,
       body.priority, body.isActive, new Date().toISOString()
     ]
   )

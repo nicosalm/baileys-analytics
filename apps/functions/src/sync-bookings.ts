@@ -2,7 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
 import { query, transaction, DbResult } from './services/database';
-import { syncBookingTags } from './services/tagSync';
+import { syncBookingTags, bulkSyncBookingTags } from './services/tagSync';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type BookingCharge = {
@@ -18,6 +18,7 @@ type OwnerRezGuest = {
   id: number
   first_name: string
   last_name: string
+  email?: string  // Added email field
 }
 
 type OwnerRezTag = {
@@ -217,8 +218,13 @@ const fetchAllBookings = async (
   return { success: true, data: allBookings }
 }
 
+// Updated to include email
 const buildGuestName = (guest?: OwnerRezGuest): string | null =>
   guest ? `${guest.first_name} ${guest.last_name}` : null
+
+// New function to extract guest email
+const buildGuestEmail = (guest?: OwnerRezGuest): string | null =>
+  guest?.email || null
 
 const createBookingRecord = (
   booking: OwnerRezBooking,
@@ -235,7 +241,7 @@ const createBookingRecord = (
   infants: booking.infants || 0,
   pets: booking.pets || 0,
   guest_name: buildGuestName(booking.guest),
-  guest_email: null,
+  guest_email: buildGuestEmail(booking.guest), // Now captures email
   total_amount: booking.total_amount,
   status: booking.status,
   platform: booking.listing_site,
@@ -345,22 +351,20 @@ const syncSingleBooking = async (
   propertyId: string,
   tenantId: string,
   tagDefinitions: TagMapping
-): Promise<DbResult<{ chargeCount: number }>> => {
+): Promise<DbResult<{ chargeCount: number; bookingId: string }>> => {
   const bookingResult = await upsertBooking(booking, propertyId, tenantId)
   if (!bookingResult.success) return bookingResult
 
   const chargesResult = await syncBookingCharges(bookingResult.data, booking.charges)
 
-  if (booking.tags) {
-    const tagObjects = convertBookingTags(booking.tags, tagDefinitions)
-    if (tagObjects.length > 0) {
-      await syncBookingTags(bookingResult.data, tagObjects, tenantId)
-    }
-  }
+  // Tags are now handled in bulk by processBookingBatch
 
   return {
     success: true,
-    data: { chargeCount: chargesResult.success ? chargesResult.data : 0 }
+    data: {
+      chargeCount: chargesResult.success ? chargesResult.data : 0,
+      bookingId: bookingResult.data
+    }
   }
 }
 
@@ -374,16 +378,41 @@ const processBookingBatch = async (
     b && typeof b.property_id === 'number' && propertyMapping.has(b.property_id.toString())
   )
 
-  return Promise.all(
-    validBookings.map(booking =>
-      syncSingleBooking(
-        booking,
-        propertyMapping.get(booking.property_id.toString())!,
-        tenantId,
-        tagDefinitions
-      )
+  // First, sync all bookings and charges
+  const syncResults: Array<{ result: DbResult<{ chargeCount: number; bookingId: string }>, booking: OwnerRezBooking }> = []
+
+  for (const booking of validBookings) {
+    const result = await syncSingleBooking(
+      booking,
+      propertyMapping.get(booking.property_id.toString())!,
+      tenantId,
+      tagDefinitions
     )
-  )
+    syncResults.push({ result, booking })
+  }
+
+  // Then, collect all bookings with tags for bulk sync
+  const bookingTagsMap = new Map<string, OwnerRezTag[]>()
+
+  for (const { result, booking } of syncResults) {
+    if (result.success && booking.tags) {
+      const tagObjects = convertBookingTags(booking.tags, tagDefinitions)
+      if (tagObjects.length > 0) {
+        bookingTagsMap.set(result.data.bookingId, tagObjects)
+      }
+    }
+  }
+
+  // Bulk sync all tags at once
+  if (bookingTagsMap.size > 0) {
+    await bulkSyncBookingTags(bookingTagsMap, tenantId)
+  }
+
+  return syncResults.map(({ result }) => ({
+    success: result.success,
+    data: result.success ? { chargeCount: result.data.chargeCount } : undefined,
+    error: result.success ? undefined : result.error
+  }) as DbResult<{ chargeCount: number }>)
 }
 
 const aggregateSyncResults = (

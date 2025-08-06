@@ -15,11 +15,15 @@ type PropertyOccupancy = {
   propertyId: string
   propertyName: string
   rate: number
+  bookedNights: number
+  availableNights: number
 }
 
 type MonthlyOccupancy = {
   month: string
   rate: number
+  bookedNights: number
+  availableNights: number
 }
 
 type QueryParams = {
@@ -36,9 +40,6 @@ const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams =
   tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
 })
 
-const calculateDaysInRange = (fromDate: string, toDate: string): number =>
-  calculateNightsBetween(fromDate, toDate) + 1
-
 const buildTagFilter = (tagIds: readonly string[]): string =>
   tagIds.length > 0
     ? `AND EXISTS (
@@ -53,53 +54,79 @@ const buildQueryParams = (params: QueryParams): any[] =>
     ? [params.tenantId, params.fromDate, params.toDate, params.tagIds]
     : [params.tenantId, params.fromDate, params.toDate]
 
-const fetchPropertyCount = async (tenantId: string): Promise<DbResult<number>> => {
-  const result = await query<{ count: string }>(
-    'SELECT COUNT(*) as count FROM properties WHERE tenant_id = $1 AND active = true',
-    [tenantId]
-  )
-
-  if (!result.success) {
-    return result
-  }
-
-  return { success: true, data: parseInt(result.data[0]?.count || '0') }
-}
-
-const fetchOverallOccupancy = async (params: QueryParams): Promise<DbResult<number>> => {
+const fetchOverallOccupancy = async (params: QueryParams): Promise<DbResult<{
+  booked_nights: number
+  available_nights: number
+}>> => {
   const tagFilter = buildTagFilter(params.tagIds)
   const queryParams = buildQueryParams(params)
 
-  const result = await query<{ booked_nights: string }>(
-    `SELECT
-      COALESCE(SUM(
-        CASE
-          WHEN arrival <= $3 AND departure >= $2 THEN
-            LEAST(departure, $3::date) - GREATEST(arrival, $2::date)
-          ELSE 0
-        END
-      ), 0) as booked_nights
-    FROM bookings
-    WHERE tenant_id = $1
-      AND arrival <= $3
-      AND departure >= $2
-      AND status != 'canceled'
-      ${tagFilter}`,
+  const result = await query<{
+    booked_nights: string
+    available_nights: string
+  }>(
+    `WITH date_range AS (
+      SELECT
+        $2::date as start_date,
+        LEAST($3::date, CURRENT_DATE) as end_date
+    ),
+    property_availability AS (
+      -- Count all days in the range for each active property
+      -- Don't use created_at - properties existed before being imported
+      SELECT
+        p.id,
+        (dr.end_date - dr.start_date + 1) as available_nights
+      FROM properties p
+      CROSS JOIN date_range dr
+      WHERE p.tenant_id = $1
+        AND p.active = true
+    ),
+    booked_nights AS (
+      SELECT
+        COALESCE(SUM(
+          CASE
+            WHEN b.arrival <= $3 AND b.departure >= $2 THEN
+              LEAST(b.departure, $3::date, CURRENT_DATE) - GREATEST(b.arrival, $2::date)
+            ELSE 0
+          END
+        ), 0) as total_booked
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE b.tenant_id = $1
+        AND b.arrival <= $3
+        AND b.departure >= $2
+        AND b.status != 'canceled'
+        AND p.active = true
+        ${tagFilter}
+    )
+    SELECT
+      bn.total_booked::text as booked_nights,
+      COALESCE(SUM(pa.available_nights), 0)::text as available_nights
+    FROM property_availability pa
+    CROSS JOIN booked_nights bn
+    GROUP BY bn.total_booked`,
     queryParams
   )
 
-  if (!result.success) {
-    return result
+  if (!result.success || result.data.length === 0) {
+    return { success: false, error: 'Failed to calculate occupancy' }
   }
 
-  return { success: true, data: parseInt(result.data[0]?.booked_nights || '0') }
+  return {
+    success: true,
+    data: {
+      booked_nights: parseInt(result.data[0].booked_nights),
+      available_nights: parseInt(result.data[0].available_nights)
+    }
+  }
 }
 
 const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<readonly {
   property_id: string
   property_name: string
   booked_nights: string
-  property_days: string
+  available_nights: string
+  created_at: string
 }[]>> => {
   const tagFilter = buildTagFilter(params.tagIds)
   const queryParams = buildQueryParams(params)
@@ -108,35 +135,55 @@ const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<rea
     property_id: string
     property_name: string
     booked_nights: string
-    property_days: string
+    available_nights: string
+    created_at: string
   }>(
-    `WITH date_range AS (
+    `WITH property_availability AS (
       SELECT
-        $2::date as start_date,
-        $3::date as end_date,
-        ($3::date - $2::date + 1) as total_days
+        p.id,
+        p.name,
+        p.created_at,
+        COUNT(*) as available_nights
+      FROM properties p
+      CROSS JOIN generate_series(
+        GREATEST($2::date, p.created_at::date),
+        LEAST($3::date, CURRENT_DATE),
+        '1 day'::interval
+      ) AS date_series
+      WHERE p.tenant_id = $1
+        AND p.active = true
+        AND date_series <= CURRENT_DATE
+      GROUP BY p.id, p.name, p.created_at
+    ),
+    property_bookings AS (
+      SELECT
+        p.id,
+        COALESCE(SUM(
+          CASE
+            WHEN b.arrival <= $3 AND b.departure >= $2 THEN
+              LEAST(b.departure, $3::date, CURRENT_DATE) - GREATEST(b.arrival, $2::date)
+            ELSE 0
+          END
+        ), 0) as booked_nights
+      FROM properties p
+      LEFT JOIN bookings b ON p.id = b.property_id
+        AND b.tenant_id = $1
+        AND b.arrival <= $3
+        AND b.departure >= $2
+        AND b.status != 'canceled'
+        ${tagFilter.replace('bookings.', 'b.')}
+      WHERE p.tenant_id = $1 AND p.active = true
+      GROUP BY p.id
     )
     SELECT
-      p.id as property_id,
-      p.name as property_name,
-      COALESCE(SUM(
-        CASE
-          WHEN b.arrival <= $3 AND b.departure >= $2 THEN
-            LEAST(b.departure, $3::date) - GREATEST(b.arrival, $2::date)
-          ELSE 0
-        END
-      ), 0) as booked_nights,
-      (SELECT total_days FROM date_range) as property_days
-    FROM properties p
-    LEFT JOIN bookings b ON p.id = b.property_id
-      AND b.tenant_id = $1
-      AND b.arrival <= $3
-      AND b.departure >= $2
-      AND b.status != 'canceled'
-      ${tagFilter.replace('bookings.', 'b.')}
-    WHERE p.tenant_id = $1 AND p.active = true
-    GROUP BY p.id, p.name
-    ORDER BY p.name`,
+      pa.id as property_id,
+      pa.name as property_name,
+      COALESCE(pb.booked_nights, 0)::text as booked_nights,
+      pa.available_nights::text as available_nights,
+      pa.created_at::text
+    FROM property_availability pa
+    LEFT JOIN property_bookings pb ON pa.id = pb.id
+    ORDER BY pa.name`,
     queryParams
   )
 }
@@ -144,7 +191,7 @@ const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<rea
 const fetchMonthlyOccupancy = async (params: QueryParams): Promise<DbResult<readonly {
   month: string
   booked_nights: string
-  days_in_month: string
+  available_nights: string
 }[]>> => {
   const tagFilter = buildTagFilter(params.tagIds)
   const queryParams = buildQueryParams(params)
@@ -152,34 +199,44 @@ const fetchMonthlyOccupancy = async (params: QueryParams): Promise<DbResult<read
   return query<{
     month: string
     booked_nights: string
-    days_in_month: string
+    available_nights: string
   }>(
-    `WITH months AS (
-      SELECT DISTINCT
-        TO_CHAR(date_series.date, 'YYYY-MM') as month,
-        COUNT(*) OVER (PARTITION BY TO_CHAR(date_series.date, 'YYYY-MM')) as days_in_month
-      FROM generate_series($2::date, $3::date, '1 day'::interval) as date_series(date)
+    `WITH monthly_availability AS (
+      SELECT
+        TO_CHAR(date_series, 'YYYY-MM') as month,
+        COUNT(DISTINCT p.id || '-' || date_series::date) as available_property_nights
+      FROM properties p
+      CROSS JOIN generate_series(
+        GREATEST($2::date, p.created_at::date),
+        LEAST($3::date, CURRENT_DATE),
+        '1 day'::interval
+      ) AS date_series
+      WHERE p.tenant_id = $1
+        AND p.active = true
+        AND date_series <= CURRENT_DATE
+      GROUP BY TO_CHAR(date_series, 'YYYY-MM')
     ),
     monthly_bookings AS (
       SELECT
         TO_CHAR(calendar_date, 'YYYY-MM') as month,
         COUNT(DISTINCT b.id || '-' || calendar_date) as booked_property_nights
-      FROM generate_series($2::date, $3::date, '1 day'::interval) as calendar_date
+      FROM generate_series($2::date, LEAST($3::date, CURRENT_DATE), '1 day'::interval) as calendar_date
       JOIN bookings b ON b.tenant_id = $1
         AND b.status != 'canceled'
         AND calendar_date >= b.arrival
         AND calendar_date < b.departure
         ${tagFilter.replace('bookings.', 'b.')}
+      JOIN properties p ON b.property_id = p.id
+        AND p.active = true
       GROUP BY TO_CHAR(calendar_date, 'YYYY-MM')
     )
     SELECT
-      m.month,
+      ma.month,
       COALESCE(mb.booked_property_nights, 0)::text as booked_nights,
-      (m.days_in_month * (SELECT COUNT(*) FROM properties WHERE tenant_id = $1 AND active = true))::text as days_in_month
-    FROM months m
-    LEFT JOIN monthly_bookings mb ON m.month = mb.month
-    GROUP BY m.month, m.days_in_month, mb.booked_property_nights
-    ORDER BY m.month`,
+      ma.available_property_nights::text as available_nights
+    FROM monthly_availability ma
+    LEFT JOIN monthly_bookings mb ON ma.month = mb.month
+    ORDER BY ma.month`,
     queryParams
   )
 }
@@ -189,48 +246,55 @@ const transformPropertyOccupancy = (
     property_id: string
     property_name: string
     booked_nights: string
-    property_days: string
+    available_nights: string
+    created_at: string
   }[]
 ): readonly PropertyOccupancy[] =>
-  data.map(row => ({
-    propertyId: row.property_id,
-    propertyName: row.property_name,
-    rate: calculateOccupancyRate(parseInt(row.booked_nights), parseInt(row.property_days))
-  }))
+  data.map(row => {
+    const bookedNights = parseInt(row.booked_nights)
+    const availableNights = parseInt(row.available_nights)
+
+    return {
+      propertyId: row.property_id,
+      propertyName: row.property_name,
+      rate: safeDivide(bookedNights, availableNights),
+      bookedNights,
+      availableNights
+    }
+  })
 
 const transformMonthlyOccupancy = (
   data: readonly {
     month: string
     booked_nights: string
-    days_in_month: string
+    available_nights: string
   }[]
 ): readonly MonthlyOccupancy[] =>
-  data.map(row => ({
-    month: row.month,
-    rate: safeDivide(parseInt(row.booked_nights), parseInt(row.days_in_month))
-  }))
+  data.map(row => {
+    const bookedNights = parseInt(row.booked_nights)
+    const availableNights = parseInt(row.available_nights)
+
+    return {
+      month: row.month,
+      rate: safeDivide(bookedNights, availableNights),
+      bookedNights,
+      availableNights
+    }
+  })
 
 const fetchOccupancyData = async (params: QueryParams): Promise<DbResult<OccupancyData>> => {
-  const daysInRange = calculateDaysInRange(params.fromDate, params.toDate)
-
-  const [propertyCountResult, overallResult, byPropertyResult, byMonthResult] = await Promise.all([
-    fetchPropertyCount(params.tenantId),
+  const [overallResult, byPropertyResult, byMonthResult] = await Promise.all([
     fetchOverallOccupancy(params),
     fetchPropertyOccupancy(params),
     fetchMonthlyOccupancy(params)
   ])
 
-  if (!propertyCountResult.success) {
-    return { success: false, error: 'Failed to get property count' }
-  }
-
   if (!overallResult.success) {
     return { success: false, error: 'Failed to get overall occupancy' }
   }
 
-  const totalAvailableNights = daysInRange * propertyCountResult.data
-  const bookedNights = overallResult.data
-    const overallOccupancy = safeDivide(bookedNights, totalAvailableNights)
+  const { booked_nights, available_nights } = overallResult.data
+  const overallOccupancy = safeDivide(booked_nights, available_nights)
 
   return {
     success: true,
@@ -238,8 +302,8 @@ const fetchOccupancyData = async (params: QueryParams): Promise<DbResult<Occupan
       overall: overallOccupancy,
       byProperty: transformPropertyOccupancy(byPropertyResult.success ? byPropertyResult.data : []),
       byMonth: transformMonthlyOccupancy(byMonthResult.success ? byMonthResult.data : []),
-      bookedNights,
-      availableNights: totalAvailableNights
+      bookedNights: booked_nights,
+      availableNights: available_nights
     }
   }
 }

@@ -64,17 +64,57 @@ const fetchRevenueSummary = async (params: QueryParams): Promise<DbResult<{
     total_taxes: string
     total_fees: string
   }>(
-    `SELECT
-      COALESCE(SUM(b.total_amount), 0) as gross_revenue,
-      COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_taxes,
-      COALESCE(SUM(CASE WHEN bc.type = 'fee' THEN bc.amount ELSE 0 END), 0) as total_fees
-    FROM bookings b
-    LEFT JOIN booking_charges bc ON b.id = bc.booking_id
-    WHERE b.tenant_id = $1
-      AND b.arrival >= $2
-      AND b.arrival <= $3
-      AND b.status != 'canceled'
-      ${tagFilter}`,
+    `WITH platform_fee_lookup AS (
+      SELECT DISTINCT ON (platform_name)
+        platform_name,
+        fee_type,
+        fee_value
+      FROM platform_fees
+      WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
+        AND is_active = true
+        AND effective_from <= $3::date
+        AND (effective_to IS NULL OR effective_to >= $2::date)
+      ORDER BY platform_name, tenant_id DESC, effective_from DESC
+    ),
+    booking_summary AS (
+      SELECT
+        b.id,
+        b.total_amount,
+        b.platform,
+        CASE
+          WHEN b.platform ILIKE '%airbnb%' THEN 'airbnb'
+          WHEN b.platform ILIKE '%vrbo%' THEN 'vrbo'
+          WHEN b.platform ILIKE '%booking%' THEN 'booking.com'
+          ELSE 'direct'
+        END as platform_key
+      FROM bookings b
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        ${tagFilter}
+    ),
+    tax_summary AS (
+      SELECT
+        booking_id,
+        SUM(amount) as tax_total
+      FROM booking_charges
+      WHERE type = 'tax'
+      GROUP BY booking_id
+    )
+    SELECT
+      COALESCE(SUM(bs.total_amount), 0) as gross_revenue,
+      COALESCE(SUM(ts.tax_total), 0) as total_taxes,
+      COALESCE(SUM(
+        CASE
+          WHEN pf.fee_type = 'percentage' THEN bs.total_amount * pf.fee_value
+          WHEN pf.fee_type = 'flat' THEN pf.fee_value
+          ELSE 0
+        END
+      ), 0) as total_fees
+    FROM booking_summary bs
+    LEFT JOIN tax_summary ts ON bs.id = ts.booking_id
+    LEFT JOIN platform_fee_lookup pf ON bs.platform_key = pf.platform_name`,
     queryParams
   )
 

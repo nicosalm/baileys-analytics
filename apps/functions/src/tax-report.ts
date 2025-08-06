@@ -59,59 +59,122 @@ export async function taxReport(
     ? [auth.tenantId, fromDate, toDate, tagIds]
     : [auth.tenantId, fromDate, toDate]
 
-  // Get summary data
+  // Get summary data - FIXED: Total rent should be total booking amount
   const summaryResult = await query(
-    `SELECT
-      COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_tax,
-      COALESCE(SUM(CASE WHEN bc.type = 'rent' THEN bc.amount ELSE 0 END), 0) as total_rent,
-      COUNT(DISTINCT b.id) as total_bookings
-    FROM bookings b
-    LEFT JOIN booking_charges bc ON b.id = bc.booking_id
-    WHERE b.tenant_id = $1
-      AND b.arrival >= $2
-      AND b.arrival <= $3
-      AND b.status != 'canceled'
-      ${tagFilter}`,
+    `WITH booking_totals AS (
+      -- First, get the total amount per booking to avoid multiplication
+      SELECT DISTINCT
+        b.id,
+        b.total_amount,
+        b.arrival
+      FROM bookings b
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        ${tagFilter}
+    ),
+    tax_totals AS (
+      -- Then sum taxes separately
+      SELECT
+        b.id as booking_id,
+        SUM(bc.amount) as tax_total
+      FROM bookings b
+      JOIN booking_charges bc ON b.id = bc.booking_id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        AND bc.type = 'tax'
+        ${tagFilter}
+      GROUP BY b.id
+    )
+    SELECT
+      COALESCE(SUM(bt.total_amount), 0) as total_rent,
+      COALESCE(SUM(tt.tax_total), 0) as total_tax,
+      COUNT(DISTINCT bt.id) as total_bookings
+    FROM booking_totals bt
+    LEFT JOIN tax_totals tt ON bt.id = tt.booking_id`,
     queryParams
   )
 
   // Get property breakdown
   const propertyResult = await query(
-    `SELECT
-      p.id as property_id,
-      p.name as property_name,
-      COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_tax,
-      COALESCE(SUM(CASE WHEN bc.type = 'rent' THEN bc.amount ELSE 0 END), 0) as total_rent,
-      COUNT(DISTINCT b.id) as booking_count
-    FROM properties p
-    LEFT JOIN bookings b ON p.id = b.property_id
-    LEFT JOIN booking_charges bc ON b.id = bc.booking_id
-    WHERE p.tenant_id = $1
-      AND b.arrival >= $2
-      AND b.arrival <= $3
-      AND b.status != 'canceled'
-      ${tagFilter}
-    GROUP BY p.id, p.name
-    ORDER BY total_tax DESC`,
+    `WITH property_bookings AS (
+      SELECT DISTINCT
+        p.id as property_id,
+        p.name as property_name,
+        b.id as booking_id,
+        b.total_amount
+      FROM properties p
+      JOIN bookings b ON p.id = b.property_id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        ${tagFilter}
+    ),
+    property_taxes AS (
+      SELECT
+        pb.property_id,
+        pb.property_name,
+        SUM(bc.amount) as total_tax
+      FROM property_bookings pb
+      JOIN booking_charges bc ON pb.booking_id = bc.booking_id
+      WHERE bc.type = 'tax'
+      GROUP BY pb.property_id, pb.property_name
+    )
+    SELECT
+      pb.property_id,
+      pb.property_name,
+      COALESCE(SUM(pb.total_amount), 0) as total_rent,
+      COALESCE(pt.total_tax, 0) as total_tax,
+      COUNT(DISTINCT pb.booking_id) as booking_count
+    FROM property_bookings pb
+    LEFT JOIN property_taxes pt ON pb.property_id = pt.property_id
+    GROUP BY pb.property_id, pb.property_name, pt.total_tax
+    HAVING COUNT(DISTINCT pb.booking_id) > 0
+    ORDER BY total_rent DESC`,
     queryParams
   )
 
   // Get monthly breakdown
   const monthlyResult = await query(
-    `SELECT
-      TO_CHAR(b.arrival, 'YYYY-MM') as month,
-      COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as total_tax,
-      COALESCE(SUM(CASE WHEN bc.type = 'rent' THEN bc.amount ELSE 0 END), 0) as total_rent,
-      COUNT(DISTINCT b.id) as booking_count
-    FROM bookings b
-    LEFT JOIN booking_charges bc ON b.id = bc.booking_id
-    WHERE b.tenant_id = $1
-      AND b.arrival >= $2
-      AND b.arrival <= $3
-      AND b.status != 'canceled'
-      ${tagFilter}
-    GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
-    ORDER BY month`,
+    `WITH monthly_bookings AS (
+      SELECT DISTINCT
+        TO_CHAR(b.arrival, 'YYYY-MM') as month,
+        b.id,
+        b.total_amount
+      FROM bookings b
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        ${tagFilter}
+    ),
+    monthly_taxes AS (
+      SELECT
+        TO_CHAR(b.arrival, 'YYYY-MM') as month,
+        SUM(bc.amount) as total_tax
+      FROM bookings b
+      JOIN booking_charges bc ON b.id = bc.booking_id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        AND bc.type = 'tax'
+        ${tagFilter}
+      GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+    )
+    SELECT
+      mb.month,
+      COALESCE(SUM(mb.total_amount), 0) as total_rent,
+      COALESCE(mt.total_tax, 0) as total_tax,
+      COUNT(DISTINCT mb.id) as booking_count
+    FROM monthly_bookings mb
+    LEFT JOIN monthly_taxes mt ON mb.month = mt.month
+    GROUP BY mb.month, mt.total_tax
+    ORDER BY mb.month`,
     queryParams
   )
 

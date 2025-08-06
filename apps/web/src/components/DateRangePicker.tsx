@@ -1,260 +1,272 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Calendar, AlertCircle, RefreshCw } from 'lucide-react'
-import { calculateNightsBetween, addDays, formatDateRange } from '@baileys/utils'
+import React, { useState, useRef, useEffect } from 'react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@baileys/utils'
 
-type Result<T, E> =
-  | { type: 'success'; value: T }
-  | { type: 'error'; error: E }
-
-type DateRange = {
+interface DateRange {
   from: string
   to: string
-}
-
-type ValidationError =
-  | { type: 'INVALID_FORMAT'; field: 'from' | 'to' }
-  | { type: 'END_BEFORE_START' }
-  | { type: 'FUTURE_DATE'; field: 'from' | 'to'; maxDate: string }
-  | { type: 'BEFORE_MIN_DATE'; field: 'from' | 'to'; minDate: string }
-  | { type: 'EXCEEDS_MAX_DAYS'; maxDays: number; actualDays: number }
-
-const isValidDateFormat = (dateStr: string): boolean => {
-  const date = new Date(dateStr)
-  return !isNaN(date.getTime()) && dateStr.match(/^\d{4}-\d{2}-\d{2}$/) !== null
-}
-
-const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0]
-}
-
-const getToday = (): string => formatDate(new Date())
-
-const getTwoYearsAgo = (): string => {
-  return formatDate(addDays(new Date(), -365 * 2))
-}
-
-const validateDateRange = (
-  range: DateRange,
-  constraints: {
-    minDate?: string
-    maxDate?: string
-    maxDays?: number
-    allowFutureDates?: boolean
-  } = {}
-): Result<DateRange, ValidationError> => {
-  if (!isValidDateFormat(range.from)) {
-    return { type: 'error', error: { type: 'INVALID_FORMAT', field: 'from' } }
-  }
-  if (!isValidDateFormat(range.to)) {
-    return { type: 'error', error: { type: 'INVALID_FORMAT', field: 'to' } }
-  }
-
-  const fromDate = new Date(range.from)
-  const toDate = new Date(range.to)
-  const today = new Date(getToday())
-
-  if (toDate < fromDate) {
-    return { type: 'error', error: { type: 'END_BEFORE_START' } }
-  }
-
-  if (!constraints.allowFutureDates) {
-    if (fromDate > today) {
-      return { type: 'error', error: { type: 'FUTURE_DATE', field: 'from', maxDate: getToday() } }
-    }
-    if (toDate > today) {
-      return { type: 'error', error: { type: 'FUTURE_DATE', field: 'to', maxDate: getToday() } }
-    }
-  }
-
-  if (constraints.minDate) {
-    const minDate = new Date(constraints.minDate)
-    if (fromDate < minDate) {
-      return { type: 'error', error: { type: 'BEFORE_MIN_DATE', field: 'from', minDate: constraints.minDate } }
-    }
-    if (toDate < minDate) {
-      return { type: 'error', error: { type: 'BEFORE_MIN_DATE', field: 'to', minDate: constraints.minDate } }
-    }
-  }
-
-  const effectiveMaxDate = constraints.maxDate || getToday()
-  const maxDate = new Date(effectiveMaxDate)
-  if (fromDate > maxDate) {
-    return { type: 'error', error: { type: 'FUTURE_DATE', field: 'from', maxDate: effectiveMaxDate } }
-  }
-  if (toDate > maxDate) {
-    return { type: 'error', error: { type: 'FUTURE_DATE', field: 'to', maxDate: effectiveMaxDate } }
-  }
-
-  if (constraints.maxDays) {
-    const days = calculateNightsBetween(range.from, range.to) + 1
-    if (days > constraints.maxDays) {
-      return { type: 'error', error: { type: 'EXCEEDS_MAX_DAYS', maxDays: constraints.maxDays, actualDays: days } }
-    }
-  }
-
-  return { type: 'success', value: range }
-}
-
-const formatValidationError = (error: ValidationError): string => {
-  switch (error.type) {
-    case 'INVALID_FORMAT':
-      return `Invalid date format in ${error.field} field`
-    case 'END_BEFORE_START':
-      return 'End date must be after start date'
-    case 'FUTURE_DATE':
-      return `${error.field === 'from' ? 'Start' : 'End'} date cannot be in the future`
-    case 'BEFORE_MIN_DATE':
-      return `${error.field === 'from' ? 'Start' : 'End'} date cannot be before ${new Date(error.minDate).toLocaleDateString()}`
-    case 'EXCEEDS_MAX_DAYS':
-      return `Date range cannot exceed ${error.maxDays} days (currently ${error.actualDays} days)`
-  }
 }
 
 interface DateRangePickerProps {
   value: DateRange
   onChange: (range: DateRange) => void
-  minDate?: string
-  maxDate?: string
   maxDays?: number
-  allowFutureDates?: boolean
-  debounceMs?: number
+  minDate?: Date
+  maxDate?: Date
+  disabled?: boolean
   className?: string
-  showFormattedRange?: boolean
+  placeholder?: string
+  debounceMs?: number
 }
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   value,
   onChange,
-  minDate = getTwoYearsAgo(),
-  maxDate = getToday(),
   maxDays = 365,
-  allowFutureDates = false,
-  debounceMs = 500,
-  className = '',
-  showFormattedRange = false
+  minDate,
+  maxDate = new Date(),
+  disabled = false,
+  className,
+  placeholder = "Select date range",
+  debounceMs = 0
 }) => {
-  const [localRange, setLocalRange] = useState(value)
-  const [validation, setValidation] = useState<Result<DateRange, ValidationError>>({ type: 'success', value })
-  const debounceTimeout = useRef<NodeJS.Timeout>()
+  const [isOpen, setIsOpen] = useState(false)
+  const [localRange, setLocalRange] = useState<DateRange>(value)
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const containerRef = useRef<HTMLDivElement>(null)
+  const debounceTimer = useRef<NodeJS.Timeout>()
+
+  // Format date to ISO format (YYYY-MM-DD)
+  const formatDateISO = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Parse ISO date string to Date object
+  const parseISODate = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  // Format date for display (MM/DD/YYYY)
+  const formatDateDisplay = (dateStr: string): string => {
+    const date = parseISODate(dateStr)
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${month}/${day}/${year}`
+  }
 
   useEffect(() => {
     setLocalRange(value)
   }, [value])
 
   useEffect(() => {
-    return () => {
-      if (debounceTimeout.current) {
-        clearTimeout(debounceTimeout.current)
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
       }
     }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleRangeChange = useCallback((newRange: DateRange) => {
+  const handleDateSelect = (date: Date) => {
+    const dateStr = formatDateISO(date)
+    const fromDate = parseISODate(localRange.from)
+    const toDate = parseISODate(localRange.to)
+
+    let newRange: DateRange
+
+    if (!localRange.from || date < fromDate) {
+      // Starting new range
+      newRange = { from: dateStr, to: dateStr }
+    } else if (date > toDate) {
+      // Extending range
+      const daysDiff = Math.floor((date.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysDiff <= maxDays) {
+        newRange = { from: localRange.from, to: dateStr }
+      } else {
+        // Reset if exceeds max days
+        newRange = { from: dateStr, to: dateStr }
+      }
+    } else {
+      // Date is within current range, start new selection
+      newRange = { from: dateStr, to: dateStr }
+    }
+
     setLocalRange(newRange)
 
-    const validationResult = validateDateRange(newRange, {
-      minDate,
-      maxDate,
-      maxDays,
-      allowFutureDates
-    })
-
-    setValidation(validationResult)
-
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current)
+    // Debounced onChange
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
     }
 
-    if (validationResult.type === 'success') {
-      debounceTimeout.current = setTimeout(() => {
-        onChange(validationResult.value)
-      }, debounceMs)
-    }
-  }, [minDate, maxDate, maxDays, allowFutureDates, onChange, debounceMs])
-
-  const handleDateChange = (field: 'from' | 'to', value: string) => {
-    handleRangeChange({ ...localRange, [field]: value })
+    debounceTimer.current = setTimeout(() => {
+      onChange(newRange)
+    }, debounceMs)
   }
 
-  const resetToDefault = () => {
-    const defaultRange: DateRange = {
-      from: formatDate(new Date(new Date().getFullYear(), 0, 1)),
-      to: getToday()
-    }
-    handleRangeChange(defaultRange)
+  const isDateInRange = (date: Date): boolean => {
+    if (!localRange.from || !localRange.to) return false
+    const dateTime = date.getTime()
+    const fromTime = parseISODate(localRange.from).getTime()
+    const toTime = parseISODate(localRange.to).getTime()
+    return dateTime >= fromTime && dateTime <= toTime
   }
 
-  const isError = validation.type === 'error'
-  const dayCount = isError ? 0 : calculateNightsBetween(localRange.from, localRange.to) + 1
+  const isDateDisabled = (date: Date): boolean => {
+    if (minDate && date < minDate) return true
+    if (maxDate && date > maxDate) return true
+    return false
+  }
+
+  const getDaysInMonth = (date: Date): Date[] => {
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const days: Date[] = []
+
+    for (let i = 0; i < firstDay.getDay(); i++) {
+      days.push(new Date(year, month, -i))
+    }
+
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      days.push(new Date(year, month, d))
+    }
+
+    return days
+  }
+
+  const monthYear = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  const displayValue = localRange.from && localRange.to
+    ? `${formatDateDisplay(localRange.from)} - ${formatDateDisplay(localRange.to)}`
+    : placeholder
+
+  const daysDiff = localRange.from && localRange.to
+    ? Math.floor((parseISODate(localRange.to).getTime() - parseISODate(localRange.from).getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 0
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      <div className="flex items-center space-x-2">
-        <div className={`flex items-center space-x-2 bg-white border rounded-lg px-3 py-2 ${
-          isError ? 'border-red-300' : 'border-gray-300'
-        }`}>
-          <Calendar className={`w-4 h-4 ${isError ? 'text-red-500' : 'text-gray-500'}`} />
+    <div ref={containerRef} className={cn("relative", className)}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={cn(
+          "flex items-center gap-2 px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 transition-colors",
+          "text-sm font-medium text-gray-700",
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+      >
+        <Calendar className="w-4 h-4" />
+        <span>{displayValue}</span>
+        {daysDiff > 0 && (
+          <span className="text-gray-500">({daysDiff} days)</span>
+        )}
+      </button>
 
-          <input
-            type="date"
-            value={localRange.from}
-            onChange={(e) => handleDateChange('from', e.target.value)}
-            min={minDate}
-            max={localRange.to || maxDate}
-            className={`px-2 py-1 text-sm border-0 focus:outline-none ${
-              isError && validation.error.type !== 'END_BEFORE_START' &&
-              (validation.error.type === 'INVALID_FORMAT' && validation.error.field === 'from' ||
-               validation.error.type === 'FUTURE_DATE' && validation.error.field === 'from' ||
-               validation.error.type === 'BEFORE_MIN_DATE' && validation.error.field === 'from')
-                ? 'text-red-600'
-                : ''
-            }`}
-          />
+      {isOpen && !disabled && (
+        <div className="absolute top-full mt-2 left-0 bg-white border rounded-lg shadow-lg p-4 z-50">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+              className="p-1 hover:bg-gray-100 rounded"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <h3 className="font-semibold">{monthYear}</h3>
+            <button
+              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+              className="p-1 hover:bg-gray-100 rounded"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
 
-          <span className="text-gray-500 text-sm">to</span>
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+              <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
+                {day}
+              </div>
+            ))}
+          </div>
 
-          <input
-            type="date"
-            value={localRange.to}
-            onChange={(e) => handleDateChange('to', e.target.value)}
-            min={localRange.from || minDate}
-            max={maxDate}
-            className={`px-2 py-1 text-sm border-0 focus:outline-none ${
-              isError && validation.error.type !== 'END_BEFORE_START' &&
-              (validation.error.type === 'INVALID_FORMAT' && validation.error.field === 'to' ||
-               validation.error.type === 'FUTURE_DATE' && validation.error.field === 'to' ||
-               validation.error.type === 'BEFORE_MIN_DATE' && validation.error.field === 'to')
-                ? 'text-red-600'
-                : ''
-            }`}
-          />
+          <div className="grid grid-cols-7 gap-1">
+            {getDaysInMonth(currentMonth).map((date, index) => {
+              const isCurrentMonth = date.getMonth() === currentMonth.getMonth()
+              const isInRange = isDateInRange(date)
+              const isStart = localRange.from && formatDateISO(date) === localRange.from
+              const isEnd = localRange.to && formatDateISO(date) === localRange.to
+              const isDisabled = isDateDisabled(date)
 
-          {!isError && (
-            <div className="text-sm text-gray-600 border-l pl-2">
-              {dayCount} {dayCount === 1 ? 'day' : 'days'}
-            </div>
-          )}
-        </div>
+              return (
+                <button
+                  key={index}
+                  onClick={() => !isDisabled && isCurrentMonth && handleDateSelect(date)}
+                  disabled={isDisabled || !isCurrentMonth}
+                  className={cn(
+                    "p-2 text-sm rounded transition-colors",
+                    isCurrentMonth ? "text-gray-900" : "text-gray-300",
+                    isInRange && "bg-blue-100",
+                    (isStart || isEnd) && "bg-blue-500 text-white",
+                    !isDisabled && isCurrentMonth && "hover:bg-gray-100",
+                    isDisabled && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {date.getDate()}
+                </button>
+              )
+            })}
+          </div>
 
-        <button
-          onClick={resetToDefault}
-          className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
-          title="Reset to current year"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-
-      {isError && (
-        <div className="flex items-center text-sm text-red-600 bg-red-50 px-3 py-2 rounded">
-          <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-          {formatValidationError(validation.error)}
-        </div>
-      )}
-
-      {!isError && showFormattedRange && (
-        <div className="text-sm text-gray-600">
-          {formatDateRange(localRange.from, localRange.to)}
+          <div className="mt-4 flex justify-between text-sm">
+            <button
+              onClick={() => {
+                const today = formatDateISO(new Date())
+                const thirtyDaysAgo = formatDateISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+                const newRange = { from: thirtyDaysAgo, to: today }
+                setLocalRange(newRange)
+                onChange(newRange)
+                setIsOpen(false)
+              }}
+              className="text-blue-600 hover:underline"
+            >
+              Last 30 days
+            </button>
+            <button
+              onClick={() => {
+                const today = formatDateISO(new Date())
+                const ninetyDaysAgo = formatDateISO(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))
+                const newRange = { from: ninetyDaysAgo, to: today }
+                setLocalRange(newRange)
+                onChange(newRange)
+                setIsOpen(false)
+              }}
+              className="text-blue-600 hover:underline"
+            >
+              Last 90 days
+            </button>
+            <button
+              onClick={() => {
+                const today = new Date()
+                const yearStart = formatDateISO(new Date(today.getFullYear(), 0, 1))
+                const todayStr = formatDateISO(today)
+                const newRange = { from: yearStart, to: todayStr }
+                setLocalRange(newRange)
+                onChange(newRange)
+                setIsOpen(false)
+              }}
+              className="text-blue-600 hover:underline"
+            >
+              Year to date
+            </button>
+          </div>
         </div>
       )}
     </div>

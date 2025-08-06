@@ -18,25 +18,28 @@ export const OccupancyDashboard = () => {
   const [data, setData] = useState<OccupancyMetrics | null>(null)
 
   const loadOccupancy = async () => {
-    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
-      addToast('error', 'Invalid date range selected')
-      return
-    }
-
-    setLoading(true)
-    const result = await api.getOccupancy(
-      filters.dateRange.from,
-      filters.dateRange.to,
-      filters.selectedTags.map(t => t.id)
-    )
-
-    if (result.success) {
-      setData(result.data)
-    } else {
-      addToast('error', 'Failed to load occupancy data')
-    }
-    setLoading(false)
+  if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+    addToast('error', 'Invalid date range selected')
+    return
   }
+
+  setLoading(true)
+  const result = await api.getOccupancy(
+    filters.dateRange.from,
+    filters.dateRange.to,
+    filters.selectedTags.map(t => t.id)
+  )
+
+  console.log('Occupancy API Response:', result) // Add this
+
+  if (result.success) {
+    console.log('Occupancy data:', result.data) // Add this
+    setData(result.data)
+  } else {
+    addToast('error', 'Failed to load occupancy data')
+  }
+  setLoading(false)
+}
 
   useEffect(() => {
     loadOccupancy()
@@ -55,17 +58,17 @@ export const OccupancyDashboard = () => {
   const propertyChartData = data.byProperty.map(p => ({
     name: p.propertyName || `Property ${p.propertyId}`,
     propertyId: p.propertyId,
-    occupancy: p.rate * 100,
-    available: (1 - p.rate) * 100
+    occupancy: p.rate,
+    available: 100 - p.rate
   }))
 
   const monthlyChartData = data.byMonth.map(m => ({
     month: m.month.slice(5),
     fullMonth: m.month,
-    rate: m.rate * 100
+    rate: m.rate
   }))
 
-  const lowestMonth = minBy(data.byMonth, m => m.rate) || { month: '', rate: 1 }
+  const lowestMonth = minBy(data.byMonth, m => m.rate) || { month: '', rate: 100 }
 
   const handleMonthClick = (data: any) => {
     if (data && data.activeLabel) {
@@ -91,9 +94,9 @@ export const OccupancyDashboard = () => {
             <TrendingUp className="w-4 h-4 mr-1" />
             Overall Occupancy
           </div>
-          <div className={`text-3xl font-bold ${getOccupancyColor(data.overall)}`}>
-            {formatPercentage(data.overall * 100, 0)}
-          </div>
+          <div className={`text-3xl font-bold ${getOccupancyColor(data.overall * 100)}`}>
+  {formatPercentage(data.overall * 100, 0)}
+</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -107,7 +110,7 @@ export const OccupancyDashboard = () => {
             <Home className="w-4 h-4 mr-1" />
             Available Nights
           </div>
-          <div className="text-3xl font-bold">{data.availableNights - data.bookedNights}</div>
+          <div className="text-3xl font-bold">{data.availableNights}</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -115,7 +118,7 @@ export const OccupancyDashboard = () => {
             Low Season
           </div>
           <div className="text-3xl font-bold">{lowestMonth.month}</div>
-          <div className="text-sm text-gray-500">{formatPercentage(lowestMonth.rate * 100, 0)} occupancy</div>
+          <div className="text-sm text-gray-500">{formatPercentage(lowestMonth.rate, 0)} occupancy</div>
         </div>
       </div>
 
@@ -127,8 +130,8 @@ export const OccupancyDashboard = () => {
               <LineChart data={monthlyChartData} onClick={handleMonthClick}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => formatPercentage(value, 0)} domain={[0, 100]} />
-                <Tooltip formatter={(value) => formatPercentage(Number(value), 0)} />
+                <YAxis tickFormatter={(value) => `${value}%`} domain={[0, 100]} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
                 <Line
                   type="monotone"
                   dataKey="rate"
@@ -146,25 +149,20 @@ export const OccupancyDashboard = () => {
           <h3 className="text-lg font-bold mb-4">Property Occupancy Comparison</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={propertyChartData} layout="horizontal">
+              <BarChart
+                data={propertyChartData}
+                layout="horizontal"
+                margin={{ left: 120 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => formatPercentage(value, 0)} />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
                 <YAxis
                   dataKey="name"
                   type="category"
-                  tick={{ cursor: 'pointer' }}
-                  onClick={(data) => {
-                    const property = propertyChartData.find(p => p.name === data.value)
-                    if (property) {
-                      dispatch({
-                        type: 'DRILL_TO_PROPERTY',
-                        propertyId: property.propertyId,
-                        propertyName: property.name
-                      })
-                    }
-                  }}
+                  width={100}
+                  tick={{ fontSize: 12 }}
                 />
-                <Tooltip formatter={(value) => formatPercentage(Number(value), 0)} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
                 <Bar dataKey="occupancy" stackId="a" fill={METRIC_COLORS.occupancy} name="Occupied" />
                 <Bar dataKey="available" stackId="a" fill="#E5E7EB" name="Available" />
               </BarChart>

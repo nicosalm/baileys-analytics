@@ -26,3 +26,4 @@ export * from './seasonal-analysis';
 export * from './guests';
 export * from './guest-detail';
 export * from './financial';
+export * from './validation';

@@ -1,6 +1,9 @@
 // Utility functions for Baileys Analytics
 // e.g., import { calculatePercentage, safeDivide } from '@baileys/utils';
 
+export const cn = (...classes: (string | undefined | null | false)[]): string => {
+  return classes.filter(Boolean).join(' ')
+}
 // Math & Safety
 export const ensureNumber = (value: unknown, defaultValue = 0): number => {
   const num = Number(value);

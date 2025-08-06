@@ -79,14 +79,35 @@ CREATE TABLE bookings (
 CREATE TABLE booking_charges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL,
+    type VARCHAR(50) NOT NULL, -- 'rent', 'tax', 'fee', 'cleaning', 'damage_waiver', 'other'
     description TEXT,
     amount DECIMAL(10, 2) NOT NULL,
     is_taxable BOOLEAN DEFAULT false,
-    tax_id VARCHAR(50),
+    tax_id VARCHAR(50), -- OwnerRez tax ID reference
     position INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE platform_fees (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    platform_name VARCHAR(100) NOT NULL,
+    fee_type VARCHAR(50) NOT NULL DEFAULT 'percentage', -- 'percentage' or 'flat'
+    fee_value DECIMAL(10, 4) NOT NULL, -- For percentage: 0.03 = 3%, for flat: dollar amount
+    is_active BOOLEAN DEFAULT true,
+    effective_from DATE NOT NULL DEFAULT CURRENT_DATE,
+    effective_to DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tenant_id, platform_name, effective_from)
+);
+
+-- Insert default platform fees (can be overridden per tenant)
+INSERT INTO platform_fees (tenant_id, platform_name, fee_type, fee_value, effective_from) VALUES
+('00000000-0000-0000-0000-000000000000', 'airbnb', 'percentage', 0.03, '2024-01-01'),
+('00000000-0000-0000-0000-000000000000', 'vrbo', 'percentage', 0.05, '2024-01-01'),
+('00000000-0000-0000-0000-000000000000', 'booking.com', 'percentage', 0.15, '2024-01-01'),
+('00000000-0000-0000-0000-000000000000', 'direct', 'percentage', 0.00, '2024-01-01');
 
 CREATE TABLE expense_categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -254,6 +275,7 @@ CREATE INDEX idx_bookings_tenant_id ON bookings(tenant_id);
 CREATE INDEX idx_bookings_property_id ON bookings(property_id);
 CREATE INDEX idx_bookings_arrival_departure ON bookings(tenant_id, arrival, departure);
 CREATE INDEX idx_booking_charges_booking_id ON booking_charges(booking_id);
+CREATE INDEX idx_platform_fees_lookup ON platform_fees(tenant_id, platform_name, is_active, effective_from, effective_to);
 CREATE INDEX idx_expenses_tenant_date ON expenses(tenant_id, expense_date);
 CREATE INDEX idx_expenses_property ON expenses(property_id) WHERE property_id IS NOT NULL;
 CREATE INDEX idx_expenses_category ON expenses(category_id);
@@ -291,6 +313,9 @@ CREATE TRIGGER update_properties_updated_at BEFORE UPDATE ON properties
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_platform_fees_updated_at BEFORE UPDATE ON platform_fees
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_expense_categories_updated_at BEFORE UPDATE ON expense_categories
