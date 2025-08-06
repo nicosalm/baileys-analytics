@@ -44,7 +44,7 @@ type OwnerRezBooking = {
   platform_reservation_number?: string
   booked_utc: string
   canceled_utc?: string
-  tags?: OwnerRezTag[]
+  tags?: string[] | OwnerRezTag[] // Can be either strings or objects
 }
 
 type SyncResult =
@@ -52,6 +52,7 @@ type SyncResult =
   | { status: 'error'; error: string }
 
 type PropertyMapping = ReadonlyMap<string, string>
+type TagMapping = ReadonlyMap<string, OwnerRezTag>
 
 type DateRange = {
   from: string
@@ -94,7 +95,7 @@ const getPropertyMapping = async (tenantId: string): Promise<DbResult<PropertyMa
 }
 
 const parseBookingDates = (from?: string, to?: string): DateRange => ({
-  from: from || new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  from: from || new Date(Date.now() - 1460 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 4 years
   to: to || new Date().toISOString().split('T')[0]
 })
 
@@ -112,6 +113,51 @@ const buildAuthHeaders = (token: string) => {
           'Accept': 'application/json'
         }
       }
+}
+
+const fetchAllTagDefinitions = async (token: string): Promise<DbResult<TagMapping>> => {
+  try {
+    const authConfig = buildAuthHeaders(token)
+    const tagMap = new Map<string, OwnerRezTag>()
+    let offset = 0
+    const limit = 100
+
+    // Paginate through all tag definitions
+    while (true) {
+      const response = await axios.get(`${OWNERREZ_API.BASE_URL}/tagdefinitions`, {
+        ...authConfig,
+        params: {
+          active: true,
+          limit,
+          offset
+        }
+      })
+
+      const tags = response.data.items || []
+      tags.forEach((tag: any) => {
+        tagMap.set(tag.name, {
+          id: tag.id,
+          name: tag.name,
+          color: tag.color
+        })
+      })
+
+      // Check if there are more pages
+      if (!response.data.next_page_url || tags.length < limit) {
+        break
+      }
+      offset += limit
+    }
+
+    return { success: true, data: tagMap }
+  } catch (error) {
+    return {
+      success: false,
+      error: axios.isAxiosError(error)
+        ? `Failed to fetch tag definitions: ${error.response?.status}`
+        : 'Failed to fetch tag definitions'
+    }
+  }
 }
 
 const fetchBookingsBatch = async (
@@ -277,10 +323,28 @@ const syncBookingCharges = async (
   })
 }
 
+const convertBookingTags = (
+  tags: string[] | OwnerRezTag[] | undefined,
+  tagDefinitions: TagMapping
+): OwnerRezTag[] => {
+  if (!tags || tags.length === 0) return []
+
+  // If already objects, return as is
+  if (typeof tags[0] === 'object') {
+    return tags as OwnerRezTag[]
+  }
+
+  // Convert strings to objects using definitions
+  return (tags as string[])
+    .map(tagName => tagDefinitions.get(tagName))
+    .filter((tag): tag is OwnerRezTag => tag !== undefined)
+}
+
 const syncSingleBooking = async (
   booking: OwnerRezBooking,
   propertyId: string,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<DbResult<{ chargeCount: number }>> => {
   const bookingResult = await upsertBooking(booking, propertyId, tenantId)
   if (!bookingResult.success) return bookingResult
@@ -288,7 +352,10 @@ const syncSingleBooking = async (
   const chargesResult = await syncBookingCharges(bookingResult.data, booking.charges)
 
   if (booking.tags) {
-    await syncBookingTags(bookingResult.data, booking.tags, tenantId)
+    const tagObjects = convertBookingTags(booking.tags, tagDefinitions)
+    if (tagObjects.length > 0) {
+      await syncBookingTags(bookingResult.data, tagObjects, tenantId)
+    }
   }
 
   return {
@@ -300,7 +367,8 @@ const syncSingleBooking = async (
 const processBookingBatch = async (
   bookings: readonly OwnerRezBooking[],
   propertyMapping: PropertyMapping,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<readonly DbResult<{ chargeCount: number }>[]> => {
   const validBookings = bookings.filter(b =>
     b && typeof b.property_id === 'number' && propertyMapping.has(b.property_id.toString())
@@ -311,7 +379,8 @@ const processBookingBatch = async (
       syncSingleBooking(
         booking,
         propertyMapping.get(booking.property_id.toString())!,
-        tenantId
+        tenantId,
+        tagDefinitions
       )
     )
   )
@@ -337,6 +406,13 @@ const performSync = async (
   propertyMapping: PropertyMapping,
   dateRange: DateRange
 ): Promise<SyncResult> => {
+  // Fetch tag definitions first
+  const tagDefsResult = await fetchAllTagDefinitions(credentials.token)
+  if (!tagDefsResult.success) {
+    console.log('Warning: Failed to fetch tag definitions:', tagDefsResult.error)
+  }
+  const tagDefinitions = tagDefsResult.success ? tagDefsResult.data : new Map()
+
   const propertyIds = Array.from(propertyMapping.keys())
 
   if (propertyIds.length === 0) {
@@ -359,7 +435,8 @@ const performSync = async (
   const results = await processBookingBatch(
     bookingsResult.data,
     propertyMapping,
-    credentials.tenantId
+    credentials.tenantId,
+    tagDefinitions
   )
 
   const summary = aggregateSyncResults(results)

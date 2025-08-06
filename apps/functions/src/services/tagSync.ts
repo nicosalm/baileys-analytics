@@ -8,31 +8,27 @@ type OwnerRezTag = {
 
 type TagMapping = ReadonlyMap<string, string>
 
-type TagType = 'property' | 'booking' | 'guest' | 'payment'
-
-const createTagRecord = (tag: OwnerRezTag, tenantId: string, type: TagType) => ({
+const createTagRecord = (tag: OwnerRezTag, tenantId: string) => ({
   tenant_id: tenantId,
   ownerrez_id: tag.id.toString(),
   name: tag.name,
-  type,
   color: tag.color || null
 })
 
 const upsertTag = async (
   tag: OwnerRezTag,
-  tenantId: string,
-  type: TagType
+  tenantId: string
 ): Promise<DbResult<string>> => {
   if (!tag || typeof tag.id !== 'number' || !tag.name) {
     console.warn(`Skipping invalid tag:`, tag)
     return { success: false, error: 'Invalid tag data' }
   }
 
-  const tagRecord = createTagRecord(tag, tenantId, type)
+  const tagRecord = createTagRecord(tag, tenantId)
 
   const result = await query<{ id: string }>(
-    `INSERT INTO tags (tenant_id, ownerrez_id, name, type, color)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO tags (tenant_id, ownerrez_id, name, color)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (tenant_id, ownerrez_id) DO UPDATE
      SET name = EXCLUDED.name,
          color = EXCLUDED.color,
@@ -48,11 +44,10 @@ const upsertTag = async (
 
 const ensureTags = async (
   tags: readonly OwnerRezTag[],
-  tenantId: string,
-  type: TagType
+  tenantId: string
 ): Promise<TagMapping> => {
   const results = await Promise.all(
-    tags.map(tag => upsertTag(tag, tenantId, type))
+    tags.map(tag => upsertTag(tag, tenantId))
   )
 
   const entries = tags
@@ -82,26 +77,6 @@ const clearEntityTags = async (
     : result
 }
 
-const insertEntityTags = async (
-  entityId: string,
-  tagIds: readonly string[],
-  entityType: 'property' | 'booking'
-): Promise<DbResult<void>> => {
-  const table = entityType === 'property' ? 'property_tags' : 'booking_tags'
-  const columns = entityType === 'property'
-    ? '(property_id, tag_id)'
-    : '(booking_id, tag_id)'
-
-  return transaction(async (client) => {
-    for (const tagId of tagIds) {
-      await client.query(
-        `INSERT INTO ${table} ${columns} VALUES ($1, $2)`,
-        [entityId, tagId]
-      )
-    }
-  })
-}
-
 const syncEntityTags = async (
   entityId: string,
   ownerrezTags: readonly OwnerRezTag[],
@@ -112,8 +87,7 @@ const syncEntityTags = async (
     return clearEntityTags(entityId, entityType)
   }
 
-  const tagType = entityType === 'property' ? 'property' : 'booking'
-  const tagMapping = await ensureTags(ownerrezTags, tenantId, tagType)
+  const tagMapping = await ensureTags(ownerrezTags, tenantId)
 
   return transaction(async (client) => {
     await client.query(
@@ -145,15 +119,4 @@ export const syncBookingTags = async (
   tenantId: string
 ): Promise<void> => {
   await syncEntityTags(bookingId, ownerrezTags, tenantId, 'booking')
-}
-
-const tagTypePatterns: ReadonlyArray<[RegExp, TagType]> = [
-  [/ach|zelle|paypal|venmo|wire|check|credit|debit/i, 'payment'],
-  [/beachfront|pool|hot tub|pet|wifi|parking/i, 'property'],
-  [/repeat|vip|guest/i, 'guest']
-]
-
-export const inferTagType = (tagName: string): TagType => {
-  const matchedPattern = tagTypePatterns.find(([pattern]) => pattern.test(tagName))
-  return matchedPattern ? matchedPattern[1] : 'booking'
 }

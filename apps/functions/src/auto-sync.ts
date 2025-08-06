@@ -25,6 +25,12 @@ type TenantWithToken = {
   token: string
 }
 
+type OwnerRezTag = {
+  id: number
+  name: string
+  color?: string
+}
+
 type OwnerRezProperty = {
   id: number
   name: string
@@ -42,7 +48,7 @@ type OwnerRezProperty = {
   longitude?: number
   thumbnail_url?: string
   public_url?: string
-  tags?: Array<{ id: number; name: string; color?: string }>
+  tags?: string[] | OwnerRezTag[]
 }
 
 type OwnerRezBooking = {
@@ -70,10 +76,11 @@ type OwnerRezBooking = {
     is_taxable: boolean
     position: number
   }>
-  tags?: Array<{ id: number; name: string; color?: string }>
+  tags?: string[] | OwnerRezTag[]
 }
 
 type PropertyMapping = Map<string, string>
+type TagMapping = Map<string, OwnerRezTag>
 
 const getActiveTenantsWithTokens = async (): Promise<DbResult<TenantWithToken[]>> => {
   const result = await query<{ tenant_id: string; access_token: string }>(
@@ -108,24 +115,69 @@ const getActiveTenantsWithTokens = async (): Promise<DbResult<TenantWithToken[]>
   return { success: false, error: 'No tenants with valid tokens found' }
 }
 
-const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
-  try {
-    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
+const buildAuthHeaders = (token: string) => {
+  const isPAT = !token.startsWith('ey')
 
-    const headers = isPAT
-      ? { 'Accept': 'application/json' }
-      : {
+  return isPAT
+    ? {
+        headers: { 'Accept': 'application/json' },
+        auth: { username: 'martina@***REMOVED***', password: token }
+      }
+    : {
+        headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
         }
+      }
+}
 
-    const auth = isPAT
-      ? { username: 'martina@***REMOVED***', password: token }
-      : undefined
+const fetchAllTagDefinitions = async (token: string): Promise<DbResult<TagMapping>> => {
+  try {
+    const authConfig = buildAuthHeaders(token)
+    const tagMap = new Map<string, OwnerRezTag>()
+    let offset = 0
+    const limit = 100
+
+    while (true) {
+      const response = await axios.get(`${OWNERREZ_API.BASE_URL}/tagdefinitions`, {
+        ...authConfig,
+        params: {
+          active: true,
+          limit,
+          offset
+        }
+      })
+
+      const tags = response.data.items || []
+      tags.forEach((tag: any) => {
+        tagMap.set(tag.name, {
+          id: tag.id,
+          name: tag.name,
+          color: tag.color
+        })
+      })
+
+      if (!response.data.next_page_url || tags.length < limit) {
+        break
+      }
+      offset += limit
+    }
+
+    return { success: true, data: tagMap }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch tag definitions'
+    }
+  }
+}
+
+const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
+  try {
+    const authConfig = buildAuthHeaders(token)
 
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
-      headers,
-      auth,
+      ...authConfig,
       params: { active: true, include_tags: true }
     })
     return { success: true, data: response.data.items || [] }
@@ -137,9 +189,25 @@ const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty
   }
 }
 
+const convertTags = (
+  tags: string[] | OwnerRezTag[] | undefined,
+  tagDefinitions: TagMapping
+): OwnerRezTag[] => {
+  if (!tags || tags.length === 0) return []
+
+  if (typeof tags[0] === 'object') {
+    return tags as OwnerRezTag[]
+  }
+
+  return (tags as string[])
+    .map(tagName => tagDefinitions.get(tagName))
+    .filter((tag): tag is OwnerRezTag => tag !== undefined)
+}
+
 const upsertProperty = async (
   property: OwnerRezProperty,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<DbResult<string>> => {
   const result = await query<{ id: string }>(
     `INSERT INTO properties (
@@ -176,7 +244,10 @@ const upsertProperty = async (
   const propertyId = result.data[0].id
 
   if (property.tags) {
-    await syncPropertyTags(propertyId, property.tags, tenantId)
+    const tagObjects = convertTags(property.tags, tagDefinitions)
+    if (tagObjects.length > 0) {
+      await syncPropertyTags(propertyId, tagObjects, tenantId)
+    }
   }
 
   return { success: true, data: propertyId }
@@ -186,13 +257,16 @@ const syncProperties = async (
   token: string,
   tenantId: string
 ): Promise<PropertySyncState> => {
+  const tagDefsResult = await fetchAllTagDefinitions(token)
+  const tagDefinitions = tagDefsResult.success ? tagDefsResult.data : new Map()
+
   const fetchResult = await fetchProperties(token)
   if (!fetchResult.success) {
     return { status: 'error', error: fetchResult.error }
   }
 
   const results = await Promise.all(
-    fetchResult.data.map(property => upsertProperty(property, tenantId))
+    fetchResult.data.map(property => upsertProperty(property, tenantId, tagDefinitions))
   )
 
   const synced = results.filter(r => r.success).length
@@ -231,7 +305,7 @@ const determineBookingDateRange = async (tenantId: string): Promise<{ from: stri
         isHistorical: false
       }
     : {
-        from: new Date(now - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        from: new Date(now - 1460 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 4 years for initial sync
         to: new Date().toISOString().split('T')[0],
         isHistorical: true
       }
@@ -243,22 +317,10 @@ const fetchBookingsBatch = async (
   dateRange: { from: string; to: string }
 ): Promise<DbResult<OwnerRezBooking[]>> => {
   try {
-    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
-
-    const headers = isPAT
-      ? { 'Accept': 'application/json' }
-      : {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-
-    const auth = isPAT
-      ? { username: 'martina@***REMOVED***', password: token }
-      : undefined
+    const authConfig = buildAuthHeaders(token)
 
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
-      headers,
-      auth,
+      ...authConfig,
       params: {
         property_ids: propertyIds.join(','),
         from: dateRange.from,
@@ -305,7 +367,8 @@ const fetchAllBookings = async (
 const upsertBooking = async (
   booking: OwnerRezBooking,
   propertyId: string,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<DbResult<{ bookingId: string; chargeCount: number }>> => {
   return transaction(async (client) => {
     const result = await client.query(
@@ -357,7 +420,10 @@ const upsertBooking = async (
     }
 
     if (booking.tags) {
-      await syncBookingTags(bookingId, booking.tags, tenantId)
+      const tagObjects = convertTags(booking.tags, tagDefinitions)
+      if (tagObjects.length > 0) {
+        await syncBookingTags(bookingId, tagObjects, tenantId)
+      }
     }
 
     return { bookingId, chargeCount }
@@ -368,6 +434,9 @@ const syncBookings = async (
   token: string,
   tenantId: string
 ): Promise<BookingSyncState> => {
+  const tagDefsResult = await fetchAllTagDefinitions(token)
+  const tagDefinitions = tagDefsResult.success ? tagDefsResult.data : new Map()
+
   const mappingResult = await getPropertyMapping(tenantId)
   if (!mappingResult.success) {
     return { status: 'error', error: 'Failed to get property mapping' }
@@ -390,7 +459,8 @@ const syncBookings = async (
       upsertBooking(
         booking,
         mappingResult.data.get(booking.property_id.toString())!,
-        tenantId
+        tenantId,
+        tagDefinitions
       )
     )
   )

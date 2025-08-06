@@ -5,7 +5,6 @@ import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 type Tag = {
   id: string;
   name: string;
-  type: string;
   color?: string;
   usageCount: number;
 }
@@ -41,7 +40,6 @@ export async function getTags(
     const result = await query<{
       id: string;
       name: string;
-      type: string;
       color: string | null;
       property_count: string;
       booking_count: string;
@@ -49,7 +47,6 @@ export async function getTags(
       `SELECT
         t.id,
         t.name,
-        t.type,
         t.color,
         COUNT(DISTINCT pt.property_id) as property_count,
         COUNT(DISTINCT bt.booking_id) as booking_count
@@ -57,8 +54,8 @@ export async function getTags(
       LEFT JOIN property_tags pt ON t.id = pt.tag_id
       LEFT JOIN booking_tags bt ON t.id = bt.tag_id
       WHERE t.tenant_id = $1
-      GROUP BY t.id, t.name, t.type, t.color
-      ORDER BY t.type, t.name`,
+      GROUP BY t.id, t.name, t.color
+      ORDER BY t.name`,
       [auth.tenantId]
     );
 
@@ -69,7 +66,6 @@ export async function getTags(
     const tags: Tag[] = result.data.map(row => ({
       id: row.id,
       name: row.name,
-      type: row.type,
       color: row.color || undefined,
       usageCount: parseInt(row.property_count) + parseInt(row.booking_count)
     }));

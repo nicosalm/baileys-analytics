@@ -38,6 +38,13 @@ type TenantToken = {
 }
 
 type PropertyMapping = Map<string, string>
+type TagMapping = Map<string, OwnerRezTag>
+
+type OwnerRezTag = {
+  id: number
+  name: string
+  color?: string
+}
 
 type OwnerRezBooking = {
   id: number
@@ -66,7 +73,7 @@ type OwnerRezBooking = {
     tax_id?: number
     position: number
   }>
-  tags?: Array<{ id: number; name: string; color?: string }>
+  tags?: string[] | OwnerRezTag[]
 }
 
 type OwnerRezProperty = {
@@ -86,7 +93,7 @@ type OwnerRezProperty = {
   longitude?: number
   thumbnail_url?: string
   public_url?: string
-  tags?: Array<{ id: number; name: string; color?: string }>
+  tags?: string[] | OwnerRezTag[]
 }
 
 const getTenantToken = async (tenantId: string): Promise<DbResult<string>> => {
@@ -99,13 +106,69 @@ const getTenantToken = async (tenantId: string): Promise<DbResult<string>> => {
     return { success: true, data: result.data[0].access_token }
   }
 
-  // Fallback to PAT if no OAuth token (for manual setup/dev)
   const pat = process.env.OWNERREZ_PAT
   if (pat) {
     return { success: true, data: pat }
   }
 
   return { success: false, error: 'No OAuth token or PAT found' }
+}
+
+const buildAuthHeaders = (token: string) => {
+  const isPAT = !token.startsWith('ey')
+
+  return isPAT
+    ? {
+        headers: { 'Accept': 'application/json' },
+        auth: { username: 'martina@***REMOVED***', password: token }
+      }
+    : {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      }
+}
+
+const fetchAllTagDefinitions = async (token: string): Promise<DbResult<TagMapping>> => {
+  try {
+    const authConfig = buildAuthHeaders(token)
+    const tagMap = new Map<string, OwnerRezTag>()
+    let offset = 0
+    const limit = 100
+
+    while (true) {
+      const response = await axios.get(`${OWNERREZ_API.BASE_URL}/tagdefinitions`, {
+        ...authConfig,
+        params: {
+          active: true,
+          limit,
+          offset
+        }
+      })
+
+      const tags = response.data.items || []
+      tags.forEach((tag: any) => {
+        tagMap.set(tag.name, {
+          id: tag.id,
+          name: tag.name,
+          color: tag.color
+        })
+      })
+
+      if (!response.data.next_page_url || tags.length < limit) {
+        break
+      }
+      offset += limit
+    }
+
+    return { success: true, data: tagMap }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch tag definitions'
+    }
+  }
 }
 
 const getPropertyMapping = async (tenantId: string): Promise<DbResult<PropertyMapping>> => {
@@ -131,22 +194,10 @@ const fetchBookingsBatch = async (
   dateRange: { from: string; to: string }
 ): Promise<DbResult<OwnerRezBooking[]>> => {
   try {
-    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
-
-    const headers = isPAT
-      ? { 'Accept': 'application/json' }
-      : {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-
-    const auth = isPAT
-      ? { username: 'martina@***REMOVED***', password: token }
-      : undefined
+    const authConfig = buildAuthHeaders(token)
 
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
-      headers,
-      auth,
+      ...authConfig,
       params: {
         property_ids: propertyIds.join(','),
         from: dateRange.from,
@@ -189,6 +240,21 @@ const fetchAllBookings = async (
 
   const allBookings = results.flatMap(r => r.success ? r.data : [])
   return { success: true, data: allBookings }
+}
+
+const convertTags = (
+  tags: string[] | OwnerRezTag[] | undefined,
+  tagDefinitions: TagMapping
+): OwnerRezTag[] => {
+  if (!tags || tags.length === 0) return []
+
+  if (typeof tags[0] === 'object') {
+    return tags as OwnerRezTag[]
+  }
+
+  return (tags as string[])
+    .map(tagName => tagDefinitions.get(tagName))
+    .filter((tag): tag is OwnerRezTag => tag !== undefined)
 }
 
 const syncBookingCharges = async (
@@ -289,7 +355,8 @@ const upsertBooking = async (
 const syncSingleBooking = async (
   booking: OwnerRezBooking,
   propertyMapping: PropertyMapping,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<DbResult<{ chargeCount: number }>> => {
   const propertyId = propertyMapping.get(booking.property_id.toString())
   if (!propertyId) {
@@ -307,7 +374,10 @@ const syncSingleBooking = async (
   )
 
   if (booking.tags) {
-    await syncBookingTags(bookingResult.data.bookingId, booking.tags, tenantId)
+    const tagObjects = convertTags(booking.tags, tagDefinitions)
+    if (tagObjects.length > 0) {
+      await syncBookingTags(bookingResult.data.bookingId, tagObjects, tenantId)
+    }
   }
 
   return {
@@ -319,10 +389,11 @@ const syncSingleBooking = async (
 const syncBookings = async (
   bookings: OwnerRezBooking[],
   propertyMapping: PropertyMapping,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<BookingSyncResult> => {
   const results = await Promise.all(
-    bookings.map(booking => syncSingleBooking(booking, propertyMapping, tenantId))
+    bookings.map(booking => syncSingleBooking(booking, propertyMapping, tenantId, tagDefinitions))
   )
 
   const successful = results.filter(r => r.success)
@@ -341,22 +412,10 @@ const syncBookings = async (
 
 const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
   try {
-    const isPAT = !token.startsWith('ey') // OAuth tokens usually start with 'ey' (JWT)
-
-    const headers = isPAT
-      ? { 'Accept': 'application/json' }
-      : {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-
-    const auth = isPAT
-      ? { username: 'martina@***REMOVED***', password: token }
-      : undefined
+    const authConfig = buildAuthHeaders(token)
 
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
-      headers,
-      auth,
+      ...authConfig,
       params: {
         active: true,
         include_tags: true
@@ -374,7 +433,8 @@ const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty
 
 const upsertProperty = async (
   property: OwnerRezProperty,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<DbResult<string>> => {
   const result = await query<{ id: string }>(
     `INSERT INTO properties (
@@ -413,7 +473,10 @@ const upsertProperty = async (
   const propertyId = result.data[0].id
 
   if (property.tags) {
-    await syncPropertyTags(propertyId, property.tags, tenantId)
+    const tagObjects = convertTags(property.tags, tagDefinitions)
+    if (tagObjects.length > 0) {
+      await syncPropertyTags(propertyId, tagObjects, tenantId)
+    }
   }
 
   return { success: true, data: propertyId }
@@ -421,10 +484,11 @@ const upsertProperty = async (
 
 const syncProperties = async (
   properties: OwnerRezProperty[],
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<PropertySyncResult> => {
   const results = await Promise.all(
-    properties.map(property => upsertProperty(property, tenantId))
+    properties.map(property => upsertProperty(property, tenantId, tagDefinitions))
   )
 
   const successful = results.filter(r => r.success)
@@ -438,6 +502,9 @@ const performHistoricalSync = async (
   { tenantId, token }: TenantToken,
   dateRange: { from: string; to: string }
 ): Promise<DbResult<BookingSyncResult>> => {
+  const tagDefsResult = await fetchAllTagDefinitions(token)
+  const tagDefinitions = tagDefsResult.success ? tagDefsResult.data : new Map()
+
   const mappingResult = await getPropertyMapping(tenantId)
   if (!mappingResult.success) {
     return mappingResult
@@ -456,7 +523,8 @@ const performHistoricalSync = async (
   const syncResult = await syncBookings(
     bookingsResult.data,
     mappingResult.data,
-    tenantId
+    tenantId,
+    tagDefinitions
   )
 
   return {
@@ -471,9 +539,12 @@ const performFullSync = async (
 ): Promise<FullSyncResult> => {
   const startedAt = new Date()
 
+  const tagDefsResult = await fetchAllTagDefinitions(token)
+  const tagDefinitions = tagDefsResult.success ? tagDefsResult.data : new Map()
+
   const propertiesResult = await fetchProperties(token)
   const propertiesSyncResult = propertiesResult.success
-    ? await syncProperties(propertiesResult.data, tenantId)
+    ? await syncProperties(propertiesResult.data, tenantId, tagDefinitions)
     : { propertiesSynced: 0 }
 
   const bookingSyncResult = await performHistoricalSync({ tenantId, token }, dateRange)

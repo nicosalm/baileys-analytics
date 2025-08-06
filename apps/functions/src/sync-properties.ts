@@ -30,7 +30,7 @@ type OwnerRezProperty = {
   thumbnail_url?: string
   public_url?: string
   active?: boolean
-  tags?: OwnerRezTag[]
+  tags?: string[] | OwnerRezTag[] // Can be either strings or objects
 }
 
 type SyncResult =
@@ -41,6 +41,8 @@ type TenantCredentials = {
   tenantId: string
   token: string
 }
+
+type TagMapping = ReadonlyMap<string, OwnerRezTag>
 
 const getTenantCredentials = async (tenantId: string): Promise<DbResult<TenantCredentials>> => {
   const result = await query<{ access_token: string }>(
@@ -74,6 +76,51 @@ const buildAuthHeaders = (token: string) => {
           'Accept': 'application/json'
         }
       }
+}
+
+const fetchAllTagDefinitions = async (token: string): Promise<DbResult<TagMapping>> => {
+  try {
+    const authConfig = buildAuthHeaders(token)
+    const tagMap = new Map<string, OwnerRezTag>()
+    let offset = 0
+    const limit = 100
+
+    // Paginate through all tag definitions
+    while (true) {
+      const response = await axios.get(`${OWNERREZ_API.BASE_URL}/tagdefinitions`, {
+        ...authConfig,
+        params: {
+          active: true,
+          limit,
+          offset
+        }
+      })
+
+      const tags = response.data.items || []
+      tags.forEach((tag: any) => {
+        tagMap.set(tag.name, {
+          id: tag.id,
+          name: tag.name,
+          color: tag.color
+        })
+      })
+
+      // Check if there are more pages
+      if (!response.data.next_page_url || tags.length < limit) {
+        break
+      }
+      offset += limit
+    }
+
+    return { success: true, data: tagMap }
+  } catch (error) {
+    return {
+      success: false,
+      error: axios.isAxiosError(error)
+        ? `Failed to fetch tag definitions: ${error.response?.status}`
+        : 'Failed to fetch tag definitions'
+    }
+  }
 }
 
 const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
@@ -153,15 +200,36 @@ const upsertProperty = async (
     : { success: false, error: `Failed to sync property ${property.name}` }
 }
 
+const convertPropertyTags = (
+  tags: string[] | OwnerRezTag[] | undefined,
+  tagDefinitions: TagMapping
+): OwnerRezTag[] => {
+  if (!tags || tags.length === 0) return []
+
+  // If already objects, return as is
+  if (typeof tags[0] === 'object') {
+    return tags as OwnerRezTag[]
+  }
+
+  // Convert strings to objects using definitions
+  return (tags as string[])
+    .map(tagName => tagDefinitions.get(tagName))
+    .filter((tag): tag is OwnerRezTag => tag !== undefined)
+}
+
 const syncSingleProperty = async (
   property: OwnerRezProperty,
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<DbResult<void>> => {
   const result = await upsertProperty(property, tenantId)
   if (!result.success) return result
 
   if (property.tags) {
-    await syncPropertyTags(result.data, property.tags, tenantId)
+    const tagObjects = convertPropertyTags(property.tags, tagDefinitions)
+    if (tagObjects.length > 0) {
+      await syncPropertyTags(result.data, tagObjects, tenantId)
+    }
   }
 
   return { success: true, data: undefined }
@@ -169,10 +237,11 @@ const syncSingleProperty = async (
 
 const syncAllProperties = async (
   properties: readonly OwnerRezProperty[],
-  tenantId: string
+  tenantId: string,
+  tagDefinitions: TagMapping
 ): Promise<{ propertiesSynced: number }> => {
   const results = await Promise.all(
-    properties.map(property => syncSingleProperty(property, tenantId))
+    properties.map(property => syncSingleProperty(property, tenantId, tagDefinitions))
   )
 
   return {
@@ -181,13 +250,20 @@ const syncAllProperties = async (
 }
 
 const performSync = async (credentials: TenantCredentials): Promise<SyncResult> => {
+  // Fetch tag definitions first
+  const tagDefsResult = await fetchAllTagDefinitions(credentials.token)
+  if (!tagDefsResult.success) {
+    console.log('Warning: Failed to fetch tag definitions:', tagDefsResult.error)
+  }
+  const tagDefinitions = tagDefsResult.success ? tagDefsResult.data : new Map()
+
   const propertiesResult = await fetchProperties(credentials.token)
 
   if (!propertiesResult.success) {
     return { status: 'error', error: propertiesResult.error }
   }
 
-  const syncResult = await syncAllProperties(propertiesResult.data, credentials.tenantId)
+  const syncResult = await syncAllProperties(propertiesResult.data, credentials.tenantId, tagDefinitions)
 
   return {
     status: 'success',

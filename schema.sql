@@ -187,7 +187,6 @@ CREATE TABLE tags (
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     ownerrez_id VARCHAR(50) NOT NULL,
     name VARCHAR(255) NOT NULL,
-    type VARCHAR(50) NOT NULL,
     color VARCHAR(7),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -254,7 +253,7 @@ CREATE INDEX idx_tax_rules_applies_to ON tax_rules USING GIN (applies_to);
 CREATE INDEX idx_tax_calculations_tenant_booking ON tax_calculations(tenant_id, booking_id);
 CREATE INDEX idx_tax_calculations_calculated_at ON tax_calculations(calculated_at);
 CREATE INDEX idx_tags_tenant_id ON tags(tenant_id);
-CREATE INDEX idx_tags_type ON tags(tenant_id, type);
+CREATE INDEX idx_tags_name ON tags(tenant_id, name);
 CREATE INDEX idx_property_tags_property_id ON property_tags(property_id);
 CREATE INDEX idx_property_tags_tag_id ON property_tags(tag_id);
 CREATE INDEX idx_booking_tags_booking_id ON booking_tags(booking_id);
