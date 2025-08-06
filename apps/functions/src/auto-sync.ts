@@ -305,7 +305,7 @@ const determineBookingDateRange = async (tenantId: string): Promise<{ from: stri
         isHistorical: false
       }
     : {
-        from: new Date(now - 1460 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 4 years for initial sync
+        from: '2010-01-01', // Fetch ALL historical data on first sync
         to: new Date().toISOString().split('T')[0],
         isHistorical: true
       }

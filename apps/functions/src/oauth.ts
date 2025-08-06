@@ -3,11 +3,7 @@ import axios from 'axios';
 import { query, DbResult } from './services/database';
 import { randomBytes } from 'crypto';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
-
-type OAuthState =
-  | { status: 'pending'; authUrl: string }
-  | { status: 'success'; tenantId: string }
-  | { status: 'error'; error: string }
+import { performSync } from './auto-sync';
 
 type TokenResponse = {
   access_token: string
@@ -188,7 +184,51 @@ const linkUserToTenant = async (
   )
 }
 
-const buildSuccessPage = (tenantId: string, userId?: string): string => `
+const checkIfFirstConnection = async (tenantId: string): Promise<boolean> => {
+  const result = await query<{ count: string }>(
+    `SELECT COUNT(*) as count FROM bookings WHERE tenant_id = $1`,
+    [tenantId]
+  )
+
+  if (!result.success || result.data.length === 0) {
+    return true
+  }
+
+  return parseInt(result.data[0].count) === 0
+}
+
+const triggerInitialSync = async (
+  tenantId: string,
+  accessToken: string,
+  context: InvocationContext
+): Promise<void> => {
+  try {
+    context.log(`Triggering initial sync for tenant ${tenantId}`)
+
+    // perform sync immediately in the background
+    // don't await this - let it run async so the user doesn't have to wait
+    performSync(accessToken, tenantId).then(result => {
+      context.log(`Initial sync completed for tenant ${tenantId}:`, {
+        properties: result.properties,
+        bookings: result.bookings,
+        duration: `${result.duration}ms`
+      })
+    }).catch(error => {
+      context.error(`Initial sync failed for tenant ${tenantId}:`, error)
+    })
+
+    await query(
+      `INSERT INTO sync_progress (tenant_id, sync_type, status, started_at)
+       VALUES ($1, 'initial', 'in_progress', CURRENT_TIMESTAMP)`,
+      [tenantId]
+    )
+  } catch (error) {
+    context.error('Failed to trigger initial sync:', error)
+    // don't throw - we don't want OAuth to fail if sync scheduling fails
+  }
+}
+
+const buildSuccessPage = (tenantId: string, userId?: string, syncStarted?: boolean): string => `
   <html>
     <head>
       <style>
@@ -201,12 +241,20 @@ const buildSuccessPage = (tenantId: string, userId?: string): string => `
         p { color: #666; margin: 0 0 24px 0; }
         .close { background: #3b82f6; color: white; border: none;
                 padding: 12px 24px; border-radius: 6px; cursor: pointer; }
+        .sync-notice { background: #eff6ff; border: 1px solid #3b82f6;
+                      border-radius: 6px; padding: 12px; margin-top: 16px; }
       </style>
     </head>
     <body>
       <div class="container">
         <h2>✓ Successfully Connected</h2>
         <p>Your OwnerRez account has been connected to Baileys Analytics.</p>
+        ${syncStarted ? `
+        <div class="sync-notice">
+          <p>We're now syncing your historical data. This may take a few minutes.</p>
+          <p>You can close this window and start using the app - your data will appear as it syncs.</p>
+        </div>
+        ` : ''}
         <button class="close" onclick="window.close()">Close Window</button>
       </div>
       <script>
@@ -214,7 +262,8 @@ const buildSuccessPage = (tenantId: string, userId?: string): string => `
           window.opener.postMessage({
             type: 'oauth-success',
             tenantId: '${tenantId}',
-            userId: '${userId || ''}'
+            userId: '${userId || ''}',
+            syncStarted: ${syncStarted || false}
           }, '*');
         }
       </script>
@@ -352,10 +401,20 @@ export async function oauthCallback(
 
   await linkUserToTenant(user_id, tenantId)
 
+  // Check if this is the first connection (no bookings yet)
+  const isFirstConnection = await checkIfFirstConnection(tenantId)
+
+  let syncStarted = false
+  if (isFirstConnection) {
+    // Trigger initial sync for all historical data
+    await triggerInitialSync(tenantId, access_token, context)
+    syncStarted = true
+  }
+
   return {
     status: 200,
     headers: { 'Content-Type': 'text/html' },
-    body: buildSuccessPage(tenantId, user_id)
+    body: buildSuccessPage(tenantId, user_id, syncStarted)
   }
 }
 

@@ -233,6 +233,21 @@ CREATE TABLE refresh_tokens (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE sync_progress (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    sync_type VARCHAR(50) NOT NULL, -- 'initial', 'scheduled', 'manual'
+    status VARCHAR(50) NOT NULL, -- 'pending', 'in_progress', 'completed', 'failed'
+    total_items INTEGER,
+    processed_items INTEGER,
+    started_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP WITH TIME ZONE,
+    error_message TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_properties_tenant_id ON properties(tenant_id);
 CREATE INDEX idx_bookings_tenant_id ON bookings(tenant_id);
@@ -263,6 +278,8 @@ CREATE INDEX idx_oauth_tokens_tenant_id ON oauth_tokens(tenant_id);
 CREATE INDEX idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
 CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
+CREATE INDEX idx_sync_progress_tenant_type ON sync_progress(tenant_id, sync_type);
+CREATE INDEX idx_sync_progress_status ON sync_progress(status);
 
 CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -295,4 +312,7 @@ CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON tags
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_oauth_tokens_updated_at BEFORE UPDATE ON oauth_tokens
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_sync_progress_updated_at BEFORE UPDATE ON sync_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

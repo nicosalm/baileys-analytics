@@ -35,14 +35,16 @@ const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams =
   tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
 })
 
-const buildTagFilter = (tagIds: readonly string[]): string =>
-  tagIds.length > 0
-    ? `AND EXISTS (
-        SELECT 1 FROM booking_tags bt
-        WHERE bt.booking_id = b.id
-        AND bt.tag_id = ANY($4::uuid[])
-      )`
-    : ''
+const buildTagFilter = (tagIds: readonly string[], tableAlias?: string): string => {
+  if (tagIds.length === 0) return ''
+
+  const table = tableAlias ? `${tableAlias}.` : ''
+  return `AND EXISTS (
+    SELECT 1 FROM booking_tags bt
+    WHERE bt.booking_id = ${table}id
+    AND bt.tag_id = ANY($4::uuid[])
+  )`
+}
 
 const buildQueryParams = (params: QueryParams): any[] =>
   params.tagIds.length > 0
@@ -54,7 +56,7 @@ const fetchRevenueSummary = async (params: QueryParams): Promise<DbResult<{
   total_taxes: string
   total_fees: string
 }>> => {
-  const tagFilter = buildTagFilter(params.tagIds)
+  const tagFilter = buildTagFilter(params.tagIds, 'b')
   const queryParams = buildQueryParams(params)
 
   const result = await query<{
