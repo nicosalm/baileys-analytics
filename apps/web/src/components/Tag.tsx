@@ -1,11 +1,9 @@
 import React from 'react'
-import { TAG_TYPE_STYLES } from '@/lib/theme'
 
 interface TagProps {
   tag: {
     id: string
     name: string
-    type: string
     color?: string
   }
   size?: 'sm' | 'md'
@@ -23,44 +21,26 @@ export const Tag: React.FC<TagProps> = ({
 }) => {
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'
 
-  if (tag.color) {
-    return (
-      <span
-        className={`inline-flex items-center rounded-full border ${sizeClasses} ${
-          onClick ? 'cursor-pointer' : ''
-        } ${selected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}`}
-        style={{
-          backgroundColor: `${tag.color}20`,
-          color: tag.color,
-          borderColor: tag.color
-        }}
-        onClick={onClick}
-      >
-        {tag.name}
-        {onRemove && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onRemove()
-            }}
-            className="ml-1 hover:opacity-70"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </span>
-    )
+  // default styles if no color provided
+  const defaultStyles = {
+    backgroundColor: '#f3f4f6',
+    color: '#374151',
+    borderColor: '#d1d5db'
   }
 
-  const styles = TAG_TYPE_STYLES[tag.type as keyof typeof TAG_TYPE_STYLES] || TAG_TYPE_STYLES.custom
+  // use custom color if provided, otherwise use defaults
+  const styles = tag.color ? {
+    backgroundColor: `${tag.color}20`,
+    color: tag.color,
+    borderColor: tag.color
+  } : defaultStyles
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border ${sizeClasses} ${styles.bg} ${styles.text} ${styles.border} ${
-        onClick ? `cursor-pointer ${styles.hover}` : ''
+      className={`inline-flex items-center rounded-full border ${sizeClasses} ${
+        onClick ? 'cursor-pointer hover:opacity-80' : ''
       } ${selected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}`}
+      style={styles}
       onClick={onClick}
     >
       {tag.name}
@@ -85,7 +65,6 @@ interface TagListProps {
   tags: Array<{
     id: string
     name: string
-    type: string
     color?: string
   }>
   size?: 'sm' | 'md'

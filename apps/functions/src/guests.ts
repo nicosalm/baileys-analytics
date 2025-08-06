@@ -26,7 +26,6 @@ type GuestMetrics = {
   tagDistribution: Array<{
     id: string;
     name: string;
-    type: string;
     color?: string;
     count: number;
   }>;
@@ -45,7 +44,6 @@ type GuestListItem = {
   tags: Array<{
     id: string;
     name: string;
-    type: string;
     color?: string;
   }>;
 };
@@ -233,14 +231,12 @@ export async function getGuests(
     const tagDistributionResult = await query<{
       tag_id: string;
       tag_name: string;
-      tag_type: string;
       tag_color: string;
       count: string;
     }>(
       `SELECT
         t.id as tag_id,
         t.name as tag_name,
-        t.type as tag_type,
         t.color as tag_color,
         COUNT(DISTINCT (b.guest_name, COALESCE(b.guest_email, ''))) as count
       FROM bookings b
@@ -250,7 +246,7 @@ export async function getGuests(
         AND b.status != 'canceled'
         ${dateFilter}
         ${tagFilter}
-      GROUP BY t.id, t.name, t.type, t.color
+      GROUP BY t.id, t.name, t.color
       ORDER BY count DESC`,
       queryParams
     );
@@ -311,7 +307,6 @@ export async function getGuests(
       guest_email: string;
       tag_id: string;
       tag_name: string;
-      tag_type: string;
       tag_color: string;
     }>(
       `WITH current_page_guests AS (
@@ -337,7 +332,6 @@ export async function getGuests(
         b.guest_email,
         t.id as tag_id,
         t.name as tag_name,
-        t.type as tag_type,
         t.color as tag_color
       FROM bookings b
       JOIN booking_tags bt ON b.id = bt.booking_id
@@ -348,7 +342,7 @@ export async function getGuests(
         AND b.status != 'canceled'
         ${dateFilter}
         ${tagFilter}
-      ORDER BY b.guest_name, b.guest_email, t.type, t.name`,
+      ORDER BY b.guest_name, b.guest_email, t.name`,
       queryParams
     );
 
@@ -363,7 +357,6 @@ export async function getGuests(
         guestTagsMap.get(key)!.push({
           id: row.tag_id,
           name: row.tag_name,
-          type: row.tag_type,
           color: row.tag_color || undefined
         });
       }
@@ -394,7 +387,6 @@ export async function getGuests(
         tagDistribution: tagDistributionResult.success ? tagDistributionResult.data.map(t => ({
           id: t.tag_id,
           name: t.tag_name,
-          type: t.tag_type,
           color: t.tag_color || undefined,
           count: parseInt(t.count)
         })) : []

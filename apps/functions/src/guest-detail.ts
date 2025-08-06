@@ -64,7 +64,6 @@ type SpendingTrend = {
 type TagInfo = {
   id: string
   name: string
-  type: string
   color?: string
 }
 
@@ -327,13 +326,11 @@ const fetchGuestTags = async (
   const result = await query<{
     tag_id: string
     tag_name: string
-    tag_type: string
     tag_color: string
   }>(
     `SELECT DISTINCT
       t.id as tag_id,
       t.name as tag_name,
-      t.type as tag_type,
       t.color as tag_color
     FROM bookings b
     JOIN booking_tags bt ON b.id = bt.booking_id
@@ -344,7 +341,7 @@ const fetchGuestTags = async (
         ($3 = '' AND (b.guest_email IS NULL OR b.guest_email = ''))
         OR (b.guest_email = $3)
       )
-    ORDER BY t.type, t.name`,
+    ORDER BY t.name`,
     [tenantId, guest.name, guest.email]
   )
 
@@ -355,7 +352,6 @@ const fetchGuestTags = async (
   const tags = result.data.map(t => ({
     id: t.tag_id,
     name: t.tag_name,
-    type: t.tag_type,
     color: t.tag_color || undefined
   }))
 
@@ -381,15 +377,13 @@ const fetchPaymentMethods = async (
             SELECT 1 FROM booking_tags bt
             JOIN tags t ON bt.tag_id = t.id
             WHERE bt.booking_id = b.id
-            AND t.type = 'payment'
-            AND t.name ILIKE '%credit%'
+            AND (t.name ILIKE '%credit%' OR t.name ILIKE '%card%')
           ) THEN 'Credit Card'
           WHEN EXISTS (
             SELECT 1 FROM booking_tags bt
             JOIN tags t ON bt.tag_id = t.id
             WHERE bt.booking_id = b.id
-            AND t.type = 'payment'
-            AND t.name ILIKE '%ach%'
+            AND (t.name ILIKE '%ach%' OR t.name ILIKE '%bank%' OR t.name ILIKE '%transfer%')
           ) THEN 'ACH/Bank Transfer'
           ELSE 'Other'
         END as method,

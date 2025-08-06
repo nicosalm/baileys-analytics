@@ -4,7 +4,7 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, ensureNumber, 
 import { Users, UserCheck, Calendar, DollarSign } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
-import { TagList } from '@/components/Tag'
+import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useToast } from '@/contexts/toast'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useDashboard } from '@/contexts/dashboard'
@@ -17,7 +17,6 @@ import {
 type GuestTag = {
     id: string
     name: string
-    type: string
     color?: string
     count: number
 }
@@ -58,7 +57,6 @@ type GuestListItem = {
     tags: Array<{
         id: string
         name: string
-        type: string
         color?: string
     }>
 }
@@ -261,9 +259,13 @@ export const GuestsDashboard = () => {
         {
             key: 'tags',
             header: 'Tags',
-            width: 200,
+            width: 350,  // Increased width for collapsible tags
             render: (guest: GuestListItem) => (
-                <TagList tags={guest.tags} maxDisplay={3} />
+                <CollapsibleTags
+                    tags={guest.tags}
+                    maxVisible={2}
+                    size="sm"
+                />
             )
         }
     ], [])
@@ -283,13 +285,40 @@ export const GuestsDashboard = () => {
         color: CHART_COLORS[index % CHART_COLORS.length]
     }))
 
-    const tagChartData = data.metrics.tagDistribution
-        .slice(0, 10)
+    // Calculate tag distribution from guest data if not provided by backend
+    const calculateTagDistribution = () => {
+        if (data.metrics.tagDistribution && data.metrics.tagDistribution.length > 0) {
+            return data.metrics.tagDistribution
+        }
+
+        // Fallback: calculate from guest tags
+        const tagCounts = new Map<string, { name: string; color?: string; count: number }>()
+
+        data.guests.forEach(guest => {
+            guest.tags?.forEach(tag => {
+                const existing = tagCounts.get(tag.id) || {
+                    name: tag.name,
+                    color: tag.color,
+                    count: 0
+                }
+                existing.count++
+                tagCounts.set(tag.id, existing)
+            })
+        })
+
+        return Array.from(tagCounts.values())
+            .sort((a, b) => b.count - a.count)
+    }
+
+    const tagDistribution = calculateTagDistribution()
+
+    const tagChartData = tagDistribution
+        ?.slice(0, 10)
         .map((tag, index) => ({
-            name: tag.name,
-            value: tag.count,
+            name: tag.name || 'Unknown',
+            value: tag.count || 0,
             color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
-        }))
+        })) || []
 
     return (
         <div className="space-y-6">
@@ -381,19 +410,45 @@ export const GuestsDashboard = () => {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-bold mb-4">Tag Distribution</h3>
-                    <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={tagChartData} layout="horizontal">
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" />
-                                <YAxis dataKey="name" type="category" width={100} />
-                                <Tooltip />
-                                <Bar dataKey="value" fill={METRIC_COLORS.revenue} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
+              <h3 className="text-lg font-bold mb-4">Tag Distribution (Top 10)</h3>
+              {tagChartData && tagChartData.length > 0 ? (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={tagChartData}
+                      margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="name"
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                        interval={0}
+                        tick={{ fontSize: 10 }}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip
+                        formatter={(value: number) => [`${value} guests`, 'Count']}
+                        labelStyle={{ color: '#000' }}
+                      />
+                      <Bar dataKey="value">
+                        {tagChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-80 text-gray-500">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="text-sm">No tag data available</p>
+                </div>
+              )}
+            </div>
 
                 <div className="bg-white p-6 rounded-lg shadow">
                     <h3 className="text-lg font-bold mb-4">Revenue by Guest Source</h3>

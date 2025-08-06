@@ -64,7 +64,6 @@ type GuestDetail = {
   tags: Array<{
     id: string
     name: string
-    type: string
     color?: string
   }>
   paymentMethods: Array<{
@@ -362,12 +361,6 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
 
   const { guest, properties, spendingTrend, tags, paymentMethods } = data
 
-  const tagsByType = tags.reduce((acc, tag) => {
-    if (!acc[tag.type]) acc[tag.type] = []
-    acc[tag.type].push(tag)
-    return acc
-  }, {} as Record<string, typeof tags>)
-
   return (
     <div className="space-y-6">
       <div>
@@ -467,17 +460,10 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
             <TagIcon className="w-5 h-5 mr-2" />
             Tags
           </h3>
-          {tags && Object.keys(tagsByType).length > 0 ? (
-            <div className="space-y-3">
-              {Object.entries(tagsByType).map(([type, typeTags]) => (
-                <div key={type}>
-                  <h4 className="text-sm font-medium text-gray-600 mb-2 capitalize">{type}</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {typeTags.map(tag => (
-                      <Tag key={tag.id} tag={tag} size="sm" />
-                    ))}
-                  </div>
-                </div>
+          {tags && tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {tags.map(tag => (
+                <Tag key={tag.id} tag={tag} size="sm" />
               ))}
             </div>
           ) : (

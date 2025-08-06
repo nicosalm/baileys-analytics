@@ -78,8 +78,20 @@ export function VirtualTable<T extends Record<string, any>>({
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLDivElement>(null)
   const scrollTimeout = useRef<NodeJS.Timeout>()
   const loadMoreTimeout = useRef<NodeJS.Timeout>()
+
+  // Calculate total table width
+  const tableWidth = useMemo(() => {
+    let width = 0
+    if (selectable) width += 50
+    if (showRowNumbers) width += 60
+    columns.forEach(col => {
+      width += col.width || 200 // Default column width if not specified
+    })
+    return width
+  }, [columns, selectable, showRowNumbers])
 
   // Calculate filtered data based on search
   const filteredData = useMemo(() => {
@@ -129,10 +141,15 @@ export function VirtualTable<T extends Record<string, any>>({
   // Pagination calculations
   const totalPages = enablePagination ? Math.ceil(filteredData.length / pageSize) : 1
 
-  // Handle scroll with debouncing
+  // Handle scroll with debouncing and header sync
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement
     setScrollTop(target.scrollTop)
+
+    // Sync header horizontal scroll
+    if (headerRef.current) {
+      headerRef.current.scrollLeft = target.scrollLeft
+    }
 
     // Clear existing timeout
     if (scrollTimeout.current) {
@@ -270,6 +287,19 @@ export function VirtualTable<T extends Record<string, any>>({
 
   return (
     <div className="space-y-4">
+      {/* CSS for hiding header scrollbar */}
+      <style>
+        {`
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        `}
+      </style>
+
       {/* Toolbar */}
       {(enableSearch || enableExport || enableRefresh) && (
         <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow">
@@ -316,13 +346,20 @@ export function VirtualTable<T extends Record<string, any>>({
         </div>
       )}
 
-      {/* Main Table */}
+      {/* Main Table with horizontal scroll */}
       <div className="border rounded-lg overflow-hidden bg-white shadow">
-        {/* Header */}
-        <div className="bg-gray-50 border-b sticky top-0 z-10">
-          <div className="flex">
+        {/* Header with horizontal scroll sync */}
+        <div
+          ref={headerRef}
+          className="bg-gray-50 border-b sticky top-0 z-10 overflow-x-auto overflow-y-hidden scrollbar-hide"
+          style={{
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none'
+          }}
+        >
+          <div className="flex" style={{ width: tableWidth }}>
             {selectable && (
-              <div className="px-4 py-3 border-r bg-gray-50" style={{ width: 50 }}>
+              <div className="px-4 py-3 border-r bg-gray-50 flex-shrink-0" style={{ width: 50 }}>
                 <input
                   type="checkbox"
                   checked={allSelected}
@@ -337,23 +374,23 @@ export function VirtualTable<T extends Record<string, any>>({
               </div>
             )}
             {showRowNumbers && (
-              <div className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-r" style={{ width: 60 }}>
+              <div className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider border-r flex-shrink-0" style={{ width: 60 }}>
                 #
               </div>
             )}
             {columns.map((column) => (
               <div
                 key={String(column.key)}
-                className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0 ${
                   column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
                 }`}
-                style={{ width: column.width || `${100 / columns.length}%` }}
+                style={{ width: column.width || 200 }}
                 onClick={() => column.sortable && handleSort(String(column.key))}
               >
                 <div className="flex items-center justify-between">
-                  <span>{column.header}</span>
+                  <span className="truncate">{column.header}</span>
                   {column.sortable && sortBy === column.key && (
-                    <span className="ml-2">
+                    <span className="ml-2 flex-shrink-0">
                       {sortOrder === 'asc' ? (
                         <ChevronUp className="w-4 h-4" />
                       ) : (
@@ -367,22 +404,22 @@ export function VirtualTable<T extends Record<string, any>>({
           </div>
         </div>
 
-        {/* Virtual scrolling container */}
+        {/* Virtual scrolling container with horizontal scroll */}
         <div
           ref={containerRef}
           className="overflow-auto"
           style={{ height }}
           onScroll={handleScroll}
         >
-          {/* Total height placeholder */}
-          <div style={{ height: totalHeight, position: 'relative' }}>
+          {/* Total height placeholder with fixed width */}
+          <div style={{ height: totalHeight, width: tableWidth, position: 'relative' }}>
             {/* Visible rows */}
             <div
               style={{
                 position: 'absolute',
                 top: offsetY,
                 left: 0,
-                right: 0
+                width: tableWidth
               }}
             >
               {visibleItems.map((item, index) => {
@@ -397,12 +434,12 @@ export function VirtualTable<T extends Record<string, any>>({
                     className={`flex border-b hover:bg-gray-50 transition-colors ${
                       onRowClick ? 'cursor-pointer' : ''
                     } ${isSelected ? 'bg-blue-50' : ''} ${customClassName}`}
-                    style={{ height: rowHeight }}
+                    style={{ height: rowHeight, width: tableWidth }}
                     onClick={() => onRowClick?.(item, actualIndex)}
                   >
                     {selectable && (
                       <div
-                        className="px-4 flex items-center border-r"
+                        className="px-4 flex items-center border-r flex-shrink-0"
                         style={{ width: 50 }}
                         onClick={(e) => {
                           e.stopPropagation()
@@ -418,17 +455,17 @@ export function VirtualTable<T extends Record<string, any>>({
                       </div>
                     )}
                     {showRowNumbers && (
-                      <div className="px-4 text-sm text-gray-500 flex items-center border-r" style={{ width: 60 }}>
+                      <div className="px-4 text-sm text-gray-500 flex items-center border-r flex-shrink-0" style={{ width: 60 }}>
                         {actualIndex + 1}
                       </div>
                     )}
                     {columns.map((column) => (
                       <div
                         key={`${rowId}-${String(column.key)}`}
-                        className="px-4 py-2 text-sm text-gray-900 flex items-center overflow-hidden"
-                        style={{ width: column.width || `${100 / columns.length}%` }}
+                        className="px-4 py-2 text-sm text-gray-900 flex items-center overflow-hidden flex-shrink-0"
+                        style={{ width: column.width || 200 }}
                       >
-                        <div className="truncate">
+                        <div className="w-full">
                           {getCellValue(item, column)}
                         </div>
                       </div>
@@ -441,7 +478,7 @@ export function VirtualTable<T extends Record<string, any>>({
 
           {/* Loading more indicator */}
           {!enablePagination && isLoadingMore && (
-            <div className="flex items-center justify-center py-4 border-t bg-gray-50">
+            <div className="flex items-center justify-center py-4 border-t bg-gray-50" style={{ width: tableWidth }}>
               <Loader2 className="w-5 h-5 animate-spin text-blue-600 mr-2" />
               <span className="text-sm text-gray-600">Loading more...</span>
             </div>
