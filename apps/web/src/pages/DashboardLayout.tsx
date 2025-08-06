@@ -168,7 +168,7 @@ export const DashboardLayout = () => {
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">{user.email}</span>
                   <Link
-                    to="/dashboard/settings"
+                    to="/settings"
                     className="text-gray-600 hover:text-gray-800"
                     title="Settings"
                   >

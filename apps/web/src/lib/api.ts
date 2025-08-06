@@ -1,10 +1,19 @@
 import { z } from 'zod'
+import {
+  TaxRule,
+  TaxRuleFormData,
+  PropertyTaxConfig,
+  TaxCalculationResult,
+  TaxContext
+} from '@/types/tax'
 
 const API_BASE = '/api'
 
 type ApiResult<T> =
   | { success: true; data: T }
   | { success: false; error: string; status?: number }
+
+export type DbResult<T> = ApiResult<T>
 
 const tokenSchema = z.object({
   accessToken: z.string(),
@@ -159,6 +168,96 @@ class ApiClient {
     return this.request(`/tax-report?${params}`)
   }
 
+  // Tax Configuration Methods
+  async getTaxRules(): Promise<ApiResult<TaxRule[]>> {
+    const result = await this.request<{ status: string; data: TaxRule[] }>('/tax-rules')
+
+    if (result.success && result.data.status === 'success') {
+      return { success: true, data: result.data.data }
+    }
+
+    return {
+      success: false,
+      error: result.success ? 'Failed to fetch tax rules' : result.error
+    }
+  }
+
+  async getPropertyTaxConfigs(): Promise<ApiResult<PropertyTaxConfig[]>> {
+    const result = await this.request<{ status: string; data: PropertyTaxConfig[] }>('/property-tax-configs')
+
+    if (result.success && result.data.status === 'success') {
+      return { success: true, data: result.data.data }
+    }
+
+    return {
+      success: false,
+      error: result.success ? 'Failed to fetch property tax configs' : result.error
+    }
+  }
+
+  async createTaxRule(rule: TaxRuleFormData): Promise<ApiResult<TaxRule>> {
+    const result = await this.request<{ status: string; data: TaxRule }>('/tax-rules', {
+      method: 'POST',
+      body: JSON.stringify(rule)
+    })
+
+    if (result.success && result.data.status === 'success') {
+      return { success: true, data: result.data.data }
+    }
+
+    return {
+      success: false,
+      error: result.success ? 'Failed to create tax rule' : result.error
+    }
+  }
+
+  async updateTaxRule(ruleId: string, rule: TaxRuleFormData): Promise<ApiResult<TaxRule>> {
+    const result = await this.request<{ status: string; data: TaxRule }>(`/tax-rules/${ruleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(rule)
+    })
+
+    if (result.success && result.data.status === 'success') {
+      return { success: true, data: result.data.data }
+    }
+
+    return {
+      success: false,
+      error: result.success ? 'Failed to update tax rule' : result.error
+    }
+  }
+
+  async deleteTaxRule(ruleId: string): Promise<ApiResult<void>> {
+    const result = await this.request<{ status: string }>(`/tax-rules/${ruleId}`, {
+      method: 'DELETE'
+    })
+
+    if (result.success && result.data.status === 'success') {
+      return { success: true, data: undefined }
+    }
+
+    return {
+      success: false,
+      error: result.success ? 'Failed to delete tax rule' : result.error
+    }
+  }
+
+  async calculateTaxPreview(amount: number, context: TaxContext): Promise<ApiResult<TaxCalculationResult>> {
+    const result = await this.request<{ status: string; data: TaxCalculationResult }>('/tax-preview', {
+      method: 'POST',
+      body: JSON.stringify({ amount, context })
+    })
+
+    if (result.success && result.data.status === 'success') {
+      return { success: true, data: result.data.data }
+    }
+
+    return {
+      success: false,
+      error: result.success ? 'Failed to calculate tax preview' : result.error
+    }
+  }
+
   async manualSync(): Promise<ApiResult<any>> {
     return this.request('/manual-sync', { method: 'POST' })
   }
@@ -226,15 +325,37 @@ class ApiClient {
     return this.request(`/guests?${params}`)
   }
 
-    async getFinancials(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
-        const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+  async getFinancials(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
+    const params = new URLSearchParams()
+    if (from) params.append('from', from)
+    if (to) params.append('to', to)
+    if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
 
-        return this.request(`/financials?${params}`)
-    }
+    return this.request(`/financials?${params}`)
+  }
 }
 
 export const api = new ApiClient()
 
+// Helper for authenticated fetch
+export const authenticatedFetch = async (
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const token = api['accessToken'] // Access private property for helper
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  return fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
+  })
+}

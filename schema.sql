@@ -1,5 +1,3 @@
--- Complete schema for Baileys Analytics
-
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -154,6 +152,36 @@ CREATE TABLE tax_configs (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE tax_rules (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    method JSONB NOT NULL,
+    applies_to JSONB NOT NULL,
+    jurisdiction VARCHAR(255),
+    effective_from DATE NOT NULL,
+    effective_to DATE,
+    priority INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT tax_rules_unique_name UNIQUE (tenant_id, name)
+);
+
+CREATE TABLE tax_calculations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
+    amount DECIMAL(10, 2) NOT NULL,
+    total_tax DECIMAL(10, 2) NOT NULL,
+    effective_rate DECIMAL(5, 4) NOT NULL,
+    applied_rules JSONB NOT NULL,
+    breakdown JSONB NOT NULL,
+    calculation_context JSONB NOT NULL,
+    calculated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -219,6 +247,12 @@ CREATE INDEX idx_expenses_booking ON expenses(booking_id) WHERE booking_id IS NO
 CREATE INDEX idx_expense_allocations_property ON expense_allocations(property_id);
 CREATE INDEX idx_budgets_tenant_year ON budgets(tenant_id, budget_year);
 CREATE INDEX idx_tax_configs_tenant_id ON tax_configs(tenant_id);
+CREATE INDEX idx_tax_rules_tenant_active ON tax_rules(tenant_id, is_active);
+CREATE INDEX idx_tax_rules_priority ON tax_rules(priority DESC);
+CREATE INDEX idx_tax_rules_effective_dates ON tax_rules(effective_from, effective_to);
+CREATE INDEX idx_tax_rules_applies_to ON tax_rules USING GIN (applies_to);
+CREATE INDEX idx_tax_calculations_tenant_booking ON tax_calculations(tenant_id, booking_id);
+CREATE INDEX idx_tax_calculations_calculated_at ON tax_calculations(calculated_at);
 CREATE INDEX idx_tags_tenant_id ON tags(tenant_id);
 CREATE INDEX idx_tags_type ON tags(tenant_id, type);
 CREATE INDEX idx_property_tags_property_id ON property_tags(property_id);
@@ -253,6 +287,9 @@ CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_tax_configs_updated_at BEFORE UPDATE ON tax_configs
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_tax_rules_updated_at BEFORE UPDATE ON tax_rules
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON tags

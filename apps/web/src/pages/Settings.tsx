@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
 import { Spinner } from '@/components/Spinner'
-import { RefreshCw, Calendar, AlertCircle } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator } from 'lucide-react'
+import { TaxConfiguration } from '@/components/TaxConfiguration'
 
 type SyncStatus = {
   lastPropertySync: string | null
@@ -156,6 +157,7 @@ export const Settings = () => {
   const { addToast } = useToast()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
+  const [activeTab, setActiveTab] = useState<'account' | 'tax'>('account')
 
   if (state.status !== 'authenticated') return null
 
@@ -212,28 +214,51 @@ export const Settings = () => {
       <div className="max-w-6xl mx-auto p-4">
         <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-        <div className="space-y-6">
-          <AccountInfo
-            email={user.email}
-            createdAt={user.createdAt}
-            companyName={user.companyName}
-          />
-
-          <OwnerRezConnection
-            isConnected={user.hasOwnerRezConnection}
-            syncStatus={syncStatus}
-            onRecentSync={() => handleSync('recent')}
-            onHistoricalSync={() => handleSync('historical')}
-            syncState={syncState}
-          />
-
-          <div className="p-4 border rounded">
-            <h2 className="text-xl font-bold mb-4">Tax Configuration</h2>
-            <p className="text-gray-600">
-              Custom tax rates coming soon. Currently using rates from OwnerRez.
-            </p>
-          </div>
+        <div className="mb-6 border-b">
+          <nav className="flex space-x-8">
+            <button
+              onClick={() => setActiveTab('account')}
+              className={`pb-2 border-b-2 transition-colors ${
+                activeTab === 'account'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Account
+            </button>
+            <button
+              onClick={() => setActiveTab('tax')}
+              className={`pb-2 border-b-2 transition-colors flex items-center ${
+                activeTab === 'tax'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              Tax Configuration
+            </button>
+          </nav>
         </div>
+
+        {activeTab === 'account' ? (
+          <div className="space-y-6">
+            <AccountInfo
+              email={user.email}
+              createdAt={user.createdAt}
+              companyName={user.companyName}
+            />
+
+            <OwnerRezConnection
+              isConnected={user.hasOwnerRezConnection}
+              syncStatus={syncStatus}
+              onRecentSync={() => handleSync('recent')}
+              onHistoricalSync={() => handleSync('historical')}
+              syncState={syncState}
+            />
+          </div>
+        ) : (
+          <TaxConfiguration />
+        )}
       </div>
     </div>
   )

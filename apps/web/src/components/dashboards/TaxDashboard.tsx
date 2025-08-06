@@ -1,25 +1,29 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
 import { api } from '@/lib/api'
 import { formatCurrency, formatPercentage, formatCompactCurrency, isValidDateRange } from '@baileys/utils'
 import { PropertyTaxChart, MonthlyTrendChart, PropertyDistributionChart } from '@/components/TaxCharts'
 import { VirtualTable } from '@/components/VirtualTable'
-import { Download, TrendingUp, Home, Calendar, FileText } from 'lucide-react'
+import { Download, TrendingUp, Home, Calendar, FileText, Settings } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { useDashboard } from '@/contexts/dashboard'
 import { useToast } from '@/contexts/toast'
-import { TaxReportData } from '@/types/dashboard'
+import { TaxReportData, TaxRule } from '@/types/tax'
 import { useDrillDown } from '@/contexts/drillDown'
+import { useTaxConfig } from '@/contexts/taxConfig'
+import { taxEngine } from '@/lib/taxEngine'
 
 export const TaxDashboard = () => {
   const { filters } = useDashboard()
   const { addToast } = useToast()
   const { dispatch } = useDrillDown()
+  const { state: taxConfigState } = useTaxConfig()
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<TaxReportData | null>(null)
   const [viewMode, setViewMode] = useState<'charts' | 'table'>('charts')
   const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<string>('totalTax')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [showTaxConfig, setShowTaxConfig] = useState(false)
 
   const loadReport = async () => {
     if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
@@ -36,7 +40,13 @@ export const TaxDashboard = () => {
     )
 
     if (result.success && result.data.status === 'success') {
-      setData(result.data.data)
+      // If tax config is loaded, enhance data with tax calculations
+      if (taxConfigState.status === 'loaded') {
+        const enhancedData = enhanceDataWithTaxEngine(result.data.data, taxConfigState.rules)
+        setData(enhancedData)
+      } else {
+        setData(result.data.data)
+      }
     } else {
       addToast('error', result.success ? 'Failed to load report' : result.error)
     }
@@ -44,9 +54,43 @@ export const TaxDashboard = () => {
     setLoading(false)
   }
 
+  // Enhance tax data with tax engine calculations
+  const enhanceDataWithTaxEngine = (data: TaxReportData, rules: TaxRule[]) => {
+    const enhancedByProperty = data.byProperty.map(property => {
+      const context = {
+        propertyId: property.propertyId,
+        bookingDate: new Date().toISOString()
+      }
+
+      const calculation = taxEngine.calculateTax(property.totalRent, rules, context)
+
+      return {
+        ...property,
+        totalTax: calculation.totalTax || property.totalTax,
+        taxRate: calculation.effectiveRate || property.taxRate,
+        breakdown: calculation.breakdown
+      }
+    })
+
+    const totalTax = enhancedByProperty.reduce((sum, p) => sum + p.totalTax, 0)
+    const effectiveRate = data.summary.totalRent > 0
+      ? totalTax / data.summary.totalRent
+      : 0
+
+    return {
+      ...data,
+      byProperty: enhancedByProperty,
+      summary: {
+        ...data.summary,
+        totalTax,
+        effectiveRate
+      }
+    }
+  }
+
   useEffect(() => {
     loadReport()
-  }, [filters.dateRange, filters.selectedTags])
+  }, [filters.dateRange, filters.selectedTags, taxConfigState])
 
   const sortedProperties = useMemo(() => {
     if (!data) return []
@@ -222,11 +266,11 @@ export const TaxDashboard = () => {
         width: 120,
         render: (month: TaxReportData['byMonth'][0]) => (
           <span className={`font-medium ${
-            (month.totalTax / month.totalRent) > 0.0015 ? 'text-red-600' :
-            (month.totalTax / month.totalRent) > 0.0010 ? 'text-yellow-600' :
+            month.effectiveRate > 0.0015 ? 'text-red-600' :
+            month.effectiveRate > 0.0010 ? 'text-yellow-600' :
             'text-green-600'
           }`}>
-            {formatPercentage((month.totalTax / month.totalRent) * 100, 2)}
+            {formatPercentage(month.effectiveRate * 100, 2)}
           </span>
         )
       }
@@ -243,9 +287,7 @@ export const TaxDashboard = () => {
 
   if (!data) return null
 
-  const effectiveTaxRate = data.summary.totalRent > 0
-    ? (data.summary.totalTax / data.summary.totalRent) * 100
-    : 0
+  const effectiveTaxRate = data.summary.effectiveRate * 100
 
   const handlePropertyClick = (property: typeof sortedProperties[0]) => {
     dispatch({
@@ -264,11 +306,36 @@ export const TaxDashboard = () => {
     })
   }
 
+  // Dynamic import of TaxConfiguration component
+  if (showTaxConfig) {
+    const TaxConfiguration = lazy(() => import('@/components/TaxConfiguration').then(module => ({ default: module.TaxConfiguration })))
+    return (
+      <Suspense fallback={<Spinner size="lg" />}>
+        <div className="space-y-4">
+          <button
+            onClick={() => setShowTaxConfig(false)}
+            className="text-blue-600 hover:underline"
+          >
+            ← Back to Tax Report
+          </button>
+          <TaxConfiguration />
+        </div>
+      </Suspense>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Tax Report</h2>
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowTaxConfig(true)}
+            className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 flex items-center"
+          >
+            <Settings className="w-4 h-4 mr-2" />
+            Configure Tax Rules
+          </button>
           <button
             onClick={() => setViewMode(viewMode === 'charts' ? 'table' : 'charts')}
             className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 flex items-center"
@@ -325,7 +392,7 @@ export const TaxDashboard = () => {
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold mb-4">Monthly Trends</h3>
               <MonthlyTrendChart
-                data={data.byMonth}
+                data={[...data.byMonth]}
                 onMonthClick={(monthString) => {
                   const [year, monthNum] = monthString.split('-')
                   dispatch({
@@ -339,7 +406,7 @@ export const TaxDashboard = () => {
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold mb-4">Property Comparison</h3>
               <PropertyTaxChart
-                data={data.byProperty}
+                data={[...data.byProperty]}
                 onPropertyClick={handlePropertyClick}
               />
             </div>
@@ -349,7 +416,7 @@ export const TaxDashboard = () => {
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-lg font-bold mb-4">Tax Distribution</h3>
               <PropertyDistributionChart
-                data={data.byProperty}
+                data={[...data.byProperty]}
                 onPropertyClick={handlePropertyClick}
               />
             </div>
@@ -415,7 +482,7 @@ export const TaxDashboard = () => {
               <h3 className="text-lg font-bold">Monthly Tax Summary</h3>
             </div>
             <VirtualTable
-              data={data.byMonth}
+              data={[...data.byMonth]}
               columns={monthlyColumns}
               height={400}
               onRowClick={handleMonthClick}

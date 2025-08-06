@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/auth'
 import { ToastProvider } from '@/contexts/toast'
+import { DashboardProvider } from '@/contexts/dashboard'
+import { DrillDownProvider } from '@/contexts/drillDown'
+import { TaxConfigProvider } from '@/contexts/taxConfig'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
@@ -19,8 +22,26 @@ export const App = () => {
             <Route path="/signup" element={<Signup />} />
 
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<DashboardLayout />} />
-              <Route path="/dashboard/settings" element={<Settings />} />
+              <Route
+                path="/dashboard/*"
+                element={
+                  <DashboardProvider>
+                    <DrillDownProvider>
+                      <TaxConfigProvider>
+                        <DashboardLayout />
+                      </TaxConfigProvider>
+                    </DrillDownProvider>
+                  </DashboardProvider>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <TaxConfigProvider>
+                    <Settings />
+                  </TaxConfigProvider>
+                }
+              />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
