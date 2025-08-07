@@ -48,22 +48,23 @@ const SyncButton = ({
 const SyncStatusDisplay = ({ status }: { status: SyncStatus | null }) => {
   if (!status) return null
 
-  return (
-    <div className="bg-gray-50 p-4 rounded space-y-2">
-      <div className="text-sm">
-        <span className="text-gray-600">Properties:</span> {status.propertyCount}
-      </div>
-      <div className="text-sm">
-        <span className="text-gray-600">Active Bookings:</span> {status.bookingCount}
-      </div>
-      <div className="text-sm">
-        <span className="text-gray-600">Last Property Sync:</span> {formatDate(status.lastPropertySync)}
-      </div>
-      <div className="text-sm">
-        <span className="text-gray-600">Last Booking Sync:</span> {formatDate(status.lastBookingSync)}
-      </div>
-    </div>
-  )
+    return (
+        <div className="bg-gray-50 p-4 rounded space-y-2">
+            <div className="text-sm">
+                <span className="text-gray-600">Properties:</span> {status.propertyCount}
+            </div>
+            <div className="text-sm">
+                <span className="text-gray-600">Total Bookings:</span> {status.bookingCount}
+                <span className="text-xs text-gray-500 ml-1">(excluding canceled)</span>
+            </div>
+            <div className="text-sm">
+                <span className="text-gray-600">Last Property Sync:</span> {formatDate(status.lastPropertySync)}
+            </div>
+            <div className="text-sm">
+                <span className="text-gray-600">Last Booking Sync:</span> {formatDate(status.lastBookingSync)}
+            </div>
+        </div>
+    )
 }
 
 const AccountInfo = ({ email, createdAt, companyName }: {
@@ -131,18 +132,18 @@ const OwnerRezConnection = ({
           />
 
           <SyncButton
-            label="Sync Historical Data (2 Years)"
-            icon={Calendar}
-            onClick={onHistoricalSync}
-            disabled={isSyncing}
-            loading={isSyncing && syncState.mode === 'historical'}
-          />
+              label="Sync Historical Data (4 Years)"
+              icon={Calendar}
+              onClick={onHistoricalSync}
+              disabled={isSyncing}
+              loading={isSyncing && syncState.mode === 'historical'}
+            />
 
           <div className="flex items-start space-x-2 text-sm text-gray-600 mt-2">
             <AlertCircle className="w-4 h-4 mt-0.5" />
             <div>
               <p>Recent sync updates data from the last 30 days.</p>
-              <p>Historical sync retrieves all bookings from the past 2 years.</p>
+              <p>Historical sync retrieves all bookings from the past 4 years.</p>
               <p>Data syncs automatically every 12 hours.</p>
             </div>
           </div>
@@ -172,7 +173,7 @@ export const Settings = () => {
 
   const handleSync = async (type: 'recent' | 'historical') => {
     if (type === 'historical' && !window.confirm(
-      'This will sync 2 years of historical data. This may take several minutes. Continue?'
+      'This will sync 4 years of historical data. This may take several minutes. Continue?'
     )) {
       return
     }
@@ -184,9 +185,39 @@ export const Settings = () => {
       : await api.manualSync()
 
     if (result.success) {
-      const message = type === 'historical'
-        ? `Historical sync completed: ${result.data.bookingsSynced} bookings synced`
-        : 'Sync completed successfully'
+      let message: string
+
+      if (type === 'historical') {
+        // Check if we have the new response format with bookingsFound
+        const bookingsFound = result.data.bookingsFound || result.data.totalBookingsFetched
+        const bookingsSynced = result.data.bookingsSynced
+
+        if (bookingsFound && bookingsFound !== bookingsSynced) {
+          message = `Historical sync completed: ${bookingsSynced} bookings saved out of ${bookingsFound} fetched`
+        } else {
+          message = `Historical sync completed: ${bookingsSynced} bookings synced`
+        }
+      } else {
+        // For recent sync, check if it's full sync or just bookings
+        if (result.data.bookings) {
+          // Full sync response
+          const bookingInfo = result.data.bookings
+          if (bookingInfo.status === 'success') {
+            const totalFetched = bookingInfo.totalFetched || bookingInfo.synced
+            if (totalFetched !== bookingInfo.synced) {
+              message = `Sync completed: ${result.data.properties?.synced || 0} properties, ${bookingInfo.synced} bookings saved out of ${totalFetched} fetched`
+            } else {
+              message = `Sync completed: ${result.data.properties?.synced || 0} properties, ${bookingInfo.synced} bookings`
+            }
+          } else {
+            message = 'Sync completed with errors'
+          }
+        } else {
+          // Simple sync response
+          message = 'Sync completed successfully'
+        }
+      }
+
       addToast('success', message)
       await loadSyncStatus()
     } else {

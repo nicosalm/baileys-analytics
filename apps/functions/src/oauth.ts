@@ -3,7 +3,7 @@ import axios from 'axios';
 import { query, DbResult } from './services/database';
 import { randomBytes } from 'crypto';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
-import { performSync } from './auto-sync';
+import { syncProperties, syncBookings } from './services/syncService';
 
 type TokenResponse = {
   access_token: string
@@ -21,6 +21,12 @@ type UserInfo = {
 type StoredState = {
   email: string
   user_id?: string
+}
+
+type SyncResult = {
+  properties: { status: string; synced?: number; error?: string }
+  bookings: { status: string; synced?: number; totalFetched?: number; error?: string }
+  duration: number
 }
 
 const OWNERREZ_OAUTH_BASE = 'https://app.ownerrez.com/oauth'
@@ -197,6 +203,32 @@ const checkIfFirstConnection = async (tenantId: string): Promise<boolean> => {
   return parseInt(result.data[0].count) === 0
 }
 
+// Perform initial sync using the shared service functions
+const performInitialSync = async (
+  accessToken: string,
+  tenantId: string,
+  context?: InvocationContext
+): Promise<SyncResult> => {
+  const startedAt = new Date()
+
+  // Sync all historical data (from 2010)
+  const dateRange = {
+    from: '2010-01-01',
+    to: new Date().toISOString().split('T')[0]
+  }
+
+  const propertiesResult = await syncProperties(accessToken, tenantId, context)
+  const bookingsResult = await syncBookings(accessToken, tenantId, dateRange, context)
+
+  const completedAt = new Date()
+
+  return {
+    properties: propertiesResult,
+    bookings: bookingsResult,
+    duration: completedAt.getTime() - startedAt.getTime()
+  }
+}
+
 const triggerInitialSync = async (
   tenantId: string,
   accessToken: string,
@@ -207,13 +239,13 @@ const triggerInitialSync = async (
 
     // perform sync immediately in the background
     // don't await this - let it run async so the user doesn't have to wait
-    performSync(accessToken, tenantId).then(result => {
+    performInitialSync(accessToken, tenantId, context).then((result: SyncResult) => {
       context.log(`Initial sync completed for tenant ${tenantId}:`, {
         properties: result.properties,
         bookings: result.bookings,
         duration: `${result.duration}ms`
       })
-    }).catch(error => {
+    }).catch((error: any) => {
       context.error(`Initial sync failed for tenant ${tenantId}:`, error)
     })
 
