@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { OccupancyMetrics } from '@/types/dashboard'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Calendar, TrendingUp, Home, AlertCircle } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { api } from '@/lib/api'
@@ -18,28 +19,28 @@ export const OccupancyDashboard = () => {
   const [data, setData] = useState<OccupancyMetrics | null>(null)
 
   const loadOccupancy = async () => {
-  if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
-    addToast('error', 'Invalid date range selected')
-    return
+    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
+      addToast('error', 'Invalid date range selected')
+      return
+    }
+
+    setLoading(true)
+    const result = await api.getOccupancy(
+      filters.dateRange.from,
+      filters.dateRange.to,
+      filters.selectedTags.map(t => t.id)
+    )
+
+    console.log('Occupancy API Response:', result) // Debug log
+
+    if (result.success) {
+      console.log('Occupancy data:', result.data) // Debug log
+      setData(result.data)
+    } else {
+      addToast('error', 'Failed to load occupancy data')
+    }
+    setLoading(false)
   }
-
-  setLoading(true)
-  const result = await api.getOccupancy(
-    filters.dateRange.from,
-    filters.dateRange.to,
-    filters.selectedTags.map(t => t.id)
-  )
-
-  console.log('Occupancy API Response:', result) // Add this
-
-  if (result.success) {
-    console.log('Occupancy data:', result.data) // Add this
-    setData(result.data)
-  } else {
-    addToast('error', 'Failed to load occupancy data')
-  }
-  setLoading(false)
-}
 
   useEffect(() => {
     loadOccupancy()
@@ -55,20 +56,26 @@ export const OccupancyDashboard = () => {
 
   if (!data) return null
 
-  const propertyChartData = data.byProperty.map(p => ({
-    name: p.propertyName || `Property ${p.propertyId}`,
-    propertyId: p.propertyId,
-    occupancy: p.rate,
-    available: 100 - p.rate
-  }))
-
+// FIX: Convert monthly rates to percentages
   const monthlyChartData = data.byMonth.map(m => ({
     month: m.month.slice(5),
     fullMonth: m.month,
-    rate: m.rate
+    rate: m.rate * 100,  // Convert to percentage
+    bookedNights: m.bookedNights,
+    availableNights: m.availableNights,
+    tooltip: `${m.bookedNights} / ${m.availableNights} nights`
   }))
 
-  const lowestMonth = minBy(data.byMonth, m => m.rate) || { month: '', rate: 100 }
+  // FIX: Find lowest month with correct percentage
+  const lowestMonth = minBy(data.byMonth, m => m.rate) || { month: '', rate: 1 }
+
+  // Format month display (convert YYYY-MM to readable format)
+  const formatMonthDisplay = (monthStr: string): string => {
+    if (!monthStr) return 'N/A'
+    const [year, month] = monthStr.split('-')
+    const date = new Date(parseInt(year), parseInt(month) - 1)
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+  }
 
   const handleMonthClick = (data: any) => {
     if (data && data.activeLabel) {
@@ -95,30 +102,37 @@ export const OccupancyDashboard = () => {
             Overall Occupancy
           </div>
           <div className={`text-3xl font-bold ${getOccupancyColor(data.overall * 100)}`}>
-  {formatPercentage(data.overall * 100, 0)}
-</div>
+            {formatPercentage(data.overall * 100, 0)}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {data.bookedNights.toLocaleString()} / {data.availableNights.toLocaleString()} nights
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Booked Nights
           </div>
-          <div className="text-3xl font-bold">{data.bookedNights}</div>
+          <div className="text-3xl font-bold">{data.bookedNights.toLocaleString()}</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Home className="w-4 h-4 mr-1" />
             Available Nights
           </div>
-          <div className="text-3xl font-bold">{data.availableNights}</div>
+          <div className="text-3xl font-bold">{data.availableNights.toLocaleString()}</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <AlertCircle className="w-4 h-4 mr-1" />
             Low Season
           </div>
-          <div className="text-3xl font-bold">{lowestMonth.month}</div>
-          <div className="text-sm text-gray-500">{formatPercentage(lowestMonth.rate, 0)} occupancy</div>
+          <div className="text-3xl font-bold">
+            {formatMonthDisplay(lowestMonth.month)}
+          </div>
+          <div className="text-sm text-gray-500">
+            {formatPercentage(lowestMonth.rate * 100, 0)} occupancy
+          </div>
         </div>
       </div>
 
@@ -130,8 +144,20 @@ export const OccupancyDashboard = () => {
               <LineChart data={monthlyChartData} onClick={handleMonthClick}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `${value}%`} domain={[0, 100]} />
-                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
+                <YAxis
+                  tickFormatter={(value) => `${value}%`}
+                  domain={[0, 100]}
+                />
+                <Tooltip
+                  formatter={(value: number) => `${value.toFixed(1)}%`}
+                  labelFormatter={(label, payload) => {
+                    const data = payload?.[0]?.payload
+                    if (data?.bookedNights && data?.availableNights) {
+                      return `Month: ${label} (${data.bookedNights} / ${data.availableNights} nights)`
+                    }
+                    return `Month: ${label}`
+                  }}
+                />
                 <Line
                   type="monotone"
                   dataKey="rate"
@@ -146,36 +172,75 @@ export const OccupancyDashboard = () => {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold mb-4">Property Occupancy Comparison</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={propertyChartData}
-                layout="horizontal"
-                margin={{ left: 120 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  width={100}
-                  tick={{ fontSize: 12 }}
-                />
-                <Tooltip formatter={(value) => `${Number(value).toFixed(1)}%`} />
-                <Bar dataKey="occupancy" stackId="a" fill={METRIC_COLORS.occupancy} name="Occupied" />
-                <Bar dataKey="available" stackId="a" fill="#E5E7EB" name="Available" />
-              </BarChart>
-            </ResponsiveContainer>
+          <h3 className="text-lg font-bold mb-4">Property Performance</h3>
+          <div className="space-y-3">
+            {data.byProperty.length > 0 ? (
+              data.byProperty
+                .sort((a, b) => b.rate - a.rate)
+                .map(property => {
+                  const occupancyPercent = property.rate * 100
+                  const occupancyColor = occupancyPercent >= 70 ? 'bg-green-500' :
+                                         occupancyPercent >= 50 ? 'bg-yellow-500' :
+                                         'bg-red-500'
+
+                  return (
+                    <div key={property.propertyId} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium text-sm truncate max-w-[200px]" title={property.propertyName}>
+                          {property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}
+                        </span>
+                        <span className="text-sm font-semibold">
+                          {formatPercentage(occupancyPercent, 0)}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <div className="w-full bg-gray-200 rounded-full h-6">
+                          <div
+                            className={`${occupancyColor} h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500`}
+                            style={{ width: `${Math.max(occupancyPercent, 5)}%` }}
+                          >
+                            <span className="text-xs text-white font-medium">
+                              {property.bookedNights}/{property.availableNights}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                No property data available
+              </div>
+            )}
           </div>
+          {data.byProperty.length > 0 && (
+            <div className="mt-4 pt-4 border-t">
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-green-500 rounded mr-1"></div>
+                  <span className="text-gray-600">≥70% Good</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-yellow-500 rounded mr-1"></div>
+                  <span className="text-gray-600">50-69% Fair</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="w-3 h-3 bg-red-500 rounded mr-1"></div>
+                  <span className="text-gray-600">&lt;50% Low</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow">
         <h3 className="text-lg font-bold mb-4">Occupancy Calendar Heat Map</h3>
-        <div className="text-center text-gray-500 py-12">
-          Calendar view coming soon - will show daily occupancy patterns
-        </div>
+        <OccupancyHeatmap
+          dateRange={filters.dateRange}
+          tagIds={filters.selectedTags.map(t => t.id)}
+        />
       </div>
     </div>
   )

@@ -33,8 +33,16 @@ export async function getPropertyMonthDetail(
     const year = request.params.year;
     const month = request.params.month;
 
-    const startDate = `${year}-${month.padStart(2, '0')}-01`;
-    const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
+    // Ensure month is padded to 2 digits
+    const monthPadded = month.padStart(2, '0');
+    const yearInt = parseInt(year);
+    const monthInt = parseInt(month);
+
+    // Calculate correct start and end dates for the month
+    const startDate = `${year}-${monthPadded}-01`;
+    // Get last day of the month correctly
+    const lastDay = new Date(yearInt, monthInt, 0).getDate();
+    const endDate = `${year}-${monthPadded}-${lastDay.toString().padStart(2, '0')}`;
 
     // Get property info
     const propertyResult = await query<{ id: string; name: string }>(
@@ -62,20 +70,43 @@ export async function getPropertyMonthDetail(
     }>(
       `SELECT
         COALESCE(SUM(b.total_amount), 0) as revenue,
-        COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as tax,
+        COALESCE(SUM(bc.tax_total), 0) as tax,
         COUNT(DISTINCT b.id) as bookings,
-        COALESCE(SUM(LEAST(b.departure, $4::date) - GREATEST(b.arrival, $3::date)), 0) as nights,
+        COALESCE(SUM(
+          CASE
+            WHEN b.arrival <= $4::date AND b.departure >= $3::date THEN
+              LEAST(b.departure, $4::date + 1) - GREATEST(b.arrival, $3::date)
+            ELSE 0
+          END
+        ), 0) as nights,
         CASE
-          WHEN SUM(LEAST(b.departure, $4::date) - GREATEST(b.arrival, $3::date)) > 0 THEN
-            SUM(b.total_amount) / SUM(LEAST(b.departure, $4::date) - GREATEST(b.arrival, $3::date))
+          WHEN SUM(
+            CASE
+              WHEN b.arrival <= $4::date AND b.departure >= $3::date THEN
+                LEAST(b.departure, $4::date + 1) - GREATEST(b.arrival, $3::date)
+              ELSE 0
+            END
+          ) > 0 THEN
+            SUM(b.total_amount) / SUM(
+              CASE
+                WHEN b.arrival <= $4::date AND b.departure >= $3::date THEN
+                  LEAST(b.departure, $4::date + 1) - GREATEST(b.arrival, $3::date)
+                ELSE 0
+              END
+            )
           ELSE 0
         END as avg_nightly_rate
       FROM bookings b
-      LEFT JOIN booking_charges bc ON b.id = bc.booking_id
+      LEFT JOIN (
+        SELECT booking_id, SUM(amount) as tax_total
+        FROM booking_charges
+        WHERE type = 'tax'
+        GROUP BY booking_id
+      ) bc ON b.id = bc.booking_id
       WHERE b.property_id = $1
         AND b.tenant_id = $2
-        AND b.arrival <= $4
-        AND b.departure >= $3
+        AND b.arrival <= $4::date
+        AND b.departure > $3::date
         AND b.status != 'canceled'`,
       [propertyId, auth.tenantId, startDate, endDate]
     );
@@ -94,20 +125,28 @@ export async function getPropertyMonthDetail(
       `SELECT
         b.id,
         b.guest_name,
-        b.arrival,
-        b.departure,
-        LEAST(b.departure, $4::date) - GREATEST(b.arrival, $3::date) as nights,
+        b.arrival::text,
+        b.departure::text,
+        CASE
+          WHEN b.arrival <= $4::date AND b.departure >= $3::date THEN
+            LEAST(b.departure, $4::date + 1) - GREATEST(b.arrival, $3::date)
+          ELSE 0
+        END as nights,
         b.total_amount,
-        COALESCE(SUM(CASE WHEN bc.type = 'tax' THEN bc.amount ELSE 0 END), 0) as tax_amount,
+        COALESCE(bc.tax_total, 0) as tax_amount,
         b.status
       FROM bookings b
-      LEFT JOIN booking_charges bc ON b.id = bc.booking_id
+      LEFT JOIN (
+        SELECT booking_id, SUM(amount) as tax_total
+        FROM booking_charges
+        WHERE type = 'tax'
+        GROUP BY booking_id
+      ) bc ON b.id = bc.booking_id
       WHERE b.property_id = $1
         AND b.tenant_id = $2
-        AND b.arrival <= $4
-        AND b.departure >= $3
+        AND b.arrival <= $4::date
+        AND b.departure > $3::date
         AND b.status != 'canceled'
-      GROUP BY b.id, b.guest_name, b.arrival, b.departure, b.total_amount, b.status
       ORDER BY b.arrival`,
       [propertyId, auth.tenantId, startDate, endDate]
     );
@@ -116,7 +155,13 @@ export async function getPropertyMonthDetail(
       throw new Error('Failed to fetch summary');
     }
 
-    const summary = summaryResult.data[0];
+    const summary = summaryResult.data[0] || {
+      revenue: '0',
+      tax: '0',
+      bookings: '0',
+      nights: '0',
+      avg_nightly_rate: '0'
+    };
 
     return {
       status: 200,

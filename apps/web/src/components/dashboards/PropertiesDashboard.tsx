@@ -34,8 +34,11 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
         </div>
         <div>
           <div className="text-sm text-gray-600">Occupancy</div>
-          <div className={`text-xl font-semibold ${getOccupancyColor(property.occupancyRate)}`}>
-            {formatPercentage(property.occupancyRate, 0)}
+          <div className={`text-xl font-semibold ${getOccupancyColor(property.occupancyRate * 100)}`}>
+            {formatPercentage(property.occupancyRate * 100, 0)}
+          </div>
+          <div className="text-xs text-gray-500">
+            {property.bookedNights} / {property.availableNights} nights
           </div>
         </div>
         <div>
@@ -67,6 +70,7 @@ export const PropertiesDashboard = () => {
     )
 
     if (result.success) {
+      console.log('Property metrics loaded:', result.data) // Debug log
       setProperties(result.data)
     } else {
       addToast('error', 'Failed to load property metrics')
@@ -89,7 +93,7 @@ export const PropertiesDashboard = () => {
   const chartData = properties.map(p => ({
     name: p.propertyName,
     revenue: p.revenue,
-    occupancy: p.occupancyRate * 100,
+    occupancy: p.occupancyRate * 100, // Convert to percentage for display
     bookings: p.bookings
   }))
 
@@ -100,7 +104,7 @@ export const PropertiesDashboard = () => {
   const radarData = properties.map(p => ({
     property: p.propertyName,
     revenue: (p.revenue / maxRevenue) * 100,
-    occupancy: p.occupancyRate * 100,
+    occupancy: p.occupancyRate * 100, // Already 0-100 scale
     avgRate: (p.avgNightlyRate / maxAvgRate) * 100,
     bookings: (p.bookings / maxBookings) * 100
   }))
@@ -137,8 +141,8 @@ export const PropertiesDashboard = () => {
             <Calendar className="w-4 h-4 mr-1" />
             Avg Occupancy
           </div>
-          <div className={`text-3xl font-bold ${getOccupancyColor(avgOccupancy)}`}>
-            {formatPercentage(avgOccupancy, 0)}
+          <div className={`text-3xl font-bold ${getOccupancyColor(avgOccupancy * 100)}`}>
+            {formatPercentage(avgOccupancy * 100, 0)}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -167,8 +171,14 @@ export const PropertiesDashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => formatPercentage(value, 0)} />
-                <Tooltip />
+                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                <Tooltip
+                  formatter={(value: any, name: string) => {
+                    if (name === 'Revenue') return formatCurrency(value)
+                    if (name === 'Occupancy %') return `${Number(value).toFixed(1)}%`
+                    return value
+                  }}
+                />
                 <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
                 <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Occupancy %" />
               </BarChart>
@@ -187,7 +197,7 @@ export const PropertiesDashboard = () => {
                 <Radar name="Revenue" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
                 <Radar name="Occupancy" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
                 <Radar name="Avg Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
-                <Tooltip />
+                <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
               </RadarChart>
             </ResponsiveContainer>
           </div>

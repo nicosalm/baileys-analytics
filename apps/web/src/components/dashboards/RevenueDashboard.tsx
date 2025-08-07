@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { RevenueMetrics } from '@/types/dashboard'
-import { formatCurrency, formatCompactCurrency, calculateGrowthRate, formatPercentage, formatGrowth, calculateAverage, ensureNumber, isValidDateRange } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, calculateGrowthRate, formatPercentage, calculateAverage, ensureNumber, isValidDateRange } from '@baileys/utils'
 import { AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
@@ -14,6 +14,7 @@ export const RevenueDashboard = () => {
   const { addToast } = useToast()
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<RevenueMetrics | null>(null)
+  const [lastYearData, setLastYearData] = useState<RevenueMetrics | null>(null)
 
   const loadRevenue = async () => {
     if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
@@ -22,9 +23,24 @@ export const RevenueDashboard = () => {
     }
 
     setLoading(true)
+
+    // Load current period data
     const result = await api.getRevenue(
       filters.dateRange.from,
       filters.dateRange.to,
+      filters.selectedTags.map(t => t.id)
+    )
+
+    // Calculate last year's dates for the same period
+    const fromDate = new Date(filters.dateRange.from)
+    const toDate = new Date(filters.dateRange.to)
+    const lastYearFrom = new Date(fromDate.setFullYear(fromDate.getFullYear() - 1)).toISOString().split('T')[0]
+    const lastYearTo = new Date(toDate.setFullYear(toDate.getFullYear() - 1)).toISOString().split('T')[0]
+
+    // Load last year's data for comparison
+    const lastYearResult = await api.getRevenue(
+      lastYearFrom,
+      lastYearTo,
       filters.selectedTags.map(t => t.id)
     )
 
@@ -33,6 +49,11 @@ export const RevenueDashboard = () => {
     } else {
       addToast('error', 'Failed to load revenue data')
     }
+
+    if (lastYearResult.success) {
+      setLastYearData(lastYearResult.data)
+    }
+
     setLoading(false)
   }
 
@@ -50,11 +71,9 @@ export const RevenueDashboard = () => {
 
   if (!data) return null
 
-  const monthlyGrowth = data.byMonth.length > 1
-    ? calculateGrowthRate(
-        data.byMonth[data.byMonth.length - 1].amount,
-        data.byMonth[data.byMonth.length - 2].amount
-      )
+  // Period-over-Period growth (Year-over-Year for same date range)
+  const periodGrowth = lastYearData
+    ? calculateGrowthRate(data.gross, lastYearData.gross)
     : 0
 
   const avgMonthlyRevenue = calculateAverage(data.byMonth.map(m => m.amount))
@@ -88,15 +107,26 @@ export const RevenueDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <TrendingUp className="w-4 h-4 mr-1" />
-            Growth Rate
+            YoY Growth
           </div>
           <div className="text-3xl font-bold flex items-center">
-            {formatGrowth(monthlyGrowth / 100)}
-            {monthlyGrowth >= 0
-              ? <TrendingUp className="w-6 h-6 ml-2 text-green-600" />
-              : <TrendingDown className="w-6 h-6 ml-2 text-red-600" />
-            }
+            {lastYearData ? (
+              <>
+                {formatPercentage(periodGrowth, 1)}
+                {periodGrowth >= 0
+                  ? <TrendingUp className="w-6 h-6 ml-2 text-green-600" />
+                  : <TrendingDown className="w-6 h-6 ml-2 text-red-600" />
+                }
+              </>
+            ) : (
+              <span className="text-gray-400 text-lg">No prior data</span>
+            )}
           </div>
+          {lastYearData && (
+            <div className="text-xs text-gray-500 mt-1">
+              vs {formatCompactCurrency(lastYearData.gross)} last year
+            </div>
+          )}
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="text-sm text-gray-600 mb-2">Avg Monthly</div>

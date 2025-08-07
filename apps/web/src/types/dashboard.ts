@@ -34,6 +34,8 @@ export type PropertyMetrics = {
   occupancyRate: number
   avgNightlyRate: number
   avgStayLength: number
+  bookedNights: number
+  availableNights: number
 }
 
 export type RevenueMetrics = {
@@ -47,8 +49,19 @@ export type RevenueMetrics = {
 
 export type OccupancyMetrics = {
   overall: number
-  byProperty: Array<{ propertyId: string; propertyName?: string; rate: number }>
-  byMonth: Array<{ month: string; rate: number }>
+  byProperty: Array<{
+    propertyId: string
+    propertyName?: string
+    rate: number
+    bookedNights: number
+    availableNights: number
+  }>
+  byMonth: Array<{
+    month: string
+    rate: number
+    bookedNights: number
+    availableNights: number
+  }>
   bookedNights: number
   availableNights: number
 }
