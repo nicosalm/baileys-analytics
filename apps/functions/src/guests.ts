@@ -51,6 +51,10 @@ type GuestListItem = {
 type PaginatedResponse = {
   metrics: GuestMetrics;
   guests: GuestListItem[];
+  vipThresholds: {
+    spendThreshold: number;
+    bookingThreshold: number;
+  };
   pagination: {
     page: number;
     pageSize: number;
@@ -87,6 +91,25 @@ export async function getGuests(
   }
 
   try {
+    // Fetch user's VIP thresholds
+    const vipSettingsResult = await query<{
+      vip_spend_threshold: string;
+      vip_booking_threshold: string;
+    }>(
+      `SELECT vip_spend_threshold, vip_booking_threshold
+       FROM users
+       WHERE id = $1`,
+      [auth.userId]
+    );
+
+    const vipSpendThreshold = vipSettingsResult.success && vipSettingsResult.data.length > 0
+      ? parseFloat(vipSettingsResult.data[0].vip_spend_threshold)
+      : 5000;
+
+    const vipBookingThreshold = vipSettingsResult.success && vipSettingsResult.data.length > 0
+      ? parseInt(vipSettingsResult.data[0].vip_booking_threshold)
+      : 5;
+
     const url = new URL(request.url);
     const startDate = url.searchParams.get('from');
     const endDate = url.searchParams.get('to');
@@ -227,6 +250,7 @@ export async function getGuests(
       ORDER BY revenue DESC`,
       queryParams
     );
+
     const tagDistributionResult = await query<{
       tag_id: string;
       tag_name: string;
@@ -400,6 +424,10 @@ export async function getGuests(
           tags: guestTagsMap.get(guestKey) || []
         };
       }) : [],
+      vipThresholds: {
+        spendThreshold: vipSpendThreshold,
+        bookingThreshold: vipBookingThreshold
+      },
       pagination: {
         page,
         pageSize,

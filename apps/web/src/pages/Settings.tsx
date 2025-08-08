@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { api } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
 import { Spinner } from '@/components/Spinner'
-import { RefreshCw, Calendar, AlertCircle, Calculator } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator, Users } from 'lucide-react'
 import { TaxConfiguration } from '@/components/TaxConfiguration'
+import { VIPConfiguration } from '@/components/VIPConfiguration'
 
 type SyncStatus = {
   lastPropertySync: string | null
@@ -48,23 +49,23 @@ const SyncButton = ({
 const SyncStatusDisplay = ({ status }: { status: SyncStatus | null }) => {
   if (!status) return null
 
-    return (
-        <div className="bg-gray-50 p-4 rounded space-y-2">
-            <div className="text-sm">
-                <span className="text-gray-600">Properties:</span> {status.propertyCount}
-            </div>
-            <div className="text-sm">
-                <span className="text-gray-600">Total Bookings:</span> {status.bookingCount}
-                <span className="text-xs text-gray-500 ml-1">(excluding canceled)</span>
-            </div>
-            <div className="text-sm">
-                <span className="text-gray-600">Last Property Sync:</span> {formatDate(status.lastPropertySync)}
-            </div>
-            <div className="text-sm">
-                <span className="text-gray-600">Last Booking Sync:</span> {formatDate(status.lastBookingSync)}
-            </div>
-        </div>
-    )
+  return (
+    <div className="bg-gray-50 p-4 rounded space-y-2">
+      <div className="text-sm">
+        <span className="text-gray-600">Properties:</span> {status.propertyCount}
+      </div>
+      <div className="text-sm">
+        <span className="text-gray-600">Total Bookings:</span> {status.bookingCount}
+        <span className="text-xs text-gray-500 ml-1">(excluding canceled)</span>
+      </div>
+      <div className="text-sm">
+        <span className="text-gray-600">Last Property Sync:</span> {formatDate(status.lastPropertySync)}
+      </div>
+      <div className="text-sm">
+        <span className="text-gray-600">Last Booking Sync:</span> {formatDate(status.lastBookingSync)}
+      </div>
+    </div>
+  )
 }
 
 const AccountInfo = ({ email, createdAt, companyName }: {
@@ -132,12 +133,12 @@ const OwnerRezConnection = ({
           />
 
           <SyncButton
-              label="Sync Historical Data (4 Years)"
-              icon={Calendar}
-              onClick={onHistoricalSync}
-              disabled={isSyncing}
-              loading={isSyncing && syncState.mode === 'historical'}
-            />
+            label="Sync Historical Data (4 Years)"
+            icon={Calendar}
+            onClick={onHistoricalSync}
+            disabled={isSyncing}
+            loading={isSyncing && syncState.mode === 'historical'}
+          />
 
           <div className="flex items-start space-x-2 text-sm text-gray-600 mt-2">
             <AlertCircle className="w-4 h-4 mt-0.5" />
@@ -158,7 +159,7 @@ export const Settings = () => {
   const { addToast } = useToast()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
-  const [activeTab, setActiveTab] = useState<'account' | 'tax'>('account')
+  const [activeTab, setActiveTab] = useState<'account' | 'tax' | 'vip'>('account')
 
   if (state.status !== 'authenticated') return null
 
@@ -268,6 +269,17 @@ export const Settings = () => {
               <Calculator className="w-4 h-4 mr-2" />
               Tax Configuration
             </button>
+            <button
+              onClick={() => setActiveTab('vip')}
+              className={`pb-2 border-b-2 transition-colors flex items-center ${
+                activeTab === 'vip'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              VIP Configuration
+            </button>
           </nav>
         </div>
 
@@ -287,8 +299,10 @@ export const Settings = () => {
               syncState={syncState}
             />
           </div>
-        ) : (
+        ) : activeTab === 'tax' ? (
           <TaxConfiguration />
+        ) : (
+          <VIPConfiguration />
         )}
       </div>
     </div>

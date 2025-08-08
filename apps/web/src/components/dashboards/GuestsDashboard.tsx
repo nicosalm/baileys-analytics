@@ -64,6 +64,10 @@ type GuestListItem = {
 type GuestsData = {
     metrics: GuestMetrics
     guests: GuestListItem[]
+    vipThresholds?: {
+        spendThreshold: number
+        bookingThreshold: number
+    }
 }
 
 const MetricsCard = ({
@@ -86,6 +90,24 @@ const MetricsCard = ({
         {subtext && <div className="text-sm text-gray-500 mt-1">{subtext}</div>}
     </div>
 )
+
+const VIPBadge = ({ guest, vipThresholds }: {
+    guest: GuestListItem
+    vipThresholds?: { spendThreshold: number; bookingThreshold: number }
+}) => {
+    const spendThreshold = vipThresholds?.spendThreshold || 5000
+    const bookingThreshold = vipThresholds?.bookingThreshold || 5
+
+    const isVIP = guest.totalSpent > spendThreshold || guest.bookingCount > bookingThreshold
+
+    if (!isVIP) return null
+
+    return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+            VIP
+        </span>
+    )
+}
 
 export const GuestsDashboard = () => {
     const { addToast } = useToast()
@@ -129,9 +151,16 @@ export const GuestsDashboard = () => {
 
         let filtered = [...data.guests]
 
+        // Use dynamic thresholds if available, otherwise fall back to defaults
+        const vipSpendThreshold = data.vipThresholds?.spendThreshold || 5000
+        const vipBookingThreshold = data.vipThresholds?.bookingThreshold || 5
+
         switch (viewMode) {
             case 'vip':
-                filtered = filtered.filter(g => g.totalSpent > 5000 || g.bookingCount > 5)
+                filtered = filtered.filter(g =>
+                    g.totalSpent > vipSpendThreshold ||
+                    g.bookingCount > vipBookingThreshold
+                )
                 break
             case 'repeat':
                 filtered = filtered.filter(g => g.bookingCount > 1)
@@ -210,7 +239,10 @@ export const GuestsDashboard = () => {
             width: 250,
             render: (guest: GuestListItem) => (
                 <div>
-                    <div className="font-medium">{guest.name}</div>
+                    <div className="flex items-center gap-2">
+                        <span className="font-medium">{guest.name}</span>
+                        <VIPBadge guest={guest} vipThresholds={data?.vipThresholds} />
+                    </div>
                     {guest.email && <div className="text-sm text-gray-500">{guest.email}</div>}
                 </div>
             )
@@ -259,7 +291,7 @@ export const GuestsDashboard = () => {
         {
             key: 'tags',
             header: 'Tags',
-            width: 350,  // Increased width for collapsible tags
+            width: 350,
             render: (guest: GuestListItem) => (
                 <CollapsibleTags
                     tags={guest.tags}
@@ -268,7 +300,7 @@ export const GuestsDashboard = () => {
                 />
             )
         }
-    ], [])
+    ], [data])
 
     if (loading && !data) {
         return (
@@ -410,48 +442,48 @@ export const GuestsDashboard = () => {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-bold mb-4">Tag Distribution (Top 10)</h3>
-              {tagChartData && tagChartData.length > 0 ? (
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={tagChartData}
-                      margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="name"
-                        angle={-45}
-                        textAnchor="end"
-                        height={100}
-                        interval={0}
-                        tick={{ fontSize: 10 }}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                      />
-                      <Tooltip
-                        formatter={(value: number) => [`${value} guests`, 'Count']}
-                        labelStyle={{ color: '#000' }}
-                      />
-                      <Bar dataKey="value">
-                        {tagChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                    <h3 className="text-lg font-bold mb-4">Tag Distribution (Top 10)</h3>
+                    {tagChartData && tagChartData.length > 0 ? (
+                        <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={tagChartData}
+                                    margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis
+                                        dataKey="name"
+                                        angle={-45}
+                                        textAnchor="end"
+                                        height={100}
+                                        interval={0}
+                                        tick={{ fontSize: 10 }}
+                                    />
+                                    <YAxis
+                                        tick={{ fontSize: 12 }}
+                                    />
+                                    <Tooltip
+                                        formatter={(value: number) => [`${value} guests`, 'Count']}
+                                        labelStyle={{ color: '#000' }}
+                                    />
+                                    <Bar dataKey="value">
+                                        {tagChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-80 text-gray-500">
+                            <div className="text-4xl mb-2">📊</div>
+                            <p className="text-sm">No tag data available</p>
+                        </div>
+                    )}
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-80 text-gray-500">
-                  <div className="text-4xl mb-2">📊</div>
-                  <p className="text-sm">No tag data available</p>
-                </div>
-              )}
-            </div>
 
                 <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-bold mb-4">Gross Revenue by Guest Platform"</h3>
+                    <h3 className="text-lg font-bold mb-4">Gross Revenue by Guest Platform</h3>
                     <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={sourceChartData}>
@@ -493,16 +525,26 @@ export const GuestsDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setViewMode('vip')}
-                                className={`px-3 py-1 rounded text-sm ${
+                                className={`px-3 py-1 rounded text-sm relative group ${
                                     viewMode === 'vip'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-200 hover:bg-gray-300'
                                 }`}
                             >
                                 VIP
+                                {data?.vipThresholds && (
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                        ${data.vipThresholds.spendThreshold.toLocaleString()}+ or {data.vipThresholds.bookingThreshold}+ bookings
+                                    </div>
+                                )}
                             </button>
                         </div>
                     </div>
+                    {viewMode === 'vip' && data?.vipThresholds && (
+                        <div className="mt-2 text-xs text-gray-600">
+                            Showing guests with ${data.vipThresholds.spendThreshold.toLocaleString()}+ spend or {data.vipThresholds.bookingThreshold}+ bookings
+                        </div>
+                    )}
                 </div>
 
                 <VirtualTable
@@ -528,11 +570,7 @@ export const GuestsDashboard = () => {
                     selectedRows={selectedGuests}
                     onSelectionChange={setSelectedGuests}
                     emptyMessage="No guests found"
-                    rowClassName={(guest) => {
-                        if (guest.totalSpent > 10000) return 'bg-yellow-50'
-                        if (guest.bookingCount > 10) return 'bg-purple-50'
-                        return ''
-                    }}
+                    rowClassName={() => ''}
                 />
             </div>
         </div>
