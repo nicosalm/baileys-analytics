@@ -350,7 +350,7 @@ export const GuestsDashboard = () => {
 
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-bold mb-4">Guest Sources</h3>
+                    <h3 className="text-lg font-bold mb-4">Guest Distribution by Platform</h3>
                     <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -451,7 +451,7 @@ export const GuestsDashboard = () => {
             </div>
 
                 <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-bold mb-4">Revenue by Guest Source</h3>
+                    <h3 className="text-lg font-bold mb-4">Gross Revenue by Guest Platform"</h3>
                     <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={sourceChartData}>

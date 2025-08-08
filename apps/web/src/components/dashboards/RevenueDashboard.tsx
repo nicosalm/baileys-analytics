@@ -154,7 +154,7 @@ export const RevenueDashboard = () => {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold mb-4">Revenue by Source</h3>
+          <h3 className="text-lg font-bold mb-4">Gross Revenue by Platform</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -163,10 +163,11 @@ export const RevenueDashboard = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ source, percent }) => `${source} ${formatPercentage((percent || 0) * 100, 0)}`}
+                  label={(entry) => `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="amount"
+                  nameKey="source"
                 >
                   {data.bySource.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />

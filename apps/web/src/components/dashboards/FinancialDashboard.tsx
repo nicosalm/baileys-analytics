@@ -492,7 +492,7 @@ export const FinancialDashboard = () => {
                     <div className="p-6">
                         <div className="grid md:grid-cols-2 gap-6 mb-6">
                             <div>
-                                <h4 className="font-medium mb-3">Revenue by Platform</h4>
+                                <h4 className="font-medium mb-3">Net Revenue by Platform (After Fees)</h4>
                                 <div className="h-48">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
@@ -520,7 +520,7 @@ export const FinancialDashboard = () => {
                             </div>
 
                             <div>
-                                <h4 className="font-medium mb-3">Platform Comparison</h4>
+                                <h4 className="font-medium mb-3">Gross Revenue by Platform</h4>
                                 <div className="h-48">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={platforms}>
