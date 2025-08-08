@@ -31,10 +31,7 @@ export const OccupancyDashboard = () => {
       filters.selectedTags.map(t => t.id)
     )
 
-    console.log('Occupancy API Response:', result) // Debug log
-
     if (result.success) {
-      console.log('Occupancy data:', result.data) // Debug log
       setData(result.data)
     } else {
       addToast('error', 'Failed to load occupancy data')
@@ -56,20 +53,17 @@ export const OccupancyDashboard = () => {
 
   if (!data) return null
 
-// FIX: Convert monthly rates to percentages
   const monthlyChartData = data.byMonth.map(m => ({
     month: m.month.slice(5),
     fullMonth: m.month,
-    rate: m.rate * 100,  // Convert to percentage
+    rate: m.rate * 100,
     bookedNights: m.bookedNights,
     availableNights: m.availableNights,
     tooltip: `${m.bookedNights} / ${m.availableNights} nights`
   }))
 
-  // FIX: Find lowest month with correct percentage
   const lowestMonth = minBy(data.byMonth, m => m.rate) || { month: '', rate: 1 }
 
-  // Format month display (convert YYYY-MM to readable format)
   const formatMonthDisplay = (monthStr: string): string => {
     if (!monthStr) return 'N/A'
     const [year, month] = monthStr.split('-')

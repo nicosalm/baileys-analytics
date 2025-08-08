@@ -91,9 +91,10 @@ export const PropertiesDashboard = () => {
   }
 
   const chartData = properties.map(p => ({
-    name: p.propertyName,
+    name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
+    fullName: p.propertyName, // Keep full name for tooltip
     revenue: p.revenue,
-    occupancy: p.occupancyRate * 100, // Convert to percentage for display
+    occupancy: Math.round(p.occupancyRate * 100), // Round to integer for cleaner display
     bookings: p.bookings
   }))
 
@@ -102,9 +103,9 @@ export const PropertiesDashboard = () => {
   const maxBookings = maxBy(properties, p => p.bookings)?.bookings || 1
 
   const radarData = properties.map(p => ({
-    property: p.propertyName,
+    property: p.propertyName.length > 15 ? p.propertyName.substring(0, 15) + '...' : p.propertyName,
     revenue: (p.revenue / maxRevenue) * 100,
-    occupancy: p.occupancyRate * 100, // Already 0-100 scale
+    occupancy: p.occupancyRate * 100,
     avgRate: (p.avgNightlyRate / maxAvgRate) * 100,
     bookings: (p.bookings / maxBookings) * 100
   }))
@@ -169,14 +170,34 @@ export const PropertiesDashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={(value) => formatCompactCurrency(value)}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  domain={[0, 100]}
+                  tickFormatter={(value) => `${value}%`}
+                />
                 <Tooltip
                   formatter={(value: any, name: string) => {
                     if (name === 'Revenue') return formatCurrency(value)
-                    if (name === 'Occupancy %') return `${Number(value).toFixed(1)}%`
+                    if (name === 'Occupancy') return `${value}%`
                     return value
+                  }}
+                  labelFormatter={(label, payload) => {
+                    // Show full property name in tooltip
+                    if (payload && payload.length > 0) {
+                      return payload[0].payload.fullName
+                    }
+                    return label
                   }}
                 />
                 <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
@@ -197,7 +218,7 @@ export const PropertiesDashboard = () => {
                 <Radar name="Revenue" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
                 <Radar name="Occupancy" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
                 <Radar name="Avg Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
-                <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                <Tooltip formatter={(value: number) => `${value.toFixed(0)}%`} />
               </RadarChart>
             </ResponsiveContainer>
           </div>

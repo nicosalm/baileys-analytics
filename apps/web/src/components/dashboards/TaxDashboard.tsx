@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react'
 import { api } from '@/lib/api'
-import { formatCurrency, formatPercentage, formatCompactCurrency, isValidDateRange } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, isValidDateRange } from '@baileys/utils'
 import { PropertyTaxChart, MonthlyTrendChart, PropertyDistributionChart } from '@/components/TaxCharts'
 import { VirtualTable } from '@/components/VirtualTable'
 import { Download, TrendingUp, Home, Calendar, FileText, Settings } from 'lucide-react'
@@ -25,6 +25,13 @@ export const TaxDashboard = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showTaxConfig, setShowTaxConfig] = useState(false)
 
+  const getTaxRateColor = (rate: number) => {
+    const percentage = rate * 100
+    if (percentage > 15) return 'text-red-600'
+    if (percentage > 10) return 'text-yellow-600'
+    return 'text-green-600'
+  }
+
   const loadReport = async () => {
     if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
       addToast('error', 'Invalid date range selected')
@@ -40,7 +47,6 @@ export const TaxDashboard = () => {
     )
 
     if (result.success && result.data.status === 'success') {
-      // If tax config is loaded, enhance data with tax calculations
       if (taxConfigState.status === 'loaded') {
         const enhancedData = enhanceDataWithTaxEngine(result.data.data, taxConfigState.rules)
         setData(enhancedData)
@@ -54,7 +60,6 @@ export const TaxDashboard = () => {
     setLoading(false)
   }
 
-  // Enhance tax data with tax engine calculations
   const enhanceDataWithTaxEngine = (data: TaxReportData, rules: TaxRule[]) => {
     const enhancedByProperty = data.byProperty.map(property => {
       const context = {
@@ -141,7 +146,7 @@ export const TaxDashboard = () => {
       p.totalTax,
       p.totalRent,
       p.bookingCount,
-      formatPercentage(p.taxRate * 100, 2)
+      `${(p.taxRate * 100).toFixed(1)}%`
     ])
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
@@ -163,7 +168,11 @@ export const TaxDashboard = () => {
       sortable: true,
       width: 250,
       render: (property: typeof sortedProperties[0]) => (
-        <div className="font-medium">{property.propertyName}</div>
+        <div className="font-medium">
+          {property.propertyName.length > 20
+            ? property.propertyName.substring(0, 20) + '...'
+            : property.propertyName}
+        </div>
       )
     },
     {
@@ -191,15 +200,14 @@ export const TaxDashboard = () => {
       header: 'Tax Rate',
       sortable: true,
       width: 100,
-      render: (property: typeof sortedProperties[0]) => (
-        <span className={`font-medium ${
-          property.taxRate > 0.0015 ? 'text-red-600' :
-          property.taxRate > 0.0010 ? 'text-yellow-600' :
-          'text-green-600'
-        }`}>
-          {formatPercentage(property.taxRate * 100, 2)}
-        </span>
-      )
+      render: (property: typeof sortedProperties[0]) => {
+        const percentage = property.taxRate * 100
+        return (
+          <span className={`font-medium ${getTaxRateColor(property.taxRate)}`}>
+            {percentage.toFixed(1)}%
+          </span>
+        )
+      }
     },
     {
       key: 'bookingCount',
@@ -264,15 +272,14 @@ export const TaxDashboard = () => {
         header: 'Effective Rate',
         sortable: true,
         width: 120,
-        render: (month: TaxReportData['byMonth'][0]) => (
-          <span className={`font-medium ${
-            month.effectiveRate > 0.0015 ? 'text-red-600' :
-            month.effectiveRate > 0.0010 ? 'text-yellow-600' :
-            'text-green-600'
-          }`}>
-            {formatPercentage(month.effectiveRate * 100, 2)}
-          </span>
-        )
+        render: (month: TaxReportData['byMonth'][0]) => {
+          const percentage = month.effectiveRate * 100
+          return (
+            <span className={`font-medium ${getTaxRateColor(month.effectiveRate)}`}>
+              {percentage.toFixed(1)}%
+            </span>
+          )
+        }
       }
     ]
   }, [data])
@@ -306,7 +313,6 @@ export const TaxDashboard = () => {
     })
   }
 
-  // Dynamic import of TaxConfiguration component
   if (showTaxConfig) {
     const TaxConfiguration = lazy(() => import('@/components/TaxConfiguration').then(module => ({ default: module.TaxConfiguration })))
     return (
@@ -361,7 +367,7 @@ export const TaxDashboard = () => {
           </div>
           <div className="text-3xl font-bold">{formatCompactCurrency(data.summary.totalTax)}</div>
           <div className="text-sm text-gray-500 mt-1">
-            {formatPercentage(effectiveTaxRate, 2)} effective rate
+            {effectiveTaxRate.toFixed(1)}% effective rate
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -425,20 +431,20 @@ export const TaxDashboard = () => {
               <div className="h-80 flex items-center justify-center">
                 <div className="text-center">
                   <div className="text-6xl font-bold text-blue-600">
-                    {formatPercentage(effectiveTaxRate, 2)}
+                    {effectiveTaxRate.toFixed(1)}%
                   </div>
                   <div className="text-gray-600 mt-2">Average across all properties</div>
                   <div className="mt-4 space-y-2">
                     <div className="text-sm">
                       <span className="text-gray-600">Highest:</span>{' '}
                       <span className="font-medium">
-                        {formatPercentage(Math.max(...data.byProperty.map(p => p.taxRate)) * 100, 2)}
+                        {(Math.max(...data.byProperty.map(p => p.taxRate)) * 100).toFixed(1)}%
                       </span>
                     </div>
                     <div className="text-sm">
                       <span className="text-gray-600">Lowest:</span>{' '}
                       <span className="font-medium">
-                        {formatPercentage(Math.min(...data.byProperty.map(p => p.taxRate)) * 100, 2)}
+                        {(Math.min(...data.byProperty.map(p => p.taxRate)) * 100).toFixed(1)}%
                       </span>
                     </div>
                   </div>
