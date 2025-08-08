@@ -81,12 +81,17 @@ const fetchRevenueSummary = async (params: QueryParams): Promise<DbResult<{
         b.id,
         b.total_amount,
         b.platform,
-        CASE
-          WHEN b.platform ILIKE '%airbnb%' THEN 'airbnb'
-          WHEN b.platform ILIKE '%vrbo%' THEN 'vrbo'
-          WHEN b.platform ILIKE '%booking%' THEN 'booking.com'
-          ELSE 'direct'
-        END as platform_key
+        -- Normalize platform for fee lookup
+        LOWER(
+          CASE
+            WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
+            WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
+            WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
+            WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
+            WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'booking.com'
+            ELSE LOWER(b.platform)  -- Keep original platform name for fee lookup
+          END
+        ) as platform_key
       FROM bookings b
       WHERE b.tenant_id = $1
         AND b.arrival >= $2
@@ -109,7 +114,14 @@ const fetchRevenueSummary = async (params: QueryParams): Promise<DbResult<{
         CASE
           WHEN pf.fee_type = 'percentage' THEN bs.total_amount * pf.fee_value
           WHEN pf.fee_type = 'flat' THEN pf.fee_value
-          ELSE 0
+          ELSE
+            -- Default fees only for known platforms if not configured
+            CASE
+              WHEN bs.platform_key = 'airbnb' THEN bs.total_amount * 0.03
+              WHEN bs.platform_key = 'vrbo' THEN bs.total_amount * 0.05
+              WHEN bs.platform_key = 'booking.com' THEN bs.total_amount * 0.15
+              ELSE 0  -- Unknown platforms default to 0% unless configured
+            END
         END
       ), 0) as total_fees
     FROM booking_summary bs
@@ -148,7 +160,14 @@ const fetchRevenueBySource = async (params: QueryParams): Promise<DbResult<reado
     revenue: string
   }>(
     `SELECT
-      COALESCE(platform, 'Direct') as platform,
+      CASE
+        WHEN platform IS NULL OR platform = '' THEN 'Direct'
+        WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
+        WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
+        WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
+        WHEN LOWER(platform) LIKE '%booking.com%' OR LOWER(platform) LIKE '%booking%' THEN 'Booking.com'
+        ELSE platform  -- Keep original platform name
+      END as platform,
       SUM(total_amount) as revenue
     FROM bookings
     WHERE tenant_id = $1
@@ -156,7 +175,15 @@ const fetchRevenueBySource = async (params: QueryParams): Promise<DbResult<reado
       AND arrival <= $3
       AND status != 'canceled'
       ${tagFilter}
-    GROUP BY platform
+    GROUP BY
+      CASE
+        WHEN platform IS NULL OR platform = '' THEN 'Direct'
+        WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
+        WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
+        WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
+        WHEN LOWER(platform) LIKE '%booking.com%' OR LOWER(platform) LIKE '%booking%' THEN 'Booking.com'
+        ELSE platform
+      END
     ORDER BY revenue DESC`,
     queryParams
   )

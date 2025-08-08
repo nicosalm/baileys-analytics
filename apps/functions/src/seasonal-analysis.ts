@@ -106,7 +106,50 @@ export async function getSeasonalAnalysis(
         const year = parseInt(request.query.get('year') || new Date().getFullYear().toString());
         const previousYear = year - 1;
 
-        // Get year-over-year summary with proper availability calculation
+        // Check if we have any data at all
+        const dataCheck = await query<{
+            total_bookings: string;
+            total_properties: string;
+        }>(
+            `SELECT
+                COUNT(DISTINCT b.id) as total_bookings,
+                COUNT(DISTINCT p.id) as total_properties
+            FROM properties p
+            LEFT JOIN bookings b ON p.id = b.property_id
+                AND b.status != 'canceled'
+            WHERE p.tenant_id = $1`,
+            [auth.tenantId]
+        );
+
+        if (!dataCheck.success || parseInt(dataCheck.data[0]?.total_bookings || '0') === 0) {
+            // Return empty but valid structure
+            return {
+                status: 200,
+                headers: corsHeaders(),
+                jsonBody: {
+                    yearOverYear: {
+                        currentYear: 0,
+                        previousYear: 0,
+                        years: []
+                    },
+                    monthlyTrends: [],
+                    seasonalPatterns: {
+                        peakMonths: [],
+                        lowMonths: [],
+                        avgPeakOccupancy: 0,
+                        avgLowOccupancy: 0,
+                        seasonalityIndex: 0
+                    },
+                    propertySeasonality: [],
+                    priceOptimization: {
+                        underpriced: [],
+                        overpriced: []
+                    }
+                }
+            };
+        }
+
+        // Year-over-year query
         const yoyResult = await query<{
             year: number;
             revenue: string;
@@ -115,62 +158,47 @@ export async function getSeasonalAnalysis(
             avg_occupancy: string;
             avg_nightly_rate: string;
         }>(
-            `WITH property_first_bookings AS (
-        -- Get first booking for each property to determine availability start
-        SELECT
-          p.id as property_id,
-          MIN(b.arrival) as first_booking_date
-        FROM properties p
-        LEFT JOIN bookings b ON p.id = b.property_id
-          AND b.tenant_id = p.tenant_id
-          AND b.status != 'canceled'
-        WHERE p.tenant_id = $1
-          AND p.active = true
-        GROUP BY p.id
-      ),
-      yearly_stats AS (
-        SELECT
-          EXTRACT(YEAR FROM arrival)::integer as year,
-          SUM(total_amount) as revenue,
-          COUNT(*) as bookings,
-          SUM(departure - arrival) as nights
-        FROM bookings
-        WHERE tenant_id = $1
-          AND status != 'canceled'
-          AND EXTRACT(YEAR FROM arrival) IN ($2, $3)
-        GROUP BY EXTRACT(YEAR FROM arrival)
-      ),
-      property_days AS (
-        -- Calculate available days based on first booking, not created_at
-        SELECT
-          EXTRACT(YEAR FROM date_series)::integer as year,
-          COUNT(*) as total_days
-        FROM property_first_bookings pfb
-        CROSS JOIN generate_series(
-          GREATEST(
-            make_date($3, 1, 1),
-            COALESCE(pfb.first_booking_date, make_date($3, 1, 1))
-          ),
-          LEAST(make_date($2, 12, 31), CURRENT_DATE),
-          '1 day'::interval
-        ) AS date_series
-        WHERE EXTRACT(YEAR FROM date_series) IN ($2, $3)
-        GROUP BY EXTRACT(YEAR FROM date_series)
-      )
-      SELECT
-        ys.year,
-        ys.revenue::text,
-        ys.bookings::text,
-        ys.nights::text,
-        (ys.nights::float / NULLIF(pd.total_days, 0) * 100)::text as avg_occupancy,
-        (ys.revenue / NULLIF(ys.nights, 0))::text as avg_nightly_rate
-      FROM yearly_stats ys
-      LEFT JOIN property_days pd ON ys.year = pd.year
-      ORDER BY year DESC`,
+            `WITH years AS (
+                SELECT $2::integer as year
+                UNION ALL
+                SELECT $3::integer as year
+            ),
+            yearly_stats AS (
+                SELECT
+                    EXTRACT(YEAR FROM arrival)::integer as year,
+                    SUM(total_amount) as revenue,
+                    COUNT(*) as bookings,
+                    SUM(departure - arrival) as nights
+                FROM bookings
+                WHERE tenant_id = $1
+                    AND status != 'canceled'
+                    AND EXTRACT(YEAR FROM arrival) IN ($2, $3)
+                GROUP BY EXTRACT(YEAR FROM arrival)
+            ),
+            property_count AS (
+                SELECT COUNT(*) as prop_count
+                FROM properties
+                WHERE tenant_id = $1 AND active = true
+            )
+            SELECT
+                y.year,
+                COALESCE(ys.revenue, 0)::text as revenue,
+                COALESCE(ys.bookings, 0)::text as bookings,
+                COALESCE(ys.nights, 0)::text as nights,
+                CASE
+                    WHEN pc.prop_count > 0 AND ys.nights > 0 THEN
+                        LEAST(100, ROUND((ys.nights::numeric / (pc.prop_count * 365)) * 100, 2))
+                    ELSE 0
+                END::text as avg_occupancy,
+                COALESCE(ROUND(ys.revenue::numeric / NULLIF(ys.nights, 0), 2), 0)::text as avg_nightly_rate
+            FROM years y
+            CROSS JOIN property_count pc
+            LEFT JOIN yearly_stats ys ON y.year = ys.year
+            ORDER BY y.year DESC`,
             [auth.tenantId, year, previousYear]
         );
 
-        // Get monthly trends comparison with proper availability
+        // Monthly trends query
         const monthlyResult = await query<{
             month: string;
             month_name: string;
@@ -185,72 +213,65 @@ export async function getSeasonalAnalysis(
             previous_occupancy: string;
             previous_avg_rate: string;
         }>(
-            `WITH property_first_bookings AS (
-        SELECT
-          p.id as property_id,
-          MIN(b.arrival) as first_booking_date
-        FROM properties p
-        LEFT JOIN bookings b ON p.id = b.property_id
-          AND b.tenant_id = p.tenant_id
-          AND b.status != 'canceled'
-        WHERE p.tenant_id = $1
-          AND p.active = true
-        GROUP BY p.id
-      ),
-      monthly_data AS (
-        SELECT
-          TO_CHAR(arrival, 'MM') as month,
-          TO_CHAR(arrival, 'Month') as month_name,
-          EXTRACT(YEAR FROM arrival) as year,
-          SUM(total_amount) as revenue,
-          COUNT(*) as bookings,
-          SUM(departure - arrival) as nights
-        FROM bookings
-        WHERE tenant_id = $1
-          AND status != 'canceled'
-          AND EXTRACT(YEAR FROM arrival) IN ($2, $3)
-        GROUP BY TO_CHAR(arrival, 'MM'), TO_CHAR(arrival, 'Month'), EXTRACT(YEAR FROM arrival)
-      ),
-      property_monthly_days AS (
-        SELECT
-          TO_CHAR(date_series, 'MM') as month,
-          EXTRACT(YEAR FROM date_series) as year,
-          COUNT(DISTINCT pfb.property_id || '-' || date_series::date) as total_days
-        FROM property_first_bookings pfb
-        CROSS JOIN generate_series(
-          GREATEST(
-            make_date($3, 1, 1),
-            COALESCE(pfb.first_booking_date, make_date($3, 1, 1))
-          ),
-          LEAST(make_date($2, 12, 31), CURRENT_DATE),
-          '1 day'::interval
-        ) date_series
-        WHERE EXTRACT(YEAR FROM date_series) IN ($2, $3)
-        GROUP BY TO_CHAR(date_series, 'MM'), EXTRACT(YEAR FROM date_series)
-      )
-      SELECT
-        COALESCE(c.month, p.month) as month,
-        COALESCE(c.month_name, p.month_name) as month_name,
-        COALESCE(c.revenue, 0)::text as current_revenue,
-        COALESCE(c.bookings, 0)::text as current_bookings,
-        COALESCE(c.nights, 0)::text as current_nights,
-        COALESCE(c.nights::float / NULLIF(cmd.total_days, 0) * 100, 0)::text as current_occupancy,
-        COALESCE(c.revenue / NULLIF(c.nights, 0), 0)::text as current_avg_rate,
-        COALESCE(p.revenue, 0)::text as previous_revenue,
-        COALESCE(p.bookings, 0)::text as previous_bookings,
-        COALESCE(p.nights, 0)::text as previous_nights,
-        COALESCE(p.nights::float / NULLIF(pmd.total_days, 0) * 100, 0)::text as previous_occupancy,
-        COALESCE(p.revenue / NULLIF(p.nights, 0), 0)::text as previous_avg_rate
-      FROM (SELECT * FROM monthly_data WHERE year = $2) c
-      FULL OUTER JOIN (SELECT * FROM monthly_data WHERE year = $3) p
-        ON c.month = p.month
-      LEFT JOIN property_monthly_days cmd ON c.month = cmd.month AND cmd.year = $2
-      LEFT JOIN property_monthly_days pmd ON p.month = pmd.month AND pmd.year = $3
-      ORDER BY COALESCE(c.month, p.month)`,
+            `WITH monthly_data AS (
+                SELECT
+                    TO_CHAR(arrival, 'MM') as month,
+                    TO_CHAR(arrival, 'Month') as month_name,
+                    EXTRACT(YEAR FROM arrival) as year,
+                    SUM(total_amount) as revenue,
+                    COUNT(*) as bookings,
+                    SUM(departure - arrival) as nights
+                FROM bookings
+                WHERE tenant_id = $1
+                    AND status != 'canceled'
+                    AND EXTRACT(YEAR FROM arrival) IN ($2, $3)
+                GROUP BY TO_CHAR(arrival, 'MM'), TO_CHAR(arrival, 'Month'), EXTRACT(YEAR FROM arrival)
+            ),
+            property_count AS (
+                SELECT COUNT(*) as prop_count
+                FROM properties
+                WHERE tenant_id = $1 AND active = true
+            ),
+            months AS (
+                SELECT
+                    TO_CHAR(m, 'MM') as month,
+                    TO_CHAR(m, 'Month') as month_name
+                FROM generate_series('2024-01-01'::date, '2024-12-01'::date, '1 month'::interval) as m
+            )
+            SELECT
+                m.month,
+                m.month_name,
+                COALESCE(c.revenue, 0)::text as current_revenue,
+                COALESCE(c.bookings, 0)::text as current_bookings,
+                COALESCE(c.nights, 0)::text as current_nights,
+                ROUND(
+                    COALESCE(
+                        (c.nights::numeric / NULLIF(pc.prop_count * 30, 0)) * 100,
+                        0
+                    ), 2
+                )::text as current_occupancy,
+                ROUND(COALESCE(c.revenue::numeric / NULLIF(c.nights, 0), 0), 2)::text as current_avg_rate,
+                COALESCE(p.revenue, 0)::text as previous_revenue,
+                COALESCE(p.bookings, 0)::text as previous_bookings,
+                COALESCE(p.nights, 0)::text as previous_nights,
+                ROUND(
+                    COALESCE(
+                        (p.nights::numeric / NULLIF(pc.prop_count * 30, 0)) * 100,
+                        0
+                    ), 2
+                )::text as previous_occupancy,
+                ROUND(COALESCE(p.revenue::numeric / NULLIF(p.nights, 0), 0), 2)::text as previous_avg_rate
+            FROM months m
+            CROSS JOIN property_count pc
+            LEFT JOIN (SELECT * FROM monthly_data WHERE year = $2) c
+                ON m.month = c.month
+            LEFT JOIN (SELECT * FROM monthly_data WHERE year = $3) p
+                ON m.month = p.month
+            ORDER BY m.month`,
             [auth.tenantId, year, previousYear]
         );
 
-        // Calculate seasonal patterns with proper availability
+        // Seasonal patterns query
         const seasonalResult = await query<{
             month: string;
             month_name: string;
@@ -258,67 +279,43 @@ export async function getSeasonalAnalysis(
             avg_revenue: string;
             booking_count: string;
         }>(
-            `WITH property_first_bookings AS (
-        SELECT
-          p.id as property_id,
-          MIN(b.arrival) as first_booking_date
-        FROM properties p
-        LEFT JOIN bookings b ON p.id = b.property_id
-          AND b.tenant_id = p.tenant_id
-          AND b.status != 'canceled'
-        WHERE p.tenant_id = $1
-          AND p.active = true
-        GROUP BY p.id
-      ),
-      monthly_aggregates AS (
-        SELECT
-          TO_CHAR(arrival, 'MM') as month,
-          TO_CHAR(arrival, 'Month') as month_name,
-          SUM(departure - arrival) as total_nights,
-          SUM(total_amount) as total_revenue,
-          COUNT(*) as booking_count
-        FROM bookings
-        WHERE tenant_id = $1
-          AND status != 'canceled'
-          AND arrival >= CURRENT_DATE - INTERVAL '3 years'
-        GROUP BY TO_CHAR(arrival, 'MM'), TO_CHAR(arrival, 'Month')
-      ),
-      monthly_capacity AS (
-        SELECT
-          TO_CHAR(date_series, 'MM') as month,
-          COUNT(DISTINCT pfb.property_id || '-' || date_series::date) as total_days
-        FROM property_first_bookings pfb
-        CROSS JOIN generate_series(
-          GREATEST(
-            CURRENT_DATE - INTERVAL '3 years',
-            COALESCE(pfb.first_booking_date, CURRENT_DATE - INTERVAL '3 years')
-          ),
-          CURRENT_DATE,
-          '1 day'::interval
-        ) date_series
-        GROUP BY TO_CHAR(date_series, 'MM')
-      ),
-      year_count AS (
-        SELECT COUNT(DISTINCT EXTRACT(YEAR FROM arrival)) as years
-        FROM bookings
-        WHERE tenant_id = $1
-          AND status != 'canceled'
-          AND arrival >= CURRENT_DATE - INTERVAL '3 years'
-      )
-      SELECT
-        ma.month,
-        TRIM(ma.month_name) as month_name,
-        (ma.total_nights::float / NULLIF(mc.total_days, 0) * 100)::text as avg_occupancy,
-        (ma.total_revenue / NULLIF(yc.years, 1))::text as avg_revenue,
-        ma.booking_count::text
-      FROM monthly_aggregates ma
-      LEFT JOIN monthly_capacity mc ON ma.month = mc.month
-      CROSS JOIN year_count yc
-      ORDER BY ma.month`,
+            `WITH monthly_aggregates AS (
+                SELECT
+                    TO_CHAR(arrival, 'MM') as month,
+                    TO_CHAR(arrival, 'Month') as month_name,
+                    SUM(departure - arrival) as total_nights,
+                    AVG(total_amount) as avg_revenue_per_booking,
+                    COUNT(*) as booking_count
+                FROM bookings
+                WHERE tenant_id = $1
+                    AND status != 'canceled'
+                    AND arrival >= CURRENT_DATE - INTERVAL '2 years'
+                GROUP BY TO_CHAR(arrival, 'MM'), TO_CHAR(arrival, 'Month')
+            ),
+            property_count AS (
+                SELECT COUNT(*) as prop_count
+                FROM properties
+                WHERE tenant_id = $1 AND active = true
+            )
+            SELECT
+                ma.month,
+                TRIM(ma.month_name) as month_name,
+                CASE
+                    WHEN pc.prop_count > 0 THEN
+                        LEAST(100, ROUND(
+                            (ma.total_nights::numeric / (pc.prop_count * 30 * 2)) * 100, 2
+                        ))
+                    ELSE 0
+                END::text as avg_occupancy,
+                ROUND(COALESCE(ma.avg_revenue_per_booking, 0)::numeric, 2)::text as avg_revenue,
+                ma.booking_count::text
+            FROM monthly_aggregates ma
+            CROSS JOIN property_count pc
+            ORDER BY ma.month`,
             [auth.tenantId]
         );
 
-        // Get property-level seasonality with proper occupancy calculation
+        // Property-level seasonality query
         const propertySeasonalResult = await query<{
             property_id: string;
             property_name: string;
@@ -326,63 +323,37 @@ export async function getSeasonalAnalysis(
             occupancy: string;
             revenue: string;
         }>(
-            `WITH property_first_bookings AS (
-        SELECT
-          p.id as property_id,
-          p.name as property_name,
-          MIN(b.arrival) as first_booking_date
-        FROM properties p
-        LEFT JOIN bookings b ON p.id = b.property_id
-          AND b.tenant_id = p.tenant_id
-          AND b.status != 'canceled'
-        WHERE p.tenant_id = $1
-          AND p.active = true
-        GROUP BY p.id, p.name
-      ),
-      property_monthly AS (
-        SELECT
-          p.id as property_id,
-          p.name as property_name,
-          EXTRACT(MONTH FROM b.arrival) as month,
-          SUM(b.departure - b.arrival) as nights,
-          SUM(b.total_amount) as revenue
-        FROM properties p
-        LEFT JOIN bookings b ON p.id = b.property_id
-          AND b.status != 'canceled'
-          AND b.arrival >= CURRENT_DATE - INTERVAL '2 years'
-        WHERE p.tenant_id = $1 AND p.active = true
-        GROUP BY p.id, p.name, EXTRACT(MONTH FROM b.arrival)
-      ),
-      month_capacity AS (
-        SELECT
-          pfb.property_id,
-          EXTRACT(MONTH FROM date_series) as month,
-          COUNT(*) as available_days
-        FROM property_first_bookings pfb
-        CROSS JOIN generate_series(
-          GREATEST(
-            CURRENT_DATE - INTERVAL '2 years',
-            COALESCE(pfb.first_booking_date, CURRENT_DATE - INTERVAL '2 years')
-          ),
-          CURRENT_DATE,
-          '1 day'::interval
-        ) date_series
-        GROUP BY pfb.property_id, EXTRACT(MONTH FROM date_series)
-      )
-      SELECT
-        pm.property_id,
-        pm.property_name,
-        pm.month::text,
-        (pm.nights::float / NULLIF(mc.available_days, 0) * 100)::text as occupancy,
-        pm.revenue::text
-      FROM property_monthly pm
-      LEFT JOIN month_capacity mc ON pm.property_id = mc.property_id AND pm.month = mc.month
-      WHERE pm.month IS NOT NULL
-      ORDER BY pm.property_id, pm.month`,
+            `WITH property_monthly AS (
+                SELECT
+                    p.id as property_id,
+                    p.name as property_name,
+                    EXTRACT(MONTH FROM b.arrival) as month,
+                    SUM(b.departure - b.arrival) as nights,
+                    SUM(b.total_amount) as revenue
+                FROM properties p
+                LEFT JOIN bookings b ON p.id = b.property_id
+                    AND b.status != 'canceled'
+                    AND b.arrival >= CURRENT_DATE - INTERVAL '1 year'
+                WHERE p.tenant_id = $1
+                    AND p.active = true
+                GROUP BY p.id, p.name, EXTRACT(MONTH FROM b.arrival)
+            )
+            SELECT
+                property_id,
+                property_name,
+                month::text,
+                LEAST(100, ROUND(
+                    COALESCE(nights::numeric / 30, 0) * 100,
+                    2
+                ))::text as occupancy,
+                COALESCE(revenue, 0)::text as revenue
+            FROM property_monthly
+            WHERE month IS NOT NULL
+            ORDER BY property_id, month`,
             [auth.tenantId]
         );
 
-        // Price optimization analysis remains mostly the same but with occupancy fixes
+        // Fixed price optimization query - removed created_at usage
         const priceOptimizationResult = await query<{
             property_id: string;
             property_name: string;
@@ -393,76 +364,51 @@ export async function getSeasonalAnalysis(
             market_avg_rate: string;
             suggested_rate: string;
         }>(
-            `WITH property_first_bookings AS (
-        SELECT
-          p.id as property_id,
-          MIN(b.arrival) as first_booking_date
-        FROM properties p
-        LEFT JOIN bookings b ON p.id = b.property_id
-          AND b.tenant_id = p.tenant_id
-          AND b.status != 'canceled'
-        WHERE p.tenant_id = $1
-          AND p.active = true
-        GROUP BY p.id
-      ),
-      property_month_stats AS (
-        SELECT
-          p.id as property_id,
-          p.name as property_name,
-          TO_CHAR(b.arrival, 'MM') as month,
-          TO_CHAR(b.arrival, 'Month') as month_name,
-          AVG(b.total_amount / NULLIF(b.departure - b.arrival, 0)) as avg_nightly_rate,
-          SUM(b.departure - b.arrival) as booked_nights
-        FROM properties p
-        JOIN bookings b ON p.id = b.property_id
-        WHERE p.tenant_id = $1
-          AND b.status != 'canceled'
-          AND b.arrival >= CURRENT_DATE - INTERVAL '1 year'
-        GROUP BY p.id, p.name, TO_CHAR(b.arrival, 'MM'), TO_CHAR(b.arrival, 'Month')
-      ),
-      property_month_capacity AS (
-        SELECT
-          pfb.property_id,
-          TO_CHAR(date_series, 'MM') as month,
-          COUNT(*) as available_days
-        FROM property_first_bookings pfb
-        CROSS JOIN generate_series(
-          GREATEST(
-            CURRENT_DATE - INTERVAL '1 year',
-            COALESCE(pfb.first_booking_date, CURRENT_DATE - INTERVAL '1 year')
-          ),
-          CURRENT_DATE,
-          '1 day'::interval
-        ) date_series
-        GROUP BY pfb.property_id, TO_CHAR(date_series, 'MM')
-      ),
-      market_stats AS (
-        SELECT
-          TO_CHAR(arrival, 'MM') as month,
-          AVG(total_amount / NULLIF(departure - arrival, 0)) as market_avg_rate
-        FROM bookings
-        WHERE tenant_id = $1
-          AND status != 'canceled'
-          AND arrival >= CURRENT_DATE - INTERVAL '1 year'
-        GROUP BY TO_CHAR(arrival, 'MM')
-      )
-      SELECT
-        pms.property_id,
-        pms.property_name,
-        pms.month,
-        TRIM(pms.month_name) as month_name,
-        pms.avg_nightly_rate::text,
-        (pms.booked_nights::float / NULLIF(pmc.available_days, 0))::text as occupancy_rate,
-        ms.market_avg_rate::text,
-        CASE
-          WHEN (pms.booked_nights::float / NULLIF(pmc.available_days, 0)) > 0.8 THEN (pms.avg_nightly_rate * 1.1)
-          WHEN (pms.booked_nights::float / NULLIF(pmc.available_days, 0)) < 0.5 THEN (pms.avg_nightly_rate * 0.9)
-          ELSE pms.avg_nightly_rate
-        END::text as suggested_rate
-      FROM property_month_stats pms
-      LEFT JOIN property_month_capacity pmc ON pms.property_id = pmc.property_id AND pms.month = pmc.month
-      LEFT JOIN market_stats ms ON pms.month = ms.month
-      ORDER BY pms.property_id, pms.month`,
+            `WITH property_month_stats AS (
+                SELECT
+                    p.id as property_id,
+                    p.name as property_name,
+                    TO_CHAR(b.arrival, 'MM') as month,
+                    TO_CHAR(b.arrival, 'Month') as month_name,
+                    AVG(b.total_amount / NULLIF(b.departure - b.arrival, 0)) as avg_nightly_rate,
+                    SUM(b.departure - b.arrival) as booked_nights
+                FROM properties p
+                JOIN bookings b ON p.id = b.property_id
+                WHERE p.tenant_id = $1
+                    AND b.status != 'canceled'
+                    AND b.arrival >= CURRENT_DATE - INTERVAL '6 months'
+                GROUP BY p.id, p.name, TO_CHAR(b.arrival, 'MM'), TO_CHAR(b.arrival, 'Month')
+            ),
+            market_stats AS (
+                SELECT
+                    TO_CHAR(arrival, 'MM') as month,
+                    AVG(total_amount / NULLIF(departure - arrival, 0)) as market_avg_rate
+                FROM bookings
+                WHERE tenant_id = $1
+                    AND status != 'canceled'
+                    AND arrival >= CURRENT_DATE - INTERVAL '6 months'
+                GROUP BY TO_CHAR(arrival, 'MM')
+            )
+            SELECT
+                pms.property_id,
+                pms.property_name,
+                pms.month,
+                TRIM(pms.month_name) as month_name,
+                ROUND(pms.avg_nightly_rate::numeric, 2)::text as avg_nightly_rate,
+                -- Assume 30 days per month available
+                ROUND((pms.booked_nights::numeric / 30), 4)::text as occupancy_rate,
+                ROUND(ms.market_avg_rate::numeric, 2)::text as market_avg_rate,
+                CASE
+                    WHEN (pms.booked_nights::numeric / 30) > 0.8 THEN
+                        ROUND((pms.avg_nightly_rate * 1.1)::numeric, 2)
+                    WHEN (pms.booked_nights::numeric / 30) < 0.5 THEN
+                        ROUND((pms.avg_nightly_rate * 0.9)::numeric, 2)
+                    ELSE
+                        ROUND(pms.avg_nightly_rate::numeric, 2)
+                END::text as suggested_rate
+            FROM property_month_stats pms
+            LEFT JOIN market_stats ms ON pms.month = ms.month
+            ORDER BY pms.property_id, pms.month`,
             [auth.tenantId]
         );
 
@@ -471,48 +417,76 @@ export async function getSeasonalAnalysis(
         const currentYearData = yearData.find(y => y.year === year);
         const previousYearData = yearData.find(y => y.year === previousYear);
 
-        const monthlyTrends = monthlyResult.success ? monthlyResult.data.map(m => ({
-            month: m.month,
-            monthName: m.month_name.trim(),
-            currentYear: {
-                revenue: parseFloat(m.current_revenue),
-                bookings: parseInt(m.current_bookings),
-                occupancy: parseFloat(m.current_occupancy), // Already as percentage from query
-                avgNightlyRate: parseFloat(m.current_avg_rate)
-            },
-            previousYear: {
-                revenue: parseFloat(m.previous_revenue),
-                bookings: parseInt(m.previous_bookings),
-                occupancy: parseFloat(m.previous_occupancy), // Already as percentage from query
-                avgNightlyRate: parseFloat(m.previous_avg_rate)
-            },
-            yoyGrowth: {
-                revenue: calculateGrowthRate(parseFloat(m.current_revenue), parseFloat(m.previous_revenue)),
-                bookings: calculateGrowthRate(parseInt(m.current_bookings), parseInt(m.previous_bookings)),
-                occupancy: calculateGrowthRate(parseFloat(m.current_occupancy), parseFloat(m.previous_occupancy)),
-                avgNightlyRate: calculateGrowthRate(parseFloat(m.current_avg_rate), parseFloat(m.previous_avg_rate))
-            }
-        })) : [];
+        // Process monthly trends
+        const monthlyTrends = monthlyResult.success ? monthlyResult.data
+            .filter(m => m.month && m.month_name)
+            .map(m => ({
+                month: m.month,
+                monthName: m.month_name.trim(),
+                currentYear: {
+                    revenue: parseFloat(m.current_revenue) || 0,
+                    bookings: parseInt(m.current_bookings) || 0,
+                    occupancy: Math.min(100, parseFloat(m.current_occupancy) || 0),
+                    avgNightlyRate: parseFloat(m.current_avg_rate) || 0
+                },
+                previousYear: {
+                    revenue: parseFloat(m.previous_revenue) || 0,
+                    bookings: parseInt(m.previous_bookings) || 0,
+                    occupancy: Math.min(100, parseFloat(m.previous_occupancy) || 0),
+                    avgNightlyRate: parseFloat(m.previous_avg_rate) || 0
+                },
+                yoyGrowth: {
+                    revenue: calculateGrowthRate(
+                        parseFloat(m.current_revenue) || 0,
+                        parseFloat(m.previous_revenue) || 0
+                    ),
+                    bookings: calculateGrowthRate(
+                        parseInt(m.current_bookings) || 0,
+                        parseInt(m.previous_bookings) || 0
+                    ),
+                    occupancy: calculateGrowthRate(
+                        parseFloat(m.current_occupancy) || 0,
+                        parseFloat(m.previous_occupancy) || 0
+                    ),
+                    avgNightlyRate: calculateGrowthRate(
+                        parseFloat(m.current_avg_rate) || 0,
+                        parseFloat(m.previous_avg_rate) || 0
+                    )
+                }
+            })) : [];
 
         // Calculate seasonal patterns
         const seasonalData = seasonalResult.success ? seasonalResult.data : [];
-        const sortedByOccupancy = [...seasonalData].sort((a, b) =>
+        const validSeasonalData = seasonalData.filter(d =>
+            parseFloat(d.avg_occupancy) >= 0 && parseFloat(d.avg_occupancy) <= 100
+        );
+
+        const sortedByOccupancy = [...validSeasonalData].sort((a, b) =>
             parseFloat(b.avg_occupancy) - parseFloat(a.avg_occupancy)
         );
 
         const peakMonths = sortedByOccupancy.slice(0, 3).map(m => ({
             month: m.month_name.trim(),
-            score: parseFloat(m.avg_occupancy) // Already as percentage
+            score: Math.min(100, parseFloat(m.avg_occupancy) || 0)
         }));
 
         const lowMonths = sortedByOccupancy.slice(-3).reverse().map(m => ({
             month: m.month_name.trim(),
-            score: parseFloat(m.avg_occupancy) // Already as percentage
+            score: Math.min(100, parseFloat(m.avg_occupancy) || 0)
         }));
 
-        const avgPeakOccupancy = safeDivide(peakMonths.reduce((sum, m) => sum + m.score, 0), peakMonths.length);
-        const avgLowOccupancy = safeDivide(lowMonths.reduce((sum, m) => sum + m.score, 0), lowMonths.length);
-        const seasonalityIndex = safeDivide(avgPeakOccupancy - avgLowOccupancy, avgPeakOccupancy) * 100;
+        const avgPeakOccupancy = safeDivide(
+            peakMonths.reduce((sum, m) => sum + m.score, 0),
+            peakMonths.length
+        );
+        const avgLowOccupancy = safeDivide(
+            lowMonths.reduce((sum, m) => sum + m.score, 0),
+            lowMonths.length
+        );
+        const seasonalityIndex = safeDivide(
+            avgPeakOccupancy - avgLowOccupancy,
+            avgPeakOccupancy
+        ) * 100;
 
         // Process property seasonality
         const propertyMap = new Map<string, {
@@ -534,25 +508,31 @@ export async function getSeasonalAnalysis(
                         monthlyOccupancy: []
                     });
                 }
+
+                const occupancy = Math.min(100, parseFloat(row.occupancy) || 0);
+
                 propertyMap.get(row.property_id)!.monthlyOccupancy.push({
                     month: parseInt(row.month),
-                    occupancy: parseFloat(row.occupancy), // Already as percentage
-                    revenue: parseFloat(row.revenue)
+                    occupancy: occupancy,
+                    revenue: parseFloat(row.revenue) || 0
                 });
             });
         }
 
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
         const propertySeasonality = Array.from(propertyMap.values()).map(property => {
-            const sortedMonths = [...property.monthlyOccupancy].sort((a, b) => b.occupancy - a.occupancy);
+            const validOccupancies = property.monthlyOccupancy
+                .filter(m => m.occupancy >= 0 && m.occupancy <= 100);
+
+            const sortedMonths = [...validOccupancies].sort((a, b) => b.occupancy - a.occupancy);
             const peakMonth = sortedMonths[0];
             const lowMonth = sortedMonths[sortedMonths.length - 1];
 
-            const occupancies = property.monthlyOccupancy.map(m => m.occupancy);
+            const occupancies = validOccupancies.map(m => m.occupancy);
             const avgOccupancy = calculateAverage(occupancies);
             const stdDev = calculateStandardDeviation(occupancies);
-            const seasonalityScore = safeDivide(stdDev, avgOccupancy) * 100;
-
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const seasonalityScore = Math.min(100, safeDivide(stdDev, avgOccupancy) * 100);
 
             return {
                 ...property,
@@ -587,9 +567,9 @@ export async function getSeasonalAnalysis(
 
         if (priceOptimizationResult.success) {
             priceOptimizationResult.data.forEach(row => {
-                const currentRate = parseFloat(row.avg_nightly_rate);
-                const suggestedRate = parseFloat(row.suggested_rate);
-                const occupancy = parseFloat(row.occupancy_rate);
+                const currentRate = parseFloat(row.avg_nightly_rate) || 0;
+                const suggestedRate = parseFloat(row.suggested_rate) || 0;
+                const occupancy = parseFloat(row.occupancy_rate) || 0;
 
                 if (occupancy > 0.8 && suggestedRate > currentRate) {
                     priceOptimization.underpriced.push({
@@ -607,7 +587,7 @@ export async function getSeasonalAnalysis(
                         month: row.month_name.trim(),
                         currentRate,
                         suggestedRate,
-                        occupancyImpact: 0.6 - occupancy
+                        occupancyImpact: Math.min(1, Math.max(0, 0.6 - occupancy))
                     });
                 }
             });
@@ -619,19 +599,19 @@ export async function getSeasonalAnalysis(
                 previousYear: previousYearData ? parseFloat(previousYearData.revenue) : 0,
                 years: yearData.map(y => ({
                     year: y.year,
-                    revenue: parseFloat(y.revenue),
-                    bookings: parseInt(y.bookings),
-                    occupancy: parseFloat(y.avg_occupancy), // Already as percentage
-                    avgNightlyRate: parseFloat(y.avg_nightly_rate)
+                    revenue: parseFloat(y.revenue) || 0,
+                    bookings: parseInt(y.bookings) || 0,
+                    occupancy: Math.min(100, parseFloat(y.avg_occupancy) || 0),
+                    avgNightlyRate: parseFloat(y.avg_nightly_rate) || 0
                 }))
             },
             monthlyTrends,
             seasonalPatterns: {
                 peakMonths,
                 lowMonths,
-                avgPeakOccupancy,
-                avgLowOccupancy,
-                seasonalityIndex
+                avgPeakOccupancy: Math.min(100, avgPeakOccupancy),
+                avgLowOccupancy: Math.min(100, avgLowOccupancy),
+                seasonalityIndex: Math.min(100, seasonalityIndex)
             },
             propertySeasonality,
             priceOptimization
@@ -643,6 +623,7 @@ export async function getSeasonalAnalysis(
             jsonBody: seasonalAnalysisData
         };
     } catch (error) {
+        console.error('Seasonal analysis error:', error);
         return {
             status: 500,
             headers: corsHeaders(),

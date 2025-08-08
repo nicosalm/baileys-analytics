@@ -87,7 +87,6 @@ export async function getGuests(
   }
 
   try {
-    // Parse query parameters
     const url = new URL(request.url);
     const startDate = url.searchParams.get('from');
     const endDate = url.searchParams.get('to');
@@ -96,7 +95,6 @@ export async function getGuests(
     const pageSize = parseInt(url.searchParams.get('pageSize') || '50');
     const offset = (page - 1) * pageSize;
 
-    // Build date filter
     let dateFilter = '';
     const queryParams: any[] = [auth.tenantId];
     let paramIndex = 2;
@@ -107,7 +105,6 @@ export async function getGuests(
       paramIndex += 2;
     }
 
-    // Build tag filter
     let tagFilter = '';
     if (tagIds.length > 0) {
       const tagPlaceholders = tagIds.map((_, i) => `$${paramIndex + i}`).join(',');
@@ -119,7 +116,6 @@ export async function getGuests(
       queryParams.push(...tagIds);
     }
 
-    // Get guest metrics
     const metricsResult = await query<{
       total_guests: string;
       repeat_guests: string;
@@ -165,7 +161,6 @@ export async function getGuests(
     const totalGuests = parseInt(metrics.total_guests) || 0;
     const repeatGuests = parseInt(metrics.repeat_guests) || 0;
 
-    // Get top spenders
     const topSpendersResult = await query<{
       guest_name: string;
       guest_email: string;
@@ -199,22 +194,20 @@ export async function getGuests(
       queryParams
     );
 
-    // Get guests by source
     const guestsBySourceResult = await query<{
       source: string;
       count: string;
       revenue: string;
     }>(
       `SELECT
-        COALESCE(
-          CASE
-            WHEN platform ILIKE '%airbnb%' THEN 'Airbnb'
-            WHEN platform ILIKE '%vrbo%' THEN 'VRBO'
-            WHEN platform ILIKE '%booking%' THEN 'Booking.com'
-            ELSE 'Direct'
-          END,
-          'Unknown'
-        ) as source,
+        CASE
+          WHEN platform IS NULL OR platform = '' THEN 'Direct'
+          WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
+          WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
+          WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
+          WHEN LOWER(platform) LIKE '%booking.com%' OR LOWER(platform) LIKE '%booking%' THEN 'Booking.com'
+          ELSE platform
+        END as source,
         COUNT(DISTINCT (guest_name, COALESCE(guest_email, ''))) as count,
         SUM(total_amount) as revenue
       FROM bookings b
@@ -222,12 +215,18 @@ export async function getGuests(
         AND status != 'canceled'
         ${dateFilter}
         ${tagFilter}
-      GROUP BY source
+      GROUP BY
+        CASE
+          WHEN platform IS NULL OR platform = '' THEN 'Direct'
+          WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
+          WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
+          WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
+          WHEN LOWER(platform) LIKE '%booking.com%' OR LOWER(platform) LIKE '%booking%' THEN 'Booking.com'
+          ELSE platform
+        END
       ORDER BY revenue DESC`,
       queryParams
     );
-
-    // Get tag distribution
     const tagDistributionResult = await query<{
       tag_id: string;
       tag_name: string;
@@ -251,7 +250,6 @@ export async function getGuests(
       queryParams
     );
 
-    // Get total count for pagination
     const countResult = await query<{ count: string }>(
       `SELECT COUNT(DISTINCT (guest_name, COALESCE(guest_email, ''))) as count
       FROM bookings b
@@ -265,7 +263,6 @@ export async function getGuests(
     const totalItems = countResult.success ? parseInt(countResult.data[0].count) : 0;
     const totalPages = Math.ceil(totalItems / pageSize);
 
-    // Get paginated guests list
     const guestsListResult = await query<{
       guest_name: string;
       guest_email: string;
@@ -301,7 +298,6 @@ export async function getGuests(
       queryParams
     );
 
-    // Get tags for the current page of guests only
     const guestTagsResult = await query<{
       guest_name: string;
       guest_email: string;
@@ -346,7 +342,6 @@ export async function getGuests(
       queryParams
     );
 
-    // Build tags map for guests
     const guestTagsMap = new Map<string, Array<any>>();
     if (guestTagsResult.success) {
       for (const row of guestTagsResult.data) {
@@ -362,7 +357,6 @@ export async function getGuests(
       }
     }
 
-    // Build response
     const response: PaginatedResponse = {
       metrics: {
         totalGuests,

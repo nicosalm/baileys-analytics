@@ -1,348 +1,393 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { safeDivide, calculatePercentage, calculateGrowthRate } from '@baileys/utils';
+import { safeDivide, calculatePercentage } from '@baileys/utils';
 import { query, DbResult } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
-type ExpenseData = {
-    category: string
-    amount: number
-    percentage: number
-    trend: number // Month-over-month change
-    budgetVariance?: number
-}
-
-type EnhancedFinancialMetrics = {
+type FinancialMetrics = {
     revenue: {
         gross: number
         net: number
         pending: number
         collected: number
+        platformFees: number
+        taxes: number
     }
-    expenses: {
-        total: number
-        categories: ExpenseData[]
-        byProperty: Array<{
-            propertyId: string
-            propertyName: string
-            totalExpenses: number
-            expenseBreakdown: ExpenseData[]
-        }>
+    performance: {
+        netRevenueRate: number // percentage of revenue kept after fees
+        avgBookingValue: number
+        totalBookings: number
     }
-    profitability: {
-        netIncome: number
-        profitMargin: number
-        ebitda: number
-        roi: number
-        cashOnCashReturn: number
-    }
-    cashFlow: {
-        inflow: number
-        outflow: number
-        net: number
-        forecast30Days: number
-        operatingCashFlow: number
-        freeChashFlow: number
+    upcoming: {
+        next30Days: number
+        next60Days: number
+        next90Days: number
     }
     kpis: {
         revpar: number
-        goppar: number
-        averageCollectionPeriod: number
-        expenseRatio: number
-        breakEvenOccupancy: number
+        adr: number
+        collectionRate: number
     }
 }
 
-// Get real expense data with caching for performance
-async function getExpenseData(
-    tenantId: string,
-    fromDate: string,
-    toDate: string,
-    propertyIds?: string[]
-): Promise<DbResult<ExpenseData[]>> {
-    // Build property filter
-    let propertyFilter = '';
-    const params: any[] = [tenantId, fromDate, toDate];
-
-    if (propertyIds && propertyIds.length > 0) {
-        propertyFilter = 'AND (e.property_id = ANY($4::uuid[]) OR e.property_id IS NULL)';
-        params.push(propertyIds);
-    }
-
-    const result = await query<{
-        category_name: string;
-        total_amount: string;
-        expense_count: string;
-        avg_amount: string;
-        previous_period_amount: string;
-    }>(
-        `WITH current_period AS (
-            SELECT
-                ec.name as category_name,
-                COALESCE(SUM(e.amount), 0) as total_amount,
-                COUNT(e.id) as expense_count,
-                AVG(e.amount) as avg_amount
-            FROM expense_categories ec
-            LEFT JOIN expenses e ON ec.id = e.category_id
-                AND e.tenant_id = $1
-                AND e.expense_date >= $2::date
-                AND e.expense_date <= $3::date
-                ${propertyFilter}
-            WHERE ec.tenant_id = $1
-            GROUP BY ec.id, ec.name
-        ),
-        previous_period AS (
-            SELECT
-                ec.name as category_name,
-                COALESCE(SUM(e.amount), 0) as total_amount
-            FROM expense_categories ec
-            LEFT JOIN expenses e ON ec.id = e.category_id
-                AND e.tenant_id = $1
-                AND e.expense_date >= ($2::date - INTERVAL '1 month')::date
-                AND e.expense_date < $2::date
-                ${propertyFilter}
-            WHERE ec.tenant_id = $1
-            GROUP BY ec.id, ec.name
-        )
-        SELECT
-            cp.category_name,
-            cp.total_amount::text,
-            cp.expense_count::text,
-            cp.avg_amount::text,
-            COALESCE(pp.total_amount, 0)::text as previous_period_amount
-        FROM current_period cp
-        LEFT JOIN previous_period pp ON cp.category_name = pp.category_name
-        ORDER BY cp.total_amount DESC`,
-        params
-    );
-
-    if (!result.success) {
-        return result;
-    }
-
-    // Calculate total for percentages
-    const total = result.data.reduce((sum, row) => sum + parseFloat(row.total_amount), 0);
-
-    const expenses: ExpenseData[] = result.data.map(row => {
-        const current = parseFloat(row.total_amount);
-        const previous = parseFloat(row.previous_period_amount);
-
-        return {
-            category: row.category_name,
-            amount: current,
-            percentage: calculatePercentage(current, total),
-            trend: calculateGrowthRate(current, previous)
-        };
-    });
-
-    return { success: true, data: expenses };
+type PlatformFinancials = {
+    platform: string
+    grossRevenue: number
+    fees: number
+    netRevenue: number
+    feeRate: number
+    bookingCount: number
 }
 
-// Get budget comparison data
-async function getBudgetData(
-    tenantId: string,
-    year: number,
-    month?: number
-): Promise<DbResult<Array<{
-    category: string
-    budgeted: number
-    actual: number
-    variance: number
-    variancePercent: number
-}>>> {
-    const monthFilter = month ? 'AND b.budget_month = $3' : 'AND b.budget_month IS NULL';
-    const params = month ? [tenantId, year, month] : [tenantId, year];
-
-    const result = await query<{
-        category_name: string;
-        budgeted_amount: string;
-        actual_amount: string;
-    }>(
-        `WITH budget_data AS (
-            SELECT
-                ec.name as category_name,
-                COALESCE(SUM(b.amount), 0) as budgeted_amount
-            FROM expense_categories ec
-            LEFT JOIN budgets b ON ec.id = b.category_id
-                AND b.tenant_id = $1
-                AND b.budget_year = $2
-                ${monthFilter}
-            WHERE ec.tenant_id = $1
-            GROUP BY ec.id, ec.name
-        ),
-        actual_data AS (
-            SELECT
-                ec.name as category_name,
-                COALESCE(SUM(e.amount), 0) as actual_amount
-            FROM expense_categories ec
-            LEFT JOIN expenses e ON ec.id = e.category_id
-                AND e.tenant_id = $1
-                AND EXTRACT(YEAR FROM e.expense_date) = $2
-                ${month ? 'AND EXTRACT(MONTH FROM e.expense_date) = $3' : ''}
-            WHERE ec.tenant_id = $1
-            GROUP BY ec.id, ec.name
-        )
-        SELECT
-            COALESCE(bd.category_name, ad.category_name) as category_name,
-            COALESCE(bd.budgeted_amount, 0)::text as budgeted_amount,
-            COALESCE(ad.actual_amount, 0)::text as actual_amount
-        FROM budget_data bd
-        FULL OUTER JOIN actual_data ad ON bd.category_name = ad.category_name
-        WHERE COALESCE(bd.budgeted_amount, 0) > 0 OR COALESCE(ad.actual_amount, 0) > 0`,
-        params
-    );
-
-    if (!result.success) {
-        return result;
-    }
-
-    const budgetComparison = result.data.map(row => {
-        const budgeted = parseFloat(row.budgeted_amount);
-        const actual = parseFloat(row.actual_amount);
-        const variance = budgeted - actual; // Positive = under budget
-
-        return {
-            category: row.category_name,
-            budgeted,
-            actual,
-            variance,
-            variancePercent: budgeted > 0 ? (variance / budgeted) * 100 : 0
-        };
-    });
-
-    return { success: true, data: budgetComparison };
+type MonthlyTrend = {
+    month: string
+    revenue: number
+    bookings: number
+    avgBookingValue: number
 }
 
-// Enhanced cash flow calculation with real data
-async function getEnhancedCashFlow(
+type WeeklyRevenue = {
+    week: string
+    revenue: number
+    bookings: number
+}
+
+async function getPlatformFinancials(
     tenantId: string,
     fromDate: string,
     toDate: string
-): Promise<DbResult<{
-    cashFlow: Array<{
-        date: string
-        inflow: number
-        outflow: number
-        netFlow: number
-        balance: number
-    }>
-    forecast: {
-        next30Days: number
-        next90Days: number
-        seasonalAdjustment: number
-    }
-}>> {
-    // Get weekly cash flow data
-    const cashFlowResult = await query<{
-        week_start: string;
-        inflow: string;
-        outflow: string;
+): Promise<DbResult<PlatformFinancials[]>> {
+    const result = await query<{
+        platform: string;
+        booking_count: string;
+        gross_revenue: string;
+        total_fees: string;
     }>(
-        `WITH weekly_inflow AS (
+        `WITH platform_summary AS (
             SELECT
-                DATE_TRUNC('week', arrival) as week_start,
-                SUM(total_amount) as inflow
+                COALESCE(
+                    CASE
+                        WHEN platform IS NULL OR platform = '' THEN 'Direct'
+                        WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
+                        WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
+                        WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
+                        WHEN LOWER(platform) LIKE '%booking.com%' THEN 'Booking.com'
+                        ELSE platform  -- Keep original platform name
+                    END,
+                    'Direct'
+                ) as platform,
+                COUNT(*) as booking_count,
+                SUM(total_amount) as gross_revenue
             FROM bookings
             WHERE tenant_id = $1
                 AND arrival >= $2::date
                 AND arrival <= $3::date
                 AND status != 'canceled'
-            GROUP BY DATE_TRUNC('week', arrival)
+            GROUP BY
+                CASE
+                    WHEN platform IS NULL OR platform = '' THEN 'Direct'
+                    WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
+                    WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
+                    WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
+                    WHEN LOWER(platform) LIKE '%booking.com%' THEN 'Booking.com'
+                    ELSE platform
+                END
         ),
-        weekly_outflow AS (
-            SELECT
-                DATE_TRUNC('week', expense_date) as week_start,
-                SUM(amount) as outflow
-            FROM expenses
-            WHERE tenant_id = $1
-                AND expense_date >= $2::date
-                AND expense_date <= $3::date
-            GROUP BY DATE_TRUNC('week', expense_date)
+        platform_fees AS (
+            SELECT DISTINCT ON (platform_name)
+                platform_name,
+                fee_type,
+                fee_value
+            FROM platform_fees
+            WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
+                AND is_active = true
+                AND effective_from <= $3::date
+                AND (effective_to IS NULL OR effective_to >= $2::date)
+            ORDER BY platform_name, tenant_id DESC, effective_from DESC
         )
         SELECT
-            COALESCE(wi.week_start, wo.week_start) as week_start,
-            COALESCE(wi.inflow, 0)::text as inflow,
-            COALESCE(wo.outflow, 0)::text as outflow
-        FROM weekly_inflow wi
-        FULL OUTER JOIN weekly_outflow wo ON wi.week_start = wo.week_start
-        ORDER BY week_start`,
+            ps.platform,
+            ps.booking_count::text,
+            ps.gross_revenue::text,
+            COALESCE(
+                CASE
+                    WHEN pf.fee_type = 'percentage' THEN ps.gross_revenue * pf.fee_value
+                    WHEN pf.fee_type = 'flat' THEN pf.fee_value * ps.booking_count
+                    ELSE
+                        -- Default fees only for known platforms if not configured
+                        CASE
+                            WHEN LOWER(ps.platform) LIKE '%airbnb%' THEN ps.gross_revenue * 0.03
+                            WHEN LOWER(ps.platform) LIKE '%vrbo%' THEN ps.gross_revenue * 0.05
+                            WHEN LOWER(ps.platform) LIKE '%booking.com%' THEN ps.gross_revenue * 0.15
+                            WHEN LOWER(ps.platform) = 'direct' THEN 0
+                            ELSE 0  -- Unknown platforms default to 0% unless configured
+                        END
+                END,
+                0
+            )::text as total_fees
+        FROM platform_summary ps
+        LEFT JOIN platform_fees pf ON LOWER(ps.platform) = LOWER(pf.platform_name)
+        ORDER BY ps.gross_revenue DESC`,
         [tenantId, fromDate, toDate]
     );
 
-    if (!cashFlowResult.success) {
-        return { success: false, error: 'Failed to get cash flow data' };
+    if (!result.success) {
+        return result;
     }
 
-    // Calculate running balance
-    let runningBalance = 50000; // Starting balance - should come from settings
-    const cashFlow = cashFlowResult.data.map(row => {
-        const inflow = parseFloat(row.inflow);
-        const outflow = parseFloat(row.outflow);
-        const netFlow = inflow - outflow;
-        runningBalance += netFlow;
+    const platforms = result.data.map(row => {
+        const grossRevenue = parseFloat(row.gross_revenue);
+        const fees = parseFloat(row.total_fees);
+        const bookingCount = parseInt(row.booking_count);
 
         return {
-            date: new Date(row.week_start).toLocaleDateString(),
-            inflow,
-            outflow,
-            netFlow,
-            balance: runningBalance
+            platform: row.platform,
+            grossRevenue,
+            fees,
+            netRevenue: grossRevenue - fees,
+            feeRate: grossRevenue > 0 ? (fees / grossRevenue) * 100 : 0,
+            bookingCount
         };
     });
 
-    // Calculate forecast based on historical patterns
-    const avgWeeklyInflow = cashFlow.reduce((sum, cf) => sum + cf.inflow, 0) / cashFlow.length;
-    const avgWeeklyOutflow = cashFlow.reduce((sum, cf) => sum + cf.outflow, 0) / cashFlow.length;
-    const avgWeeklyNet = avgWeeklyInflow - avgWeeklyOutflow;
+    return { success: true, data: platforms };
+}
 
-    // Get seasonal adjustment based on historical data
-    const seasonalAdjustment = await getSeasonalAdjustment(tenantId);
+async function getMonthlyTrend(
+    tenantId: string,
+    fromDate: string,
+    toDate: string
+): Promise<DbResult<MonthlyTrend[]>> {
+    const result = await query<{
+        month: string;
+        revenue: string;
+        bookings: string;
+    }>(
+        `SELECT
+            TO_CHAR(DATE_TRUNC('month', arrival), 'Mon YY') as month,
+            SUM(total_amount)::text as revenue,
+            COUNT(*)::text as bookings
+        FROM bookings
+        WHERE tenant_id = $1
+            AND arrival >= $2::date
+            AND arrival <= $3::date
+            AND status != 'canceled'
+        GROUP BY DATE_TRUNC('month', arrival)
+        ORDER BY DATE_TRUNC('month', arrival)`,
+        [tenantId, fromDate, toDate]
+    );
 
-    const forecast = {
-        next30Days: avgWeeklyNet * 4.3 * (1 + seasonalAdjustment),
-        next90Days: avgWeeklyNet * 13 * (1 + seasonalAdjustment),
-        seasonalAdjustment
-    };
+    if (!result.success) {
+        return result;
+    }
+
+    const monthlyData = result.data.map(row => {
+        const revenue = parseFloat(row.revenue);
+        const bookings = parseInt(row.bookings);
+
+        return {
+            month: row.month,
+            revenue,
+            bookings,
+            avgBookingValue: safeDivide(revenue, bookings, 0)
+        };
+    });
+
+    return { success: true, data: monthlyData };
+}
+
+async function getWeeklyRevenue(
+    tenantId: string,
+    fromDate: string,
+    toDate: string
+): Promise<DbResult<WeeklyRevenue[]>> {
+    const result = await query<{
+        week_start: string;
+        revenue: string;
+        bookings: string;
+    }>(
+        `SELECT
+            TO_CHAR(DATE_TRUNC('week', arrival), 'MM/DD') as week_start,
+            SUM(total_amount)::text as revenue,
+            COUNT(*)::text as bookings
+        FROM bookings
+        WHERE tenant_id = $1
+            AND arrival >= $2::date
+            AND arrival <= $3::date
+            AND status != 'canceled'
+        GROUP BY DATE_TRUNC('week', arrival)
+        ORDER BY DATE_TRUNC('week', arrival)
+        LIMIT 12`,  // Show last 12 weeks max
+        [tenantId, fromDate, toDate]
+    );
+
+    if (!result.success) {
+        return { success: false, error: 'Failed to get weekly revenue data' };
+    }
+
+    const weeklyData = result.data.map(row => ({
+        week: row.week_start,
+        revenue: parseFloat(row.revenue),
+        bookings: parseInt(row.bookings)
+    }));
+
+    return { success: true, data: weeklyData };
+}
+
+async function getUpcomingRevenue(
+    tenantId: string
+): Promise<DbResult<{
+    next30Days: number
+    next60Days: number
+    next90Days: number
+}>> {
+    const result = await query<{
+        next_30_days: string;
+        next_60_days: string;
+        next_90_days: string;
+    }>(
+        `SELECT
+            COALESCE(SUM(CASE
+                WHEN arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
+                THEN total_amount ELSE 0
+            END), 0)::text as next_30_days,
+            COALESCE(SUM(CASE
+                WHEN arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days'
+                THEN total_amount ELSE 0
+            END), 0)::text as next_60_days,
+            COALESCE(SUM(CASE
+                WHEN arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'
+                THEN total_amount ELSE 0
+            END), 0)::text as next_90_days
+        FROM bookings
+        WHERE tenant_id = $1
+            AND arrival >= CURRENT_DATE
+            AND status != 'canceled'`,
+        [tenantId]
+    );
+
+    if (!result.success) {
+        return { success: false, error: 'Failed to get upcoming revenue data' };
+    }
 
     return {
         success: true,
-        data: { cashFlow, forecast }
+        data: {
+            next30Days: parseFloat(result.data[0].next_30_days),
+            next60Days: parseFloat(result.data[0].next_60_days),
+            next90Days: parseFloat(result.data[0].next_90_days)
+        }
     };
 }
 
-async function getSeasonalAdjustment(tenantId: string): Promise<number> {
-    const currentMonth = new Date().getMonth() + 1;
+async function getPreviousPeriodMetrics(
+    tenantId: string,
+    fromDate: string,
+    toDate: string
+): Promise<{
+    revenue: {
+        gross: number
+        net: number
+    }
+    performance: {
+        netRevenueRate: number
+    }
+}> {
+    const currentFrom = new Date(fromDate);
+    const currentTo = new Date(toDate);
+    const periodLength = currentTo.getTime() - currentFrom.getTime();
 
-    const result = await query<{ adjustment: string }>(
-        `WITH monthly_averages AS (
-            SELECT
-                EXTRACT(MONTH FROM arrival) as month,
-                AVG(total_amount) as avg_revenue
-            FROM bookings
-            WHERE tenant_id = $1
-                AND status != 'canceled'
-                AND arrival >= CURRENT_DATE - INTERVAL '2 years'
-            GROUP BY EXTRACT(MONTH FROM arrival)
+    const previousTo = new Date(currentFrom.getTime() - 1);
+    const previousFrom = new Date(previousTo.getTime() - periodLength);
+
+    const previousFromStr = previousFrom.toISOString().split('T')[0];
+    const previousToStr = previousTo.toISOString().split('T')[0];
+
+    const result = await query<{
+        gross_revenue: string;
+        total_fees: string;
+    }>(
+        `WITH platform_fee_lookup AS (
+            SELECT DISTINCT ON (platform_name)
+                platform_name,
+                fee_type,
+                fee_value
+            FROM platform_fees
+            WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
+                AND is_active = true
+                AND effective_from <= $3::date
+                AND (effective_to IS NULL OR effective_to >= $2::date)
+            ORDER BY platform_name, tenant_id DESC, effective_from DESC
         ),
-        overall_average AS (
-            SELECT AVG(avg_revenue) as yearly_avg
-            FROM monthly_averages
+        platform_fees_calc AS (
+            SELECT
+                b.total_amount,
+                LOWER(
+                    CASE
+                        WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
+                        WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
+                        WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
+                        WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
+                        WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'booking.com'
+                        ELSE LOWER(b.platform)
+                    END
+                ) as platform_key,
+                COALESCE(
+                    CASE
+                        WHEN pf.fee_type = 'percentage' THEN b.total_amount * pf.fee_value
+                        WHEN pf.fee_type = 'flat' THEN pf.fee_value
+                        ELSE NULL
+                    END,
+                    CASE
+                        WHEN LOWER(b.platform) LIKE '%airbnb%' THEN b.total_amount * 0.03
+                        WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN b.total_amount * 0.05
+                        WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN b.total_amount * 0.15
+                        ELSE 0
+                    END
+                ) as fee
+            FROM bookings b
+            LEFT JOIN platform_fee_lookup pf ON
+                LOWER(
+                    CASE
+                        WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
+                        WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
+                        WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
+                        WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
+                        WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'booking.com'
+                        ELSE LOWER(b.platform)
+                    END
+                ) = pf.platform_name
+            WHERE b.tenant_id = $1
+                AND b.arrival >= $2::date
+                AND b.arrival <= $3::date
+                AND b.status != 'canceled'
         )
         SELECT
-            (ma.avg_revenue - oa.yearly_avg) / NULLIF(oa.yearly_avg, 0) as adjustment
-        FROM monthly_averages ma
-        CROSS JOIN overall_average oa
-        WHERE ma.month = $2`,
-        [tenantId, currentMonth]
+            COALESCE(SUM(total_amount), 0)::text as gross_revenue,
+            COALESCE(SUM(fee), 0)::text as total_fees
+        FROM platform_fees_calc`,
+        [tenantId, previousFromStr, previousToStr]
     );
 
     if (result.success && result.data.length > 0) {
-        return parseFloat(result.data[0].adjustment);
+        const gross = parseFloat(result.data[0].gross_revenue);
+        const fees = parseFloat(result.data[0].total_fees);
+        const net = gross - fees;
+
+        return {
+            revenue: { gross, net },
+            performance: {
+                netRevenueRate: gross > 0 ? (net / gross) * 100 : 0
+            }
+        };
     }
 
-    return 0;
+    return {
+        revenue: { gross: 0, net: 0 },
+        performance: { netRevenueRate: 0 }
+    };
 }
 
-export async function getFinancialsEnhanced(
+export async function getFinancials(
     request: HttpRequest,
     context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -369,26 +414,28 @@ export async function getFinancialsEnhanced(
     }
 
     try {
-        const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-        const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
-        const year = new Date(fromDate).getFullYear();
-        const month = new Date(fromDate).getMonth() + 1;
+        const fromDate = request.query.get('from') ||
+            new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
+        const toDate = request.query.get('to') ||
+            new Date().toISOString().split('T')[0];
 
-        // Parallel data fetching for performance
         const [
             revenueResult,
-            expenseResult,
-            budgetResult,
-            cashFlowResult,
-            propertyResult
+            platformResult,
+            monthlyTrendResult,
+            weeklyRevenueResult,
+            upcomingRevenueResult,
+            propertyResult,
+            bookingStatsResult,
+            previousPeriodMetrics
         ] = await Promise.all([
-            // Get revenue data with platform fees from table
             query<{
                 gross_revenue: string;
                 total_fees: string;
                 total_taxes: string;
-                pending_payments: string;
+                pending_revenue: string;
                 collected_revenue: string;
+                booking_count: string;
             }>(`
                 WITH platform_fee_lookup AS (
                     SELECT DISTINCT ON (platform_name)
@@ -402,53 +449,97 @@ export async function getFinancialsEnhanced(
                         AND (effective_to IS NULL OR effective_to >= $2::date)
                     ORDER BY platform_name, tenant_id DESC, effective_from DESC
                 ),
-                booking_summary AS (
+                booking_data AS (
                     SELECT
                         b.id,
                         b.total_amount,
                         b.arrival,
                         b.platform,
-                        CASE
-                            WHEN b.platform ILIKE '%airbnb%' THEN 'airbnb'
-                            WHEN b.platform ILIKE '%vrbo%' THEN 'vrbo'
-                            WHEN b.platform ILIKE '%booking%' THEN 'booking.com'
-                            ELSE 'direct'
-                        END as platform_key
+                        LOWER(
+                            CASE
+                                WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
+                                WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
+                                WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
+                                WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
+                                WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'booking.com'
+                                ELSE LOWER(b.platform)
+                            END
+                        ) as platform_key
                     FROM bookings b
                     WHERE b.tenant_id = $1
-                        AND b.arrival >= $2
-                        AND b.arrival <= $3
+                        AND b.arrival >= $2::date
+                        AND b.arrival <= $3::date
                         AND b.status != 'canceled'
                 ),
-                tax_summary AS (
+                fee_calc AS (
                     SELECT
-                        booking_id,
-                        SUM(amount) as tax_total
-                    FROM booking_charges
-                    WHERE type = 'tax'
-                    GROUP BY booking_id
+                        bd.id,
+                        bd.total_amount,
+                        bd.arrival,
+                        COALESCE(
+                            CASE
+                                WHEN pf.fee_type = 'percentage' THEN bd.total_amount * pf.fee_value
+                                WHEN pf.fee_type = 'flat' THEN pf.fee_value
+                                ELSE
+                                    CASE
+                                        WHEN bd.platform_key = 'airbnb' THEN bd.total_amount * 0.03
+                                        WHEN bd.platform_key = 'vrbo' THEN bd.total_amount * 0.05
+                                        WHEN bd.platform_key = 'booking.com' THEN bd.total_amount * 0.15
+                                        ELSE 0
+                                    END
+                            END, 0
+                        ) as platform_fee
+                    FROM booking_data bd
+                    LEFT JOIN platform_fee_lookup pf ON bd.platform_key = pf.platform_name
+                ),
+                tax_data AS (
+                    SELECT
+                        bd.id,
+                        COALESCE(SUM(bc.amount), 0) as tax_amount
+                    FROM booking_data bd
+                    LEFT JOIN booking_charges bc ON bd.id = bc.booking_id AND bc.type = 'tax'
+                    GROUP BY bd.id
                 )
                 SELECT
-                    COALESCE(SUM(bs.total_amount), 0) as gross_revenue,
-                    COALESCE(SUM(
-                        CASE
-                            WHEN pf.fee_type = 'percentage' THEN bs.total_amount * pf.fee_value
-                            WHEN pf.fee_type = 'flat' THEN pf.fee_value
-                            ELSE 0
-                        END
-                    ), 0) as total_fees,
-                    COALESCE(SUM(ts.tax_total), 0) as total_taxes,
-                    COALESCE(SUM(CASE WHEN bs.arrival > CURRENT_DATE - INTERVAL '30 days' THEN bs.total_amount ELSE 0 END), 0) as pending_payments,
-                    COALESCE(SUM(CASE WHEN bs.arrival <= CURRENT_DATE - INTERVAL '7 days' THEN bs.total_amount ELSE 0 END), 0) as collected_revenue
-                FROM booking_summary bs
-                LEFT JOIN tax_summary ts ON bs.id = ts.booking_id
-                LEFT JOIN platform_fee_lookup pf ON bs.platform_key = pf.platform_name`,
+                    COALESCE(SUM(fc.total_amount), 0)::text as gross_revenue,
+                    COALESCE(SUM(fc.platform_fee), 0)::text as total_fees,
+                    COALESCE(SUM(td.tax_amount), 0)::text as total_taxes,
+                    COALESCE(SUM(CASE
+                        WHEN fc.arrival > CURRENT_DATE THEN fc.total_amount
+                        ELSE 0
+                    END), 0)::text as pending_revenue,
+                    COALESCE(SUM(CASE
+                        WHEN fc.arrival <= CURRENT_DATE THEN fc.total_amount
+                        ELSE 0
+                    END), 0)::text as collected_revenue,
+                    COUNT(*)::text as booking_count
+                FROM fee_calc fc
+                LEFT JOIN tax_data td ON fc.id = td.id`,
                 [auth.tenantId, fromDate, toDate]
             ),
-            getExpenseData(auth.tenantId, fromDate, toDate),
-            getBudgetData(auth.tenantId, year, month),
-            getEnhancedCashFlow(auth.tenantId, fromDate, toDate),
-            query<{ count: string }>('SELECT COUNT(*) as count FROM properties WHERE tenant_id = $1 AND active = true', [auth.tenantId])
+            getPlatformFinancials(auth.tenantId, fromDate, toDate),
+            getMonthlyTrend(auth.tenantId, fromDate, toDate),
+            getWeeklyRevenue(auth.tenantId, fromDate, toDate),
+            getUpcomingRevenue(auth.tenantId),
+            query<{ count: string }>(
+                'SELECT COUNT(*)::text as count FROM properties WHERE tenant_id = $1 AND active = true',
+                [auth.tenantId]
+            ),
+            query<{ nights_booked: string }>(
+                `SELECT COUNT(DISTINCT (booking_date))::text as nights_booked
+                FROM bookings b
+                CROSS JOIN LATERAL generate_series(
+                    b.arrival::date,
+                    b.departure::date - interval '1 day',
+                    interval '1 day'
+                ) AS booking_date
+                WHERE b.tenant_id = $1
+                    AND b.arrival >= $2::date
+                    AND b.departure <= $3::date
+                    AND b.status != 'canceled'`,
+                [auth.tenantId, fromDate, toDate]
+            ),
+            getPreviousPeriodMetrics(auth.tenantId, fromDate, toDate)
         ]);
 
         if (!revenueResult.success) {
@@ -457,67 +548,45 @@ export async function getFinancialsEnhanced(
 
         const revenue = revenueResult.data[0];
         const grossRevenue = parseFloat(revenue.gross_revenue);
-        const fees = parseFloat(revenue.total_fees);
+        const platformFees = parseFloat(revenue.total_fees);
         const taxes = parseFloat(revenue.total_taxes);
-        const netRevenue = grossRevenue - fees - taxes;
-
-        // Get real expense data
-        const expenses = expenseResult.success ? expenseResult.data : [];
-        const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
-
-        // Calculate profitability metrics
-        const netIncome = netRevenue - totalExpenses;
-        const profitMargin = calculatePercentage(netIncome, grossRevenue);
-
-        // Property count for KPIs
-        const propertyCount = propertyResult.success ? parseInt(propertyResult.data[0].count) : 1;
-        const daysInPeriod = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        const availableRoomNights = propertyCount * daysInPeriod;
+        const netRevenue = grossRevenue - platformFees - taxes;
+        const pendingRevenue = parseFloat(revenue.pending_revenue);
+        const collectedRevenue = parseFloat(revenue.collected_revenue);
+        const bookingCount = parseInt(revenue.booking_count);
 
         // Calculate KPIs
-        const revpar = safeDivide(grossRevenue, availableRoomNights, 0);
-        const goppar = safeDivide(netIncome, availableRoomNights, 0);
-        const expenseRatio = calculatePercentage(totalExpenses, grossRevenue)
-        const breakEvenOccupancy = grossRevenue > 0 ? (totalExpenses / (grossRevenue / availableRoomNights)) / daysInPeriod : 0;
+        const propertyCount = propertyResult.success ? parseInt(propertyResult.data[0].count) : 1;
+        const daysInPeriod = Math.ceil(
+            (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)
+        ) + 1;
+        const availableRoomNights = propertyCount * daysInPeriod;
+        const nightsBooked = bookingStatsResult.success ?
+            parseInt(bookingStatsResult.data[0].nights_booked) : 0;
 
-        // Build response
-        const metrics: EnhancedFinancialMetrics = {
+        const metrics: FinancialMetrics = {
             revenue: {
                 gross: grossRevenue,
                 net: netRevenue,
-                pending: parseFloat(revenue.pending_payments),
-                collected: parseFloat(revenue.collected_revenue)
+                pending: pendingRevenue,
+                collected: collectedRevenue,
+                platformFees,
+                taxes
             },
-            expenses: {
-                total: totalExpenses,
-                categories: expenses,
-                byProperty: [] // Would need additional query for property-level expenses
+            performance: {
+                netRevenueRate: calculatePercentage(netRevenue, grossRevenue),
+                avgBookingValue: safeDivide(grossRevenue, bookingCount, 0),
+                totalBookings: bookingCount
             },
-            profitability: {
-                netIncome,
-                profitMargin,
-                ebitda: netIncome + (grossRevenue * 0.02), // Simple depreciation estimate
-                roi: propertyCount > 0 ? (netIncome / (propertyCount * 200000)) * 100 : 0,
-                cashOnCashReturn: 0 // Would need investment data
-            },
-            cashFlow: {
-                inflow: cashFlowResult.success ?
-                    cashFlowResult.data.cashFlow.reduce((sum, cf) => sum + cf.inflow, 0) : 0,
-                outflow: cashFlowResult.success ?
-                    cashFlowResult.data.cashFlow.reduce((sum, cf) => sum + cf.outflow, 0) : 0,
-                net: cashFlowResult.success ?
-                    cashFlowResult.data.cashFlow.reduce((sum, cf) => sum + cf.netFlow, 0) : 0,
-                forecast30Days: cashFlowResult.success ?
-                    cashFlowResult.data.forecast.next30Days : 0,
-                operatingCashFlow: netIncome,
-                freeChashFlow: netIncome - (grossRevenue * 0.05) // Capital expenditure estimate
+            upcoming: upcomingRevenueResult.success ? upcomingRevenueResult.data : {
+                next30Days: 0,
+                next60Days: 0,
+                next90Days: 0
             },
             kpis: {
-                revpar,
-                goppar,
-                averageCollectionPeriod: 5.2, // Would need AR data
-                expenseRatio,
-                breakEvenOccupancy
+                revpar: safeDivide(grossRevenue, availableRoomNights, 0),
+                adr: safeDivide(grossRevenue, nightsBooked, 0),
+                collectionRate: calculatePercentage(collectedRevenue, grossRevenue)
             }
         };
 
@@ -526,10 +595,10 @@ export async function getFinancialsEnhanced(
             headers: corsHeaders(),
             jsonBody: {
                 metrics,
-                cashFlow: cashFlowResult.success ? cashFlowResult.data.cashFlow : [],
-                budget: budgetResult.success ? budgetResult.data : [],
-                platforms: [], // Existing platform data logic
-                monthlyProfitability: [] // Existing monthly data logic
+                weeklyRevenue: weeklyRevenueResult.success ? weeklyRevenueResult.data : [],
+                platforms: platformResult.success ? platformResult.data : [],
+                monthlyTrend: monthlyTrendResult.success ? monthlyTrendResult.data : [],
+                previousPeriod: previousPeriodMetrics
             }
         };
     } catch (error) {
@@ -547,5 +616,5 @@ export async function getFinancialsEnhanced(
 app.http('financials', {
     methods: ['GET', 'OPTIONS'],
     authLevel: 'anonymous',
-    handler: getFinancialsEnhanced
+    handler: getFinancials
 });

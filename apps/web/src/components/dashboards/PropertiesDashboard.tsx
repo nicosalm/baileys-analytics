@@ -180,7 +180,7 @@ export const PropertiesDashboard = () => {
                   }}
                 />
                 <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
-                <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Occupancy %" />
+                <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Occupancy" />
               </BarChart>
             </ResponsiveContainer>
           </div>
