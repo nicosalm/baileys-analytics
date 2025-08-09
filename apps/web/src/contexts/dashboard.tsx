@@ -33,7 +33,7 @@ const initialFilters: FilterState = {
 }
 
 export const DashboardProvider = ({ children }: { children: ReactNode }) => {
-  const [activeTab, setActiveTab] = useState<DashboardTab>('tax')
+  const [activeTab, setActiveTab] = useState<DashboardTab>('overview')
   const [filters, setFilters] = useState<FilterState>(initialFilters)
 
   const updateDateRange = useCallback((range: DateRange) => {

@@ -27,3 +27,4 @@ export * from './financial';
 export * from './validation';
 export * from './daily-occupancy';
 export * from './vip-settings';
+export * from './overview';

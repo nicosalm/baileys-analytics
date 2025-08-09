@@ -2,23 +2,25 @@ import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
 import { DrillDownProvider, useDrillDown } from '@/contexts/drillDown'
 import { useNavigate, Link } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, BarChart3, Settings } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, TrendingUp } from 'lucide-react'
+import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
 import { SeasonalDashboard } from '@/components/dashboards/SeasonalDashboard'
 import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
-import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard' // The new unified dashboard
+import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
 import { FilterBar } from '@/components/FilterBar'
 import { DrillDownView } from '@/components/DrillDownView'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
 
-// Updated tab config - removed separate tax and revenue tabs
+// Tab config with overview as first tab
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'financial', label: 'Financials', icon: DollarSign },
   { id: 'properties', label: 'Properties', icon: Home },
   { id: 'occupancy', label: 'Occupancy', icon: Calendar },
-  { id: 'seasonal', label: 'Seasonal', icon: BarChart3 },
+  { id: 'seasonal', label: 'Seasonal', icon: TrendingUp },
   { id: 'guests', label: 'Guests', icon: Users }
 ]
 
@@ -26,6 +28,8 @@ const DashboardContent = () => {
   const { activeTab } = useDashboard()
 
   switch (activeTab) {
+    case 'overview':
+      return <OverviewDashboard />
     case 'financial':
       return (
         <DrillDownView>
@@ -56,16 +60,9 @@ const DashboardContent = () => {
           <GuestsDashboard />
         </DrillDownView>
       )
-    // Handle legacy tab IDs by redirecting to financial
-    case 'tax':
-    case 'revenue':
-      return (
-        <DrillDownView>
-          <FinancialDashboard />
-        </DrillDownView>
-      )
+    // No longer needed - tax and revenue merged into financial
     default:
-      return <div className="p-8 text-center text-gray-500">Select a dashboard tab to begin</div>
+      return <OverviewDashboard />
   }
 }
 
@@ -79,15 +76,7 @@ const DashboardTabs = () => {
     setActiveTab(tabId)
   }
 
-  // Map legacy tab IDs to the new financial tab
-  const getActiveTab = () => {
-    if (activeTab === 'tax' || activeTab === 'revenue') {
-      return 'financial'
-    }
-    return activeTab
-  }
-
-  const displayActiveTab = getActiveTab()
+  const displayActiveTab = activeTab
 
   return (
     <div className="border-b bg-white">

@@ -18,6 +18,7 @@ export type FilterState = {
 }
 
 export type DashboardTab =
+  | 'overview'
   | 'financial'
   | 'properties'
   | 'occupancy'
