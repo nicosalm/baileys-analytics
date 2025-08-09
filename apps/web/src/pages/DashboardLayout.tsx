@@ -2,13 +2,14 @@ import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
 import { DrillDownProvider, useDrillDown } from '@/contexts/drillDown'
 import { useNavigate, Link } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, TrendingUp } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, TrendingUp, FileText } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
 import { SeasonalDashboard } from '@/components/dashboards/SeasonalDashboard'
 import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
 import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
+import ReportsModule from '@/components/ReportsModule'
 import { FilterBar } from '@/components/FilterBar'
 import { DrillDownView } from '@/components/DrillDownView'
 import { DashboardTab } from '@/types/dashboard'
@@ -21,7 +22,8 @@ const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentT
   { id: 'properties', label: 'Properties', icon: Home },
   { id: 'occupancy', label: 'Occupancy', icon: Calendar },
   { id: 'seasonal', label: 'Seasonal', icon: TrendingUp },
-  { id: 'guests', label: 'Guests', icon: Users }
+  { id: 'guests', label: 'Guests', icon: Users },
+  { id: 'reports', label: 'Reports', icon: FileText }
 ]
 
 const DashboardContent = () => {
@@ -60,6 +62,8 @@ const DashboardContent = () => {
           <GuestsDashboard />
         </DrillDownView>
       )
+    case 'reports':
+      return <ReportsModule />
     // No longer needed - tax and revenue merged into financial
     default:
       return <OverviewDashboard />

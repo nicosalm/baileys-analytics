@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, ReactNode } from 'react'
+import { useState, useEffect, ReactNode } from 'react'
 import { api } from '@/lib/api'
 import {
   isValidDateRange, formatCurrency, formatCompactCurrency,
@@ -6,7 +6,7 @@ import {
   calculateGrowthRate, calculateAverage, ensureNumber
 } from '@baileys/utils'
 import {
-  DollarSign, TrendingUp, Wallet, Download,
+  DollarSign, TrendingUp, Wallet,
   AlertCircle, Calendar, CreditCard, Home, FileText
 } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
@@ -755,20 +755,6 @@ const FinancialDashboard = () => {
     loadAllData()
   }, [filters.dateRange, filters.selectedTags])
 
-  const handleExport = useCallback(() => {
-    const params = new URLSearchParams({
-      from: filters.dateRange.from,
-      to: filters.dateRange.to,
-      type: activeTab
-    })
-
-    if (filters.selectedTags.length > 0) {
-      params.append('tags', filters.selectedTags.map(t => t.id).join(','))
-    }
-
-    window.location.href = `/api/financial-export?${params}`
-    addToast('success', 'Export started')
-  }, [activeTab, filters, addToast])
 
   return (
     <div className="space-y-6">
@@ -778,13 +764,6 @@ const FinancialDashboard = () => {
           <div className="text-sm text-gray-500">
             {filters.dateRange.from} to {filters.dateRange.to}
           </div>
-          <button
-            onClick={handleExport}
-            className="flex items-center px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </button>
         </div>
       </div>
 

@@ -337,3 +337,80 @@ CREATE TRIGGER update_oauth_tokens_updated_at BEFORE UPDATE ON oauth_tokens
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_sync_progress_updated_at BEFORE UPDATE ON sync_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Report generation and management tables
+CREATE TABLE generated_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    template_id UUID,
+    name VARCHAR(255) NOT NULL,
+    format VARCHAR(10) NOT NULL CHECK (format IN ('pdf', 'excel', 'csv', 'json')),
+    size INTEGER NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_accessed TIMESTAMP WITH TIME ZONE,
+    data BYTEA NOT NULL
+);
+
+CREATE TABLE scheduled_reports (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    template_id UUID NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    config JSONB NOT NULL,
+    schedule JSONB NOT NULL,
+    enabled BOOLEAN DEFAULT true,
+    last_run TIMESTAMP WITH TIME ZONE,
+    next_run TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE report_templates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    type VARCHAR(50) NOT NULL,
+    config JSONB NOT NULL,
+    is_default BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_used TIMESTAMP WITH TIME ZONE,
+    use_count INTEGER DEFAULT 0
+);
+
+CREATE TABLE report_execution_log (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    report_id UUID NOT NULL REFERENCES scheduled_reports(id) ON DELETE CASCADE,
+    executed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('success', 'failed', 'pending')),
+    recipients JSONB,
+    summary TEXT,
+    error TEXT,
+    duration_ms INTEGER
+);
+
+-- Indexes for report tables
+CREATE INDEX idx_generated_reports_tenant_id ON generated_reports(tenant_id);
+CREATE INDEX idx_generated_reports_expires_at ON generated_reports(expires_at);
+CREATE INDEX idx_generated_reports_template_id ON generated_reports(template_id) WHERE template_id IS NOT NULL;
+
+CREATE INDEX idx_scheduled_reports_tenant_id ON scheduled_reports(tenant_id);
+CREATE INDEX idx_scheduled_reports_next_run ON scheduled_reports(next_run) WHERE enabled = true;
+CREATE INDEX idx_scheduled_reports_enabled ON scheduled_reports(enabled);
+CREATE INDEX idx_scheduled_reports_template_id ON scheduled_reports(template_id);
+
+CREATE INDEX idx_report_templates_tenant_id ON report_templates(tenant_id);
+CREATE INDEX idx_report_templates_type ON report_templates(type);
+CREATE INDEX idx_report_templates_is_default ON report_templates(is_default) WHERE is_default = true;
+
+CREATE INDEX idx_report_execution_log_report_id ON report_execution_log(report_id);
+CREATE INDEX idx_report_execution_log_executed_at ON report_execution_log(executed_at);
+CREATE INDEX idx_report_execution_log_status ON report_execution_log(status);
+
+-- Triggers for report tables
+CREATE TRIGGER update_scheduled_reports_updated_at BEFORE UPDATE ON scheduled_reports
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_report_templates_updated_at BEFORE UPDATE ON report_templates
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

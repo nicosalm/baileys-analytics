@@ -203,33 +203,6 @@ export const GuestsDashboard = () => {
         }
     }, [sortBy])
 
-    const handleExport = useCallback(() => {
-        const exportData = selectedGuests.size > 0
-            ? sortedGuests.filter(g => selectedGuests.has(g.id))
-            : sortedGuests
-
-        const headers = ['Name', 'Email', 'Bookings', 'Total Spent', 'Avg/Night', 'First Visit', 'Last Visit']
-        const rows = exportData.map(g => [
-            g.name,
-            g.email || '',
-            g.bookingCount,
-            g.totalSpent,
-            g.avgNightlyRate,
-            new Date(g.firstVisit).toLocaleDateString(),
-            new Date(g.lastVisit).toLocaleDateString()
-        ])
-
-        const csv = [headers, ...rows].map(row => row.join(',')).join('\n')
-        const blob = new Blob([csv], { type: 'text/csv' })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `guests-export-${new Date().toISOString().split('T')[0]}.csv`
-        a.click()
-        URL.revokeObjectURL(url)
-
-        addToast('success', `Exported ${exportData.length} guests`)
-    }, [selectedGuests, sortedGuests, addToast])
 
     const columns = useMemo(() => [
         {
@@ -561,8 +534,6 @@ export const GuestsDashboard = () => {
                     pageSize={50}
                     enableSearch={true}
                     searchKeys={['name', 'email']}
-                    enableExport={true}
-                    onExport={handleExport}
                     enableRefresh={true}
                     onRefresh={loadGuestsData}
                     showRowNumbers={true}

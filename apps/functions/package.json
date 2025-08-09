@@ -18,11 +18,17 @@
     "@types/pg": "^8.15.5",
     "axios": "^1.6.0",
     "jose": "^5.2.0",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.5",
     "pg": "^8.16.3",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "20.x",
+    "@types/nodemailer": "^6.4.17",
     "azure-functions-core-tools": "^4.x",
     "typescript": "^5.0.0"
   }

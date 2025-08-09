@@ -28,3 +28,6 @@ export * from './validation';
 export * from './daily-occupancy';
 export * from './vip-settings';
 export * from './overview';
+export * from './reports-generate';
+export * from './reports-download';
+export * from './reports-scheduler';
