@@ -15,7 +15,7 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
 
   return (
     <div
-      className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer"
+      className="bg-white p-6 rounded-lg shadow cursor-pointer"
       onClick={() => dispatch({
         type: 'DRILL_TO_PROPERTY',
         propertyId: property.propertyId,

@@ -188,14 +188,6 @@ export const SeasonalDashboard = () => {
         </div>
       </div>
 
-      {/* Applied Filters Display */}
-      {filters.selectedTags.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="text-sm text-blue-700">
-            Filtered by tags: {filters.selectedTags.map(t => t.name).join(', ')}
-          </div>
-        </div>
-      )}
 
       {/* Key Metrics Cards */}
       <div className="grid md:grid-cols-3 gap-4">

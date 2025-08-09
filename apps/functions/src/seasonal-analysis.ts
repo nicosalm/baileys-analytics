@@ -105,6 +105,17 @@ export async function getSeasonalAnalysis(
     try {
         const year = parseInt(request.query.get('year') || new Date().getFullYear().toString());
         const previousYear = year - 1;
+        const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
+
+        // Build tag filter for queries
+        const tagFilter = tagIds.length > 0
+            ? `AND EXISTS (
+                SELECT 1 FROM booking_tags bt
+                WHERE bt.booking_id = b.id
+                AND bt.tag_id = ANY($2::uuid[])
+              )`
+            : '';
+        const queryParams = tagIds.length > 0 ? [auth.tenantId, tagIds] : [auth.tenantId];
 
         // Check if we have any data at all
         const dataCheck = await query<{
@@ -117,8 +128,9 @@ export async function getSeasonalAnalysis(
             FROM properties p
             LEFT JOIN bookings b ON p.id = b.property_id
                 AND b.status != 'canceled'
+                ${tagFilter}
             WHERE p.tenant_id = $1`,
-            [auth.tenantId]
+            queryParams
         );
 
         if (!dataCheck.success || parseInt(dataCheck.data[0]?.total_bookings || '0') === 0) {

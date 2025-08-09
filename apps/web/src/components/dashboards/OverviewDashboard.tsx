@@ -93,7 +93,7 @@ const MetricCard = ({
 
   return (
     <div 
-      className={`bg-white p-6 rounded-lg shadow hover:shadow-lg transition-all ${onClick ? 'cursor-pointer' : ''}`}
+      className={`bg-white p-6 rounded-lg shadow ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between mb-4">
@@ -107,7 +107,7 @@ const MetricCard = ({
           </div>
         )}
       </div>
-      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-3xl font-bold">{value}</div>
       <div className="text-sm text-gray-600 mt-1">{label}</div>
       {subValue && <div className="text-xs text-gray-500 mt-1">{subValue}</div>}
     </div>
@@ -331,7 +331,7 @@ export const OverviewDashboard = () => {
 
       {/* Secondary Metrics - Additional KPIs */}
       <div className="grid md:grid-cols-6 gap-3">
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <CreditCard className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Properties</span>
@@ -339,7 +339,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{metrics.properties.total}</div>
           <div className="text-xs text-gray-600">Active listings</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <Activity className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Avg Stay</span>
@@ -347,7 +347,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{Number(metrics.bookings.avgNights || 0).toFixed(1)}</div>
           <div className="text-xs text-gray-600">Nights</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <TrendingUp className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Avg Value</span>
@@ -355,7 +355,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{formatCompactCurrency(metrics.revenue.avgBookingValue)}</div>
           <div className="text-xs text-gray-600">Per booking</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <Users className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">VIP Guests</span>
@@ -363,7 +363,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{metrics.guests.vipCount}</div>
           <div className="text-xs text-gray-600">High value</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <BarChart3 className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Repeat Rate</span>
@@ -371,7 +371,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)}</div>
           <div className="text-xs text-gray-600">Guest loyalty</div>
         </div>
-        <div className="bg-white p-4 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <AlertCircle className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Cancel Rate</span>

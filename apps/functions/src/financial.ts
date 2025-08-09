@@ -354,7 +354,7 @@ async function getPlatformFinancials(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<PlatformFinancials[]>> {
-  const tagFilter = buildTagFilter(tagIds)
+  const tagFilter = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
   const result = await query<{
@@ -455,7 +455,7 @@ async function getMonthlyTrend(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<MonthlyTrend[]>> {
-  const tagFilter = buildTagFilter(tagIds)
+  const tagFilter = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
   const result = await query<{
@@ -501,7 +501,7 @@ async function getWeeklyRevenue(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<WeeklyRevenue[]>> {
-  const tagFilter = buildTagFilter(tagIds)
+  const tagFilter = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
   const result = await query<{
@@ -540,7 +540,13 @@ async function getUpcomingRevenue(
   tenantId: string,
   tagIds: string[]
 ): Promise<DbResult<{ next30Days: number; next60Days: number; next90Days: number }>> {
-  const tagFilter = buildTagFilter(tagIds)
+  const tagFilter = tagIds.length > 0 
+    ? `AND EXISTS (
+        SELECT 1 FROM booking_tags bt
+        WHERE bt.booking_id = bookings.id
+        AND bt.tag_id = ANY($2::uuid[])
+      )`
+    : ''
   const queryParams = tagIds.length > 0 ? [tenantId, tagIds] : [tenantId]
 
   const result = await query<{
@@ -649,6 +655,7 @@ async function getRevenueData(
   tagIds: string[]
 ): Promise<DbResult<RevenueData>> {
   const tagFilter = buildTagFilter(tagIds, 'b')
+  const tagFilterNoAlias = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
   const [summaryResult, bySourceResult, byMonthResult, lastYearResult] = await Promise.all([
@@ -736,7 +743,7 @@ async function getRevenueData(
         AND arrival >= $2
         AND arrival <= $3
         AND status != 'canceled'
-        ${tagFilter}
+        ${tagFilterNoAlias}
       GROUP BY
         CASE
           WHEN platform IS NULL OR platform = '' THEN 'Direct'
@@ -763,7 +770,7 @@ async function getRevenueData(
         AND arrival >= $2
         AND arrival <= $3
         AND status != 'canceled'
-        ${tagFilter}
+        ${tagFilterNoAlias}
       GROUP BY TO_CHAR(arrival, 'YYYY-MM')
       ORDER BY month`,
       queryParams
@@ -821,7 +828,7 @@ async function getLastYearRevenue(
   const lastYearTo = new Date(currentTo)
   lastYearTo.setFullYear(lastYearTo.getFullYear() - 1)
 
-  const tagFilter = buildTagFilter(tagIds)
+  const tagFilter = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(
     tenantId,
     lastYearFrom.toISOString().split('T')[0],
@@ -876,7 +883,7 @@ async function getTaxData(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<TaxData>> {
-  const tagFilter = buildTagFilter(tagIds)
+  const tagFilter = buildTagFilter(tagIds, 'b')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
   const [summaryResult, propertyResult, monthlyResult] = await Promise.all([

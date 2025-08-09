@@ -63,7 +63,7 @@ interface TaxCenterProps {
 const TabButton: React.FC<TabButtonProps> = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-6 py-3 font-medium text-sm transition-all ${
+    className={`px-6 py-3 font-medium text-sm ${
       active
         ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -120,7 +120,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition-shadow">
+    <div className="bg-white p-6 rounded-lg shadow">
       <div className="flex items-center justify-between mb-4">
         <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
           <Icon className="w-5 h-5" />
@@ -131,7 +131,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
           </div>
         )}
       </div>
-      <div className="text-2xl font-bold">{formatValue(value)}</div>
+      <div className="text-3xl font-bold">{formatValue(value)}</div>
       <div className="text-sm text-gray-600 mt-1">{label}</div>
       {subtitle && <div className="text-xs text-gray-500 mt-1">{subtitle}</div>}
     </div>
