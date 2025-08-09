@@ -159,13 +159,13 @@ class ApiClient {
         return this.request('/oauth/initiate')
     }
 
-    async getTaxReport(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
+    async getFinancial(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
         if (from) params.append('from', from)
         if (to) params.append('to', to)
         if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
 
-        return this.request(`/tax-report?${params}`)
+        return this.request(`/financial?${params}`)
     }
 
     async getTaxRules(): Promise<ApiResult<TaxRule[]>> {
@@ -286,15 +286,6 @@ class ApiClient {
         return this.request(`/property-metrics?${params}`)
     }
 
-    async getRevenue(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
-        const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
-
-        return this.request(`/revenue?${params}`)
-    }
-
     async getOccupancy(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
         if (from) params.append('from', from)
@@ -322,15 +313,6 @@ class ApiClient {
         if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
 
         return this.request(`/guests?${params}`)
-    }
-
-    async getFinancials(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
-        const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
-
-        return this.request(`/financials?${params}`)
     }
 
     async getVIPSettings(): Promise<ApiResult<{ vipSpendThreshold: number; vipBookingThreshold: number }>> {
