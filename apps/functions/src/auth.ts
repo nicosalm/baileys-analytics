@@ -1,5 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query, DbResult } from './services/database';
+import { loginRequestSchema, signupRequestSchema } from '@baileys/shared-types';
+import { z } from 'zod';
 import {
   hashPassword,
   verifyPassword,
@@ -11,19 +13,13 @@ import {
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { authLimiter, withRateLimit } from './middleware/rateLimiter';
 
-type SignupRequest = {
-  email: string
-  password: string
-}
+const refreshRequestSchema = z.object({
+  refreshToken: z.string()
+})
 
-type LoginRequest = {
-  email: string
-  password: string
-}
-
-type RefreshRequest = {
-  refreshToken: string
-}
+type SignupRequest = z.infer<typeof signupRequestSchema>
+type LoginRequest = z.infer<typeof loginRequestSchema>
+type RefreshRequest = z.infer<typeof refreshRequestSchema>
 
 type UserResponse = {
   userId: string
@@ -33,29 +29,7 @@ type UserResponse = {
   refreshToken: string
 }
 
-type ValidationResult =
-  | { valid: true }
-  | { valid: false; error: string; status: number }
 
-const validateSignupRequest = (body: SignupRequest): ValidationResult => {
-  if (!body.email || !body.password) {
-    return { valid: false, error: 'Email and password are required', status: 400 }
-  }
-
-  if (body.password.length < 8) {
-    return { valid: false, error: 'Password must be at least 8 characters', status: 400 }
-  }
-
-  return { valid: true }
-}
-
-const validateLoginRequest = (body: LoginRequest): ValidationResult => {
-  if (!body.email || !body.password) {
-    return { valid: false, error: 'Email and password are required', status: 400 }
-  }
-
-  return { valid: true }
-}
 
 const checkUserExists = async (email: string): Promise<DbResult<boolean>> => {
   const result = await query(
@@ -145,16 +119,24 @@ export async function signup(
   }
 
   try {
-    const body = await request.json() as SignupRequest
-    const validation = validateSignupRequest(body)
+    const bodyData = await request.json()
+    const parseResult = signupRequestSchema.safeParse(bodyData)
 
-    if (!validation.valid) {
+    if (!parseResult.success) {
       return {
-        status: validation.status,
+        status: 400,
         headers: corsHeaders(),
-        jsonBody: { error: validation.error }
+        jsonBody: { 
+          error: 'Validation error',
+          details: parseResult.error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message
+          }))
+        }
       }
     }
+    
+    const body = parseResult.data
 
     const existsResult = await checkUserExists(body.email)
     if (!existsResult.success) {
@@ -205,16 +187,24 @@ export async function login(
   }
 
   try {
-    const body = await request.json() as LoginRequest
-    const validation = validateLoginRequest(body)
+    const bodyData = await request.json()
+    const parseResult = loginRequestSchema.safeParse(bodyData)
 
-    if (!validation.valid) {
+    if (!parseResult.success) {
       return {
-        status: validation.status,
+        status: 400,
         headers: corsHeaders(),
-        jsonBody: { error: validation.error }
+        jsonBody: { 
+          error: 'Validation error',
+          details: parseResult.error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message
+          }))
+        }
       }
     }
+    
+    const body = parseResult.data
 
     const userResult = await findUserByEmail(body.email)
     if (!userResult.success) {
@@ -270,7 +260,20 @@ export async function refresh(
   }
 
   try {
-    const body = await request.json() as RefreshRequest
+    const bodyData = await request.json()
+    const parseResult = refreshRequestSchema.safeParse(bodyData)
+    
+    if (!parseResult.success) {
+      return {
+        status: 400,
+        headers: corsHeaders(),
+        jsonBody: { 
+          error: 'Invalid refresh token format'
+        }
+      }
+    }
+    
+    const body = parseResult.data
     const { refreshToken } = body
 
     if (!refreshToken) {

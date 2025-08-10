@@ -1,7 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { safeDivide } from '@baileys/utils';
 import { query } from './services/database';
-import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { corsHeaders, handleOptions } from './middleware/auth';
+import { requireAuthWithValidation } from './middleware/validation';
+import { guestsQuerySchema } from '@baileys/shared-types';
 
 type GuestMetrics = {
   totalGuests: number;
@@ -72,12 +74,15 @@ export async function getGuests(
     return handleOptions();
   }
 
-  const authCheck = await requireAuth(request);
-  if (!authCheck.authenticated) {
+  const authCheck = await requireAuthWithValidation(request, {
+    query: guestsQuerySchema
+  });
+  
+  if (!authCheck.authenticated || !authCheck.valid) {
     return authCheck.response;
   }
 
-  const { auth } = authCheck.request;
+  const { auth, validated } = authCheck.request;
 
   if (!auth.tenantId) {
     return {
@@ -110,12 +115,12 @@ export async function getGuests(
       ? parseInt(vipSettingsResult.data[0].vip_booking_threshold)
       : 5;
 
-    const url = new URL(request.url);
-    const startDate = url.searchParams.get('from');
-    const endDate = url.searchParams.get('to');
-    const tagIds = url.searchParams.get('tags')?.split(',').filter(Boolean) || [];
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const pageSize = parseInt(url.searchParams.get('pageSize') || '50');
+    // Use validated query parameters
+    const startDate = validated?.query?.from;
+    const endDate = validated?.query?.to;
+    const tagIds = validated?.query?.tags || [];
+    const page = validated?.query?.page || 1;
+    const pageSize = validated?.query?.pageSize || 50;
     const offset = (page - 1) * pageSize;
 
     let dateFilter = '';
@@ -130,7 +135,7 @@ export async function getGuests(
 
     let tagFilter = '';
     if (tagIds.length > 0) {
-      const tagPlaceholders = tagIds.map((_, i) => `$${paramIndex + i}`).join(',');
+      const tagPlaceholders = tagIds.map((_: string, i: number) => `$${paramIndex + i}`).join(',');
       tagFilter = `AND EXISTS (
         SELECT 1 FROM booking_tags bt
         WHERE bt.booking_id = b.id

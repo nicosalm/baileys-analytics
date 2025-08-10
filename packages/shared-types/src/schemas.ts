@@ -14,6 +14,24 @@ export const dateRangeSchema = z.object({
   to: dateStringSchema.optional(),
 })
 
+// Common query parameter schemas
+export const tagsQuerySchema = z.object({
+  tags: z.string().optional().transform(val => val?.split(',').filter(Boolean) || []),
+})
+
+export const dateRangeWithTagsSchema = dateRangeSchema.merge(tagsQuerySchema)
+
+export const financialQuerySchema = dateRangeWithTagsSchema
+
+export const guestsQuerySchema = dateRangeWithTagsSchema.extend({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().positive().max(100).default(50),
+})
+
+export const propertyQuerySchema = z.object({
+  propertyId: z.string(),
+}).merge(dateRangeWithTagsSchema)
+
 // ============= Auth Schemas =============
 export const authTokenSchema = z.object({
   accessToken: z.string(),
@@ -106,6 +124,34 @@ export const syncStatusSchema = z.object({
 // ============= Tax Schemas =============
 export const taxRuleTypeSchema = z.enum(['percentage', 'flatFee', 'perNight', 'perGuest'])
 
+export const taxRuleMethodSchema = z.object({
+  type: taxRuleTypeSchema,
+  value: z.number(),
+  taxableCategories: z.array(z.string()).optional(),
+})
+
+export const taxRuleAppliesToSchema = z.object({
+  properties: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  channels: z.array(z.string()).optional(),
+  dateRange: z.object({
+    from: dateStringSchema.optional(),
+    to: dateStringSchema.optional(),
+  }).optional(),
+})
+
+export const taxRuleFormDataSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  method: taxRuleMethodSchema,
+  appliesTo: taxRuleAppliesToSchema,
+  jurisdiction: z.string().optional(),
+  effectiveFrom: dateStringSchema,
+  effectiveTo: dateStringSchema.optional(),
+  priority: z.number().int().min(0),
+  isActive: z.boolean(),
+})
+
 export const taxRuleSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -139,6 +185,33 @@ export const taxCalculationRequestSchema = z.object({
 
 // ============= Report Schemas =============
 export const reportTypeSchema = z.enum(['financial', 'tax', 'occupancy', 'guest'])
+export const reportFormatSchema = z.enum(['pdf', 'csv', 'xlsx'])
+export const reportFrequencySchema = z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly'])
+
+export const reportConfigSchema = z.object({
+  type: reportTypeSchema,
+  format: reportFormatSchema,
+  frequency: reportFrequencySchema.optional(),
+  filters: z.object({
+    propertyIds: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
+    dateRange: dateRangeSchema.optional(),
+  }).optional(),
+  delivery: z.object({
+    email: z.string().email().optional(),
+    webhook: z.string().url().optional(),
+  }).optional(),
+})
+
+export const reportScheduleSchema = z.object({
+  enabled: z.boolean(),
+  frequency: reportFrequencySchema,
+  dayOfWeek: z.number().min(0).max(6).optional(), // 0 = Sunday
+  dayOfMonth: z.number().min(1).max(31).optional(),
+  hour: z.number().min(0).max(23),
+  minute: z.number().min(0).max(59).default(0),
+  timezone: z.string().default('America/Chicago'),
+})
 
 export const reportRequestSchema = z.object({
   type: reportTypeSchema,
@@ -146,10 +219,29 @@ export const reportRequestSchema = z.object({
   to: dateStringSchema,
   propertyIds: z.array(z.string()).optional(),
   tags: z.array(z.string()).optional(),
-  format: z.enum(['pdf', 'csv', 'xlsx']).optional(),
+  format: reportFormatSchema.optional(),
+})
+
+export const scheduledReportSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  config: reportConfigSchema,
+  schedule: reportScheduleSchema,
+  lastRun: z.string().datetime().optional(),
+  nextRun: z.string().datetime().optional(),
+  status: z.enum(['active', 'paused', 'error']),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
 })
 
 // ============= VIP Settings Schemas =============
+export const vipSettingsUpdateSchema = z.object({
+  vipSpendThreshold: z.number().min(0).optional(),
+  vipBookingThreshold: z.number().int().min(1).optional(),
+}).refine(data => Object.keys(data).length > 0, {
+  message: "At least one field must be provided for update"
+})
+
 export const vipSettingsSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -165,6 +257,38 @@ export const vipSettingsSchema = z.object({
     avgBookingValue: z.number().optional(),
   }),
   updatedAt: z.string().datetime(),
+})
+
+// ============= Database Result Schemas =============
+// Schema for parsing numeric strings from database
+export const numericStringSchema = z.string().transform(val => parseFloat(val))
+export const integerStringSchema = z.string().transform(val => parseInt(val, 10))
+
+// Common database result schemas
+export const dbMetricsSchema = z.object({
+  gross_revenue: numericStringSchema,
+  total_fees: numericStringSchema,
+  total_taxes: numericStringSchema,
+  net_revenue: numericStringSchema.optional(),
+  booking_count: integerStringSchema,
+  pending_revenue: numericStringSchema.optional(),
+  collected_revenue: numericStringSchema.optional(),
+})
+
+export const dbPropertyMetricsSchema = z.object({
+  property_id: z.string(),
+  property_name: z.string(),
+  total_amount: numericStringSchema,
+  booking_count: integerStringSchema,
+  occupancy_rate: numericStringSchema.optional(),
+})
+
+export const dbGuestMetricsSchema = z.object({
+  guest_name: z.string(),
+  guest_email: z.string().nullable(),
+  total_spent: numericStringSchema,
+  booking_count: integerStringSchema,
+  avg_nightly_rate: numericStringSchema.optional(),
 })
 
 // ============= Error Response Schema =============

@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { query, DbResult } from './services/database'
-import { requireAuth, corsHeaders, handleOptions } from './middleware/auth'
+import { corsHeaders, handleOptions } from './middleware/auth'
+import { requireAuthWithValidation } from './middleware/validation'
+import { financialQuerySchema } from '@baileys/shared-types'
 import { safeDivide, calculatePercentage } from '@baileys/utils'
 
 // ============================================
@@ -1076,12 +1078,15 @@ export async function getUnifiedFinancials(
     return handleOptions()
   }
 
-  const authCheck = await requireAuth(request)
-  if (!authCheck.authenticated) {
+  const authCheck = await requireAuthWithValidation(request, {
+    query: financialQuerySchema
+  })
+
+  if (!authCheck.authenticated || !authCheck.valid) {
     return authCheck.response
   }
 
-  const { auth } = authCheck.request
+  const { auth, validated } = authCheck.request
 
   if (!auth.tenantId) {
     return {
@@ -1095,12 +1100,12 @@ export async function getUnifiedFinancials(
   }
 
   try {
-    // Parse query parameters
-    const fromDate = request.query.get('from') ||
+    // Use validated query parameters with defaults
+    const fromDate = validated?.query?.from ||
       new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
-    const toDate = request.query.get('to') ||
+    const toDate = validated?.query?.to ||
       new Date().toISOString().split('T')[0]
-    const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || []
+    const tagIds = validated?.query?.tags || []
 
     // Fetch all data in parallel
     const [plResult, revenueResult, taxResult] = await Promise.all([

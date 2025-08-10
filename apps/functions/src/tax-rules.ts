@@ -1,48 +1,18 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { query } from './services/database'
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth'
+import { taxRuleFormDataSchema } from '@baileys/shared-types'
+import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 
-interface TaxRuleFormData {
-  name: string
-  description?: string
-  method: any
-  appliesTo: any
-  jurisdiction?: string
-  effectiveFrom: string
-  effectiveTo?: string
-  priority: number
-  isActive: boolean
-}
+type TaxRuleFormData = z.infer<typeof taxRuleFormDataSchema>
 
-// Validation function
-const validateTaxRule = (data: any): { valid: boolean; error?: string } => {
-  if (!data.name || typeof data.name !== 'string') {
-    return { valid: false, error: 'Name is required' }
-  }
-
-  if (!data.effectiveFrom) {
-    return { valid: false, error: 'Effective from date is required' }
-  }
-
-  if (!data.method || typeof data.method !== 'object') {
-    return { valid: false, error: 'Tax method is required' }
-  }
-
-  if (!data.appliesTo || typeof data.appliesTo !== 'object') {
-    return { valid: false, error: 'Applies to configuration is required' }
-  }
-
-  if (typeof data.priority !== 'number') {
-    return { valid: false, error: 'Priority must be a number' }
-  }
-
-  if (typeof data.isActive !== 'boolean') {
-    return { valid: false, error: 'isActive must be a boolean' }
-  }
-
-  return { valid: true }
-}
+// Helper to parse JSON fields from database
+const parseDbTaxRule = (rule: any) => ({
+  ...rule,
+  method: typeof rule.method === 'string' ? JSON.parse(rule.method) : rule.method,
+  appliesTo: typeof rule.applies_to === 'string' ? JSON.parse(rule.applies_to) : rule.applies_to
+})
 
 // GET /api/tax-rules
 async function getTaxRules(
@@ -72,11 +42,7 @@ async function getTaxRules(
   }
 
   // parse JSON fields
-  const rules = result.data.map(rule => ({
-    ...rule,
-    method: typeof rule.method === 'string' ? JSON.parse(rule.method) : rule.method,
-    appliesTo: typeof rule.applies_to === 'string' ? JSON.parse(rule.applies_to) : rule.applies_to
-  }))
+  const rules = result.data.map(parseDbTaxRule)
 
   return {
     status: 200,
@@ -96,17 +62,26 @@ async function createTaxRule(
   }
 
   const { auth } = authCheck.request
-  const body = await request.json() as TaxRuleFormData
-
-  // Validate the tax rule
-  const validation = validateTaxRule(body)
-  if (!validation.valid) {
+  
+  const bodyData = await request.json()
+  const parseResult = taxRuleFormDataSchema.safeParse(bodyData)
+  
+  if (!parseResult.success) {
     return {
       status: 400,
       headers: corsHeaders(),
-      jsonBody: { status: 'error', error: validation.error }
+      jsonBody: { 
+        status: 'error', 
+        error: 'Validation error',
+        details: parseResult.error.errors.map(e => ({
+          path: e.path.join('.'),
+          message: e.message
+        }))
+      }
     }
   }
+  
+  const body = parseResult.data
 
   const id = uuidv4()
   const now = new Date().toISOString()
@@ -135,11 +110,7 @@ async function createTaxRule(
   }
 
   const createdRule = result.data[0]
-  const formattedRule = {
-    ...createdRule,
-    method: typeof createdRule.method === 'string' ? JSON.parse(createdRule.method) : createdRule.method,
-    appliesTo: typeof createdRule.applies_to === 'string' ? JSON.parse(createdRule.applies_to) : createdRule.applies_to
-  }
+  const formattedRule = parseDbTaxRule(createdRule)
 
   return {
     status: 201,
@@ -160,17 +131,26 @@ async function updateTaxRule(
 
   const { auth } = authCheck.request
   const ruleId = request.params.id
-  const body = await request.json() as TaxRuleFormData
-
-  // Validate the tax rule
-  const validation = validateTaxRule(body)
-  if (!validation.valid) {
+  
+  const bodyData = await request.json()
+  const parseResult = taxRuleFormDataSchema.safeParse(bodyData)
+  
+  if (!parseResult.success) {
     return {
       status: 400,
       headers: corsHeaders(),
-      jsonBody: { status: 'error', error: validation.error }
+      jsonBody: { 
+        status: 'error', 
+        error: 'Validation error',
+        details: parseResult.error.errors.map(e => ({
+          path: e.path.join('.'),
+          message: e.message
+        }))
+      }
     }
   }
+  
+  const body = parseResult.data
 
   const result = await query(
     `UPDATE tax_rules SET
@@ -196,11 +176,7 @@ async function updateTaxRule(
   }
 
   const updatedRule = result.data[0]
-  const formattedRule = {
-    ...updatedRule,
-    method: typeof updatedRule.method === 'string' ? JSON.parse(updatedRule.method) : updatedRule.method,
-    appliesTo: typeof updatedRule.applies_to === 'string' ? JSON.parse(updatedRule.applies_to) : updatedRule.applies_to
-  }
+  const formattedRule = parseDbTaxRule(updatedRule)
 
   return {
     status: 200,

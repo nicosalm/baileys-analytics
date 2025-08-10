@@ -1,11 +1,10 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { vipSettingsUpdateSchema, numericStringSchema, integerStringSchema } from '@baileys/shared-types';
+import { z } from 'zod';
 
-type VIPSettings = {
-  vipSpendThreshold: number;
-  vipBookingThreshold: number;
-};
+type VIPSettings = z.infer<typeof vipSettingsUpdateSchema>;
 
 export async function vipSettings(
   request: HttpRequest,
@@ -46,6 +45,14 @@ export async function vipSettings(
       }
 
       const settings = result.data[0];
+      
+      // Use Zod for safe parsing
+      const vipSettingsDbSchema = z.object({
+        vip_spend_threshold: numericStringSchema,
+        vip_booking_threshold: integerStringSchema,
+      });
+      
+      const parsed = vipSettingsDbSchema.parse(settings);
 
       return {
         status: 200,
@@ -53,8 +60,8 @@ export async function vipSettings(
         jsonBody: {
           status: 'success',
           data: {
-            vipSpendThreshold: parseFloat(settings.vip_spend_threshold),
-            vipBookingThreshold: parseInt(settings.vip_booking_threshold)
+            vipSpendThreshold: parsed.vip_spend_threshold,
+            vipBookingThreshold: parsed.vip_booking_threshold
           }
         }
       };

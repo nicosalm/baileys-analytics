@@ -1,14 +1,11 @@
 import { Pool, QueryResultRow } from 'pg';
+import { dbConfig } from '../config/env';
 
 const pool = new Pool({
-  host: '127.0.0.1',
-  port: 5432,
-  database: 'baileys_analytics',
-  user: 'postgres',
-  password: 'localdev123',
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionString: dbConfig.connectionString || 'postgresql://postgres:localdev123@127.0.0.1:5432/baileys_analytics',
+  max: dbConfig.max,
+  idleTimeoutMillis: dbConfig.idleTimeoutMillis,
+  connectionTimeoutMillis: dbConfig.connectionTimeoutMillis,
 });
 
 export type DbResult<T> =

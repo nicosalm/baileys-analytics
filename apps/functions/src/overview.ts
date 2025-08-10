@@ -1,6 +1,7 @@
 // apps/functions/src/overview.ts
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
-import { requireAuth } from './middleware/auth'
+import { requireAuthWithValidation } from './middleware/validation'
+import { financialQuerySchema } from '@baileys/shared-types'
 import { query } from './services/database'
 
 interface OverviewMetrics {
@@ -38,12 +39,15 @@ export async function overview(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const authCheck = await requireAuth(request)
-  if (!authCheck.authenticated) {
+  const authCheck = await requireAuthWithValidation(request, {
+    query: financialQuerySchema
+  })
+  
+  if (!authCheck.authenticated || !authCheck.valid) {
     return authCheck.response
   }
 
-  const { auth } = authCheck.request
+  const { auth, validated } = authCheck.request
   const tenantId = auth.tenantId
   const userId = auth.userId
 
@@ -54,11 +58,10 @@ export async function overview(
     }
   }
 
-  const url = new URL(request.url)
-  const from = url.searchParams.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
-  const to = url.searchParams.get('to') || new Date().toISOString().split('T')[0]
-  const tagsParam = url.searchParams.get('tags')
-  const tagIds = tagsParam ? tagsParam.split(',').filter(Boolean) : []
+  // Use validated query parameters
+  const from = validated?.query?.from || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+  const to = validated?.query?.to || new Date().toISOString().split('T')[0]
+  const tagIds = validated?.query?.tags || []
 
   try {
     // Get current period metrics
