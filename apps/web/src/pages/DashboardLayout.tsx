@@ -83,15 +83,15 @@ const DashboardTabs = () => {
   const displayActiveTab = activeTab
 
   return (
-    <div className="border-b bg-white">
+    <div className="bg-white border-b">
       <div className="max-w-7xl mx-auto">
-        <nav className="flex space-x-8 px-4" aria-label="Tabs">
+        <nav className="flex space-x-6 px-6" aria-label="Tabs">
           {tabConfig.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => handleTabClick(id)}
               className={`
-                py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors
+                py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-all
                 ${displayActiveTab === id
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -131,12 +131,12 @@ export const DashboardLayout = () => {
 
     return (
       <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 py-4">
+        <nav className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
-              <h1 className="text-xl font-bold">Baileys Analytics</h1>
-              <button onClick={handleLogout} className="text-blue-600 hover:text-blue-700 flex items-center transition-colors">
-                <LogOut className="w-4 h-4 mr-1" />
+              <h1 className="text-2xl font-bold text-gray-900">Baileys Analytics</h1>
+              <button onClick={handleLogout} className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-colors px-3 py-1.5 rounded-md hover:bg-gray-100">
+                <LogOut className="w-4 h-4 mr-1.5" />
                 Logout
               </button>
             </div>
@@ -169,31 +169,35 @@ export const DashboardLayout = () => {
     <DashboardProvider>
       <DrillDownProvider>
         <div className="min-h-screen bg-gray-50">
-          <nav className="bg-white shadow-sm">
-            <div className="max-w-7xl mx-auto px-4 py-4">
+          <nav className="bg-white shadow-sm border-b">
+            <div className="max-w-7xl mx-auto px-6 py-3">
               <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-3">
-                  <h1 className="text-xl font-bold">Baileys Analytics</h1>
-                  {user.companyName && (
-                    <span className="text-sm text-gray-500">• {user.companyName}</span>
-                  )}
+                <div className="flex items-center">
+                  <div className="flex flex-col">
+                    <h1 className="text-2xl font-bold text-gray-900">Baileys Analytics</h1>
+                    {user.companyName && (
+                      <span className="text-sm text-gray-500 mt-0.5">for {user.companyName}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-600">{user.email}</span>
-                  <Link
-                    to="/settings"
-                    className="text-gray-600 hover:text-gray-800 transition-colors"
-                    title="Settings"
-                  >
-                    <Settings className="w-5 h-5" />
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="text-blue-600 hover:text-blue-700 flex items-center text-sm transition-colors"
-                  >
-                    <LogOut className="w-4 h-4 mr-1" />
-                    Logout
-                  </button>
+                  <div className="flex items-center space-x-2 pl-4 border-l border-gray-200">
+                    <Link
+                      to="/settings"
+                      className="text-gray-600 hover:text-gray-800 transition-colors p-2 rounded-md hover:bg-gray-100"
+                      title="Settings"
+                    >
+                      <Settings className="w-5 h-5" />
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-colors px-3 py-1.5 rounded-md hover:bg-gray-100"
+                    >
+                      <LogOut className="w-4 h-4 mr-1.5" />
+                      Logout
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -202,7 +206,7 @@ export const DashboardLayout = () => {
           <DashboardTabs />
           <FilterBar />
 
-          <main className="max-w-7xl mx-auto p-4">
+          <main className="max-w-7xl mx-auto px-6 py-4">
             <DashboardContent />
           </main>
         </div>

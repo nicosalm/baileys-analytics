@@ -191,19 +191,29 @@ export async function getGuests(
       booking_count: string;
       avg_nightly_rate: string;
     }>(
-      `WITH guest_spending AS (
-        SELECT
-          guest_name,
-          guest_email,
-          SUM(total_amount) as total_spent,
-          COUNT(*) as booking_count,
-          SUM(total_amount) / NULLIF(SUM(departure - arrival), 0) as avg_nightly_rate
-        FROM bookings b
+      `WITH guest_period AS (
+        -- Get guests that have bookings in the selected period
+        SELECT DISTINCT guest_name, guest_email
+        FROM bookings
         WHERE tenant_id = $1
           AND status != 'canceled'
           ${dateFilter}
           ${tagFilter}
-        GROUP BY guest_name, guest_email
+      ),
+      guest_spending AS (
+        -- Get all-time spending for these guests
+        SELECT
+          b.guest_name,
+          b.guest_email,
+          SUM(b.total_amount) as total_spent,
+          COUNT(*) as booking_count,
+          SUM(b.total_amount) / NULLIF(SUM(b.departure - b.arrival), 0) as avg_nightly_rate
+        FROM bookings b
+        JOIN guest_period gp ON b.guest_name = gp.guest_name 
+          AND COALESCE(b.guest_email, '') = COALESCE(gp.guest_email, '')
+        WHERE b.tenant_id = $1
+          AND b.status != 'canceled'
+        GROUP BY b.guest_name, b.guest_email
       )
       SELECT
         guest_name,
@@ -297,7 +307,19 @@ export async function getGuests(
       avg_nightly_rate: string;
       properties: string;
     }>(
-      `WITH guest_data AS (
+      `WITH guest_period_data AS (
+        -- Get guests that have bookings in the selected period
+        SELECT DISTINCT
+          b.guest_name,
+          b.guest_email
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          AND b.status != 'canceled'
+          ${dateFilter}
+          ${tagFilter}
+      ),
+      guest_all_time_data AS (
+        -- Get all-time stats for these guests (for accurate VIP calculation)
         SELECT
           b.guest_name,
           b.guest_email,
@@ -309,13 +331,13 @@ export async function getGuests(
           STRING_AGG(DISTINCT p.name, ', ') as properties
         FROM bookings b
         JOIN properties p ON b.property_id = p.id
+        JOIN guest_period_data gpd ON b.guest_name = gpd.guest_name 
+          AND COALESCE(b.guest_email, '') = COALESCE(gpd.guest_email, '')
         WHERE b.tenant_id = $1
           AND b.status != 'canceled'
-          ${dateFilter}
-          ${tagFilter}
         GROUP BY b.guest_name, b.guest_email
       )
-      SELECT * FROM guest_data
+      SELECT * FROM guest_all_time_data
       ORDER BY total_spent DESC
       LIMIT ${pageSize}
       OFFSET ${offset}`,

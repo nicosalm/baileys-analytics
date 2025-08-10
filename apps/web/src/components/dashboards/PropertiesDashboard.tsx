@@ -116,8 +116,11 @@ export const PropertiesDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div>
         <h2 className="text-2xl font-bold">Property Performance</h2>
+        <p className="text-gray-600 text-sm mt-1">
+          Individual property metrics and comparisons
+        </p>
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">

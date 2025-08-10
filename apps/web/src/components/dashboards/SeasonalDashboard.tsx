@@ -174,18 +174,13 @@ export const SeasonalDashboard = () => {
   const formatYAxisTick = (value: number) => formatCompactCurrency(value)
   const formatPercentageTick = (value: number) => `${value}%`
 
-  // Display the date range being analyzed
-  const dateRangeDisplay = filters.dateRange.from && filters.dateRange.to
-    ? `${new Date(filters.dateRange.from).toLocaleDateString()} - ${new Date(filters.dateRange.to).toLocaleDateString()}`
-    : `Year ${selectedYear}`
-
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div>
         <h2 className="text-2xl font-bold">Seasonal Analysis</h2>
-        <div className="text-sm text-gray-600">
-          Analyzing: {dateRangeDisplay}
-        </div>
+        <p className="text-gray-600 text-sm mt-1">
+          Seasonal trends, patterns, and optimization opportunities
+        </p>
       </div>
 
 

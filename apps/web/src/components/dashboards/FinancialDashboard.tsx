@@ -758,13 +758,11 @@ const FinancialDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div>
         <h2 className="text-2xl font-bold">Financial Center</h2>
-        <div className="flex items-center space-x-2">
-          <div className="text-sm text-gray-500">
-            {filters.dateRange.from} to {filters.dateRange.to}
-          </div>
-        </div>
+        <p className="text-gray-600 text-sm mt-1">
+          Revenue, taxes, cash flow, and P&L analytics
+        </p>
       </div>
 
       {/* Tab Navigation */}

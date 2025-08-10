@@ -45,6 +45,7 @@ export async function overview(
 
   const { auth } = authCheck.request
   const tenantId = auth.tenantId
+  const userId = auth.userId
 
   if (!tenantId) {
     return {
@@ -61,19 +62,19 @@ export async function overview(
 
   try {
     // Get current period metrics
-    const currentMetrics = await getCurrentPeriodMetrics(tenantId, from, to, tagIds)
+    const currentMetrics = await getCurrentPeriodMetrics(tenantId, from, to, tagIds, userId)
 
     // Get previous period for comparison
     const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24))
     const prevFrom = new Date(new Date(from).getTime() - daysDiff * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const prevTo = new Date(new Date(from).getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const previousMetrics = await getCurrentPeriodMetrics(tenantId, prevFrom, prevTo, tagIds)
+    const previousMetrics = await getCurrentPeriodMetrics(tenantId, prevFrom, prevTo, tagIds, userId)
 
     // Get charts data
     const charts = await getChartsData(tenantId, from, to, tagIds)
 
     // Get alerts
-    const alerts = await getAlerts(tenantId)
+    const alerts = await getAlerts(tenantId, from, to)
 
     // Get recent activity
     const recentActivity = await getRecentActivity(tenantId)
@@ -130,92 +131,253 @@ export async function overview(
   }
 }
 
-async function getCurrentPeriodMetrics(tenantId: string, from: string, to: string, tagIds: string[] = []) {
+async function getCurrentPeriodMetrics(tenantId: string, from: string, to: string, tagIds: string[] = [], userId?: string) {
   const hasTagFilter = tagIds.length > 0
   
+  // First, get user's VIP thresholds if userId provided
+  let vipSpendThreshold = 5000
+  let vipBookingThreshold = 5
+  
+  if (userId) {
+    const vipResult = await query(
+      `SELECT vip_spend_threshold, vip_booking_threshold FROM users WHERE id = $1`,
+      [userId]
+    )
+    if (vipResult.success && vipResult.data.length > 0) {
+      vipSpendThreshold = parseFloat(vipResult.data[0].vip_spend_threshold) || 5000
+      vipBookingThreshold = parseInt(vipResult.data[0].vip_booking_threshold) || 5
+    }
+  }
+  
   const metricsQuery = `
-    WITH booking_stats AS (
+    WITH platform_fee_lookup AS (
+      SELECT DISTINCT ON (platform_name)
+        platform_name, fee_type, fee_value
+      FROM platform_fees
+      WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
+        AND is_active = true
+        AND effective_from <= $3::date
+        AND (effective_to IS NULL OR effective_to >= $2::date)
+      ORDER BY platform_name, tenant_id DESC, effective_from DESC
+    ),
+    booking_data AS (
       SELECT
-        COUNT(DISTINCT b.id) as total_bookings,
-        COUNT(DISTINCT CASE WHEN b.status = 'cancelled' OR b.status = 'canceled' THEN b.id END) as cancelled_bookings,
-        COUNT(DISTINCT CASE WHEN b.arrival > CURRENT_DATE THEN b.id END) as upcoming_bookings,
-        COALESCE(SUM(b.total_amount), 0) as total_revenue,
-        COALESCE(SUM(b.total_amount * 0.85), 0) as net_revenue,
-        COUNT(DISTINCT b.guest_name) as unique_guests,
-        AVG(b.departure::date - b.arrival::date) as avg_nights,
-        AVG(b.total_amount) as avg_booking_value
+        b.id, b.total_amount, b.arrival, b.departure, b.platform, b.guest_name, b.status,
+        LOWER(
+          CASE
+            WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
+            WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
+            WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
+            WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
+            WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'booking.com'
+            ELSE LOWER(b.platform)
+          END
+        ) as platform_key
       FROM bookings b
       ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
       WHERE b.tenant_id = $1
         AND b.arrival >= $2::date
         AND b.arrival <= $3::date
+        AND b.status != 'canceled'
+        ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+    ),
+    fee_calc AS (
+      SELECT
+        bd.id, bd.total_amount, bd.arrival, bd.departure, bd.guest_name,
+        COALESCE(
+          CASE
+            WHEN pf.fee_type = 'percentage' THEN bd.total_amount * pf.fee_value
+            WHEN pf.fee_type = 'flat' THEN pf.fee_value
+            ELSE
+              CASE
+                WHEN bd.platform_key = 'airbnb' THEN bd.total_amount * 0.03
+                WHEN bd.platform_key = 'vrbo' THEN bd.total_amount * 0.05
+                WHEN bd.platform_key = 'booking.com' THEN bd.total_amount * 0.15
+                ELSE 0
+              END
+          END, 0
+        ) as platform_fee
+      FROM booking_data bd
+      LEFT JOIN platform_fee_lookup pf ON bd.platform_key = pf.platform_name
+    ),
+    tax_data AS (
+      SELECT bd.id, COALESCE(SUM(bc.amount), 0) as tax_amount
+      FROM booking_data bd
+      LEFT JOIN booking_charges bc ON bd.id = bc.booking_id AND bc.type = 'tax'
+      GROUP BY bd.id
+    ),
+    booking_stats AS (
+      SELECT
+        COUNT(DISTINCT fc.id) as total_bookings,
+        COUNT(DISTINCT CASE WHEN fc.arrival > CURRENT_DATE THEN fc.id END) as upcoming_bookings,
+        COALESCE(SUM(fc.total_amount), 0) as total_revenue,
+        COALESCE(SUM(fc.total_amount - fc.platform_fee - COALESCE(td.tax_amount, 0)), 0) as net_revenue,
+        COALESCE(SUM(fc.platform_fee), 0) as total_fees,
+        COALESCE(SUM(td.tax_amount), 0) as total_taxes,
+        COUNT(DISTINCT fc.guest_name) as unique_guests,
+        AVG(fc.departure::date - fc.arrival::date) as avg_nights,
+        AVG(fc.total_amount) as avg_booking_value
+      FROM fee_calc fc
+      LEFT JOIN tax_data td ON fc.id = td.id
+    ),
+    cancelled_stats AS (
+      SELECT
+        COUNT(DISTINCT b.id) as cancelled_bookings
+      FROM bookings b
+      ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status = 'canceled'
         ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
     ),
     occupancy_stats AS (
+      WITH property_availability AS (
+        SELECT
+          p.id as property_id,
+          COALESCE(MIN(b_hist.arrival), $2::date) as available_from,
+          LEAST($3::date, CURRENT_DATE) as available_to
+        FROM properties p
+        LEFT JOIN bookings b_hist ON p.id = b_hist.property_id
+          AND b_hist.tenant_id = p.tenant_id
+          AND b_hist.status != 'canceled'
+        WHERE p.tenant_id = $1
+          AND p.active = true
+        GROUP BY p.id
+      ),
+      available_nights_calc AS (
+        SELECT SUM(
+          CASE 
+            WHEN available_from > available_to THEN 0
+            ELSE (available_to - GREATEST(available_from, $2::date) + 1)
+          END
+        ) as total_available
+        FROM property_availability
+      ),
+      booked_nights_calc AS (
+        SELECT
+          COALESCE(SUM(
+            CASE
+              WHEN b.arrival <= $3::date AND b.departure >= $2::date THEN
+                LEAST(b.departure, $3::date, CURRENT_DATE) - GREATEST(b.arrival, $2::date)
+              ELSE 0
+            END
+          ), 0) as total_booked
+        FROM bookings b
+        JOIN properties p ON b.property_id = p.id
+        WHERE b.tenant_id = $1
+          AND b.arrival <= $3::date
+          AND b.departure >= $2::date
+          AND b.status != 'canceled'
+          AND p.active = true
+          ${hasTagFilter ? `AND b.id IN (SELECT booking_id FROM booking_tags WHERE tag_id = ANY($4::uuid[]))` : ''}
+      )
       SELECT
-        COUNT(DISTINCT b.id) as booked_count,
-        COUNT(DISTINCT p.id) as property_count,
-        GREATEST(1, ($3::date - $2::date + 1)) as period_days,
-        COALESCE(AVG(b.departure::date - b.arrival::date), 0) as avg_stay_length
-      FROM properties p
-      LEFT JOIN bookings b ON b.property_id = p.id
-        AND b.tenant_id = $1
-        AND b.status NOT IN ('cancelled', 'canceled')
-        AND b.arrival <= $3::date
-        AND b.departure >= $2::date
-        ${hasTagFilter ? 'AND b.id IN (SELECT booking_id FROM booking_tags WHERE tag_id = ANY($4::uuid[]))' : ''}
-      WHERE p.tenant_id = $1
+        bn.total_booked as booked_nights,
+        an.total_available as available_nights
+      FROM booked_nights_calc bn
+      CROSS JOIN available_nights_calc an
     ),
     guest_stats AS (
+      WITH guest_bookings AS (
+        SELECT
+          LOWER(TRIM(b.guest_name)) as normalized_name,
+          COALESCE(LOWER(TRIM(b.guest_email)), '') as normalized_email,
+          COUNT(*) as booking_count
+        FROM bookings b
+        ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+        WHERE b.tenant_id = $1
+          AND b.arrival >= $2::date
+          AND b.arrival <= $3::date
+          AND b.status != 'canceled'
+          ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+        GROUP BY LOWER(TRIM(b.guest_name)), COALESCE(LOWER(TRIM(b.guest_email)), '')
+      )
       SELECT
-        COUNT(DISTINCT b.guest_name) as total_guests,
+        COUNT(DISTINCT (gb.normalized_name, gb.normalized_email)) as total_guests,
         COUNT(DISTINCT CASE
-          WHEN b.booked_utc >= date_trunc('month', CURRENT_DATE)
-          THEN b.guest_name
+          WHEN NOT EXISTS (
+            SELECT 1 FROM bookings b_prev
+            WHERE b_prev.tenant_id = $1
+              AND b_prev.arrival < $2::date
+              AND LOWER(TRIM(b_prev.guest_name)) = gb.normalized_name
+              AND COALESCE(LOWER(TRIM(b_prev.guest_email)), '') = gb.normalized_email
+              AND b_prev.status != 'canceled'
+          )
+          THEN (gb.normalized_name, gb.normalized_email)
         END) as new_guests_this_month,
         COUNT(DISTINCT CASE
-          WHEN b.guest_name IN (
-            SELECT guest_name FROM bookings
-            WHERE tenant_id = $1
-            GROUP BY guest_name
-            HAVING COUNT(*) > 1
-          ) THEN b.guest_name
+          WHEN gb.booking_count > 1
+          THEN (gb.normalized_name, gb.normalized_email)
         END) as repeat_guests,
         COUNT(DISTINCT CASE
-          WHEN b.guest_name IN (
-            SELECT guest_name FROM bookings
-            WHERE tenant_id = $1
-            GROUP BY guest_name
-            HAVING SUM(total_amount) > 5000 OR COUNT(*) >= 3
-          ) THEN b.guest_name
+          WHEN EXISTS (
+            SELECT 1
+            FROM bookings b_all
+            WHERE b_all.tenant_id = $1
+              AND b_all.status != 'canceled'
+              AND LOWER(TRIM(b_all.guest_name)) = gb.normalized_name
+              AND COALESCE(LOWER(TRIM(b_all.guest_email)), '') = gb.normalized_email
+            GROUP BY LOWER(TRIM(b_all.guest_name)), COALESCE(LOWER(TRIM(b_all.guest_email)), '')
+            HAVING SUM(b_all.total_amount) > ${vipSpendThreshold} OR COUNT(*) >= ${vipBookingThreshold}
+          ) THEN (gb.normalized_name, gb.normalized_email)
         END) as vip_guests
-      FROM bookings b
-      ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
-      WHERE b.tenant_id = $1
-        ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+      FROM guest_bookings gb
     ),
     property_performance AS (
+      WITH property_windows AS (
+        SELECT
+          p.id,
+          p.name,
+          COALESCE(MIN(b_hist.arrival), $2::date) as available_from,
+          LEAST($3::date, CURRENT_DATE) as available_to
+        FROM properties p
+        LEFT JOIN bookings b_hist ON p.id = b_hist.property_id
+          AND b_hist.tenant_id = p.tenant_id
+          AND b_hist.status != 'canceled'
+        WHERE p.tenant_id = $1
+          AND p.active = true
+        GROUP BY p.id, p.name
+      )
       SELECT
-        COUNT(DISTINCT p.id) as total_properties,
-        AVG(CASE 
-          WHEN b.id IS NOT NULL THEN 1.0 
-          ELSE 0.0 
-        END) as avg_property_occupancy
-      FROM properties p
-      LEFT JOIN bookings b ON b.property_id = p.id
-        AND b.tenant_id = $1
-        AND b.arrival >= $2::date
-        AND b.arrival <= $3::date
-        AND b.status NOT IN ('cancelled', 'canceled')
-      WHERE p.tenant_id = $1
+        COUNT(DISTINCT pw.id) as total_properties,
+        AVG(COALESCE(prop_occ.occupancy_rate, 0)) as avg_property_occupancy
+      FROM property_windows pw
+      ${hasTagFilter ? `
+        INNER JOIN (
+          SELECT DISTINCT property_id 
+          FROM bookings b2
+          INNER JOIN booking_tags bt2 ON b2.id = bt2.booking_id
+          WHERE b2.tenant_id = $1 AND bt2.tag_id = ANY($4::uuid[])
+        ) tagged_props ON pw.id = tagged_props.property_id` : ''}
+      LEFT JOIN LATERAL (
+        SELECT 
+          CASE 
+            WHEN pw.available_from > pw.available_to THEN 0
+            ELSE 
+              COUNT(DISTINCT booking_date)::numeric / 
+              NULLIF(pw.available_to - GREATEST(pw.available_from, $2::date) + 1, 0)
+          END as occupancy_rate
+        FROM bookings b
+        LEFT JOIN LATERAL generate_series(
+          GREATEST(b.arrival::date, $2::date),
+          LEAST(b.departure::date - interval '1 day', $3::date),
+          interval '1 day'
+        ) AS booking_date ON true
+        WHERE b.property_id = pw.id
+          AND b.tenant_id = $1
+          AND b.status != 'canceled'
+          AND b.arrival <= $3::date
+          AND b.departure > $2::date
+      ) prop_occ ON true
     )
     SELECT
       COALESCE(bs.total_revenue, 0) as revenue,
       COALESCE(bs.net_revenue, 0) as "netRevenue",
       COALESCE(bs.total_bookings, 0) as bookings,
       COALESCE(bs.upcoming_bookings, 0) as "upcomingBookings",
-      COALESCE(bs.cancelled_bookings::numeric / NULLIF(bs.total_bookings, 0) * 100, 0) as "cancellationRate",
-      COALESCE(os.booked_count::numeric / (NULLIF(os.property_count, 0) * os.period_days), 0) as "occupancyRate",
+      COALESCE(cs.cancelled_bookings::numeric / NULLIF(bs.total_bookings + cs.cancelled_bookings, 0) * 100, 0) as "cancellationRate",
+      COALESCE(os.booked_nights::numeric / NULLIF(os.available_nights, 0), 0) as "occupancyRate",
       COALESCE(gs.total_guests, 0) as "totalGuests",
       COALESCE(gs.new_guests_this_month, 0) as "newGuests",
       COALESCE(gs.repeat_guests::numeric / NULLIF(gs.total_guests, 0), 0) as "repeatGuestRate",
@@ -223,8 +385,11 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
       COALESCE(bs.avg_booking_value, 0) as "avgBookingValue",
       COALESCE(bs.avg_nights, 0) as "avgNights",
       COALESCE(pp.total_properties, 0) as "totalProperties",
-      COALESCE(pp.avg_property_occupancy, 0) as "avgPropertyOccupancy"
+      COALESCE(pp.avg_property_occupancy, 0) as "avgPropertyOccupancy",
+      COALESCE(bs.total_fees, 0) as "platformFees",
+      COALESCE(bs.total_taxes, 0) as "taxes"
     FROM booking_stats bs
+    CROSS JOIN cancelled_stats cs
     CROSS JOIN occupancy_stats os
     CROSS JOIN guest_stats gs
     CROSS JOIN property_performance pp
@@ -251,7 +416,9 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
     avgBookingValue: 0,
     avgNights: 0,
     totalProperties: 0,
-    avgPropertyOccupancy: 0
+    avgPropertyOccupancy: 0,
+    platformFees: 0,
+    taxes: 0
   }
 }
 
@@ -267,7 +434,7 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
     ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
     WHERE b.tenant_id = $1
       AND b.arrival >= CURRENT_DATE - INTERVAL '7 days'
-      AND b.status NOT IN ('cancelled', 'canceled')
+      AND b.status != 'canceled'
       ${hasTagFilter ? `AND bt.tag_id = ANY($2::uuid[])` : ''}
     GROUP BY b.arrival::date
     ORDER BY day DESC
@@ -285,7 +452,7 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
       AND b.tenant_id = $1
       AND b.arrival >= $2::date
       AND b.arrival <= $3::date
-      AND b.status NOT IN ('cancelled', 'canceled')
+      AND b.status != 'canceled'
       ${hasTagFilter ? `AND b.id IN (SELECT booking_id FROM booking_tags WHERE tag_id = ANY($4::uuid[]))` : ''}
     WHERE p.tenant_id = $1
     GROUP BY p.id, p.name
@@ -303,7 +470,7 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
     WHERE b.tenant_id = $1
       AND b.arrival >= $2::date
       AND b.arrival <= $3::date
-      AND b.status NOT IN ('cancelled', 'canceled')
+      AND b.status != 'canceled'
       ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
     GROUP BY b.platform
     ORDER BY count DESC
@@ -317,24 +484,65 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
         date_trunc('month', CURRENT_DATE),
         '1 month'::interval
       )::date as month_start
+    ),
+    property_availability AS (
+      SELECT
+        p.id as property_id,
+        COALESCE(MIN(b.arrival), date_trunc('month', CURRENT_DATE - INTERVAL '5 months')) as first_booking
+      FROM properties p
+      LEFT JOIN bookings b ON p.id = b.property_id
+        AND b.tenant_id = p.tenant_id
+        AND b.status != 'canceled'
+      WHERE p.tenant_id = $1
+        AND p.active = true
+      GROUP BY p.id
+    ),
+    monthly_available AS (
+      SELECT
+        m.month_start,
+        SUM(
+          CASE
+            WHEN pa.first_booking <= m.month_start + interval '1 month' - interval '1 day' THEN
+              LEAST(m.month_start + interval '1 month' - interval '1 day', CURRENT_DATE)::date -
+              GREATEST(m.month_start, pa.first_booking)::date + 1
+            ELSE 0
+          END
+        ) as total_available
+      FROM months m
+      CROSS JOIN property_availability pa
+      GROUP BY m.month_start
+    ),
+    monthly_booked AS (
+      SELECT
+        m.month_start,
+        COALESCE(SUM(
+          CASE
+            WHEN b.arrival <= m.month_start + interval '1 month' - interval '1 day' 
+              AND b.departure > m.month_start THEN
+              LEAST(b.departure::date, m.month_start + interval '1 month', CURRENT_DATE + interval '1 day')::date -
+              GREATEST(b.arrival::date, m.month_start)::date
+            ELSE 0
+          END
+        ), 0) as total_booked
+      FROM months m
+      LEFT JOIN bookings b ON b.tenant_id = $1
+        AND b.status != 'canceled'
+        AND b.arrival <= m.month_start + interval '1 month' - interval '1 day'
+        AND b.departure > m.month_start
+      JOIN properties p ON b.property_id = p.id
+        AND p.active = true
+      GROUP BY m.month_start
     )
     SELECT
-      TO_CHAR(m.month_start, 'Mon') as month,
-      COALESCE(
-        COUNT(DISTINCT b.id)::numeric /
-        (COUNT(DISTINCT p.id) * EXTRACT(day FROM m.month_start + interval '1 month' - interval '1 day')) * 100,
-        0
-      ) as rate
-    FROM months m
-    CROSS JOIN properties p
-    LEFT JOIN bookings b ON b.property_id = p.id
-      AND b.tenant_id = $1
-      AND b.arrival >= m.month_start
-      AND b.arrival < m.month_start + interval '1 month'
-      AND b.status NOT IN ('cancelled', 'canceled')
-    WHERE p.tenant_id = $1
-    GROUP BY m.month_start
-    ORDER BY m.month_start
+      TO_CHAR(ma.month_start, 'Mon') as month,
+      CASE 
+        WHEN ma.total_available > 0 THEN
+          ROUND((mb.total_booked::numeric / ma.total_available) * 100, 1)
+        ELSE 0
+      END as rate
+    FROM monthly_available ma
+    JOIN monthly_booked mb ON ma.month_start = mb.month_start
+    ORDER BY ma.month_start
   `
 
   const revenueParams = hasTagFilter ? [tenantId, tagIds] : [tenantId]
@@ -363,7 +571,7 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
   }
 }
 
-async function getAlerts(tenantId: string) {
+async function getAlerts(tenantId: string, from: string, to: string) {
   const alerts = []
 
   // Check for low occupancy
@@ -377,7 +585,7 @@ async function getAlerts(tenantId: string) {
         AND b.tenant_id = $1
         AND b.arrival >= CURRENT_DATE
         AND b.arrival < CURRENT_DATE + INTERVAL '30 days'
-        AND b.status NOT IN ('cancelled', 'canceled')
+        AND b.status != 'canceled'
       WHERE p.tenant_id = $1
     )
     SELECT
@@ -403,7 +611,7 @@ async function getAlerts(tenantId: string) {
     FROM bookings
     WHERE tenant_id = $1
       AND arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '7 days'
-      AND status NOT IN ('cancelled', 'canceled')
+      AND status != 'canceled'
   `
 
   const upcomingArrivals = await query(upcomingArrivalsQuery, [tenantId])
@@ -418,24 +626,25 @@ async function getAlerts(tenantId: string) {
     })
   }
 
-  // Check for high cancellation rate
+  // Check for high cancellation rate in selected period
   const cancellationQuery = `
     SELECT
-      COUNT(DISTINCT CASE WHEN status IN ('cancelled', 'canceled') THEN id END)::numeric / 
+      COUNT(DISTINCT CASE WHEN status = 'canceled' THEN id END)::numeric / 
       NULLIF(COUNT(DISTINCT id), 0) * 100 as cancellation_rate
     FROM bookings
     WHERE tenant_id = $1
-      AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+      AND arrival >= $2::date
+      AND arrival <= $3::date
   `
 
-  const cancellationCheck = await query(cancellationQuery, [tenantId])
+  const cancellationCheck = await query(cancellationQuery, [tenantId, from, to])
 
   if (cancellationCheck.success && cancellationCheck.data[0]?.cancellation_rate > 10) {
     alerts.push({
       id: 'high-cancellations',
       type: 'warning' as const,
       title: 'High Cancellation Rate',
-      description: `Recent cancellation rate is ${Math.round(cancellationCheck.data[0].cancellation_rate)}%. Review your cancellation policy.`,
+      description: `Cancellation rate in selected period is ${Math.round(cancellationCheck.data[0].cancellation_rate)}%. Review your cancellation policy.`,
       timestamp: new Date().toISOString()
     })
   }
@@ -446,7 +655,7 @@ async function getAlerts(tenantId: string) {
     FROM bookings
     WHERE tenant_id = $1
       AND arrival >= date_trunc('month', CURRENT_DATE)
-      AND status NOT IN ('cancelled', 'canceled')
+      AND status != 'canceled'
   `
 
   const revenueCheck = await query(revenueQuery, [tenantId])
@@ -470,7 +679,7 @@ async function getAlerts(tenantId: string) {
     LEFT JOIN bookings b ON b.property_id = p.id
       AND b.tenant_id = $1
       AND b.arrival >= CURRENT_DATE - INTERVAL '30 days'
-      AND b.status NOT IN ('cancelled', 'canceled')
+      AND b.status != 'canceled'
     WHERE p.tenant_id = $1
     GROUP BY p.id, p.name
     HAVING COUNT(b.id) = 0
@@ -493,28 +702,49 @@ async function getAlerts(tenantId: string) {
 }
 
 async function getRecentActivity(tenantId: string) {
+  // Simply show most recent bookings by any available date
   const activityQuery = `
     SELECT
       b.id,
-      'booking' as type,
-      CONCAT('New booking from ', b.guest_name, ' for ', p.name) as description,
-      b.booked_utc as timestamp,
+      CASE 
+        WHEN b.arrival > CURRENT_DATE THEN 'upcoming'
+        WHEN b.departure >= CURRENT_DATE THEN 'current'
+        ELSE 'past'
+      END as type,
+      CONCAT(
+        b.guest_name, ' - ', p.name, ' (', 
+        TO_CHAR(b.arrival, 'Mon DD'), ' to ', 
+        TO_CHAR(b.departure, 'Mon DD'), ')'
+      ) as description,
+      COALESCE(
+        b.booked_utc, 
+        b.created_at, 
+        b.updated_at,
+        b.arrival
+      ) as timestamp,
       b.total_amount as value
     FROM bookings b
     JOIN properties p ON p.id = b.property_id
     WHERE b.tenant_id = $1
-      AND b.booked_utc >= CURRENT_DATE - INTERVAL '7 days'
-    ORDER BY b.booked_utc DESC
+      AND b.status != 'canceled'
+    ORDER BY 
+      COALESCE(
+        b.booked_utc, 
+        b.created_at, 
+        b.updated_at,
+        b.arrival
+      ) DESC NULLS LAST
     LIMIT 10
   `
 
   const result = await query(activityQuery, [tenantId])
 
   if (!result.success) {
+    console.error('Failed to fetch recent activity:', result.error)
     return [] // Return empty array if query fails
   }
 
-  return result.data
+  return result.data || []
 }
 
 app.http('overview', {

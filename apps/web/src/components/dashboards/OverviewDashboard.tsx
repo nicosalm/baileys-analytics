@@ -143,32 +143,6 @@ const AlertCard = ({ alert }: { alert: OverviewData['alerts'][0] }) => {
   )
 }
 
-const renderCustomizedLabel = ({
-  cx,
-  cy,
-  midAngle,
-  innerRadius,
-  outerRadius,
-  percent,
-}: any) => {
-  const RADIAN = Math.PI / 180
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5
-  const x = cx + radius * Math.cos(-midAngle * RADIAN)
-  const y = cy + radius * Math.sin(-midAngle * RADIAN)
-
-  return (
-    <text
-      x={x}
-      y={y}
-      fill="white"
-      textAnchor={x > cx ? 'start' : 'end'}
-      dominantBaseline="central"
-      className="text-xs font-medium"
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
-  )
-}
 
 export const OverviewDashboard = () => {
   const { addToast } = useToast()
@@ -193,6 +167,7 @@ export const OverviewDashboard = () => {
         if (filters.selectedTags.length > 0) {
           params.append('tags', filters.selectedTags.map(t => t.id).join(','))
         }
+
 
         const url = `/overview?${params}`
         const result = await api.request<OverviewData>(url)
@@ -268,10 +243,6 @@ export const OverviewDashboard = () => {
             Complete snapshot of your vacation rental business
           </p>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
-          <Clock className="w-4 h-4" />
-          <span>Last updated: {new Date().toLocaleTimeString()}</span>
-        </div>
       </div>
 
       {/* Primary Metrics - 4 columns */}
@@ -302,9 +273,9 @@ export const OverviewDashboard = () => {
         />
         <MetricCard
           icon={Home}
-          label="Occupancy Rate"
+          label="Overall Occupancy"
           value={formatPercentage(Number(metrics.occupancy.current || 0) * 100, 0)}
-          subValue={`${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} avg`}
+          subValue={`${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} avg per property`}
           trend={metrics.occupancy.trend === 'up' ? {
             value: 5,
             isPositive: true
@@ -319,7 +290,7 @@ export const OverviewDashboard = () => {
           icon={Users}
           label="Total Guests"
           value={metrics.guests.total}
-          subValue={`${metrics.guests.newThisMonth} new | ${metrics.guests.vipCount} VIP | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} repeat`}
+          subValue={`${metrics.guests.newThisMonth} new in period | ${metrics.guests.vipCount} VIP (lifetime) | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} repeat`}
           trend={{
             value: metrics.guests.repeatRate * 100,
             isPositive: metrics.guests.repeatRate > 0.3
@@ -337,7 +308,9 @@ export const OverviewDashboard = () => {
             <span className="text-xs text-gray-500">Properties</span>
           </div>
           <div className="mt-2 text-xl font-bold">{metrics.properties.total}</div>
-          <div className="text-xs text-gray-600">Active listings</div>
+          <div className="text-xs text-gray-600">
+            {filters.selectedTags.length > 0 ? 'Tagged properties' : 'Total active'}
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
@@ -345,7 +318,7 @@ export const OverviewDashboard = () => {
             <span className="text-xs text-gray-500">Avg Stay</span>
           </div>
           <div className="mt-2 text-xl font-bold">{Number(metrics.bookings.avgNights || 0).toFixed(1)}</div>
-          <div className="text-xs text-gray-600">Nights</div>
+          <div className="text-xs text-gray-600">Nights per booking</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
@@ -353,15 +326,15 @@ export const OverviewDashboard = () => {
             <span className="text-xs text-gray-500">Avg Value</span>
           </div>
           <div className="mt-2 text-xl font-bold">{formatCompactCurrency(metrics.revenue.avgBookingValue)}</div>
-          <div className="text-xs text-gray-600">Per booking</div>
+          <div className="text-xs text-gray-600">Per booking (gross)</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <Users className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">VIP Guests</span>
+            <span className="text-xs text-gray-500">Lifetime VIP</span>
           </div>
           <div className="mt-2 text-xl font-bold">{metrics.guests.vipCount}</div>
-          <div className="text-xs text-gray-600">High value</div>
+          <div className="text-xs text-gray-600">High-value guests</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
@@ -369,7 +342,9 @@ export const OverviewDashboard = () => {
             <span className="text-xs text-gray-500">Repeat Rate</span>
           </div>
           <div className="mt-2 text-xl font-bold">{formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)}</div>
-          <div className="text-xs text-gray-600">Guest loyalty</div>
+          <div className="text-xs text-gray-600">
+            {metrics.guests.total > 0 ? `Of ${metrics.guests.total} guests` : 'No guests'}
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
@@ -377,7 +352,7 @@ export const OverviewDashboard = () => {
             <span className="text-xs text-gray-500">Cancel Rate</span>
           </div>
           <div className="mt-2 text-xl font-bold">{formatPercentage(Number(metrics.bookings.cancellationRate || 0), 0)}</div>
-          <div className="text-xs text-gray-600">Last 30 days</div>
+          <div className="text-xs text-gray-600">In selected period</div>
         </div>
       </div>
 
@@ -463,7 +438,7 @@ export const OverviewDashboard = () => {
             <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
             Booking Sources
           </h3>
-          <div className="h-48">
+          <div className="h-64">
             {charts.bookingsBySource.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -475,10 +450,10 @@ export const OverviewDashboard = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={60}
+                    label={(entry) => `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
+                    outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
-                    label={renderCustomizedLabel}
                   >
                     {charts.bookingsBySource.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -493,19 +468,6 @@ export const OverviewDashboard = () => {
               </div>
             )}
           </div>
-          {charts.bookingsBySource.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2 justify-center">
-              {charts.bookingsBySource.map((item, index) => (
-                <div key={item.source} className="flex items-center text-xs">
-                  <div
-                    className="w-3 h-3 rounded mr-1"
-                    style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
-                  />
-                  <span>{item.source}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Occupancy Trend */}
@@ -571,7 +533,7 @@ export const OverviewDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Recent Activity</h3>
-            <span className="text-xs text-gray-500">Last 7 days</span>
+            <span className="text-xs text-gray-500">Latest bookings</span>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {recentActivity && recentActivity.length > 0 ? (
@@ -601,44 +563,6 @@ export const OverviewDashboard = () => {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-blue-50 p-6 rounded-lg">
-        <h3 className="text-lg font-bold mb-4">Quick Actions</h3>
-        <div className="grid md:grid-cols-4 gap-4">
-          <button 
-            onClick={() => setActiveTab('financial')}
-            className="p-4 bg-white rounded-lg hover:shadow-md transition-shadow text-left"
-          >
-            <DollarSign className="w-5 h-5 text-green-600 mb-2" />
-            <div className="font-medium">View Financials</div>
-            <div className="text-xs text-gray-600">Revenue & tax details</div>
-          </button>
-          <button 
-            onClick={() => setActiveTab('properties')}
-            className="p-4 bg-white rounded-lg hover:shadow-md transition-shadow text-left"
-          >
-            <Home className="w-5 h-5 text-purple-600 mb-2" />
-            <div className="font-medium">Property Analytics</div>
-            <div className="text-xs text-gray-600">Performance metrics</div>
-          </button>
-          <button 
-            onClick={() => setActiveTab('occupancy')}
-            className="p-4 bg-white rounded-lg hover:shadow-md transition-shadow text-left"
-          >
-            <Calendar className="w-5 h-5 text-blue-600 mb-2" />
-            <div className="font-medium">Occupancy Report</div>
-            <div className="text-xs text-gray-600">Availability calendar</div>
-          </button>
-          <button 
-            onClick={() => setActiveTab('guests')}
-            className="p-4 bg-white rounded-lg hover:shadow-md transition-shadow text-left"
-          >
-            <Users className="w-5 h-5 text-orange-600 mb-2" />
-            <div className="font-medium">Guest Insights</div>
-            <div className="text-xs text-gray-600">Customer analytics</div>
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

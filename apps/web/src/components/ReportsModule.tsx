@@ -959,7 +959,9 @@ export default function ReportsModule() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Reports</h2>
-          <p className="text-gray-600 mt-1">Create, schedule, and manage your reports</p>
+          <p className="text-gray-600 text-sm mt-1">
+            Create, schedule, and manage your reports
+          </p>
         </div>
         <div className="flex space-x-3">
           <button

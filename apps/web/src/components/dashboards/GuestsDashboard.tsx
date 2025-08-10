@@ -98,12 +98,15 @@ const VIPBadge = ({ guest, vipThresholds }: {
     const spendThreshold = vipThresholds?.spendThreshold || 5000
     const bookingThreshold = vipThresholds?.bookingThreshold || 5
 
-    const isVIP = guest.totalSpent > spendThreshold || guest.bookingCount > bookingThreshold
+    const isVIP = guest.totalSpent >= spendThreshold || guest.bookingCount >= bookingThreshold
 
     if (!isVIP) return null
 
     return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+        <span 
+            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 cursor-help"
+            title={`$${guest.totalSpent.toLocaleString()} lifetime spent, ${guest.bookingCount} bookings`}
+        >
             VIP
         </span>
     )
@@ -222,16 +225,16 @@ export const GuestsDashboard = () => {
         },
         {
             key: 'bookingCount',
-            header: 'Bookings',
+            header: 'Total Bookings',
             sortable: true,
-            width: 100,
+            width: 120,
             render: (guest: GuestListItem) => (
                 <span className="font-medium">{guest.bookingCount}</span>
             )
         },
         {
             key: 'totalSpent',
-            header: 'Total Spent',
+            header: 'Lifetime Spent',
             sortable: true,
             width: 150,
             render: (guest: GuestListItem) => (
@@ -327,7 +330,12 @@ export const GuestsDashboard = () => {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold">Guest Analytics</h2>
+            <div>
+                <h2 className="text-2xl font-bold">Guest Analytics</h2>
+                <p className="text-gray-600 text-sm mt-1">
+                    Guest insights, patterns, and VIP tracking
+                </p>
+            </div>
 
             <div className="grid md:grid-cols-4 gap-4">
                 <MetricsCard
@@ -382,7 +390,7 @@ export const GuestsDashboard = () => {
                 </div>
 
                 <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-lg font-bold mb-4">Top Spenders</h3>
+                    <h3 className="text-lg font-bold mb-4">Top 10 Lifetime Spenders</h3>
                     <div className="space-y-2 max-h-80 overflow-y-auto">
                         {data.metrics.topSpenders.slice(0, 10).map((guest, index) => (
                             <div
@@ -506,8 +514,8 @@ export const GuestsDashboard = () => {
                             >
                                 VIP
                                 {data?.vipThresholds && (
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                                        ${data.vipThresholds.spendThreshold.toLocaleString()}+ or {data.vipThresholds.bookingThreshold}+ bookings
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                                        Lifetime: ${data.vipThresholds.spendThreshold.toLocaleString()}+ spent or {data.vipThresholds.bookingThreshold}+ bookings
                                     </div>
                                 )}
                             </button>
@@ -515,7 +523,7 @@ export const GuestsDashboard = () => {
                     </div>
                     {viewMode === 'vip' && data?.vipThresholds && (
                         <div className="mt-2 text-xs text-gray-600">
-                            Showing guests with ${data.vipThresholds.spendThreshold.toLocaleString()}+ spend or {data.vipThresholds.bookingThreshold}+ bookings
+                            Showing guests with ${data.vipThresholds.spendThreshold.toLocaleString()}+ lifetime spend or {data.vipThresholds.bookingThreshold}+ bookings
                         </div>
                     )}
                 </div>

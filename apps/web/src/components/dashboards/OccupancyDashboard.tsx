@@ -87,7 +87,12 @@ export const OccupancyDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Occupancy Analytics</h2>
+      <div>
+        <h2 className="text-2xl font-bold">Occupancy Analytics</h2>
+        <p className="text-gray-600 text-sm mt-1">
+          Availability, utilization, and booking patterns
+        </p>
+      </div>
 
       <div className="grid md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-lg shadow">
