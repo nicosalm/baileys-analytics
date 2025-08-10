@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { api } from '@/lib/api'
+import { useMemo } from 'react'
+import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency, calculateNightsBetween } from '@baileys/utils'
 import { Calendar, User, DollarSign, Tag as TagIcon, AlertCircle } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
@@ -39,32 +39,7 @@ type BookingDetail = {
 }
 
 export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<BookingDetail | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const loadBookingDetail = async () => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const result = await api.request<BookingDetail>(`/booking/${bookingId}/detail`)
-
-        if (result.success) {
-          setData(result.data)
-        } else {
-          setError(result.error || 'Failed to load booking details')
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unexpected error occurred')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadBookingDetail()
-  }, [bookingId])
+  const { data, isLoading: loading, error } = useBookingDetail(bookingId)
 
   const chargeColumns = useMemo(() => [
     {
@@ -130,7 +105,7 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Booking</h3>
-        <p className="text-gray-600 text-center max-w-md">{error}</p>
+        <p className="text-gray-600 text-center max-w-md">{error.message}</p>
         <p className="text-sm text-gray-500 mt-2">Booking ID: {bookingId}</p>
         <button
           onClick={() => window.location.reload()}
@@ -146,23 +121,23 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
 
   const nights = calculateNightsBetween(data.booking.arrival, data.booking.departure)
 
-  const tagsByType = data.tags.reduce((acc, tag) => {
+  const tagsByType = data.tags?.reduce((acc: Record<string, any[]>, tag: any) => {
     if (!acc[tag.type]) acc[tag.type] = []
     acc[tag.type].push(tag)
     return acc
-  }, {} as Record<string, typeof data.tags>)
+  }, {} as Record<string, any[]>) || {}
 
   const subtotal = data.charges
-    .filter(c => c.type === 'rent')
-    .reduce((sum, c) => sum + c.amount, 0)
+    ?.filter((c: any) => c.type === 'rent')
+    .reduce((sum: number, c: any) => sum + c.amount, 0) || 0
 
   const taxes = data.charges
-    .filter(c => c.type === 'tax')
-    .reduce((sum, c) => sum + c.amount, 0)
+    ?.filter((c: any) => c.type === 'tax')
+    .reduce((sum: number, c: any) => sum + c.amount, 0) || 0
 
   const fees = data.charges
-    .filter(c => c.type === 'fee')
-    .reduce((sum, c) => sum + c.amount, 0)
+    ?.filter((c: any) => c.type === 'fee')
+    .reduce((sum: number, c: any) => sum + c.amount, 0) || 0
 
   return (
     <div className="space-y-6">
@@ -249,9 +224,9 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
           Charges Breakdown
         </h3>
 
-        {data.charges.length <= 20 ? (
+        {data.charges?.length <= 20 ? (
           <div className="space-y-2">
-            {data.charges.map(charge => (
+            {data.charges?.map((charge: any) => (
               <div key={charge.id} className="flex justify-between py-2 border-b">
                 <div className="flex-1">
                   <span className="font-medium">{charge.description}</span>
@@ -343,7 +318,7 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
               <div key={type}>
                 <h4 className="text-sm font-medium text-gray-600 mb-2 capitalize">{type} Tags</h4>
                 <div className="flex flex-wrap gap-2">
-                  {tags.map(tag => (
+                  {(tags as any[])?.map((tag: any) => (
                     <Tag key={tag.id} tag={tag} />
                   ))}
                 </div>

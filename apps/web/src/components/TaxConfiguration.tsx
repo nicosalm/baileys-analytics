@@ -296,7 +296,7 @@ const TaxRuleForm = ({
 }
 
 export const TaxConfiguration = () => {
-  const { state, dispatch, refreshConfig } = useTaxConfig()
+  const { rules, propertyConfigs, isLoading, error, mutateRules, mutatePropertyConfigs } = useTaxConfig()
   const { addToast } = useToast()
   const [showForm, setShowForm] = useState(false)
   const [editingRule, setEditingRule] = useState<TaxRule | undefined>(undefined)
@@ -308,12 +308,7 @@ export const TaxConfiguration = () => {
       : await api.createTaxRule(ruleData)
 
     if (result.success) {
-      if (editingRule) {
-        dispatch({ type: 'UPDATE_RULE', rule: result.data })
-      } else {
-        dispatch({ type: 'ADD_RULE', rule: result.data })
-      }
-
+      mutateRules() // Revalidate the rules data
       addToast('success', `Tax rule ${editingRule ? 'updated' : 'created'} successfully`)
       setShowForm(false)
       setEditingRule(undefined)
@@ -327,7 +322,7 @@ export const TaxConfiguration = () => {
     const result = await api.deleteTaxRule(ruleId)
 
     if (result.success) {
-      dispatch({ type: 'DELETE_RULE', ruleId })
+      mutateRules() // Revalidate the rules data
       addToast('success', 'Tax rule deleted successfully')
     } else {
       addToast('error', result.error)
@@ -337,9 +332,7 @@ export const TaxConfiguration = () => {
   }
 
   const handleToggleRule = async (ruleId: string) => {
-    const rule = state.status === 'loaded'
-      ? state.rules.find(r => r.id === ruleId)
-      : null
+    const rule = rules?.find((r: any) => r.id === ruleId)
 
     if (!rule) return
 
@@ -349,7 +342,7 @@ export const TaxConfiguration = () => {
     })
 
     if (result.success) {
-      dispatch({ type: 'TOGGLE_RULE', ruleId })
+      mutateRules() // Revalidate the rules data
       addToast('success', `Tax rule ${result.data.isActive ? 'enabled' : 'disabled'}`)
     } else {
       addToast('error', result.error)
@@ -438,9 +431,9 @@ export const TaxConfiguration = () => {
         </div>
       )
     }
-  ], [state, deletingRuleId])
+  ], [rules, deletingRuleId])
 
-  if (state.status === 'loading') {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
@@ -448,12 +441,15 @@ export const TaxConfiguration = () => {
     )
   }
 
-  if (state.status === 'error') {
+  if (error) {
     return (
       <div className="text-center py-12">
         <p className="text-red-600 mb-4">Failed to load tax configuration</p>
         <button
-          onClick={refreshConfig}
+          onClick={() => {
+            mutateRules()
+            mutatePropertyConfigs()
+          }}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Retry
@@ -491,7 +487,7 @@ export const TaxConfiguration = () => {
 
       <div className="bg-white rounded-lg shadow">
         <VirtualTable
-          data={state.rules}
+          data={rules || []}
           columns={columns}
           height={600}
           sortBy="priority"
@@ -509,7 +505,7 @@ export const TaxConfiguration = () => {
             Property Tax Summary
           </h3>
           <div className="space-y-2">
-            {state.propertyConfigs.map(config => (
+            {propertyConfigs?.map((config: any) => (
               <div key={config.propertyId} className="flex justify-between items-center py-2 border-b">
                 <span className="font-medium">{config.propertyName}</span>
                 <div className="text-right">
@@ -532,7 +528,7 @@ export const TaxConfiguration = () => {
                 className="w-full p-2 border rounded"
                 onChange={e => {
                   const amount = parseFloat(e.target.value) || 0
-                  const result = taxEngine.calculateTax(amount, state.rules, {
+                  const result = taxEngine.calculateTax(amount, rules || [], {
                     bookingDate: new Date().toISOString(),
                   })
 

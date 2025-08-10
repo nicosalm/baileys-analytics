@@ -1,7 +1,7 @@
 import { useState, useEffect, ReactNode } from 'react'
-import { api } from '@/lib/api'
+import { useFinancial } from '@/hooks/use-api'
 import {
-  isValidDateRange, formatCurrency, formatCompactCurrency,
+  formatCurrency, formatCompactCurrency,
   calculatePercentage, formatPercentage,
   calculateGrowthRate, calculateAverage, ensureNumber
 } from '@baileys/utils'
@@ -693,67 +693,44 @@ const FinancialDashboard = () => {
   const { addToast } = useToast()
   const { filters } = useDashboard()
   const [activeTab, setActiveTab] = useState('pl')
-  const [loading, setLoading] = useState(true)
-  const [financialData, setFinancialData] = useState<any>(null)
-  const [revenueData, setRevenueData] = useState<any>(null)
-  const [taxData, setTaxData] = useState<any>(null)
+  
+  const tagIds = filters.selectedTags.map(t => t.id)
+  const { data, error, isLoading } = useFinancial(
+    filters.dateRange.from,
+    filters.dateRange.to,
+    tagIds
+  )
 
-  const loadAllData = async () => {
-    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
-      addToast('error', 'Invalid date range selected')
-      return
-    }
+  // Process data for each tab from the unified response
+  const financialData = data ? {
+    metrics: data.pl.metrics,
+    platforms: data.pl.platforms,
+    monthlyTrend: data.pl.monthlyTrend,
+    weeklyRevenue: data.pl.weeklyRevenue,
+    previousPeriod: data.pl.previousPeriod
+  } : null
 
-    setLoading(true)
-    try {
-      const tagIds = filters.selectedTags.map(t => t.id)
+  const revenueData = data ? {
+    gross: data.revenue.gross,
+    net: data.revenue.net,
+    taxes: data.revenue.taxes,
+    fees: data.revenue.fees,
+    bySource: data.revenue.bySource,
+    byMonth: data.revenue.byMonth,
+    lastYearData: data.revenue.lastYearData
+  } : null
 
-      // Single API call to get all financial data
-      const result = await api.getFinancial(
-        filters.dateRange.from,
-        filters.dateRange.to,
-        tagIds
-      )
-
-      if (result.success) {
-        // Set data for each tab from the unified response
-        setFinancialData({
-          metrics: result.data.pl.metrics,
-          platforms: result.data.pl.platforms,
-          monthlyTrend: result.data.pl.monthlyTrend,
-          weeklyRevenue: result.data.pl.weeklyRevenue,
-          previousPeriod: result.data.pl.previousPeriod
-        })
-
-        setRevenueData({
-          gross: result.data.revenue.gross,
-          net: result.data.revenue.net,
-          taxes: result.data.revenue.taxes,
-          fees: result.data.revenue.fees,
-          bySource: result.data.revenue.bySource,
-          byMonth: result.data.revenue.byMonth,
-          lastYearData: result.data.revenue.lastYearData
-        })
-
-        setTaxData({
-          summary: result.data.tax.summary,
-          byProperty: result.data.tax.byProperty,
-          byMonth: result.data.tax.byMonth
-        })
-      } else {
-        addToast('error', 'Failed to load financial data')
-      }
-    } catch (error) {
-      console.error('Error loading financial data:', error)
-      addToast('error', 'An error occurred while loading financial data')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const taxData = data ? {
+    summary: data.tax.summary,
+    byProperty: data.tax.byProperty,
+    byMonth: data.tax.byMonth
+  } : null
 
   useEffect(() => {
-    loadAllData()
-  }, [filters.dateRange, filters.selectedTags])
+    if (error) {
+      addToast('error', `Failed to load financial data: ${error.message}`)
+    }
+  }, [error?.message, addToast])
 
 
   return (
@@ -784,10 +761,10 @@ const FinancialDashboard = () => {
 
         {/* Tab Content */}
         <div className="p-6">
-          {activeTab === 'pl' && <PLView data={financialData} loading={loading} />}
-          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={loading} />}
-          {activeTab === 'cashflow' && <CashFlow data={financialData} loading={loading} />}
-          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={loading} />}
+          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} />}
+          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} />}
+          {activeTab === 'cashflow' && <CashFlow data={financialData} loading={isLoading} />}
+          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} />}
         </div>
       </div>
     </div>

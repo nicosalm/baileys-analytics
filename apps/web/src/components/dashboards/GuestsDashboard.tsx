@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { api } from '@/lib/api'
-import { formatCurrency, formatCompactCurrency, formatPercentage, ensureNumber, isValidDateRange } from '@baileys/utils'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useGuests } from '@/hooks/use-api'
+import { formatCurrency, formatCompactCurrency, formatPercentage, ensureNumber } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { VirtualTable } from '@/components/VirtualTable'
@@ -14,35 +14,7 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
 
-type GuestTag = {
-    id: string
-    name: string
-    color?: string
-    count: number
-}
 
-type GuestMetrics = {
-    totalGuests: number
-    repeatGuests: number
-    repeatRate: number
-    avgStayLength: number
-    avgSpend: number
-    totalRevenue: number
-    topSpenders: Array<{
-        id: string
-        name: string
-        email?: string
-        totalSpent: number
-        bookingCount: number
-        avgNightlyRate: number
-    }>
-    guestsBySource: Array<{
-        source: string
-        count: number
-        revenue: number
-    }>
-    tagDistribution: Array<GuestTag>
-}
 
 type GuestListItem = {
     id: string
@@ -61,14 +33,6 @@ type GuestListItem = {
     }>
 }
 
-type GuestsData = {
-    metrics: GuestMetrics
-    guests: GuestListItem[]
-    vipThresholds?: {
-        spendThreshold: number
-        bookingThreshold: number
-    }
-}
 
 const MetricsCard = ({
     icon: Icon,
@@ -116,38 +80,23 @@ export const GuestsDashboard = () => {
     const { addToast } = useToast()
     const { dispatch } = useDrillDown()
     const { filters } = useDashboard()
-    const [loading, setLoading] = useState(false)
-    const [data, setData] = useState<GuestsData | null>(null)
+    
+    const { data, error, isLoading } = useGuests(
+        filters.dateRange.from,
+        filters.dateRange.to,
+        filters.selectedTags.map(t => t.id)
+    )
     const [sortBy, setSortBy] = useState<string>('totalSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
     const [selectedGuests, setSelectedGuests] = useState<Set<string>>(new Set())
     const [viewMode, setViewMode] = useState<'all' | 'vip' | 'repeat'>('all')
 
-    const loadGuestsData = async () => {
-        if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
-            addToast('error', 'Invalid date range selected')
-            return
-        }
-
-        setLoading(true)
-
-        const result = await api.getGuests(
-            filters.dateRange.from,
-            filters.dateRange.to,
-            filters.selectedTags.map(t => t.id)
-        )
-
-        if (result.success) {
-            setData(result.data)
-        } else {
+    // Handle error state
+    useEffect(() => {
+        if (error) {
             addToast('error', 'Failed to load guests data')
         }
-        setLoading(false)
-    }
-
-    useEffect(() => {
-        loadGuestsData()
-    }, [filters.dateRange, filters.selectedTags])
+    }, [error?.message, addToast])
 
     const filteredGuests = useMemo(() => {
         if (!data) return []
@@ -278,7 +227,7 @@ export const GuestsDashboard = () => {
         }
     ], [data])
 
-    if (loading && !data) {
+    if (isLoading && !data) {
         return (
             <div className="flex justify-center py-12">
                 <Spinner size="lg" />
@@ -288,7 +237,7 @@ export const GuestsDashboard = () => {
 
     if (!data) return null
 
-    const sourceChartData = data.metrics.guestsBySource.map((source, index) => ({
+    const sourceChartData = data.metrics.guestsBySource.map((source: any, index: any) => ({
         ...source,
         color: CHART_COLORS[index % CHART_COLORS.length]
     }))
@@ -302,8 +251,8 @@ export const GuestsDashboard = () => {
         // Fallback: calculate from guest tags
         const tagCounts = new Map<string, { name: string; color?: string; count: number }>()
 
-        data.guests.forEach(guest => {
-            guest.tags?.forEach(tag => {
+        data.guests.forEach((guest: any) => {
+            guest.tags?.forEach((tag: any) => {
                 const existing = tagCounts.get(tag.id) || {
                     name: tag.name,
                     color: tag.color,
@@ -322,7 +271,7 @@ export const GuestsDashboard = () => {
 
     const tagChartData = tagDistribution
         ?.slice(0, 10)
-        .map((tag, index) => ({
+        .map((tag: any, index: any) => ({
             name: tag.name || 'Unknown',
             value: tag.count || 0,
             color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
@@ -372,14 +321,14 @@ export const GuestsDashboard = () => {
                                     cx="50%"
                                     cy="50%"
                                     labelLine={false}
-                                    label={(entry) =>
+                                    label={(entry: any) =>
                                         `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`
                                     }
                                     outerRadius={80}
                                     fill="#8884d8"
                                     dataKey="count"
                                 >
-                                    {sourceChartData.map((entry, index) => (
+                                    {sourceChartData.map((entry: any, index: any) => (
                                         <Cell key={`cell-${index}`} fill={entry.color} />
                                     ))}
                                 </Pie>
@@ -392,7 +341,7 @@ export const GuestsDashboard = () => {
                 <div className="bg-white p-6 rounded-lg shadow">
                     <h3 className="text-lg font-bold mb-4">Top 10 Lifetime Spenders</h3>
                     <div className="space-y-2 max-h-80 overflow-y-auto">
-                        {data.metrics.topSpenders.slice(0, 10).map((guest, index) => (
+                        {data.metrics.topSpenders.slice(0, 10).map((guest: any, index: any) => (
                             <div
                                 key={guest.id}
                                 className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 cursor-pointer"
@@ -444,11 +393,11 @@ export const GuestsDashboard = () => {
                                         tick={{ fontSize: 12 }}
                                     />
                                     <Tooltip
-                                        formatter={(value: number) => [`${value} guests`, 'Count']}
+                                        formatter={(value: any) => [`${value} guests`, 'Count']}
                                         labelStyle={{ color: '#000' }}
                                     />
                                     <Bar dataKey="value">
-                                        {tagChartData.map((entry, index) => (
+                                        {tagChartData.map((entry: any, index: any) => (
                                             <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
                                         ))}
                                     </Bar>
@@ -470,8 +419,8 @@ export const GuestsDashboard = () => {
                             <BarChart data={sourceChartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="source" />
-                                <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
-                                <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} />
+                                <YAxis tickFormatter={(value: any) => formatCompactCurrency(value)} />
+                                <Tooltip formatter={(value: any) => formatCurrency(ensureNumber(value))} />
                                 <Bar dataKey="revenue" fill={METRIC_COLORS.profit} />
                             </BarChart>
                         </ResponsiveContainer>
@@ -532,7 +481,7 @@ export const GuestsDashboard = () => {
                     data={sortedGuests}
                     columns={columns}
                     height={600}
-                    loading={loading}
+                    loading={isLoading}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
@@ -543,7 +492,7 @@ export const GuestsDashboard = () => {
                     enableSearch={true}
                     searchKeys={['name', 'email']}
                     enableRefresh={true}
-                    onRefresh={loadGuestsData}
+                    onRefresh={() => window.location.reload()}
                     showRowNumbers={true}
                     selectable={true}
                     selectedRows={selectedGuests}

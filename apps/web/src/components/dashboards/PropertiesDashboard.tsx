@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { PropertyMetrics } from '@/types/dashboard'
-import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy, isValidDateRange } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy } from '@baileys/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Home } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
-import { api } from '@/lib/api'
+import { usePropertyMetrics } from '@/hooks/use-api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
 import { useDrillDown } from '@/contexts/drillDown'
@@ -53,36 +53,21 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
 export const PropertiesDashboard = () => {
   const { filters } = useDashboard()
   const { addToast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [properties, setProperties] = useState<PropertyMetrics[]>([])
+  
+  const { data: properties, error, isLoading } = usePropertyMetrics(
+    filters.dateRange.from,
+    filters.dateRange.to,
+    filters.selectedTags.map(t => t.id)
+  )
 
-  const loadMetrics = async () => {
-    if (!isValidDateRange(filters.dateRange.from, filters.dateRange.to)) {
-      addToast('error', 'Invalid date range selected')
-      return
-    }
-
-    setLoading(true)
-    const result = await api.getPropertyMetrics(
-      filters.dateRange.from,
-      filters.dateRange.to,
-      filters.selectedTags.map(t => t.id)
-    )
-
-    if (result.success) {
-      console.log('Property metrics loaded:', result.data) // Debug log
-      setProperties(result.data)
-    } else {
+  // Handle error state
+  useEffect(() => {
+    if (error) {
       addToast('error', 'Failed to load property metrics')
     }
-    setLoading(false)
-  }
+  }, [error?.message, addToast])
 
-  useEffect(() => {
-    loadMetrics()
-  }, [filters.dateRange, filters.selectedTags])
-
-  if (loading) {
+  if (isLoading || !properties) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
@@ -90,7 +75,7 @@ export const PropertiesDashboard = () => {
     )
   }
 
-  const chartData = properties.map(p => ({
+  const chartData = (properties || []).map((p: any) => ({
     name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
     fullName: p.propertyName, // Keep full name for tooltip
     revenue: p.revenue,
@@ -98,11 +83,11 @@ export const PropertiesDashboard = () => {
     bookings: p.bookings
   }))
 
-  const maxRevenue = maxBy(properties, p => p.revenue)?.revenue || 1
-  const maxAvgRate = maxBy(properties, p => p.avgNightlyRate)?.avgNightlyRate || 1
-  const maxBookings = maxBy(properties, p => p.bookings)?.bookings || 1
+  const maxRevenue = maxBy(properties || [], (p: any) => p.revenue)?.revenue || 1
+  const maxAvgRate = maxBy(properties || [], (p: any) => p.avgNightlyRate)?.avgNightlyRate || 1
+  const maxBookings = maxBy(properties || [], (p: any) => p.bookings)?.bookings || 1
 
-  const radarData = properties.map(p => ({
+  const radarData = (properties || []).map((p: any) => ({
     property: p.propertyName.length > 15 ? p.propertyName.substring(0, 15) + '...' : p.propertyName,
     revenue: (p.revenue / maxRevenue) * 100,
     occupancy: p.occupancyRate * 100,
@@ -110,9 +95,9 @@ export const PropertiesDashboard = () => {
     bookings: (p.bookings / maxBookings) * 100
   }))
 
-  const totalRevenue = sumBy(properties, p => p.revenue)
-  const totalBookings = sumBy(properties, p => p.bookings)
-  const avgOccupancy = calculateAverage(properties.map(p => p.occupancyRate))
+  const totalRevenue = sumBy(properties || [], (p: any) => p.revenue)
+  const totalBookings = sumBy(properties || [], (p: any) => p.bookings)
+  const avgOccupancy = calculateAverage((properties || []).map((p: any) => p.occupancyRate))
 
   return (
     <div className="space-y-6">
@@ -129,7 +114,7 @@ export const PropertiesDashboard = () => {
             <Home className="w-4 h-4 mr-1" />
             Total Properties
           </div>
-          <div className="text-3xl font-bold">{properties.length}</div>
+          <div className="text-3xl font-bold">{(properties || []).length}</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
@@ -161,7 +146,7 @@ export const PropertiesDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        {properties.map(property => (
+        {(properties || []).map((property: any) => (
           <PropertyCard key={property.propertyId} property={property} />
         ))}
       </div>
@@ -181,13 +166,13 @@ export const PropertiesDashboard = () => {
                 />
                 <YAxis
                   yAxisId="left"
-                  tickFormatter={(value) => formatCompactCurrency(value)}
+                  tickFormatter={(value: any) => formatCompactCurrency(value)}
                 />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
                   domain={[0, 100]}
-                  tickFormatter={(value) => `${value}%`}
+                  tickFormatter={(value: any) => `${value}%`}
                 />
                 <Tooltip
                   formatter={(value: any, name: string) => {
@@ -195,7 +180,7 @@ export const PropertiesDashboard = () => {
                     if (name === 'Occupancy') return `${value}%`
                     return value
                   }}
-                  labelFormatter={(label, payload) => {
+                  labelFormatter={(label: any, payload: any) => {
                     // Show full property name in tooltip
                     if (payload && payload.length > 0) {
                       return payload[0].payload.fullName

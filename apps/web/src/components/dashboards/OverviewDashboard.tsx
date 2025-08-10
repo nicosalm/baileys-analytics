@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { useEffect } from 'react'
+import { useOverview } from '@/hooks/use-api'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
 import {
   AlertCircle, CheckCircle, TrendingUp,
@@ -12,58 +12,6 @@ import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { METRIC_COLORS, CHART_COLORS } from '@/lib/theme'
 
-type OverviewData = {
-  metrics: {
-    revenue: {
-      current: number
-      previous: number
-      growth: number
-      net: number
-      avgBookingValue: number
-    }
-    bookings: {
-      current: number
-      upcoming: number
-      cancellationRate: number
-      avgNights: number
-    }
-    occupancy: {
-      current: number
-      trend: 'up' | 'down' | 'stable'
-      avgPropertyOccupancy: number
-    }
-    guests: {
-      total: number
-      newThisMonth: number
-      repeatRate: number
-      vipCount: number
-    }
-    properties: {
-      total: number
-      avgOccupancy: number
-    }
-  }
-  alerts: Array<{
-    id: string
-    type: 'warning' | 'info' | 'success'
-    title: string
-    description: string
-    timestamp: string
-  }>
-  recentActivity: Array<{
-    id: string
-    type: 'booking' | 'payment' | 'guest'
-    description: string
-    timestamp: string
-    value?: number
-  }>
-  charts: {
-    revenueLastWeek: Array<{ day: string; revenue: number }>
-    topProperties: Array<{ name: string; revenue: number; bookings: number }>
-    bookingsBySource: Array<{ source: string; count: number }>
-    occupancyTrend: Array<{ month: string; rate: number }>
-  }
-}
 
 const MetricCard = ({
   icon: Icon,
@@ -114,7 +62,7 @@ const MetricCard = ({
   )
 }
 
-const AlertCard = ({ alert }: { alert: OverviewData['alerts'][0] }) => {
+const AlertCard = ({ alert }: { alert: any }) => {
   const icons = {
     warning: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
     info: <AlertCircle className="w-5 h-5 text-blue-600" />,
@@ -128,9 +76,9 @@ const AlertCard = ({ alert }: { alert: OverviewData['alerts'][0] }) => {
   }
 
   return (
-    <div className={`p-4 rounded-lg border ${bgColors[alert.type]}`}>
+    <div className={`p-4 rounded-lg border ${(bgColors as any)[alert.type]}`}>
       <div className="flex items-start">
-        <div className="flex-shrink-0 mt-0.5">{icons[alert.type]}</div>
+        <div className="flex-shrink-0 mt-0.5">{(icons as any)[alert.type]}</div>
         <div className="ml-3 flex-1">
           <h4 className="text-sm font-medium">{alert.title}</h4>
           <p className="text-sm text-gray-600 mt-1">{alert.description}</p>
@@ -147,59 +95,21 @@ const AlertCard = ({ alert }: { alert: OverviewData['alerts'][0] }) => {
 export const OverviewDashboard = () => {
   const { addToast } = useToast()
   const { filters, setActiveTab } = useDashboard()
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<OverviewData | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  
+  const tagIds = filters.selectedTags.map(t => t.id)
+  const { data, error, isLoading } = useOverview(
+    filters.dateRange.from,
+    filters.dateRange.to,
+    tagIds
+  )
 
   useEffect(() => {
-    let mounted = true
-
-    const loadOverview = async () => {
-      if (!mounted) return
-
-      setLoading(true)
-      setError(null)
-
-      try {
-        const params = new URLSearchParams()
-        if (filters.dateRange.from) params.append('from', filters.dateRange.from)
-        if (filters.dateRange.to) params.append('to', filters.dateRange.to)
-        if (filters.selectedTags.length > 0) {
-          params.append('tags', filters.selectedTags.map(t => t.id).join(','))
-        }
-
-
-        const url = `/overview?${params}`
-        const result = await api.request<OverviewData>(url)
-
-        if (!mounted) return
-
-        if (result.success) {
-          setData(result.data)
-        } else {
-          setError(result.error || 'Failed to load overview data')
-          addToast('error', `Overview error: ${result.error}`)
-        }
-      } catch (err) {
-        if (!mounted) return
-
-        const errorMsg = err instanceof Error ? err.message : 'An error occurred'
-        setError(errorMsg)
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
+    if (error) {
+      addToast('error', `Overview error: ${error.message || 'Failed to load overview data'}`)
     }
+  }, [error?.message, addToast])
 
-    loadOverview()
-
-    return () => {
-      mounted = false
-    }
-  }, [filters.dateRange, filters.selectedTags])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
@@ -376,8 +286,8 @@ export const OverviewDashboard = () => {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
-                  <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
                   <Area
                     type="monotone"
                     dataKey="revenue"
@@ -405,7 +315,7 @@ export const OverviewDashboard = () => {
           <div className="h-48">
             {charts.topProperties.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts.topProperties.slice(0, 5).map(item => ({
+                <BarChart data={charts.topProperties.slice(0, 5).map((item: any) => ({
                   ...item,
                   revenue: Number(item.revenue),
                   bookings: Number(item.bookings)
@@ -419,8 +329,8 @@ export const OverviewDashboard = () => {
                     interval={0}
                     tick={{ fontSize: 10 }}
                   />
-                  <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
                   <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -443,19 +353,19 @@ export const OverviewDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={charts.bookingsBySource.map(item => ({
+                    data={charts.bookingsBySource.map((item: any) => ({
                       ...item,
                       count: Number(item.count)
                     }))}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
+                    label={(entry: any) => `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
                   >
-                    {charts.bookingsBySource.map((_, index) => (
+                    {charts.bookingsBySource.map((_: any, index: any) => (
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
@@ -479,14 +389,14 @@ export const OverviewDashboard = () => {
           <div className="h-48">
             {charts.occupancyTrend.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={charts.occupancyTrend.map(item => ({
+                <LineChart data={charts.occupancyTrend.map((item: any) => ({
                   ...item,
                   rate: Number(item.rate)
                 }))}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `${value}%`} domain={[0, 100]} />
-                  <Tooltip formatter={(value) => `${value}%`} />
+                  <YAxis tickFormatter={(value: any) => `${value}%`} domain={[0, 100]} />
+                  <Tooltip formatter={(value: any) => `${value}%`} />
                   <Line
                     type="monotone"
                     dataKey="rate"
@@ -516,7 +426,7 @@ export const OverviewDashboard = () => {
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {alerts && alerts.length > 0 ? (
-              alerts.map(alert => (
+              alerts.map((alert: any) => (
                 <AlertCard key={alert.id} alert={alert} />
               ))
             ) : (
@@ -537,7 +447,7 @@ export const OverviewDashboard = () => {
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {recentActivity && recentActivity.length > 0 ? (
-              recentActivity.map(activity => (
+              recentActivity.map((activity: any) => (
                 <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div className="flex-1">
                     <p className="text-sm font-medium">{activity.description}</p>

@@ -23,17 +23,27 @@ export const useToast = () => {
   return context
 }
 
+let toastCounter = 0
+
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const addToast = (type: ToastType, message: string) => {
-    const id = Date.now().toString()
-    setToasts(prev => [...prev, { id, type, message }])
-
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-      removeToast(id)
-    }, 5000)
+    // Generate unique ID first
+    const id = `toast-${Date.now()}-${toastCounter++}-${Math.random().toString(36).substr(2, 9)}`
+    
+    // Check if a similar toast already exists to prevent duplicates
+    setToasts(prev => {
+      const exists = prev.some(t => t.message === message && t.type === type)
+      if (exists) return prev
+      
+      // Auto remove this specific toast after 5 seconds
+      setTimeout(() => {
+        removeToast(id)
+      }, 5000)
+      
+      return [...prev, { id, type, message }]
+    })
   }
 
   const removeToast = (id: string) => {

@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { api } from '@/lib/api'
+import { useMemo, useCallback, useState } from 'react'
+import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency } from '@baileys/utils'
 import {
   User, Calendar, DollarSign, Tag as TagIcon, Mail,
@@ -83,56 +83,11 @@ const InfoRow = ({ label, value }: { label: string; value: string | number }) =>
 export const GuestDetailView = ({ guestId }: { guestId: string }) => {
   const { dispatch } = useDrillDown()
   const { addToast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [data, setData] = useState<GuestDetail | null>(null)
+  const { data, isLoading: loading, error } = useGuestDetail(guestId)
   const [activeTab, setActiveTab] = useState<'bookings' | 'properties' | 'analytics'>('bookings')
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<string>('arrival')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadGuestDetail = async () => {
-      if (!guestId) return;
-
-      setLoading(true)
-      setError(null)
-
-      try {
-        const result = await api.request<GuestDetail>(`/guest/${encodeURIComponent(guestId)}/detail`)
-
-        if (cancelled) return;
-
-        if (result.success) {
-          setData(result.data)
-        } else {
-          const errorMsg = result.error || 'Failed to load guest details'
-          setError(errorMsg)
-          if (result.status !== 404) {
-            addToast('error', `Failed to load guest: ${errorMsg}`)
-          }
-        }
-      } catch (err) {
-        if (cancelled) return;
-
-        const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred'
-        setError(errorMsg)
-        addToast('error', `Error loading guest: ${errorMsg}`)
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
-      }
-    }
-
-    loadGuestDetail()
-
-    return () => {
-      cancelled = true;
-    }
-  }, [guestId])
 
   const sortedBookings = useMemo(() => {
     if (!data) return []
@@ -338,7 +293,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
       <div className="flex flex-col items-center justify-center py-12">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Guest Details</h3>
-        <p className="text-gray-600 text-center max-w-md">{error}</p>
+        <p className="text-gray-600 text-center max-w-md">{error.message}</p>
         <p className="text-sm text-gray-500 mt-2">Guest ID: {guestId}</p>
         <button
           onClick={() => window.location.reload()}
@@ -441,7 +396,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
           <h3 className="text-lg font-bold mb-4">Payment Methods</h3>
           <div className="space-y-2">
             {paymentMethods && paymentMethods.length > 0 ? (
-              paymentMethods.map(method => (
+              paymentMethods.map((method: any) => (
                 <div key={method.method} className="flex justify-between">
                   <span className="text-gray-600">
                     {method.method} ({method.count}x)
@@ -462,7 +417,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
           </h3>
           {tags && tags.length > 0 ? (
             <div className="flex flex-wrap gap-2">
-              {tags.map(tag => (
+              {tags.map((tag: any) => (
                 <Tag key={tag.id} tag={tag} size="sm" />
               ))}
             </div>
@@ -560,7 +515,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
             ) : (
               <div className="space-y-3">
                 {properties && properties.length > 0 ? (
-                  properties.map((property) => (
+                  properties.map((property: any) => (
                     <div
                       key={property.propertyId}
                       className="p-4 border rounded hover:bg-gray-50 cursor-pointer"

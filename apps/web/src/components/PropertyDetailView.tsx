@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { api } from '@/lib/api'
+import { useMemo, useCallback, useState } from 'react'
+import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users, Download, Home, Bed, Bath } from 'lucide-react'
@@ -64,63 +64,15 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
   const { dispatch } = useDrillDown()
   const { filters } = useDashboard()
   const { addToast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [data, setData] = useState<PropertyDetail | null>(null)
+  const { data, isLoading: loading, error } = usePropertyDetail(
+    propertyId, 
+    filters.dateRange.from, 
+    filters.dateRange.to
+  )
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<string>('arrival')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [viewMode, setViewMode] = useState<'charts' | 'table'>('charts')
-
-  useEffect(() => {
-    const loadPropertyDetail = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        const result = await api.request<PropertyDetail>(
-          `/property/${propertyId}/detail?from=${filters.dateRange.from}&to=${filters.dateRange.to}`
-        )
-
-        if (result.success && result.data) {
-          const processedData = {
-            ...result.data,
-            metrics: {
-              totalRevenue: result.data.metrics?.totalRevenue || 0,
-              totalBookings: result.data.metrics?.totalBookings || 0,
-              avgNightlyRate: result.data.metrics?.avgNightlyRate || 0,
-              occupancyRate: result.data.metrics?.occupancyRate || 0,
-              totalNights: result.data.metrics?.totalNights || 0,
-              avgStayLength: result.data.metrics?.avgStayLength || 0
-            },
-            monthlyData: result.data.monthlyData || [],
-            recentBookings: result.data.recentBookings || [],
-            guestStats: {
-              totalGuests: result.data.guestStats?.totalGuests || 0,
-              repeatGuests: result.data.guestStats?.repeatGuests || 0,
-              avgGuestRating: result.data.guestStats?.avgGuestRating
-            },
-            revenueByPlatform: result.data.revenueByPlatform || []
-          }
-          setData(processedData)
-        } else {
-          const errorMsg = 'Failed to load property details'
-          setError(errorMsg)
-          addToast('error', errorMsg)
-        }
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred'
-        setError(errorMsg)
-        addToast('error', errorMsg)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (propertyId) {
-      loadPropertyDetail()
-    }
-  }, [propertyId, filters.dateRange, addToast])
 
   const sortedBookings = useMemo(() => {
     if (!data?.recentBookings) return []
@@ -343,7 +295,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <div className="text-red-600 mb-4">Error: {error}</div>
+        <div className="text-red-600 mb-4">Error: {error.message}</div>
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -362,12 +314,33 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
     )
   }
 
+  // Process data with null safety
+  const processedData = {
+    ...data,
+    metrics: {
+      totalRevenue: data.metrics?.totalRevenue || 0,
+      totalBookings: data.metrics?.totalBookings || 0,
+      avgNightlyRate: data.metrics?.avgNightlyRate || 0,
+      occupancyRate: data.metrics?.occupancyRate || 0,
+      totalNights: data.metrics?.totalNights || 0,
+      avgStayLength: data.metrics?.avgStayLength || 0
+    },
+    monthlyData: data.monthlyData || [],
+    recentBookings: data.recentBookings || [],
+    guestStats: {
+      totalGuests: data.guestStats?.totalGuests || 0,
+      repeatGuests: data.guestStats?.repeatGuests || 0,
+      avgGuestRating: data.guestStats?.avgGuestRating
+    },
+    revenueByPlatform: data.revenueByPlatform || []
+  }
+
   const handleMonthClick = (monthData: any) => {
     const [year, month] = monthData.month.split('-')
     dispatch({
       type: 'DRILL_TO_PROPERTY_MONTH',
       propertyId,
-      propertyName: data.property.name,
+      propertyName: processedData.property.name,
       month,
       year
     })
@@ -382,21 +355,21 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
       <div>
         <h2 className="text-2xl font-bold flex items-center">
           <Home className="w-6 h-6 mr-2" />
-          {data.property.name}
+          {processedData.property.name}
         </h2>
-        <p className="text-gray-600">{data.property.address}</p>
+        <p className="text-gray-600">{processedData.property.address}</p>
         <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
           <span className="flex items-center">
             <Bed className="w-4 h-4 mr-1" />
-            {data.property.bedrooms} bed
+            {processedData.property.bedrooms} bed
           </span>
           <span className="flex items-center">
             <Bath className="w-4 h-4 mr-1" />
-            {data.property.bathrooms} bath
+            {processedData.property.bathrooms} bath
           </span>
           <span className="flex items-center">
             <Users className="w-4 h-4 mr-1" />
-            Sleeps {data.property.maxGuests}
+            Sleeps {processedData.property.maxGuests}
           </span>
         </div>
       </div>
@@ -407,9 +380,9 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <DollarSign className="w-4 h-4 mr-1" />
             Total Revenue
           </div>
-          <div className="text-3xl font-bold">{formatCompactCurrency(data.metrics.totalRevenue)}</div>
+          <div className="text-3xl font-bold">{formatCompactCurrency(processedData.metrics.totalRevenue)}</div>
           <div className="text-sm text-gray-500 mt-1">
-            {formatCurrency(data.metrics.avgNightlyRate)}/night avg
+            {formatCurrency(processedData.metrics.avgNightlyRate)}/night avg
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -417,9 +390,9 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <Calendar className="w-4 h-4 mr-1" />
             Total Bookings
           </div>
-          <div className="text-3xl font-bold">{data.metrics.totalBookings}</div>
+          <div className="text-3xl font-bold">{processedData.metrics.totalBookings}</div>
           <div className="text-sm text-gray-500 mt-1">
-            {data.metrics.totalNights} nights
+            {processedData.metrics.totalNights} nights
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
@@ -427,15 +400,15 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <TrendingUp className="w-4 h-4 mr-1" />
             Avg Stay Length
           </div>
-          <div className="text-3xl font-bold">{data.metrics.avgStayLength.toFixed(1)} nights</div>
+          <div className="text-3xl font-bold">{processedData.metrics.avgStayLength.toFixed(1)} nights</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Users className="w-4 h-4 mr-1" />
             Occupancy Rate
           </div>
-          <div className={`text-3xl font-bold ${getOccupancyColor(data.metrics.occupancyRate)}`}>
-            {formatPercentage(data.metrics.occupancyRate * 100, 0)}
+          <div className={`text-3xl font-bold ${getOccupancyColor(processedData.metrics.occupancyRate)}`}>
+            {formatPercentage(processedData.metrics.occupancyRate * 100, 0)}
           </div>
         </div>
       </div>
@@ -455,7 +428,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <h3 className="text-lg font-bold mb-4">Monthly Revenue Trend</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data.monthlyData}>
+                <LineChart data={processedData.monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="month"
@@ -480,7 +453,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <h3 className="text-lg font-bold mb-4">Monthly Occupancy</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.monthlyData}>
+                <BarChart data={processedData.monthlyData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="month"
@@ -501,11 +474,11 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
 
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-bold mb-4">Revenue by Platform</h3>
-            {data.revenueByPlatform && data.revenueByPlatform.length > 0 ? (
+            {processedData.revenueByPlatform && processedData.revenueByPlatform.length > 0 ? (
               <div className="space-y-3">
-                {data.revenueByPlatform.map((platform, index) => {
-                  const percentage = data.metrics.totalRevenue > 0
-                    ? (platform.revenue / data.metrics.totalRevenue) * 100
+                {processedData.revenueByPlatform.map((platform: any, index: number) => {
+                  const percentage = processedData.metrics.totalRevenue > 0
+                    ? (platform.revenue / processedData.metrics.totalRevenue) * 100
                     : 0
                   return (
                     <div key={platform.platform}>
@@ -538,27 +511,27 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Total Guests</span>
-                <span className="font-medium">{data.guestStats.totalGuests}</span>
+                <span className="font-medium">{processedData.guestStats.totalGuests}</span>
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Repeat Guests</span>
-                <span className="font-medium">{data.guestStats.repeatGuests}</span>
+                <span className="font-medium">{processedData.guestStats.repeatGuests}</span>
               </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Repeat Rate</span>
                 <span className="font-medium">
-                  {data.guestStats.totalGuests > 0
-                    ? formatPercentage((data.guestStats.repeatGuests / data.guestStats.totalGuests) * 100, 0)
+                  {processedData.guestStats.totalGuests > 0
+                    ? formatPercentage((processedData.guestStats.repeatGuests / processedData.guestStats.totalGuests) * 100, 0)
                     : '0%'
                   }
                 </span>
               </div>
-              {data.guestStats.avgGuestRating && (
+              {processedData.guestStats.avgGuestRating && (
                 <div className="flex justify-between py-2">
                   <span className="text-gray-600">Average Rating</span>
                   <span className="font-medium flex items-center">
                     <span className="text-yellow-500 mr-1">★</span>
-                    {data.guestStats.avgGuestRating.toFixed(1)}
+                    {processedData.guestStats.avgGuestRating.toFixed(1)}
                   </span>
                 </div>
               )}
@@ -571,7 +544,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             <h3 className="text-lg font-bold">Monthly Performance</h3>
           </div>
           <VirtualTable
-            data={data.monthlyData}
+            data={processedData.monthlyData}
             columns={monthlyColumns}
             height={400}
             onRowClick={handleMonthClick}
@@ -579,7 +552,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             sortBy="month"
             sortOrder="desc"
             onSort={handleSort}
-            enablePagination={data.monthlyData.length > 12}
+            enablePagination={processedData.monthlyData.length > 12}
             pageSize={12}
             emptyMessage="No monthly data available"
           />
@@ -589,8 +562,8 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
       <div className="bg-white rounded-lg shadow">
         <div className="p-4 border-b">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-bold">Recent Bookings ({data.recentBookings.length})</h3>
-            {data.recentBookings.length > 0 && (
+            <h3 className="text-lg font-bold">Recent Bookings ({processedData.recentBookings.length})</h3>
+            {processedData.recentBookings.length > 0 && (
               <button
                 onClick={handleExportBookings}
                 className="flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"

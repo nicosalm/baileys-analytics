@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { useState } from 'react'
 import { useToast } from '@/contexts/toast'
+import { useSyncStatus, manualSync, historicalSync } from '@/hooks/use-api'
 import { Spinner } from '@/components/Spinner'
 import { RefreshCw, Calendar, AlertCircle, Calculator, Users } from 'lucide-react'
 import { TaxConfiguration } from '@/components/TaxConfiguration'
@@ -158,19 +158,13 @@ export const Settings = () => {
   const { state } = useAuth()
   const { addToast } = useToast()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
-  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
   const [activeTab, setActiveTab] = useState<'account' | 'tax' | 'vip'>('account')
+  
+  const { data: syncStatus } = useSyncStatus()
 
   if (state.status !== 'authenticated') return null
 
   const { user } = state
-
-  const loadSyncStatus = async () => {
-    const result = await api.getSyncStatus()
-    if (result.success) {
-      setSyncStatus(result.data)
-    }
-  }
 
   const handleSync = async (type: 'recent' | 'historical') => {
     if (type === 'historical' && !window.confirm(
@@ -182,8 +176,8 @@ export const Settings = () => {
     setSyncState({ type: 'syncing', mode: type })
 
     const result = type === 'historical'
-      ? await api.historicalSync()
-      : await api.manualSync()
+      ? await historicalSync()
+      : await manualSync()
 
     if (result.success) {
       let message: string
@@ -220,7 +214,7 @@ export const Settings = () => {
       }
 
       addToast('success', message)
-      await loadSyncStatus()
+      // Sync status will automatically refresh via SWR
     } else {
       addToast('error', `${type === 'historical' ? 'Historical' : 'Recent'} sync failed`)
     }
@@ -229,11 +223,6 @@ export const Settings = () => {
     setTimeout(() => setSyncState({ type: 'idle' }), 1000)
   }
 
-  useEffect(() => {
-    if (user.hasOwnerRezConnection) {
-      loadSyncStatus()
-    }
-  }, [user.hasOwnerRezConnection])
 
   return (
     <div className="min-h-screen">

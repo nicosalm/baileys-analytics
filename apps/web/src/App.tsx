@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { SWRConfig } from 'swr'
+import { swrConfig } from '@/hooks/swr-config'
 import { AuthProvider } from '@/contexts/auth'
 import { ToastProvider } from '@/contexts/toast'
 import { DashboardProvider } from '@/contexts/dashboard'
@@ -13,9 +15,10 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 
 export const App = () => {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
+    <SWRConfig value={swrConfig}>
+      <BrowserRouter>
+        <AuthProvider>
+          <ToastProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -46,8 +49,9 @@ export const App = () => {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </ToastProvider>
-      </AuthProvider>
-    </BrowserRouter>
+          </ToastProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </SWRConfig>
   )
 }

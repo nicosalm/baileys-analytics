@@ -1,47 +1,40 @@
 import { useState, useEffect } from 'react'
 import { DollarSign, Hash, Save, AlertCircle } from 'lucide-react'
-import { api } from '@/lib/api'
+import { useVIPSettings, updateVIPSettings } from '@/hooks/use-api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
 import { formatCurrency } from '@baileys/utils'
 
 export const VIPConfiguration = () => {
   const { addToast } = useToast()
-  const [loading, setLoading] = useState(true)
+  const { data: originalSettings, isLoading: loading, error } = useVIPSettings()
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState({
     vipSpendThreshold: 5000,
     vipBookingThreshold: 5
   })
   const [hasChanges, setHasChanges] = useState(false)
-  const [originalSettings, setOriginalSettings] = useState({
-    vipSpendThreshold: 5000,
-    vipBookingThreshold: 5
-  })
 
   useEffect(() => {
-    loadSettings()
-  }, [])
+    if (originalSettings) {
+      setSettings(originalSettings)
+    }
+  }, [originalSettings])
 
   useEffect(() => {
-    const changed =
-      settings.vipSpendThreshold !== originalSettings.vipSpendThreshold ||
-      settings.vipBookingThreshold !== originalSettings.vipBookingThreshold
-    setHasChanges(changed)
+    if (originalSettings) {
+      const changed =
+        settings.vipSpendThreshold !== originalSettings.vipSpendThreshold ||
+        settings.vipBookingThreshold !== originalSettings.vipBookingThreshold
+      setHasChanges(changed)
+    }
   }, [settings, originalSettings])
 
-  const loadSettings = async () => {
-    setLoading(true)
-    const result = await api.getVIPSettings()
-
-    if (result.success) {
-      setSettings(result.data)
-      setOriginalSettings(result.data)
-    } else {
+  useEffect(() => {
+    if (error) {
       addToast('error', 'Failed to load VIP settings')
     }
-    setLoading(false)
-  }
+  }, [error, addToast])
 
   const handleSave = async () => {
     // Validate
@@ -56,10 +49,9 @@ export const VIPConfiguration = () => {
     }
 
     setSaving(true)
-    const result = await api.updateVIPSettings(settings)
+    const result = await updateVIPSettings(settings)
 
     if (result.success) {
-      setOriginalSettings(result.data)
       addToast('success', 'VIP settings updated successfully')
     } else {
       addToast('error', 'Failed to update VIP settings')
@@ -68,7 +60,9 @@ export const VIPConfiguration = () => {
   }
 
   const handleReset = () => {
-    setSettings(originalSettings)
+    if (originalSettings) {
+      setSettings(originalSettings)
+    }
   }
 
   if (loading) {

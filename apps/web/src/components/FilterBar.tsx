@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { DateRangePicker } from './DateRangePicker'
 import { useDashboard } from '@/contexts/dashboard'
-import { api } from '@/lib/api'
-import { Tag } from '@/types/dashboard'
+import { useTags } from '@/hooks/use-api'
 import { Filter, X, ChevronDown } from 'lucide-react'
 import { cn } from '@baileys/utils'
 
@@ -15,29 +14,9 @@ export const FilterBar: React.FC = () => {
     clearFilters
   } = useDashboard()
 
-  const [availableTags, setAvailableTags] = useState<Tag[]>([])
-  const [isTagsLoading, setIsTagsLoading] = useState(false)
+  const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // Load available tags
-  useEffect(() => {
-    const loadTags = async () => {
-      setIsTagsLoading(true)
-      try {
-        const result = await api.getTags()
-        if (result.success) {
-          setAvailableTags(result.data)
-        }
-      } catch (error) {
-        console.error('Failed to load tags:', error)
-      } finally {
-        setIsTagsLoading(false)
-      }
-    }
-
-    loadTags()
-  }, [])
 
   // Handle click outside for tag dropdown
   useEffect(() => {
@@ -95,7 +74,7 @@ export const FilterBar: React.FC = () => {
                     <div className="text-center py-4 text-gray-500">No tags available</div>
                   ) : (
                     <div className="space-y-1">
-                      {availableTags.map(tag => {
+                      {availableTags.map((tag: any) => {
                         const isSelected = filters.selectedTags.some(t => t.id === tag.id)
                         return (
                           <button

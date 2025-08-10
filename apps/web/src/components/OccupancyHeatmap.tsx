@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { api } from '@/lib/api'
+import { useState, useMemo } from 'react'
+import { useDailyOccupancy } from '@/hooks/use-api'
 import { cn } from '@baileys/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -16,27 +16,16 @@ interface OccupancyHeatmapProps {
 }
 
 export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) => {
-  const [data, setData] = useState<DailyOccupancy[]>([])
-  const [loading, setLoading] = useState(true)
+  const { data, isLoading: loading, error } = useDailyOccupancy(
+    dateRange.from, 
+    dateRange.to, 
+    tagIds
+  )
   const [currentMonthIndex, setCurrentMonthIndex] = useState(0)
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      const result = await api.request<DailyOccupancy[]>(
-        `/occupancy/daily?from=${dateRange.from}&to=${dateRange.to}&tags=${tagIds.join(',')}`
-      )
-      if (result.success) {
-        setData(result.data)
-      }
-      setCurrentMonthIndex(0) // reset page
-      setLoading(false)
-    }
-
-    load()
-  }, [dateRange, tagIds])
-
   const monthsData = useMemo(() => {
+    if (!data || !Array.isArray(data)) return []
+    
     const grouped = data.reduce((acc, day) => {
       const month = day.date.substring(0, 7)
       if (!acc[month]) acc[month] = []
@@ -48,7 +37,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   }, [data])
 
   const currentMonthData = monthsData[currentMonthIndex] || ['', []]
-  const [currentMonth, currentMonthDays] = currentMonthData
+  const [currentMonth, currentMonthDays] = currentMonthData as [string, DailyOccupancy[]]
 
   const calendarDays = useMemo(() => {
     if (!currentMonthDays.length) return []
@@ -63,9 +52,9 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
 
   const monthStats = useMemo(() => {
     if (!currentMonthDays.length) return null
-    const totalBooked = currentMonthDays.reduce((sum, d) => sum + d.bookedProperties, 0)
-    const totalAvailable = currentMonthDays.reduce((sum, d) => sum + d.totalProperties, 0)
-    const avgOccupancy = currentMonthDays.reduce((sum, d) => sum + d.occupancyRate, 0) / currentMonthDays.length
+    const totalBooked = currentMonthDays.reduce((sum: number, d: DailyOccupancy) => sum + d.bookedProperties, 0)
+    const totalAvailable = currentMonthDays.reduce((sum: number, d: DailyOccupancy) => sum + d.totalProperties, 0)
+    const avgOccupancy = currentMonthDays.reduce((sum: number, d: DailyOccupancy) => sum + d.occupancyRate, 0) / currentMonthDays.length
     return {
       avgOccupancy: Math.round(avgOccupancy * 100),
       totalBooked,
@@ -89,6 +78,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
 
   // ✅ Return only after all hooks are called
   if (loading) return <div className="text-center py-8 text-gray-500">Loading heatmap...</div>
+  if (error) return <div className="text-center py-8 text-red-500">Error loading heatmap: {error.message}</div>
   if (!monthsData.length) return <div className="text-center py-8 text-gray-500">No data found</div>
 
   return (

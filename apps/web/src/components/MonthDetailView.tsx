@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { api } from '@/lib/api'
+import { useMemo, useCallback, useState, useEffect } from 'react'
+import { useMonthDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { Calendar, TrendingUp, Home, Download } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
@@ -48,36 +48,23 @@ type MonthDetail = {
 export const MonthDetailView = ({ month, year }: { month: string; year: string }) => {
   const { dispatch } = useDrillDown()
   const { addToast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<MonthDetail | null>(null)
+  const { data, isLoading: loading, error } = useMonthDetail(month, year)
   const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
   const [sortBy, setSortBy] = useState<string>('arrival')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [propertyFilter, setPropertyFilter] = useState<string>('all')
 
+  // Show toast for errors
   useEffect(() => {
-    const loadMonthDetail = async () => {
-      setLoading(true)
-
-      const result = await api.request<MonthDetail>(
-        `/month-detail?year=${year}&month=${month}`
-      )
-
-      if (result.success) {
-        setData(result.data)
-      } else {
-        addToast('error', 'Failed to load month details')
-      }
-      setLoading(false)
+    if (error) {
+      addToast('error', 'Failed to load month details')
     }
-
-    loadMonthDetail()
-  }, [month, year])
+  }, [error, addToast])
 
   const filteredBookings = useMemo(() => {
     if (!data) return []
     if (propertyFilter === 'all') return data.bookings
-    return data.bookings.filter(b => b.propertyId === propertyFilter)
+    return data.bookings?.filter((b: any) => b.propertyId === propertyFilter) || []
   }, [data, propertyFilter])
 
   const sortedBookings = useMemo(() => {
@@ -107,11 +94,11 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
 
   const handleExport = useCallback(() => {
     const exportData = selectedBookings.size > 0
-      ? sortedBookings.filter(b => selectedBookings.has(b.id))
+      ? sortedBookings.filter((b: any) => selectedBookings.has(b.id))
       : sortedBookings
 
     const headers = ['Property', 'Guest', 'Email', 'Check In', 'Check Out', 'Nights', 'Amount', 'Tax', 'Status', 'Platform']
-    const rows = exportData.map(b => [
+    const rows = exportData.map((b: any) => [
       b.propertyName,
       b.guestName,
       b.guestEmail || '',
@@ -307,7 +294,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
 
   const monthName = new Date(`${year}-${month}-01`).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-  const pieData = data.byProperty.map((p, index) => ({
+  const pieData = data.byProperty?.map((p: any, index: number) => ({
     name: p.propertyName,
     value: p.revenue,
     color: getChartColor(index)
@@ -390,7 +377,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
                     `${name.length > 15 ? name.substring(0, 12) + '...' : name} ${formatPercentage((percent || 0) * 100, 0)}`
                   }
                 >
-                  {pieData.map((entry, index) => (
+                  {pieData?.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -404,7 +391,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
           <h3 className="text-lg font-bold mb-4">Property Performance</h3>
           {data.byProperty.length <= 10 ? (
             <div className="space-y-2 max-h-80 overflow-y-auto">
-              {data.byProperty.map(property => (
+              {data.byProperty?.map((property: any) => (
                 <div
                   key={property.propertyId}
                   className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 cursor-pointer"
@@ -450,7 +437,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
                   className="px-3 py-1 border rounded text-sm"
                 >
                   <option value="all">All Properties</option>
-                  {data.byProperty.map(p => (
+                  {data.byProperty?.map((p: any) => (
                     <option key={p.propertyId} value={p.propertyId}>
                       {p.propertyName}
                     </option>

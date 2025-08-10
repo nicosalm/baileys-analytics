@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { useEffect } from 'react'
+import { useSeasonalAnalysis } from '@/hooks/use-api'
 import {
   formatCurrency,
   formatCompactCurrency,
@@ -16,7 +16,6 @@ import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useDashboard } from '@/contexts/dashboard'
-import { SeasonalData } from '@/types/seasonal'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -24,8 +23,6 @@ export const SeasonalDashboard = () => {
   const { addToast } = useToast()
   const { dispatch } = useDrillDown()
   const { filters } = useDashboard()
-  const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<SeasonalData | null>(null)
 
   // Extract year from the date range filter
   const getYearFromFilters = () => {
@@ -37,61 +34,16 @@ export const SeasonalDashboard = () => {
   }
 
   const selectedYear = getYearFromFilters()
+  const { data, error, isLoading } = useSeasonalAnalysis(selectedYear)
 
-  const loadSeasonalData = async () => {
-    setLoading(true)
-    try {
-      // Build the API call with filters
-      const tagIds = filters.selectedTags.map(t => t.id)
-
-      // Use the direct API request to pass all parameters
-      const params = new URLSearchParams()
-      params.append('year', selectedYear.toString())
-
-      if (tagIds.length > 0) {
-        params.append('tags', tagIds.join(','))
-      }
-
-      if (filters.dateRange.from) {
-        params.append('from', filters.dateRange.from)
-      }
-
-      if (filters.dateRange.to) {
-        params.append('to', filters.dateRange.to)
-      }
-
-      const result = await api.request<SeasonalData>(
-        `/seasonal-analysis?${params.toString()}`
-      )
-
-      console.log('API Response:', result) // Debug log
-
-      if (result.success && result.data) {
-        console.log('Raw seasonal data:', result.data) // Debug log
-        setData(result.data)
-      } else {
-        console.error('API Error:', result)
-        const errorMessage = !result.success && 'error' in result
-          ? result.error
-          : 'Failed to load seasonal data'
-        addToast('error', errorMessage)
-        setData(null)
-      }
-    } catch (error) {
-      console.error('Error loading seasonal data:', error)
-      addToast('error', 'Failed to load seasonal data')
-      setData(null)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Reload data when filters change
+  // Handle error state
   useEffect(() => {
-    loadSeasonalData()
-  }, [filters.dateRange.from, filters.dateRange.to, filters.selectedTags])
+    if (error) {
+      addToast('error', 'Failed to load seasonal data')
+    }
+  }, [error?.message, addToast])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
@@ -105,7 +57,7 @@ export const SeasonalDashboard = () => {
         <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
         <p className="text-gray-600">Failed to load seasonal analysis</p>
         <button
-          onClick={loadSeasonalData}
+          onClick={() => window.location.reload()}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
           Retry
@@ -132,9 +84,9 @@ export const SeasonalDashboard = () => {
 
   // Prepare chart data
   const yearOverYearChart = data.yearOverYear.years
-    .filter(y => y.year && !isNaN(y.revenue))
-    .sort((a, b) => a.year - b.year)
-    .map(year => ({
+    .filter((y: any) => y.year && !isNaN(y.revenue))
+    .sort((a: any, b: any) => a.year - b.year)
+    .map((year: any) => ({
       year: year.year,
       revenue: year.revenue || 0,
       occupancy: Math.min(100, year.occupancy || 0), // Cap at 100%
@@ -142,8 +94,8 @@ export const SeasonalDashboard = () => {
     }))
 
   const monthlyComparison = data.monthlyTrends
-    .filter(m => m.monthName && m.monthName.trim() !== '')
-    .map(month => ({
+    .filter((m: any) => m.monthName && m.monthName.trim() !== '')
+    .map((month: any) => ({
       month: month.monthName.slice(0, 3),
       current: month.currentYear.revenue || 0,
       previous: month.previousYear.revenue || 0,
@@ -299,7 +251,7 @@ export const SeasonalDashboard = () => {
                   data={monthlyComparison}
                   onClick={(data: any) => {
                     if (data && data.activeLabel) {
-                      const monthData = monthlyComparison.find(m => m.month === data.activeLabel)
+                      const monthData = monthlyComparison.find((m: any) => m.month === data.activeLabel)
                       if (monthData) {
                         const monthNum = MONTHS.indexOf(monthData.month) + 1
                         dispatch({
@@ -314,7 +266,7 @@ export const SeasonalDashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#666" />
                   <YAxis tickFormatter={formatYAxisTick} tick={{ fontSize: 12 }} stroke="#666" />
-                  <Tooltip formatter={(value) => formatCurrency(ensureNumber(value))} contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }} />
+                  <Tooltip formatter={(value: any) => formatCurrency(ensureNumber(value))} contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }} />
                   <Legend wrapperStyle={{ fontSize: '12px' }} iconType="rect" />
                   <Bar dataKey="previous" fill="#E5E7EB" name={`${selectedYear - 1}`} cursor="pointer" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="current" fill="#3B82F6" name={`${selectedYear}`} cursor="pointer" radius={[4, 4, 0, 0]} />
@@ -341,8 +293,8 @@ export const SeasonalDashboard = () => {
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {data.propertySeasonality?.length > 0 ? (
               data.propertySeasonality
-                .sort((a, b) => b.seasonalityScore - a.seasonalityScore)
-                .map(property => (
+                .sort((a: any, b: any) => b.seasonalityScore - a.seasonalityScore)
+                .map((property: any) => (
                 <div
                   key={property.propertyId}
                   className="p-3 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
@@ -389,7 +341,7 @@ export const SeasonalDashboard = () => {
                     Potential Rate Increases
                   </h4>
                   <div className="space-y-2">
-                    {data.priceOptimization.underpriced.slice(0, 3).map((opp, index) => (
+                    {data.priceOptimization.underpriced.slice(0, 3).map((opp: any, index: any) => (
                       <div
                         key={`${opp.propertyId}-${opp.month}-${index}`}
                         className="p-2 bg-green-50 rounded hover:bg-green-100 cursor-pointer text-sm transition-colors"
@@ -434,7 +386,7 @@ export const SeasonalDashboard = () => {
                     Consider Rate Adjustments
                   </h4>
                   <div className="space-y-2">
-                    {data.priceOptimization.overpriced.slice(0, 3).map((opp, index) => (
+                    {data.priceOptimization.overpriced.slice(0, 3).map((opp: any, index: any) => (
                       <div
                         key={`${opp.propertyId}-${opp.month}-${index}`}
                         className="p-2 bg-orange-50 rounded hover:bg-orange-100 cursor-pointer text-sm transition-colors"

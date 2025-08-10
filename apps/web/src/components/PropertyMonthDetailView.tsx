@@ -1,34 +1,9 @@
-import { useState, useEffect } from 'react'
-import { api } from '@/lib/api'
+import { usePropertyMonthDetail } from '@/hooks/use-api'
 import { formatCurrency } from '@baileys/utils'
 import { Calendar, DollarSign } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
-
-type PropertyMonthDetail = {
-  property: {
-    id: string
-    name: string
-  }
-  summary: {
-    revenue: number
-    tax: number
-    bookings: number
-    nights: number
-    avgNightlyRate: number
-  }
-  bookings: Array<{
-    id: string
-    guestName: string
-    arrival: string
-    departure: string
-    nights: number
-    totalAmount: number
-    taxAmount: number
-    status: string
-  }>
-}
 
 export const PropertyMonthDetailView = ({
   propertyId,
@@ -40,30 +15,20 @@ export const PropertyMonthDetailView = ({
   year: string
 }) => {
   const { dispatch } = useDrillDown()
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<PropertyMonthDetail | null>(null)
-
-  useEffect(() => {
-    const loadDetail = async () => {
-      setLoading(true)
-
-      const result = await api.request<PropertyMonthDetail>(
-        `/property/${propertyId}/month/${year}/${month}`
-      )
-
-      if (result.success) {
-        setData(result.data)
-      }
-      setLoading(false)
-    }
-
-    loadDetail()
-  }, [propertyId, month, year])
+  const { data, isLoading: loading, error } = usePropertyMonthDetail(propertyId, month, year)
 
   if (loading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center py-12 text-red-600">
+        Error loading property month details: {error.message}
       </div>
     )
   }
@@ -124,7 +89,7 @@ export const PropertyMonthDetailView = ({
               </tr>
             </thead>
             <tbody>
-              {data.bookings.map(booking => (
+              {data.bookings?.map((booking: any) => (
                 <tr
                   key={booking.id}
                   className="border-b hover:bg-gray-50 cursor-pointer"
