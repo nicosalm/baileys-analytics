@@ -32,3 +32,5 @@ export interface Booking {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export * from './schemas'

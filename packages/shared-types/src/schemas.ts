@@ -1,0 +1,191 @@
+import { z } from 'zod'
+
+// ============= Common Schemas =============
+export const dateStringSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)')
+
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  offset: z.coerce.number().int().nonnegative().optional(),
+})
+
+export const dateRangeSchema = z.object({
+  from: dateStringSchema.optional(),
+  to: dateStringSchema.optional(),
+})
+
+// ============= Auth Schemas =============
+export const authTokenSchema = z.object({
+  accessToken: z.string(),
+  refreshToken: z.string(),
+})
+
+export const authInfoSchema = z.object({
+  userId: z.string(),
+  email: z.string().email(),
+  tenantId: z.string().optional(),
+})
+
+export const loginRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+})
+
+export const signupRequestSchema = loginRequestSchema.extend({
+  companyName: z.string().optional(),
+})
+
+// ============= Property Schemas =============
+export const propertySchema = z.object({
+  id: z.string(),
+  ownerrezId: z.string(),
+  name: z.string(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  postalCode: z.string().optional(),
+  bedrooms: z.number().optional(),
+  bathrooms: z.number().optional(),
+  maxGuests: z.number().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  thumbnailUrl: z.string().url().optional(),
+  publicUrl: z.string().url().optional(),
+  active: z.boolean(),
+  tags: z.array(z.string()).optional(),
+})
+
+// ============= Booking Schemas =============
+export const bookingStatusSchema = z.enum(['confirmed', 'canceled', 'blocked', 'pending'])
+
+export const bookingChargeSchema = z.object({
+  type: z.string(),
+  description: z.string(),
+  amount: z.number(),
+  isTaxable: z.boolean(),
+  position: z.number(),
+})
+
+export const bookingSchema = z.object({
+  id: z.string(),
+  ownerrezBookingId: z.string(),
+  propertyId: z.string(),
+  arrival: dateStringSchema,
+  departure: dateStringSchema,
+  adults: z.number().optional(),
+  children: z.number().optional(),
+  infants: z.number().optional(),
+  pets: z.number().optional(),
+  guestName: z.string(),
+  guestEmail: z.string().email().optional(),
+  totalAmount: z.number(),
+  status: bookingStatusSchema,
+  listingSite: z.string().optional(),
+  platformReservationNumber: z.string().optional(),
+  bookedUtc: z.string().datetime(),
+  canceledUtc: z.string().datetime().optional(),
+  charges: z.array(bookingChargeSchema).optional(),
+  tags: z.array(z.string()).optional(),
+})
+
+// ============= Sync Schemas =============
+export const syncRequestSchema = z.object({
+  full: z.boolean().optional(),
+  from: dateStringSchema.optional(),
+  to: dateStringSchema.optional(),
+})
+
+export const syncStatusSchema = z.object({
+  status: z.enum(['idle', 'syncing', 'completed', 'error']),
+  lastSync: z.string().datetime().optional(),
+  bookingsSynced: z.number().optional(),
+  propertiesSynced: z.number().optional(),
+  error: z.string().optional(),
+})
+
+// ============= Tax Schemas =============
+export const taxRuleTypeSchema = z.enum(['percentage', 'flatFee', 'perNight', 'perGuest'])
+
+export const taxRuleSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: taxRuleTypeSchema,
+  value: z.number(),
+  appliesTo: z.object({
+    properties: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
+    from: dateStringSchema.optional(),
+    to: dateStringSchema.optional(),
+  }).optional(),
+  conditions: z.object({
+    minNights: z.number().optional(),
+    maxNights: z.number().optional(),
+    minAmount: z.number().optional(),
+    includeChannels: z.array(z.string()).optional(),
+    excludeChannels: z.array(z.string()).optional(),
+  }).optional(),
+  active: z.boolean(),
+  priority: z.number(),
+})
+
+export const taxCalculationRequestSchema = z.object({
+  propertyId: z.string(),
+  arrival: dateStringSchema,
+  departure: dateStringSchema,
+  subtotal: z.number(),
+  guests: z.number().optional(),
+  channel: z.string().optional(),
+})
+
+// ============= Report Schemas =============
+export const reportTypeSchema = z.enum(['financial', 'tax', 'occupancy', 'guest'])
+
+export const reportRequestSchema = z.object({
+  type: reportTypeSchema,
+  from: dateStringSchema,
+  to: dateStringSchema,
+  propertyIds: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  format: z.enum(['pdf', 'csv', 'xlsx']).optional(),
+})
+
+// ============= VIP Settings Schemas =============
+export const vipSettingsSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  vipGuests: z.array(z.object({
+    name: z.string(),
+    email: z.string().email().optional(),
+    tags: z.array(z.string()).optional(),
+  })),
+  vipProperties: z.array(z.string()),
+  thresholds: z.object({
+    bookingCount: z.number().optional(),
+    totalRevenue: z.number().optional(),
+    avgBookingValue: z.number().optional(),
+  }),
+  updatedAt: z.string().datetime(),
+})
+
+// ============= Error Response Schema =============
+export const errorResponseSchema = z.object({
+  error: z.string(),
+  code: z.string().optional(),
+  status: z.number().optional(),
+})
+
+// ============= Type Exports =============
+export type DateRange = z.infer<typeof dateRangeSchema>
+export type Pagination = z.infer<typeof paginationSchema>
+export type AuthToken = z.infer<typeof authTokenSchema>
+export type AuthInfo = z.infer<typeof authInfoSchema>
+export type Property = z.infer<typeof propertySchema>
+export type Booking = z.infer<typeof bookingSchema>
+export type BookingCharge = z.infer<typeof bookingChargeSchema>
+export type SyncRequest = z.infer<typeof syncRequestSchema>
+export type SyncStatus = z.infer<typeof syncStatusSchema>
+export type TaxRule = z.infer<typeof taxRuleSchema>
+export type TaxCalculationRequest = z.infer<typeof taxCalculationRequestSchema>
+export type ReportRequest = z.infer<typeof reportRequestSchema>
+export type VipSettings = z.infer<typeof vipSettingsSchema>
+export type ErrorResponse = z.infer<typeof errorResponseSchema>

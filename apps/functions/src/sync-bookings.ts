@@ -1,6 +1,9 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { corsHeaders, handleOptions } from './middleware/auth';
+import { requireAuthWithValidation } from './middleware/validation';
 import { getTenantToken, getPropertyMapping, syncBookings } from './services/syncService';
+import { syncRequestSchema } from '@baileys/shared-types';
+import { getDefaultDateRange } from './utils/dates';
 
 export async function syncBookingsHandler(
   request: HttpRequest,
@@ -8,10 +11,17 @@ export async function syncBookingsHandler(
 ): Promise<HttpResponseInit> {
   if (request.method === 'OPTIONS') return handleOptions()
 
-  const authCheck = await requireAuth(request)
-  if (!authCheck.authenticated) return authCheck.response
+  // Use Zod validation with auth
+  const authCheck = await requireAuthWithValidation(request, {
+    query: syncRequestSchema
+  })
+  
+  if (!authCheck.authenticated || !authCheck.valid) {
+    return authCheck.response
+  }
 
-  const { auth } = authCheck.request
+  const { auth, validated } = authCheck.request
+  
   if (!auth.tenantId) {
     return {
       status: 403,
@@ -30,12 +40,11 @@ export async function syncBookingsHandler(
       }
     }
 
-    // Parse date range (default to 4 years)
+    // Use validated query params with date-fns helper
+    const defaultRange = getDefaultDateRange('long')
     const dateRange = {
-      from: request.query.get('from') ||
-        new Date(Date.now() - 1460 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      to: request.query.get('to') ||
-        new Date().toISOString().split('T')[0]
+      from: validated?.query?.from || defaultRange.from,
+      to: validated?.query?.to || defaultRange.to
     }
 
     context.log(`Syncing bookings for tenant ${auth.tenantId}`, dateRange)

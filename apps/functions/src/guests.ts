@@ -148,19 +148,19 @@ export async function getGuests(
     }>(
       `WITH guest_stats AS (
         SELECT
-          guest_name,
-          guest_email,
+          b.guest_name,
+          b.guest_email,
           COUNT(*) as booking_count,
-          SUM(total_amount) as total_spent,
-          SUM(departure - arrival) as total_nights,
-          MIN(arrival) as first_visit,
-          MAX(arrival) as last_visit
+          SUM(b.total_amount) as total_spent,
+          SUM(b.departure - b.arrival) as total_nights,
+          MIN(b.arrival) as first_visit,
+          MAX(b.arrival) as last_visit
         FROM bookings b
-        WHERE tenant_id = $1
-          AND status != 'canceled'
+        WHERE b.tenant_id = $1
+          AND b.status != 'canceled'
           ${dateFilter}
           ${tagFilter}
-        GROUP BY guest_name, guest_email
+        GROUP BY b.guest_name, b.guest_email
       )
       SELECT
         COUNT(DISTINCT (guest_name, COALESCE(guest_email, ''))) as total_guests,
@@ -193,10 +193,10 @@ export async function getGuests(
     }>(
       `WITH guest_period AS (
         -- Get guests that have bookings in the selected period
-        SELECT DISTINCT guest_name, guest_email
-        FROM bookings
-        WHERE tenant_id = $1
-          AND status != 'canceled'
+        SELECT DISTINCT b.guest_name, b.guest_email
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          AND b.status != 'canceled'
           ${dateFilter}
           ${tagFilter}
       ),
@@ -234,28 +234,28 @@ export async function getGuests(
     }>(
       `SELECT
         CASE
-          WHEN platform IS NULL OR platform = '' THEN 'Direct'
-          WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
-          WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
-          WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
-          WHEN LOWER(platform) LIKE '%booking.com%' OR LOWER(platform) LIKE '%booking%' THEN 'Booking.com'
-          ELSE platform
+          WHEN b.platform IS NULL OR b.platform = '' THEN 'Direct'
+          WHEN LOWER(b.platform) LIKE '%direct%' THEN 'Direct'
+          WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'Airbnb'
+          WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'VRBO'
+          WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'Booking.com'
+          ELSE b.platform
         END as source,
-        COUNT(DISTINCT (guest_name, COALESCE(guest_email, ''))) as count,
-        SUM(total_amount) as revenue
+        COUNT(DISTINCT (b.guest_name, COALESCE(b.guest_email, ''))) as count,
+        SUM(b.total_amount) as revenue
       FROM bookings b
-      WHERE tenant_id = $1
-        AND status != 'canceled'
+      WHERE b.tenant_id = $1
+        AND b.status != 'canceled'
         ${dateFilter}
         ${tagFilter}
       GROUP BY
         CASE
-          WHEN platform IS NULL OR platform = '' THEN 'Direct'
-          WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
-          WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
-          WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
-          WHEN LOWER(platform) LIKE '%booking.com%' OR LOWER(platform) LIKE '%booking%' THEN 'Booking.com'
-          ELSE platform
+          WHEN b.platform IS NULL OR b.platform = '' THEN 'Direct'
+          WHEN LOWER(b.platform) LIKE '%direct%' THEN 'Direct'
+          WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'Airbnb'
+          WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'VRBO'
+          WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'Booking.com'
+          ELSE b.platform
         END
       ORDER BY revenue DESC`,
       queryParams
@@ -285,10 +285,10 @@ export async function getGuests(
     );
 
     const countResult = await query<{ count: string }>(
-      `SELECT COUNT(DISTINCT (guest_name, COALESCE(guest_email, ''))) as count
+      `SELECT COUNT(DISTINCT (b.guest_name, COALESCE(b.guest_email, ''))) as count
       FROM bookings b
-      WHERE tenant_id = $1
-        AND status != 'canceled'
+      WHERE b.tenant_id = $1
+        AND b.status != 'canceled'
         ${dateFilter}
         ${tagFilter}`,
       queryParams
