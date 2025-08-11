@@ -34,7 +34,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const [localRange, setLocalRange] = useState<DateRange>(value)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const containerRef = useRef<HTMLDivElement>(null)
-  const debounceTimer = useRef<NodeJS.Timeout>()
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
   // Format date to ISO format (YYYY-MM-DD)
   const formatDateISO = (date: Date): string => {

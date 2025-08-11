@@ -79,8 +79,8 @@ export function VirtualTable<T extends Record<string, any>>({
   // Refs
   const containerRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLDivElement>(null)
-  const scrollTimeout = useRef<NodeJS.Timeout>()
-  const loadMoreTimeout = useRef<NodeJS.Timeout>()
+  const scrollTimeout = useRef<NodeJS.Timeout | null>(null)
+  const loadMoreTimeout = useRef<NodeJS.Timeout | null>(null)
 
   // Calculate total table width
   const tableWidth = useMemo(() => {
