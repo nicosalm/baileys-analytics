@@ -33,6 +33,9 @@ export async function getPropertyDetail(
     const propertyId = request.params.propertyId;
     const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
     const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+    const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
+    
+    console.log('Property Detail API - Parameters:', { fromDate, toDate, propertyId, tagIds });
 
     // Get property info
     const propertyResult = await query<{
@@ -61,6 +64,19 @@ export async function getPropertyDetail(
 
     const property = propertyResult.data[0];
 
+    // Build tag filter for queries
+    const tagFilter = tagIds.length > 0
+      ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = b.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )`
+      : '';
+    
+    const queryParams = tagIds.length > 0
+      ? [propertyId, fromDate, toDate, tagIds]
+      : [propertyId, fromDate, toDate];
+
     // Get metrics
     const metricsResult = await query<{
       total_revenue: string;
@@ -74,7 +90,7 @@ export async function getPropertyDetail(
         COALESCE(SUM(
           CASE
             WHEN b.arrival <= $3 AND b.departure >= $2 THEN
-              LEAST(b.departure, $3::date) - GREATEST(b.arrival, $2::date)
+              LEAST(b.departure::date, $3::date, CURRENT_DATE) - GREATEST(b.arrival::date, $2::date)
             ELSE 0
           END
         ), 0) as total_nights,
@@ -83,7 +99,7 @@ export async function getPropertyDetail(
             SUM(b.total_amount) / NULLIF(SUM(
               CASE
                 WHEN b.arrival <= $3 AND b.departure >= $2 THEN
-                  LEAST(b.departure, $3::date) - GREATEST(b.arrival, $2::date)
+                  LEAST(b.departure::date, $3::date, CURRENT_DATE) - GREATEST(b.arrival::date, $2::date)
                 ELSE 0
               END
             ), 0)
@@ -93,30 +109,63 @@ export async function getPropertyDetail(
       WHERE b.property_id = $1
         AND b.arrival <= $3
         AND b.departure >= $2
-        AND b.status != 'canceled'`,
-      [propertyId, fromDate, toDate]
+        AND b.status != 'canceled'
+        ${tagFilter}`,
+      queryParams
     );
 
-    // Get monthly data
+    // Get monthly data within the date range
     const monthlyResult = await query<{
       month: string;
       revenue: string;
       bookings: string;
       nights: string;
     }>(
-      `SELECT
-        TO_CHAR(b.arrival, 'YYYY-MM') as month,
-        SUM(b.total_amount) as revenue,
-        COUNT(DISTINCT b.id) as bookings,
-        SUM(LEAST(b.departure, $3::date) - GREATEST(b.arrival, $2::date)) as nights
-      FROM bookings b
-      WHERE b.property_id = $1
-        AND b.arrival <= $3
-        AND b.departure >= $2
+      `WITH months AS (
+        SELECT generate_series(
+          DATE_TRUNC('month', $2::date),
+          DATE_TRUNC('month', $3::date),
+          '1 month'::interval
+        )::date as month_start
+      )
+      SELECT
+        TO_CHAR(m.month_start, 'YYYY-MM') as month,
+        COALESCE(SUM(
+          CASE
+            WHEN b.arrival <= DATE_TRUNC('month', m.month_start + INTERVAL '1 month' - INTERVAL '1 day')::date
+              AND b.departure >= m.month_start THEN
+              b.total_amount
+            ELSE 0
+          END
+        ), 0) as revenue,
+        COUNT(DISTINCT CASE
+          WHEN b.arrival <= DATE_TRUNC('month', m.month_start + INTERVAL '1 month' - INTERVAL '1 day')::date
+            AND b.departure >= m.month_start THEN
+            b.id
+          ELSE NULL
+        END) as bookings,
+        COALESCE(SUM(
+          CASE
+            WHEN b.arrival <= DATE_TRUNC('month', m.month_start + INTERVAL '1 month' - INTERVAL '1 day')::date
+              AND b.departure >= m.month_start THEN
+              LEAST(b.departure::date, DATE_TRUNC('month', m.month_start + INTERVAL '1 month' - INTERVAL '1 day')::date, $3::date, CURRENT_DATE) -
+              GREATEST(b.arrival::date, m.month_start, $2::date)
+            ELSE 0
+          END
+        ), 0) as nights
+      FROM months m
+      LEFT JOIN bookings b ON b.property_id = $1
         AND b.status != 'canceled'
-      GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+        AND b.arrival <= DATE_TRUNC('month', m.month_start + INTERVAL '1 month' - INTERVAL '1 day')::date
+        AND b.departure >= m.month_start
+        ${tagFilter ? `AND EXISTS (
+          SELECT 1 FROM booking_tags bt
+          WHERE bt.booking_id = b.id
+          AND bt.tag_id = ANY($4::uuid[])
+        )` : ''}
+      GROUP BY m.month_start
       ORDER BY month`,
-      [propertyId, fromDate, toDate]
+      queryParams
     );
 
     // Calculate occupancy for monthly data
@@ -133,23 +182,27 @@ export async function getPropertyDetail(
       };
     }) : [];
 
-    // Get recent bookings
+    // Get recent bookings within the date range
     const bookingsResult = await query<{
       id: string;
       guest_name: string;
+      guest_email: string;
       arrival: string;
       departure: string;
       total_amount: string;
       status: string;
     }>(
-      `SELECT id, guest_name, arrival, departure, total_amount, status
-       FROM bookings
+      `SELECT id, guest_name, guest_email, arrival, departure, total_amount, status
+       FROM bookings b
        WHERE property_id = $1
-         AND arrival >= $2
-         AND arrival <= $3
+         AND ((arrival >= $2 AND arrival <= $3) OR 
+              (departure >= $2 AND departure <= $3) OR
+              (arrival <= $2 AND departure >= $3))
+         AND status != 'canceled'
+         ${tagFilter}
        ORDER BY arrival DESC
        LIMIT 20`,
-      [propertyId, fromDate, toDate]
+      queryParams
     );
 
     if (!metricsResult.success) {
@@ -157,7 +210,12 @@ export async function getPropertyDetail(
     }
 
     const metrics = metricsResult.data[0];
-    const totalDays = calculateNightsBetween(fromDate, toDate) + 1;
+    // Calculate total days the same way as property-metrics: (endDate - startDate + 1)
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+    const currentDate = new Date();
+    const effectiveEndDate = endDate > currentDate ? currentDate : endDate;
+    const totalDays = Math.floor((effectiveEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     const occupancyRate = safeDivide(parseInt(metrics.total_nights), totalDays);
 
     return {
@@ -175,13 +233,18 @@ export async function getPropertyDetail(
         metrics: {
           totalRevenue: parseFloat(metrics.total_revenue),
           totalBookings: parseInt(metrics.total_bookings),
+          totalNights: parseInt(metrics.total_nights),
           avgNightlyRate: parseFloat(metrics.avg_nightly_rate),
-          occupancyRate
+          avgStayLength: parseInt(metrics.total_bookings) > 0 ? parseInt(metrics.total_nights) / parseInt(metrics.total_bookings) : 0,
+          occupancyRate,
+          totalDays
         },
         monthlyData,
         recentBookings: bookingsResult.success ? bookingsResult.data.map(b => ({
           id: b.id,
+          guestId: `${b.guest_name}|${b.guest_email || ''}`,
           guestName: b.guest_name,
+          guestEmail: b.guest_email,
           arrival: b.arrival,
           departure: b.departure,
           totalAmount: parseFloat(b.total_amount),

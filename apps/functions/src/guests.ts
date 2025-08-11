@@ -19,6 +19,8 @@ type GuestMetrics = {
     totalSpent: number;
     bookingCount: number;
     avgNightlyRate: number;
+    periodSpent: number;
+    periodBookings: number;
   }>;
   guestsBySource: Array<{
     source: string;
@@ -48,15 +50,14 @@ type GuestListItem = {
     name: string;
     color?: string;
   }>;
+  // Period-specific data
+  periodBookings: number;
+  periodSpent: number;
 };
 
 type PaginatedResponse = {
   metrics: GuestMetrics;
   guests: GuestListItem[];
-  vipThresholds: {
-    spendThreshold: number;
-    bookingThreshold: number;
-  };
   pagination: {
     page: number;
     pageSize: number;
@@ -96,25 +97,6 @@ export async function getGuests(
   }
 
   try {
-    // Fetch user's VIP thresholds
-    const vipSettingsResult = await query<{
-      vip_spend_threshold: string;
-      vip_booking_threshold: string;
-    }>(
-      `SELECT vip_spend_threshold, vip_booking_threshold
-       FROM users
-       WHERE id = $1`,
-      [auth.userId]
-    );
-
-    const vipSpendThreshold = vipSettingsResult.success && vipSettingsResult.data.length > 0
-      ? parseFloat(vipSettingsResult.data[0].vip_spend_threshold)
-      : 5000;
-
-    const vipBookingThreshold = vipSettingsResult.success && vipSettingsResult.data.length > 0
-      ? parseInt(vipSettingsResult.data[0].vip_booking_threshold)
-      : 5;
-
     // Use validated query parameters
     const startDate = validated?.query?.from;
     const endDate = validated?.query?.to;
@@ -144,6 +126,7 @@ export async function getGuests(
       queryParams.push(...tagIds);
     }
 
+    // Get metrics for the selected period
     const metricsResult = await query<{
       total_guests: string;
       repeat_guests: string;
@@ -189,24 +172,32 @@ export async function getGuests(
     const totalGuests = parseInt(metrics.total_guests) || 0;
     const repeatGuests = parseInt(metrics.repeat_guests) || 0;
 
+    // Get top spenders with period-specific data
     const topSpendersResult = await query<{
       guest_name: string;
       guest_email: string;
       total_spent: string;
       booking_count: string;
       avg_nightly_rate: string;
+      period_spent: string;
+      period_bookings: string;
     }>(
       `WITH guest_period AS (
-        -- Get guests that have bookings in the selected period
-        SELECT DISTINCT b.guest_name, b.guest_email
+        -- Get period-specific data
+        SELECT 
+          b.guest_name,
+          b.guest_email,
+          SUM(b.total_amount) as period_spent,
+          COUNT(*) as period_bookings
         FROM bookings b
         WHERE b.tenant_id = $1
           AND b.status != 'canceled'
           ${dateFilter}
           ${tagFilter}
+        GROUP BY b.guest_name, b.guest_email
       ),
-      guest_spending AS (
-        -- Get all-time spending for these guests
+      guest_all_time AS (
+        -- Get all-time data for the same guests
         SELECT
           b.guest_name,
           b.guest_email,
@@ -214,24 +205,32 @@ export async function getGuests(
           COUNT(*) as booking_count,
           SUM(b.total_amount) / NULLIF(SUM(b.departure - b.arrival), 0) as avg_nightly_rate
         FROM bookings b
-        JOIN guest_period gp ON b.guest_name = gp.guest_name 
-          AND COALESCE(b.guest_email, '') = COALESCE(gp.guest_email, '')
         WHERE b.tenant_id = $1
           AND b.status != 'canceled'
+          AND EXISTS (
+            SELECT 1 FROM guest_period gp 
+            WHERE b.guest_name = gp.guest_name 
+            AND COALESCE(b.guest_email, '') = COALESCE(gp.guest_email, '')
+          )
         GROUP BY b.guest_name, b.guest_email
       )
       SELECT
-        guest_name,
-        guest_email,
-        total_spent,
-        booking_count,
-        avg_nightly_rate
-      FROM guest_spending
-      ORDER BY total_spent DESC
+        gp.guest_name,
+        gp.guest_email,
+        gat.total_spent,
+        gat.booking_count,
+        gat.avg_nightly_rate,
+        gp.period_spent,
+        gp.period_bookings
+      FROM guest_period gp
+      JOIN guest_all_time gat ON gp.guest_name = gat.guest_name
+        AND COALESCE(gp.guest_email, '') = COALESCE(gat.guest_email, '')
+      ORDER BY gp.period_spent DESC
       LIMIT 20`,
       queryParams
     );
 
+    // Get guests by source for the period
     const guestsBySourceResult = await query<{
       source: string;
       count: string;
@@ -266,6 +265,7 @@ export async function getGuests(
       queryParams
     );
 
+    // Get tag distribution
     const tagDistributionResult = await query<{
       tag_id: string;
       tag_name: string;
@@ -289,6 +289,7 @@ export async function getGuests(
       queryParams
     );
 
+    // Get total count for pagination
     const countResult = await query<{ count: string }>(
       `SELECT COUNT(DISTINCT (b.guest_name, COALESCE(b.guest_email, ''))) as count
       FROM bookings b
@@ -302,6 +303,7 @@ export async function getGuests(
     const totalItems = countResult.success ? parseInt(countResult.data[0].count) : 0;
     const totalPages = Math.ceil(totalItems / pageSize);
 
+    // Get guest list with both period and all-time data
     const guestsListResult = await query<{
       guest_name: string;
       guest_email: string;
@@ -311,20 +313,25 @@ export async function getGuests(
       total_spent: string;
       avg_nightly_rate: string;
       properties: string;
+      period_bookings: string;
+      period_spent: string;
     }>(
       `WITH guest_period_data AS (
-        -- Get guests that have bookings in the selected period
-        SELECT DISTINCT
+        -- Get period-specific stats
+        SELECT
           b.guest_name,
-          b.guest_email
+          b.guest_email,
+          COUNT(*) as period_bookings,
+          SUM(b.total_amount) as period_spent
         FROM bookings b
         WHERE b.tenant_id = $1
           AND b.status != 'canceled'
           ${dateFilter}
           ${tagFilter}
+        GROUP BY b.guest_name, b.guest_email
       ),
       guest_all_time_data AS (
-        -- Get all-time stats for these guests (for accurate VIP calculation)
+        -- Get all-time stats for guests active in the period
         SELECT
           b.guest_name,
           b.guest_email,
@@ -336,19 +343,36 @@ export async function getGuests(
           STRING_AGG(DISTINCT p.name, ', ') as properties
         FROM bookings b
         JOIN properties p ON b.property_id = p.id
-        JOIN guest_period_data gpd ON b.guest_name = gpd.guest_name 
-          AND COALESCE(b.guest_email, '') = COALESCE(gpd.guest_email, '')
         WHERE b.tenant_id = $1
           AND b.status != 'canceled'
+          AND EXISTS (
+            SELECT 1 FROM guest_period_data gpd 
+            WHERE b.guest_name = gpd.guest_name 
+            AND COALESCE(b.guest_email, '') = COALESCE(gpd.guest_email, '')
+          )
         GROUP BY b.guest_name, b.guest_email
       )
-      SELECT * FROM guest_all_time_data
-      ORDER BY total_spent DESC
+      SELECT 
+        gat.guest_name,
+        gat.guest_email,
+        gat.first_visit,
+        gat.last_visit,
+        gat.booking_count,
+        gat.total_spent,
+        gat.avg_nightly_rate,
+        gat.properties,
+        COALESCE(gpd.period_bookings, 0) as period_bookings,
+        COALESCE(gpd.period_spent, 0) as period_spent
+      FROM guest_all_time_data gat
+      JOIN guest_period_data gpd ON gat.guest_name = gpd.guest_name
+        AND COALESCE(gat.guest_email, '') = COALESCE(gpd.guest_email, '')
+      ORDER BY gpd.period_spent DESC
       LIMIT ${pageSize}
       OFFSET ${offset}`,
       queryParams
     );
 
+    // Get tags for the guests on this page
     const guestTagsResult = await query<{
       guest_name: string;
       guest_email: string;
@@ -362,14 +386,14 @@ export async function getGuests(
           SELECT
             b.guest_name,
             b.guest_email,
-            SUM(b.total_amount) as total_spent
+            SUM(b.total_amount) as period_spent
           FROM bookings b
           WHERE b.tenant_id = $1
             AND b.status != 'canceled'
             ${dateFilter}
             ${tagFilter}
           GROUP BY b.guest_name, b.guest_email
-          ORDER BY total_spent DESC
+          ORDER BY period_spent DESC
           LIMIT ${pageSize}
           OFFSET ${offset}
         ) g
@@ -387,12 +411,11 @@ export async function getGuests(
         AND COALESCE(b.guest_email, '') = COALESCE(cpg.guest_email, '')
       WHERE b.tenant_id = $1
         AND b.status != 'canceled'
-        ${dateFilter}
-        ${tagFilter}
       ORDER BY b.guest_name, b.guest_email, t.name`,
       queryParams
     );
 
+    // Build tags map
     const guestTagsMap = new Map<string, Array<any>>();
     if (guestTagsResult.success) {
       for (const row of guestTagsResult.data) {
@@ -422,7 +445,9 @@ export async function getGuests(
           email: s.guest_email || undefined,
           totalSpent: parseFloat(s.total_spent),
           bookingCount: parseInt(s.booking_count),
-          avgNightlyRate: parseFloat(s.avg_nightly_rate) || 0
+          avgNightlyRate: parseFloat(s.avg_nightly_rate) || 0,
+          periodSpent: parseFloat(s.period_spent),
+          periodBookings: parseInt(s.period_bookings)
         })) : [],
         guestsBySource: guestsBySourceResult.success ? guestsBySourceResult.data.map(s => ({
           source: s.source,
@@ -448,13 +473,12 @@ export async function getGuests(
           totalSpent: parseFloat(g.total_spent),
           avgNightlyRate: parseFloat(g.avg_nightly_rate) || 0,
           properties: g.properties ? g.properties.split(', ') : [],
-          tags: guestTagsMap.get(guestKey) || []
+          tags: guestTagsMap.get(guestKey) || [],
+          // Add period-specific data
+          periodBookings: parseInt(g.period_bookings),
+          periodSpent: parseFloat(g.period_spent)
         };
       }) : [],
-      vipThresholds: {
-        spendThreshold: vipSpendThreshold,
-        bookingThreshold: vipBookingThreshold
-      },
       pagination: {
         page,
         pageSize,

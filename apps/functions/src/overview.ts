@@ -27,7 +27,6 @@ interface OverviewMetrics {
     total: number
     newThisMonth: number
     repeatRate: number
-    vipCount: number
   }
   properties: {
     total: number
@@ -107,8 +106,7 @@ export async function overview(
       guests: {
         total: currentMetrics.totalGuests,
         newThisMonth: currentMetrics.newGuests,
-        repeatRate: currentMetrics.repeatGuestRate,
-        vipCount: currentMetrics.vipGuests
+        repeatRate: currentMetrics.repeatGuestRate
       },
       properties: {
         total: currentMetrics.totalProperties,
@@ -137,20 +135,6 @@ export async function overview(
 async function getCurrentPeriodMetrics(tenantId: string, from: string, to: string, tagIds: string[] = [], userId?: string) {
   const hasTagFilter = tagIds.length > 0
   
-  // First, get user's VIP thresholds if userId provided
-  let vipSpendThreshold = 5000
-  let vipBookingThreshold = 5
-  
-  if (userId) {
-    const vipResult = await query(
-      `SELECT vip_spend_threshold, vip_booking_threshold FROM users WHERE id = $1`,
-      [userId]
-    )
-    if (vipResult.success && vipResult.data.length > 0) {
-      vipSpendThreshold = parseFloat(vipResult.data[0].vip_spend_threshold) || 5000
-      vipBookingThreshold = parseInt(vipResult.data[0].vip_booking_threshold) || 5
-    }
-  }
   
   const metricsQuery = `
     WITH platform_fee_lookup AS (
@@ -313,18 +297,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
           WHEN gb.booking_count > 1
           THEN (gb.normalized_name, gb.normalized_email)
         END) as repeat_guests,
-        COUNT(DISTINCT CASE
-          WHEN EXISTS (
-            SELECT 1
-            FROM bookings b_all
-            WHERE b_all.tenant_id = $1
-              AND b_all.status != 'canceled'
-              AND LOWER(TRIM(b_all.guest_name)) = gb.normalized_name
-              AND COALESCE(LOWER(TRIM(b_all.guest_email)), '') = gb.normalized_email
-            GROUP BY LOWER(TRIM(b_all.guest_name)), COALESCE(LOWER(TRIM(b_all.guest_email)), '')
-            HAVING SUM(b_all.total_amount) > ${vipSpendThreshold} OR COUNT(*) >= ${vipBookingThreshold}
-          ) THEN (gb.normalized_name, gb.normalized_email)
-        END) as vip_guests
+        0 as vip_guests -- Deprecated: VIP concept removed
       FROM guest_bookings gb
     ),
     property_performance AS (
@@ -384,7 +357,6 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
       COALESCE(gs.total_guests, 0) as "totalGuests",
       COALESCE(gs.new_guests_this_month, 0) as "newGuests",
       COALESCE(gs.repeat_guests::numeric / NULLIF(gs.total_guests, 0), 0) as "repeatGuestRate",
-      COALESCE(gs.vip_guests, 0) as "vipGuests",
       COALESCE(bs.avg_booking_value, 0) as "avgBookingValue",
       COALESCE(bs.avg_nights, 0) as "avgNights",
       COALESCE(pp.total_properties, 0) as "totalProperties",
@@ -415,7 +387,6 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
     totalGuests: 0,
     newGuests: 0,
     repeatGuestRate: 0,
-    vipGuests: 0,
     avgBookingValue: 0,
     avgNights: 0,
     totalProperties: 0,

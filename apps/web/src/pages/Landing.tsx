@@ -58,7 +58,7 @@ export const Landing = () => {
           <div className="p-6 border rounded hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold mb-2">Guest Analytics</h3>
             <p className="text-gray-600">
-              Track repeat guests, analyze spending patterns, and identify VIP customers by source
+              Track repeat guests, analyze spending patterns, and identify top performers by source
             </p>
           </div>
           <div className="p-6 border rounded hover:shadow-lg transition-shadow">

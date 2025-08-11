@@ -35,6 +35,7 @@ export async function getBookingDetail(
     const bookingResult = await query<{
       id: string;
       ownerrez_booking_id: string;
+      property_id: string;
       property_name: string;
       guest_name: string;
       guest_email?: string;
@@ -50,6 +51,7 @@ export async function getBookingDetail(
       `SELECT
         b.id,
         b.ownerrez_booking_id,
+        b.property_id,
         p.name as property_name,
         b.guest_name,
         b.guest_email,
@@ -112,7 +114,9 @@ export async function getBookingDetail(
         booking: {
           id: booking.id,
           ownerrezBookingId: booking.ownerrez_booking_id,
+          propertyId: booking.property_id,
           propertyName: booking.property_name,
+          guestId: `${booking.guest_name}|${booking.guest_email || ''}`,
           guestName: booking.guest_name,
           guestEmail: booking.guest_email,
           arrival: booking.arrival,

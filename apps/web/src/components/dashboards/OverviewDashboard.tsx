@@ -4,7 +4,7 @@ import { formatCurrency, formatCompactCurrency, formatPercentage } from '@bailey
 import {
   AlertCircle, CheckCircle, TrendingUp,
   DollarSign, Users, Home, Calendar, Clock, ArrowUpRight, ArrowDownRight,
-  BarChart3, Activity, CreditCard, AlertTriangle
+  BarChart3, Activity, CreditCard, AlertTriangle, Info
 } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Spinner } from '@/components/Spinner'
@@ -148,10 +148,21 @@ export const OverviewDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Dashboard Overview</h2>
+          <h2 className="text-2xl font-bold">Your Business at a Glance</h2>
           <p className="text-gray-600 text-sm mt-1">
-            Complete snapshot of your vacation rental business
+            Everything you need to know about how your properties are doing
           </p>
+        </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+          <div className="text-sm text-blue-800">
+            <strong>Quick Start:</strong> Click any metric card to dive deeper into that area. 
+            Green arrows mean improvement, red arrows mean decline. All numbers reflect your selected date range.
+          </div>
         </div>
       </div>
 
@@ -159,9 +170,9 @@ export const OverviewDashboard = () => {
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={DollarSign}
-          label="Gross Revenue"
+          label="Money Earned"
           value={formatCompactCurrency(metrics.revenue.current)}
-          subValue={`Net: ${formatCompactCurrency(metrics.revenue.net)} | Avg: ${formatCurrency(metrics.revenue.avgBookingValue)}`}
+          subValue={`After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`}
           trend={{
             value: metrics.revenue.growth,
             isPositive: metrics.revenue.growth > 0
@@ -171,9 +182,9 @@ export const OverviewDashboard = () => {
         />
         <MetricCard
           icon={Calendar}
-          label="Total Bookings"
+          label="Reservations Made"
           value={metrics.bookings.current}
-          subValue={`${metrics.bookings.upcoming} upcoming | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} avg nights`}
+          subValue={`${metrics.bookings.upcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`}
           trend={{
             value: metrics.bookings.cancellationRate * -1,
             isPositive: metrics.bookings.cancellationRate < 5
@@ -183,9 +194,9 @@ export const OverviewDashboard = () => {
         />
         <MetricCard
           icon={Home}
-          label="Overall Occupancy"
+          label="How Full You Are"
           value={formatPercentage(Number(metrics.occupancy.current || 0) * 100, 0)}
-          subValue={`${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} avg per property`}
+          subValue={`${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} average`}
           trend={metrics.occupancy.trend === 'up' ? {
             value: 5,
             isPositive: true
@@ -198,9 +209,9 @@ export const OverviewDashboard = () => {
         />
         <MetricCard
           icon={Users}
-          label="Total Guests"
+          label="Guest Count"
           value={metrics.guests.total}
-          subValue={`${metrics.guests.newThisMonth} new in period | ${metrics.guests.vipCount} VIP (lifetime) | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} repeat`}
+          subValue={`${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`}
           trend={{
             value: metrics.guests.repeatRate * 100,
             isPositive: metrics.guests.repeatRate > 0.3
@@ -225,44 +236,44 @@ export const OverviewDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <Activity className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Avg Stay</span>
+            <span className="text-xs text-gray-500">Typical Stay</span>
           </div>
-          <div className="mt-2 text-xl font-bold">{Number(metrics.bookings.avgNights || 0).toFixed(1)}</div>
-          <div className="text-xs text-gray-600">Nights per booking</div>
+          <div className="mt-2 text-xl font-bold">{Number(metrics.bookings.avgNights || 0).toFixed(1)} nights</div>
+          <div className="text-xs text-gray-600">Per reservation</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <TrendingUp className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Avg Value</span>
+            <span className="text-xs text-gray-500">Booking Value</span>
           </div>
           <div className="mt-2 text-xl font-bold">{formatCompactCurrency(metrics.revenue.avgBookingValue)}</div>
-          <div className="text-xs text-gray-600">Per booking (gross)</div>
+          <div className="text-xs text-gray-600">Average per stay</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <Users className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Lifetime VIP</span>
+            <span className="text-xs text-gray-500">First-Time Guests</span>
           </div>
-          <div className="mt-2 text-xl font-bold">{metrics.guests.vipCount}</div>
-          <div className="text-xs text-gray-600">High-value guests</div>
+          <div className="mt-2 text-xl font-bold">{metrics.guests.newThisMonth}</div>
+          <div className="text-xs text-gray-600">New this period</div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <BarChart3 className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Repeat Rate</span>
+            <span className="text-xs text-gray-500">Return Guests</span>
           </div>
           <div className="mt-2 text-xl font-bold">{formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)}</div>
           <div className="text-xs text-gray-600">
-            {metrics.guests.total > 0 ? `Of ${metrics.guests.total} guests` : 'No guests'}
+            {metrics.guests.total > 0 ? 'Come back again' : 'No data yet'}
           </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between">
             <AlertCircle className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Cancel Rate</span>
+            <span className="text-xs text-gray-500">Cancellations</span>
           </div>
           <div className="mt-2 text-xl font-bold">{formatPercentage(Number(metrics.bookings.cancellationRate || 0), 0)}</div>
-          <div className="text-xs text-gray-600">In selected period</div>
+          <div className="text-xs text-gray-600">Of bookings</div>
         </div>
       </div>
 
@@ -272,7 +283,7 @@ export const OverviewDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
-            7-Day Revenue Trend
+            Money Made (Last 7 Days)
           </h3>
           <div className="h-48">
             {charts.revenueLastWeek.length > 0 ? (
@@ -287,7 +298,10 @@ export const OverviewDashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="day" />
                   <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+                  <Tooltip 
+                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  />
                   <Area
                     type="monotone"
                     dataKey="revenue"
@@ -310,7 +324,7 @@ export const OverviewDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Home className="w-5 h-5 mr-2 text-purple-600" />
-            Top Properties by Revenue
+            Your Best Performing Properties
           </h3>
           <div className="h-48">
             {charts.topProperties.length > 0 ? (
@@ -330,7 +344,10 @@ export const OverviewDashboard = () => {
                     tick={{ fontSize: 10 }}
                   />
                   <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: any) => formatCurrency(Number(value))} />
+                  <Tooltip 
+                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  />
                   <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -346,7 +363,7 @@ export const OverviewDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
-            Booking Sources
+            Where Bookings Come From
           </h3>
           <div className="h-64">
             {charts.bookingsBySource.length > 0 ? (
@@ -369,7 +386,10 @@ export const OverviewDashboard = () => {
                       <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: any) => [value, 'Bookings']} />
+                  <Tooltip 
+                    formatter={(value: any) => [value, 'Bookings']}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -384,7 +404,7 @@ export const OverviewDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Calendar className="w-5 h-5 mr-2 text-orange-600" />
-            6-Month Occupancy Trend
+            How Full You've Been (6 Months)
           </h3>
           <div className="h-48">
             {charts.occupancyTrend.length > 0 ? (
@@ -396,7 +416,10 @@ export const OverviewDashboard = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis tickFormatter={(value: any) => `${value}%`} domain={[0, 100]} />
-                  <Tooltip formatter={(value: any) => `${value}%`} />
+                  <Tooltip 
+                    formatter={(value: any) => [`${value}% of nights booked`, 'Occupancy']}
+                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="rate"
@@ -421,8 +444,8 @@ export const OverviewDashboard = () => {
         {/* Alerts & Notifications Panel */}
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Alerts & Notifications</h3>
-            <span className="text-xs text-gray-500">{alerts?.length || 0} active</span>
+            <h3 className="text-lg font-bold">Things to Know</h3>
+            <span className="text-xs text-gray-500">{alerts?.length || 0} items</span>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {alerts && alerts.length > 0 ? (
@@ -432,8 +455,8 @@ export const OverviewDashboard = () => {
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                <p>All systems operational</p>
-                <p className="text-xs mt-1">No alerts at this time</p>
+                <p>Everything looks good!</p>
+                <p className="text-xs mt-1">No issues to report</p>
               </div>
             )}
           </div>
@@ -442,8 +465,8 @@ export const OverviewDashboard = () => {
         {/* Recent Activity Feed */}
         <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Recent Activity</h3>
-            <span className="text-xs text-gray-500">Latest bookings</span>
+            <h3 className="text-lg font-bold">What's New</h3>
+            <span className="text-xs text-gray-500">Recent bookings</span>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {recentActivity && recentActivity.length > 0 ? (

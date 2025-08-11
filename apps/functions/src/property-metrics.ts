@@ -102,7 +102,7 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
           -- Calculate nights only within the reporting period
           CASE
             WHEN b.arrival <= $3 AND b.departure >= $2 THEN
-              LEAST(b.departure, $3::date, CURRENT_DATE) - GREATEST(b.arrival, $2::date)
+              LEAST(b.departure::date, $3::date, CURRENT_DATE) - GREATEST(b.arrival::date, $2::date)
             ELSE 0
           END
         ), 0) as total_nights

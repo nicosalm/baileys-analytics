@@ -560,7 +560,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                     <div className="font-medium">
                       {guest.totalSpent < 1000 ? 'Standard' :
                        guest.totalSpent < 5000 ? 'Premium' :
-                       'VIP'}
+                       'Top Tier'}
                     </div>
                   </div>
                   <div className="p-4 bg-gray-50 rounded">

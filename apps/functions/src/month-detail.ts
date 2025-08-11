@@ -98,8 +98,10 @@ export async function getMonthDetail(
     // Get all bookings
     const bookingsResult = await query<{
       id: string;
+      property_id: string;
       property_name: string;
       guest_name: string;
+      guest_email: string;
       arrival: string;
       departure: string;
       total_amount: string;
@@ -107,8 +109,10 @@ export async function getMonthDetail(
     }>(
       `SELECT
         b.id,
+        b.property_id,
         p.name as property_name,
         b.guest_name,
+        b.guest_email,
         b.arrival,
         b.departure,
         b.total_amount,
@@ -133,12 +137,26 @@ export async function getMonthDetail(
       status: 200,
       headers: corsHeaders(),
       jsonBody: {
+        metrics: {
+          revenue: parseFloat(summary.total_revenue),
+          bookings: parseInt(summary.total_bookings),
+          occupancyRate: 0, // Would need calculation based on property count
+          avgNightlyRate: parseFloat(summary.avg_nightly_rate)
+        },
         summary: {
           totalRevenue: parseFloat(summary.total_revenue),
           totalTax: parseFloat(summary.total_tax),
           totalBookings: parseInt(summary.total_bookings),
           avgNightlyRate: parseFloat(summary.avg_nightly_rate)
         },
+        topProperties: byPropertyResult.success ? byPropertyResult.data.map(p => ({
+          propertyId: p.property_id,
+          propertyName: p.property_name,
+          revenue: parseFloat(p.revenue),
+          bookings: parseInt(p.bookings),
+          occupancyRate: 0, // Would need calculation
+          tax: parseFloat(p.tax)
+        })) : [],
         byProperty: byPropertyResult.success ? byPropertyResult.data.map(p => ({
           propertyId: p.property_id,
           propertyName: p.property_name,
@@ -148,7 +166,9 @@ export async function getMonthDetail(
         })) : [],
         bookings: bookingsResult.success ? bookingsResult.data.map(b => ({
           id: b.id,
+          propertyId: b.property_id,
           propertyName: b.property_name,
+          guestId: `${b.guest_name}|${b.guest_email || ''}`,
           guestName: b.guest_name,
           arrival: b.arrival,
           departure: b.departure,

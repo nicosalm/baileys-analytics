@@ -24,8 +24,6 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     tenant_id UUID REFERENCES tenants(id),
     company_name VARCHAR(255),
-    vip_spend_threshold DECIMAL(10, 2) DEFAULT 5000,
-    vip_booking_threshold INTEGER DEFAULT 5,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -273,7 +271,6 @@ INSERT INTO platform_fees (tenant_id, platform_name, fee_type, fee_value, effect
 ON CONFLICT DO NOTHING;
 
 CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_vip_thresholds ON users(vip_spend_threshold, vip_booking_threshold);
 CREATE INDEX idx_properties_tenant_id ON properties(tenant_id);
 CREATE INDEX idx_properties_active ON properties(tenant_id, active);
 CREATE INDEX idx_bookings_tenant_id ON bookings(tenant_id);
@@ -373,9 +370,13 @@ CREATE TABLE report_templates (
     description TEXT,
     type VARCHAR(50) NOT NULL,
     config JSONB NOT NULL,
+    schedule JSONB,
     is_default BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_modified TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_run TIMESTAMP WITH TIME ZONE,
+    last_export_url TEXT,
     last_used TIMESTAMP WITH TIME ZONE,
     use_count INTEGER DEFAULT 0
 );
@@ -391,6 +392,23 @@ CREATE TABLE report_execution_log (
     duration_ms INTEGER
 );
 
+-- Report history table for tracking report template runs
+CREATE TABLE report_history (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    template_id UUID NOT NULL REFERENCES report_templates(id) ON DELETE CASCADE,
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    generated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    generated_by VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL CHECK (status IN ('success', 'failed', 'processing')),
+    file_size BIGINT,
+    record_count INTEGER,
+    delivery_method VARCHAR(50) NOT NULL CHECK (delivery_method IN ('download', 'email', 'api')),
+    recipients TEXT[],
+    download_url TEXT,
+    error_message TEXT,
+    metrics JSONB
+);
+
 -- Indexes for report tables
 CREATE INDEX idx_generated_reports_tenant_id ON generated_reports(tenant_id);
 CREATE INDEX idx_generated_reports_expires_at ON generated_reports(expires_at);
@@ -404,6 +422,11 @@ CREATE INDEX idx_scheduled_reports_template_id ON scheduled_reports(template_id)
 CREATE INDEX idx_report_templates_tenant_id ON report_templates(tenant_id);
 CREATE INDEX idx_report_templates_type ON report_templates(type);
 CREATE INDEX idx_report_templates_is_default ON report_templates(is_default) WHERE is_default = true;
+
+-- Indexes for report_history
+CREATE INDEX idx_report_history_template_id ON report_history(template_id);
+CREATE INDEX idx_report_history_tenant_id ON report_history(tenant_id);
+CREATE INDEX idx_report_history_generated_at ON report_history(generated_at DESC);
 
 CREATE INDEX idx_report_execution_log_report_id ON report_execution_log(report_id);
 CREATE INDEX idx_report_execution_log_executed_at ON report_execution_log(executed_at);

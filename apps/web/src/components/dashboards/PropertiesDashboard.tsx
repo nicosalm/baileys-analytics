@@ -2,22 +2,22 @@ import { useEffect } from 'react'
 import { PropertyMetrics } from '@/types/dashboard'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy } from '@baileys/utils'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
-import { TrendingUp, Calendar, DollarSign, Home } from 'lucide-react'
+import { Calendar, DollarSign, Home, Info, BarChart3, Target, Percent } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { usePropertyMetrics } from '@/hooks/use-api'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
-import { useDrillDown } from '@/contexts/drillDown'
+import { useModal } from '@/contexts/modal'
 import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
 
 const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
-  const { dispatch } = useDrillDown()
+  const { openModal } = useModal()
 
   return (
     <div
       className="bg-white p-6 rounded-lg shadow cursor-pointer"
-      onClick={() => dispatch({
-        type: 'DRILL_TO_PROPERTY',
+      onClick={() => openModal({
+        type: 'property',
         propertyId: property.propertyId,
         propertyName: property.propertyName
       })}
@@ -25,25 +25,26 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
       <h3 className="text-lg font-bold mb-4">{property.propertyName}</h3>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <div className="text-sm text-gray-600">Revenue</div>
+          <div className="text-sm text-gray-600">Money Earned</div>
           <div className="text-xl font-semibold">{formatCurrency(property.revenue)}</div>
         </div>
         <div>
-          <div className="text-sm text-gray-600">Bookings</div>
+          <div className="text-sm text-gray-600">Reservations</div>
           <div className="text-xl font-semibold">{property.bookings}</div>
         </div>
         <div>
-          <div className="text-sm text-gray-600">Occupancy</div>
+          <div className="text-sm text-gray-600">How Full</div>
           <div className={`text-xl font-semibold ${getOccupancyColor(property.occupancyRate * 100)}`}>
             {formatPercentage(property.occupancyRate * 100, 0)}
           </div>
           <div className="text-xs text-gray-500">
-            {property.bookedNights} / {property.availableNights} nights
+            {property.bookedNights} of {property.availableNights} nights
           </div>
         </div>
         <div>
-          <div className="text-sm text-gray-600">Avg Nightly</div>
+          <div className="text-sm text-gray-600">Nightly Rate</div>
           <div className="text-xl font-semibold">{formatCurrency(property.avgNightlyRate)}</div>
+          <div className="text-xs text-gray-500">Average</div>
         </div>
       </div>
     </div>
@@ -67,10 +68,30 @@ export const PropertiesDashboard = () => {
     }
   }, [error?.message, addToast])
 
-  if (isLoading || !properties) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
+      </div>
+    )
+  }
+
+  if (!properties || properties.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold">Your Properties at a Glance</h2>
+          <p className="text-gray-600 text-sm mt-1">
+            See how each property is performing and compare them side by side
+          </p>
+        </div>
+        <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow">
+          <Home className="w-16 h-16 text-gray-300 mb-4" />
+          <h3 className="text-lg font-medium text-gray-600 mb-2">No Properties Found</h3>
+          <p className="text-gray-500 text-center max-w-md">
+            Properties will appear here once they're synced from your booking platform.
+          </p>
+        </div>
       </div>
     )
   }
@@ -102,46 +123,61 @@ export const PropertiesDashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Property Performance</h2>
+        <h2 className="text-2xl font-bold">Your Properties at a Glance</h2>
         <p className="text-gray-600 text-sm mt-1">
-          Individual property metrics and comparisons
+          See how each property is performing and compare them side by side
         </p>
       </div>
 
+      {/* Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+          <div className="text-sm text-blue-800">
+            <strong>Reading Your Data:</strong> Click any property card to see detailed insights. 
+            Higher occupancy means fewer empty nights. Compare revenue and rates to identify your top performers.
+          </div>
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow" title="Number of properties you manage">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Home className="w-4 h-4 mr-1" />
-            Total Properties
+            Properties You Manage
           </div>
           <div className="text-3xl font-bold">{(properties || []).length}</div>
+          <div className="text-xs text-gray-500 mt-1">In selected period</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow" title="Combined revenue from all properties">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <DollarSign className="w-4 h-4 mr-1" />
-            Total Revenue
+            Combined Revenue
           </div>
           <div className="text-3xl font-bold">
             {formatCompactCurrency(totalRevenue)}
           </div>
+          <div className="text-xs text-gray-500 mt-1">All properties</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow" title="Average percentage of nights booked">
           <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Calendar className="w-4 h-4 mr-1" />
-            Avg Occupancy
+            <Percent className="w-4 h-4 mr-1" />
+            Average Fullness
           </div>
           <div className={`text-3xl font-bold ${getOccupancyColor(avgOccupancy * 100)}`}>
             {formatPercentage(avgOccupancy * 100, 0)}
           </div>
+          <div className="text-xs text-gray-500 mt-1">Across all properties</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow" title="Total number of reservations">
           <div className="flex items-center text-sm text-gray-600 mb-2">
-            <TrendingUp className="w-4 h-4 mr-1" />
-            Total Bookings
+            <Calendar className="w-4 h-4 mr-1" />
+            Total Reservations
           </div>
           <div className="text-3xl font-bold">
             {totalBookings}
           </div>
+          <div className="text-xs text-gray-500 mt-1">In selected period</div>
         </div>
       </div>
 
@@ -153,7 +189,13 @@ export const PropertiesDashboard = () => {
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold mb-4">Revenue & Occupancy Comparison</h3>
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <BarChart3 className="w-5 h-5 mr-2" />
+            Money vs Fullness
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Blue bars show revenue, green bars show how full each property is
+          </p>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
@@ -176,10 +218,11 @@ export const PropertiesDashboard = () => {
                 />
                 <Tooltip
                   formatter={(value: any, name: string) => {
-                    if (name === 'Revenue') return formatCurrency(value)
-                    if (name === 'Occupancy') return `${value}%`
+                    if (name === 'Money Earned') return formatCurrency(value)
+                    if (name === 'Nights Booked %') return `${value}% of nights`
                     return value
                   }}
+                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
                   labelFormatter={(label: any, payload: any) => {
                     // Show full property name in tooltip
                     if (payload && payload.length > 0) {
@@ -188,24 +231,30 @@ export const PropertiesDashboard = () => {
                     return label
                   }}
                 />
-                <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
-                <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Occupancy" />
+                <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Money Earned" />
+                <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Nights Booked %" />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold mb-4">Performance Radar</h3>
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <Target className="w-5 h-5 mr-2" />
+            Property Comparison
+          </h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Compare all metrics at once - bigger shapes mean better performance
+          </p>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
                 <PolarGrid />
                 <PolarAngleAxis dataKey="property" />
                 <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                <Radar name="Revenue" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
-                <Radar name="Occupancy" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
-                <Radar name="Avg Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
+                <Radar name="Money Earned" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
+                <Radar name="Nights Booked" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
+                <Radar name="Nightly Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
                 <Tooltip formatter={(value: number) => `${value.toFixed(0)}%`} />
               </RadarChart>
             </ResponsiveContainer>

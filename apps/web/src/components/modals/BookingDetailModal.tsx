@@ -1,0 +1,207 @@
+import { useBookingDetail } from '@/hooks/use-api'
+import { formatCurrency } from '@baileys/utils'
+import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin } from 'lucide-react'
+import { Spinner } from '@/components/Spinner'
+import { StatusBadge } from '@/components/StatusBadge'
+import { Modal } from '@/components/Modal'
+import { useModal } from '@/contexts/modal'
+
+interface BookingDetailModalProps {
+  bookingId: string
+  guestName?: string
+}
+
+export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalProps) => {
+  const { closeModal, openModal } = useModal()
+  const { data, isLoading, error } = useBookingDetail(bookingId)
+
+  if (isLoading) {
+    return (
+      <Modal
+        isOpen={true}
+        onClose={closeModal}
+        title={guestName ? `${guestName}'s Booking` : 'Booking Details'}
+        subtitle="Loading booking information..."
+        size="md"
+      >
+        <div className="flex justify-center py-12">
+          <Spinner size="lg" />
+        </div>
+      </Modal>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <Modal
+        isOpen={true}
+        onClose={closeModal}
+        title="Booking Details"
+        subtitle="Unable to load booking"
+        size="md"
+      >
+        <div className="text-center py-12">
+          <p className="text-gray-600">Something went wrong. Please try again.</p>
+        </div>
+      </Modal>
+    )
+  }
+
+  const booking = data.booking
+  const nights = Math.ceil((new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24))
+
+  return (
+    <Modal
+      isOpen={true}
+      onClose={closeModal}
+      title={`Booking #${booking.confirmationCode || bookingId.slice(0, 8)}`}
+      subtitle={`${booking.guestName} at ${booking.propertyName}`}
+      size="md"
+    >
+      <div className="space-y-6">
+        {/* Info Banner */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              <strong>Booking Details:</strong> Complete information about this reservation. 
+              Click guest or property names to view their details.
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600">Booking Status</div>
+          <StatusBadge status={booking.status} />
+        </div>
+
+        {/* Guest & Property Info */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <div 
+            className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100"
+            onClick={() => openModal({
+              type: 'guest',
+              guestId: booking.guestId,
+              guestName: booking.guestName
+            })}
+          >
+            <div className="flex items-center text-sm text-gray-600 mb-2">
+              <User className="w-4 h-4 mr-1" />
+              Guest
+            </div>
+            <div className="font-semibold text-blue-600 hover:underline">{booking.guestName}</div>
+            {booking.guestEmail && (
+              <div className="text-sm text-gray-500">{booking.guestEmail}</div>
+            )}
+            {booking.guestPhone && (
+              <div className="text-sm text-gray-500">{booking.guestPhone}</div>
+            )}
+          </div>
+
+          <div 
+            className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100"
+            onClick={() => openModal({
+              type: 'property',
+              propertyId: booking.propertyId,
+              propertyName: booking.propertyName
+            })}
+          >
+            <div className="flex items-center text-sm text-gray-600 mb-2">
+              <Home className="w-4 h-4 mr-1" />
+              Property
+            </div>
+            <div className="font-semibold text-blue-600 hover:underline">{booking.propertyName}</div>
+            {booking.propertyAddress && (
+              <div className="text-sm text-gray-500 flex items-start">
+                <MapPin className="w-3 h-3 mr-1 mt-0.5" />
+                {booking.propertyAddress}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dates & Duration */}
+        <div className="bg-white border rounded-lg p-4">
+          <div className="flex items-center text-sm text-gray-600 mb-3">
+            <Calendar className="w-4 h-4 mr-1" />
+            Stay Dates
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <div className="text-xs text-gray-500">Check In</div>
+              <div className="font-semibold">{new Date(booking.arrival).toLocaleDateString()}</div>
+              <div className="text-sm text-gray-600">{booking.checkInTime || '3:00 PM'}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Check Out</div>
+              <div className="font-semibold">{new Date(booking.departure).toLocaleDateString()}</div>
+              <div className="text-sm text-gray-600">{booking.checkOutTime || '11:00 AM'}</div>
+            </div>
+            <div>
+              <div className="text-xs text-gray-500">Duration</div>
+              <div className="font-semibold">{nights} nights</div>
+              <div className="text-sm text-gray-600">{booking.guestCount || 1} guests</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Financial Details */}
+        <div className="bg-white border rounded-lg p-4">
+          <div className="flex items-center text-sm text-gray-600 mb-3">
+            <DollarSign className="w-4 h-4 mr-1" />
+            Payment Details
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Nightly Rate</span>
+              <span className="font-medium">{formatCurrency(booking.nightlyRate || booking.totalAmount / nights)}</span>
+            </div>
+            {booking.cleaningFee && booking.cleaningFee > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Cleaning Fee</span>
+                <span className="font-medium">{formatCurrency(booking.cleaningFee)}</span>
+              </div>
+            )}
+            {booking.taxes && booking.taxes > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Taxes</span>
+                <span className="font-medium">{formatCurrency(booking.taxes)}</span>
+              </div>
+            )}
+            <div className="flex justify-between pt-2 border-t font-semibold">
+              <span>Total Amount</span>
+              <span className="text-green-600">{formatCurrency(booking.totalAmount)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Booking Source */}
+        <div className="bg-white border rounded-lg p-4">
+          <div className="flex items-center text-sm text-gray-600 mb-2">
+            <CreditCard className="w-4 h-4 mr-1" />
+            Booking Information
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Platform: </span>
+              <span className="font-medium">{booking.platform || 'Direct'}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Booked: </span>
+              <span className="font-medium">{new Date(booking.bookedDate).toLocaleDateString()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Notes */}
+        {booking.notes && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <div className="text-sm text-gray-600 mb-2">Special Notes</div>
+            <div className="text-sm">{booking.notes}</div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}

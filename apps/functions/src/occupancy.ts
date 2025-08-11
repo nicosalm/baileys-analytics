@@ -40,11 +40,11 @@ const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams =
   tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
 })
 
-const buildTagFilter = (tagIds: readonly string[]): string =>
+const buildTagFilter = (tagIds: readonly string[], tableAlias: string = 'b'): string =>
   tagIds.length > 0
     ? `AND EXISTS (
         SELECT 1 FROM booking_tags bt
-        WHERE bt.booking_id = bookings.id
+        WHERE bt.booking_id = ${tableAlias}.id
         AND bt.tag_id = ANY($4::uuid[])
       )`
     : ''
@@ -58,7 +58,7 @@ const fetchOverallOccupancy = async (params: QueryParams): Promise<DbResult<{
   booked_nights: number
   available_nights: number
 }>> => {
-  const tagFilter = buildTagFilter(params.tagIds)
+  const tagFilter = buildTagFilter(params.tagIds, 'b')
   const queryParams = buildQueryParams(params)
 
   const result = await query<{
@@ -149,7 +149,7 @@ const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<rea
   available_nights: string
   availability_start: string | null
 }[]>> => {
-  const tagFilter = buildTagFilter(params.tagIds)
+  const tagFilter = buildTagFilter(params.tagIds, 'b')
   const queryParams = buildQueryParams(params)
 
   return query<{
@@ -203,7 +203,7 @@ const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<rea
         AND b.arrival <= $3
         AND b.departure >= $2
         AND b.status != 'canceled'
-        ${tagFilter.replace('bookings.', 'b.')}
+        ${tagFilter}
       WHERE p.tenant_id = $1 AND p.active = true
       GROUP BY p.id
     )
@@ -225,7 +225,7 @@ const fetchMonthlyOccupancy = async (params: QueryParams): Promise<DbResult<read
   booked_nights: string
   available_nights: string
 }[]>> => {
-  const tagFilter = buildTagFilter(params.tagIds)
+  const tagFilter = buildTagFilter(params.tagIds, 'b')
   const queryParams = buildQueryParams(params)
 
   return query<{
@@ -276,7 +276,7 @@ const fetchMonthlyOccupancy = async (params: QueryParams): Promise<DbResult<read
         AND b.status != 'canceled'
         AND calendar_date >= b.arrival
         AND calendar_date < b.departure
-        ${tagFilter.replace('bookings.', 'b.')}
+        ${tagFilter}
       JOIN properties p ON b.property_id = p.id
         AND p.active = true
       WHERE calendar_date <= CURRENT_DATE  -- Ensure we don't count future dates

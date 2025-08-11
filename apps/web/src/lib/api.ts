@@ -315,34 +315,41 @@ class ApiClient {
         return this.request(`/guests?${params}`)
     }
 
-    async getVIPSettings(): Promise<ApiResult<{ vipSpendThreshold: number; vipBookingThreshold: number }>> {
-        const result = await this.request<{ status: string; data: { vipSpendThreshold: number; vipBookingThreshold: number } }>('/vip-settings')
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: result.data.data }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to fetch VIP settings' : result.error
-        }
+    // Report Template APIs
+    async getReportTemplates(): Promise<ApiResult<any>> {
+        return this.request('/report-templates')
     }
 
-    async updateVIPSettings(settings: { vipSpendThreshold?: number; vipBookingThreshold?: number }): Promise<ApiResult<{ vipSpendThreshold: number; vipBookingThreshold: number }>> {
-        const result = await this.request<{ status: string; data: { vipSpendThreshold: number; vipBookingThreshold: number } }>('/vip-settings', {
-            method: 'PUT',
-            body: JSON.stringify(settings)
+    async getReportTemplate(id: string): Promise<ApiResult<any>> {
+        return this.request(`/report-templates/${id}`)
+    }
+
+    async createReportTemplate(template: any): Promise<ApiResult<any>> {
+        return this.request('/report-templates', {
+            method: 'POST',
+            body: JSON.stringify(template)
         })
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: result.data.data }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to update VIP settings' : result.error
-        }
     }
+
+    async updateReportTemplate(id: string, template: any): Promise<ApiResult<any>> {
+        return this.request(`/report-templates/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(template)
+        })
+    }
+
+    async deleteReportTemplate(id: string): Promise<ApiResult<any>> {
+        return this.request(`/report-templates/${id}`, {
+            method: 'DELETE'
+        })
+    }
+
+    async generateReport(templateId: string): Promise<ApiResult<any>> {
+        return this.request(`/reports/generate/${templateId}`, {
+            method: 'POST'
+        })
+    }
+
 }
 
 export const api = new ApiClient()

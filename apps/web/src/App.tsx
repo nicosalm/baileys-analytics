@@ -6,6 +6,8 @@ import { ToastProvider } from '@/contexts/toast'
 import { DashboardProvider } from '@/contexts/dashboard'
 import { DrillDownProvider } from '@/contexts/drillDown'
 import { TaxConfigProvider } from '@/contexts/taxConfig'
+import { ModalProvider } from '@/contexts/modal'
+import { ModalManager } from '@/components/ModalManager'
 import { Landing } from '@/pages/Landing'
 import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
@@ -31,7 +33,10 @@ export const App = () => {
                   <DashboardProvider>
                     <DrillDownProvider>
                       <TaxConfigProvider>
-                        <DashboardLayout />
+                        <ModalProvider>
+                          <DashboardLayout />
+                          <ModalManager />
+                        </ModalProvider>
                       </TaxConfigProvider>
                     </DrillDownProvider>
                   </DashboardProvider>

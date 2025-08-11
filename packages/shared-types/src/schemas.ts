@@ -234,31 +234,6 @@ export const scheduledReportSchema = z.object({
   updatedAt: z.string().datetime(),
 })
 
-// ============= VIP Settings Schemas =============
-export const vipSettingsUpdateSchema = z.object({
-  vipSpendThreshold: z.number().min(0).optional(),
-  vipBookingThreshold: z.number().int().min(1).optional(),
-}).refine(data => Object.keys(data).length > 0, {
-  message: "At least one field must be provided for update"
-})
-
-export const vipSettingsSchema = z.object({
-  id: z.string(),
-  tenantId: z.string(),
-  vipGuests: z.array(z.object({
-    name: z.string(),
-    email: z.string().email().optional(),
-    tags: z.array(z.string()).optional(),
-  })),
-  vipProperties: z.array(z.string()),
-  thresholds: z.object({
-    bookingCount: z.number().optional(),
-    totalRevenue: z.number().optional(),
-    avgBookingValue: z.number().optional(),
-  }),
-  updatedAt: z.string().datetime(),
-})
-
 // ============= Database Result Schemas =============
 // Schema for parsing numeric strings from database
 export const numericStringSchema = z.string().transform(val => parseFloat(val))
@@ -311,5 +286,4 @@ export type SyncStatus = z.infer<typeof syncStatusSchema>
 export type TaxRule = z.infer<typeof taxRuleSchema>
 export type TaxCalculationRequest = z.infer<typeof taxCalculationRequestSchema>
 export type ReportRequest = z.infer<typeof reportRequestSchema>
-export type VipSettings = z.infer<typeof vipSettingsSchema>
 export type ErrorResponse = z.infer<typeof errorResponseSchema>

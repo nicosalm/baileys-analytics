@@ -11,17 +11,17 @@ import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
-import { TrendingUp, TrendingDown, Calendar, Sun, Snowflake, AlertCircle, BarChart3 } from 'lucide-react'
+import { TrendingUp, TrendingDown, Calendar, Sun, Snowflake, AlertCircle, BarChart3, Info, DollarSign, Percent } from 'lucide-react'
 import { Spinner } from '@/components/Spinner'
 import { useToast } from '@/contexts/toast'
-import { useDrillDown } from '@/contexts/drillDown'
+import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export const SeasonalDashboard = () => {
   const { addToast } = useToast()
-  const { dispatch } = useDrillDown()
+  const { openModal } = useModal()
   const { filters } = useDashboard()
 
   // Extract year from the date range filter
@@ -118,7 +118,7 @@ export const SeasonalDashboard = () => {
   // Custom tooltip formatters
   const formatTooltipValue = (value: any, name: string) => {
     const numValue = ensureNumber(value)
-    if (name === 'Occupancy %') return `${numValue.toFixed(1)}%`
+    if (name === 'Nights Booked %') return `${numValue.toFixed(1)}%`
     if (name === 'growth') return `${numValue.toFixed(1)}%`
     return formatCurrency(numValue)
   }
@@ -129,19 +129,30 @@ export const SeasonalDashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Seasonal Analysis</h2>
+        <h2 className="text-2xl font-bold">Seasonal Insights</h2>
         <p className="text-gray-600 text-sm mt-1">
-          Seasonal trends, patterns, and optimization opportunities
+          Understand when your properties perform best and find pricing opportunities
         </p>
+      </div>
+
+      {/* Info Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start">
+          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+          <div className="text-sm text-blue-800">
+            <strong>What This Shows:</strong> Your business patterns throughout the year, helping you identify busy seasons, 
+            slow periods, and opportunities to adjust pricing for maximum revenue.
+          </div>
+        </div>
       </div>
 
 
       {/* Key Metrics Cards */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow" title="Your busiest time of year">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
-            Peak Season
+            Your Busiest Month
           </div>
           <div className="text-2xl font-bold flex items-center">
             {data.seasonalPatterns.peakMonths[0]?.month || 'N/A'}
@@ -149,15 +160,15 @@ export const SeasonalDashboard = () => {
           </div>
           <div className="text-sm text-gray-500">
             {data.seasonalPatterns.avgPeakOccupancy > 0
-              ? `${formatPercentage(data.seasonalPatterns.avgPeakOccupancy, 0)} occupancy`
+              ? `${formatPercentage(data.seasonalPatterns.avgPeakOccupancy, 0)} of nights booked`
               : 'No data'}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow" title="Your quietest time of year">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
-            Low Season
+            Your Quietest Month
           </div>
           <div className="text-2xl font-bold flex items-center">
             {data.seasonalPatterns.lowMonths[0]?.month || 'N/A'}
@@ -165,25 +176,25 @@ export const SeasonalDashboard = () => {
           </div>
           <div className="text-sm text-gray-500">
             {data.seasonalPatterns.avgLowOccupancy >= 0
-              ? `${formatPercentage(data.seasonalPatterns.avgLowOccupancy, 0)} occupancy`
+              ? `${formatPercentage(data.seasonalPatterns.avgLowOccupancy, 0)} of nights booked`
               : 'No data'}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow" title="How this year compares to last year">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <TrendingUp className="w-4 h-4 mr-1" />
-            YoY Revenue
+            Year-Over-Year Growth
           </div>
           <div className="text-2xl font-bold flex items-center">
-            {formatPercentage(yearGrowthRate, 1)}
+            {yearGrowthRate >= 0 ? '+' : ''}{formatPercentage(yearGrowthRate, 1)}
             {yearGrowthRate >= 0
               ? <TrendingUp className="w-5 h-5 ml-2 text-green-600" />
               : <TrendingDown className="w-5 h-5 ml-2 text-red-600" />
             }
           </div>
           <div className="text-sm text-gray-500">
-            {formatCompactCurrency(data.yearOverYear.currentYear)} vs {formatCompactCurrency(data.yearOverYear.previousYear)}
+            This year: {formatCompactCurrency(data.yearOverYear.currentYear)}
           </div>
         </div>
       </div>
@@ -194,10 +205,10 @@ export const SeasonalDashboard = () => {
           <div className="flex items-start">
             <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm text-yellow-800 font-medium">Limited Historical Data</p>
+              <p className="text-sm text-yellow-800 font-medium">Building Your History</p>
               <p className="text-sm text-yellow-700 mt-1">
-                Year-over-year and monthly comparison charts require historical booking data.
-                These charts will populate as more data becomes available.
+                We need at least 2 years of data to show year-over-year comparisons. 
+                Keep using the platform and these insights will become available!
               </p>
             </div>
           </div>
@@ -209,7 +220,7 @@ export const SeasonalDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2" />
-            Year-over-Year Performance
+            Historical Performance
           </h3>
           {yearOverYearChart.length > 0 ? (
             <div className="h-64">
@@ -221,9 +232,9 @@ export const SeasonalDashboard = () => {
                   <YAxis yAxisId="right" orientation="right" tickFormatter={formatPercentageTick} tick={{ fontSize: 12 }} stroke="#666" />
                   <Tooltip formatter={formatTooltipValue} contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }} />
                   <Legend wrapperStyle={{ fontSize: '12px' }} iconType="line" />
-                  <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#3B82F6" name="Revenue" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke="#10B981" name="Occupancy %" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  <Line yAxisId="left" type="monotone" dataKey="avgRate" stroke="#F59E0B" name="Avg Rate" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  <Line yAxisId="left" type="monotone" dataKey="revenue" stroke="#3B82F6" name="Total Revenue" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke="#10B981" name="Nights Booked %" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line yAxisId="left" type="monotone" dataKey="avgRate" stroke="#F59E0B" name="Avg Nightly Rate" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -254,8 +265,8 @@ export const SeasonalDashboard = () => {
                       const monthData = monthlyComparison.find((m: any) => m.month === data.activeLabel)
                       if (monthData) {
                         const monthNum = MONTHS.indexOf(monthData.month) + 1
-                        dispatch({
-                          type: 'DRILL_TO_MONTH',
+                        openModal({
+                          type: 'month',
                           month: monthNum.toString().padStart(2, '0'),
                           year: selectedYear.toString()
                         })
@@ -289,7 +300,10 @@ export const SeasonalDashboard = () => {
       <div className="grid md:grid-cols-2 gap-6">
         {/* Property Seasonality */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold mb-4">Property Seasonality</h3>
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <Percent className="w-5 h-5 mr-2" />
+            How Seasonal Each Property Is
+          </h3>
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {data.propertySeasonality?.length > 0 ? (
               data.propertySeasonality
@@ -298,8 +312,8 @@ export const SeasonalDashboard = () => {
                 <div
                   key={property.propertyId}
                   className="p-3 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => dispatch({
-                    type: 'DRILL_TO_PROPERTY',
+                  onClick={() => openModal({
+                    type: 'property',
                     propertyId: property.propertyId,
                     propertyName: property.propertyName
                   })}
@@ -316,7 +330,7 @@ export const SeasonalDashboard = () => {
                         {formatPercentage(property.seasonalityScore, 0)}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {property.seasonalityScore > 50 ? 'High' : property.seasonalityScore > 25 ? 'Moderate' : 'Low'} variation
+                        {property.seasonalityScore > 50 ? 'Very seasonal' : property.seasonalityScore > 25 ? 'Somewhat seasonal' : 'Steady year-round'}
                       </div>
                     </div>
                   </div>
@@ -330,7 +344,10 @@ export const SeasonalDashboard = () => {
 
         {/* Price Optimization */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-bold mb-4">Price Optimization Opportunities</h3>
+          <h3 className="text-lg font-bold mb-4 flex items-center">
+            <DollarSign className="w-5 h-5 mr-2" />
+            Pricing Suggestions
+          </h3>
           {(data.priceOptimization?.underpriced?.length > 0 || data.priceOptimization?.overpriced?.length > 0) ? (
             <div className="space-y-4 max-h-80 overflow-y-auto">
               {/* Underpriced Properties */}
@@ -338,7 +355,7 @@ export const SeasonalDashboard = () => {
                 <div>
                   <h4 className="font-medium mb-2 flex items-center text-sm">
                     <TrendingUp className="w-4 h-4 mr-2 text-green-600" />
-                    Potential Rate Increases
+                    You Could Charge More
                   </h4>
                   <div className="space-y-2">
                     {data.priceOptimization.underpriced.slice(0, 3).map((opp: any, index: any) => (
@@ -348,8 +365,8 @@ export const SeasonalDashboard = () => {
                         onClick={() => {
                           const monthNum = MONTHS.findIndex(m => opp.month.toLowerCase().startsWith(m.toLowerCase())) + 1
                           if (monthNum > 0) {
-                            dispatch({
-                              type: 'DRILL_TO_PROPERTY_MONTH',
+                            openModal({
+                              type: 'property-month',
                               propertyId: opp.propertyId,
                               propertyName: opp.propertyName,
                               month: monthNum.toString().padStart(2, '0'),
@@ -383,7 +400,7 @@ export const SeasonalDashboard = () => {
                 <div>
                   <h4 className="font-medium mb-2 flex items-center text-sm">
                     <TrendingDown className="w-4 h-4 mr-2 text-orange-600" />
-                    Consider Rate Adjustments
+                    Consider Lowering Prices
                   </h4>
                   <div className="space-y-2">
                     {data.priceOptimization.overpriced.slice(0, 3).map((opp: any, index: any) => (
@@ -393,8 +410,8 @@ export const SeasonalDashboard = () => {
                         onClick={() => {
                           const monthNum = MONTHS.findIndex(m => opp.month.toLowerCase().startsWith(m.toLowerCase())) + 1
                           if (monthNum > 0) {
-                            dispatch({
-                              type: 'DRILL_TO_PROPERTY_MONTH',
+                            openModal({
+                              type: 'property-month',
                               propertyId: opp.propertyId,
                               propertyName: opp.propertyName,
                               month: monthNum.toString().padStart(2, '0'),
@@ -413,7 +430,7 @@ export const SeasonalDashboard = () => {
                               {formatCompactCurrency(opp.currentRate)} → {formatCompactCurrency(opp.suggestedRate)}
                             </p>
                             <p className="text-xs text-orange-600">
-                              +{formatPercentage(Math.min(opp.occupancyImpact * 100, 100), 0)} occupancy
+                              Could boost bookings
                             </p>
                           </div>
                         </div>
@@ -425,9 +442,10 @@ export const SeasonalDashboard = () => {
             </div>
           ) : (
             <div className="text-gray-500 text-center py-8">
-              <p>No optimization opportunities identified</p>
+              <DollarSign className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+              <p>No pricing suggestions available</p>
               <p className="text-xs text-gray-400 mt-2">
-                {data.priceOptimization ? 'All properties appear to be optimally priced' : 'Insufficient data for analysis'}
+                {data.priceOptimization ? 'Your prices look good!' : 'Need more booking data to analyze'}
               </p>
             </div>
           )}

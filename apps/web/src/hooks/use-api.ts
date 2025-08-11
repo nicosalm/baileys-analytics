@@ -6,6 +6,7 @@ import {
   PropertyTaxConfig,
   TaxContext 
 } from '@/types/tax'
+import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
 
 export function useFinancial(from?: string, to?: string, tagIds?: string[]) {
   const key = from || to || tagIds ? ['/financial', from, to, tagIds] : null
@@ -72,17 +73,6 @@ export function useSyncStatus() {
   })
 }
 
-export function useVIPSettings() {
-  return useSWR<{ vipSpendThreshold: number; vipBookingThreshold: number }>(
-    '/vip-settings',
-    async () => {
-      const result = await api.getVIPSettings()
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    }
-  )
-}
-
 export function useTaxRules() {
   return useSWR<TaxRule[]>('/tax-rules', async () => {
     const result = await api.getTaxRules()
@@ -97,15 +87,6 @@ export function usePropertyTaxConfigs() {
     if (!result.success) throw new Error(result.error)
     return result.data
   })
-}
-
-export async function updateVIPSettings(settings: { vipSpendThreshold?: number; vipBookingThreshold?: number }) {
-  const result = await api.updateVIPSettings(settings)
-  if (result.success) {
-    await globalMutate('/vip-settings', result.data, false)
-    await globalMutate(() => true, undefined, true)
-  }
-  return result
 }
 
 export async function createTaxRule(rule: TaxRuleFormData) {
@@ -166,18 +147,31 @@ export function useBookingDetail(bookingId?: string) {
   )
 }
 
-export function usePropertyDetail(propertyId?: string, from?: string, to?: string) {
+export function usePropertyDetail(propertyId?: string, from?: string, to?: string, tagIds?: string[]) {
   const params = new URLSearchParams()
   if (from) params.append('from', from)
   if (to) params.append('to', to)
+  if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+  
+  // Use a more specific cache key that includes the exact dates and tags
+  const cacheKey = propertyId ? `/property/${propertyId}/detail?${params.toString()}` : null
   
   return useSWR<any>(
-    propertyId ? [`/property/${propertyId}/detail`, from, to] : null,
+    cacheKey,
     async () => {
       const url = `/property/${encodeURIComponent(propertyId!)}/detail${params.toString() ? `?${params}` : ''}`
+      console.log('usePropertyDetail - Fetching URL:', url, 'with params:', params.toString())
       const result = await api.request(url)
       if (!result.success) throw new Error(result.error)
+      console.log('usePropertyDetail - Data received for date range:', from, 'to', to, 'tags:', tagIds)
       return result.data
+    },
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: false,
+      dedupingInterval: 0, // Force fresh fetch
+      revalidateIfStale: true,
+      revalidateOnReconnect: true
     }
   )
 }
@@ -206,6 +200,10 @@ export function useMonthDetail(month?: string, year?: string, tagIds?: string[])
       const result = await api.request(url)
       if (!result.success) throw new Error(result.error)
       return result.data
+    },
+    {
+      revalidateOnMount: true,
+      revalidateOnFocus: false
     }
   )
 }
@@ -250,4 +248,67 @@ export function useOverview(from?: string, to?: string, tagIds?: string[]) {
     if (!result.success) throw new Error(result.error)
     return result.data
   })
+}
+
+// Report Template hooks
+export function useReportTemplates() {
+  return useSWR<ReportTemplate[]>('/report-templates', async () => {
+    const result = await api.getReportTemplates()
+    if (!result.success) {
+      // Return empty array if no templates exist yet
+      if (result.status === 404) {
+        return []
+      }
+      throw new Error(result.error)
+    }
+    return result.data || []
+  })
+}
+
+export function useReportTemplate(id?: string) {
+  return useSWR<ReportTemplate>(
+    id ? `/report-templates/${id}` : null,
+    async () => {
+      const result = await api.getReportTemplate(id!)
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    }
+  )
+}
+
+export async function createReportTemplate(template: CreateReportTemplate) {
+  const result = await api.createReportTemplate(template)
+  if (!result.success) throw new Error(result.error)
+  
+  // Invalidate the templates list cache
+  await globalMutate('/report-templates')
+  
+  return result.data
+}
+
+export async function updateReportTemplate(id: string, template: ReportTemplate) {
+  const result = await api.updateReportTemplate(id, template)
+  if (!result.success) throw new Error(result.error)
+  
+  // Invalidate both the specific template and the list
+  await globalMutate(`/report-templates/${id}`)
+  await globalMutate('/report-templates')
+  
+  return result.data
+}
+
+export async function deleteReportTemplate(id: string) {
+  const result = await api.deleteReportTemplate(id)
+  if (!result.success) throw new Error(result.error)
+  
+  // Invalidate the templates list cache
+  await globalMutate('/report-templates')
+  
+  return result.data
+}
+
+export async function generateReport(templateId: string) {
+  const result = await api.generateReport(templateId)
+  if (!result.success) throw new Error(result.error)
+  return result.data
 }

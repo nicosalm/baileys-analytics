@@ -1,0 +1,41 @@
+import { createContext, useContext, useState, ReactNode } from 'react'
+
+export type ModalType = 
+  | { type: 'property'; propertyId: string; propertyName: string }
+  | { type: 'guest'; guestId: string; guestName: string }
+  | { type: 'month'; month: string; year: string }
+  | { type: 'booking'; bookingId: string; guestName?: string }
+  | { type: 'property-month'; propertyId: string; propertyName: string; month: string; year: string }
+  | { type: 'financial-summary'; propertyId?: string; propertyName?: string }
+  | { type: 'report-builder'; template?: any }
+  | { type: 'report-preview'; templateId: string; templateName: string }
+  | { type: 'report-history'; templateId: string; templateName: string }
+  | { type: 'report-schedule'; templateId: string; templateName: string }
+  | null
+
+interface ModalContextType {
+  activeModal: ModalType
+  openModal: (modal: ModalType) => void
+  closeModal: () => void
+}
+
+const ModalContext = createContext<ModalContextType | null>(null)
+
+export const useModal = () => {
+  const context = useContext(ModalContext)
+  if (!context) throw new Error('useModal must be used within ModalProvider')
+  return context
+}
+
+export const ModalProvider = ({ children }: { children: ReactNode }) => {
+  const [activeModal, setActiveModal] = useState<ModalType>(null)
+
+  const openModal = (modal: ModalType) => setActiveModal(modal)
+  const closeModal = () => setActiveModal(null)
+
+  return (
+    <ModalContext.Provider value={{ activeModal, openModal, closeModal }}>
+      {children}
+    </ModalContext.Provider>
+  )
+}
