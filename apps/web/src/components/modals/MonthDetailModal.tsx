@@ -59,7 +59,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
       isOpen={true}
       onClose={closeModal}
       title={monthName}
-      subtitle="Monthly performance breakdown"
+      subtitle="How this month performed"
       size="lg"
     >
       <div className="space-y-6">

@@ -11,13 +11,13 @@ interface ReportBuilderModalProps {
 }
 
 const moduleOptions = [
-  { value: 'pl', label: 'Profit & Loss', description: 'Revenue, expenses, and net income' },
-  { value: 'revenue', label: 'Revenue Analysis', description: 'Detailed revenue breakdown' },
-  { value: 'tax', label: 'Tax Summary', description: 'Tax calculations and obligations' },
-  { value: 'occupancy', label: 'Occupancy Report', description: 'Occupancy rates and trends' },
-  { value: 'properties', label: 'Property Performance', description: 'Individual property metrics' },
-  { value: 'guests', label: 'Guest Analytics', description: 'Guest demographics and patterns' },
-  { value: 'seasonal', label: 'Seasonal Trends', description: 'Year-over-year comparisons' }
+  { value: 'pl', label: 'Money In & Out', description: 'What you earned and spent' },
+  { value: 'revenue', label: 'Money Earned', description: 'Where your revenue comes from' },
+  { value: 'tax', label: 'Tax Summary', description: 'What you owe in taxes' },
+  { value: 'occupancy', label: 'How Full You Are', description: 'When properties are booked' },
+  { value: 'properties', label: 'Property Performance', description: 'How each property is doing' },
+  { value: 'guests', label: 'Guest Analytics', description: 'Who stays with you' },
+  { value: 'seasonal', label: 'Seasonal Trends', description: 'Your busy and slow times' }
 ]
 
 const dateRangeOptions = [
@@ -31,10 +31,10 @@ const dateRangeOptions = [
 ]
 
 const formatOptions = [
-  { value: 'pdf', label: 'PDF', description: 'Best for sharing and printing' },
-  { value: 'excel', label: 'Excel', description: 'Best for data analysis' },
-  { value: 'csv', label: 'CSV', description: 'Best for data import' },
-  { value: 'json', label: 'JSON', description: 'Best for API integration' }
+  { value: 'pdf', label: 'PDF', description: 'Easy to share and print' },
+  { value: 'excel', label: 'Excel', description: 'Great for number crunching' },
+  { value: 'csv', label: 'CSV', description: 'Simple spreadsheet format' },
+  { value: 'json', label: 'JSON', description: 'For developers' }
 ]
 
 export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
@@ -144,7 +144,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
       isOpen={true}
       onClose={closeModal}
       title={isEditMode ? 'Edit Report Template' : 'Create Report Template'}
-      subtitle="Configure your report settings and schedule"
+      subtitle="Set up what you want to see in your reports"
       size="xl"
     >
       <div className="space-y-6">

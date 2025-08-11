@@ -72,7 +72,7 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
       isOpen={true}
       onClose={closeModal}
       title={guestName}
-      subtitle="Guest history and insights"
+      subtitle="What we know about this guest"
       size="lg"
     >
       <div className="space-y-6">

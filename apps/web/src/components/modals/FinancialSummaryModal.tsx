@@ -84,7 +84,7 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
       isOpen={true}
       onClose={closeModal}
       title={propertyName ? `${propertyName} Finances` : "Financial Summary"}
-      subtitle="Quick financial insights and breakdown"
+      subtitle="Your money at a glance"
       size="lg"
     >
       <div className="space-y-6">

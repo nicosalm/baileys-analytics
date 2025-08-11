@@ -94,7 +94,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
       isOpen={true}
       onClose={closeModal}
       title={propertyName}
-      subtitle="Property performance and details"
+      subtitle="How this property is doing"
       size="xl"
     >
       <div className="space-y-6">
