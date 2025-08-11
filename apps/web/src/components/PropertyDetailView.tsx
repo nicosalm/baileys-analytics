@@ -3,7 +3,7 @@ import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users, Download, Home, Bed, Bath } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { VirtualTable } from '@/components/VirtualTable'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
@@ -287,7 +287,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -298,7 +298,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
         <div className="text-red-600 mb-4">Error: {error.message}</div>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
         >
           Retry
         </button>
@@ -375,7 +375,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <DollarSign className="w-4 h-4 mr-1" />
             Total Revenue
@@ -385,7 +385,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             {formatCurrency(processedData.metrics.avgNightlyRate)}/night avg
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Total Bookings
@@ -395,14 +395,14 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             {processedData.metrics.totalNights} nights
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <TrendingUp className="w-4 h-4 mr-1" />
             Avg Stay Length
           </div>
           <div className="text-3xl font-bold">{processedData.metrics.avgStayLength.toFixed(1)} nights</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Users className="w-4 h-4 mr-1" />
             Occupancy Rate
@@ -416,7 +416,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
       <div className="flex justify-end">
         <button
           onClick={() => setViewMode(viewMode === 'charts' ? 'table' : 'charts')}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          className="px-4 py-2 bg-gray-200 rounded-sm hover:bg-gray-300"
         >
           {viewMode === 'charts' ? 'Table View' : 'Chart View'}
         </button>
@@ -424,7 +424,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
 
       {viewMode === 'charts' ? (
         <div className="grid md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-bold mb-4">Monthly Revenue Trend</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -449,7 +449,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-bold mb-4">Monthly Occupancy</h3>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
@@ -472,7 +472,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-bold mb-4">Revenue by Platform</h3>
             {processedData.revenueByPlatform && processedData.revenueByPlatform.length > 0 ? (
               <div className="space-y-3">
@@ -506,7 +506,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
             )}
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-bold mb-4">Guest Statistics</h3>
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b">
@@ -539,7 +539,7 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow-sm">
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold">Monthly Performance</h3>
           </div>
@@ -559,14 +559,14 @@ export const PropertyDetailView = ({ propertyId }: { propertyId: string }) => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow-sm">
         <div className="p-4 border-b">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold">Recent Bookings ({processedData.recentBookings.length})</h3>
             {processedData.recentBookings.length > 0 && (
               <button
                 onClick={handleExportBookings}
-                className="flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                className="flex items-center px-3 py-1 bg-green-600 text-white rounded-sm text-sm hover:bg-green-700"
               >
                 <Download className="w-4 h-4 mr-1" />
                 Export

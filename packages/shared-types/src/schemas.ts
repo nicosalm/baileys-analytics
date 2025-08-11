@@ -141,7 +141,7 @@ export const taxRuleAppliesToSchema = z.object({
 })
 
 export const taxRuleFormDataSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, { message: 'Name is required' }),
   description: z.string().optional(),
   method: taxRuleMethodSchema,
   appliesTo: taxRuleAppliesToSchema,

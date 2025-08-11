@@ -58,7 +58,7 @@ export const validate = (schemas: ValidationSchemas) => {
             headers: corsHeaders(),
             jsonBody: {
               error: 'Validation error',
-              details: error.errors.map(e => ({
+              details: error.issues.map((e: any) => ({
                 path: e.path.join('.'),
                 message: e.message
               }))

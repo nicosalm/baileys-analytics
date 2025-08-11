@@ -296,7 +296,7 @@ export const ReportHistoryModal = ({ templateId, templateName }: ReportHistoryMo
               )}
               
               {entry.errorMessage && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-sm">
                   <div className="text-sm text-red-800">{entry.errorMessage}</div>
                 </div>
               )}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { 
   Download, Mail, FileText, Eye, 
   CheckCircle, Info
@@ -77,7 +77,7 @@ export const ReportPreviewModal = ({ templateName }: ReportPreviewModalProps) =>
         {isGenerating ? (
           <div className="py-12">
             <div className="flex flex-col items-center">
-              <Spinner size="lg" />
+              <LoadingState />
               <p className="mt-4 text-gray-600">Generating report...</p>
               <p className="text-sm text-gray-500 mt-2">This may take a few moments</p>
             </div>

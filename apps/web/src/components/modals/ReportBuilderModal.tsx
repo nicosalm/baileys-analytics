@@ -314,7 +314,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
                     type="checkbox"
                     checked={includeCharts}
                     onChange={(e) => setIncludeCharts(e.target.checked)}
-                    className="mr-3 rounded"
+                    className="mr-3 rounded-sm"
                   />
                   <span>Include charts and visualizations</span>
                 </label>
@@ -323,7 +323,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
                     type="checkbox"
                     checked={includeRawData}
                     onChange={(e) => setIncludeRawData(e.target.checked)}
-                    className="mr-3 rounded"
+                    className="mr-3 rounded-sm"
                   />
                   <span>Include raw data tables</span>
                 </label>
@@ -332,7 +332,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
                     type="checkbox"
                     checked={includeSummary}
                     onChange={(e) => setIncludeSummary(e.target.checked)}
-                    className="mr-3 rounded"
+                    className="mr-3 rounded-sm"
                   />
                   <span>Include executive summary</span>
                 </label>
@@ -341,7 +341,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
                     type="checkbox"
                     checked={compareWithPrevious}
                     onChange={(e) => setCompareWithPrevious(e.target.checked)}
-                    className="mr-3 rounded"
+                    className="mr-3 rounded-sm"
                   />
                   <span>Compare with previous period</span>
                 </label>
@@ -359,7 +359,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
                   type="checkbox"
                   checked={scheduleEnabled}
                   onChange={(e) => setScheduleEnabled(e.target.checked)}
-                  className="mr-3 rounded"
+                  className="mr-3 rounded-sm"
                 />
                 <div>
                   <div className="font-medium">Enable Automated Schedule</div>

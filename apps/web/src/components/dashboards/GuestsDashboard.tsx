@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useGuests } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star, Award } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { VirtualTable } from '@/components/VirtualTable'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useToast } from '@/contexts/toast'
@@ -47,7 +47,7 @@ const MetricsCard = ({
     subtext?: string
     tooltip?: string
 }) => (
-    <div className="bg-white p-6 rounded-lg shadow" title={tooltip}>
+    <div className="bg-white p-6 rounded-lg shadow-sm" title={tooltip}>
         <div className="flex items-center text-sm text-gray-600 mb-2">
             <Icon className="w-4 h-4 mr-1" />
             {label}
@@ -71,7 +71,7 @@ const PerformanceBadge = ({ type }: {
     const Icon = badge.icon
     
     return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badge.color}`}>
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${badge.color}`}>
             <Icon className="w-3 h-3 mr-1" />
             {badge.label}
         </span>
@@ -269,7 +269,7 @@ export const GuestsDashboard = () => {
     if (isLoading && !data) {
         return (
             <div className="flex justify-center py-12">
-                <Spinner size="lg" />
+                <LoadingState />
             </div>
         )
     }
@@ -368,7 +368,7 @@ export const GuestsDashboard = () => {
 
             {/* Top Performers Section */}
             <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow">
+                <div className="bg-white p-6 rounded-lg shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold">Top Spenders This Period</h3>
                         <DollarSign className="w-5 h-5 text-green-600" />
@@ -377,7 +377,7 @@ export const GuestsDashboard = () => {
                         {topPerformers.spenders.slice(0, 5).map((guest: any, index: any) => (
                             <div
                                 key={guest.id}
-                                className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
+                                className="flex justify-between items-center p-3 border rounded-sm hover:bg-gray-50 cursor-pointer transition-colors"
                                 onClick={() => handleGuestClick(guest)}
                             >
                                 <div className="flex items-center">
@@ -402,7 +402,7 @@ export const GuestsDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow">
+                <div className="bg-white p-6 rounded-lg shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold">Most Frequent This Period</h3>
                         <Star className="w-5 h-5 text-blue-600" />
@@ -411,7 +411,7 @@ export const GuestsDashboard = () => {
                         {topPerformers.frequent.slice(0, 5).map((guest: any, index: any) => (
                             <div
                                 key={guest.id}
-                                className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
+                                className="flex justify-between items-center p-3 border rounded-sm hover:bg-gray-50 cursor-pointer transition-colors"
                                 onClick={() => handleGuestClick(guest)}
                             >
                                 <div className="flex items-center">
@@ -439,7 +439,7 @@ export const GuestsDashboard = () => {
 
             {/* Charts Section */}
             <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow">
+                <div className="bg-white p-6 rounded-lg shadow-sm">
                     <h3 className="text-lg font-bold mb-4">Guest Sources</h3>
                     <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
@@ -466,7 +466,7 @@ export const GuestsDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow">
+                <div className="bg-white p-6 rounded-lg shadow-sm">
                     <h3 className="text-lg font-bold mb-4">Guest Tags Distribution</h3>
                     {tagChartData && tagChartData.length > 0 ? (
                         <div className="h-80">
@@ -507,7 +507,7 @@ export const GuestsDashboard = () => {
             </div>
 
             {/* Guest Table */}
-            <div className="bg-white rounded-lg shadow">
+            <div className="bg-white rounded-lg shadow-sm">
                 <div className="p-4 border-b">
                     <div className="flex justify-between items-center">
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>

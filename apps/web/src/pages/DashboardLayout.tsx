@@ -131,7 +131,7 @@ export const DashboardLayout = () => {
 
     return (
       <div className="min-h-screen bg-gray-50">
-        <nav className="bg-white shadow-sm border-b">
+        <nav className="bg-white shadow-xs border-b">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-900">Baileys Analytics</h1>
@@ -143,7 +143,7 @@ export const DashboardLayout = () => {
           </div>
         </nav>
         <div className="max-w-7xl mx-auto p-8">
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+          <div className="bg-white rounded-lg shadow-xs p-12 text-center">
             <div className="max-w-md mx-auto">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
                 <DollarSign className="w-8 h-8 text-blue-600" />
@@ -169,7 +169,7 @@ export const DashboardLayout = () => {
     <DashboardProvider>
       <DrillDownProvider>
         <div className="min-h-screen bg-gray-50">
-          <nav className="bg-white shadow-sm border-b">
+          <nav className="bg-white shadow-xs border-b">
             <div className="max-w-7xl mx-auto px-6 py-3">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">

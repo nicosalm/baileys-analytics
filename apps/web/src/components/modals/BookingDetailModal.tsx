@@ -1,7 +1,7 @@
 import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency } from '@baileys/utils'
 import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
@@ -25,7 +25,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
         size="md"
       >
         <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+          <LoadingState />
         </div>
       </Modal>
     )

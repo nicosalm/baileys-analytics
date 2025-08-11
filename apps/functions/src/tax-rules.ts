@@ -73,7 +73,7 @@ async function createTaxRule(
       jsonBody: { 
         status: 'error', 
         error: 'Validation error',
-        details: parseResult.error.errors.map(e => ({
+        details: parseResult.error.issues.map((e: any) => ({
           path: e.path.join('.'),
           message: e.message
         }))
@@ -142,7 +142,7 @@ async function updateTaxRule(
       jsonBody: { 
         status: 'error', 
         error: 'Validation error',
-        details: parseResult.error.errors.map(e => ({
+        details: parseResult.error.issues.map((e: any) => ({
           path: e.path.join('.'),
           message: e.message
         }))

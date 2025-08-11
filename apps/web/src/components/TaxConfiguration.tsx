@@ -6,7 +6,7 @@ import { taxEngine } from '@/lib/taxEngine'
 import { useTaxConfig } from '@/contexts/taxConfig'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { VirtualTable } from '@/components/VirtualTable'
 
 const TaxMethodBadge = ({ method }: { method: TaxCalculationMethod }) => {
@@ -37,7 +37,7 @@ const TaxMethodBadge = ({ method }: { method: TaxCalculationMethod }) => {
   }
 
   return (
-    <span className={`px-2 py-1 rounded text-xs font-medium ${colors[method.type]}`}>
+    <span className={`px-2 py-1 rounded-sm text-xs font-medium ${colors[method.type]}`}>
       {getMethodDisplay()}
     </span>
   )
@@ -103,7 +103,7 @@ const TaxRuleForm = ({
   }
 
   return (
-    <div className="space-y-4 p-4 bg-gray-50 rounded">
+    <div className="space-y-4 p-4 bg-gray-50 rounded-sm">
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-1">Name</label>
@@ -111,7 +111,7 @@ const TaxRuleForm = ({
             type="text"
             value={formData.name}
             onChange={e => setFormData({ ...formData, name: e.target.value })}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             required
           />
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
@@ -123,7 +123,7 @@ const TaxRuleForm = ({
             type="number"
             value={formData.priority}
             onChange={e => setFormData({ ...formData, priority: parseInt(e.target.value) })}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             required
           />
           {errors.priority && <p className="text-red-500 text-sm mt-1">{errors.priority}</p>}
@@ -135,7 +135,7 @@ const TaxRuleForm = ({
         <textarea
           value={formData.description || ''}
           onChange={e => setFormData({ ...formData, description: e.target.value })}
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded-sm"
           rows={2}
         />
       </div>
@@ -171,7 +171,7 @@ const TaxRuleForm = ({
 
             setFormData({ ...formData, method })
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded-sm"
         >
           <option value="percentage">Percentage</option>
           <option value="flat">Flat Amount</option>
@@ -193,7 +193,7 @@ const TaxRuleForm = ({
               ...formData,
               method: { type: 'percentage', rate: parseFloat(e.target.value) / 100 }
             })}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             required
           />
         </div>
@@ -210,7 +210,7 @@ const TaxRuleForm = ({
               ...formData,
               method: { type: 'flat', amount: parseFloat(e.target.value) }
             })}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             required
           />
         </div>
@@ -223,7 +223,7 @@ const TaxRuleForm = ({
             type="date"
             value={formData.effectiveFrom}
             onChange={e => setFormData({ ...formData, effectiveFrom: e.target.value })}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
             required
           />
         </div>
@@ -234,7 +234,7 @@ const TaxRuleForm = ({
             type="date"
             value={formData.effectiveTo || ''}
             onChange={e => setFormData({ ...formData, effectiveTo: e.target.value || undefined })}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded-sm"
           />
         </div>
       </div>
@@ -267,7 +267,7 @@ const TaxRuleForm = ({
 
             setFormData({ ...formData, appliesTo })
           }}
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded-sm"
         >
           <option value="all">All Properties</option>
           <option value="properties">Specific Properties</option>
@@ -280,13 +280,13 @@ const TaxRuleForm = ({
       <div className="flex justify-end space-x-2">
         <button
           onClick={onCancel}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+          className="px-4 py-2 bg-gray-200 rounded-sm hover:bg-gray-300"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
         >
           {rule ? 'Update' : 'Create'} Rule
         </button>
@@ -413,17 +413,17 @@ export const TaxConfiguration = () => {
               setEditingRule(rule)
               setShowForm(true)
             }}
-            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+            className="p-1 text-blue-600 hover:bg-blue-50 rounded-sm"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={() => handleDeleteRule(rule.id)}
             disabled={deletingRuleId === rule.id}
-            className="p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50"
+            className="p-1 text-red-600 hover:bg-red-50 rounded-sm disabled:opacity-50"
           >
             {deletingRuleId === rule.id ? (
-              <Spinner size="sm" />
+              <LoadingState />
             ) : (
               <Trash2 className="w-4 h-4" />
             )}
@@ -436,7 +436,7 @@ export const TaxConfiguration = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -450,7 +450,7 @@ export const TaxConfiguration = () => {
             mutateRules()
             mutatePropertyConfigs()
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
         >
           Retry
         </button>
@@ -467,7 +467,7 @@ export const TaxConfiguration = () => {
             setEditingRule(undefined)
             setShowForm(true)
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded flex items-center hover:bg-blue-700"
+          className="px-4 py-2 bg-blue-600 text-white rounded-sm flex items-center hover:bg-blue-700"
         >
           <Plus className="w-4 h-4 mr-2" />
           Add Tax Rule
@@ -485,7 +485,7 @@ export const TaxConfiguration = () => {
         />
       )}
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow-sm">
         <VirtualTable
           data={rules || []}
           columns={columns}
@@ -499,7 +499,7 @@ export const TaxConfiguration = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Calculator className="w-5 h-5 mr-2" />
             Property Tax Summary
@@ -517,7 +517,7 @@ export const TaxConfiguration = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Tax Calculation Preview</h3>
           <div className="space-y-4">
             <div>
@@ -525,7 +525,7 @@ export const TaxConfiguration = () => {
               <input
                 type="number"
                 placeholder="1000"
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded-sm"
                 onChange={e => {
                   const amount = parseFloat(e.target.value) || 0
                   const result = taxEngine.calculateTax(amount, rules || [], {

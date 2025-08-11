@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Calendar, Home, AlertCircle, Info, Percent, BarChart3 } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useOccupancy } from '@/hooks/use-api'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { useToast } from '@/contexts/toast'
 import { formatPercentage, minBy } from '@baileys/utils'
 import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
@@ -31,7 +31,7 @@ export const OccupancyDashboard = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -91,7 +91,7 @@ export const OccupancyDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow" title="Percentage of nights that were booked">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Percentage of nights that were booked">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Percent className="w-4 h-4 mr-1" />
             How Full You Were
@@ -103,7 +103,7 @@ export const OccupancyDashboard = () => {
             {data.bookedNights.toLocaleString()} booked out of {data.availableNights.toLocaleString()}
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow" title="Total nights with guests">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Total nights with guests">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Nights With Guests
@@ -111,7 +111,7 @@ export const OccupancyDashboard = () => {
           <div className="text-3xl font-bold">{data.bookedNights.toLocaleString()}</div>
           <div className="text-xs text-gray-500 mt-1">In selected period</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow" title="Total nights properties could be booked">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Total nights properties could be booked">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Home className="w-4 h-4 mr-1" />
             Total Bookable Nights
@@ -119,7 +119,7 @@ export const OccupancyDashboard = () => {
           <div className="text-3xl font-bold">{data.availableNights.toLocaleString()}</div>
           <div className="text-xs text-gray-500 mt-1">Across all properties</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow" title="Month with most empty nights">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Month with most empty nights">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <AlertCircle className="w-4 h-4 mr-1" />
             Most Empty Nights
@@ -134,7 +134,7 @@ export const OccupancyDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2" />
             Monthly Booking Patterns
@@ -172,7 +172,7 @@ export const OccupancyDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Home className="w-5 h-5 mr-2" />
             How Each Property Is Doing
@@ -226,15 +226,15 @@ export const OccupancyDashboard = () => {
             <div className="mt-4 pt-4 border-t">
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded mr-1"></div>
+                  <div className="w-3 h-3 bg-green-500 rounded-sm mr-1"></div>
                   <span className="text-gray-600">Great (70%+)</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-yellow-500 rounded mr-1"></div>
+                  <div className="w-3 h-3 bg-yellow-500 rounded-sm mr-1"></div>
                   <span className="text-gray-600">OK (50-69%)</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="w-3 h-3 bg-red-500 rounded mr-1"></div>
+                  <div className="w-3 h-3 bg-red-500 rounded-sm mr-1"></div>
                   <span className="text-gray-600">Needs Work (&lt;50%)</span>
                 </div>
               </div>
@@ -243,7 +243,7 @@ export const OccupancyDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white p-6 rounded-lg shadow-sm">
         <h3 className="text-lg font-bold mb-4 flex items-center">
           <Calendar className="w-5 h-5 mr-2" />
           Daily Booking Calendar

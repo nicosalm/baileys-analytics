@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/auth'
 import { useState } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync } from '@/hooks/use-api'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { RefreshCw, Calendar, AlertCircle, Calculator } from 'lucide-react'
 import { TaxConfiguration } from '@/components/TaxConfiguration'
 
@@ -38,9 +38,9 @@ const SyncButton = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-sm disabled:opacity-50"
   >
-    {loading ? <Spinner size="sm" /> : <Icon className="w-4 h-4 mr-2" />}
+    {loading ? <LoadingState /> : <Icon className="w-4 h-4 mr-2" />}
     {label}
   </button>
 )
@@ -49,7 +49,7 @@ const SyncStatusDisplay = ({ status }: { status: SyncStatus | null }) => {
   if (!status) return null
 
   return (
-    <div className="bg-gray-50 p-4 rounded space-y-2">
+    <div className="bg-gray-50 p-4 rounded-sm space-y-2">
       <div className="text-sm">
         <span className="text-gray-600">Properties:</span> {status.propertyCount}
       </div>
@@ -72,7 +72,7 @@ const AccountInfo = ({ email, createdAt, companyName }: {
   createdAt: string
   companyName?: string | null
 }) => (
-  <div className="bg-white p-6 rounded-lg shadow">
+  <div className="bg-white p-6 rounded-lg shadow-sm">
     <h2 className="text-xl font-bold mb-4">Your Account</h2>
     <div className="space-y-2">
       <div>
@@ -105,7 +105,7 @@ const OwnerRezConnection = ({
 }) => {
   if (!isConnected) {
     return (
-      <div className="p-4 border rounded">
+      <div className="p-4 border rounded-sm">
         <h2 className="text-xl font-bold mb-4">OwnerRez Connection</h2>
         <p className="text-gray-600">Not connected</p>
       </div>
@@ -115,7 +115,7 @@ const OwnerRezConnection = ({
   const isSyncing = syncState.type === 'syncing'
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
+    <div className="bg-white p-6 rounded-lg shadow-sm">
       <h2 className="text-xl font-bold mb-4">Property Management Connection</h2>
       <div className="space-y-4">
         <p className="text-green-600 flex items-center">

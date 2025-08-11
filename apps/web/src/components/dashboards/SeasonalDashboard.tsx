@@ -12,7 +12,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import { TrendingUp, TrendingDown, Calendar, Sun, Snowflake, AlertCircle, BarChart3, Info, DollarSign, Percent } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
@@ -46,7 +46,7 @@ export const SeasonalDashboard = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -58,7 +58,7 @@ export const SeasonalDashboard = () => {
         <p className="text-gray-600">Failed to load seasonal analysis</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
         >
           Retry
         </button>
@@ -149,7 +149,7 @@ export const SeasonalDashboard = () => {
 
       {/* Key Metrics Cards */}
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow" title="Your busiest time of year">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Your busiest time of year">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Your Busiest Month
@@ -165,7 +165,7 @@ export const SeasonalDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow" title="Your quietest time of year">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Your quietest time of year">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Your Quietest Month
@@ -181,7 +181,7 @@ export const SeasonalDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow" title="How this year compares to last year">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="How this year compares to last year">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <TrendingUp className="w-4 h-4 mr-1" />
             Year-Over-Year Growth
@@ -203,7 +203,7 @@ export const SeasonalDashboard = () => {
       {!hasYearData && !hasMonthlyData && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-yellow-600 mr-2 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm text-yellow-800 font-medium">Building Your History</p>
               <p className="text-sm text-yellow-700 mt-1">
@@ -217,7 +217,7 @@ export const SeasonalDashboard = () => {
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Year-over-Year Performance Chart */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2" />
             Historical Performance
@@ -250,7 +250,7 @@ export const SeasonalDashboard = () => {
         </div>
 
         {/* Monthly Revenue Comparison Chart */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2" />
             Monthly Revenue Comparison
@@ -299,7 +299,7 @@ export const SeasonalDashboard = () => {
       {/* Property Seasonality and Price Optimization */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Property Seasonality */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Percent className="w-5 h-5 mr-2" />
             How Seasonal Each Property Is
@@ -311,7 +311,7 @@ export const SeasonalDashboard = () => {
                 .map((property: any) => (
                 <div
                   key={property.propertyId}
-                  className="p-3 border rounded hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="p-3 border rounded-sm hover:bg-gray-50 cursor-pointer transition-colors"
                   onClick={() => openModal({
                     type: 'property',
                     propertyId: property.propertyId,
@@ -343,7 +343,7 @@ export const SeasonalDashboard = () => {
         </div>
 
         {/* Price Optimization */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <DollarSign className="w-5 h-5 mr-2" />
             Pricing Suggestions
@@ -361,7 +361,7 @@ export const SeasonalDashboard = () => {
                     {data.priceOptimization.underpriced.slice(0, 3).map((opp: any, index: any) => (
                       <div
                         key={`${opp.propertyId}-${opp.month}-${index}`}
-                        className="p-2 bg-green-50 rounded hover:bg-green-100 cursor-pointer text-sm transition-colors"
+                        className="p-2 bg-green-50 rounded-sm hover:bg-green-100 cursor-pointer text-sm transition-colors"
                         onClick={() => {
                           const monthNum = MONTHS.findIndex(m => opp.month.toLowerCase().startsWith(m.toLowerCase())) + 1
                           if (monthNum > 0) {
@@ -406,7 +406,7 @@ export const SeasonalDashboard = () => {
                     {data.priceOptimization.overpriced.slice(0, 3).map((opp: any, index: any) => (
                       <div
                         key={`${opp.propertyId}-${opp.month}-${index}`}
-                        className="p-2 bg-orange-50 rounded hover:bg-orange-100 cursor-pointer text-sm transition-colors"
+                        className="p-2 bg-orange-50 rounded-sm hover:bg-orange-100 cursor-pointer text-sm transition-colors"
                         onClick={() => {
                           const monthNum = MONTHS.findIndex(m => opp.month.toLowerCase().startsWith(m.toLowerCase())) + 1
                           if (monthNum > 0) {

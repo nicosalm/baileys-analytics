@@ -3,7 +3,7 @@ import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
@@ -55,7 +55,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
         size="xl"
       >
         <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+          <LoadingState />
         </div>
       </Modal>
     )

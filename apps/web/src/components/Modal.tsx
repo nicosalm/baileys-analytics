@@ -48,9 +48,9 @@ export const Modal = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Backdrop */}
+      {/* Invisible backdrop for click-to-close */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0"
         onClick={onClose}
       />
       
@@ -58,7 +58,7 @@ export const Modal = ({
       <div className="flex min-h-screen items-center justify-center p-4">
         <div
           ref={modalRef}
-          className={`relative bg-white rounded-lg shadow-xl ${sizeClasses[size]} w-full max-h-[90vh] flex flex-col`}
+          className={`relative bg-white rounded-lg shadow-2xl ring-1 ring-gray-200 ${sizeClasses[size]} w-full max-h-[90vh] flex flex-col`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

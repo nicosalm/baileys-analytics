@@ -3,7 +3,7 @@ import { useFinancial } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, calculatePercentage } from '@baileys/utils'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { DollarSign, Info, Calculator, PiggyBank } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
@@ -35,7 +35,7 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
         size="lg"
       >
         <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+          <LoadingState />
         </div>
       </Modal>
     )
@@ -249,11 +249,11 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
             </div>
             <div className="mt-4 flex justify-center space-x-6 text-sm">
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded mr-2" />
+                <div className="w-3 h-3 bg-blue-500 rounded-sm mr-2" />
                 <span className="text-gray-600">Total Earned</span>
               </div>
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded mr-2" />
+                <div className="w-3 h-3 bg-green-500 rounded-sm mr-2" />
                 <span className="text-gray-600">What You Kept</span>
               </div>
             </div>

@@ -88,7 +88,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
         <button
           onClick={() => setCurrentMonthIndex(i => Math.max(0, i - 1))}
           disabled={currentMonthIndex === 0}
-          className={cn("p-2 rounded", currentMonthIndex === 0 && "opacity-50")}
+          className={cn("p-2 rounded-sm", currentMonthIndex === 0 && "opacity-50")}
         >
           <ChevronLeft />
         </button>
@@ -99,7 +99,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
         <button
           onClick={() => setCurrentMonthIndex(i => Math.min(monthsData.length - 1, i + 1))}
           disabled={currentMonthIndex === monthsData.length - 1}
-          className={cn("p-2 rounded", currentMonthIndex === monthsData.length - 1 && "opacity-50")}
+          className={cn("p-2 rounded-sm", currentMonthIndex === monthsData.length - 1 && "opacity-50")}
         >
           <ChevronRight />
         </button>
@@ -133,14 +133,14 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
         <div className="grid grid-cols-7 gap-1">
           {calendarDays.map((day, idx) => (
             <div key={idx} className={cn(
-              'aspect-square text-xs flex items-center justify-center rounded relative group',
+              'aspect-square text-xs flex items-center justify-center rounded-sm relative group',
               day ? getColor(day.occupancyRate) : 'bg-transparent'
             )}>
               {day && (
                 <>
                   <span className="font-medium">{new Date(day.date).getDate()}</span>
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block z-10">
-                    <div className="bg-black text-white text-xs px-2 py-1 rounded shadow">
+                    <div className="bg-black text-white text-xs px-2 py-1 rounded-sm shadow-sm">
                       <div>{new Date(day.date).toLocaleDateString()}</div>
                       <div>{Math.round(day.occupancyRate * 100)}%</div>
                       <div>{day.bookedProperties}/{day.totalProperties}</div>
@@ -165,7 +165,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
           { color: 'bg-green-500', label: '>90%' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center space-x-1">
-            <div className={`w-3 h-3 ${color} rounded`} />
+            <div className={`w-3 h-3 ${color} rounded-sm`} />
             <span>{label}</span>
           </div>
         ))}

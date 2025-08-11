@@ -10,6 +10,7 @@ import { TaxConfigProvider } from '@/contexts/taxConfig'
 import { ModalProvider } from '@/contexts/modal'
 import { ModalManager } from '@/components/ModalManager'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { LoadingState } from '@/components/LoadingState'
 
 // Lazy load pages
 const Landing = lazy(() => import('@/pages/Landing').then(m => ({ default: m.Landing })))
@@ -24,7 +25,7 @@ export const App = () => {
       <BrowserRouter>
         <AuthProvider>
           <ToastProvider>
-          <Suspense fallback={<div className="flex items-center justify-center h-screen">Loading...</div>}>
+          <Suspense fallback={<LoadingState fullScreen />}>
             <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />

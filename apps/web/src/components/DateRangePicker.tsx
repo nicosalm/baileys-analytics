@@ -176,14 +176,14 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-gray-100 rounded-sm"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h3 className="font-semibold">{monthYear}</h3>
             <button
               onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-gray-100 rounded-sm"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -211,7 +211,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                   onClick={() => !isDisabled && isCurrentMonth && handleDateSelect(date)}
                   disabled={isDisabled || !isCurrentMonth}
                   className={cn(
-                    "p-2 text-sm rounded transition-colors",
+                    "p-2 text-sm rounded-sm transition-colors",
                     isCurrentMonth ? "text-gray-900" : "text-gray-300",
                     isInRange && "bg-blue-100",
                     (isStart || isEnd) && "bg-blue-500 text-white",

@@ -1,7 +1,7 @@
 import { usePropertyMonthDetail } from '@/hooks/use-api'
 import { formatCurrency } from '@baileys/utils'
 import { Calendar, DollarSign } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
 
@@ -20,7 +20,7 @@ export const PropertyMonthDetailView = ({
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -45,35 +45,35 @@ export const PropertyMonthDetailView = ({
       </div>
 
       <div className="grid md:grid-cols-5 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <DollarSign className="w-4 h-4 mr-1" />
             Revenue
           </div>
           <div className="text-2xl font-bold">{formatCurrency(data.summary.revenue)}</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Tax Collected</div>
           <div className="text-2xl font-bold">{formatCurrency(data.summary.tax)}</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Bookings
           </div>
           <div className="text-2xl font-bold">{data.summary.bookings}</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Total Nights</div>
           <div className="text-2xl font-bold">{data.summary.nights}</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Avg Nightly</div>
           <div className="text-2xl font-bold">{formatCurrency(data.summary.avgNightlyRate)}</div>
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white p-6 rounded-lg shadow-sm">
         <h3 className="text-lg font-bold mb-4">Bookings Detail</h3>
         <div className="overflow-x-auto">
           <table className="min-w-full">

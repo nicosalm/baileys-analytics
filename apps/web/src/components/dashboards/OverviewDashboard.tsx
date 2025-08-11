@@ -7,7 +7,7 @@ import {
   BarChart3, Activity, CreditCard, AlertTriangle, Info
 } from 'lucide-react'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { METRIC_COLORS, CHART_COLORS } from '@/lib/theme'
@@ -41,7 +41,7 @@ const MetricCard = ({
 
   return (
     <div 
-      className={`bg-white p-6 rounded-lg shadow ${onClick ? 'cursor-pointer' : ''}`}
+      className={`bg-white p-6 rounded-lg shadow-sm ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between mb-4">
@@ -78,7 +78,7 @@ const AlertCard = ({ alert }: { alert: any }) => {
   return (
     <div className={`p-4 rounded-lg border ${(bgColors as any)[alert.type]}`}>
       <div className="flex items-start">
-        <div className="flex-shrink-0 mt-0.5">{(icons as any)[alert.type]}</div>
+        <div className="shrink-0 mt-0.5">{(icons as any)[alert.type]}</div>
         <div className="ml-3 flex-1">
           <h4 className="text-sm font-medium">{alert.title}</h4>
           <p className="text-sm text-gray-600 mt-1">{alert.description}</p>
@@ -112,7 +112,7 @@ export const OverviewDashboard = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -125,7 +125,7 @@ export const OverviewDashboard = () => {
         <p className="text-sm text-gray-500">{error}</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
         >
           Retry
         </button>
@@ -223,7 +223,7 @@ export const OverviewDashboard = () => {
 
       {/* Secondary Metrics - Additional KPIs */}
       <div className="grid md:grid-cols-6 gap-3">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <CreditCard className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Properties</span>
@@ -233,7 +233,7 @@ export const OverviewDashboard = () => {
             {filters.selectedTags.length > 0 ? 'Tagged properties' : 'Total active'}
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <Activity className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Typical Stay</span>
@@ -241,7 +241,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{Number(metrics.bookings.avgNights || 0).toFixed(1)} nights</div>
           <div className="text-xs text-gray-600">Per reservation</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <TrendingUp className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Booking Value</span>
@@ -249,7 +249,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{formatCompactCurrency(metrics.revenue.avgBookingValue)}</div>
           <div className="text-xs text-gray-600">Average per stay</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <Users className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">First-Time Guests</span>
@@ -257,7 +257,7 @@ export const OverviewDashboard = () => {
           <div className="mt-2 text-xl font-bold">{metrics.guests.newThisMonth}</div>
           <div className="text-xs text-gray-600">New this period</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <BarChart3 className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Return Guests</span>
@@ -267,7 +267,7 @@ export const OverviewDashboard = () => {
             {metrics.guests.total > 0 ? 'Come back again' : 'No data yet'}
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between">
             <AlertCircle className="w-4 h-4 text-gray-500" />
             <span className="text-xs text-gray-500">Cancellations</span>
@@ -280,7 +280,7 @@ export const OverviewDashboard = () => {
       {/* 2x2 Grid of Mini Charts with h-48 height */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Revenue Trend */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
             Money Made (Last 7 Days)
@@ -321,7 +321,7 @@ export const OverviewDashboard = () => {
         </div>
 
         {/* Top Properties Performance */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Home className="w-5 h-5 mr-2 text-purple-600" />
             Your Best Performing Properties
@@ -360,7 +360,7 @@ export const OverviewDashboard = () => {
         </div>
 
         {/* Booking Sources Distribution */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
             Where Bookings Come From
@@ -401,7 +401,7 @@ export const OverviewDashboard = () => {
         </div>
 
         {/* Occupancy Trend */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Calendar className="w-5 h-5 mr-2 text-orange-600" />
             How Full You've Been (6 Months)
@@ -442,7 +442,7 @@ export const OverviewDashboard = () => {
       {/* Alerts and Activity Panels */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Alerts & Notifications Panel */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Things to Know</h3>
             <span className="text-xs text-gray-500">{alerts?.length || 0} items</span>
@@ -463,7 +463,7 @@ export const OverviewDashboard = () => {
         </div>
 
         {/* Recent Activity Feed */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">What's New</h3>
             <span className="text-xs text-gray-500">Recent bookings</span>

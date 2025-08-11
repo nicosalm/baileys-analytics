@@ -76,7 +76,7 @@ export const PropertyTaxChart = ({
                             if (active && payload && payload.length) {
                                 const data = payload[0].payload
                                 return (
-                                    <div className="bg-white p-3 border rounded shadow-lg">
+                                    <div className="bg-white p-3 border rounded-sm shadow-lg">
                                         <p className="font-medium">{data.fullName}</p>
                                         <p className="text-sm">Rent: {formatCurrency(data.rent)}</p>
                                         <p className="text-sm">Tax: {formatCurrency(data.tax)}</p>
@@ -249,7 +249,7 @@ export const PropertyDistributionChart = ({
                             if (active && payload && payload.length) {
                                 const data = payload[0].payload
                                 return (
-                                    <div className="bg-white p-3 border rounded shadow-lg">
+                                    <div className="bg-white p-3 border rounded-sm shadow-lg">
                                         <p className="font-medium">{data.fullName}</p>
                                         <p className="text-sm">Tax: {formatCurrency(data.value)}</p>
                                     </div>

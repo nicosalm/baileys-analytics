@@ -128,7 +128,7 @@ export async function signup(
         headers: corsHeaders(),
         jsonBody: { 
           error: 'Validation error',
-          details: parseResult.error.errors.map(e => ({
+          details: parseResult.error.issues.map((e: any) => ({
             path: e.path.join('.'),
             message: e.message
           }))
@@ -196,7 +196,7 @@ export async function login(
         headers: corsHeaders(),
         jsonBody: { 
           error: 'Validation error',
-          details: parseResult.error.errors.map(e => ({
+          details: parseResult.error.issues.map((e: any) => ({
             path: e.path.join('.'),
             message: e.message
           }))

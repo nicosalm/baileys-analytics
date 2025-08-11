@@ -2,7 +2,7 @@ import { useMemo, useCallback, useState, useEffect } from 'react'
 import { useMonthDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { Calendar, TrendingUp, Home, Download } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { VirtualTable } from '@/components/VirtualTable'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
@@ -285,7 +285,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -319,7 +319,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
       <h2 className="text-2xl font-bold">{monthName} Overview</h2>
 
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <TrendingUp className="w-4 h-4 mr-1" />
             Total Revenue
@@ -329,14 +329,14 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
             {formatCurrency(data.summary.avgNightlyRate)}/night avg
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="text-sm text-gray-600 mb-2">Total Tax</div>
           <div className="text-3xl font-bold">{formatCurrency(data.summary.totalTax)}</div>
           <div className="text-sm text-gray-500 mt-1">
             {formatPercentage((data.summary.totalTax / data.summary.totalRevenue) * 100, 1)} of revenue
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Total Bookings
@@ -346,7 +346,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
             {data.summary.totalNights} nights
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Home className="w-4 h-4 mr-1" />
             Occupancy Rate
@@ -361,7 +361,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Revenue by Property</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
@@ -387,14 +387,14 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Property Performance</h3>
           {data.byProperty.length <= 10 ? (
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {data.byProperty?.map((property: any) => (
                 <div
                   key={property.propertyId}
-                  className="flex justify-between items-center p-3 border rounded hover:bg-gray-50 cursor-pointer"
+                  className="flex justify-between items-center p-3 border rounded-sm hover:bg-gray-50 cursor-pointer"
                   onClick={() => handlePropertyClick(property)}
                 >
                   <div>
@@ -425,7 +425,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow-sm">
         <div className="p-4 border-b">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold">All Bookings ({sortedBookings.length})</h3>
@@ -434,7 +434,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
                 <select
                   value={propertyFilter}
                   onChange={(e) => setPropertyFilter(e.target.value)}
-                  className="px-3 py-1 border rounded text-sm"
+                  className="px-3 py-1 border rounded-sm text-sm"
                 >
                   <option value="all">All Properties</option>
                   {data.byProperty?.map((p: any) => (
@@ -446,7 +446,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
               )}
               <button
                 onClick={handleExport}
-                className="flex items-center px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                className="flex items-center px-3 py-1 bg-green-600 text-white rounded-sm text-sm hover:bg-green-700"
               >
                 <Download className="w-4 h-4 mr-1" />
                 Export

@@ -9,7 +9,7 @@
     "test": "echo 'No tests yet'"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^24.2.1",
     "typescript": "^5.9.2"
   },
   "engines": {
@@ -19,6 +19,6 @@
   "dependencies": {
     "date-fns": "^4.1.0",
     "p-limit": "^6.2.0",
-    "zod": "^3.25.76"
+    "zod": "^4.0.17"
   }
 }

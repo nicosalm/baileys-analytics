@@ -5,7 +5,7 @@ import {
   User, Calendar, DollarSign, Tag as TagIcon, Mail,
   TrendingUp, Clock, AlertCircle
 } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { VirtualTable } from '@/components/VirtualTable'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Tag } from '@/components/Tag'
@@ -283,7 +283,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -297,7 +297,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
         <p className="text-sm text-gray-500 mt-2">Guest ID: {guestId}</p>
         <button
           onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-sm hover:bg-blue-600"
         >
           Retry
         </button>
@@ -332,14 +332,14 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <DollarSign className="w-4 h-4 mr-1" />
             Total Spent
           </div>
           <div className="text-3xl font-bold">{formatCurrency(guest.totalSpent)}</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Total Bookings
@@ -349,14 +349,14 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
             <div className="text-sm text-red-600">{guest.canceledCount} canceled</div>
           )}
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <TrendingUp className="w-4 h-4 mr-1" />
             Avg Nightly Rate
           </div>
           <div className="text-3xl font-bold">{formatCurrency(guest.avgNightlyRate)}</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Clock className="w-4 h-4 mr-1" />
             Avg Stay Length
@@ -366,7 +366,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Guest Information</h3>
           <div className="space-y-1">
             <InfoRow label="First Visit" value={new Date(guest.firstVisit).toLocaleDateString()} />
@@ -392,7 +392,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Payment Methods</h3>
           <div className="space-y-2">
             {paymentMethods && paymentMethods.length > 0 ? (
@@ -410,7 +410,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <TagIcon className="w-5 h-5 mr-2" />
             Tags
@@ -428,7 +428,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
       </div>
 
       {spendingTrend && spendingTrend.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Spending Trend</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -450,7 +450,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow-sm">
         <div className="border-b">
           <div className="flex space-x-8 px-6">
             {(['bookings', 'properties', 'analytics'] as const).map(tab => (
@@ -518,7 +518,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                   properties.map((property: any) => (
                     <div
                       key={property.propertyId}
-                      className="p-4 border rounded hover:bg-gray-50 cursor-pointer"
+                      className="p-4 border rounded-sm hover:bg-gray-50 cursor-pointer"
                       onClick={() => handlePropertyClick(property.propertyId, property.propertyName)}
                     >
                       <div className="flex justify-between items-start">
@@ -547,7 +547,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
               <div>
                 <h4 className="font-medium mb-3">Guest Behavior Analysis</h4>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-gray-50 rounded">
+                  <div className="p-4 bg-gray-50 rounded-sm">
                     <div className="text-sm text-gray-600">Guest Type</div>
                     <div className="font-medium">
                       {guest.bookingCount === 1 ? 'First-time Guest' :
@@ -555,7 +555,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                        'Loyal Guest'}
                     </div>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded">
+                  <div className="p-4 bg-gray-50 rounded-sm">
                     <div className="text-sm text-gray-600">Value Tier</div>
                     <div className="font-medium">
                       {guest.totalSpent < 1000 ? 'Standard' :
@@ -563,7 +563,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                        'Top Tier'}
                     </div>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded">
+                  <div className="p-4 bg-gray-50 rounded-sm">
                     <div className="text-sm text-gray-600">Booking Pattern</div>
                     <div className="font-medium">
                       {guest.avgStayLength < 2 ? 'Short Stays' :
@@ -571,7 +571,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
                        'Extended Stays'}
                     </div>
                   </div>
-                  <div className="p-4 bg-gray-50 rounded">
+                  <div className="p-4 bg-gray-50 rounded-sm">
                     <div className="text-sm text-gray-600">Seasonality</div>
                     <div className="font-medium">
                       {/* TODO could add seasonal analysis based on booking months */}
@@ -583,7 +583,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
 
               <div>
                 <h4 className="font-medium mb-3">Revenue Potential</h4>
-                <div className="p-4 border rounded">
+                <div className="p-4 border rounded-sm">
                   <div className="flex justify-between items-center mb-2">
                     <span>Annual Value</span>
                     <span className="font-medium">

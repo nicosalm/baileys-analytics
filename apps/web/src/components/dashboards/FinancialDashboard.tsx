@@ -10,7 +10,7 @@ import {
   AlertCircle, Calendar, Home, FileText,
   Info, Target, TrendingDown, PiggyBank, Receipt
 } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { VirtualTable } from '@/components/VirtualTable'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
@@ -117,17 +117,17 @@ const MetricCard: React.FC<MetricCardProps> = ({
 
   if (loading) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow">
+      <div className="bg-white p-6 rounded-lg shadow-sm">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-24 mb-2"></div>
-          <div className="h-8 bg-gray-200 rounded w-32"></div>
+          <div className="h-4 bg-gray-200 rounded-sm w-24 mb-2"></div>
+          <div className="h-8 bg-gray-200 rounded-sm w-32"></div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow" title={tooltip}>
+    <div className="bg-white p-6 rounded-lg shadow-sm" title={tooltip}>
       <div className="flex items-center justify-between mb-4">
         <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
           <Icon className="w-5 h-5" />
@@ -148,7 +148,7 @@ const MetricCard: React.FC<MetricCardProps> = ({
 // P&L View Component - Shows profitability (what you keep after costs)
 const PLView: React.FC<PLViewProps> = ({ data, loading }) => {
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+    return <div className="flex justify-center py-12"><LoadingState /></div>
   }
 
   const { metrics, platforms, previousPeriod } = data
@@ -214,7 +214,7 @@ const PLView: React.FC<PLViewProps> = ({ data, loading }) => {
 
       {/* Profitability Breakdown */}
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Where Your Money Goes</h3>
           <div className="space-y-4">
             <div>
@@ -273,7 +273,7 @@ const PLView: React.FC<PLViewProps> = ({ data, loading }) => {
         </div>
 
         {/* Platform Fee Comparison */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Platform Fee Comparison</h3>
           <div className="space-y-4">
             {platforms?.map((platform: any) => {
@@ -316,7 +316,7 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
   const [viewMode, setViewMode] = useState<'trend' | 'comparison'>('trend')
   
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+    return <div className="flex justify-center py-12"><LoadingState /></div>
   }
 
   const periodGrowth = data.lastYearData
@@ -402,14 +402,14 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setViewMode('trend')}
-            className={`px-3 py-1 rounded ${viewMode === 'trend' ? 'bg-white shadow-sm' : ''}`}
+            className={`px-3 py-1 rounded-sm ${viewMode === 'trend' ? 'bg-white shadow-xs' : ''}`}
           >
             Trend View
           </button>
           {data.lastYearData && (
             <button
               onClick={() => setViewMode('comparison')}
-              className={`px-3 py-1 rounded ${viewMode === 'comparison' ? 'bg-white shadow-sm' : ''}`}
+              className={`px-3 py-1 rounded-sm ${viewMode === 'comparison' ? 'bg-white shadow-xs' : ''}`}
             >
               Year Comparison
             </button>
@@ -418,7 +418,7 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">
             {viewMode === 'trend' ? 'Monthly Income & Total' : 'This Year vs Last Year'}
           </h3>
@@ -447,7 +447,7 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload
                         return (
-                          <div className="bg-white p-2 border rounded shadow">
+                          <div className="bg-white p-2 border rounded-sm shadow-sm">
                             <p className="font-medium">{data.month}</p>
                             <p className="text-sm">Current: {formatCurrency(data.currentYear)}</p>
                             <p className="text-sm">Previous: {formatCurrency(data.lastYear)}</p>
@@ -466,7 +466,7 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Income by Platform</h3>
           <div className="space-y-3">
             {data.bySource.map((source: any, index: number) => {
@@ -511,7 +511,7 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
 // Quick Insights Component - Actionable insights for vacation rental owners
 const QuickInsights: React.FC<QuickInsightsProps> = ({ data, loading }) => {
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+    return <div className="flex justify-center py-12"><LoadingState /></div>
   }
 
   const { metrics, monthlyTrend, previousPeriod } = data
@@ -615,7 +615,7 @@ const QuickInsights: React.FC<QuickInsightsProps> = ({ data, loading }) => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
+    <div className="bg-white p-6 rounded-lg shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold flex items-center">
           <Info className="w-5 h-5 mr-2" />
@@ -659,7 +659,7 @@ export { FinancialDashboard }
 // Cash Flow Component - Track actual money in your bank
 const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+    return <div className="flex justify-center py-12"><LoadingState /></div>
   }
 
   const { metrics, weeklyRevenue } = data
@@ -718,7 +718,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
 
       {/* Cash Flow Health */}
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Payment Status</h3>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -762,7 +762,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
         </div>
         
         {/* Cash Flow Forecast */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Income Forecast</h3>
           <div className="space-y-3">
             <div className="p-4 bg-green-50 rounded-lg border border-green-200">
@@ -804,7 +804,7 @@ const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
 
       {/* Weekly Revenue Pattern */}
       {weeklyRevenue && weeklyRevenue.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Weekly Cash Flow Pattern</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -829,7 +829,7 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
   const { openModal } = useModal()
 
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><Spinner size="lg" /></div>
+    return <div className="flex justify-center py-12"><LoadingState /></div>
   }
 
   const effectiveTaxRate = data.summary.effectiveRate * 100
@@ -921,7 +921,7 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
         <h3 className="text-xl font-bold">Tax Summary</h3>
         <button
           onClick={() => setViewMode(viewMode === 'summary' ? 'table' : 'summary')}
-          className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 flex items-center"
+          className="px-4 py-2 bg-gray-200 rounded-sm hover:bg-gray-300 flex items-center"
         >
           <FileText className="w-4 h-4 mr-2" />
           {viewMode === 'summary' ? 'Property Details' : 'Summary View'}
@@ -967,7 +967,7 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
       {viewMode === 'summary' ? (
         <>
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6 rounded-lg shadow-sm">
               <h3 className="text-lg font-bold mb-4">Monthly Tax Trend</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -994,7 +994,7 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-white p-6 rounded-lg shadow-sm">
               <h3 className="text-lg font-bold mb-4">Tax Rate by Property</h3>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1020,7 +1020,7 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
           </div>
         </>
       ) : (
-        <div className="bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow-sm">
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold">Properties Tax Summary</h3>
           </div>
@@ -1105,7 +1105,7 @@ const FinancialDashboard = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow-sm">
         <div className="flex border-b overflow-x-auto">
           <TabButton active={activeTab === 'insights'} onClick={() => setActiveTab('insights')}>
             Insights

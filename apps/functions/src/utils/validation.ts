@@ -188,7 +188,7 @@ export function parseWithLogging<T>(
 ): T | null {
   const result = schema.safeParse(value)
   if (!result.success) {
-    console.error(`Validation error${context ? ` in ${context}` : ''}:`, result.error.errors)
+    console.error(`Validation error${context ? ` in ${context}` : ''}:`, result.error.issues)
     return null
   }
   return result.data

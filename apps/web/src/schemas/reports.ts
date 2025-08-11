@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 // Report configuration schemas
 export const reportConfigSchema = z.object({
-  modules: z.array(z.string()).min(1, 'At least one module is required'),
+  modules: z.array(z.string()).min(1, { message: 'At least one module is required' }),
   dateRange: z.enum(['custom', 'last7days', 'last30days', 'lastMonth', 'lastQuarter', 'lastYear', 'yearToDate']),
   customDateRange: z.object({
     from: z.string(),
@@ -33,7 +33,7 @@ export const scheduleConfigSchema = z.object({
 
 export const reportTemplateSchema = z.object({
   id: z.string(),
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, { message: 'Name is required' }),
   description: z.string().optional(),
   type: z.enum(['financial', 'property', 'tax', 'occupancy', 'guest', 'seasonal', 'overview', 'custom']),
   config: reportConfigSchema,

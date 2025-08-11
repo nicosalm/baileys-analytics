@@ -13,13 +13,14 @@
     }
   },
   "scripts": {
-    "build": "npm run build:cjs && npm run build:esm",
+    "build": "pnpm run build:cjs && pnpm run build:esm",
     "build:cjs": "tsc -b tsconfig.cjs.json",
     "build:esm": "tsc -b tsconfig.json",
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@baileys/constants": "workspace:*",
     "@baileys/shared-types": "workspace:*",
-    "@baileys/constants": "workspace:*"
+    "zod": "^4.0.17"
   }
 }

@@ -12,13 +12,13 @@ export const Landing = () => {
           <h1 className="text-xl font-bold">Baileys Analytics</h1>
           <div className="space-x-4">
             {isAuthenticated ? (
-              <Link to="/dashboard" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+              <Link to="/dashboard" className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
                 Dashboard
               </Link>
             ) : (
               <>
                 <Link to="/login" className="px-4 py-2 hover:text-blue-600 transition-colors">Login</Link>
-                <Link to="/signup" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                <Link to="/signup" className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
                   Sign Up
                 </Link>
               </>
@@ -36,44 +36,44 @@ export const Landing = () => {
             Connect your OwnerRez account for comprehensive financial reporting, guest insights, and revenue optimization
           </p>
           {!isAuthenticated && (
-            <Link to="/signup" className="px-6 py-3 bg-blue-600 text-white rounded text-lg hover:bg-blue-700 transition-colors">
+            <Link to="/signup" className="px-6 py-3 bg-blue-600 text-white rounded-sm text-lg hover:bg-blue-700 transition-colors">
               Get Started Free
             </Link>
           )}
         </section>
 
         <section className="grid md:grid-cols-3 gap-8 mb-16">
-          <div className="p-6 border rounded hover:shadow-lg transition-shadow">
+          <div className="p-6 border rounded-sm hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold mb-2">Financial Dashboard</h3>
             <p className="text-gray-600">
               Complete P&L statements, cash flow analysis, expense tracking, and platform fee breakdowns
             </p>
           </div>
-          <div className="p-6 border rounded hover:shadow-lg transition-shadow">
+          <div className="p-6 border rounded-sm hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold mb-2">Tax Reporting</h3>
             <p className="text-gray-600">
               Automated tax calculations with effective rate analysis and CSV export for easy filing
             </p>
           </div>
-          <div className="p-6 border rounded hover:shadow-lg transition-shadow">
+          <div className="p-6 border rounded-sm hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold mb-2">Guest Analytics</h3>
             <p className="text-gray-600">
               Track repeat guests, analyze spending patterns, and identify top performers by source
             </p>
           </div>
-          <div className="p-6 border rounded hover:shadow-lg transition-shadow">
+          <div className="p-6 border rounded-sm hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold mb-2">Seasonal Intelligence</h3>
             <p className="text-gray-600">
               Year-over-year comparisons, peak season identification, and dynamic pricing recommendations
             </p>
           </div>
-          <div className="p-6 border rounded hover:shadow-lg transition-shadow">
+          <div className="p-6 border rounded-sm hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold mb-2">Property Performance</h3>
             <p className="text-gray-600">
               Compare metrics across properties with radar charts and occupancy heat maps
             </p>
           </div>
-          <div className="p-6 border rounded hover:shadow-lg transition-shadow">
+          <div className="p-6 border rounded-sm hover:shadow-lg transition-shadow">
             <h3 className="text-xl font-bold mb-2">Revenue Optimization</h3>
             <p className="text-gray-600">
               Track income by platform, identify underpriced periods, and maximize RevPAR
@@ -114,19 +114,19 @@ export const Landing = () => {
         <section className="mb-16">
           <h3 className="text-2xl font-bold mb-6 text-center">Key Performance Metrics</h3>
           <div className="grid md:grid-cols-4 gap-4 text-center">
-            <div className="p-4 bg-white border rounded">
+            <div className="p-4 bg-white border rounded-sm">
               <div className="text-3xl font-bold text-blue-600">RevPAR</div>
               <p className="text-sm text-gray-600">Revenue per available room</p>
             </div>
-            <div className="p-4 bg-white border rounded">
+            <div className="p-4 bg-white border rounded-sm">
               <div className="text-3xl font-bold text-green-600">GOPPAR</div>
               <p className="text-sm text-gray-600">Gross operating profit per room</p>
             </div>
-            <div className="p-4 bg-white border rounded">
+            <div className="p-4 bg-white border rounded-sm">
               <div className="text-3xl font-bold text-purple-600">ROI</div>
               <p className="text-sm text-gray-600">Return on investment tracking</p>
             </div>
-            <div className="p-4 bg-white border rounded">
+            <div className="p-4 bg-white border rounded-sm">
               <div className="text-3xl font-bold text-orange-600">EBITDA</div>
               <p className="text-sm text-gray-600">Earnings analysis</p>
             </div>
@@ -135,7 +135,7 @@ export const Landing = () => {
 
         <section className="text-center">
           <h3 className="text-2xl font-bold mb-4">Simple, Transparent Pricing</h3>
-          <div className="max-w-sm mx-auto p-8 border rounded hover:shadow-lg transition-shadow">
+          <div className="max-w-sm mx-auto p-8 border rounded-sm hover:shadow-lg transition-shadow">
             <div className="text-3xl font-bold mb-2">$20/month</div>
             <p className="text-gray-600 mb-6">Unlimited properties and reports</p>
             <ul className="text-left text-sm text-gray-600 mb-6 space-y-2">
@@ -146,7 +146,7 @@ export const Landing = () => {
               <li>✓ Email support</li>
             </ul>
             {!isAuthenticated && (
-              <Link to="/signup" className="block w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+              <Link to="/signup" className="block w-full py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
                 Start 14-Day Free Trial
               </Link>
             )}

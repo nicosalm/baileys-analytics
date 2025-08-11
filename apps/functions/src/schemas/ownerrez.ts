@@ -26,7 +26,7 @@ export const ownerRezPropertySchema = z.object({
     is_primary: z.boolean(),
   })).optional(),
   tags: z.array(z.string()).optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: z.record(z.string(), z.any()).optional(),
 })
 
 // OwnerRez Booking Response
@@ -58,7 +58,7 @@ export const ownerRezBookingSchema = z.object({
     is_taxable: z.boolean(),
   })).optional(),
   tags: z.array(z.string()).optional(),
-  custom_fields: z.record(z.any()).optional(),
+  custom_fields: z.record(z.string(), z.any()).optional(),
 })
 
 // OwnerRez Tag Definition Response

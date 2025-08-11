@@ -15,7 +15,7 @@ import {
 } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import type { ReportTemplate } from '@/schemas/reports'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 
 const dateRangeOptions = [
   { value: 'last7days', label: 'Last 7 Days' },
@@ -108,7 +108,7 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
     : null
 
   return (
-    <div className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+    <div className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow p-6">
       <div className="flex justify-between items-start mb-4">
         <div className="flex-1">
           <h3 className="text-lg font-semibold">{template.name}</h3>
@@ -159,21 +159,21 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
         <div className="flex space-x-2">
           <button
             onClick={handleEdit}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-sm"
             title="Edit template"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
             onClick={handleDuplicate}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-sm"
             title="Duplicate template"
           >
             <Copy className="w-4 h-4" />
           </button>
           <button
             onClick={handleHistory}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded"
+            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-sm"
             title="View history"
           >
             <History className="w-4 h-4" />
@@ -181,15 +181,15 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50"
+            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-sm disabled:opacity-50"
             title="Delete template"
           >
-            {isDeleting ? <Spinner size="sm" /> : <Trash2 className="w-4 h-4" />}
+            {isDeleting ? <LoadingState /> : <Trash2 className="w-4 h-4" />}
           </button>
         </div>
         <button
           onClick={handleRun}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors"
         >
           <Play className="w-4 h-4 mr-2" />
           Run Now
@@ -326,7 +326,7 @@ export default function ReportsModule() {
       {/* Templates Grid */}
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+          <LoadingState />
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">

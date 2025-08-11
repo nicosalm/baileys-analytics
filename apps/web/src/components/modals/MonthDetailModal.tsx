@@ -1,7 +1,7 @@
 import { useMonthDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
 import { Calendar, DollarSign, Home, TrendingUp, Info } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
@@ -32,7 +32,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
         size="lg"
       >
         <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+          <LoadingState />
         </div>
       </Modal>
     )

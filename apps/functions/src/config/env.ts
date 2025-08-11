@@ -17,15 +17,15 @@ const envSchema = z.object({
   AZURE_FUNCTIONS_ENVIRONMENT: z.string().optional(),
   
   // Feature flags
-  ENABLE_AUTO_SYNC: z.string().transform(val => val === 'true').optional().default('false'),
-  SYNC_INTERVAL_HOURS: z.string().transform(val => parseInt(val, 10)).optional().default('24'),
+  ENABLE_AUTO_SYNC: z.string().transform(val => val === 'true').optional().default(false),
+  SYNC_INTERVAL_HOURS: z.string().transform(val => parseInt(val, 10)).optional().default(24),
   
   // Rate limiting
-  MAX_REQUESTS_PER_MINUTE: z.string().transform(val => parseInt(val, 10)).optional().default('60'),
+  MAX_REQUESTS_PER_MINUTE: z.string().transform(val => parseInt(val, 10)).optional().default(60),
   
   // Email config (for reports)
   SMTP_HOST: z.string().optional(),
-  SMTP_PORT: z.string().transform(val => parseInt(val, 10)).optional().default('587'),
+  SMTP_PORT: z.string().transform(val => parseInt(val, 10)).optional().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().email().optional(),
@@ -38,7 +38,7 @@ const parseEnv = () => {
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error('❌ Invalid environment variables:')
-      error.errors.forEach(err => {
+      error.issues.forEach((err: any) => {
         console.error(`  - ${err.path.join('.')}: ${err.message}`)
       })
       

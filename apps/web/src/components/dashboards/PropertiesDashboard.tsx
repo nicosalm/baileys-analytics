@@ -5,7 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Calendar, DollarSign, Home, Info, BarChart3, Target, Percent } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { usePropertyMetrics } from '@/hooks/use-api'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
 import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
@@ -15,7 +15,7 @@ const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
 
   return (
     <div
-      className="bg-white p-6 rounded-lg shadow cursor-pointer"
+      className="bg-white p-6 rounded-lg shadow-sm cursor-pointer"
       onClick={() => openModal({
         type: 'property',
         propertyId: property.propertyId,
@@ -71,7 +71,7 @@ export const PropertiesDashboard = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center py-12">
-        <Spinner size="lg" />
+        <LoadingState />
       </div>
     )
   }
@@ -85,7 +85,7 @@ export const PropertiesDashboard = () => {
             See how each property is performing and compare them side by side
           </p>
         </div>
-        <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow">
+        <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow-sm">
           <Home className="w-16 h-16 text-gray-300 mb-4" />
           <h3 className="text-lg font-medium text-gray-600 mb-2">No Properties Found</h3>
           <p className="text-gray-500 text-center max-w-md">
@@ -141,7 +141,7 @@ export const PropertiesDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow" title="Number of properties you manage">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Number of properties you manage">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Home className="w-4 h-4 mr-1" />
             Properties You Manage
@@ -149,7 +149,7 @@ export const PropertiesDashboard = () => {
           <div className="text-3xl font-bold">{(properties || []).length}</div>
           <div className="text-xs text-gray-500 mt-1">In selected period</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow" title="Combined revenue from all properties">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Combined revenue from all properties">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <DollarSign className="w-4 h-4 mr-1" />
             Combined Revenue
@@ -159,7 +159,7 @@ export const PropertiesDashboard = () => {
           </div>
           <div className="text-xs text-gray-500 mt-1">All properties</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow" title="Average percentage of nights booked">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Average percentage of nights booked">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Percent className="w-4 h-4 mr-1" />
             Average Fullness
@@ -169,7 +169,7 @@ export const PropertiesDashboard = () => {
           </div>
           <div className="text-xs text-gray-500 mt-1">Across all properties</div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow" title="Total number of reservations">
+        <div className="bg-white p-6 rounded-lg shadow-sm" title="Total number of reservations">
           <div className="flex items-center text-sm text-gray-600 mb-2">
             <Calendar className="w-4 h-4 mr-1" />
             Total Reservations
@@ -188,7 +188,7 @@ export const PropertiesDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2" />
             Money vs Fullness
@@ -238,7 +238,7 @@ export const PropertiesDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Target className="w-5 h-5 mr-2" />
             Property Comparison

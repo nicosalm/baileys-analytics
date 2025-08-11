@@ -3,7 +3,7 @@ import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info } from 'lucide-react'
-import { Spinner } from '@/components/Spinner'
+import { LoadingState } from '@/components/LoadingState'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
@@ -30,7 +30,7 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
         size="lg"
       >
         <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+          <LoadingState />
         </div>
       </Modal>
     )
