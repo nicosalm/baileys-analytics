@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { StatusBadge } from '@/components/StatusBadge'
+import { MetricCard } from '@/components/MetricCard'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
@@ -138,38 +139,46 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
 
         {/* Key Metrics */}
         <div className="grid md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
-              <DollarSign className="w-4 h-4 mr-1" />
-              Total Earned
-            </div>
-            <div className="text-2xl font-bold">{formatCurrency(data.metrics.totalRevenue)}</div>
-            <div className="text-xs text-gray-500">This period</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
-              <Calendar className="w-4 h-4 mr-1" />
-              Bookings
-            </div>
-            <div className="text-2xl font-bold">{data.metrics.totalBookings}</div>
-            <div className="text-xs text-gray-500">{(data.metrics.avgStayLength || 0).toFixed(1)} nights avg</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
-              <Home className="w-4 h-4 mr-1" />
-              How Full
-            </div>
-            <div className="text-2xl font-bold">{formatPercentage(data.metrics.occupancyRate * 100, 0)}</div>
-            <div className="text-xs text-gray-500">{data.metrics.totalNights || 0} of {data.metrics.totalDays || 0} nights</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
-              <TrendingUp className="w-4 h-4 mr-1" />
-              Nightly Rate
-            </div>
-            <div className="text-2xl font-bold">{formatCurrency(data.metrics.avgNightlyRate)}</div>
-            <div className="text-xs text-gray-500">Average</div>
-          </div>
+          <MetricCard
+            icon={DollarSign}
+            label="Total Earned"
+            value={data.metrics.totalRevenue}
+            format="currency"
+            subValue="This period"
+            size="sm"
+            color="green"
+            className="border border-gray-200"
+          />
+          <MetricCard
+            icon={Calendar}
+            label="Bookings"
+            value={data.metrics.totalBookings}
+            format="number"
+            subValue={`${(data.metrics.avgStayLength || 0).toFixed(1)} nights avg`}
+            size="sm"
+            color="blue"
+            className="border border-gray-200"
+          />
+          <MetricCard
+            icon={Home}
+            label="How Full"
+            value={data.metrics.occupancyRate * 100}
+            format="percent"
+            subValue={`${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`}
+            size="sm"
+            color="purple"
+            className="border border-gray-200"
+          />
+          <MetricCard
+            icon={TrendingUp}
+            label="Nightly Rate"
+            value={data.metrics.avgNightlyRate}
+            format="currency"
+            subValue="Average"
+            size="sm"
+            color="orange"
+            className="border border-gray-200"
+          />
         </div>
 
         {/* Tabs */}

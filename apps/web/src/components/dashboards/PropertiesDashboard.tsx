@@ -1,13 +1,15 @@
 import { useEffect } from 'react'
 import { PropertyMetrics } from '@/types/dashboard'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy } from '@baileys/utils'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { Calendar, DollarSign, Home, Info, BarChart3, Target, Percent } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { usePropertyMetrics } from '@/hooks/use-api'
-import { LoadingState } from '@/components/LoadingState'
 import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
+import { MetricCard } from '@/components/MetricCard'
+import { ChartWrapper } from '@/components/ChartWrapper'
+import { StateWrapper } from '@/components/StateWrapper'
 import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
 
 const PropertyCard = ({ property }: { property: PropertyMetrics }) => {
@@ -68,15 +70,7 @@ export const PropertiesDashboard = () => {
     }
   }, [error?.message, addToast])
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-12">
-        <LoadingState />
-      </div>
-    )
-  }
-
-  if (!properties || properties.length === 0) {
+  if (isLoading || !properties || properties.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -85,13 +79,18 @@ export const PropertiesDashboard = () => {
             See how each property is performing and compare them side by side
           </p>
         </div>
-        <div className="flex flex-col items-center justify-center py-12 bg-white rounded-lg shadow-sm">
-          <Home className="w-16 h-16 text-gray-300 mb-4" />
-          <h3 className="text-lg font-medium text-gray-600 mb-2">No Properties Found</h3>
-          <p className="text-gray-500 text-center max-w-md">
-            Properties will appear here once they're synced from your booking platform.
-          </p>
-        </div>
+        <StateWrapper
+          loading={isLoading}
+          empty={!properties || properties.length === 0}
+          loadingMessage="Loading property data..."
+          emptyMessage="No Properties Found"
+          emptySubMessage="Properties will appear here once they're synced from your booking platform."
+          emptyIcon={<Home className="w-16 h-16 text-gray-300 mb-4" />}
+          minHeight={300}
+          className="bg-white rounded-lg shadow-sm py-12"
+        >
+          <div />
+        </StateWrapper>
       </div>
     )
   }
@@ -141,44 +140,42 @@ export const PropertiesDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Number of properties you manage">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Home className="w-4 h-4 mr-1" />
-            Properties You Manage
-          </div>
-          <div className="text-3xl font-bold">{(properties || []).length}</div>
-          <div className="text-xs text-gray-500 mt-1">In selected period</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Combined revenue from all properties">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <DollarSign className="w-4 h-4 mr-1" />
-            Combined Revenue
-          </div>
-          <div className="text-3xl font-bold">
-            {formatCompactCurrency(totalRevenue)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">All properties</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Average percentage of nights booked">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Percent className="w-4 h-4 mr-1" />
-            Average Fullness
-          </div>
-          <div className={`text-3xl font-bold ${getOccupancyColor(avgOccupancy * 100)}`}>
-            {formatPercentage(avgOccupancy * 100, 0)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">Across all properties</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Total number of reservations">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Calendar className="w-4 h-4 mr-1" />
-            Total Reservations
-          </div>
-          <div className="text-3xl font-bold">
-            {totalBookings}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">In selected period</div>
-        </div>
+        <MetricCard
+          icon={Home}
+          label="Properties You Manage"
+          value={(properties || []).length}
+          format="number"
+          subValue="In selected period"
+          tooltip="Number of properties you manage"
+          color="blue"
+        />
+        <MetricCard
+          icon={DollarSign}
+          label="Combined Revenue"
+          value={totalRevenue}
+          format="currency"
+          subValue="All properties"
+          tooltip="Combined revenue from all properties"
+          color="green"
+        />
+        <MetricCard
+          icon={Percent}
+          label="Average Fullness"
+          value={avgOccupancy * 100}
+          format="percent"
+          subValue="Across all properties"
+          tooltip="Average percentage of nights booked"
+          color={avgOccupancy > 0.7 ? "green" : avgOccupancy > 0.5 ? "yellow" : "red"}
+        />
+        <MetricCard
+          icon={Calendar}
+          label="Total Reservations"
+          value={totalBookings}
+          format="number"
+          subValue="In selected period"
+          tooltip="Total number of reservations"
+          color="purple"
+        />
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -188,16 +185,12 @@ export const PropertiesDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <BarChart3 className="w-5 h-5 mr-2" />
-            Money vs Fullness
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Blue bars show revenue, green bars show how full each property is
-          </p>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+        <ChartWrapper
+          title="Money vs Fullness"
+          subtitle="Blue bars show revenue, green bars show how full each property is"
+          icon={BarChart3}
+          height={320}
+        >
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
@@ -234,32 +227,24 @@ export const PropertiesDashboard = () => {
                 <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Money Earned" />
                 <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Nights Booked %" />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        </ChartWrapper>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <Target className="w-5 h-5 mr-2" />
-            Property Comparison
-          </h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Compare all metrics at once - bigger shapes mean better performance
-          </p>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radarData}>
-                <PolarGrid />
-                <PolarAngleAxis dataKey="property" />
-                <PolarRadiusAxis angle={90} domain={[0, 100]} />
-                <Radar name="Money Earned" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
-                <Radar name="Nights Booked" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
-                <Radar name="Nightly Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
-                <Tooltip formatter={(value: number) => `${value.toFixed(0)}%`} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartWrapper
+          title="Property Comparison"
+          subtitle="Compare all metrics at once - bigger shapes mean better performance"
+          icon={Target}
+          height={320}
+        >
+          <RadarChart data={radarData}>
+            <PolarGrid />
+            <PolarAngleAxis dataKey="property" />
+            <PolarRadiusAxis angle={90} domain={[0, 100]} />
+            <Radar name="Money Earned" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
+            <Radar name="Nights Booked" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
+            <Radar name="Nightly Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
+            <Tooltip formatter={(value: number) => `${value.toFixed(0)}%`} />
+          </RadarChart>
+        </ChartWrapper>
       </div>
     </div>
   )

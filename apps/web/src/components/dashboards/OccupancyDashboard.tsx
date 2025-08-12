@@ -1,13 +1,15 @@
 import { useEffect } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { Calendar, Home, AlertCircle, Info, Percent, BarChart3 } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useOccupancy } from '@/hooks/use-api'
-import { LoadingState } from '@/components/LoadingState'
 import { useToast } from '@/contexts/toast'
+import { MetricCard } from '@/components/MetricCard'
+import { ChartWrapper } from '@/components/ChartWrapper'
+import { StateWrapper } from '@/components/StateWrapper'
 import { formatPercentage, minBy } from '@baileys/utils'
-import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
+import { METRIC_COLORS } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 
 export const OccupancyDashboard = () => {
@@ -28,15 +30,20 @@ export const OccupancyDashboard = () => {
     }
   }, [error?.message, addToast])
 
-  if (isLoading) {
+  if (isLoading || !data) {
     return (
-      <div className="flex justify-center py-12">
-        <LoadingState />
-      </div>
+      <StateWrapper
+        loading={isLoading}
+        empty={!data && !isLoading}
+        loadingMessage="Loading occupancy data..."
+        emptyMessage="No occupancy data available"
+        minHeight={400}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
     )
   }
-
-  if (!data) return null
 
   const monthlyChartData = data.byMonth.map((m: any) => ({
     month: m.month.slice(5),
@@ -91,86 +98,78 @@ export const OccupancyDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Percentage of nights that were booked">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Percent className="w-4 h-4 mr-1" />
-            How Full You Were
-          </div>
-          <div className={`text-3xl font-bold ${getOccupancyColor(data.overall * 100)}`}>
-            {formatPercentage(data.overall * 100, 0)}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            {data.bookedNights.toLocaleString()} booked out of {data.availableNights.toLocaleString()}
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Total nights with guests">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Calendar className="w-4 h-4 mr-1" />
-            Nights With Guests
-          </div>
-          <div className="text-3xl font-bold">{data.bookedNights.toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-1">In selected period</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Total nights properties could be booked">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Home className="w-4 h-4 mr-1" />
-            Total Bookable Nights
-          </div>
-          <div className="text-3xl font-bold">{data.availableNights.toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-1">Across all properties</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm" title="Month with most empty nights">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <AlertCircle className="w-4 h-4 mr-1" />
-            Most Empty Nights
-          </div>
-          <div className="text-2xl font-bold">
-            {formatMonthDisplay(lowestMonth.month)}
-          </div>
-          <div className="text-sm text-gray-500">
-            Only {formatPercentage(lowestMonth.rate * 100, 0)} booked
-          </div>
-        </div>
+        <MetricCard
+          icon={Percent}
+          label="How Full You Were"
+          value={data.overall * 100}
+          format="percent"
+          subValue={`${data.bookedNights.toLocaleString()} booked out of ${data.availableNights.toLocaleString()}`}
+          tooltip="Percentage of nights that were booked"
+          color={data.overall > 0.7 ? "green" : data.overall > 0.5 ? "yellow" : "red"}
+        />
+        <MetricCard
+          icon={Calendar}
+          label="Nights With Guests"
+          value={data.bookedNights}
+          format="number"
+          subValue="In selected period"
+          tooltip="Total nights with guests"
+          color="blue"
+        />
+        <MetricCard
+          icon={Home}
+          label="Total Bookable Nights"
+          value={data.availableNights}
+          format="number"
+          subValue="Across all properties"
+          tooltip="Total nights properties could be booked"
+          color="purple"
+        />
+        <MetricCard
+          icon={AlertCircle}
+          label="Most Empty Nights"
+          value={formatMonthDisplay(lowestMonth.month)}
+          format="custom"
+          subValue={`Only ${formatPercentage(lowestMonth.rate * 100, 0)} booked`}
+          tooltip="Month with most empty nights"
+          color="orange"
+        />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <BarChart3 className="w-5 h-5 mr-2" />
-            Monthly Booking Patterns
-          </h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyChartData} onClick={handleMonthClick}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis
-                  tickFormatter={(value: any) => `${value}%`}
-                  domain={[0, 100]}
-                />
-                <Tooltip
-                  formatter={(value: number) => [`${value.toFixed(1)}% booked`, 'Occupancy']}
-                  labelFormatter={(label: any, payload: any) => {
-                    const data = payload?.[0]?.payload
-                    if (data?.bookedNights && data?.availableNights) {
-                      return `${label}: ${data.bookedNights} nights booked out of ${data.availableNights}`
-                    }
-                    return label
-                  }}
-                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="rate"
-                  stroke={METRIC_COLORS.occupancy}
-                  strokeWidth={3}
-                  dot={{ fill: METRIC_COLORS.occupancy, r: 6, cursor: 'pointer' }}
-                  activeDot={{ r: 8 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartWrapper
+          title="Monthly Booking Patterns"
+          icon={BarChart3}
+          height={320}
+        >
+          <LineChart data={monthlyChartData} onClick={handleMonthClick}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis
+              tickFormatter={(value: any) => `${value}%`}
+              domain={[0, 100]}
+            />
+            <Tooltip
+              formatter={(value: number) => [`${value.toFixed(1)}% booked`, 'Occupancy']}
+              labelFormatter={(label: any, payload: any) => {
+                const data = payload?.[0]?.payload
+                if (data?.bookedNights && data?.availableNights) {
+                  return `${label}: ${data.bookedNights} nights booked out of ${data.availableNights}`
+                }
+                return label
+              }}
+              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+            />
+            <Line
+              type="monotone"
+              dataKey="rate"
+              stroke={METRIC_COLORS.occupancy}
+              strokeWidth={3}
+              dot={{ fill: METRIC_COLORS.occupancy, r: 6, cursor: 'pointer' }}
+              activeDot={{ r: 8 }}
+            />
+          </LineChart>
+        </ChartWrapper>
 
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">

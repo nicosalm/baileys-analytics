@@ -3,64 +3,19 @@ import { useOverview } from '@/hooks/use-api'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
 import {
   AlertCircle, CheckCircle, TrendingUp,
-  DollarSign, Users, Home, Calendar, Clock, ArrowUpRight, ArrowDownRight,
+  DollarSign, Users, Home, Calendar, Clock,
   BarChart3, Activity, CreditCard, AlertTriangle, Info
 } from 'lucide-react'
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { LoadingState } from '@/components/LoadingState'
+import { MetricCard } from '@/components/MetricCard'
+import { ChartWrapper } from '@/components/ChartWrapper'
+import { StateWrapper } from '@/components/StateWrapper'
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { METRIC_COLORS, CHART_COLORS } from '@/lib/theme'
 
 
-const MetricCard = ({
-  icon: Icon,
-  label,
-  value,
-  subValue,
-  trend,
-  color = 'blue',
-  onClick
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  value: string | number
-  subValue?: string
-  trend?: { value: number; isPositive: boolean }
-  color?: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'yellow'
-  onClick?: () => void
-}) => {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    orange: 'bg-orange-50 text-orange-600',
-    red: 'bg-red-50 text-red-600',
-    yellow: 'bg-yellow-50 text-yellow-600'
-  }
-
-  return (
-    <div 
-      className={`bg-white p-6 rounded-lg shadow-sm ${onClick ? 'cursor-pointer' : ''}`}
-      onClick={onClick}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-        {trend && (
-          <div className={`flex items-center text-sm font-medium ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-            {trend.isPositive ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-            {Math.abs(trend.value).toFixed(1)}%
-          </div>
-        )}
-      </div>
-      <div className="text-3xl font-bold">{value}</div>
-      <div className="text-sm text-gray-600 mt-1">{label}</div>
-      {subValue && <div className="text-xs text-gray-500 mt-1">{subValue}</div>}
-    </div>
-  )
-}
+// MetricCard is now imported from the standardized component
 
 const AlertCard = ({ alert }: { alert: any }) => {
   const icons = {
@@ -109,36 +64,20 @@ export const OverviewDashboard = () => {
     }
   }, [error?.message, addToast])
 
-  if (isLoading) {
+  if (isLoading || error || !data) {
     return (
-      <div className="flex justify-center py-12">
-        <LoadingState />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-        <p className="text-gray-600 mb-2">Failed to load overview</p>
-        <p className="text-sm text-gray-500">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700"
-        >
-          Retry
-        </button>
-      </div>
-    )
-  }
-
-  if (!data) {
-    return (
-      <div className="text-center py-12">
-        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-600">No data available for the selected period</p>
-      </div>
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading dashboard data..."
+        emptyMessage="No data available for the selected period"
+        onRetry={() => window.location.reload()}
+        minHeight={400}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
     )
   }
 
@@ -209,7 +148,8 @@ export const OverviewDashboard = () => {
         <MetricCard
           icon={DollarSign}
           label="Money Earned"
-          value={formatCompactCurrency(metrics.revenue.current)}
+          value={Number(metrics.revenue.current) || 0}
+          format="currency"
           subValue={`After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`}
           trend={{
             value: metrics.revenue.growth,
@@ -233,7 +173,8 @@ export const OverviewDashboard = () => {
         <MetricCard
           icon={Home}
           label="How Full You Are"
-          value={formatPercentage(Number(metrics.occupancy.current || 0) * 100, 0)}
+          value={Number(metrics.occupancy.current || 0) * 100}
+          format="percent"
           subValue={`${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} average`}
           trend={metrics.occupancy.trend === 'up' ? {
             value: 5,
@@ -261,220 +202,186 @@ export const OverviewDashboard = () => {
 
       {/* Secondary Metrics - Additional KPIs */}
       <div className="grid md:grid-cols-6 gap-3">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between">
-            <CreditCard className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Properties</span>
-          </div>
-          <div className="mt-2 text-xl font-bold">{metrics.properties.total}</div>
-          <div className="text-xs text-gray-600">
-            {filters.selectedTags.length > 0 ? 'Tagged properties' : 'Total active'}
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between">
-            <Activity className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Typical Stay</span>
-          </div>
-          <div className="mt-2 text-xl font-bold">{Number(metrics.bookings.avgNights || 0).toFixed(1)} nights</div>
-          <div className="text-xs text-gray-600">Per reservation</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between">
-            <TrendingUp className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Booking Value</span>
-          </div>
-          <div className="mt-2 text-xl font-bold">{formatCompactCurrency(metrics.revenue.avgBookingValue)}</div>
-          <div className="text-xs text-gray-600">Average per stay</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between">
-            <Users className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">First-Time Guests</span>
-          </div>
-          <div className="mt-2 text-xl font-bold">{metrics.guests.newThisMonth}</div>
-          <div className="text-xs text-gray-600">New this period</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between">
-            <BarChart3 className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Return Guests</span>
-          </div>
-          <div className="mt-2 text-xl font-bold">{formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)}</div>
-          <div className="text-xs text-gray-600">
-            {metrics.guests.total > 0 ? 'Come back again' : 'No data yet'}
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <div className="flex items-center justify-between">
-            <AlertCircle className="w-4 h-4 text-gray-500" />
-            <span className="text-xs text-gray-500">Cancellations</span>
-          </div>
-          <div className="mt-2 text-xl font-bold">{formatPercentage(Number(metrics.bookings.cancellationRate || 0), 0)}</div>
-          <div className="text-xs text-gray-600">Of bookings</div>
-        </div>
+        <MetricCard
+          icon={CreditCard}
+          label="Properties"
+          value={metrics.properties.total}
+          format="number"
+          subValue={filters.selectedTags.length > 0 ? 'Tagged properties' : 'Total active'}
+          size="sm"
+          color="gray"
+        />
+        <MetricCard
+          icon={Activity}
+          label="Typical Stay"
+          value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
+          format="custom"
+          subValue="Per reservation"
+          size="sm"
+          color="gray"
+        />
+        <MetricCard
+          icon={TrendingUp}
+          label="Booking Value"
+          value={Number(metrics.revenue.avgBookingValue) || 0}
+          format="currency"
+          subValue="Average per stay"
+          size="sm"
+          color="gray"
+        />
+        <MetricCard
+          icon={Users}
+          label="First-Time Guests"
+          value={metrics.guests.newThisMonth}
+          format="number"
+          subValue="New this period"
+          size="sm"
+          color="gray"
+        />
+        <MetricCard
+          icon={BarChart3}
+          label="Return Guests"
+          value={Number(metrics.guests.repeatRate || 0) * 100}
+          format="percent"
+          subValue={metrics.guests.total > 0 ? 'Come back again' : 'No data yet'}
+          size="sm"
+          color="gray"
+        />
+        <MetricCard
+          icon={AlertCircle}
+          label="Cancellations"
+          value={Number(metrics.bookings.cancellationRate || 0)}
+          format="percent"
+          subValue="Of bookings"
+          size="sm"
+          color="red"
+        />
       </div>
 
       {/* 2x2 Grid of Mini Charts with h-48 height */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Revenue Trend */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
-            Money Made (Last 7 Days)
-          </h3>
-          <div className="h-48">
-            {charts.revenueLastWeek.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={charts.revenueLastWeek}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={METRIC_COLORS.revenue} stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor={METRIC_COLORS.revenue} stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip 
-                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke={METRIC_COLORS.revenue}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                No data available
-              </div>
-            )}
-          </div>
-        </div>
+        <ChartWrapper
+          title="Money Made (Last 7 Days)"
+          icon={TrendingUp}
+          height={192}
+          noData={charts.revenueLastWeek.length === 0}
+        >
+          <AreaChart data={charts.revenueLastWeek}>
+            <defs>
+              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={METRIC_COLORS.revenue} stopOpacity={0.8}/>
+                <stop offset="95%" stopColor={METRIC_COLORS.revenue} stopOpacity={0.1}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="day" />
+            <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
+            <Tooltip 
+              formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
+              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+            />
+            <Area
+              type="monotone"
+              dataKey="revenue"
+              stroke={METRIC_COLORS.revenue}
+              fillOpacity={1}
+              fill="url(#colorRevenue)"
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ChartWrapper>
 
         {/* Top Properties Performance */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <Home className="w-5 h-5 mr-2 text-purple-600" />
-            Your Best Performing Properties
-          </h3>
-          <div className="h-48">
-            {charts.topProperties.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={charts.topProperties.slice(0, 5).map((item: any) => ({
-                  ...item,
-                  revenue: Number(item.revenue),
-                  bookings: Number(item.bookings)
-                }))}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="name"
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                    interval={0}
-                    tick={{ fontSize: 10 }}
-                  />
-                  <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip 
-                    formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                  />
-                  <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                No data available
-              </div>
-            )}
-          </div>
-        </div>
+        <ChartWrapper
+          title="Your Best Performing Properties"
+          icon={Home}
+          height={192}
+          noData={charts.topProperties.length === 0}
+        >
+          <BarChart data={charts.topProperties.slice(0, 5).map((item: any) => ({
+            ...item,
+            revenue: Number(item.revenue),
+            bookings: Number(item.bookings)
+          }))}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="name"
+              angle={-45}
+              textAnchor="end"
+              height={60}
+              interval={0}
+              tick={{ fontSize: 10 }}
+            />
+            <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
+            <Tooltip 
+              formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
+              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+            />
+            <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ChartWrapper>
 
         {/* Booking Sources Distribution */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
-            Where Bookings Come From
-          </h3>
-          <div className="h-64">
-            {charts.bookingsBySource.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={charts.bookingsBySource.map((item: any) => ({
-                      ...item,
-                      count: Number(item.count)
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry: any) => `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="count"
-                  >
-                    {charts.bookingsBySource.map((_: any, index: any) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: any) => [value, 'Bookings']}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                No data available
-              </div>
-            )}
-          </div>
-        </div>
+        <ChartWrapper
+          title="Where Bookings Come From"
+          icon={BarChart3}
+          height={256}
+          noData={charts.bookingsBySource.length === 0}
+        >
+          <PieChart>
+            <Pie
+              data={charts.bookingsBySource.map((item: any) => ({
+                ...item,
+                count: Number(item.count)
+              }))}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={(entry: any) => `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
+              outerRadius={80}
+              fill="#8884d8"
+              dataKey="count"
+            >
+              {charts.bookingsBySource.map((_: any, index: any) => (
+                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip 
+              formatter={(value: any) => [value, 'Bookings']}
+              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+            />
+          </PieChart>
+        </ChartWrapper>
 
         {/* Occupancy Trend */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <Calendar className="w-5 h-5 mr-2 text-orange-600" />
-            How Full You've Been (6 Months)
-          </h3>
-          <div className="h-48">
-            {charts.occupancyTrend.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={charts.occupancyTrend.map((item: any) => ({
-                  ...item,
-                  rate: Number(item.rate)
-                }))}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value: any) => `${value}%`} domain={[0, 100]} />
-                  <Tooltip 
-                    formatter={(value: any) => [`${value}% of nights booked`, 'Occupancy']}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="rate"
-                    stroke={METRIC_COLORS.occupancy}
-                    strokeWidth={2}
-                    dot={{ fill: METRIC_COLORS.occupancy, r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                No data available
-              </div>
-            )}
-          </div>
-        </div>
+        <ChartWrapper
+          title="How Full You've Been (6 Months)"
+          icon={Calendar}
+          height={192}
+          noData={charts.occupancyTrend.length === 0}
+        >
+          <LineChart data={charts.occupancyTrend.map((item: any) => ({
+            ...item,
+            rate: Number(item.rate)
+          }))}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="month" />
+            <YAxis tickFormatter={(value: any) => `${value}%`} domain={[0, 100]} />
+            <Tooltip 
+              formatter={(value: any) => [`${value}% of nights booked`, 'Occupancy']}
+              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+            />
+            <Line
+              type="monotone"
+              dataKey="rate"
+              stroke={METRIC_COLORS.occupancy}
+              strokeWidth={2}
+              dot={{ fill: METRIC_COLORS.occupancy, r: 4 }}
+              activeDot={{ r: 6 }}
+            />
+          </LineChart>
+        </ChartWrapper>
       </div>
 
       {/* Alerts and Activity Panels */}

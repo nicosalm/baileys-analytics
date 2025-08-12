@@ -2,7 +2,7 @@ import { useState, useEffect, ReactNode } from 'react'
 import { useFinancial } from '@/hooks/use-api'
 import {
   formatCurrency, formatCompactCurrency,
-  calculatePercentage, formatPercentage,
+  calculatePercentage,
   calculateGrowthRate, calculateAverage, ensureNumber
 } from '@baileys/utils'
 import {
@@ -10,15 +10,17 @@ import {
   AlertCircle, Calendar, Home, FileText,
   Info, Target, TrendingDown, PiggyBank, Receipt
 } from 'lucide-react'
-import { LoadingState } from '@/components/LoadingState'
 import { SimpleTable } from '@/components/tables'
+import { MetricCard } from '@/components/MetricCard'
+import { ChartWrapper } from '@/components/ChartWrapper'
+import { StateWrapper } from '@/components/StateWrapper'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
 import {
   Line, Bar, BarChart, LineChart, AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts'
 
 // Type definitions
@@ -28,17 +30,6 @@ interface TabButtonProps {
   children: ReactNode
 }
 
-interface MetricCardProps {
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  value: number
-  previousValue?: number
-  format?: 'currency' | 'percent' | 'number'
-  loading?: boolean
-  color?: 'blue' | 'green' | 'yellow' | 'purple' | 'red'
-  subtitle?: string | null
-  tooltip?: string
-}
 
 interface PLViewProps {
   data: any
@@ -79,76 +70,21 @@ const TabButton: React.FC<TabButtonProps> = ({ active, onClick, children }) => (
   </button>
 )
 
-const MetricCard: React.FC<MetricCardProps> = ({
-  icon: Icon,
-  label,
-  value,
-  previousValue,
-  format = 'currency',
-  loading = false,
-  color = 'blue',
-  subtitle,
-  tooltip
-}) => {
-  const formatValue = (val: number) => {
-    switch (format) {
-      case 'currency':
-        return val >= 10000 ? formatCompactCurrency(val) : formatCurrency(val)
-      case 'percent':
-        return formatPercentage(val, 1)
-      default:
-        return val.toLocaleString()
-    }
-  }
-
-  const calculateChange = (current: number, previous?: number) => {
-    if (!previous || previous === 0) return undefined
-    return ((current - previous) / previous) * 100
-  }
-
-  const change = calculateChange(value, previousValue)
-  const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    purple: 'bg-purple-50 text-purple-600',
-    red: 'bg-red-50 text-red-600'
-  }
-
-  if (loading) {
-    return (
-      <div className="bg-white p-6 rounded-lg shadow-sm">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded-sm w-24 mb-2"></div>
-          <div className="h-8 bg-gray-200 rounded-sm w-32"></div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-white p-6 rounded-lg shadow-sm" title={tooltip}>
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-        {change !== undefined && (
-          <div className={`text-sm font-medium ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {change >= 0 ? '+' : ''}{change.toFixed(1)}%
-          </div>
-        )}
-      </div>
-      <div className="text-3xl font-bold">{formatValue(value)}</div>
-      <div className="text-sm text-gray-600 mt-1">{label}</div>
-      {subtitle && <div className="text-xs text-gray-500 mt-1">{subtitle}</div>}
-    </div>
-  )
-}
 
 // P&L View Component - Shows profitability (what you keep after costs)
 const PLView: React.FC<PLViewProps> = ({ data, loading }) => {
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><LoadingState /></div>
+    return (
+      <StateWrapper
+        loading={loading}
+        empty={!data && !loading}
+        loadingMessage="Loading profit & loss data..."
+        emptyMessage="No financial data available"
+        minHeight={300}
+      >
+        <div />
+      </StateWrapper>
+    )
   }
 
   const { metrics, platforms, previousPeriod } = data
@@ -181,33 +117,40 @@ const PLView: React.FC<PLViewProps> = ({ data, loading }) => {
           icon={PiggyBank}
           label="What You Keep"
           value={metrics.revenue.net}
-          previousValue={previousPeriod?.revenue?.net}
+          format="currency"
+          trend={previousPeriod?.revenue?.net ? {
+            value: ((metrics.revenue.net - previousPeriod.revenue.net) / previousPeriod.revenue.net) * 100,
+            isPositive: metrics.revenue.net > previousPeriod.revenue.net
+          } : undefined}
           color="green"
-          subtitle={`${profitMargin}% of total bookings`}
+          subValue={`${profitMargin}% of total bookings`}
           tooltip="Money after all platform fees and taxes"
         />
         <MetricCard
           icon={Receipt}
           label="Platform Fees"
           value={metrics.revenue.platformFees}
+          format="currency"
           color="red"
-          subtitle={`${effectiveFeeRate}% average`}
+          subValue={`${effectiveFeeRate}% average`}
           tooltip="Total fees charged by booking platforms"
         />
         <MetricCard
           icon={Wallet}
           label="Per Booking Average"
           value={metrics.performance.avgBookingValue}
+          format="currency"
           color="purple"
-          subtitle="Before fees"
+          subValue="Before fees"
           tooltip="Average amount per reservation"
         />
         <MetricCard
           icon={Home}
           label="Revenue Per Room"
           value={metrics.kpis.revpar}
+          format="currency"
           color="blue"
-          subtitle="Daily average"
+          subValue="Daily average"
           tooltip="Revenue per available room per day"
         />
       </div>
@@ -316,7 +259,17 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
   const [viewMode, setViewMode] = useState<'trend' | 'comparison'>('trend')
   
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><LoadingState /></div>
+    return (
+      <StateWrapper
+        loading={loading}
+        empty={!data && !loading}
+        loadingMessage="Loading profit & loss data..."
+        emptyMessage="No financial data available"
+        minHeight={300}
+      >
+        <div />
+      </StateWrapper>
+    )
   }
 
   const periodGrowth = data.lastYearData
@@ -367,31 +320,34 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
           value={periodGrowth}
           format="percent"
           color={periodGrowth >= 0 ? 'green' : 'red'}
-          subtitle={data.lastYearData ? `Was ${formatCompactCurrency(data.lastYearData.gross)}` : 'No prior data'}
+          subValue={data.lastYearData ? `Was ${formatCompactCurrency(data.lastYearData.gross)}` : 'No prior data'}
           tooltip="Growth compared to same period last year"
         />
         <MetricCard
           icon={Calendar}
           label="Monthly Average"
           value={avgMonthlyRevenue}
+          format="currency"
           color="purple"
-          subtitle="Typical income"
+          subValue="Typical income"
           tooltip="Average monthly booking revenue"
         />
         <MetricCard
           icon={TrendingUp}
           label="Best Month"
           value={bestMonth?.amount || 0}
+          format="currency"
           color="green"
-          subtitle={bestMonth?.month?.slice(5) || ''}
+          subValue={bestMonth?.month?.slice(5) || ''}
           tooltip="Highest revenue month"
         />
         <MetricCard
           icon={TrendingDown}
           label="Slowest Month"
           value={worstMonth?.amount || 0}
+          format="currency"
           color="yellow"
-          subtitle={worstMonth?.month?.slice(5) || ''}
+          subValue={worstMonth?.month?.slice(5) || ''}
           tooltip="Lowest revenue month"
         />
       </div>
@@ -418,12 +374,10 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4">
-            {viewMode === 'trend' ? 'Monthly Income & Total' : 'This Year vs Last Year'}
-          </h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+        <ChartWrapper
+          title={viewMode === 'trend' ? 'Monthly Income & Total' : 'This Year vs Last Year'}
+          height={320}
+        >
               {viewMode === 'trend' ? (
                 <AreaChart data={cumulativeData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -462,9 +416,7 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
                   <Bar dataKey="currentYear" fill={METRIC_COLORS.revenue} name="Current Year" />
                 </BarChart>
               )}
-            </ResponsiveContainer>
-          </div>
-        </div>
+        </ChartWrapper>
 
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4">Income by Platform</h3>
@@ -511,7 +463,17 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
 // Quick Insights Component - Actionable insights for vacation rental owners
 const QuickInsights: React.FC<QuickInsightsProps> = ({ data, loading }) => {
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><LoadingState /></div>
+    return (
+      <StateWrapper
+        loading={loading}
+        empty={!data && !loading}
+        loadingMessage="Loading profit & loss data..."
+        emptyMessage="No financial data available"
+        minHeight={300}
+      >
+        <div />
+      </StateWrapper>
+    )
   }
 
   const { metrics, monthlyTrend, previousPeriod } = data
@@ -659,7 +621,17 @@ export { FinancialDashboard }
 // Cash Flow Component - Track actual money in your bank
 const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><LoadingState /></div>
+    return (
+      <StateWrapper
+        loading={loading}
+        empty={!data && !loading}
+        loadingMessage="Loading profit & loss data..."
+        emptyMessage="No financial data available"
+        minHeight={300}
+      >
+        <div />
+      </StateWrapper>
+    )
   }
 
   const { metrics, weeklyRevenue } = data
@@ -686,32 +658,36 @@ const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
           icon={DollarSign}
           label="In Your Bank"
           value={metrics.revenue.collected}
+          format="currency"
           color="green"
-          subtitle="Already received"
+          subValue="Already received"
           tooltip="Money that has been deposited to your account"
         />
         <MetricCard
           icon={AlertCircle}
           label="Awaiting Payment"
           value={metrics.revenue.pending}
+          format="currency"
           color="yellow"
-          subtitle={avgDaysToCollect > 0 ? `~${avgDaysToCollect} days to receive` : 'From platforms'}
+          subValue={avgDaysToCollect > 0 ? `~${avgDaysToCollect} days to receive` : 'From platforms'}
           tooltip="Money earned but not yet received"
         />
         <MetricCard
           icon={Calendar}
           label="Next 30 Days"
           value={metrics.upcoming.next30Days}
+          format="currency"
           color="blue"
-          subtitle="Confirmed bookings"
+          subValue="Confirmed bookings"
           tooltip="Expected income from existing reservations"
         />
         <MetricCard
           icon={TrendingUp}
           label="Next 3 Months"
           value={metrics.upcoming.next90Days}
+          format="currency"
           color="purple"
-          subtitle="Expected income"
+          subValue="Expected income"
           tooltip="Projected revenue from confirmed bookings"
         />
       </div>
@@ -804,20 +780,18 @@ const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
 
       {/* Weekly Revenue Pattern */}
       {weeklyRevenue && weeklyRevenue.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-bold mb-4">Weekly Cash Flow Pattern</h3>
-          <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyRevenue}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
-                <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartWrapper
+          title="Weekly Cash Flow Pattern"
+          height={192}
+        >
+          <BarChart data={weeklyRevenue}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="week" />
+            <YAxis tickFormatter={(value) => formatCompactCurrency(value)} />
+            <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+            <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} />
+          </BarChart>
+        </ChartWrapper>
       )}
     </div>
   )
@@ -829,7 +803,17 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
   const { openModal } = useModal()
 
   if (loading || !data) {
-    return <div className="flex justify-center py-12"><LoadingState /></div>
+    return (
+      <StateWrapper
+        loading={loading}
+        empty={!data && !loading}
+        loadingMessage="Loading profit & loss data..."
+        emptyMessage="No financial data available"
+        minHeight={300}
+      >
+        <div />
+      </StateWrapper>
+    )
   }
 
   const effectiveTaxRate = data.summary.effectiveRate * 100
@@ -933,24 +917,27 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
           icon={FileText}
           label="Taxes Collected"
           value={data.summary.totalTax}
+          format="currency"
           color="green"
-          subtitle={`${effectiveTaxRate.toFixed(1)}% rate`}
+          subValue={`${effectiveTaxRate.toFixed(1)}% rate`}
           tooltip="Total tax collected from guests"
         />
         <MetricCard
           icon={Calendar}
           label="This Quarter"
           value={currentQuarterTax}
+          format="currency"
           color="blue"
-          subtitle="Due soon"
+          subValue="Due soon"
           tooltip="Tax liability for current quarter"
         />
         <MetricCard
           icon={TrendingUp}
           label="Monthly Average"
           value={avgMonthlyTax}
+          format="currency"
           color="purple"
-          subtitle="Typical amount"
+          subValue="Typical amount"
           tooltip="Average monthly tax collection"
         />
         <MetricCard
@@ -959,7 +946,7 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
           value={data.byProperty.length}
           format="number"
           color="yellow"
-          subtitle="Being tracked"
+          subValue="Being tracked"
           tooltip="Number of properties with tax data"
         />
       </div>
@@ -967,10 +954,10 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
       {viewMode === 'summary' ? (
         <>
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h3 className="text-lg font-bold mb-4">Monthly Tax Trend</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+            <ChartWrapper
+              title="Monthly Tax Trend"
+              height={256}
+            >
                   <LineChart
                     data={data.byMonth}
                     onClick={(e: any) => {
@@ -990,14 +977,12 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
                           strokeWidth={2} dot={{ fill: METRIC_COLORS.tax }}
                           cursor="pointer" />
                   </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            </ChartWrapper>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <h3 className="text-lg font-bold mb-4">Tax Rate by Property</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+            <ChartWrapper
+              title="Tax Rate by Property"
+              height={256}
+            >
                   <BarChart data={data.byProperty.slice(0, 10)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
@@ -1014,9 +999,7 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
                     />
                     <Bar dataKey="taxRate" fill={METRIC_COLORS.tax} />
                   </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+            </ChartWrapper>
           </div>
         </>
       ) : (

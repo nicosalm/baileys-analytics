@@ -2,8 +2,10 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useGuests } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star, Award } from 'lucide-react'
-import { LoadingState } from '@/components/LoadingState'
 import { PaginatedTable } from '@/components/tables'
+import { MetricCard } from '@/components/MetricCard'
+import { ChartWrapper } from '@/components/ChartWrapper'
+import { StateWrapper } from '@/components/StateWrapper'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
@@ -11,7 +13,7 @@ import { useDashboard } from '@/contexts/dashboard'
 import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
 import {
     BarChart, Bar, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+    XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts'
 
 type GuestListItem = {
@@ -34,28 +36,6 @@ type GuestListItem = {
     periodSpent?: number
 }
 
-const MetricsCard = ({
-    icon: Icon,
-    label,
-    value,
-    subtext,
-    tooltip
-}: {
-    icon: React.ComponentType<{ className?: string }>
-    label: string
-    value: string | number
-    subtext?: string
-    tooltip?: string
-}) => (
-    <div className="bg-white p-6 rounded-lg shadow-sm" title={tooltip}>
-        <div className="flex items-center text-sm text-gray-600 mb-2">
-            <Icon className="w-4 h-4 mr-1" />
-            {label}
-        </div>
-        <div className="text-3xl font-bold">{value}</div>
-        {subtext && <div className="text-sm text-gray-500 mt-1">{subtext}</div>}
-    </div>
-)
 
 // New badge for top performers in the selected period
 const PerformanceBadge = ({ type }: {
@@ -266,15 +246,20 @@ export const GuestsDashboard = () => {
         }
     ], [data, topPerformers, filters.dateRange.from])
 
-    if (isLoading && !data) {
+    if (isLoading || !data) {
         return (
-            <div className="flex justify-center py-12">
-                <LoadingState />
-            </div>
+            <StateWrapper
+                loading={isLoading}
+                empty={!data && !isLoading}
+                loadingMessage="Loading guest analytics..."
+                emptyMessage="No guest data available"
+                minHeight={400}
+                className="py-12"
+            >
+                <div />
+            </StateWrapper>
         )
     }
-
-    if (!data) return null
 
     const sourceChartData = data.metrics.guestsBySource.map((source: any, index: any) => ({
         ...source,
@@ -336,33 +321,45 @@ export const GuestsDashboard = () => {
 
             {/* Key Metrics */}
             <div className="grid md:grid-cols-4 gap-4">
-                <MetricsCard
+                <MetricCard
                     icon={Users}
                     label="Active Guests"
                     value={data.metrics.totalGuests}
-                    subtext="In selected period"
+                    format="number"
+                    subValue="In selected period"
                     tooltip="Guests with bookings in the selected date range"
+                    color="blue"
                 />
-                <MetricsCard
+                <MetricCard
                     icon={UserCheck}
                     label="Repeat Rate"
-                    value={`${formatPercentage(data.metrics.repeatRate * 100, 0)}`}
-                    subtext={`${data.metrics.repeatGuests} returning guests`}
+                    value={data.metrics.repeatRate * 100}
+                    format="percent"
+                    subValue={`${data.metrics.repeatGuests} returning guests`}
                     tooltip="Percentage of guests with multiple bookings"
+                    color="green"
+                    trend={{
+                        value: data.metrics.repeatRate * 100,
+                        isPositive: data.metrics.repeatRate > 0.3
+                    }}
                 />
-                <MetricsCard
+                <MetricCard
                     icon={Calendar}
                     label="Avg Stay"
                     value={`${data.metrics.avgStayLength.toFixed(1)} nights`}
-                    subtext="Per booking"
+                    format="custom"
+                    subValue="Per booking"
                     tooltip="Average length of stay per reservation"
+                    color="purple"
                 />
-                <MetricsCard
+                <MetricCard
                     icon={DollarSign}
                     label="Avg Guest Value"
-                    value={formatCurrency(data.metrics.avgSpend)}
-                    subtext="Per guest this period"
+                    value={data.metrics.avgSpend}
+                    format="currency"
+                    subValue="Per guest this period"
                     tooltip="Average spending per guest in selected period"
+                    color="orange"
                 />
             </div>
 
@@ -439,71 +436,62 @@ export const GuestsDashboard = () => {
 
             {/* Charts Section */}
             <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-lg font-bold mb-4">Guest Sources</h3>
-                    <div className="h-80">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={sourceChartData}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    label={(entry: any) =>
-                                        `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`
-                                    }
-                                    outerRadius={80}
-                                    fill="#8884d8"
-                                    dataKey="count"
-                                >
-                                    {sourceChartData.map((entry: any, index: any) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} />
-                                    ))}
-                                </Pie>
-                                <Tooltip formatter={(value) => `${value} guests`} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+                <ChartWrapper
+                    title="Guest Sources"
+                    height={320}
+                    noData={sourceChartData.length === 0}
+                >
+                    <PieChart>
+                        <Pie
+                            data={sourceChartData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={(entry: any) =>
+                                `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`
+                            }
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="count"
+                        >
+                            {sourceChartData.map((entry: any, index: any) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${value} guests`} />
+                    </PieChart>
+                </ChartWrapper>
 
-                <div className="bg-white p-6 rounded-lg shadow-sm">
-                    <h3 className="text-lg font-bold mb-4">Guest Tags Distribution</h3>
-                    {tagChartData && tagChartData.length > 0 ? (
-                        <div className="h-80">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    data={tagChartData.slice(0, 8)}
-                                    margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis
-                                        dataKey="name"
-                                        angle={-45}
-                                        textAnchor="end"
-                                        height={100}
-                                        interval={0}
-                                        tick={{ fontSize: 10 }}
-                                    />
-                                    <YAxis tick={{ fontSize: 12 }} />
-                                    <Tooltip
-                                        formatter={(value: any) => [`${value} guests`, 'Count']}
-                                    />
-                                    <Bar dataKey="value" fill={METRIC_COLORS.revenue}>
-                                        {tagChartData.map((entry: any, index: any) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-80 text-gray-500">
-                            <div className="text-4xl mb-2">🏷️</div>
-                            <p className="text-sm">No tag data available</p>
-                            <p className="text-xs mt-2">Tag guests to see distribution</p>
-                        </div>
-                    )}
-                </div>
+                <ChartWrapper
+                    title="Guest Tags Distribution"
+                    height={320}
+                    noData={!tagChartData || tagChartData.length === 0}
+                    noDataMessage="No tag data available"
+                >
+                    <BarChart
+                        data={tagChartData.slice(0, 8)}
+                        margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
+                    >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                            dataKey="name"
+                            angle={-45}
+                            textAnchor="end"
+                            height={100}
+                            interval={0}
+                            tick={{ fontSize: 10 }}
+                        />
+                        <YAxis tick={{ fontSize: 12 }} />
+                        <Tooltip
+                            formatter={(value: any) => [`${value} guests`, 'Count']}
+                        />
+                        <Bar dataKey="value" fill={METRIC_COLORS.revenue}>
+                            {tagChartData.map((entry: any, index: any) => (
+                                <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ChartWrapper>
             </div>
 
             {/* Guest Table */}
