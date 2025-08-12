@@ -144,6 +144,44 @@ export const OverviewDashboard = () => {
 
   const { metrics, alerts, recentActivity, charts } = data
 
+  // Extract upcoming arrivals count from alerts if available
+  // Look specifically for text about "guests arriving" or "Upcoming Arrivals"
+  const upcomingArrivalsAlert = alerts?.find((alert: any) => {
+    // More specific check - must have "arriving" or be specifically about "Arrivals"
+    const hasArrival = alert.description?.toLowerCase().includes('arriving') || 
+                      alert.description?.toLowerCase().includes('guests arriving') ||
+                      alert.title?.toLowerCase().includes('upcoming arrivals') ||
+                      (alert.title?.toLowerCase().includes('arrival') && !alert.title?.toLowerCase().includes('occupancy'))
+    return hasArrival
+  })
+  
+  // Parse the number from alert description or title
+  let upcomingFromAlert = null
+  if (upcomingArrivalsAlert) {
+    // Try to match different patterns
+    const patterns = [
+      /(\d+)\s+guest/i,  // "1 guests arriving"
+      /(\d+)\s+arrival/i, // "1 arrivals"
+      /(\d+)\s+booking/i, // "1 bookings"
+    ]
+    
+    for (const pattern of patterns) {
+      const match = upcomingArrivalsAlert.description?.match(pattern) || 
+                   upcomingArrivalsAlert.title?.match(pattern)
+      if (match) {
+        upcomingFromAlert = match[1]
+        break
+      }
+    }
+  }
+  
+  // Use the alert count if metrics.bookings.upcoming is 0 but we have arrivals in alerts
+  // Note: metrics.bookings.upcoming comes as a string from the API
+  const metricsUpcoming = parseInt(metrics.bookings.upcoming) || 0
+  const actualUpcoming = (metricsUpcoming === 0 && upcomingFromAlert) 
+    ? parseInt(upcomingFromAlert) 
+    : metricsUpcoming
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -184,7 +222,7 @@ export const OverviewDashboard = () => {
           icon={Calendar}
           label="Reservations Made"
           value={metrics.bookings.current}
-          subValue={`${metrics.bookings.upcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`}
+          subValue={`${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`}
           trend={{
             value: metrics.bookings.cancellationRate * -1,
             isPositive: metrics.bookings.cancellationRate < 5
