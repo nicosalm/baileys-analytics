@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronUp, ChevronDown, Search } from 'lucide-react'
+import { LoadingState } from '@/components/LoadingState'
 
 interface Column<T> {
   key: keyof T | string
@@ -81,11 +82,7 @@ export function SimpleTable<T extends Record<string, any>>({
   }
 
   if (loading && data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    )
+    return <LoadingState message="Loading data..." />
   }
 
   if (!loading && filteredData.length === 0) {

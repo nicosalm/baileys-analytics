@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useDailyOccupancy } from '@/hooks/use-api'
 import { cn } from '@baileys/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { LoadingState } from '@/components/LoadingState'
 
 type DailyOccupancy = {
   date: string
@@ -77,7 +78,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   const monthName = monthNames[parseInt(monthNum || '1', 10) - 1] || ''
 
   // ✅ Return only after all hooks are called
-  if (loading) return <div className="text-center py-8 text-gray-500">Loading heatmap...</div>
+  if (loading) return <LoadingState message="Loading heatmap..." />
   if (error) return <div className="text-center py-8 text-red-500">Error loading heatmap: {error.message}</div>
   if (!monthsData.length) return <div className="text-center py-8 text-gray-500">No data found</div>
 
