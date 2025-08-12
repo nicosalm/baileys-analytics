@@ -5,7 +5,7 @@ import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Calculator } from 'lucide
 import { taxEngine } from '@/lib/taxEngine'
 import { useTaxConfig } from '@/contexts/taxConfig'
 import { useToast } from '@/contexts/toast'
-import { api } from '@/lib/api'
+import { createTaxRule, updateTaxRule, deleteTaxRule } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
 import { SelectableTable } from '@/components/tables'
 
@@ -303,49 +303,48 @@ export const TaxConfiguration = () => {
   const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null)
 
   const handleSaveRule = async (ruleData: TaxRuleFormData) => {
-    const result = editingRule
-      ? await api.updateTaxRule(editingRule.id, ruleData)
-      : await api.createTaxRule(ruleData)
-
-    if (result.success) {
-      mutateRules() // Revalidate the rules data
-      addToast('success', `Tax rule ${editingRule ? 'updated' : 'created'} successfully`)
+    try {
+      if (editingRule) {
+        await updateTaxRule(editingRule.id, ruleData)
+        addToast('success', 'Tax rule updated successfully')
+      } else {
+        await createTaxRule(ruleData)
+        addToast('success', 'Tax rule created successfully')
+      }
       setShowForm(false)
       setEditingRule(undefined)
-    } else {
-      addToast('error', result.error)
+    } catch (error) {
+      // The optimistic update will be rolled back automatically
+      addToast('error', error instanceof Error ? error.message : 'Failed to save tax rule')
     }
   }
 
   const handleDeleteRule = async (ruleId: string) => {
     setDeletingRuleId(ruleId)
-    const result = await api.deleteTaxRule(ruleId)
-
-    if (result.success) {
-      mutateRules() // Revalidate the rules data
+    try {
+      await deleteTaxRule(ruleId)
       addToast('success', 'Tax rule deleted successfully')
-    } else {
-      addToast('error', result.error)
+    } catch (error) {
+      // The optimistic update will be rolled back automatically
+      addToast('error', error instanceof Error ? error.message : 'Failed to delete tax rule')
+    } finally {
+      setDeletingRuleId(null)
     }
-
-    setDeletingRuleId(null)
   }
 
   const handleToggleRule = async (ruleId: string) => {
     const rule = rules?.find((r: any) => r.id === ruleId)
-
     if (!rule) return
 
-    const result = await api.updateTaxRule(ruleId, {
-      ...rule,
-      isActive: !rule.isActive
-    })
-
-    if (result.success) {
-      mutateRules() // Revalidate the rules data
-      addToast('success', `Tax rule ${result.data.isActive ? 'enabled' : 'disabled'}`)
-    } else {
-      addToast('error', result.error)
+    try {
+      await updateTaxRule(ruleId, {
+        ...rule,
+        isActive: !rule.isActive
+      })
+      addToast('success', `Tax rule ${!rule.isActive ? 'enabled' : 'disabled'}`)
+    } catch (error) {
+      // The optimistic update will be rolled back automatically
+      addToast('error', error instanceof Error ? error.message : 'Failed to toggle tax rule')
     }
   }
 

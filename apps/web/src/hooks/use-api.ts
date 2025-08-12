@@ -90,27 +90,88 @@ export function usePropertyTaxConfigs() {
 }
 
 export async function createTaxRule(rule: TaxRuleFormData) {
-  const result = await api.createTaxRule(rule)
-  if (result.success) {
-    await globalMutate('/tax-rules')
+  // Optimistically update the cache
+  const optimisticRule: TaxRule = {
+    ...rule,
+    id: `temp-${Date.now()}`, // Temporary ID
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
-  return result
+  
+  await globalMutate(
+    '/tax-rules',
+    async (currentData: TaxRule[] | undefined) => {
+      const result = await api.createTaxRule(rule)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      // Return the actual data from server
+      return [...(currentData || []).filter(r => !r.id.startsWith('temp-')), result.data]
+    },
+    {
+      optimisticData: (currentData: TaxRule[] | undefined) => 
+        [...(currentData || []), optimisticRule],
+      rollbackOnError: true,
+      populateCache: true,
+      revalidate: false
+    }
+  )
+  
+  return { success: true, data: optimisticRule }
 }
 
 export async function updateTaxRule(ruleId: string, rule: TaxRuleFormData) {
-  const result = await api.updateTaxRule(ruleId, rule)
-  if (result.success) {
-    await globalMutate('/tax-rules')
+  // Optimistically update the cache
+  const optimisticRule: TaxRule = {
+    ...rule,
+    id: ruleId,
+    createdAt: new Date().toISOString(), // Will be replaced by server
+    updatedAt: new Date().toISOString()
   }
-  return result
+  
+  await globalMutate(
+    '/tax-rules',
+    async (currentData: TaxRule[] | undefined) => {
+      const result = await api.updateTaxRule(ruleId, rule)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      // Return updated data from server
+      return currentData?.map(r => r.id === ruleId ? result.data : r) || []
+    },
+    {
+      optimisticData: (currentData: TaxRule[] | undefined) =>
+        currentData?.map(r => r.id === ruleId ? optimisticRule : r) || [],
+      rollbackOnError: true,
+      populateCache: true,
+      revalidate: false
+    }
+  )
+  
+  return { success: true, data: optimisticRule }
 }
 
 export async function deleteTaxRule(ruleId: string) {
-  const result = await api.deleteTaxRule(ruleId)
-  if (result.success) {
-    await globalMutate('/tax-rules')
-  }
-  return result
+  await globalMutate(
+    '/tax-rules',
+    async (currentData: TaxRule[] | undefined) => {
+      const result = await api.deleteTaxRule(ruleId)
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      // Return filtered data
+      return currentData?.filter(r => r.id !== ruleId) || []
+    },
+    {
+      optimisticData: (currentData: TaxRule[] | undefined) =>
+        currentData?.filter(r => r.id !== ruleId) || [],
+      rollbackOnError: true,
+      populateCache: true,
+      revalidate: false
+    }
+  )
+  
+  return { success: true }
 }
 
 export async function calculateTaxPreview(amount: number, context: TaxContext) {
@@ -277,34 +338,97 @@ export function useReportTemplate(id?: string) {
 }
 
 export async function createReportTemplate(template: CreateReportTemplate) {
-  const result = await api.createReportTemplate(template)
-  if (!result.success) throw new Error(result.error)
+  // Optimistically add the new template
+  const optimisticTemplate: ReportTemplate = {
+    ...template,
+    id: `temp-${Date.now()}`, // Temporary ID
+    createdAt: new Date().toISOString(),
+    lastModified: new Date().toISOString(),
+    lastRun: undefined,
+    lastExportUrl: undefined
+  }
   
-  // Invalidate the templates list cache
-  await globalMutate('/report-templates')
+  await globalMutate(
+    '/report-templates',
+    async (currentData: ReportTemplate[] | undefined) => {
+      const apiResult = await api.createReportTemplate(template)
+      if (!apiResult.success) {
+        throw new Error(apiResult.error)
+      }
+      // Return updated list with actual server data
+      return [...(currentData || []).filter(t => !t.id.startsWith('temp-')), apiResult.data]
+    },
+    {
+      optimisticData: (currentData: ReportTemplate[] | undefined) =>
+        [...(currentData || []), optimisticTemplate],
+      rollbackOnError: true,
+      populateCache: true,
+      revalidate: false
+    }
+  )
   
-  return result.data
+  return optimisticTemplate
 }
 
 export async function updateReportTemplate(id: string, template: ReportTemplate) {
-  const result = await api.updateReportTemplate(id, template)
-  if (!result.success) throw new Error(result.error)
+  // Optimistically update the template
+  const optimisticTemplate: ReportTemplate = {
+    ...template,
+    id,
+    lastModified: new Date().toISOString()
+  }
   
-  // Invalidate both the specific template and the list
-  await globalMutate(`/report-templates/${id}`)
-  await globalMutate('/report-templates')
+  // Update the list cache
+  await globalMutate(
+    '/report-templates',
+    async (currentData: ReportTemplate[] | undefined) => {
+      const apiResult = await api.updateReportTemplate(id, template)
+      if (!apiResult.success) {
+        throw new Error(apiResult.error)
+      }
+      // Return updated list with server data
+      return currentData?.map(t => t.id === id ? apiResult.data : t) || []
+    },
+    {
+      optimisticData: (currentData: ReportTemplate[] | undefined) =>
+        currentData?.map(t => t.id === id ? optimisticTemplate : t) || [],
+      rollbackOnError: true,
+      populateCache: true,
+      revalidate: false
+    }
+  )
   
-  return result.data
+  // Also update the individual template cache
+  await globalMutate(
+    `/report-templates/${id}`,
+    optimisticTemplate,
+    { revalidate: false }
+  )
+  
+  return optimisticTemplate
 }
 
 export async function deleteReportTemplate(id: string) {
-  const result = await api.deleteReportTemplate(id)
-  if (!result.success) throw new Error(result.error)
+  await globalMutate(
+    '/report-templates',
+    async (currentData: ReportTemplate[] | undefined) => {
+      const apiResult = await api.deleteReportTemplate(id)
+      if (!apiResult.success) {
+        throw new Error(apiResult.error)
+      }
+      // Return filtered list
+      return currentData?.filter(t => t.id !== id) || []
+    },
+    {
+      optimisticData: (currentData: ReportTemplate[] | undefined) =>
+        currentData?.filter(t => t.id !== id) || [],
+      rollbackOnError: true,
+      populateCache: true,
+      revalidate: false
+    }
+  )
   
-  // Invalidate the templates list cache
-  await globalMutate('/report-templates')
-  
-  return result.data
+  return { success: true }
 }
 
 export async function generateReport(templateId: string) {
