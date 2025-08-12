@@ -11,7 +11,7 @@ import {
   Info, Target, TrendingDown, PiggyBank, Receipt
 } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
-import { VirtualTable } from '@/components/VirtualTable'
+import { SimpleTable } from '@/components/tables'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
@@ -1024,14 +1024,11 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
           <div className="p-4 border-b">
             <h3 className="text-lg font-bold">Properties Tax Summary</h3>
           </div>
-          <VirtualTable
+          <SimpleTable
             data={data.byProperty}
             columns={propertyColumns}
-            height={400}
             getRowId={(property) => property.propertyId}
             onRowClick={handlePropertyClick}
-            enablePagination={data.byProperty.length > 20}
-            pageSize={20}
             emptyMessage="No properties found"
           />
         </div>

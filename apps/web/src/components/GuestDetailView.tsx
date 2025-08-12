@@ -6,7 +6,7 @@ import {
   TrendingUp, Clock, AlertCircle
 } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
-import { VirtualTable } from '@/components/VirtualTable'
+import { SimpleTable, PaginatedTable } from '@/components/tables'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Tag } from '@/components/Tag'
 import { useDrillDown } from '@/contexts/drillDown'
@@ -85,7 +85,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
   const { addToast } = useToast()
   const { data, isLoading: loading, error } = useGuestDetail(guestId)
   const [activeTab, setActiveTab] = useState<'bookings' | 'properties' | 'analytics'>('bookings')
-  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
+  // Removed unused selectedBookings state
   const [sortBy, setSortBy] = useState<string>('arrival')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
@@ -131,9 +131,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
   const handleExportBookings = useCallback(() => {
     if (!data) return
 
-    const exportData = selectedBookings.size > 0
-      ? sortedBookings.filter(b => selectedBookings.has(b.id))
-      : sortedBookings
+    const exportData = sortedBookings
 
     const headers = ['Property', 'Check In', 'Check Out', 'Nights', 'Amount', 'Platform', 'Status']
     const rows = exportData.map(b => [
@@ -156,7 +154,7 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
     URL.revokeObjectURL(url)
 
     addToast('success', `Exported ${exportData.length} bookings`)
-  }, [selectedBookings, sortedBookings, data, addToast])
+  }, [sortedBookings, data, addToast])
 
   const bookingColumns = useMemo(() => [
     {
@@ -471,25 +469,20 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
 
         <div className="p-6">
           {activeTab === 'bookings' && (
-            <VirtualTable
+            <PaginatedTable
               data={sortedBookings}
               columns={bookingColumns}
-              height={400}
               loading={loading}
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}
               onRowClick={handleBookingClick}
               getRowId={(booking) => booking.id}
-              enablePagination={sortedBookings.length > 20}
               pageSize={20}
               enableSearch={true}
               searchKeys={['propertyName']}
               enableExport={true}
               onExport={handleExportBookings}
-              selectable={true}
-              selectedRows={selectedBookings}
-              onSelectionChange={setSelectedBookings}
               emptyMessage="No bookings found"
               rowClassName={(booking) =>
                 booking.status === 'cancelled' ? 'opacity-50' : ''
@@ -499,17 +492,14 @@ export const GuestDetailView = ({ guestId }: { guestId: string }) => {
 
           {activeTab === 'properties' && (
             properties && properties.length > 10 ? (
-              <VirtualTable
+              <SimpleTable
                 data={properties}
                 columns={propertyColumns}
-                height={400}
                 onRowClick={(property) => handlePropertyClick(property.propertyId, property.propertyName)}
                 getRowId={(property) => property.propertyId}
                 sortBy="totalSpent"
                 sortOrder="desc"
                 onSort={handleSort}
-                enablePagination={properties.length > 20}
-                pageSize={20}
                 emptyMessage="No properties found"
               />
             ) : (

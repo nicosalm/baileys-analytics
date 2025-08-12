@@ -3,7 +3,7 @@ import { useGuests } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star, Award } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
-import { VirtualTable } from '@/components/VirtualTable'
+import { PaginatedTable } from '@/components/tables'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
@@ -90,7 +90,7 @@ export const GuestsDashboard = () => {
     )
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-    const [selectedGuests, setSelectedGuests] = useState<Set<string>>(new Set())
+    // Removed unused selectedGuests state
     const [viewMode, setViewMode] = useState<'all' | 'repeat' | 'new' | 'top'>('all')
 
     // Handle error state
@@ -563,28 +563,22 @@ export const GuestsDashboard = () => {
                     )}
                 </div>
 
-                <VirtualTable
+                <PaginatedTable
                     data={sortedGuests}
                     columns={columns}
-                    height={600}
                     loading={isLoading}
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     onSort={handleSort}
                     onRowClick={handleGuestClick}
                     getRowId={(guest) => guest.id}
-                    enablePagination={sortedGuests.length > 100}
                     pageSize={50}
                     enableSearch={true}
                     searchKeys={['name', 'email']}
                     enableRefresh={true}
                     onRefresh={() => window.location.reload()}
                     showRowNumbers={true}
-                    selectable={true}
-                    selectedRows={selectedGuests}
-                    onSelectionChange={setSelectedGuests}
                     emptyMessage="No guests found for the selected criteria"
-                    rowClassName={() => ''}
                 />
             </div>
         </div>

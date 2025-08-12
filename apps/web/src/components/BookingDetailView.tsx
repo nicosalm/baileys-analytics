@@ -3,7 +3,7 @@ import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency, calculateNightsBetween } from '@baileys/utils'
 import { Calendar, User, DollarSign, Tag as TagIcon, AlertCircle } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
-import { VirtualTable } from '@/components/VirtualTable'
+import { SimpleTable } from '@/components/tables'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Tag } from '@/components/Tag'
 
@@ -268,17 +268,13 @@ export const BookingDetailView = ({ bookingId }: { bookingId: string }) => {
           </div>
         ) : (
           <>
-            <VirtualTable
+            <SimpleTable
               data={data.charges}
               columns={chargeColumns}
-              height={400}
-              rowHeight={48}
               getRowId={(charge) => charge.id}
               enableSearch={true}
               searchKeys={['description', 'type']}
               emptyMessage="No charges found"
-              enablePagination={data.charges.length > 50}
-              pageSize={20}
             />
 
             <div className="mt-4 p-4 bg-gray-50 rounded-sm space-y-2">

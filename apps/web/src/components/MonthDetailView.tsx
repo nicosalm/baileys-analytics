@@ -3,7 +3,7 @@ import { useMonthDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { Calendar, TrendingUp, Home, Download } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
-import { VirtualTable } from '@/components/VirtualTable'
+import { SimpleTable, PaginatedTable } from '@/components/tables'
 import { StatusBadge } from '@/components/StatusBadge'
 import { useDrillDown } from '@/contexts/drillDown'
 import { useToast } from '@/contexts/toast'
@@ -49,7 +49,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
   const { dispatch } = useDrillDown()
   const { addToast } = useToast()
   const { data, isLoading: loading, error } = useMonthDetail(month, year)
-  const [selectedBookings, setSelectedBookings] = useState<Set<string>>(new Set())
+  // Removed unused selectedBookings state
   const [sortBy, setSortBy] = useState<string>('arrival')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [propertyFilter, setPropertyFilter] = useState<string>('all')
@@ -93,9 +93,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
   }, [sortBy])
 
   const handleExport = useCallback(() => {
-    const exportData = selectedBookings.size > 0
-      ? sortedBookings.filter((b: any) => selectedBookings.has(b.id))
-      : sortedBookings
+    const exportData = sortedBookings
 
     const headers = ['Property', 'Guest', 'Email', 'Check In', 'Check Out', 'Nights', 'Amount', 'Tax', 'Status', 'Platform']
     const rows = exportData.map((b: any) => [
@@ -121,7 +119,7 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
     URL.revokeObjectURL(url)
 
     addToast('success', `Exported ${exportData.length} bookings`)
-  }, [selectedBookings, sortedBookings, year, month, addToast])
+  }, [sortedBookings, year, month, addToast])
 
   const bookingColumns = useMemo(() => [
     {
@@ -409,11 +407,9 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
               ))}
             </div>
           ) : (
-            <VirtualTable
+            <SimpleTable
               data={data.byProperty}
               columns={propertyColumns}
-              height={320}
-              rowHeight={48}
               onRowClick={handlePropertyClick}
               getRowId={(property) => property.propertyId}
               sortBy="revenue"
@@ -455,25 +451,20 @@ export const MonthDetailView = ({ month, year }: { month: string; year: string }
           </div>
         </div>
 
-        <VirtualTable
+        <PaginatedTable
           data={sortedBookings}
           columns={bookingColumns}
-          height={600}
           loading={loading}
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSort={handleSort}
           onRowClick={handleBookingClick}
           getRowId={(booking) => booking.id}
-          enablePagination={sortedBookings.length > 50}
           pageSize={30}
           enableSearch={true}
           searchKeys={['guestName', 'propertyName', 'guestEmail']}
           enableExport={true}
           onExport={handleExport}
-          selectable={true}
-          selectedRows={selectedBookings}
-          onSelectionChange={setSelectedBookings}
           emptyMessage="No bookings found"
           rowClassName={(booking) =>
             booking.status === 'cancelled' ? 'opacity-50' : ''

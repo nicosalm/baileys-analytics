@@ -7,7 +7,7 @@ import { useTaxConfig } from '@/contexts/taxConfig'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
-import { VirtualTable } from '@/components/VirtualTable'
+import { SelectableTable } from '@/components/tables'
 
 const TaxMethodBadge = ({ method }: { method: TaxCalculationMethod }) => {
   const getMethodDisplay = () => {
@@ -486,15 +486,24 @@ export const TaxConfiguration = () => {
       )}
 
       <div className="bg-white rounded-lg shadow-sm">
-        <VirtualTable
+        <SelectableTable
           data={rules || []}
           columns={columns}
-          height={600}
+          getRowId={(rule) => rule.id}
           sortBy="priority"
           sortOrder="desc"
           enableSearch={true}
           searchKeys={['name', 'description']}
           emptyMessage="No tax rules configured. Click 'Add Tax Rule' to create one."
+          bulkActions={[
+            { label: 'Delete Selected', action: 'delete', icon: <Trash2 className="w-4 h-4" /> }
+          ]}
+          onBulkAction={(action, selectedIds) => {
+            if (action === 'delete') {
+              // Handle bulk delete
+              console.log('Delete rules:', selectedIds)
+            }
+          }}
         />
       </div>
 
