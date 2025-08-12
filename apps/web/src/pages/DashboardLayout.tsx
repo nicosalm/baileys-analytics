@@ -1,6 +1,5 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
-import { DrillDownProvider, useDrillDown } from '@/contexts/drillDown'
 import { useNavigate, Link } from 'react-router-dom'
 import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, TrendingUp, FileText } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
@@ -11,7 +10,6 @@ import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
 import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
 import ReportsModule from '@/components/ReportsModule'
 import { FilterBar } from '@/components/FilterBar'
-import { DrillDownView } from '@/components/DrillDownView'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
 
@@ -33,35 +31,15 @@ const DashboardContent = () => {
     case 'overview':
       return <OverviewDashboard />
     case 'financial':
-      return (
-        <DrillDownView>
-          <FinancialDashboard />
-        </DrillDownView>
-      )
+      return <FinancialDashboard />
     case 'properties':
-      return (
-        <DrillDownView>
-          <PropertiesDashboard />
-        </DrillDownView>
-      )
+      return <PropertiesDashboard />
     case 'occupancy':
-      return (
-        <DrillDownView>
-          <OccupancyDashboard />
-        </DrillDownView>
-      )
+      return <OccupancyDashboard />
     case 'seasonal':
-      return (
-        <DrillDownView>
-          <SeasonalDashboard />
-        </DrillDownView>
-      )
+      return <SeasonalDashboard />
     case 'guests':
-      return (
-        <DrillDownView>
-          <GuestsDashboard />
-        </DrillDownView>
-      )
+      return <GuestsDashboard />
     case 'reports':
       return <ReportsModule />
     // No longer needed - tax and revenue merged into financial
@@ -72,11 +50,7 @@ const DashboardContent = () => {
 
 const DashboardTabs = () => {
   const { activeTab, setActiveTab } = useDashboard()
-  const { dispatch } = useDrillDown()
-
   const handleTabClick = (tabId: DashboardTab) => {
-    // Reset drill-down state when switching tabs
-    dispatch({ type: 'RESET' })
     setActiveTab(tabId)
   }
 
@@ -167,8 +141,7 @@ export const DashboardLayout = () => {
 
   return (
     <DashboardProvider>
-      <DrillDownProvider>
-        <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50">
           <nav className="bg-white shadow-xs border-b">
             <div className="max-w-7xl mx-auto px-6 py-3">
               <div className="flex justify-between items-center">
@@ -210,7 +183,6 @@ export const DashboardLayout = () => {
             <DashboardContent />
           </main>
         </div>
-      </DrillDownProvider>
     </DashboardProvider>
   )
 }
