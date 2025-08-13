@@ -10,7 +10,7 @@ import {
   TaxCalculationEngine,
   TaxComponent
 } from '@/types/tax'
-import { safeDivide, isValidNumber } from '@baileys/utils'
+import { safeDivide, isValidNumber, getMonth } from '@baileys/utils'
 
 // Calculate tax based on method
 const calculateByMethod = (
@@ -63,7 +63,7 @@ const calculateByMethod = (
     }
 
     case 'seasonal': {
-      const currentMonth = new Date().getMonth() + 1
+      const currentMonth = getMonth(new Date()) + 1
       const multiplier = method.seasonalMultipliers.find(
         sm => currentMonth >= sm.startMonth && currentMonth <= sm.endMonth
       )?.multiplier ?? 1

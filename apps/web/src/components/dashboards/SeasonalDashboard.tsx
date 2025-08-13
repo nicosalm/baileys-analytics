@@ -6,6 +6,7 @@ import {
   calculateGrowthRate,
   formatPercentage,
   ensureNumber,
+  getYear,
 } from '@baileys/utils'
 import {
   LineChart, Line, BarChart, Bar,
@@ -30,9 +31,9 @@ export const SeasonalDashboard = () => {
   const getYearFromFilters = () => {
     if (filters.dateRange.from) {
       const fromDate = new Date(filters.dateRange.from)
-      return fromDate.getFullYear()
+      return getYear(fromDate)
     }
-    return new Date().getFullYear()
+    return getYear(new Date())
   }
 
   const selectedYear = getYearFromFilters()

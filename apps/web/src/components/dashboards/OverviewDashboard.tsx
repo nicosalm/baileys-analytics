@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useOverview } from '@/hooks/use-api'
-import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import {
   AlertCircle, CheckCircle, TrendingUp,
   DollarSign, Users, Home, Calendar, Clock,
@@ -38,7 +38,7 @@ const AlertCard = ({ alert }: { alert: any }) => {
           <h4 className="text-sm font-medium">{alert.title}</h4>
           <p className="text-sm text-gray-600 mt-1">{alert.description}</p>
           <p className="text-xs text-gray-500 mt-2">
-            {new Date(alert.timestamp).toLocaleDateString()}
+            {formatDateDisplay(new Date(alert.timestamp))}
           </p>
         </div>
       </div>
@@ -420,7 +420,7 @@ export const OverviewDashboard = () => {
                   <div className="flex-1">
                     <p className="text-sm font-medium">{activity.description}</p>
                     <p className="text-xs text-gray-500">
-                      {new Date(activity.timestamp).toLocaleString()}
+                      {formatDateDisplay(new Date(activity.timestamp))}
                     </p>
                   </div>
                   {activity.value && (

@@ -103,28 +103,8 @@ export const calculateSeasonalityIndex = (monthlyOccupancies: number[]): number 
   return safeDivide(Math.sqrt(variance), avg, 0);
 };
 
-// Dates & Time
-export const calculateNights = (checkIn: Date, checkOut: Date): number => {
-  const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
-};
-
-export const calculateNightsBetween = (checkIn: Date | string, checkOut: Date | string): number => {
-  const start = typeof checkIn === 'string' ? new Date(checkIn) : checkIn;
-  const end = typeof checkOut === 'string' ? new Date(checkOut) : checkOut;
-  return Math.max(0, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-};
-
-export const addDays = (date: Date | string, days: number): Date => {
-  const result = new Date(date);
-  result.setDate(result.getDate() + days);
-  return result;
-};
-
-export const getDaysInMonth = (year: number, month: number): number => {
-  return new Date(year, month, 0).getDate();
-};
+// Re-export date utilities from dates module
+export * from './dates';
 
 // Formatting
 export const formatCurrency = (amount: number): string => {
@@ -152,11 +132,6 @@ export const formatGrowth = (rate: number): string => {
   return rate >= 0 ? `+${formatted}` : formatted;
 };
 
-export const formatDateRange = (from: Date | string, to: Date | string): string => {
-  const fromDate = typeof from === 'string' ? new Date(from) : from;
-  const toDate = typeof to === 'string' ? new Date(to) : to;
-  return `${fromDate.toLocaleDateString()} - ${toDate.toLocaleDateString()}`;
-};
 
 // Collections
 export const sumBy = <T>(items: T[], selector: (item: T) => number): number => {
@@ -211,11 +186,6 @@ export const unique = <T>(array: T[], key?: (item: T) => string | number): T[] =
 };
 
 // Validation
-export const isValidDateRange = (from: Date | string, to: Date | string): boolean => {
-  const fromDate = typeof from === 'string' ? new Date(from) : from;
-  const toDate = typeof to === 'string' ? new Date(to) : to;
-  return fromDate <= toDate && !isNaN(fromDate.getTime()) && !isNaN(toDate.getTime());
-};
 
 export const isPositive = (value: number): boolean => {
   return isFinite(value) && value > 0;

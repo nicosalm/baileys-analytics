@@ -1,7 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query, DbResult } from './services/database';
-import { safeDivide, calculateOccupancyRate, calculateNightsBetween } from '@baileys/utils';
+import { safeDivide, calculateOccupancyRate, calculateNights } from '@baileys/utils';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { formatDateISO, getYear } from './utils/dates';
 
 type OccupancyData = {
   overall: number
@@ -35,8 +36,8 @@ type QueryParams = {
 
 const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams => ({
   tenantId,
-  fromDate: request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-  toDate: request.query.get('to') || new Date().toISOString().split('T')[0],
+  fromDate: request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1)),
+  toDate: request.query.get('to') || formatDateISO(new Date()),
   tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
 })
 

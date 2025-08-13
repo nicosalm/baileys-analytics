@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query, DbResult } from './services/database';
 import { safeDivide } from '@baileys/utils';
+import { formatDateISO, getYear } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type PropertyMetrics = {
@@ -24,8 +25,8 @@ type QueryParams = {
 
 const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams => ({
   tenantId,
-  fromDate: request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-  toDate: request.query.get('to') || new Date().toISOString().split('T')[0],
+  fromDate: request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1)),
+  toDate: request.query.get('to') || formatDateISO(new Date()),
   tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
 })
 

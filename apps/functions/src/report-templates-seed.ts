@@ -1,5 +1,6 @@
 import { query } from './services/database'
 import { randomUUID } from 'crypto'
+import { addMonths, getDay, getDate } from './utils/dates'
 
 export async function seedDefaultReportTemplates(tenantId: string): Promise<void> {
   try {
@@ -142,7 +143,7 @@ function calculateNextMonthlyRun(dayOfMonth: number, time: string): string {
   
   // If we've passed this day/time this month, move to next month
   if (nextRun <= now) {
-    nextRun.setMonth(nextRun.getMonth() + 1)
+    nextRun = addMonths(nextRun, 1)
   }
   
   return nextRun.toISOString()
@@ -153,15 +154,15 @@ function calculateNextWeeklyRun(dayOfWeek: number, time: string): string {
   const [hours, minutes] = time.split(':').map(Number)
   
   let nextRun = new Date()
-  const currentDay = nextRun.getDay()
+  const currentDay = getDay(nextRun)
   const daysUntilTarget = (dayOfWeek - currentDay + 7) % 7
   
-  nextRun.setDate(nextRun.getDate() + daysUntilTarget)
+  nextRun.setDate(getDate(nextRun) + daysUntilTarget)
   nextRun.setHours(hours, minutes, 0, 0)
   
   // If we've passed this time today, move to next week
   if (nextRun <= now) {
-    nextRun.setDate(nextRun.getDate() + 7)
+    nextRun.setDate(getDate(nextRun) + 7)
   }
   
   return nextRun.toISOString()

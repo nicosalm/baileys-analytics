@@ -1,4 +1,4 @@
-import { format, parse, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, addDays, differenceInDays } from 'date-fns'
+import { format, parse, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, addDays, differenceInDays, getYear, getMonth, addMonths, setYear, setMonth, getDaysInMonth, getDay, getDate } from 'date-fns'
 
 // Standard date format for API responses
 export const DATE_FORMAT = 'yyyy-MM-dd'
@@ -68,3 +68,16 @@ export const getDefaultDateRange = (lookback: 'short' | 'medium' | 'long' = 'med
     to: formatDate(now)
   }
 }
+
+// Format date to ISO string (YYYY-MM-DD)
+export const formatDateISO = (date: Date): string => {
+  return format(date, DATE_FORMAT)
+}
+
+// Format date for display
+export const formatDateDisplay = (date: Date, formatString: string = 'MM/dd/yyyy'): string => {
+  return format(date, formatString)
+}
+
+// Export date-fns functions for direct use
+export { getYear, getMonth, addMonths, setYear, setMonth, differenceInDays, getDaysInMonth, getDay, getDate, subDays }

@@ -1,5 +1,5 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
-import { calculateNightsBetween, safeDivide } from '@baileys/utils';
+import { calculateNights, safeDivide } from '@baileys/utils';
 import { query, DbResult } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
@@ -221,7 +221,7 @@ const fetchGuestBookings = async (
     propertyName: b.property_name,
     arrival: b.arrival,
     departure: b.departure,
-    nights: calculateNightsBetween(b.arrival, b.departure),
+    nights: calculateNights(b.arrival, b.departure),
     totalAmount: parseFloat(b.total_amount),
     status: b.status,
     platform: b.platform || undefined

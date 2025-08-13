@@ -1,5 +1,6 @@
 import { app, Timer, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
+import { formatDateISO, subDays } from './utils/dates';
 import {
   getTenantToken,
   syncProperties,
@@ -48,14 +49,14 @@ async function determineBookingDateRange(tenantId: string) {
   return hasBookings
     ? {
         // Recent sync - last 30 days
-        from: new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        to: new Date().toISOString().split('T')[0],
+        from: formatDateISO(subDays(new Date(), 30)),
+        to: formatDateISO(new Date()),
         isHistorical: false
       }
     : {
         // Initial sync - all historical data
         from: '2010-01-01',
-        to: new Date().toISOString().split('T')[0],
+        to: formatDateISO(new Date()),
         isHistorical: true
       }
 }

@@ -6,6 +6,7 @@ import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
 import { randomUUID } from 'crypto'
+import { formatDateISO } from './utils/dates'
 
 interface ReportConfig {
   format: 'pdf' | 'excel'
@@ -650,7 +651,7 @@ export async function reportsGenerate(
       }
     }
 
-    const reportName = `Report-${new Date().toISOString().split('T')[0]}`
+    const reportName = `Report-${formatDateISO(new Date())}`
     let reportBuffer: Buffer
 
     // Generate report based on format

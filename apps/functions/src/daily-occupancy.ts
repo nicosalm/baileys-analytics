@@ -1,5 +1,6 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
+import { formatDateISO, getYear } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type DailyOccupancy = {
@@ -36,8 +37,8 @@ export async function getDailyOccupancy(
   }
 
   try {
-    const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-    const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+    const fromDate = request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1));
+    const toDate = request.query.get('to') || formatDateISO(new Date());
     const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 
     const tagFilter = tagIds.length > 0

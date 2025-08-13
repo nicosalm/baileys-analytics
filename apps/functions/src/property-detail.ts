@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
-import { calculateNightsBetween, safeDivide, getDaysInMonth } from '@baileys/utils';
+import { calculateNights, safeDivide } from '@baileys/utils';
+import { formatDateISO, getYear, getDaysInMonth, differenceInDays } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 export async function getPropertyDetail(
@@ -31,8 +32,8 @@ export async function getPropertyDetail(
 
   try {
     const propertyId = request.params.propertyId;
-    const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-    const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+    const fromDate = request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1));
+    const toDate = request.query.get('to') || formatDateISO(new Date());
     const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
     
     console.log('Property Detail API - Parameters:', { fromDate, toDate, propertyId, tagIds });
@@ -171,8 +172,8 @@ export async function getPropertyDetail(
     // Calculate occupancy for monthly data
     const monthlyData = monthlyResult.success ? monthlyResult.data.map(row => {
       const [year, month] = row.month.split('-');
-        const daysInMonth = getDaysInMonth(parseInt(year), parseInt(month));
-        const occupancy = safeDivide(parseInt(row.nights), daysInMonth) * 100;
+      const daysInMonthCount = getDaysInMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
+      const occupancy = safeDivide(parseInt(row.nights), daysInMonthCount) * 100;
 
       return {
         month: row.month,
@@ -215,7 +216,7 @@ export async function getPropertyDetail(
     const endDate = new Date(toDate);
     const currentDate = new Date();
     const effectiveEndDate = endDate > currentDate ? currentDate : endDate;
-    const totalDays = Math.floor((effectiveEndDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const totalDays = differenceInDays(effectiveEndDate, startDate) + 1;
     const occupancyRate = safeDivide(parseInt(metrics.total_nights), totalDays);
 
     return {

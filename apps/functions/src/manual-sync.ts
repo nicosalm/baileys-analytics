@@ -5,6 +5,7 @@ import {
   syncProperties,
   syncBookings
 } from './services/syncService';
+import { formatDateISO } from './utils/dates';
 
 export async function manualSync(
   request: HttpRequest,
@@ -39,10 +40,10 @@ export async function manualSync(
   const dateRange = {
     from: request.query.get('from') || (
       type === 'historical'
-        ? new Date(now.getTime() - 1460 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 4 years
-        : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]  // 30 days
+        ? formatDateISO(new Date(now.getTime() - 1460 * 24 * 60 * 60 * 1000)) // 4 years
+        : formatDateISO(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000))  // 30 days
     ),
-    to: request.query.get('to') || now.toISOString().split('T')[0]
+    to: request.query.get('to') || formatDateISO(now)
   }
 
   try {

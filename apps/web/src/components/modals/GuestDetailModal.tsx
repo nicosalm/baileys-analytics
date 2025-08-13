@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
@@ -102,8 +102,8 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
                 </div>
               )}
               <div className="flex items-center space-x-4 text-sm text-gray-600">
-                {guest?.firstVisit && <span>First visit: {new Date(guest.firstVisit).toLocaleDateString()}</span>}
-                {guest?.lastVisit && <span>Last visit: {new Date(guest.lastVisit).toLocaleDateString()}</span>}
+                {guest?.firstVisit && <span>First visit: {formatDateDisplay(new Date(guest.firstVisit))}</span>}
+                {guest?.lastVisit && <span>Last visit: {formatDateDisplay(new Date(guest.lastVisit))}</span>}
               </div>
             </div>
             <div className="text-right">
@@ -233,10 +233,10 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
                         <div className="text-sm text-gray-500">{booking.nights} nights</div>
                       </td>
                       <td className="p-4 text-sm">
-                        {new Date(booking.arrival).toLocaleDateString()}
+                        {formatDateDisplay(new Date(booking.arrival))}
                       </td>
                       <td className="p-4 text-sm">
-                        {new Date(booking.departure).toLocaleDateString()}
+                        {formatDateDisplay(new Date(booking.departure))}
                       </td>
                       <td className="p-4 text-sm font-medium">
                         {formatCurrency(booking.totalAmount)}

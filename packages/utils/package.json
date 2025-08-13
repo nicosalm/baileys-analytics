@@ -21,6 +21,7 @@
   "dependencies": {
     "@baileys/constants": "workspace:*",
     "@baileys/shared-types": "workspace:*",
+    "date-fns": "^4.1.0",
     "zod": "^4.0.17"
   }
 }

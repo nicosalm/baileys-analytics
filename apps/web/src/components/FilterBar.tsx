@@ -41,7 +41,7 @@ export const FilterBar: React.FC = () => {
             <DateRangePicker
               value={filters.dateRange}
               onChange={updateDateRange}
-              maxDays={365}
+              maxDays={1825}
               className="shrink-0"
             />
 

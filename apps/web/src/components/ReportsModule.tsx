@@ -5,6 +5,7 @@ import {
   Edit2, Trash2, Copy, Table, FileSpreadsheet,
   Plus, History, AlertCircle
 } from 'lucide-react'
+import { formatDateDisplay, subDays, formatDateISO } from '@baileys/utils'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
 import { 
@@ -143,7 +144,7 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
         {template.lastRun && (
           <div className="flex items-center text-sm text-gray-500">
             <CheckCircle className="w-4 h-4 mr-2" />
-            Last run: {new Date(template.lastRun).toLocaleDateString()}
+            Last run: {formatDateDisplay(new Date(template.lastRun))}
           </div>
         )}
 
@@ -223,14 +224,14 @@ export default function ReportsModule() {
   const handleQuickExport = async () => {
     try {
       const today = new Date()
-      const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+      const thirtyDaysAgo = subDays(today, 30)
       
       const response = await api.request('/reports/quick-export', {
         method: 'POST',
         body: JSON.stringify({
           dateRange: {
-            from: thirtyDaysAgo.toISOString().split('T')[0],
-            to: today.toISOString().split('T')[0]
+            from: formatDateISO(thirtyDaysAgo),
+            to: formatDateISO(today)
           },
           tags: [],
           format: 'excel'

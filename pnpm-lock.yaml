@@ -103,6 +103,9 @@ importers:
       '@baileys/utils':
         specifier: workspace:*
         version: link:../../packages/utils
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       lucide-react:
         specifier: ^0.539.0
         version: 0.539.0(react@19.1.1)
@@ -173,6 +176,9 @@ importers:
       '@baileys/shared-types':
         specifier: workspace:*
         version: link:../shared-types
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       zod:
         specifier: ^4.0.17
         version: 4.0.17

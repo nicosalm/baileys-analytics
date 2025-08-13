@@ -1,5 +1,5 @@
 import { useBookingDetail } from '@/hooks/use-api'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, formatDateDisplay, differenceInDays } from '@baileys/utils'
 import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -48,7 +48,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
   }
 
   const booking = data.booking
-  const nights = Math.ceil((new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24))
+  const nights = differenceInDays(new Date(booking.departure), new Date(booking.arrival))
 
   return (
     <Modal
@@ -130,12 +130,12 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           <div className="grid grid-cols-3 gap-4">
             <div>
               <div className="text-xs text-gray-500">Check In</div>
-              <div className="font-semibold">{new Date(booking.arrival).toLocaleDateString()}</div>
+              <div className="font-semibold">{formatDateDisplay(new Date(booking.arrival))}</div>
               <div className="text-sm text-gray-600">{booking.checkInTime || '3:00 PM'}</div>
             </div>
             <div>
               <div className="text-xs text-gray-500">Check Out</div>
-              <div className="font-semibold">{new Date(booking.departure).toLocaleDateString()}</div>
+              <div className="font-semibold">{formatDateDisplay(new Date(booking.departure))}</div>
               <div className="text-sm text-gray-600">{booking.checkOutTime || '11:00 AM'}</div>
             </div>
             <div>
@@ -189,7 +189,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             </div>
             <div>
               <span className="text-gray-600">Booked: </span>
-              <span className="font-medium">{new Date(booking.bookedDate).toLocaleDateString()}</span>
+              <span className="font-medium">{formatDateDisplay(new Date(booking.bookedDate))}</span>
             </div>
           </div>
         </div>

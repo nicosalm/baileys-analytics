@@ -6,6 +6,7 @@ import { useSyncStatus, manualSync, historicalSync } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
 import { RefreshCw, Calendar, AlertCircle, Calculator } from 'lucide-react'
 import { TaxConfiguration } from '@/components/TaxConfiguration'
+import { formatDateDisplay } from '@baileys/utils'
 
 type SyncStatus = {
   lastPropertySync: string | null
@@ -20,7 +21,7 @@ type SyncState =
   | { type: 'complete' }
 
 const formatDate = (dateString: string | null): string =>
-  dateString ? new Date(dateString).toLocaleString() : 'Never'
+  dateString ? formatDateDisplay(new Date(dateString)) : 'Never'
 
 const SyncButton = ({
   label,
@@ -79,7 +80,7 @@ const AccountInfo = ({ email, createdAt, companyName }: {
         <span className="text-gray-600">Email:</span> {email}
       </div>
       <div>
-        <span className="text-gray-600">Account Created:</span> {new Date(createdAt).toLocaleDateString()}
+        <span className="text-gray-600">Account Created:</span> {formatDateDisplay(new Date(createdAt))}
       </div>
       {companyName && (
         <div>

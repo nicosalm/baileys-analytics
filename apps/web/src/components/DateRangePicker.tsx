@@ -1,6 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
-import { cn } from '@baileys/utils'
+import { 
+  cn, 
+  formatDateISO, 
+  parseDate,
+  differenceInDays,
+  subDays,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  format,
+  isSameDay,
+  isAfter,
+  isBefore,
+  isWithinInterval,
+  addDays
+} from '@baileys/utils'
 
 interface DateRange {
   from: string
@@ -22,7 +37,7 @@ interface DateRangePickerProps {
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   value,
   onChange,
-  maxDays = 365,
+  maxDays = 1825,
   minDate,
   maxDate = new Date(),
   disabled = false,
@@ -36,27 +51,11 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
 
-  // Format date to ISO format (YYYY-MM-DD)
-  const formatDateISO = (date: Date): string => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
+  // Using date-fns functions from utils package
 
-  // Parse ISO date string to Date object
-  const parseISODate = (dateStr: string): Date => {
-    const [year, month, day] = dateStr.split('-').map(Number)
-    return new Date(year, month - 1, day)
-  }
-
-  // Format date for display (MM/DD/YYYY)
   const formatDateDisplay = (dateStr: string): string => {
-    const date = parseISODate(dateStr)
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${month}/${day}/${year}`
+    const date = parseDate(dateStr)
+    return format(date, 'MMM d, yyyy')
   }
 
   useEffect(() => {
@@ -70,189 +69,205 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const handleDateSelect = (date: Date) => {
-    const dateStr = formatDateISO(date)
-    const fromDate = parseISODate(localRange.from)
-    const toDate = parseISODate(localRange.to)
-
-    let newRange: DateRange
-
-    if (!localRange.from || date < fromDate) {
-      // Starting new range
-      newRange = { from: dateStr, to: dateStr }
-    } else if (date > toDate) {
-      // Extending range
-      const daysDiff = Math.floor((date.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysDiff <= maxDays) {
-        newRange = { from: localRange.from, to: dateStr }
-      } else {
-        // Reset if exceeds max days
-        newRange = { from: dateStr, to: dateStr }
-      }
-    } else {
-      // Date is within current range, start new selection
-      newRange = { from: dateStr, to: dateStr }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
     }
 
-    setLocalRange(newRange)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
 
-    // Debounced onChange
+  const handleDateClick = (date: Date) => {
+    if (isDateDisabled(date)) return
+
+    const clickedDate = formatDateISO(date)
+    
+    if (!localRange.from || (localRange.from && localRange.to && localRange.from !== localRange.to)) {
+      // Start new range
+      const newRange = { from: clickedDate, to: '' }
+      setLocalRange(newRange)
+      // Don't apply debounce yet - wait for the second click
+    } else if (localRange.from && !localRange.to) {
+      // Complete range
+      const fromDate = parseDate(localRange.from)
+      
+      if (isAfter(date, fromDate) || isSameDay(date, fromDate)) {
+        const daysDiff = differenceInDays(date, fromDate)
+        
+        if (maxDays && daysDiff > maxDays) {
+          // Limit to maxDays
+          const limitedTo = formatDateISO(addDays(fromDate, maxDays - 1))
+          const newRange = { from: localRange.from, to: limitedTo }
+          setLocalRange(newRange)
+          applyDebounce(newRange)
+        } else {
+          const newRange = { from: localRange.from, to: clickedDate }
+          setLocalRange(newRange)
+          applyDebounce(newRange)
+        }
+      } else {
+        // Clicked before from date, set as new range
+        const newRange = { from: clickedDate, to: localRange.from }
+        setLocalRange(newRange)
+        applyDebounce(newRange)
+      }
+    } else if (localRange.from === localRange.to) {
+      // Single day selected, treat next click as range end
+      const fromDate = parseDate(localRange.from)
+      
+      if (isAfter(date, fromDate)) {
+        const newRange = { from: localRange.from, to: clickedDate }
+        setLocalRange(newRange)
+        applyDebounce(newRange)
+      } else if (isBefore(date, fromDate)) {
+        const newRange = { from: clickedDate, to: localRange.from }
+        setLocalRange(newRange)
+        applyDebounce(newRange)
+      }
+    }
+  }
+
+  const applyDebounce = (range: DateRange) => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current)
     }
 
-    debounceTimer.current = setTimeout(() => {
-      onChange(newRange)
-    }, debounceMs)
+    if (debounceMs > 0) {
+      debounceTimer.current = setTimeout(() => {
+        onChange(range)
+      }, debounceMs)
+    } else {
+      onChange(range)
+    }
   }
 
   const isDateInRange = (date: Date): boolean => {
     if (!localRange.from || !localRange.to) return false
-    const dateTime = date.getTime()
-    const fromTime = parseISODate(localRange.from).getTime()
-    const toTime = parseISODate(localRange.to).getTime()
-    return dateTime >= fromTime && dateTime <= toTime
+    try {
+      return isWithinInterval(date, {
+        start: parseDate(localRange.from),
+        end: parseDate(localRange.to)
+      })
+    } catch {
+      return false
+    }
   }
 
   const isDateDisabled = (date: Date): boolean => {
-    if (minDate && date < minDate) return true
-    if (maxDate && date > maxDate) return true
+    if (minDate && isBefore(date, minDate)) return true
+    if (maxDate && isAfter(date, maxDate)) return true
     return false
   }
 
-  const getDaysInMonth = (date: Date): Date[] => {
-    const year = date.getFullYear()
-    const month = date.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const lastDay = new Date(year, month + 1, 0)
-    const days: Date[] = []
 
-    for (let i = 0; i < firstDay.getDay(); i++) {
-      days.push(new Date(year, month, -i))
-    }
 
-    for (let d = 1; d <= lastDay.getDate(); d++) {
-      days.push(new Date(year, month, d))
-    }
-
-    return days
-  }
-
-  const monthYear = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-
-  const displayValue = localRange.from && localRange.to
-    ? `${formatDateDisplay(localRange.from)} - ${formatDateDisplay(localRange.to)}`
-    : placeholder
-
-  const daysDiff = localRange.from && localRange.to
-    ? Math.floor((parseISODate(localRange.to).getTime() - parseISODate(localRange.from).getTime()) / (1000 * 60 * 60 * 24)) + 1
+  const dayCount = localRange.from && localRange.to
+    ? differenceInDays(parseDate(localRange.to), parseDate(localRange.from)) + 1
     : 0
 
+  const monthStart = startOfMonth(currentMonth)
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()
+
+  // Generate days array for the month
+  const days: Date[] = []
+  const firstDayOfWeek = monthStart.getDay()
+  
+  // Add empty slots for days before month starts
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    days.push(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), -firstDayOfWeek + i + 1))
+  }
+  
+  // Add all days of the month
+  for (let i = 1; i <= daysInMonth; i++) {
+    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i)
+    days.push(date)
+  }
+
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
+    <div className={cn("relative", className)} ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
         className={cn(
-          "flex items-center gap-2 px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 transition-colors",
-          "text-sm font-medium text-gray-700",
-          disabled && "opacity-50 cursor-not-allowed"
+          "flex items-center gap-2 px-3 py-2 bg-white border rounded-sm",
+          "hover:bg-gray-50 transition-colors",
+          disabled && "opacity-50 cursor-not-allowed",
+          className
         )}
       >
-        <Calendar className="w-4 h-4" />
-        <span>{displayValue}</span>
-        {daysDiff > 0 && (
-          <span className="text-gray-500">({daysDiff} days)</span>
-        )}
+        <Calendar className="w-4 h-4 text-gray-500" />
+        <span className="text-sm">
+          {value.from && value.to ? (
+            <>
+              {formatDateDisplay(value.from)} - {formatDateDisplay(value.to)}
+              <span className="ml-2 text-gray-500">({dayCount} days)</span>
+            </>
+          ) : (
+            <span className="text-gray-500">{placeholder}</span>
+          )}
+        </span>
       </button>
 
-      {isOpen && !disabled && (
-        <div className="absolute top-full mt-2 left-0 bg-white border rounded-lg shadow-lg p-4 z-50">
-          <div className="flex items-center justify-between mb-4">
+      {isOpen && (
+        <div className="absolute z-50 mt-2 p-4 bg-white border rounded-lg shadow-lg min-w-[320px]">
+          {/* Quick Select Buttons */}
+          <div className="mb-4 flex flex-wrap gap-2">
             <button
-              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-              className="p-1 hover:bg-gray-100 rounded-sm"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h3 className="font-semibold">{monthYear}</h3>
-            <button
-              onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-              className="p-1 hover:bg-gray-100 rounded-sm"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-              <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {getDaysInMonth(currentMonth).map((date, index) => {
-              const isCurrentMonth = date.getMonth() === currentMonth.getMonth()
-              const isInRange = isDateInRange(date)
-              const isStart = localRange.from && formatDateISO(date) === localRange.from
-              const isEnd = localRange.to && formatDateISO(date) === localRange.to
-              const isDisabled = isDateDisabled(date)
-
-              return (
-                <button
-                  key={index}
-                  onClick={() => !isDisabled && isCurrentMonth && handleDateSelect(date)}
-                  disabled={isDisabled || !isCurrentMonth}
-                  className={cn(
-                    "p-2 text-sm rounded-sm transition-colors",
-                    isCurrentMonth ? "text-gray-900" : "text-gray-300",
-                    isInRange && "bg-blue-100",
-                    (isStart || isEnd) && "bg-blue-500 text-white",
-                    !isDisabled && isCurrentMonth && "hover:bg-gray-100",
-                    isDisabled && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {date.getDate()}
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-4 flex justify-between text-sm">
-            <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
               onClick={() => {
                 const today = formatDateISO(new Date())
-                const thirtyDaysAgo = formatDateISO(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+                const newRange = { from: today, to: today }
+                setLocalRange(newRange)
+                onChange(newRange)
+              }}
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+              onClick={() => {
+                const today = formatDateISO(new Date())
+                const sevenDaysAgo = formatDateISO(subDays(new Date(), 7))
+                const newRange = { from: sevenDaysAgo, to: today }
+                setLocalRange(newRange)
+                onChange(newRange)
+              }}
+            >
+              Last 7 days
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+              onClick={() => {
+                const today = formatDateISO(new Date())
+                const thirtyDaysAgo = formatDateISO(subDays(new Date(), 30))
                 const newRange = { from: thirtyDaysAgo, to: today }
                 setLocalRange(newRange)
                 onChange(newRange)
-                setIsOpen(false)
               }}
-              className="text-blue-600 hover:underline"
             >
               Last 30 days
             </button>
             <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
               onClick={() => {
                 const today = formatDateISO(new Date())
-                const ninetyDaysAgo = formatDateISO(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000))
+                const ninetyDaysAgo = formatDateISO(subDays(new Date(), 90))
                 const newRange = { from: ninetyDaysAgo, to: today }
                 setLocalRange(newRange)
                 onChange(newRange)
-                setIsOpen(false)
               }}
-              className="text-blue-600 hover:underline"
             >
               Last 90 days
             </button>
             <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
               onClick={() => {
                 const today = new Date()
                 const yearStart = formatDateISO(new Date(today.getFullYear(), 0, 1))
@@ -260,15 +275,85 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                 const newRange = { from: yearStart, to: todayStr }
                 setLocalRange(newRange)
                 onChange(newRange)
-                setIsOpen(false)
               }}
-              className="text-blue-600 hover:underline"
             >
-              Year to date
+              Year to Date
             </button>
           </div>
+
+          {/* Calendar */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <button
+                type="button"
+                className="p-1 hover:bg-gray-100 rounded"
+                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="font-medium">
+                {format(currentMonth, 'MMMM yyyy')}
+              </span>
+              <button
+                type="button"
+                className="p-1 hover:bg-gray-100 rounded"
+                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                disabled={maxDate && currentMonth >= maxDate}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Day headers */}
+            <div className="grid grid-cols-7 gap-1 mb-1">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                <div key={day} className="text-xs text-center text-gray-500 font-medium py-1">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Days grid */}
+            <div className="grid grid-cols-7 gap-1">
+              {days.map((date, idx) => {
+                const isCurrentMonth = date.getMonth() === currentMonth.getMonth()
+                const isDisabled = isDateDisabled(date)
+                const isInRange = isDateInRange(date)
+                const isStart = localRange.from && localRange.from !== '' && isSameDay(date, parseDate(localRange.from))
+                const isEnd = localRange.to && localRange.to !== '' && isSameDay(date, parseDate(localRange.to))
+
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleDateClick(date)}
+                    disabled={!isCurrentMonth || isDisabled}
+                    className={cn(
+                      "p-2 text-xs rounded transition-colors",
+                      !isCurrentMonth && "text-gray-300",
+                      isCurrentMonth && !isDisabled && "hover:bg-gray-100",
+                      isDisabled && "text-gray-300 cursor-not-allowed",
+                      isInRange && "bg-blue-100",
+                      (isStart || isEnd) && "bg-blue-500 text-white hover:bg-blue-600"
+                    )}
+                  >
+                    {date.getDate()}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Selected range display */}
+          {localRange.from && localRange.to && (
+            <div className="text-sm text-center text-gray-600 border-t pt-2">
+              {formatDateDisplay(localRange.from)} - {formatDateDisplay(localRange.to)}
+              <span className="ml-2">({dayCount} days)</span>
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
+

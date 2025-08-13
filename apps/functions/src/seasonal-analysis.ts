@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
 import { calculateGrowthRate, safeDivide, calculateAverage, calculateStandardDeviation } from '@baileys/utils';
+import { getYear } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 
 type SeasonalData = {
@@ -103,7 +104,7 @@ export async function getSeasonalAnalysis(
     }
 
     try {
-        const year = parseInt(request.query.get('year') || new Date().getFullYear().toString());
+        const year = parseInt(request.query.get('year') || getYear(new Date()).toString());
         const previousYear = year - 1;
         const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 

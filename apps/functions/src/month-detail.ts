@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { formatDateISO } from './utils/dates';
 
 export async function getMonthDetail(
   request: HttpRequest,
@@ -41,7 +42,7 @@ export async function getMonthDetail(
     }
 
     const startDate = `${year}-${month.padStart(2, '0')}-01`;
-    const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0];
+    const endDate = formatDateISO(new Date(parseInt(year), parseInt(month), 0));
 
     // Get summary
     const summaryResult = await query<{

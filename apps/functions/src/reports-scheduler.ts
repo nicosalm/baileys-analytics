@@ -4,6 +4,7 @@ import * as nodemailer from 'nodemailer'
 import { query, transaction } from './services/database'
 import { requireAuth, corsHeaders } from './middleware/auth'
 import { formatCurrency } from '@baileys/utils'
+import { formatDateISO, formatDateDisplay, setYear, addMonths, setMonth, getYear, getMonth, getDay, getDate } from './utils/dates'
 import { randomUUID } from 'crypto'
 
 interface ScheduledReport {
@@ -56,40 +57,40 @@ function getCronExpression(schedule: ScheduledReport['schedule']): string {
 function getNextRunTime(schedule: ScheduledReport['schedule']): Date {
   const now = new Date()
   const [hour, minute] = schedule.time.split(':').map(Number)
-  const next = new Date()
+  let next = new Date()
   
   next.setHours(hour, minute, 0, 0)
   
   switch (schedule.frequency) {
     case 'daily':
       if (next <= now) {
-        next.setDate(next.getDate() + 1)
+        next.setDate(getDate(next) + 1)
       }
       break
       
     case 'weekly':
       const targetDay = schedule.dayOfWeek || 1
-      next.setDate(next.getDate() + ((targetDay - next.getDay() + 7) % 7))
+      next.setDate(getDate(next) + ((targetDay - getDay(next) + 7) % 7))
       if (next <= now) {
-        next.setDate(next.getDate() + 7)
+        next.setDate(getDate(next) + 7)
       }
       break
       
     case 'monthly':
       next.setDate(schedule.dayOfMonth || 1)
       if (next <= now) {
-        next.setMonth(next.getMonth() + 1)
+        next = addMonths(next, 1)
       }
       break
       
     case 'quarterly':
-      const currentMonth = now.getMonth()
+      const currentMonth = getMonth(now)
       const quarterMonths = [0, 3, 6, 9]
       const nextQuarterMonth = quarterMonths.find(m => m > currentMonth) || 0
       next.setMonth(nextQuarterMonth)
       next.setDate(1)
       if (next <= now) {
-        next.setFullYear(next.getFullYear() + 1)
+        next = setYear(next, getYear(next) + 1)
       }
       break
   }
@@ -126,7 +127,7 @@ async function generateAndEmailReport(report: ScheduledReport, context: Invocati
     const mailOptions = {
       from: process.env.EMAIL_FROM || 'noreply@baileys-analytics.com',
       to: report.schedule.recipients.join(', '),
-      subject: `${report.name} - ${new Date().toLocaleDateString()}`,
+      subject: `${report.name} - ${formatDateDisplay(new Date())}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #2563eb;">${report.name}</h2>
@@ -184,36 +185,36 @@ async function generateAndEmailReport(report: ScheduledReport, context: Invocati
 // Calculate date range based on schedule frequency
 function calculateDateRangeForSchedule(frequency: string): { from: string; to: string } {
   const today = new Date()
-  const from = new Date()
-  const to = new Date()
+  let from = new Date()
+  let to = new Date()
   
   switch (frequency) {
     case 'daily':
-      from.setDate(today.getDate() - 1)
-      to.setDate(today.getDate() - 1)
+      from.setDate(getDate(today) - 1)
+      to.setDate(getDate(today) - 1)
       break
     case 'weekly':
-      from.setDate(today.getDate() - 7)
-      to.setDate(today.getDate() - 1)
+      from.setDate(getDate(today) - 7)
+      to.setDate(getDate(today) - 1)
       break
     case 'monthly':
-      from.setMonth(today.getMonth() - 1)
+      from = addMonths(from, -1)
       from.setDate(1)
       to.setDate(0) // Last day of previous month
       break
     case 'quarterly':
-      from.setMonth(today.getMonth() - 3)
+      from = addMonths(from, -3)
       from.setDate(1)
-      to.setMonth(today.getMonth())
+      to = setMonth(to, getMonth(today))
       to.setDate(0)
       break
     default:
-      from.setDate(today.getDate() - 30)
+      from.setDate(getDate(today) - 30)
   }
   
   return {
-    from: from.toISOString().split('T')[0],
-    to: to.toISOString().split('T')[0]
+    from: formatDateISO(from),
+    to: formatDateISO(to)
   }
 }
 

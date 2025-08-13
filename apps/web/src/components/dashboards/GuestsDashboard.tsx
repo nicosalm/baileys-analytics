@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useGuests } from '@/hooks/use-api'
-import { formatCurrency, formatPercentage } from '@baileys/utils'
+import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star, Award } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -223,14 +223,14 @@ export const GuestsDashboard = () => {
             header: 'First Visit',
             sortable: true,
             width: 120,
-            render: (guest: GuestListItem) => new Date(guest.firstVisit).toLocaleDateString()
+            render: (guest: GuestListItem) => formatDateDisplay(new Date(guest.firstVisit))
         },
         {
             key: 'lastVisit',
             header: 'Last Visit',
             sortable: true,
             width: 120,
-            render: (guest: GuestListItem) => new Date(guest.lastVisit).toLocaleDateString()
+            render: (guest: GuestListItem) => formatDateDisplay(new Date(guest.lastVisit))
         },
         {
             key: 'tags',

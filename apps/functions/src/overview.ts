@@ -3,6 +3,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { requireAuthWithValidation } from './middleware/validation'
 import { financialQuerySchema } from '@baileys/shared-types'
 import { query } from './services/database'
+import { formatDateISO, getYear } from './utils/dates'
 
 interface OverviewMetrics {
   revenue: {
@@ -58,8 +59,8 @@ export async function overview(
   }
 
   // Use validated query parameters
-  const from = validated?.query?.from || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
-  const to = validated?.query?.to || new Date().toISOString().split('T')[0]
+  const from = validated?.query?.from || formatDateISO(new Date(getYear(new Date()), 0, 1))
+  const to = validated?.query?.to || formatDateISO(new Date())
   const tagIds = validated?.query?.tags || []
 
   try {
@@ -68,8 +69,8 @@ export async function overview(
 
     // Get previous period for comparison
     const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24))
-    const prevFrom = new Date(new Date(from).getTime() - daysDiff * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const prevTo = new Date(new Date(from).getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const prevFrom = formatDateISO(new Date(new Date(from).getTime() - daysDiff * 24 * 60 * 60 * 1000))
+    const prevTo = formatDateISO(new Date(new Date(from).getTime() - 24 * 60 * 60 * 1000))
     const previousMetrics = await getCurrentPeriodMetrics(tenantId, prevFrom, prevTo, tagIds, userId)
 
     // Get charts data

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { TaxRule, TaxRuleFormData, TaxCalculationMethod, TaxAppliesTo } from '@/types/tax'
-import { formatPercentage } from '@baileys/utils'
+import { formatPercentage, formatDateISO } from '@baileys/utils'
 import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight, Calculator } from 'lucide-react'
 import { taxEngine } from '@/lib/taxEngine'
 import { useTaxConfig } from '@/contexts/taxConfig'
@@ -80,7 +80,7 @@ const TaxRuleForm = ({
     description: '',
     method: { type: 'percentage', rate: 0 },
     appliesTo: { type: 'all' },
-    effectiveFrom: new Date().toISOString().split('T')[0],
+    effectiveFrom: formatDateISO(new Date()),
     priority: 0,
     isActive: true
   })

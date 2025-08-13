@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import axios from 'axios';
 import { query, DbResult } from './services/database';
+import { formatDateISO, differenceInDays } from './utils/dates';
 import { randomBytes } from 'crypto';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { syncProperties, syncBookings } from './services/syncService';
@@ -214,7 +215,7 @@ const performInitialSync = async (
   // Sync all historical data (from 2010)
   const dateRange = {
     from: '2010-01-01',
-    to: new Date().toISOString().split('T')[0]
+    to: formatDateISO(new Date())
   }
 
   const propertiesResult = await syncProperties(accessToken, tenantId, context)

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { formatDateISO, getYear } from './utils/dates';
 
 type ValidationResult = {
   source: string
@@ -262,8 +263,8 @@ export async function validateData(
   }
 
   try {
-    const fromDate = request.query.get('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
-    const toDate = request.query.get('to') || new Date().toISOString().split('T')[0]
+    const fromDate = request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1))
+    const toDate = request.query.get('to') || formatDateISO(new Date())
 
     // Get OAuth token
     const tokenResult = await query<{ access_token: string }>(

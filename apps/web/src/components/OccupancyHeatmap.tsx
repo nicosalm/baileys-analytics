@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useDailyOccupancy } from '@/hooks/use-api'
-import { cn } from '@baileys/utils'
+import { cn, formatDateDisplay } from '@baileys/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 
@@ -142,7 +142,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
                   <span className="font-medium">{new Date(day.date).getDate()}</span>
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block z-10">
                     <div className="bg-black text-white text-xs px-2 py-1 rounded-sm shadow-sm">
-                      <div>{new Date(day.date).toLocaleDateString()}</div>
+                      <div>{formatDateDisplay(new Date(day.date))}</div>
                       <div>{Math.round(day.occupancyRate * 100)}%</div>
                       <div>{day.bookedProperties}/{day.totalProperties}</div>
                     </div>

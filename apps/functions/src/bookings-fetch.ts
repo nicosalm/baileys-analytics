@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
+import { formatDateISO } from './utils/dates';
 
 type BookingCharge = {
   amount: number;
@@ -55,8 +56,8 @@ export async function fetchBookings(
 
   try {
     const propertyIds = request.query.get('property_ids') || '';
-    const fromDate = request.query.get('from') || new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const toDate = request.query.get('to') || new Date().toISOString().split('T')[0];
+    const fromDate = request.query.get('from') || formatDateISO(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000));
+    const toDate = request.query.get('to') || formatDateISO(new Date());
 
     context.log('Fetching bookings:', { propertyIds, fromDate, toDate });
 

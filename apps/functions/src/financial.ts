@@ -4,6 +4,7 @@ import { corsHeaders, handleOptions } from './middleware/auth'
 import { requireAuthWithValidation } from './middleware/validation'
 import { financialQuerySchema } from '@baileys/shared-types'
 import { safeDivide, calculatePercentage } from '@baileys/utils'
+import { formatDateISO, getYear } from './utils/dates'
 
 // ============================================
 // Type Definitions
@@ -601,8 +602,8 @@ async function getPreviousPeriodMetrics(
   const previousTo = new Date(currentFrom.getTime() - 1)
   const previousFrom = new Date(previousTo.getTime() - periodLength)
 
-  const previousFromStr = previousFrom.toISOString().split('T')[0]
-  const previousToStr = previousTo.toISOString().split('T')[0]
+  const previousFromStr = formatDateISO(previousFrom)
+  const previousToStr = formatDateISO(previousTo)
 
   const result = await query<{
     gross_revenue: string
@@ -833,8 +834,8 @@ async function getLastYearRevenue(
   const tagFilter = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(
     tenantId,
-    lastYearFrom.toISOString().split('T')[0],
-    lastYearTo.toISOString().split('T')[0],
+    formatDateISO(lastYearFrom),
+    formatDateISO(lastYearTo),
     tagIds
   )
 
@@ -1102,9 +1103,9 @@ export async function getUnifiedFinancials(
   try {
     // Use validated query parameters with defaults
     const fromDate = validated?.query?.from ||
-      new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]
+      formatDateISO(new Date(getYear(new Date()), 0, 1))
     const toDate = validated?.query?.to ||
-      new Date().toISOString().split('T')[0]
+      formatDateISO(new Date())
     const tagIds = validated?.query?.tags || []
 
     // Fetch all data in parallel

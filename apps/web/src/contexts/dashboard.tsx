@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react'
 import { DashboardTab, FilterState, Tag, DateRange } from '@/types/dashboard'
+import { formatDateISO, getYear } from '@baileys/utils'
 
 type DashboardContextValue = {
   activeTab: DashboardTab
@@ -22,8 +23,8 @@ export const useDashboard = () => {
 }
 
 const getDefaultDateRange = (): DateRange => ({
-  from: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
-  to: new Date().toISOString().split('T')[0]
+  from: formatDateISO(new Date(getYear(new Date()), 0, 1)),
+  to: formatDateISO(new Date())
 })
 
 const initialFilters: FilterState = {

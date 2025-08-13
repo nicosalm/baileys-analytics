@@ -1,5 +1,5 @@
 import { useMonthDetail } from '@/hooks/use-api'
-import { formatCurrency, formatPercentage } from '@baileys/utils'
+import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import { Calendar, DollarSign, Home, TrendingUp, Info } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { Modal } from '@/components/Modal'
@@ -181,7 +181,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
                       </div>
                     </td>
                     <td className="p-4 text-sm">
-                      {new Date(booking.arrival).toLocaleDateString()} - {new Date(booking.departure).toLocaleDateString()}
+                      {formatDateDisplay(new Date(booking.arrival))} - {formatDateDisplay(new Date(booking.departure))}
                     </td>
                     <td className="p-4 font-medium">
                       {formatCurrency(booking.totalAmount)}
