@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, TrendingUp, FileText } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
@@ -49,9 +49,15 @@ const DashboardContent = () => {
 }
 
 const DashboardTabs = () => {
-  const { activeTab, setActiveTab } = useDashboard()
+  const { activeTab } = useDashboard()
+  const navigate = useNavigate()
+  const location = useLocation()
+  
   const handleTabClick = (tabId: DashboardTab) => {
-    setActiveTab(tabId)
+    // Preserve query params when navigating
+    const currentParams = new URLSearchParams(location.search)
+    const newPath = `/dashboard/${tabId}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
+    navigate(newPath)
   }
 
   const displayActiveTab = activeTab
@@ -71,6 +77,7 @@ const DashboardTabs = () => {
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }
               `}
+              aria-current={displayActiveTab === id ? 'page' : undefined}
             >
               <Icon className="w-4 h-4 mr-2" />
               {label}

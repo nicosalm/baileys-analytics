@@ -31,8 +31,9 @@ export const App = () => {
               <Route path="/signup" element={<Signup />} />
 
               <Route element={<ProtectedRoute />}>
+                <Route path="/dashboard" element={<Navigate to="/dashboard/overview" replace />} />
                 <Route
-                  path="/dashboard/*"
+                  path="/dashboard/:tab"
                   element={
                     <DashboardProvider>
                         <TaxConfigProvider>

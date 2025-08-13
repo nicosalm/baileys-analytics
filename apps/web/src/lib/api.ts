@@ -6,6 +6,7 @@ import {
     TaxCalculationResult,
     TaxContext
 } from '@/types/tax'
+import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
 const API_BASE = '/api'
 
@@ -161,9 +162,14 @@ class ApiClient {
 
     async getFinancial(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+        // Validate dates before sending
+        if (from && isValidDateString(from)) params.append('from', from)
+        if (to && isValidDateString(to)) params.append('to', to)
+        // Validate and filter tag IDs
+        if (tagIds && tagIds.length > 0) {
+            const validTagIds = filterValidUUIDs(tagIds)
+            if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+        }
 
         return this.request(`/financial?${params}`)
     }
@@ -279,18 +285,28 @@ class ApiClient {
 
     async getPropertyMetrics(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+        // Validate dates before sending
+        if (from && isValidDateString(from)) params.append('from', from)
+        if (to && isValidDateString(to)) params.append('to', to)
+        // Validate and filter tag IDs
+        if (tagIds && tagIds.length > 0) {
+            const validTagIds = filterValidUUIDs(tagIds)
+            if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+        }
 
         return this.request(`/property-metrics?${params}`)
     }
 
     async getOccupancy(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+        // Validate dates before sending
+        if (from && isValidDateString(from)) params.append('from', from)
+        if (to && isValidDateString(to)) params.append('to', to)
+        // Validate and filter tag IDs
+        if (tagIds && tagIds.length > 0) {
+            const validTagIds = filterValidUUIDs(tagIds)
+            if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+        }
 
         return this.request(`/occupancy?${params}`)
     }
@@ -308,9 +324,14 @@ class ApiClient {
 
     async getGuests(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+        // Validate dates before sending
+        if (from && isValidDateString(from)) params.append('from', from)
+        if (to && isValidDateString(to)) params.append('to', to)
+        // Validate and filter tag IDs
+        if (tagIds && tagIds.length > 0) {
+            const validTagIds = filterValidUUIDs(tagIds)
+            if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+        }
 
         return this.request(`/guests?${params}`)
     }

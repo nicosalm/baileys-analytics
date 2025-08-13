@@ -7,32 +7,53 @@ import {
   TaxContext 
 } from '@/types/tax'
 import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
+import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
 export function useFinancial(from?: string, to?: string, tagIds?: string[]) {
-  const key = from || to || tagIds ? ['/financial', from, to, tagIds] : null
+  // Validate inputs
+  const validFrom = from && isValidDateString(from) ? from : undefined
+  const validTo = to && isValidDateString(to) ? to : undefined
+  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  
+  const key = validFrom || validTo || validTagIds ? ['/financial', validFrom, validTo, validTagIds] : null
   return useSWR<any>(key)
 }
 
 export function useOccupancy(from?: string, to?: string, tagIds?: string[]) {
-  const key = from || to || tagIds ? ['/occupancy', from, to, tagIds] : null
+  // Validate inputs
+  const validFrom = from && isValidDateString(from) ? from : undefined
+  const validTo = to && isValidDateString(to) ? to : undefined
+  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  
+  const key = validFrom || validTo || validTagIds ? ['/occupancy', validFrom, validTo, validTagIds] : null
   return useSWR<any>(key)
 }
 
 export function usePropertyMetrics(from?: string, to?: string, tagIds?: string[]) {
-  const key = from || to || tagIds ? ['/property-metrics', from, to, tagIds] : null
+  // Validate inputs
+  const validFrom = from && isValidDateString(from) ? from : undefined
+  const validTo = to && isValidDateString(to) ? to : undefined
+  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  
+  const key = validFrom || validTo || validTagIds ? ['/property-metrics', validFrom, validTo, validTagIds] : null
   return useSWR<any>(key, async () => {
     if (!key) return null
-    const result = await api.getPropertyMetrics(from || '', to || '', tagIds || [])
+    const result = await api.getPropertyMetrics(validFrom || '', validTo || '', validTagIds || [])
     if (!result.success) throw new Error(result.error)
     return result.data
   })
 }
 
 export function useGuests(from?: string, to?: string, tagIds?: string[]) {
-  const key = from || to || tagIds ? ['/guests', from, to, tagIds] : null
+  // Validate inputs
+  const validFrom = from && isValidDateString(from) ? from : undefined
+  const validTo = to && isValidDateString(to) ? to : undefined
+  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  
+  const key = validFrom || validTo || validTagIds ? ['/guests', validFrom, validTo, validTagIds] : null
   return useSWR<any>(key, async () => {
     if (!key) return null
-    const result = await api.getGuests(from || '', to || '', tagIds || [])
+    const result = await api.getGuests(validFrom || '', validTo || '', validTagIds || [])
     if (!result.success) throw new Error(result.error)
     return result.data
   })

@@ -12,7 +12,7 @@ export const Landing = () => {
           <h1 className="text-xl font-bold">Baileys Analytics</h1>
           <div className="space-x-4">
             {isAuthenticated ? (
-              <Link to="/dashboard" className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
+              <Link to="/dashboard/overview" className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
                 Dashboard
               </Link>
             ) : (

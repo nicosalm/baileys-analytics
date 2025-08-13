@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { DateRangePicker } from './DateRangePicker'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags } from '@/hooks/use-api'
+import { useToast } from '@/contexts/toast'
 import { Filter, X, ChevronDown } from 'lucide-react'
 import { cn } from '@baileys/utils'
 
@@ -126,16 +127,18 @@ export const FilterBar: React.FC = () => {
             )}
           </div>
 
-          {/* Clear Filters Button */}
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4" />
-              Clear Filters
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+                Clear Filters
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

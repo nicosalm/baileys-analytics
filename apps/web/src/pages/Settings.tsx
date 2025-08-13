@@ -230,7 +230,7 @@ export const Settings = () => {
     <div className="min-h-screen">
       <nav className="p-4 border-b">
         <div className="max-w-6xl mx-auto">
-          <Link to="/dashboard" className="text-blue-600">← Back to Dashboard</Link>
+          <Link to="/dashboard/overview" className="text-blue-600">← Back to Dashboard</Link>
         </div>
       </nav>
 
