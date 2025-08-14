@@ -1,11 +1,5 @@
 import useSWR, { mutate as globalMutate } from 'swr'
 import { api } from '@/lib/api'
-import { 
-  TaxRule, 
-  TaxRuleFormData, 
-  PropertyTaxConfig,
-  TaxContext 
-} from '@/types/tax'
 import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
@@ -72,7 +66,7 @@ export function useProperties() {
   return useSWR<any>('/properties', async () => {
     const result = await api.getProperties()
     if (!result.success) throw new Error(result.error)
-    return result.data
+    return result.data?.properties || []
   })
 }
 
@@ -94,110 +88,6 @@ export function useSyncStatus() {
   })
 }
 
-export function useTaxRules() {
-  return useSWR<TaxRule[]>('/tax-rules', async () => {
-    const result = await api.getTaxRules()
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
-}
-
-export function usePropertyTaxConfigs() {
-  return useSWR<PropertyTaxConfig[]>('/property-tax-configs', async () => {
-    const result = await api.getPropertyTaxConfigs()
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
-}
-
-export async function createTaxRule(rule: TaxRuleFormData) {
-  // Optimistically update the cache
-  const optimisticRule: TaxRule = {
-    ...rule,
-    id: `temp-${Date.now()}`, // Temporary ID
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-  
-  await globalMutate(
-    '/tax-rules',
-    async (currentData: TaxRule[] | undefined) => {
-      const result = await api.createTaxRule(rule)
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-      // Return the actual data from server
-      return [...(currentData || []).filter(r => !r.id.startsWith('temp-')), result.data]
-    },
-    {
-      optimisticData: (currentData: TaxRule[] | undefined) => 
-        [...(currentData || []), optimisticRule],
-      rollbackOnError: true,
-      populateCache: true,
-      revalidate: false
-    }
-  )
-  
-  return { success: true, data: optimisticRule }
-}
-
-export async function updateTaxRule(ruleId: string, rule: TaxRuleFormData) {
-  // Optimistically update the cache
-  const optimisticRule: TaxRule = {
-    ...rule,
-    id: ruleId,
-    createdAt: new Date().toISOString(), // Will be replaced by server
-    updatedAt: new Date().toISOString()
-  }
-  
-  await globalMutate(
-    '/tax-rules',
-    async (currentData: TaxRule[] | undefined) => {
-      const result = await api.updateTaxRule(ruleId, rule)
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-      // Return updated data from server
-      return currentData?.map(r => r.id === ruleId ? result.data : r) || []
-    },
-    {
-      optimisticData: (currentData: TaxRule[] | undefined) =>
-        currentData?.map(r => r.id === ruleId ? optimisticRule : r) || [],
-      rollbackOnError: true,
-      populateCache: true,
-      revalidate: false
-    }
-  )
-  
-  return { success: true, data: optimisticRule }
-}
-
-export async function deleteTaxRule(ruleId: string) {
-  await globalMutate(
-    '/tax-rules',
-    async (currentData: TaxRule[] | undefined) => {
-      const result = await api.deleteTaxRule(ruleId)
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-      // Return filtered data
-      return currentData?.filter(r => r.id !== ruleId) || []
-    },
-    {
-      optimisticData: (currentData: TaxRule[] | undefined) =>
-        currentData?.filter(r => r.id !== ruleId) || [],
-      rollbackOnError: true,
-      populateCache: true,
-      revalidate: false
-    }
-  )
-  
-  return { success: true }
-}
-
-export async function calculateTaxPreview(amount: number, context: TaxContext) {
-  return api.calculateTaxPreview(amount, context)
-}
 
 export async function manualSync() {
   const result = await api.manualSync()
@@ -456,4 +346,81 @@ export async function generateReport(templateId: string) {
   const result = await api.generateReport(templateId)
   if (!result.success) throw new Error(result.error)
   return result.data
+}
+
+// Platform Fee hooks
+export function usePlatformFees(propertyId: string, month: string) {
+  const key = propertyId && month ? ['/platform-fees', propertyId, month] : null
+  return useSWR(key, async () => {
+    if (!propertyId || !month) return []
+    const result = await api.getPlatformFees(propertyId, month)
+    if (!result.success) throw new Error(result.error)
+    const data = result.data?.data || result.data || []
+    return Array.isArray(data) ? data : []
+  }, {
+    revalidateOnMount: true,
+    revalidateOnFocus: true,
+    dedupingInterval: 0
+  })
+}
+
+export async function savePlatformFee(data: any): Promise<void> {
+  const result = await api.savePlatformFee(data)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  // Invalidate cache
+  await globalMutate((key: any) => 
+    Array.isArray(key) && key[0] === '/platform-fees'
+  )
+}
+
+// Tax Remittance hooks
+export function useTaxRemittance(propertyId?: string, periodStart?: string, periodEnd?: string) {
+  const key = ['/tax-remittance', propertyId, periodStart, periodEnd].filter(Boolean)
+  return useSWR(key.length > 1 ? key : null, async () => {
+    const result = await api.getTaxRemittance(propertyId, periodStart, periodEnd)
+    if (!result.success) throw new Error(result.error)
+    return result.data?.data || result.data || []
+  })
+}
+
+export function useCalculatedTax(from?: string, to?: string, propertyId?: string) {
+  const key = from || to ? ['/tax-calculate-bulk', from, to, propertyId].filter(Boolean) : null
+  return useSWR(key, async () => {
+    const result = await api.calculateBulkTax(from, to, propertyId)
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  })
+}
+
+// Property Tax Status hooks
+export function usePropertyTaxStatus() {
+  return useSWR('/property-tax-status', async () => {
+    const result = await api.getPropertyTaxStatus()
+    if (!result.success) throw new Error(result.error)
+    return result.data?.data || result.data || []
+  })
+}
+
+// Property Tax Configs hook
+export function usePropertyTaxConfigs() {
+  return useSWR('/property-tax-configs', async () => {
+    const result = await api.getPropertyTaxConfigs()
+    if (!result.success) throw new Error(result.error)
+    // Handle both formats - the API returns { status: 'success', data: [...] }
+    if (result.data?.status === 'success' && result.data?.data) {
+      return result.data.data
+    }
+    return result.data || []
+  })
+}
+
+export async function savePropertyTaxConfig(data: any): Promise<void> {
+  const result = await api.savePropertyTaxConfig(data)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  // Invalidate cache
+  await globalMutate('/property-tax-status')
 }

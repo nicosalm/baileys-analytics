@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react'
 import { DateRangePicker } from './DateRangePicker'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags } from '@/hooks/use-api'
-import { useToast } from '@/contexts/toast'
 import { Filter, X, ChevronDown } from 'lucide-react'
 import { cn } from '@baileys/utils'
 

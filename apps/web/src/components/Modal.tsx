@@ -48,9 +48,9 @@ export const Modal = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      {/* Invisible backdrop for click-to-close */}
+      {/* Backdrop with blur effect */}
       <div 
-        className="fixed inset-0"
+        className="fixed inset-0 bg-black/20 backdrop-blur-sm"
         onClick={onClose}
       />
       

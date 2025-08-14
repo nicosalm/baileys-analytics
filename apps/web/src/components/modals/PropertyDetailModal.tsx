@@ -21,30 +21,12 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
   const { filters } = useDashboard()
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'revenue'>('overview')
   
-  // Debug logging
-  console.log('PropertyDetailModal - Rendering with filters:', {
-    from: filters.dateRange.from,
-    to: filters.dateRange.to,
-    propertyId,
-    timestamp: new Date().toISOString()
-  })
-  
   const { data, isLoading, error } = usePropertyDetail(
     propertyId,
     filters.dateRange.from,
     filters.dateRange.to,
     filters.selectedTags.map(t => t.id)
   )
-  
-  // Debug data received
-  if (data) {
-    console.log('PropertyDetailModal - Data received:', {
-      totalNights: data.metrics?.totalNights,
-      totalDays: data.metrics?.totalDays,
-      occupancyRate: data.metrics?.occupancyRate,
-      totalBookings: data.metrics?.totalBookings
-    })
-  }
 
   if (isLoading) {
     return (

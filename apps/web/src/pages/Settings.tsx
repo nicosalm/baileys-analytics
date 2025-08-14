@@ -1,12 +1,16 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
 import { RefreshCw, Calendar, AlertCircle, Calculator } from 'lucide-react'
-import { TaxConfiguration } from '@/components/TaxConfiguration'
 import { formatDateDisplay } from '@baileys/utils'
+
+// Lazy load the tax management panel
+const TaxManagementPanel = lazy(() => 
+  import('@/components/settings/TaxManagementPanel').then(m => ({ default: m.TaxManagementPanel }))
+)
 
 type SyncStatus = {
   lastPropertySync: string | null
@@ -159,10 +163,19 @@ const OwnerRezConnection = ({
 export const Settings = () => {
   const { state } = useAuth()
   const { addToast } = useToast()
+  const [searchParams] = useSearchParams()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
   const [activeTab, setActiveTab] = useState<'account' | 'tax'>('account')
   
   const { data: syncStatus } = useSyncStatus()
+  
+  // Handle URL parameter for tab selection
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'tax') {
+      setActiveTab('tax')
+    }
+  }, [searchParams])
 
   if (state.status !== 'authenticated') return null
 
@@ -280,81 +293,19 @@ export const Settings = () => {
             />
           </div>
         ) : (
-          <TaxConfiguration />
+          <Suspense fallback={
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <div className="flex justify-center py-12">
+                <LoadingState />
+              </div>
+            </div>
+          }>
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <TaxManagementPanel />
+            </div>
+          </Suspense>
         )}
         
-        {/* 
-        ========================================
-        FUTURE SETTINGS SECTIONS TO IMPLEMENT:
-        ========================================
-        
-        1. PROFILE & EMAIL SETTINGS:
-           - Change email address with verification
-           - Update company name
-           - Add/edit business details (address, phone, tax ID)
-           - Upload company logo
-           - Set timezone preferences
-        
-        2. NOTIFICATION PREFERENCES:
-           - Email notification toggles (bookings, cancellations, reviews)
-           - Daily/weekly summary emails
-           - Alert thresholds (low occupancy warnings, high revenue alerts)
-           - SMS notifications (optional)
-           - In-app notification preferences
-        
-        3. SECURITY & PRIVACY:
-           - Change password
-           - Two-factor authentication setup
-           - Active sessions management
-           - API keys management
-           - Login history
-           - Privacy settings (data sharing, analytics)
-        
-        4. INTEGRATIONS:
-           - Connect additional property management systems
-           - Accounting software integration (QuickBooks, Xero)
-           - Calendar sync (Google Calendar, iCal)
-           - Channel manager connections
-           - Payment processor settings
-        
-        5. TEAM & PERMISSIONS:
-           - Invite team members
-           - Role management (Admin, Manager, Viewer)
-           - Permission settings per role
-           - Activity logs
-        
-        6. BILLING & SUBSCRIPTION:
-           - Current plan details
-           - Upgrade/downgrade options
-           - Payment method management
-           - Billing history
-           - Invoices download
-        
-        7. PREFERENCES:
-           - Dashboard customization
-           - Default date ranges
-           - Currency settings
-           - Language preferences
-           - Export format defaults
-        
-        8. DANGER ZONE:
-           - Export all data (GDPR compliance)
-           - Delete all booking data
-           - Delete all property data
-           - Disconnect integrations
-           - Delete account permanently
-           - Clear cache and reset preferences
-        
-        IMPLEMENTATION NOTES:
-        - Each section should be a separate component
-        - Use confirmation modals for destructive actions
-        - Implement proper loading states
-        - Add success/error toasts for all actions
-        - Consider using a sidebar navigation for many sections
-        - Add search functionality when sections grow
-        - Implement proper validation for all forms
-        - Add "unsaved changes" warnings where appropriate
-        */}
       </div>
     </div>
   )

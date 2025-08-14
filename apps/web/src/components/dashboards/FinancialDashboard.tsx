@@ -8,7 +8,8 @@ import {
 import {
   DollarSign, TrendingUp, Wallet,
   AlertCircle, Calendar, Home, FileText,
-  Info, Target, TrendingDown, PiggyBank, Receipt
+  Info, Target, TrendingDown, PiggyBank, Receipt, CheckCircle,
+  AlertTriangle, Settings, ArrowRight, X
 } from 'lucide-react'
 import { SimpleTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -18,6 +19,9 @@ import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
+import { TaxRemittanceWidget } from '@/components/tax/TaxRemittanceWidget'
+import { usePropertyTaxStatus } from '@/hooks/use-api'
+import { useNavigate } from 'react-router-dom'
 import {
   Line, Bar, BarChart, LineChart, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip
@@ -801,6 +805,22 @@ const CashFlow: React.FC<CashFlowProps> = ({ data, loading }) => {
 const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
   const [viewMode, setViewMode] = useState('summary')
   const { openModal } = useModal()
+  const navigate = useNavigate()
+  const { data: taxStatusData, isLoading: taxStatusLoading } = usePropertyTaxStatus()
+  const [isDismissed, setIsDismissed] = useState(false)
+  
+  // Ensure tax status data is an array
+  const taxStatus = Array.isArray(taxStatusData) ? taxStatusData : []
+  
+  // Count properties needing configuration
+  const missingConfigs = taxStatus.filter((p: any) => !p.hasConfig)
+  const missingFees = taxStatus.filter((p: any) => p.missingMonths?.length > 0)
+  const totalIssues = missingConfigs.length + missingFees.length
+  
+  const handleGoToSettings = () => {
+    navigate('/settings?tab=tax')
+  }
+  const { filters } = useDashboard()
 
   if (loading || !data) {
     return (
@@ -817,13 +837,6 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
   }
 
   const effectiveTaxRate = data.summary.effectiveRate * 100
-  
-  // Calculate quarterly tax liability
-  const currentQuarterTax = data.byMonth
-    .slice(-3)
-    .reduce((sum: number, month: any) => sum + month.totalTax, 0)
-  
-  const avgMonthlyTax = data.summary.totalTax / data.byMonth.length
 
   const handlePropertyClick = (property: any) => {
     openModal({
@@ -891,12 +904,99 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
 
   return (
     <div className="space-y-6">
+      {/* Tax Configuration Alert */}
+      {!taxStatusLoading && !isDismissed && (totalIssues > 0 || taxStatus.length === 0) && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
+          <div className="p-4">
+            <div className="flex justify-between items-start">
+              <div className="flex">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 mr-3 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-yellow-900">
+                    {taxStatus.length === 0 ? 'No Properties Found' : 'Tax Configuration Required'}
+                  </h3>
+                  <div className="mt-1 text-sm text-yellow-700">
+                    {taxStatus.length === 0 ? (
+                      <p>
+                        Sync your properties from OwnerRez to configure taxes
+                      </p>
+                    ) : (
+                      <>
+                        {missingConfigs.length > 0 && (
+                          <p>
+                            {missingConfigs.length} {missingConfigs.length === 1 ? 'property needs' : 'properties need'} tax configuration
+                          </p>
+                        )}
+                        {missingFees.length > 0 && (
+                          <p>
+                            {missingFees.length} {missingFees.length === 1 ? 'property has' : 'properties have'} missing platform fee data
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    {taxStatus.length === 0 ? (
+                      <button
+                        onClick={() => navigate('/settings')}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Sync Properties
+                      </button>
+                    ) : missingConfigs.length > 0 ? (
+                      <button
+                        onClick={() => {
+                          const firstMissing = missingConfigs[0]
+                          if (firstMissing) {
+                            openModal({
+                              type: 'tax-config-wizard',
+                              defaultPropertyId: firstMissing.propertyId
+                            })
+                          }
+                        }}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Configure Now
+                      </button>
+                    ) : missingFees.length > 0 ? (
+                      <button
+                        onClick={() => navigate('/settings?tab=tax')}
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors"
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Add Platform Fees
+                      </button>
+                    ) : null}
+                    <button
+                      onClick={handleGoToSettings}
+                      className="inline-flex items-center px-4 py-2 bg-yellow-600 text-white text-sm font-medium rounded-sm hover:bg-yellow-700 transition-colors"
+                    >
+                      View All Settings
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDismissed(true)}
+                className="p-1 text-yellow-600 hover:bg-yellow-100 rounded transition-colors"
+                title="Dismiss"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* What This Tab Shows */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start">
           <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
           <div className="text-sm text-blue-800">
-            <strong>Tax Tracking:</strong> Monitors occupancy taxes collected from guests that you'll need to pay to local authorities
+            <strong>Tax Tracking:</strong> Monitors occupancy taxes collected from guests that you'll need to pay to local authorities, including platform fee taxes
           </div>
         </div>
       </div>
@@ -915,30 +1015,30 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={FileText}
-          label="Taxes Collected"
+          label="Total Tax Due"
           value={data.summary.totalTax}
           format="currency"
           color="green"
           subValue={`${effectiveTaxRate.toFixed(1)}% rate`}
-          tooltip="Total tax collected from guests"
+          tooltip="Total tax liability including platform fees"
         />
         <MetricCard
-          icon={Calendar}
-          label="This Quarter"
-          value={currentQuarterTax}
+          icon={DollarSign}
+          label="You Remit"
+          value={data.summary.ownerRemitted || data.summary.totalTax}
           format="currency"
           color="blue"
-          subValue="Due soon"
-          tooltip="Tax liability for current quarter"
+          subValue="Your responsibility"
+          tooltip="Tax amount you need to pay directly"
         />
         <MetricCard
-          icon={TrendingUp}
-          label="Monthly Average"
-          value={avgMonthlyTax}
+          icon={CheckCircle}
+          label="Platform Remits"
+          value={data.summary.platformRemitted || 0}
           format="currency"
-          color="purple"
-          subValue="Typical amount"
-          tooltip="Average monthly tax collection"
+          color="green"
+          subValue="Paid by platforms"
+          tooltip="Tax paid directly by booking platforms"
         />
         <MetricCard
           icon={Home}
@@ -950,6 +1050,12 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
           tooltip="Number of properties with tax data"
         />
       </div>
+
+      {/* Tax Remittance Display */}
+      <TaxRemittanceWidget
+        periodStart={filters.dateRange.from}
+        periodEnd={filters.dateRange.to}
+      />
 
       {viewMode === 'summary' ? (
         <>

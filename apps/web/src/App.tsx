@@ -5,7 +5,6 @@ import { swrConfig } from '@/hooks/swr-config'
 import { AuthProvider } from '@/contexts/auth'
 import { ToastProvider } from '@/contexts/toast'
 import { DashboardProvider } from '@/contexts/dashboard'
-import { TaxConfigProvider } from '@/contexts/taxConfig'
 import { ModalProvider } from '@/contexts/modal'
 import { ModalManager } from '@/components/ModalManager'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
@@ -36,21 +35,20 @@ export const App = () => {
                   path="/dashboard/:tab"
                   element={
                     <DashboardProvider>
-                        <TaxConfigProvider>
-                          <ModalProvider>
-                            <DashboardLayout />
-                            <ModalManager />
-                          </ModalProvider>
-                        </TaxConfigProvider>
+                      <ModalProvider>
+                        <DashboardLayout />
+                        <ModalManager />
+                      </ModalProvider>
                     </DashboardProvider>
                   }
                 />
                 <Route
                   path="/settings"
                   element={
-                    <TaxConfigProvider>
-                      <Settings />
-                    </TaxConfigProvider>
+                    <ModalProvider>
+                    <Settings />
+                    <ModalManager />
+                  </ModalProvider>
                   }
                 />
               </Route>

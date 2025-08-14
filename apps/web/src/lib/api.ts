@@ -1,11 +1,4 @@
 import { z } from 'zod'
-import {
-    TaxRule,
-    TaxRuleFormData,
-    PropertyTaxConfig,
-    TaxCalculationResult,
-    TaxContext
-} from '@/types/tax'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
 const API_BASE = '/api'
@@ -162,106 +155,15 @@ class ApiClient {
 
     async getFinancial(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        // Validate dates before sending
         if (from && isValidDateString(from)) params.append('from', from)
         if (to && isValidDateString(to)) params.append('to', to)
-        // Validate and filter tag IDs
         if (tagIds && tagIds.length > 0) {
             const validTagIds = filterValidUUIDs(tagIds)
             if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
         }
-
         return this.request(`/financial?${params}`)
     }
 
-    async getTaxRules(): Promise<ApiResult<TaxRule[]>> {
-        const result = await this.request<{ status: string; data: TaxRule[] }>('/tax-rules')
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: result.data.data }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to fetch tax rules' : result.error
-        }
-    }
-
-    async getPropertyTaxConfigs(): Promise<ApiResult<PropertyTaxConfig[]>> {
-        const result = await this.request<{ status: string; data: PropertyTaxConfig[] }>('/property-tax-configs')
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: result.data.data }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to fetch property tax configs' : result.error
-        }
-    }
-
-    async createTaxRule(rule: TaxRuleFormData): Promise<ApiResult<TaxRule>> {
-        const result = await this.request<{ status: string; data: TaxRule }>('/tax-rules', {
-            method: 'POST',
-            body: JSON.stringify(rule)
-        })
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: result.data.data }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to create tax rule' : result.error
-        }
-    }
-
-    async updateTaxRule(ruleId: string, rule: TaxRuleFormData): Promise<ApiResult<TaxRule>> {
-        const result = await this.request<{ status: string; data: TaxRule }>(`/tax-rules/${ruleId}`, {
-            method: 'PUT',
-            body: JSON.stringify(rule)
-        })
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: result.data.data }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to update tax rule' : result.error
-        }
-    }
-
-    async deleteTaxRule(ruleId: string): Promise<ApiResult<void>> {
-        const result = await this.request<{ status: string }>(`/tax-rules/${ruleId}`, {
-            method: 'DELETE'
-        })
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: undefined }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to delete tax rule' : result.error
-        }
-    }
-
-    async calculateTaxPreview(amount: number, context: TaxContext): Promise<ApiResult<TaxCalculationResult>> {
-        const result = await this.request<{ status: string; data: TaxCalculationResult }>('/tax-preview', {
-            method: 'POST',
-            body: JSON.stringify({ amount, context })
-        })
-
-        if (result.success && result.data.status === 'success') {
-            return { success: true, data: result.data.data }
-        }
-
-        return {
-            success: false,
-            error: result.success ? 'Failed to calculate tax preview' : result.error
-        }
-    }
 
     async manualSync(): Promise<ApiResult<any>> {
         return this.request('/manual-sync', { method: 'POST' })
@@ -285,29 +187,23 @@ class ApiClient {
 
     async getPropertyMetrics(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        // Validate dates before sending
         if (from && isValidDateString(from)) params.append('from', from)
         if (to && isValidDateString(to)) params.append('to', to)
-        // Validate and filter tag IDs
         if (tagIds && tagIds.length > 0) {
             const validTagIds = filterValidUUIDs(tagIds)
             if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
         }
-
         return this.request(`/property-metrics?${params}`)
     }
 
     async getOccupancy(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        // Validate dates before sending
         if (from && isValidDateString(from)) params.append('from', from)
         if (to && isValidDateString(to)) params.append('to', to)
-        // Validate and filter tag IDs
         if (tagIds && tagIds.length > 0) {
             const validTagIds = filterValidUUIDs(tagIds)
             if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
         }
-
         return this.request(`/occupancy?${params}`)
     }
 
@@ -324,19 +220,15 @@ class ApiClient {
 
     async getGuests(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
-        // Validate dates before sending
         if (from && isValidDateString(from)) params.append('from', from)
         if (to && isValidDateString(to)) params.append('to', to)
-        // Validate and filter tag IDs
         if (tagIds && tagIds.length > 0) {
             const validTagIds = filterValidUUIDs(tagIds)
             if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
         }
-
         return this.request(`/guests?${params}`)
     }
 
-    // Report Template APIs
     async getReportTemplates(): Promise<ApiResult<any>> {
         return this.request('/report-templates')
     }
@@ -368,6 +260,77 @@ class ApiClient {
     async generateReport(templateId: string): Promise<ApiResult<any>> {
         return this.request(`/reports/generate/${templateId}`, {
             method: 'POST'
+        })
+    }
+
+    async getPlatformFees(propertyId: string, month: string): Promise<ApiResult<any>> {
+        const params = new URLSearchParams()
+        params.append('property', propertyId)
+        params.append('month', month)
+        return this.request(`/platform-fees?${params}`)
+    }
+
+    async savePlatformFee(data: any): Promise<ApiResult<any>> {
+        return this.request('/platform-fees', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async deletePlatformFee(id: string): Promise<ApiResult<any>> {
+        return this.request(`/platform-fees/${id}`, {
+            method: 'DELETE'
+        })
+    }
+
+    async getTaxRemittance(propertyId?: string, periodStart?: string, periodEnd?: string): Promise<ApiResult<any>> {
+        const params = new URLSearchParams()
+        if (propertyId) params.append('property', propertyId)
+        if (periodStart) params.append('start', periodStart)
+        if (periodEnd) params.append('end', periodEnd)
+        return this.request(`/tax-remittance?${params}`)
+    }
+
+    async calculateTax(data: any): Promise<ApiResult<any>> {
+        return this.request('/tax-calculate', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async calculateBulkTax(from?: string, to?: string, propertyId?: string): Promise<ApiResult<any>> {
+        const params = new URLSearchParams()
+        if (from) params.append('from', from)
+        if (to) params.append('to', to)
+        if (propertyId) params.append('propertyId', propertyId)
+        return this.request(`/tax-calculate-bulk?${params}`)
+    }
+
+    async getPropertyTaxStatus(): Promise<ApiResult<any>> {
+        return this.request('/property-tax-status')
+    }
+
+    async getPropertyTaxConfigs(): Promise<ApiResult<any>> {
+        return this.request('/property-tax-configs')
+    }
+
+    async savePropertyTaxConfig(data: any): Promise<ApiResult<any>> {
+        return this.request('/property-tax-configs', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async updatePropertyTaxConfig(id: string, data: any): Promise<ApiResult<any>> {
+        return this.request(`/property-tax-configs/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async deletePropertyTaxConfig(configId: string): Promise<ApiResult<any>> {
+        return this.request(`/property-tax-configs/${configId}`, {
+            method: 'DELETE'
         })
     }
 

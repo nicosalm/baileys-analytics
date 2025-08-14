@@ -61,7 +61,9 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
   const netRevenue = data.pl?.metrics?.revenue?.net || 0
   const platformFees = data.pl?.metrics?.revenue?.platformFees || 0
   const cleaningFees = data.pl?.metrics?.revenue?.cleaningFees || 0
-  const taxAmount = data.tax?.total || 0
+  const taxAmount = data.tax?.summary?.totalTax || 0
+  const ownerRemittedTax = data.tax?.summary?.ownerRemitted || taxAmount
+  const platformRemittedTax = data.tax?.summary?.platformRemitted || 0
   
   const profitMargin = calculatePercentage(netRevenue, grossRevenue)
   
@@ -215,8 +217,18 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
                   <span className="font-medium text-red-600">-{formatCurrency(cleaningFees)}</span>
                 </div>
                 <div className="flex justify-between py-2">
-                  <span className="text-gray-600">Taxes</span>
-                  <span className="font-medium text-red-600">-{formatCurrency(taxAmount)}</span>
+                  <span className="text-gray-600">Total Taxes</span>
+                  <span className="font-medium text-orange-600">{formatCurrency(taxAmount)}</span>
+                </div>
+                {platformRemittedTax > 0 && (
+                  <div className="flex justify-between py-1 pl-4 text-sm">
+                    <span className="text-gray-500">Platform Remits</span>
+                    <span className="text-green-600">-{formatCurrency(platformRemittedTax)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between py-1 pl-4 text-sm">
+                  <span className="text-gray-500">You Remit</span>
+                  <span className="text-red-600">-{formatCurrency(ownerRemittedTax)}</span>
                 </div>
                 <div className="flex justify-between py-2 pt-3 border-t font-semibold">
                   <span>What You Keep</span>

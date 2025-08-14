@@ -124,7 +124,6 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
       
       closeModal()
     } catch (error) {
-      console.error('Failed to save template:', error)
       addToast('error', error instanceof Error ? error.message : 'Failed to save template')
     } finally {
       setIsSaving(false)

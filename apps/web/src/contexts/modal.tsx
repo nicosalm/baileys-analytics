@@ -11,6 +11,8 @@ export type ModalType =
   | { type: 'report-preview'; templateId: string; templateName: string }
   | { type: 'report-history'; templateId: string; templateName: string }
   | { type: 'report-schedule'; templateId: string; templateName: string }
+  | { type: 'tax-config-wizard'; defaultPropertyId?: string; existingConfig?: any }
+  | { type: 'platform-fee-entry'; propertyId: string; propertyName: string; month?: string; existingData?: any }
   | null
 
 interface ModalContextType {

@@ -6,9 +6,6 @@ import { financialQuerySchema } from '@baileys/shared-types'
 import { safeDivide, calculatePercentage } from '@baileys/utils'
 import { formatDateISO, getYear } from './utils/dates'
 
-// ============================================
-// Type Definitions
-// ============================================
 
 type UnifiedFinancialResponse = {
   pl: PLData
@@ -880,6 +877,132 @@ async function getLastYearRevenue(
 // Tax Data Functions
 // ============================================
 
+async function getConfiguredTaxData(
+  tenantId: string,
+  fromDate: string,
+  toDate: string,
+  tagIds: string[]
+): Promise<DbResult<TaxData>> {
+  const tagFilter = buildTagFilter(tagIds, 'p')
+  const queryParams = [tenantId]
+  let paramIndex = 2
+
+  // Get properties with tax configurations
+  const propertiesResult = await query<{
+    property_id: string
+    property_name: string
+    jurisdictions: any
+    total_revenue: string
+    booking_count: string
+  }>(`
+    SELECT 
+      p.id as property_id,
+      p.name as property_name,
+      ptc.jurisdictions,
+      COALESCE(SUM(b.total_amount), 0) as total_revenue,
+      COUNT(b.id) as booking_count
+    FROM properties p
+    LEFT JOIN property_tax_configs ptc ON p.id = ptc.property_id AND ptc.is_active = true
+    LEFT JOIN bookings b ON p.id = b.property_id 
+      AND b.arrival >= $${paramIndex++}
+      AND b.arrival <= $${paramIndex++}
+      AND b.status != 'canceled'
+    WHERE p.tenant_id = $1
+      ${tagFilter}
+    GROUP BY p.id, p.name, ptc.jurisdictions
+    HAVING ptc.jurisdictions IS NOT NULL`,
+    [...queryParams, fromDate, toDate]
+  )
+
+  if (!propertiesResult.success) {
+    return { success: false, error: 'Failed to fetch property tax data' }
+  }
+
+  // Get platform fees for the period
+  const startMonth = fromDate.substring(0, 7)
+  const endMonth = toDate.substring(0, 7)
+  
+  const platformFeesResult = await query<{
+    property_id: string
+    total_fees: string
+    platform_remits: string
+  }>(`
+    SELECT 
+      property_id,
+      COALESCE(SUM(guest_service_fee + host_service_fee), 0) as total_fees,
+      COALESCE(SUM(platform_tax_remitted), 0) as platform_remits
+    FROM platform_fee_entries
+    WHERE tenant_id = $1
+      AND month >= $2 
+      AND month <= $3
+    GROUP BY property_id`,
+    [tenantId, startMonth, endMonth]
+  )
+
+  const platformFeesByProperty = new Map()
+  if (platformFeesResult.success) {
+    platformFeesResult.data.forEach(row => {
+      platformFeesByProperty.set(row.property_id, {
+        fees: parseFloat(row.total_fees),
+        remits: parseFloat(row.platform_remits)
+      })
+    })
+  }
+
+  // Calculate taxes for each property
+  let totalRent = 0
+  let totalTax = 0
+  let totalBookings = 0
+  const propertyTaxData: PropertyTaxData[] = []
+
+  for (const property of propertiesResult.data) {
+    const revenue = parseFloat(property.total_revenue)
+    const jurisdictions = typeof property.jurisdictions === 'string' 
+      ? JSON.parse(property.jurisdictions) 
+      : property.jurisdictions || []
+    
+    // Calculate total tax rate
+    const taxRate = jurisdictions.reduce((sum: number, j: any) => sum + (j.rate || 0), 0)
+    
+    // Get platform fees for this property
+    const platformData = platformFeesByProperty.get(property.property_id) || { fees: 0, remits: 0 }
+    const taxableAmount = revenue + platformData.fees
+    const estimatedTax = (taxableAmount * taxRate) / 100
+
+    totalRent += revenue
+    totalTax += estimatedTax
+    totalBookings += parseInt(property.booking_count)
+
+    propertyTaxData.push({
+      propertyId: property.property_id,
+      propertyName: property.property_name,
+      totalTax: estimatedTax,
+      totalRent: revenue,
+      bookingCount: parseInt(property.booking_count),
+      taxRate: taxRate / 100 // Convert to decimal
+    })
+  }
+
+  // Calculate monthly breakdown
+  const monthlyData: MonthlyTaxData[] = []
+  // For configured rates, we'll estimate monthly based on average
+  const effectiveRate = totalRent > 0 ? totalTax / totalRent : 0
+
+  return {
+    success: true,
+    data: {
+      summary: {
+        totalTax,
+        totalRent,
+        totalBookings,
+        effectiveRate
+      },
+      byProperty: propertyTaxData,
+      byMonth: monthlyData
+    }
+  }
+}
+
 async function getTaxData(
   tenantId: string,
   fromDate: string,
@@ -889,8 +1012,18 @@ async function getTaxData(
   const tagFilter = buildTagFilter(tagIds, 'b')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
+  // First check if we should use historical or configured tax data
+  // For past dates, use actual booking charges; for current/future, use configured rates
+  const today = new Date().toISOString().split('T')[0]
+  const useConfiguredRates = toDate >= today
+
+  if (useConfiguredRates) {
+    // Use property_tax_configs for current/future tax calculations
+    return await getConfiguredTaxData(tenantId, fromDate, toDate, tagIds)
+  }
+
   const [summaryResult, propertyResult, monthlyResult] = await Promise.all([
-    // Tax summary
+    // Tax summary (historical data from booking_charges)
     query<{
       total_rent: string
       total_tax: string
