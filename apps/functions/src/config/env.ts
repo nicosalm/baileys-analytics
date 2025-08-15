@@ -37,10 +37,6 @@ const parseEnv = () => {
     return envSchema.parse(process.env)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('❌ Invalid environment variables:')
-      error.issues.forEach((err: any) => {
-        console.error(`  - ${err.path.join('.')}: ${err.message}`)
-      })
       
       // In production, fail fast
       if (process.env.NODE_ENV === 'production') {
@@ -48,7 +44,6 @@ const parseEnv = () => {
       }
       
       // In development, use defaults
-      console.warn('⚠️ Using default values for missing environment variables')
       return envSchema.parse({})
     }
     throw error

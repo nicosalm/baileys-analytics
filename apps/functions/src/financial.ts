@@ -59,6 +59,8 @@ type TaxData = {
     totalRent: number
     totalBookings: number
     effectiveRate: number
+    platformRemitted: number
+    ownerRemitted: number
   }
   byProperty: PropertyTaxData[]
   byMonth: MonthlyTaxData[]
@@ -139,9 +141,6 @@ type MonthlyTaxData = {
   effectiveRate: number
 }
 
-// ============================================
-// Helper Functions
-// ============================================
 
 const buildTagFilter = (tagIds: string[], tableAlias?: string): string => {
   if (tagIds.length === 0) return ''
@@ -158,9 +157,6 @@ const buildQueryParams = (tenantId: string, fromDate: string, toDate: string, ta
     ? [tenantId, fromDate, toDate, tagIds]
     : [tenantId, fromDate, toDate]
 
-// ============================================
-// P&L Data Functions
-// ============================================
 
 async function getPLData(
   tenantId: string,
@@ -171,10 +167,8 @@ async function getPLData(
   const tagFilter = buildTagFilter(tagIds, 'b')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
-  // Main financial metrics query
   const [metricsResult, platformsResult, monthlyResult, weeklyResult, upcomingResult, propertyResult, bookingStatsResult] =
     await Promise.all([
-      // Core metrics
       query<{
         gross_revenue: string
         total_fees: string
@@ -183,19 +177,14 @@ async function getPLData(
         collected_revenue: string
         booking_count: string
       }>(`
-        WITH platform_fee_lookup AS (
-          SELECT DISTINCT ON (platform_name)
-            platform_name, fee_type, fee_value
-          FROM platform_fees
-          WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
-            AND is_active = true
-            AND effective_from <= $3::date
-            AND (effective_to IS NULL OR effective_to >= $2::date)
-          ORDER BY platform_name, tenant_id DESC, effective_from DESC
-        ),
-        booking_data AS (
+        WITH booking_data AS (
           SELECT
-            b.id, b.total_amount, b.arrival, b.platform,
+            b.id, 
+            b.property_id,
+            b.total_amount, 
+            b.arrival, 
+            b.platform,
+            TO_CHAR(b.arrival, 'YYYY-MM') as month,
             LOWER(
               CASE
                 WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
@@ -213,62 +202,76 @@ async function getPLData(
             AND b.status != 'canceled'
             ${tagFilter}
         ),
-        fee_calc AS (
-          SELECT
-            bd.id, bd.total_amount, bd.arrival,
-            COALESCE(
-              CASE
-                WHEN pf.fee_type = 'percentage' THEN bd.total_amount * pf.fee_value
-                WHEN pf.fee_type = 'flat' THEN pf.fee_value
-                ELSE
-                  CASE
-                    WHEN bd.platform_key = 'airbnb' THEN bd.total_amount * 0.03
-                    WHEN bd.platform_key = 'vrbo' THEN bd.total_amount * 0.05
-                    WHEN bd.platform_key = 'booking.com' THEN bd.total_amount * 0.15
-                    ELSE 0
-                  END
-              END, 0
-            ) as platform_fee
-          FROM booking_data bd
-          LEFT JOIN platform_fee_lookup pf ON bd.platform_key = pf.platform_name
+        platform_fees_actual AS (
+          SELECT 
+            pfe.property_id,
+            pfe.month,
+            SUM(pfe.guest_service_fee + pfe.host_service_fee) as total_platform_fees,
+            SUM(pfe.platform_tax_remitted) as platform_tax_remitted
+          FROM platform_fee_entries pfe
+          WHERE pfe.tenant_id = $1
+            AND pfe.month >= TO_CHAR($2::date, 'YYYY-MM')
+            AND pfe.month <= TO_CHAR($3::date, 'YYYY-MM')
+          GROUP BY pfe.property_id, pfe.month
         ),
-        tax_data AS (
-          SELECT bd.id, COALESCE(SUM(bc.amount), 0) as tax_amount
+        property_taxes AS (
+          SELECT 
+            ptc.property_id,
+            ptc.jurisdictions,
+            COALESCE(
+              (SELECT SUM((j->>'rate')::numeric) 
+               FROM jsonb_array_elements(ptc.jurisdictions) j), 
+              0
+            ) as total_tax_rate
+          FROM property_tax_configs ptc
+          WHERE ptc.tenant_id = $1
+            AND ptc.is_active = true
+            AND ptc.effective_from <= $3::date
+            AND (ptc.effective_to IS NULL OR ptc.effective_to >= $2::date)
+        ),
+        fee_tax_calc AS (
+          SELECT
+            bd.id, 
+            bd.total_amount, 
+            bd.arrival,
+            COALESCE(pfa.total_platform_fees, 0) as platform_fee,
+            CASE 
+              WHEN pt.total_tax_rate IS NOT NULL AND pt.total_tax_rate > 0 THEN 
+                -- OwnerRez tax + platform fee tax
+                COALESCE((SELECT SUM(amount) FROM booking_charges WHERE booking_id = bd.id AND type = 'tax'), 0) +
+                (COALESCE(pfa.total_platform_fees, 0) * (pt.total_tax_rate / 100))
+              ELSE 
+                COALESCE((SELECT SUM(amount) FROM booking_charges WHERE booking_id = bd.id AND type = 'tax'), 0)
+            END as tax_amount,
+            COALESCE(pfa.platform_tax_remitted, 0) as platform_tax_remitted
           FROM booking_data bd
-          LEFT JOIN booking_charges bc ON bd.id = bc.booking_id AND bc.type = 'tax'
-          GROUP BY bd.id
+          LEFT JOIN platform_fees_actual pfa ON bd.property_id = pfa.property_id AND bd.month = pfa.month
+          LEFT JOIN property_taxes pt ON bd.property_id = pt.property_id
         )
         SELECT
-          COALESCE(SUM(fc.total_amount), 0)::text as gross_revenue,
-          COALESCE(SUM(fc.platform_fee), 0)::text as total_fees,
-          COALESCE(SUM(td.tax_amount), 0)::text as total_taxes,
-          COALESCE(SUM(CASE WHEN fc.arrival > CURRENT_DATE THEN fc.total_amount ELSE 0 END), 0)::text as pending_revenue,
-          COALESCE(SUM(CASE WHEN fc.arrival <= CURRENT_DATE THEN fc.total_amount ELSE 0 END), 0)::text as collected_revenue,
+          COALESCE(SUM(ftc.total_amount), 0)::text as gross_revenue,
+          COALESCE(SUM(ftc.platform_fee), 0)::text as total_fees,
+          COALESCE(SUM(ftc.tax_amount), 0)::text as total_taxes,
+          COALESCE(SUM(CASE WHEN ftc.arrival > CURRENT_DATE THEN ftc.total_amount ELSE 0 END), 0)::text as pending_revenue,
+          COALESCE(SUM(CASE WHEN ftc.arrival <= CURRENT_DATE THEN ftc.total_amount ELSE 0 END), 0)::text as collected_revenue,
           COUNT(*)::text as booking_count
-        FROM fee_calc fc
-        LEFT JOIN tax_data td ON fc.id = td.id`,
+        FROM fee_tax_calc ftc`,
         queryParams
       ),
 
-      // Platform breakdown
       getPlatformFinancials(tenantId, fromDate, toDate, tagIds),
 
-      // Monthly trend
       getMonthlyTrend(tenantId, fromDate, toDate, tagIds),
 
-      // Weekly revenue
       getWeeklyRevenue(tenantId, fromDate, toDate, tagIds),
 
-      // Upcoming revenue
       getUpcomingRevenue(tenantId, tagIds),
 
-      // Property count
       query<{ count: string }>(
         'SELECT COUNT(*)::text as count FROM properties WHERE tenant_id = $1 AND active = true',
         [tenantId]
       ),
 
-      // Nights booked
       query<{ nights_booked: string }>(
         `SELECT COUNT(DISTINCT (booking_date))::text as nights_booked
         FROM bookings b
@@ -299,7 +302,6 @@ async function getPLData(
   const collectedRevenue = parseFloat(revenue.collected_revenue)
   const bookingCount = parseInt(revenue.booking_count)
 
-  // Calculate KPIs
   const propertyCount = propertyResult.success ? parseInt(propertyResult.data[0].count) : 1
   const daysInPeriod = Math.ceil(
     (new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24)
@@ -307,7 +309,6 @@ async function getPLData(
   const availableRoomNights = propertyCount * daysInPeriod
   const nightsBooked = bookingStatsResult.success ? parseInt(bookingStatsResult.data[0].nights_booked) : 0
 
-  // Get previous period data
   const previousPeriod = await getPreviousPeriodMetrics(tenantId, fromDate, toDate)
 
   const metrics: FinancialMetrics = {
@@ -367,64 +368,54 @@ async function getPlatformFinancials(
       SELECT
         COALESCE(
           CASE
-            WHEN platform IS NULL OR platform = '' THEN 'Direct'
-            WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
-            WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
-            WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
-            WHEN LOWER(platform) LIKE '%booking.com%' THEN 'Booking.com'
-            ELSE platform
+            WHEN b.platform IS NULL OR b.platform = '' THEN 'Direct'
+            WHEN LOWER(b.platform) LIKE '%direct%' THEN 'Direct'
+            WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'Airbnb'
+            WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'VRBO'
+            WHEN LOWER(b.platform) LIKE '%booking.com%' THEN 'Booking.com'
+            ELSE b.platform
           END,
           'Direct'
         ) as platform,
+        LOWER(
+          CASE
+            WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
+            WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
+            WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
+            WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
+            WHEN LOWER(b.platform) LIKE '%booking.com%' THEN 'booking.com'
+            ELSE LOWER(b.platform)
+          END
+        ) as platform_key,
         COUNT(*) as booking_count,
-        SUM(total_amount) as gross_revenue
-      FROM bookings
-      WHERE tenant_id = $1
-        AND arrival >= $2::date
-        AND arrival <= $3::date
-        AND status != 'canceled'
+        SUM(b.total_amount) as gross_revenue,
+        STRING_AGG(DISTINCT b.property_id::text, ',') as property_ids,
+        STRING_AGG(DISTINCT TO_CHAR(b.arrival, 'YYYY-MM'), ',') as months
+      FROM bookings b
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status != 'canceled'
         ${tagFilter}
-      GROUP BY
-        CASE
-          WHEN platform IS NULL OR platform = '' THEN 'Direct'
-          WHEN LOWER(platform) LIKE '%direct%' THEN 'Direct'
-          WHEN LOWER(platform) LIKE '%airbnb%' THEN 'Airbnb'
-          WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN 'VRBO'
-          WHEN LOWER(platform) LIKE '%booking.com%' THEN 'Booking.com'
-          ELSE platform
-        END
+      GROUP BY 1, 2
     ),
-    platform_fees AS (
-      SELECT DISTINCT ON (platform_name)
-        platform_name, fee_type, fee_value
-      FROM platform_fees
-      WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
-        AND is_active = true
-        AND effective_from <= $3::date
-        AND (effective_to IS NULL OR effective_to >= $2::date)
-      ORDER BY platform_name, tenant_id DESC, effective_from DESC
+    actual_fees AS (
+      SELECT 
+        LOWER(pfe.platform) as platform_key,
+        SUM(pfe.guest_service_fee + pfe.host_service_fee) as total_fees
+      FROM platform_fee_entries pfe
+      WHERE pfe.tenant_id = $1
+        AND pfe.month >= TO_CHAR($2::date, 'YYYY-MM')
+        AND pfe.month <= TO_CHAR($3::date, 'YYYY-MM')
+      GROUP BY LOWER(pfe.platform)
     )
     SELECT
       ps.platform,
       ps.booking_count::text,
       ps.gross_revenue::text,
-      COALESCE(
-        CASE
-          WHEN pf.fee_type = 'percentage' THEN ps.gross_revenue * pf.fee_value
-          WHEN pf.fee_type = 'flat' THEN pf.fee_value * ps.booking_count
-          ELSE
-            CASE
-              WHEN LOWER(ps.platform) LIKE '%airbnb%' THEN ps.gross_revenue * 0.03
-              WHEN LOWER(ps.platform) LIKE '%vrbo%' THEN ps.gross_revenue * 0.05
-              WHEN LOWER(ps.platform) LIKE '%booking.com%' THEN ps.gross_revenue * 0.15
-              WHEN LOWER(ps.platform) = 'direct' THEN 0
-              ELSE 0
-            END
-        END,
-        0
-      )::text as total_fees
+      COALESCE(af.total_fees, 0)::text as total_fees
     FROM platform_summary ps
-    LEFT JOIN platform_fees pf ON LOWER(ps.platform) = LOWER(pf.platform_name)
+    LEFT JOIN actual_fees af ON ps.platform_key = af.platform_key
     ORDER BY ps.gross_revenue DESC`,
     queryParams
   )
@@ -611,9 +602,8 @@ async function getPreviousPeriodMetrics(
         b.total_amount,
         COALESCE(
           CASE
-            WHEN LOWER(b.platform) LIKE '%airbnb%' THEN b.total_amount * 0.03
-            WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN b.total_amount * 0.05
-            WHEN LOWER(b.platform) LIKE '%booking.com%' THEN b.total_amount * 0.15
+            WHEN pf.fee_type = 'percentage' THEN b.total_amount * pf.fee_value
+            WHEN pf.fee_type = 'flat' THEN pf.fee_value
             ELSE 0
           END, 0
         ) as fee
@@ -644,9 +634,6 @@ async function getPreviousPeriodMetrics(
   return { revenue: { gross: 0, net: 0 }, performance: { netRevenueRate: 0 } }
 }
 
-// ============================================
-// Revenue Data Functions
-// ============================================
 
 async function getRevenueData(
   tenantId: string,
@@ -659,35 +646,19 @@ async function getRevenueData(
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
   const [summaryResult, bySourceResult, byMonthResult, lastYearResult] = await Promise.all([
-    // Revenue summary
     query<{
       gross_revenue: string
       total_taxes: string
       total_fees: string
     }>(`
-      WITH platform_fee_lookup AS (
-        SELECT DISTINCT ON (platform_name)
-          platform_name, fee_type, fee_value
-        FROM platform_fees
-        WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
-          AND is_active = true
-          AND effective_from <= $3::date
-          AND (effective_to IS NULL OR effective_to >= $2::date)
-        ORDER BY platform_name, tenant_id DESC, effective_from DESC
-      ),
-      booking_summary AS (
+      WITH booking_summary AS (
         SELECT
-          b.id, b.total_amount, b.platform,
-          LOWER(
-            CASE
-              WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
-              WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
-              WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
-              WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
-              WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'booking.com'
-              ELSE LOWER(b.platform)
-            END
-          ) as platform_key
+          b.id, 
+          b.property_id,
+          b.total_amount, 
+          b.platform,
+          b.arrival,
+          TO_CHAR(b.arrival, 'YYYY-MM') as month
         FROM bookings b
         WHERE b.tenant_id = $1
           AND b.arrival >= $2
@@ -695,35 +666,57 @@ async function getRevenueData(
           AND b.status != 'canceled'
           ${tagFilter}
       ),
-      tax_summary AS (
-        SELECT booking_id, SUM(amount) as tax_total
-        FROM booking_charges
-        WHERE type = 'tax'
-        GROUP BY booking_id
+      platform_fees_actual AS (
+        SELECT 
+          property_id,
+          month,
+          SUM(guest_service_fee + host_service_fee) as total_fees,
+          SUM(platform_tax_remitted) as platform_tax
+        FROM platform_fee_entries
+        WHERE tenant_id = $1
+          AND month >= TO_CHAR($2::date, 'YYYY-MM')
+          AND month <= TO_CHAR($3::date, 'YYYY-MM')
+        GROUP BY property_id, month
+      ),
+      property_taxes AS (
+        SELECT 
+          property_id,
+          COALESCE(
+            (SELECT SUM((j->>'rate')::numeric) 
+             FROM jsonb_array_elements(jurisdictions) j), 
+            0
+          ) as total_tax_rate
+        FROM property_tax_configs
+        WHERE tenant_id = $1
+          AND is_active = true
+          AND effective_from <= $3::date
+          AND (effective_to IS NULL OR effective_to >= $2::date)
+      ),
+      calc_totals AS (
+        SELECT
+          bs.id,
+          bs.total_amount,
+          COALESCE(pfa.total_fees, 0) as platform_fees,
+          CASE 
+            WHEN pt.total_tax_rate IS NOT NULL AND pt.total_tax_rate > 0 THEN 
+              -- OwnerRez tax + platform fee tax
+              COALESCE((SELECT SUM(amount) FROM booking_charges WHERE booking_id = bs.id AND type = 'tax'), 0) +
+              (COALESCE(pfa.total_fees, 0) * (pt.total_tax_rate / 100))
+            ELSE 
+              COALESCE((SELECT SUM(amount) FROM booking_charges WHERE booking_id = bs.id AND type = 'tax'), 0)
+          END as tax_amount
+        FROM booking_summary bs
+        LEFT JOIN platform_fees_actual pfa ON bs.property_id = pfa.property_id AND bs.month = pfa.month
+        LEFT JOIN property_taxes pt ON bs.property_id = pt.property_id
       )
       SELECT
-        COALESCE(SUM(bs.total_amount), 0) as gross_revenue,
-        COALESCE(SUM(ts.tax_total), 0) as total_taxes,
-        COALESCE(SUM(
-          CASE
-            WHEN pf.fee_type = 'percentage' THEN bs.total_amount * pf.fee_value
-            WHEN pf.fee_type = 'flat' THEN pf.fee_value
-            ELSE
-              CASE
-                WHEN bs.platform_key = 'airbnb' THEN bs.total_amount * 0.03
-                WHEN bs.platform_key = 'vrbo' THEN bs.total_amount * 0.05
-                WHEN bs.platform_key = 'booking.com' THEN bs.total_amount * 0.15
-                ELSE 0
-              END
-          END
-        ), 0) as total_fees
-      FROM booking_summary bs
-      LEFT JOIN tax_summary ts ON bs.id = ts.booking_id
-      LEFT JOIN platform_fee_lookup pf ON bs.platform_key = pf.platform_name`,
+        COALESCE(SUM(total_amount), 0) as gross_revenue,
+        COALESCE(SUM(tax_amount), 0) as total_taxes,
+        COALESCE(SUM(platform_fees), 0) as total_fees
+      FROM calc_totals`,
       queryParams
     ),
 
-    // Revenue by source
     query<{
       platform: string
       revenue: string
@@ -757,7 +750,6 @@ async function getRevenueData(
       queryParams
     ),
 
-    // Revenue by month
     query<{
       month: string
       revenue: string
@@ -776,7 +768,6 @@ async function getRevenueData(
       queryParams
     ),
 
-    // Last year comparison
     getLastYearRevenue(tenantId, fromDate, toDate, tagIds)
   ])
 
@@ -845,9 +836,8 @@ async function getLastYearRevenue(
       COALESCE(SUM(total_amount), 0) as gross_revenue,
       COALESCE(SUM(
         CASE
-          WHEN LOWER(platform) LIKE '%airbnb%' THEN total_amount * 0.03
-          WHEN LOWER(platform) LIKE '%vrbo%' OR LOWER(platform) LIKE '%homeaway%' THEN total_amount * 0.05
-          WHEN LOWER(platform) LIKE '%booking.com%' THEN total_amount * 0.15
+          WHEN pf.fee_type = 'percentage' THEN total_amount * pf.fee_value
+          WHEN pf.fee_type = 'flat' THEN pf.fee_value
           ELSE 0
         END
       ), 0) as total_fees,
@@ -873,135 +863,6 @@ async function getLastYearRevenue(
   return undefined
 }
 
-// ============================================
-// Tax Data Functions
-// ============================================
-
-async function getConfiguredTaxData(
-  tenantId: string,
-  fromDate: string,
-  toDate: string,
-  tagIds: string[]
-): Promise<DbResult<TaxData>> {
-  const tagFilter = buildTagFilter(tagIds, 'p')
-  const queryParams = [tenantId]
-  let paramIndex = 2
-
-  // Get properties with tax configurations
-  const propertiesResult = await query<{
-    property_id: string
-    property_name: string
-    jurisdictions: any
-    total_revenue: string
-    booking_count: string
-  }>(`
-    SELECT 
-      p.id as property_id,
-      p.name as property_name,
-      ptc.jurisdictions,
-      COALESCE(SUM(b.total_amount), 0) as total_revenue,
-      COUNT(b.id) as booking_count
-    FROM properties p
-    LEFT JOIN property_tax_configs ptc ON p.id = ptc.property_id AND ptc.is_active = true
-    LEFT JOIN bookings b ON p.id = b.property_id 
-      AND b.arrival >= $${paramIndex++}
-      AND b.arrival <= $${paramIndex++}
-      AND b.status != 'canceled'
-    WHERE p.tenant_id = $1
-      ${tagFilter}
-    GROUP BY p.id, p.name, ptc.jurisdictions
-    HAVING ptc.jurisdictions IS NOT NULL`,
-    [...queryParams, fromDate, toDate]
-  )
-
-  if (!propertiesResult.success) {
-    return { success: false, error: 'Failed to fetch property tax data' }
-  }
-
-  // Get platform fees for the period
-  const startMonth = fromDate.substring(0, 7)
-  const endMonth = toDate.substring(0, 7)
-  
-  const platformFeesResult = await query<{
-    property_id: string
-    total_fees: string
-    platform_remits: string
-  }>(`
-    SELECT 
-      property_id,
-      COALESCE(SUM(guest_service_fee + host_service_fee), 0) as total_fees,
-      COALESCE(SUM(platform_tax_remitted), 0) as platform_remits
-    FROM platform_fee_entries
-    WHERE tenant_id = $1
-      AND month >= $2 
-      AND month <= $3
-    GROUP BY property_id`,
-    [tenantId, startMonth, endMonth]
-  )
-
-  const platformFeesByProperty = new Map()
-  if (platformFeesResult.success) {
-    platformFeesResult.data.forEach(row => {
-      platformFeesByProperty.set(row.property_id, {
-        fees: parseFloat(row.total_fees),
-        remits: parseFloat(row.platform_remits)
-      })
-    })
-  }
-
-  // Calculate taxes for each property
-  let totalRent = 0
-  let totalTax = 0
-  let totalBookings = 0
-  const propertyTaxData: PropertyTaxData[] = []
-
-  for (const property of propertiesResult.data) {
-    const revenue = parseFloat(property.total_revenue)
-    const jurisdictions = typeof property.jurisdictions === 'string' 
-      ? JSON.parse(property.jurisdictions) 
-      : property.jurisdictions || []
-    
-    // Calculate total tax rate
-    const taxRate = jurisdictions.reduce((sum: number, j: any) => sum + (j.rate || 0), 0)
-    
-    // Get platform fees for this property
-    const platformData = platformFeesByProperty.get(property.property_id) || { fees: 0, remits: 0 }
-    const taxableAmount = revenue + platformData.fees
-    const estimatedTax = (taxableAmount * taxRate) / 100
-
-    totalRent += revenue
-    totalTax += estimatedTax
-    totalBookings += parseInt(property.booking_count)
-
-    propertyTaxData.push({
-      propertyId: property.property_id,
-      propertyName: property.property_name,
-      totalTax: estimatedTax,
-      totalRent: revenue,
-      bookingCount: parseInt(property.booking_count),
-      taxRate: taxRate / 100 // Convert to decimal
-    })
-  }
-
-  // Calculate monthly breakdown
-  const monthlyData: MonthlyTaxData[] = []
-  // For configured rates, we'll estimate monthly based on average
-  const effectiveRate = totalRent > 0 ? totalTax / totalRent : 0
-
-  return {
-    success: true,
-    data: {
-      summary: {
-        totalTax,
-        totalRent,
-        totalBookings,
-        effectiveRate
-      },
-      byProperty: propertyTaxData,
-      byMonth: monthlyData
-    }
-  }
-}
 
 async function getTaxData(
   tenantId: string,
@@ -1012,145 +873,105 @@ async function getTaxData(
   const tagFilter = buildTagFilter(tagIds, 'b')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
-  // First check if we should use historical or configured tax data
-  // For past dates, use actual booking charges; for current/future, use configured rates
-  const today = new Date().toISOString().split('T')[0]
-  const useConfiguredRates = toDate >= today
-
-  if (useConfiguredRates) {
-    // Use property_tax_configs for current/future tax calculations
-    return await getConfiguredTaxData(tenantId, fromDate, toDate, tagIds)
-  }
-
-  const [summaryResult, propertyResult, monthlyResult] = await Promise.all([
-    // Tax summary (historical data from booking_charges)
+  const [summaryResult, propertyResult, monthlyResult, configsResult, platformFeesResult] = await Promise.all([
     query<{
       total_rent: string
-      total_tax: string
+      imported_tax: string
       total_bookings: string
     }>(`
-      WITH booking_totals AS (
-        SELECT DISTINCT
-          b.id, b.total_amount, b.arrival
-        FROM bookings b
-        WHERE b.tenant_id = $1
-          AND b.arrival >= $2
-          AND b.arrival <= $3
-          AND b.status != 'canceled'
-          ${tagFilter}
-      ),
-      tax_totals AS (
-        SELECT
-          b.id as booking_id,
-          SUM(bc.amount) as tax_total
-        FROM bookings b
-        JOIN booking_charges bc ON b.id = bc.booking_id
-        WHERE b.tenant_id = $1
-          AND b.arrival >= $2
-          AND b.arrival <= $3
-          AND b.status != 'canceled'
-          AND bc.type = 'tax'
-          ${tagFilter}
-        GROUP BY b.id
-      )
       SELECT
-        COALESCE(SUM(bt.total_amount), 0) as total_rent,
-        COALESCE(SUM(tt.tax_total), 0) as total_tax,
-        COUNT(DISTINCT bt.id) as total_bookings
-      FROM booking_totals bt
-      LEFT JOIN tax_totals tt ON bt.id = tt.booking_id`,
+        COALESCE(SUM(b.total_amount), 0) as total_rent,
+        COALESCE(SUM(
+          (SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')
+        ), 0) as imported_tax,
+        COUNT(DISTINCT b.id) as total_bookings
+      FROM bookings b
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        ${tagFilter}`,
       queryParams
     ),
-
-    // Property breakdown
+    
     query<{
       property_id: string
       property_name: string
       total_rent: string
-      total_tax: string
+      imported_tax: string
       booking_count: string
     }>(`
-      WITH property_bookings AS (
-        SELECT DISTINCT
-          p.id as property_id,
-          p.name as property_name,
-          b.id as booking_id,
-          b.total_amount
-        FROM properties p
-        JOIN bookings b ON p.id = b.property_id
-        WHERE b.tenant_id = $1
-          AND b.arrival >= $2
-          AND b.arrival <= $3
-          AND b.status != 'canceled'
-          ${tagFilter}
-      ),
-      property_taxes AS (
-        SELECT
-          pb.property_id,
-          pb.property_name,
-          SUM(bc.amount) as total_tax
-        FROM property_bookings pb
-        JOIN booking_charges bc ON pb.booking_id = bc.booking_id
-        WHERE bc.type = 'tax'
-        GROUP BY pb.property_id, pb.property_name
-      )
       SELECT
-        pb.property_id,
-        pb.property_name,
-        COALESCE(SUM(pb.total_amount), 0) as total_rent,
-        COALESCE(pt.total_tax, 0) as total_tax,
-        COUNT(DISTINCT pb.booking_id) as booking_count
-      FROM property_bookings pb
-      LEFT JOIN property_taxes pt ON pb.property_id = pt.property_id
-      GROUP BY pb.property_id, pb.property_name, pt.total_tax
-      HAVING COUNT(DISTINCT pb.booking_id) > 0
-      ORDER BY total_rent DESC`,
+        p.id as property_id,
+        p.name as property_name,
+        COALESCE(SUM(b.total_amount), 0) as total_rent,
+        COALESCE(SUM(
+          (SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')
+        ), 0) as imported_tax,
+        COUNT(b.id) as booking_count
+      FROM properties p
+      LEFT JOIN bookings b ON p.id = b.property_id
+        AND b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        ${tagFilter}
+      WHERE p.tenant_id = $1
+      GROUP BY p.id, p.name
+      HAVING COUNT(b.id) > 0`,
       queryParams
     ),
-
-    // Monthly breakdown
+    
     query<{
       month: string
       total_rent: string
-      total_tax: string
+      imported_tax: string
       booking_count: string
     }>(`
-      WITH monthly_bookings AS (
-        SELECT DISTINCT
-          TO_CHAR(b.arrival, 'YYYY-MM') as month,
-          b.id,
-          b.total_amount
-        FROM bookings b
-        WHERE b.tenant_id = $1
-          AND b.arrival >= $2
-          AND b.arrival <= $3
-          AND b.status != 'canceled'
-          ${tagFilter}
-      ),
-      monthly_taxes AS (
-        SELECT
-          TO_CHAR(b.arrival, 'YYYY-MM') as month,
-          SUM(bc.amount) as total_tax
-        FROM bookings b
-        JOIN booking_charges bc ON b.id = bc.booking_id
-        WHERE b.tenant_id = $1
-          AND b.arrival >= $2
-          AND b.arrival <= $3
-          AND b.status != 'canceled'
-          AND bc.type = 'tax'
-          ${tagFilter}
-        GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
-      )
       SELECT
-        mb.month,
-        COALESCE(SUM(mb.total_amount), 0) as total_rent,
-        COALESCE(mt.total_tax, 0) as total_tax,
-        COUNT(DISTINCT mb.id) as booking_count
-      FROM monthly_bookings mb
-      LEFT JOIN monthly_taxes mt ON mb.month = mt.month
-      GROUP BY mb.month, mt.total_tax
-      ORDER BY mb.month`,
+        TO_CHAR(b.arrival, 'YYYY-MM') as month,
+        COALESCE(SUM(b.total_amount), 0) as total_rent,
+        COALESCE(SUM(
+          (SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')
+        ), 0) as imported_tax,
+        COUNT(b.id) as booking_count
+      FROM bookings b
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2
+        AND b.arrival <= $3
+        AND b.status != 'canceled'
+        ${tagFilter}
+      GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+      ORDER BY month`,
       queryParams
+    ),
+    
+    query<{
+      property_id: string
+      jurisdictions: any
+    }>(`
+      SELECT property_id, jurisdictions
+      FROM property_tax_configs
+      WHERE tenant_id = $1
+        AND is_active = true
+        AND effective_from <= $2::date
+        AND (effective_to IS NULL OR effective_to >= $3::date)`,
+      [tenantId, toDate, fromDate]
+    ),
+    
+    query<{
+      property_id: string
+      total_fees: string
+    }>(`
+      SELECT 
+        property_id,
+        SUM(guest_service_fee + host_service_fee) as total_fees
+      FROM platform_fee_entries
+      WHERE tenant_id = $1
+        AND month >= TO_CHAR($2::date, 'YYYY-MM')
+        AND month <= TO_CHAR($3::date, 'YYYY-MM')
+      GROUP BY property_id`,
+      [tenantId, fromDate, toDate]
     )
   ])
 
@@ -1158,51 +979,93 @@ async function getTaxData(
     return { success: false, error: 'Failed to fetch tax data' }
   }
 
-  const summaryData = summaryResult.data[0] || {
-    total_tax: '0',
-    total_rent: '0',
-    total_bookings: '0'
+  const configsByProperty = new Map()
+  if (configsResult.success) {
+    configsResult.data.forEach(row => {
+      const jurisdictions = typeof row.jurisdictions === 'string' 
+        ? JSON.parse(row.jurisdictions) 
+        : row.jurisdictions || []
+      const totalRate = jurisdictions.reduce((sum: number, j: any) => sum + (j.rate || 0), 0)
+      configsByProperty.set(row.property_id, totalRate / 100) // Convert to decimal
+    })
   }
 
-  const totalRent = parseFloat(summaryData.total_rent)
-  const totalTax = parseFloat(summaryData.total_tax)
-  const effectiveRate = totalRent > 0 ? totalTax / totalRent : 0
+  const feesByProperty = new Map()
+  if (platformFeesResult.success) {
+    platformFeesResult.data.forEach(row => {
+      feesByProperty.set(row.property_id, parseFloat(row.total_fees))
+    })
+  }
 
+  const summaryData = summaryResult.data[0] || { total_rent: '0', imported_tax: '0', total_bookings: '0' }
+  const baseRent = parseFloat(summaryData.total_rent)
+  const importedTax = parseFloat(summaryData.imported_tax)
+  
+  let platformFeeTax = 0
+  propertyResult.data.forEach(property => {
+    const taxRate = configsByProperty.get(property.property_id) || 0
+    const platformFees = feesByProperty.get(property.property_id) || 0
+    platformFeeTax += platformFees * taxRate
+  })
+  
+  const totalTax = importedTax + platformFeeTax
+  const effectiveRate = baseRent > 0 ? totalTax / baseRent : 0
+
+  const propertyTaxData = propertyResult.data.map(row => {
+    const rent = parseFloat(row.total_rent)
+    const imported = parseFloat(row.imported_tax)
+    const taxRate = configsByProperty.get(row.property_id) || 0
+    const platformFees = feesByProperty.get(row.property_id) || 0
+    const platformTax = platformFees * taxRate
+    const totalPropertyTax = imported + platformTax
+    
+    return {
+      propertyId: row.property_id,
+      propertyName: row.property_name,
+      totalTax: totalPropertyTax,
+      totalRent: rent,
+      bookingCount: parseInt(row.booking_count),
+      taxRate: rent > 0 ? totalPropertyTax / rent : 0
+    }
+  })
+
+  const monthlyTaxData = monthlyResult.data.map(row => {
+    const rent = parseFloat(row.total_rent)
+    const imported = parseFloat(row.imported_tax)
+    // Estimate platform tax proportionally for this month
+    const estimatedPlatformTax = platformFeeTax * (rent / baseRent)
+    const totalMonthlyTax = imported + estimatedPlatformTax
+    
+    return {
+      month: row.month,
+      totalTax: totalMonthlyTax,
+      totalRent: rent,
+      bookingCount: parseInt(row.booking_count),
+      effectiveRate: rent > 0 ? totalMonthlyTax / rent : 0
+    }
+  })
+
+  // Platform remits tax on their fees (Airbnb), owner remits tax on bookings
+  const platformRemitted = platformFeeTax
+  const ownerRemitted = importedTax
+  
   return {
     success: true,
     data: {
       summary: {
         totalTax,
-        totalRent,
+        totalRent: baseRent,
         totalBookings: parseInt(summaryData.total_bookings),
-        effectiveRate
+        effectiveRate,
+        platformRemitted,
+        ownerRemitted
       },
-      byProperty: propertyResult.data.map(row => ({
-        propertyId: row.property_id,
-        propertyName: row.property_name,
-        totalTax: parseFloat(row.total_tax),
-        totalRent: parseFloat(row.total_rent),
-        bookingCount: parseInt(row.booking_count),
-        taxRate: parseFloat(row.total_rent) > 0
-          ? parseFloat(row.total_tax) / parseFloat(row.total_rent)
-          : 0
-      })),
-      byMonth: monthlyResult.data.map(row => ({
-        month: row.month,
-        totalTax: parseFloat(row.total_tax),
-        totalRent: parseFloat(row.total_rent),
-        bookingCount: parseInt(row.booking_count),
-        effectiveRate: parseFloat(row.total_rent) > 0
-          ? parseFloat(row.total_tax) / parseFloat(row.total_rent)
-          : 0
-      }))
+      byProperty: propertyTaxData,
+      byMonth: monthlyTaxData
     }
   }
 }
 
-// ============================================
-// Main Handler
-// ============================================
 
 export async function getUnifiedFinancials(
   request: HttpRequest,
@@ -1234,14 +1097,12 @@ export async function getUnifiedFinancials(
   }
 
   try {
-    // Use validated query parameters with defaults
     const fromDate = validated?.query?.from ||
       formatDateISO(new Date(getYear(new Date()), 0, 1))
     const toDate = validated?.query?.to ||
       formatDateISO(new Date())
     const tagIds = validated?.query?.tags || []
 
-    // Fetch all data in parallel
     const [plResult, revenueResult, taxResult] = await Promise.all([
       getPLData(auth.tenantId, fromDate, toDate, tagIds),
       getRevenueData(auth.tenantId, fromDate, toDate, tagIds),
@@ -1269,7 +1130,6 @@ export async function getUnifiedFinancials(
       }
     }
 
-    // Build cashflow data from P&L metrics
     const cashflowData: CashflowData = {
       collected: plResult.data.metrics.revenue.collected,
       pending: plResult.data.metrics.revenue.pending,
@@ -1277,7 +1137,6 @@ export async function getUnifiedFinancials(
       upcoming: plResult.data.metrics.upcoming
     }
 
-    // Build unified response
     const response: UnifiedFinancialResponse = {
       pl: plResult.data,
       revenue: revenueResult.data,

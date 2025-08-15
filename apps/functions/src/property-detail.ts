@@ -36,8 +36,6 @@ export async function getPropertyDetail(
     const toDate = request.query.get('to') || formatDateISO(new Date());
     const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
     
-    console.log('Property Detail API - Parameters:', { fromDate, toDate, propertyId, tagIds });
-
     // Get property info
     const propertyResult = await query<{
       id: string;

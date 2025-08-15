@@ -256,7 +256,6 @@ const performSync = async (credentials: TenantCredentials): Promise<SyncResult> 
   // Fetch tag definitions first
   const tagDefsResult = await fetchAllTagDefinitions(credentials.token)
   if (!tagDefsResult.success) {
-    console.log('Warning: Failed to fetch tag definitions:', tagDefsResult.error)
   }
   const tagDefinitions = tagDefsResult.success ? tagDefsResult.data : new Map()
 

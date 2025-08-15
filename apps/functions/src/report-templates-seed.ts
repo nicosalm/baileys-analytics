@@ -125,10 +125,7 @@ export async function seedDefaultReportTemplates(tenantId: string): Promise<void
         ]
       )
     }
-    
-    console.log(`Created ${defaultTemplates.length} default report templates for tenant ${tenantId}`)
   } catch (error) {
-    console.error('Error seeding default report templates:', error)
     // Don't throw - this is not critical
   }
 }

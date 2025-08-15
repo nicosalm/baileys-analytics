@@ -9,6 +9,12 @@ import {
   addMonths,
   subMonths,
   startOfMonth,
+  startOfYear,
+  endOfMonth,
+  startOfQuarter,
+  endOfQuarter,
+  getMonth,
+  getYear,
   format,
   isSameDay,
   isAfter,
@@ -270,7 +276,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
               onClick={() => {
                 const today = new Date()
-                const yearStart = formatDateISO(new Date(today.getFullYear(), 0, 1))
+                const yearStart = formatDateISO(startOfYear(today))
                 const todayStr = formatDateISO(today)
                 const newRange = { from: yearStart, to: todayStr }
                 setLocalRange(newRange)
@@ -278,6 +284,85 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               }}
             >
               Year to Date
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+              onClick={() => {
+                const today = new Date()
+                const currentMonth = getMonth(today)
+                const currentYear = getYear(today)
+                // Fiscal year typically starts Oct 1 (month 9 in 0-indexed JS)
+                // If we're in Oct-Dec, fiscal year started this calendar year
+                // If we're in Jan-Sep, fiscal year started last calendar year
+                const fiscalYearStart = currentMonth >= 9 
+                  ? new Date(currentYear, 9, 1) // Oct 1 of current year
+                  : new Date(currentYear - 1, 9, 1) // Oct 1 of last year
+                const fiscalYearEnd = currentMonth >= 9
+                  ? endOfMonth(new Date(currentYear + 1, 8, 1)) // Sep 30 of next year
+                  : endOfMonth(new Date(currentYear, 8, 1)) // Sep 30 of current year
+                
+                // Use today if it's before fiscal year end, otherwise use fiscal year end
+                const endDate = isBefore(today, fiscalYearEnd) ? today : fiscalYearEnd
+                
+                const newRange = { 
+                  from: formatDateISO(fiscalYearStart), 
+                  to: formatDateISO(endDate)
+                }
+                setLocalRange(newRange)
+                onChange(newRange)
+              }}
+              title="Fiscal Year to Date (Oct 1 - Sep 30)"
+            >
+              Fiscal YTD
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+              onClick={() => {
+                const today = new Date()
+                const currentMonth = getMonth(today)
+                const currentYear = getYear(today)
+                // Last fiscal year
+                const lastFiscalYearStart = currentMonth >= 9 
+                  ? new Date(currentYear - 1, 9, 1) // Oct 1 of last year
+                  : new Date(currentYear - 2, 9, 1) // Oct 1 of 2 years ago
+                const lastFiscalYearEnd = currentMonth >= 9
+                  ? endOfMonth(new Date(currentYear, 8, 1)) // Sep 30 of current year
+                  : endOfMonth(new Date(currentYear - 1, 8, 1)) // Sep 30 of last year
+                
+                const newRange = { 
+                  from: formatDateISO(lastFiscalYearStart), 
+                  to: formatDateISO(lastFiscalYearEnd)
+                }
+                setLocalRange(newRange)
+                onChange(newRange)
+              }}
+              title="Previous Fiscal Year (Oct 1 - Sep 30)"
+            >
+              Last FY
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+              onClick={() => {
+                const today = new Date()
+                const quarterStart = startOfQuarter(today)
+                const quarterEnd = endOfQuarter(today)
+                
+                // Use today if it's before quarter end, otherwise use quarter end
+                const endDate = isBefore(today, quarterEnd) ? today : quarterEnd
+                
+                const newRange = { 
+                  from: formatDateISO(quarterStart), 
+                  to: formatDateISO(endDate)
+                }
+                setLocalRange(newRange)
+                onChange(newRange)
+              }}
+              title="Current Quarter to Date"
+            >
+              Quarter to Date
             </button>
           </div>
 

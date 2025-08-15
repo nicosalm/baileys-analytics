@@ -636,7 +636,6 @@ export async function getSeasonalAnalysis(
             jsonBody: seasonalAnalysisData
         };
     } catch (error) {
-        console.error('Seasonal analysis error:', error);
         return {
             status: 500,
             headers: corsHeaders(),

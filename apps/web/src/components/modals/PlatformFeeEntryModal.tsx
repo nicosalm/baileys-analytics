@@ -47,11 +47,6 @@ export const PlatformFeeEntryModal = ({
 
   const selectedPlatform = PLATFORMS.find(p => p.value === formData.platform)
   const totalFees = (formData.guestServiceFee || 0) + (formData.hostServiceFee || 0)
-  
-  const estimatedTaxOnFees = totalFees * 0.135
-  const ownerTaxLiability = formData.platformRemitsTax 
-    ? 0 
-    : estimatedTaxOnFees
 
   const handlePlatformChange = (platform: string) => {
     const platformConfig = PLATFORMS.find(p => p.value === platform)
@@ -59,7 +54,7 @@ export const PlatformFeeEntryModal = ({
       ...prev,
       platform: platform as any,
       platformRemitsTax: platformConfig?.remitsTax || false,
-      platformTaxRemitted: platformConfig?.remitsTax ? estimatedTaxOnFees : 0
+      platformTaxRemitted: platformConfig?.remitsTax ? 0 : 0
     }))
   }
 
@@ -78,10 +73,23 @@ export const PlatformFeeEntryModal = ({
       const result = await api.savePlatformFee(validation.data)
       
       if (result.success) {
+        // Invalidate platform fees cache
         await mutate(
           (key: any) => {
             if (Array.isArray(key)) {
               return key[0] === '/platform-fees' && key[1] === propertyId
+            }
+            return false
+          },
+          undefined,
+          { revalidate: true }
+        )
+        
+        // Invalidate financial data cache to reflect new platform fees
+        await mutate(
+          (key: any) => {
+            if (Array.isArray(key)) {
+              return key[0] === '/financial'
             }
             return false
           },
@@ -145,13 +153,43 @@ export const PlatformFeeEntryModal = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Month
           </label>
-          <input
-            type="month"
-            value={formData.month}
-            onChange={(e) => setFormData(prev => ({ ...prev, month: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          />
+          <div className="flex gap-2">
+            <select
+              value={(formData.month || format(new Date(), 'yyyy-MM')).split('-')[1]}
+              onChange={(e) => {
+                const year = (formData.month || format(new Date(), 'yyyy-MM')).split('-')[0]
+                setFormData(prev => ({ ...prev, month: `${year}-${e.target.value}` }))
+              }}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+            <select
+              value={(formData.month || format(new Date(), 'yyyy-MM')).split('-')[0]}
+              onChange={(e) => {
+                const month = (formData.month || format(new Date(), 'yyyy-MM')).split('-')[1]
+                setFormData(prev => ({ ...prev, month: `${e.target.value}-${month}` }))
+              }}
+              className="w-24 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Fee Inputs */}
@@ -216,7 +254,7 @@ export const PlatformFeeEntryModal = ({
                 onChange={(e) => setFormData(prev => ({
                   ...prev,
                   platformRemitsTax: e.target.checked,
-                  platformTaxRemitted: e.target.checked ? estimatedTaxOnFees : 0
+                  platformTaxRemitted: e.target.checked ? prev.platformTaxRemitted || 0 : 0
                 }))}
                 className="mr-2"
               />
@@ -250,28 +288,26 @@ export const PlatformFeeEntryModal = ({
           </div>
         </div>
 
-        {/* Tax Impact Summary */}
+        {/* Fee Summary */}
         {totalFees > 0 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h4 className="font-medium text-yellow-900 mb-2">Tax Impact Summary</h4>
-            <div className="space-y-1 text-sm text-yellow-800">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-900 mb-2">Fee Summary</h4>
+            <div className="space-y-1 text-sm text-blue-800">
               <div className="flex justify-between">
-                <span>Total Platform Fees:</span>
-                <span className="font-medium">{formatCurrency(totalFees)}</span>
+                <span>Guest Service Fee:</span>
+                <span className="font-medium">{formatCurrency(formData.guestServiceFee || 0)}</span>
               </div>
               <div className="flex justify-between">
-                <span>Estimated Tax on Fees (13.5%):</span>
-                <span className="font-medium">{formatCurrency(estimatedTaxOnFees)}</span>
+                <span>Host Service Fee:</span>
+                <span className="font-medium">{formatCurrency(formData.hostServiceFee || 0)}</span>
               </div>
-              <div className="flex justify-between pt-2 border-t border-yellow-300">
-                <span>Your Tax Liability:</span>
-                <span className={`font-bold ${ownerTaxLiability === 0 ? 'text-green-600' : 'text-orange-600'}`}>
-                  {formatCurrency(ownerTaxLiability)}
-                </span>
+              <div className="flex justify-between pt-2 border-t border-blue-300">
+                <span className="font-medium">Total Platform Fees:</span>
+                <span className="font-bold">{formatCurrency(totalFees)}</span>
               </div>
               {formData.platformRemitsTax && (
-                <p className="text-xs text-green-700 mt-2">
-                  ✓ Platform handles tax remittance for their fees
+                <p className="text-xs text-blue-700 mt-2">
+                  ℹ️ Platform remits taxes on their fees directly
                 </p>
               )}
             </div>

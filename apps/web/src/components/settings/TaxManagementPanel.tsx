@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useProperties, usePropertyTaxConfigs } from '@/hooks/use-api'
+import { useProperties, usePropertyTaxConfigs, usePropertyTaxStatus } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
 import { format } from 'date-fns'
@@ -56,6 +56,7 @@ type TabType = 'overview' | 'configurations' | 'platform-fees'
 export const TaxManagementPanel = () => {
   const { data: propertiesData, isLoading: propertiesLoading } = useProperties()
   const { data: configsData, isLoading: configsLoading } = usePropertyTaxConfigs()
+  const { data: taxStatusData } = usePropertyTaxStatus()
   const { openModal } = useModal()
   const { addToast } = useToast()
   
@@ -125,6 +126,8 @@ export const TaxManagementPanel = () => {
       if (result.success) {
         addToast('success', 'Tax configuration deleted')
         mutate('/property-tax-configs')
+        // Invalidate financial data cache to reflect tax changes
+        mutate((key: any) => Array.isArray(key) && key[0] === '/financial', undefined, { revalidate: true })
       } else {
         addToast('error', result.error || 'Failed to delete configuration')
       }
@@ -149,6 +152,8 @@ export const TaxManagementPanel = () => {
           addToast('success', 'Configuration set as active')
           mutate('/property-tax-configs')
           mutate('/property-tax-status')
+          // Invalidate financial data cache to reflect tax changes
+          mutate((key: any) => Array.isArray(key) && key[0] === '/financial', undefined, { revalidate: true })
         } else {
           addToast('error', 'Failed to activate configuration')
         }
@@ -175,14 +180,45 @@ export const TaxManagementPanel = () => {
     if (!activeConfig) return { status: 'missing', label: 'Not Configured', color: 'red', icon: 'alert', description: 'Tax configuration required' }
     const totalRate = calculateTotalRate(activeConfig.jurisdictions)
     if (totalRate === 0) return { status: 'incomplete', label: 'Incomplete Setup', color: 'yellow', icon: 'warning', description: 'Add tax rates to complete' }
-    const hasPlatformFees = false
-    if (!hasPlatformFees) return { status: 'active-partial', label: `${totalRate.toFixed(2)}% Active`, color: 'blue', icon: 'info', description: 'Add platform fees for accuracy' }
+    
+    // Check if property has platform fees from tax status data
+    const taxStatus = Array.isArray(taxStatusData) ? taxStatusData : []
+    const propertyTaxStatus = taxStatus.find((p: any) => p.propertyId === propertyId)
+    const feeStatus = propertyTaxStatus?.feeStatus || 'none'
+    
+    if (feeStatus === 'none') {
+      return { status: 'active-partial', label: `${totalRate.toFixed(2)}% Active`, color: 'blue', icon: 'info', description: 'Add platform fees for accuracy' }
+    } else if (feeStatus === 'partial') {
+      const missingCount = propertyTaxStatus?.missingFeeMonths?.length || 0
+      return { status: 'active-partial', label: `${totalRate.toFixed(2)}% Active`, color: 'yellow', icon: 'warning', 
+               description: `Missing ${missingCount} month${missingCount > 1 ? 's' : ''} of fee data` }
+    }
     return { status: 'active', label: `${totalRate.toFixed(2)}% Active`, color: 'green', icon: 'check', description: 'Fully configured' }
   }
   
   const totalProperties = properties.length
-  const configuredProperties = properties.filter((p: any) => configsByProperty[p.id]?.some((c: PropertyTaxConfig) => c.isActive)).length
-  const missingConfigs = totalProperties - configuredProperties
+  
+  // Get tax status data
+  const taxStatus = Array.isArray(taxStatusData) ? taxStatusData : []
+  
+  // Count fully configured (tax config + complete fee data)
+  const fullyConfiguredProperties = properties.filter((p: any) => {
+    const hasActiveConfig = configsByProperty[p.id]?.some((c: PropertyTaxConfig) => c.isActive)
+    const propertyTaxStatus = taxStatus.find((ts: any) => ts.propertyId === p.id)
+    const feeStatus = propertyTaxStatus?.feeStatus || 'none'
+    return hasActiveConfig && feeStatus === 'complete'
+  }).length
+  
+  // Count properties needing action
+  const propertiesNeedingTaxConfig = properties.filter((p: any) => 
+    !configsByProperty[p.id]?.some((c: PropertyTaxConfig) => c.isActive)
+  ).length
+  
+  const propertiesNeedingFees = taxStatus.filter((p: any) => 
+    p.feeStatus === 'none' || p.feeStatus === 'partial'
+  ).length
+  
+  const totalNeedingAction = Math.max(propertiesNeedingTaxConfig, propertiesNeedingFees)
   
   return (
     <div className="space-y-6">
@@ -217,34 +253,34 @@ export const TaxManagementPanel = () => {
       </div>
       
       {/* Tabs */}
-      <div className="border-b">
-        <nav className="flex space-x-8">
+      <div className="border-b border-gray-100">
+        <nav className="flex px-6">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`pb-2 border-b-2 transition-colors ${
+            className={`px-4 py-3 border-b-2 font-medium text-sm transition-all ${
               activeTab === 'overview'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
             Overview
           </button>
           <button
             onClick={() => setActiveTab('configurations')}
-            className={`pb-2 border-b-2 transition-colors ${
+            className={`px-4 py-3 border-b-2 font-medium text-sm transition-all ${
               activeTab === 'configurations'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
             Tax Configurations
           </button>
           <button
             onClick={() => setActiveTab('platform-fees')}
-            className={`pb-2 border-b-2 transition-colors ${
+            className={`px-4 py-3 border-b-2 font-medium text-sm transition-all ${
               activeTab === 'platform-fees'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
+                ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
             Platform Fees
@@ -253,15 +289,16 @@ export const TaxManagementPanel = () => {
       </div>
       
       {/* Tab Content */}
-      <StateWrapper
-        loading={isLoading}
-        error={null}
-        empty={properties.length === 0 && !isLoading}
-        emptyMessage="No properties found"
-        emptyIcon={<Building2 className="w-8 h-8 text-gray-400" />}
-        minHeight={400}
-      >
-        {activeTab === 'overview' && (
+      <div className="p-6">
+        <StateWrapper
+          loading={isLoading}
+          error={null}
+          empty={properties.length === 0 && !isLoading}
+          emptyMessage="No properties found"
+          emptyIcon={<Building2 className="w-8 h-8 text-gray-400" />}
+          minHeight={400}
+        >
+          {activeTab === 'overview' && (
           <div className="space-y-6">
             <div className="grid md:grid-cols-3 gap-4">
               <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -281,16 +318,16 @@ export const TaxManagementPanel = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="text-sm text-gray-600">Fully Configured</p>
-                    <p className="text-2xl font-bold text-green-600">{configuredProperties}</p>
+                    <p className="text-2xl font-bold text-green-600">{fullyConfiguredProperties}</p>
                   </div>
                   <Check className="w-8 h-8 text-green-400" />
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div className="bg-green-500 h-2 rounded-full transition-all duration-500" 
-                       style={{ width: `${totalProperties > 0 ? (configuredProperties / totalProperties * 100) : 0}%` }} />
+                       style={{ width: `${totalProperties > 0 ? (fullyConfiguredProperties / totalProperties * 100) : 0}%` }} />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {totalProperties > 0 ? Math.round(configuredProperties / totalProperties * 100) : 0}% complete
+                  {totalProperties > 0 ? Math.round(fullyConfiguredProperties / totalProperties * 100) : 0}% complete
                 </p>
               </div>
               
@@ -298,11 +335,11 @@ export const TaxManagementPanel = () => {
                 <div className="flex items-center justify-between mb-3">
                   <div>
                     <p className="text-sm text-gray-600">Action Required</p>
-                    <p className="text-2xl font-bold text-yellow-600">{missingConfigs}</p>
+                    <p className="text-2xl font-bold text-yellow-600">{totalNeedingAction}</p>
                   </div>
                   <AlertCircle className="w-8 h-8 text-yellow-400" />
                 </div>
-                {missingConfigs > 0 ? (
+                {totalNeedingAction > 0 ? (
                   <button
                     onClick={() => {
                       const firstMissing = properties.find((p: any) => 
@@ -600,12 +637,41 @@ export const TaxManagementPanel = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Month
                   </label>
-                  <input
-                    type="month"
-                    value={selectedMonth}
-                    onChange={(e) => setSelectedMonth(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedMonth.split('-')[1] || format(new Date(), 'MM')}
+                      onChange={(e) => {
+                        const year = selectedMonth.split('-')[0] || format(new Date(), 'yyyy')
+                        setSelectedMonth(`${year}-${e.target.value}`)
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="01">January</option>
+                      <option value="02">February</option>
+                      <option value="03">March</option>
+                      <option value="04">April</option>
+                      <option value="05">May</option>
+                      <option value="06">June</option>
+                      <option value="07">July</option>
+                      <option value="08">August</option>
+                      <option value="09">September</option>
+                      <option value="10">October</option>
+                      <option value="11">November</option>
+                      <option value="12">December</option>
+                    </select>
+                    <select
+                      value={selectedMonth.split('-')[0] || format(new Date(), 'yyyy')}
+                      onChange={(e) => {
+                        const month = selectedMonth.split('-')[1] || format(new Date(), 'MM')
+                        setSelectedMonth(`${e.target.value}-${month}`)
+                      }}
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="flex items-end">
                   <button
@@ -659,7 +725,8 @@ export const TaxManagementPanel = () => {
             </div>
           </div>
         )}
-      </StateWrapper>
+        </StateWrapper>
+      </div>
     </div>
   )
 }

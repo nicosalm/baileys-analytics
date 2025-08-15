@@ -134,6 +134,13 @@ export const TaxConfigWizardStepper = ({
           { revalidate: true }
         )
         
+        // Invalidate financial data cache to reflect new tax configuration
+        await globalMutate(
+          (key: any) => Array.isArray(key) && key[0] === '/financial',
+          undefined,
+          { revalidate: true }
+        )
+        
         closeModal()
       } else {
         addToast('error', result.error || 'Failed to save configuration')

@@ -20,7 +20,6 @@ export const query = async <T extends QueryResultRow = any>(
     const result = await pool.query<T>(text, params);
     return { success: true, data: result.rows };
   } catch (error) {
-    console.error('Database query error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown database error'
@@ -39,7 +38,6 @@ export const transaction = async <T>(
     return { success: true, data: result };
   } catch (error) {
     await client.query('ROLLBACK');
-    console.error('Transaction error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Transaction failed'

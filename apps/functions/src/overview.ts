@@ -177,12 +177,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
             WHEN pf.fee_type = 'percentage' THEN bd.total_amount * pf.fee_value
             WHEN pf.fee_type = 'flat' THEN pf.fee_value
             ELSE
-              CASE
-                WHEN bd.platform_key = 'airbnb' THEN bd.total_amount * 0.03
-                WHEN bd.platform_key = 'vrbo' THEN bd.total_amount * 0.05
-                WHEN bd.platform_key = 'booking.com' THEN bd.total_amount * 0.15
-                ELSE 0
-              END
+              0
           END, 0
         ) as platform_fee
       FROM booking_data bd
@@ -715,7 +710,6 @@ async function getRecentActivity(tenantId: string) {
   const result = await query(activityQuery, [tenantId])
 
   if (!result.success) {
-    console.error('Failed to fetch recent activity:', result.error)
     return [] // Return empty array if query fails
   }
 

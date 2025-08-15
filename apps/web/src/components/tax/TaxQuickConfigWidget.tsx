@@ -22,7 +22,8 @@ export const TaxQuickConfigWidget = () => {
   const totalProperties = taxStatus.length
   const configuredProperties = taxStatus.filter((p: any) => p.hasConfig).length
   const missingConfigs = taxStatus.filter((p: any) => !p.hasConfig)
-  const missingFees = taxStatus.filter((p: any) => p.missingMonths?.length > 0)
+  const missingFees = taxStatus.filter((p: any) => p.feeStatus === 'none')
+  const partialFees = taxStatus.filter((p: any) => p.feeStatus === 'partial')
   
   const completionPercentage = totalProperties > 0 
     ? Math.round((configuredProperties / totalProperties) * 100)
@@ -102,7 +103,7 @@ export const TaxQuickConfigWidget = () => {
           <div className="bg-gray-50 rounded-sm p-2">
             <p className="text-xs text-gray-600">Needs Action</p>
             <p className="text-lg font-semibold text-yellow-600">
-              {missingConfigs.length}
+              {missingConfigs.length + missingFees.length + partialFees.length}
             </p>
           </div>
         </div>
@@ -123,13 +124,13 @@ export const TaxQuickConfigWidget = () => {
             Configure {missingConfigs[0].propertyName.substring(0, 20)}
             {missingConfigs[0].propertyName.length > 20 && '...'}
           </button>
-        ) : missingFees.length > 0 ? (
+        ) : missingFees.length > 0 || partialFees.length > 0 ? (
           <button
             onClick={() => navigate('/settings?tab=tax')}
             className="w-full px-3 py-2 bg-yellow-600 text-white text-sm rounded-sm hover:bg-yellow-700 transition-colors flex items-center justify-center"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Platform Fees
+            {missingFees.length > 0 ? 'Add Platform Fees' : 'Complete Fee Data'}
           </button>
         ) : (
           <div className="flex items-center justify-center py-2 text-green-600 bg-green-50 rounded-sm">
@@ -169,15 +170,27 @@ export const TaxQuickConfigWidget = () => {
         )}
         
         {/* Platform Fees Reminder */}
-        {missingFees.length > 0 && missingConfigs.length === 0 && (
+        {(missingFees.length > 0 || partialFees.length > 0) && missingConfigs.length === 0 && (
           <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-sm">
             <div className="flex items-start">
               <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5" />
               <div className="text-xs text-yellow-800">
-                <p className="font-medium">Platform fees missing</p>
-                <p className="mt-0.5">
-                  {missingFees.length} {missingFees.length === 1 ? 'property needs' : 'properties need'} fee data
-                </p>
+                {missingFees.length > 0 && (
+                  <>
+                    <p className="font-medium">Platform fees missing</p>
+                    <p className="mt-0.5">
+                      {missingFees.length} {missingFees.length === 1 ? 'property needs' : 'properties need'} fee data
+                    </p>
+                  </>
+                )}
+                {partialFees.length > 0 && (
+                  <>
+                    <p className="font-medium">{missingFees.length > 0 ? 'Also: ' : ''}Incomplete fee data</p>
+                    <p className="mt-0.5">
+                      {partialFees.length} {partialFees.length === 1 ? 'property has' : 'properties have'} missing months
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -98,7 +98,6 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
       await createReportTemplate(duplicatedTemplate)
       addToast('success', 'Report template duplicated')
     } catch (error) {
-      console.error('Duplicate error:', error)
       addToast('error', 'Failed to duplicate template')
     }
   }

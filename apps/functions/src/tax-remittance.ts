@@ -130,25 +130,6 @@ export async function calculateTax(
     }
   }
 
-  // Get active tax rules for the property
-  const rulesResult = await query(
-    `SELECT * FROM tax_rules
-     WHERE tenant_id = $1 
-       AND is_active = true
-       AND effective_from <= $2
-       AND (effective_to IS NULL OR effective_to >= $2)
-     ORDER BY priority DESC`,
-    [auth.tenantId, bookingDate]
-  )
-
-  if (!rulesResult.success) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Failed to fetch tax rules' }
-    }
-  }
-
   // Get property tax configuration
   const configResult = await query(
     `SELECT * FROM property_tax_configs

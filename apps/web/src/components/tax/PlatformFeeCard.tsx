@@ -7,6 +7,8 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { useModal } from '@/contexts/modal'
 
 const formatMonth = (month: string): string => {
+  if (!month || month.length < 7) return ''
+  
   const [year, monthNum] = month.split('-')
   const date = new Date(parseInt(year), parseInt(monthNum) - 1)
   return format(date, 'MMMM yyyy')

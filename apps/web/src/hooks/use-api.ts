@@ -132,10 +132,8 @@ export function usePropertyDetail(propertyId?: string, from?: string, to?: strin
     cacheKey,
     async () => {
       const url = `/property/${encodeURIComponent(propertyId!)}/detail${params.toString() ? `?${params}` : ''}`
-      console.log('usePropertyDetail - Fetching URL:', url, 'with params:', params.toString())
       const result = await api.request(url)
       if (!result.success) throw new Error(result.error)
-      console.log('usePropertyDetail - Data received for date range:', from, 'to', to, 'tags:', tagIds)
       return result.data
     },
     {

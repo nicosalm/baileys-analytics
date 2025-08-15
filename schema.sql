@@ -155,34 +155,6 @@ CREATE TABLE budgets (
     UNIQUE(tenant_id, category_id, property_id, budget_year, budget_month)
 );
 
-CREATE TABLE tax_configs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    rate DECIMAL(5, 4) NOT NULL,
-    type VARCHAR(50),
-    applies_to_properties UUID[] DEFAULT '{}',
-    active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE tax_rules (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    description TEXT,
-    method JSONB NOT NULL,
-    applies_to JSONB NOT NULL,
-    jurisdiction VARCHAR(255),
-    effective_from DATE NOT NULL,
-    effective_to DATE,
-    priority INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT tax_rules_unique_name UNIQUE (tenant_id, name)
-);
 
 CREATE TABLE tax_calculations (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -197,14 +169,13 @@ CREATE TABLE tax_calculations (
     calculated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- Platform fee tracking for accurate tax calculations
 CREATE TABLE platform_fee_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
     platform VARCHAR(100) NOT NULL,
-    month VARCHAR(7) NOT NULL, -- Format: YYYY-MM
+    month VARCHAR(7) NOT NULL,
     guest_service_fee DECIMAL(10, 2) DEFAULT 0,
     host_service_fee DECIMAL(10, 2) DEFAULT 0,
     platform_remits_tax BOOLEAN DEFAULT false,
@@ -216,15 +187,14 @@ CREATE TABLE platform_fee_entries (
     UNIQUE(tenant_id, property_id, platform, month)
 );
 
--- Property tax configuration for jurisdiction-specific rules
 CREATE TABLE property_tax_configs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     config_name VARCHAR(255) NOT NULL,
-    jurisdictions JSONB NOT NULL, -- Array of {name, rate, type}
-    taxable_items JSONB NOT NULL, -- Array of taxable item types
-    platform_settings JSONB NOT NULL, -- Platform-specific tax handling
+    jurisdictions JSONB NOT NULL,
+    taxable_items JSONB NOT NULL,
+    platform_settings JSONB NOT NULL,
     is_active BOOLEAN DEFAULT true,
     effective_from DATE NOT NULL,
     effective_to DATE,
@@ -233,7 +203,6 @@ CREATE TABLE property_tax_configs (
     UNIQUE(property_id, config_name)
 );
 
--- Tax remittance tracking
 CREATE TABLE tax_remittances (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -245,7 +214,7 @@ CREATE TABLE tax_remittances (
     total_tax_due DECIMAL(10, 2) NOT NULL,
     platform_remitted DECIMAL(10, 2) DEFAULT 0,
     owner_remitted DECIMAL(10, 2) NOT NULL,
-    filing_status VARCHAR(50) DEFAULT 'pending', -- pending, filed, paid, overdue
+    filing_status VARCHAR(50) DEFAULT 'pending',
     filed_date DATE,
     confirmation_number VARCHAR(100),
     notes TEXT,
@@ -319,12 +288,6 @@ CREATE TABLE sync_progress (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO platform_fees (tenant_id, platform_name, fee_type, fee_value, effective_from) VALUES
-('00000000-0000-0000-0000-000000000000', 'airbnb', 'percentage', 0.03, '2024-01-01'),
-('00000000-0000-0000-0000-000000000000', 'vrbo', 'percentage', 0.05, '2024-01-01'),
-('00000000-0000-0000-0000-000000000000', 'booking.com', 'percentage', 0.15, '2024-01-01'),
-('00000000-0000-0000-0000-000000000000', 'direct', 'percentage', 0.00, '2024-01-01')
-ON CONFLICT DO NOTHING;
 
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_properties_tenant_id ON properties(tenant_id);
@@ -343,11 +306,6 @@ CREATE INDEX idx_expenses_category ON expenses(category_id);
 CREATE INDEX idx_expenses_booking ON expenses(booking_id) WHERE booking_id IS NOT NULL;
 CREATE INDEX idx_expense_allocations_property ON expense_allocations(property_id);
 CREATE INDEX idx_budgets_tenant_year ON budgets(tenant_id, budget_year);
-CREATE INDEX idx_tax_configs_tenant_id ON tax_configs(tenant_id);
-CREATE INDEX idx_tax_rules_tenant_active ON tax_rules(tenant_id, is_active);
-CREATE INDEX idx_tax_rules_priority ON tax_rules(priority DESC);
-CREATE INDEX idx_tax_rules_effective_dates ON tax_rules(effective_from, effective_to);
-CREATE INDEX idx_tax_rules_applies_to ON tax_rules USING GIN (applies_to);
 CREATE INDEX idx_tax_calculations_tenant_booking ON tax_calculations(tenant_id, booking_id);
 CREATE INDEX idx_tax_calculations_calculated_at ON tax_calculations(calculated_at);
 CREATE INDEX idx_platform_fee_entries_lookup ON platform_fee_entries(tenant_id, property_id, platform, month);
@@ -369,6 +327,14 @@ CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
 CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 CREATE INDEX idx_sync_progress_tenant_type ON sync_progress(tenant_id, sync_type);
 CREATE INDEX idx_sync_progress_status ON sync_progress(status);
+CREATE INDEX idx_platform_fee_entries_month ON platform_fee_entries(month, tenant_id);
+CREATE INDEX idx_tax_calculations_date ON tax_calculations(calculated_at DESC);
+CREATE INDEX idx_property_tax_configs_active ON property_tax_configs(property_id, is_active, effective_from DESC) WHERE is_active = true;
+CREATE INDEX idx_tax_remittances_period ON tax_remittances(tenant_id, period_start, period_end, filing_status);
+
+ALTER TABLE platform_fee_entries ADD CONSTRAINT positive_fees CHECK (guest_service_fee >= 0 AND host_service_fee >= 0 AND platform_tax_remitted >= 0);
+ALTER TABLE platform_fee_entries ADD CONSTRAINT valid_month_format CHECK (month ~ '^\d{4}-\d{2}$');
+ALTER TABLE property_tax_configs ADD CONSTRAINT valid_jurisdictions CHECK (jurisdictions IS NOT NULL AND jsonb_typeof(jurisdictions) = 'array');
 
 CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -386,10 +352,6 @@ CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_tax_configs_updated_at BEFORE UPDATE ON tax_configs
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_tax_rules_updated_at BEFORE UPDATE ON tax_rules
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_platform_fee_entries_updated_at BEFORE UPDATE ON platform_fee_entries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_property_tax_configs_updated_at BEFORE UPDATE ON property_tax_configs
@@ -403,7 +365,6 @@ CREATE TRIGGER update_oauth_tokens_updated_at BEFORE UPDATE ON oauth_tokens
 CREATE TRIGGER update_sync_progress_updated_at BEFORE UPDATE ON sync_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Report generation and management tables
 CREATE TABLE generated_reports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -460,7 +421,6 @@ CREATE TABLE report_execution_log (
     duration_ms INTEGER
 );
 
--- Report history table for tracking report template runs
 CREATE TABLE report_history (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     template_id UUID NOT NULL REFERENCES report_templates(id) ON DELETE CASCADE,
@@ -477,7 +437,6 @@ CREATE TABLE report_history (
     metrics JSONB
 );
 
--- Indexes for report tables
 CREATE INDEX idx_generated_reports_tenant_id ON generated_reports(tenant_id);
 CREATE INDEX idx_generated_reports_expires_at ON generated_reports(expires_at);
 CREATE INDEX idx_generated_reports_template_id ON generated_reports(template_id) WHERE template_id IS NOT NULL;
@@ -491,7 +450,6 @@ CREATE INDEX idx_report_templates_tenant_id ON report_templates(tenant_id);
 CREATE INDEX idx_report_templates_type ON report_templates(type);
 CREATE INDEX idx_report_templates_is_default ON report_templates(is_default) WHERE is_default = true;
 
--- Indexes for report_history
 CREATE INDEX idx_report_history_template_id ON report_history(template_id);
 CREATE INDEX idx_report_history_tenant_id ON report_history(tenant_id);
 CREATE INDEX idx_report_history_generated_at ON report_history(generated_at DESC);
@@ -500,174 +458,13 @@ CREATE INDEX idx_report_execution_log_report_id ON report_execution_log(report_i
 CREATE INDEX idx_report_execution_log_executed_at ON report_execution_log(executed_at);
 CREATE INDEX idx_report_execution_log_status ON report_execution_log(status);
 
--- Triggers for report tables
 CREATE TRIGGER update_scheduled_reports_updated_at BEFORE UPDATE ON scheduled_reports
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_report_templates_updated_at BEFORE UPDATE ON report_templates
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- =====================================================
--- ENHANCED TAX SYSTEM FOR GENERALIZED TAX MANAGEMENT
--- =====================================================
-
--- Tax formula configurations (flexible formulas for any jurisdiction)
-CREATE TABLE IF NOT EXISTS tax_formulas (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    jurisdiction_type VARCHAR(50), -- 'state', 'county', 'city', 'special_district'
-    jurisdiction_name VARCHAR(255),
-    
-    -- What components to include in tax calculation
-    taxable_components JSONB DEFAULT '{
-        "base_revenue": true,
-        "cleaning_fees": false,
-        "pet_fees": false,
-        "other_fees": false,
-        "platform_guest_fees": false,
-        "platform_host_fees": false,
-        "credit_card_fees": false
-    }'::jsonb,
-    
-    -- How to calculate tax
-    calculation_method VARCHAR(50) DEFAULT 'percentage', -- 'percentage', 'flat', 'tiered', 'custom'
-    base_rate DECIMAL(5, 4), -- For simple percentage
-    calculation_rules JSONB, -- For complex rules (tiers, conditions, etc)
-    custom_formula TEXT, -- For advanced users who need specific formulas
-    
-    -- Platform-specific remittance rules
-    remittance_rules JSONB DEFAULT '{
-        "airbnb": {
-            "remits_on_their_fees": false,
-            "remits_on_host_revenue": false,
-            "remittance_rate": null
-        },
-        "vrbo": {
-            "remits_on_their_fees": false,
-            "remits_on_host_revenue": false,
-            "remittance_rate": null
-        }
-    }'::jsonb,
-    
-    -- Reporting requirements
-    reporting_requirements JSONB DEFAULT '{
-        "split_bookings_across_months": true,
-        "requires_occupancy_data": false,
-        "requires_guest_counts": false,
-        "custom_metrics": []
-    }'::jsonb,
-    
-    is_active BOOLEAN DEFAULT true,
-    effective_from DATE NOT NULL,
-    effective_to DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Tax report configurations (how to generate reports for different jurisdictions)
-CREATE TABLE IF NOT EXISTS tax_report_configs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    formula_id UUID REFERENCES tax_formulas(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    report_type VARCHAR(50), -- 'monthly', 'quarterly', 'annual'
-    
-    -- What to include in the report
-    included_metrics JSONB DEFAULT '{
-        "total_revenue": true,
-        "taxable_revenue": true,
-        "days_available": false,
-        "days_rented": false,
-        "occupancy_rate": false,
-        "platform_fee_breakdown": true,
-        "tax_collected_by_platform": true,
-        "owner_tax_liability": true
-    }'::jsonb,
-    
-    -- How to group and display data
-    grouping_options JSONB DEFAULT '{
-        "group_by": "property",
-        "secondary_group": "month",
-        "include_platform_breakdown": true,
-        "show_calculation_details": false
-    }'::jsonb,
-    
-    -- Custom fields for specific jurisdictions
-    custom_fields JSONB DEFAULT '[]'::jsonb,
-    
-    output_format VARCHAR(20) DEFAULT 'standard', -- 'standard', 'detailed', 'summary', 'custom'
-    custom_template TEXT, -- For jurisdictions with specific format requirements
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Enhanced platform fee entries with API integration tracking
-ALTER TABLE platform_fee_entries 
+ALTER TABLE platform_fee_entries
 ADD COLUMN IF NOT EXISTS data_source VARCHAR(20) DEFAULT 'manual',
 ADD COLUMN IF NOT EXISTS platform_collected_tax DECIMAL(10, 2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS effective_tax_rate DECIMAL(5, 4),
 ADD COLUMN IF NOT EXISTS api_sync_date TIMESTAMP WITH TIME ZONE;
-
--- Booking financial details for tax calculations
-CREATE TABLE IF NOT EXISTS booking_financial_details (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    booking_id UUID NOT NULL REFERENCES bookings(id) ON DELETE CASCADE,
-    
-    -- Platform fees from API
-    guest_service_fee DECIMAL(10, 2), -- What guest paid to platform
-    host_service_fee DECIMAL(10, 2),  -- What host paid to platform
-    
-    -- Tax details
-    platform_collected_tax DECIMAL(10, 2),
-    platform_remitted_tax DECIMAL(10, 2),
-    
-    -- Additional fees that might be taxable
-    credit_card_processing_fee DECIMAL(10, 2),
-    channel_commission DECIMAL(10, 2),
-    
-    -- Metadata
-    data_source VARCHAR(20) DEFAULT 'api', -- 'api', 'manual', 'hybrid'
-    last_synced TIMESTAMP WITH TIME ZONE,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(booking_id)
-);
-
--- Tax calculation audit log for compliance
-CREATE TABLE IF NOT EXISTS tax_calculation_audit (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    property_id UUID REFERENCES properties(id),
-    booking_id UUID REFERENCES bookings(id),
-    formula_id UUID REFERENCES tax_formulas(id),
-    
-    -- Calculation details
-    calculation_date DATE NOT NULL,
-    revenue_components JSONB NOT NULL, -- All revenue items included
-    tax_calculations JSONB NOT NULL,   -- Step-by-step calculation
-    final_amounts JSONB NOT NULL,      -- Final tax amounts
-    
-    -- For split bookings
-    is_split_booking BOOLEAN DEFAULT false,
-    split_details JSONB,
-    
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
--- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_tax_formulas_tenant ON tax_formulas(tenant_id, is_active);
-CREATE INDEX IF NOT EXISTS idx_tax_formulas_jurisdiction ON tax_formulas(jurisdiction_type, jurisdiction_name);
-CREATE INDEX IF NOT EXISTS idx_tax_report_configs_formula ON tax_report_configs(formula_id);
-CREATE INDEX IF NOT EXISTS idx_booking_financial_booking ON booking_financial_details(booking_id);
-CREATE INDEX IF NOT EXISTS idx_tax_audit_tenant_date ON tax_calculation_audit(tenant_id, calculation_date);
-CREATE INDEX IF NOT EXISTS idx_tax_audit_booking ON tax_calculation_audit(booking_id);
-
--- Triggers for updated_at
-CREATE TRIGGER update_tax_formulas_updated_at BEFORE UPDATE ON tax_formulas
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_tax_report_configs_updated_at BEFORE UPDATE ON tax_report_configs
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_booking_financial_details_updated_at BEFORE UPDATE ON booking_financial_details
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

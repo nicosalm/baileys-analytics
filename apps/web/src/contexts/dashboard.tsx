@@ -181,7 +181,6 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const updateDateRange = useCallback((range: DateRange) => {
-    console.log('Dashboard Context - Updating date range:', range)
     setFilters(prev => ({ ...prev, dateRange: range }))
   }, [])
 

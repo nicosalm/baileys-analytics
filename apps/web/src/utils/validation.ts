@@ -138,13 +138,11 @@ export function decodeUrlParam(value: string): string {
     const decoded = decodeURIComponent(value)
     // Additional validation after decoding
     if (decoded.length > MAX_PARAM_LENGTH) {
-      console.warn('URL parameter exceeds maximum length')
       return ''
     }
     return decoded
   } catch (e) {
     // Invalid encoding, return empty string for safety
-    console.warn('Invalid URL parameter encoding')
     return ''
   }
 }

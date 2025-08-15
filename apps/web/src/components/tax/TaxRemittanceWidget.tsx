@@ -1,6 +1,6 @@
 import { FileText, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
-import { useTaxRemittance } from '@/hooks/use-api'
+import { useFinancial } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 import { format, parseISO } from 'date-fns'
 
@@ -11,34 +11,24 @@ interface TaxRemittanceWidgetProps {
 }
 
 export const TaxRemittanceWidget = ({ 
-  propertyId, 
   periodStart, 
   periodEnd 
 }: TaxRemittanceWidgetProps) => {
-  const { data: remittances, error, isLoading } = useTaxRemittance(propertyId, periodStart, periodEnd)
+  // Use financial data to get calculated tax information
+  const { data: financialData, error, isLoading } = useFinancial(periodStart, periodEnd)
   
-  const remittanceData = Array.isArray(remittances) ? remittances : []
+  // Extract tax data from financial response
+  const taxData = financialData?.tax
   
-  const totals = remittanceData.reduce(
-    (acc: any, rem: any) => ({
-      revenue: acc.revenue + rem.totalRevenue,
-      platformFees: acc.platformFees + rem.totalPlatformFees,
-      totalTax: acc.totalTax + rem.totalTaxDue,
-      platformRemitted: acc.platformRemitted + rem.platformRemitted,
-      ownerRemitted: acc.ownerRemitted + rem.ownerRemitted,
-      pending: rem.filingStatus === 'pending' ? acc.pending + 1 : acc.pending,
-      overdue: rem.filingStatus === 'overdue' ? acc.overdue + 1 : acc.overdue
-    }),
-    { 
-      revenue: 0, 
-      platformFees: 0, 
-      totalTax: 0, 
-      platformRemitted: 0, 
-      ownerRemitted: 0,
-      pending: 0,
-      overdue: 0
-    }
-  ) || { 
+  const totals = taxData ? {
+    revenue: taxData.summary.totalRent || 0,
+    platformFees: 0, // Will be calculated from platform fee entries if needed
+    totalTax: taxData.summary.totalTax || 0,
+    platformRemitted: taxData.summary.platformRemitted || 0,
+    ownerRemitted: taxData.summary.ownerRemitted || 0,
+    pending: 0, // No filing status in calculated data
+    overdue: 0  // No filing status in calculated data
+  } : { 
     revenue: 0, 
     platformFees: 0, 
     totalTax: 0, 
@@ -60,8 +50,8 @@ export const TaxRemittanceWidget = ({
     <StateWrapper
       loading={isLoading}
       error={error}
-      empty={remittanceData.length === 0}
-      emptyMessage="No tax remittance data available"
+      empty={!taxData || totals.totalTax === 0}
+      emptyMessage="No tax data available for this period"
       minHeight={200}
     >
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -181,13 +171,6 @@ export const TaxRemittanceWidget = ({
               </div>
             </div>
           )}
-          
-          {/* Action Button */}
-          <div className="border-t pt-4">
-            <button className="w-full px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-sm hover:bg-gray-200 transition-colors">
-              View Detailed Report →
-            </button>
-          </div>
         </div>
       </div>
     </StateWrapper>

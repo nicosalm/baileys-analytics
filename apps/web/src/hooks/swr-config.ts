@@ -19,9 +19,6 @@ export const swrConfig: SWRConfiguration = {
       throw new Error(result.error)
     }
     return result.data
-  },
-  onError: (error) => {
-    console.error('SWR Error:', error)
   }
 }
 

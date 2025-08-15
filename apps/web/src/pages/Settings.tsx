@@ -4,7 +4,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
-import { RefreshCw, Calendar, AlertCircle, Calculator } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2 } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 
 // Lazy load the tax management panel
@@ -32,20 +32,26 @@ const SyncButton = ({
   icon: Icon,
   onClick,
   disabled,
-  loading
+  loading,
+  variant = 'primary'
 }: {
   label: string
   icon: React.ComponentType<{ className?: string }>
   onClick: () => void
   disabled: boolean
   loading: boolean
+  variant?: 'primary' | 'secondary'
 }) => (
   <button
     onClick={onClick}
     disabled={disabled}
-    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-sm disabled:opacity-50"
+    className={`flex items-center px-4 py-2.5 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+      variant === 'primary' 
+        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md' 
+        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+    }`}
   >
-    {loading ? <LoadingState /> : <Icon className="w-4 h-4 mr-2" />}
+    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Icon className="w-4 h-4 mr-2" />}
     {label}
   </button>
 )
@@ -54,19 +60,41 @@ const SyncStatusDisplay = ({ status }: { status: SyncStatus | null }) => {
   if (!status) return null
 
   return (
-    <div className="bg-gray-50 p-4 rounded-sm space-y-2">
-      <div className="text-sm">
-        <span className="text-gray-600">Properties:</span> {status.propertyCount}
+    <div className="bg-gray-50 p-4 rounded-lg space-y-3 border border-gray-100">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <div className="flex items-center text-xs text-gray-500 mb-1">
+            <Building2 className="w-3 h-3 mr-1" />
+            Properties
+          </div>
+          <div className="text-lg font-semibold text-gray-900">{status.propertyCount}</div>
+        </div>
+        <div>
+          <div className="flex items-center text-xs text-gray-500 mb-1">
+            <Calendar className="w-3 h-3 mr-1" />
+            Total Bookings
+          </div>
+          <div className="text-lg font-semibold text-gray-900">
+            {status.bookingCount}
+            <span className="text-xs text-gray-500 ml-1 font-normal">(excl. canceled)</span>
+          </div>
+        </div>
       </div>
-      <div className="text-sm">
-        <span className="text-gray-600">Total Bookings:</span> {status.bookingCount}
-        <span className="text-xs text-gray-500 ml-1">(excluding canceled)</span>
-      </div>
-      <div className="text-sm">
-        <span className="text-gray-600">Last Property Sync:</span> {formatDate(status.lastPropertySync)}
-      </div>
-      <div className="text-sm">
-        <span className="text-gray-600">Last Booking Sync:</span> {formatDate(status.lastBookingSync)}
+      <div className="pt-3 border-t border-gray-200 space-y-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600 flex items-center">
+            <Clock className="w-3 h-3 mr-1.5" />
+            Last Property Sync
+          </span>
+          <span className="font-medium text-gray-900">{formatDate(status.lastPropertySync)}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600 flex items-center">
+            <Clock className="w-3 h-3 mr-1.5" />
+            Last Booking Sync
+          </span>
+          <span className="font-medium text-gray-900">{formatDate(status.lastBookingSync)}</span>
+        </div>
       </div>
     </div>
   )
@@ -77,18 +105,21 @@ const AccountInfo = ({ email, createdAt, companyName }: {
   createdAt: string
   companyName?: string | null
 }) => (
-  <div className="bg-white p-6 rounded-lg shadow-sm">
-    <h2 className="text-xl font-bold mb-4">Your Account</h2>
-    <div className="space-y-2">
-      <div>
-        <span className="text-gray-600">Email:</span> {email}
+  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+    <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
+    <div className="space-y-3">
+      <div className="flex justify-between items-center py-2 border-b border-gray-50">
+        <span className="text-sm text-gray-600">Email Address</span>
+        <span className="text-sm font-medium text-gray-900">{email}</span>
       </div>
-      <div>
-        <span className="text-gray-600">Account Created:</span> {formatDateDisplay(new Date(createdAt))}
+      <div className="flex justify-between items-center py-2 border-b border-gray-50">
+        <span className="text-sm text-gray-600">Member Since</span>
+        <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
       </div>
       {companyName && (
-        <div>
-          <span className="text-gray-600">Company:</span> {companyName}
+        <div className="flex justify-between items-center py-2">
+          <span className="text-sm text-gray-600">Company</span>
+          <span className="text-sm font-medium text-gray-900">{companyName}</span>
         </div>
       )}
     </div>
@@ -110,9 +141,17 @@ const OwnerRezConnection = ({
 }) => {
   if (!isConnected) {
     return (
-      <div className="p-4 border rounded-sm">
-        <h2 className="text-xl font-bold mb-4">OwnerRez Connection</h2>
-        <p className="text-gray-600">Not connected</p>
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Property Management Connection</h2>
+        <div className="text-center py-8">
+          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <AlertCircle className="w-6 h-6 text-gray-400" />
+          </div>
+          <p className="text-gray-600 mb-4">No property management system connected</p>
+          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+            Connect OwnerRez
+          </button>
+        </div>
       </div>
     )
   }
@@ -120,38 +159,46 @@ const OwnerRezConnection = ({
   const isSyncing = syncState.type === 'syncing'
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm">
-      <h2 className="text-xl font-bold mb-4">Property Management Connection</h2>
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">Property Management Connection</h2>
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+          <Check className="w-3 h-3 mr-1" />
+          Connected
+        </span>
+      </div>
       <div className="space-y-4">
-        <p className="text-green-600 flex items-center">
-          ✓ Connected to OwnerRez
-        </p>
 
         <SyncStatusDisplay status={syncStatus} />
 
-        <div className="space-y-2">
+        <div className="flex gap-3">
           <SyncButton
-            label="Sync Recent Updates"
+            label="Sync Recent"
             icon={RefreshCw}
             onClick={onRecentSync}
             disabled={isSyncing}
             loading={isSyncing && syncState.mode === 'recent'}
+            variant="primary"
           />
 
           <SyncButton
-            label="Sync Historical Data (4 Years)"
+            label="Sync Historical (4 Years)"
             icon={Calendar}
             onClick={onHistoricalSync}
             disabled={isSyncing}
             loading={isSyncing && syncState.mode === 'historical'}
+            variant="secondary"
           />
 
-          <div className="flex items-start space-x-2 text-sm text-gray-600 mt-2">
-            <AlertCircle className="w-4 h-4 mt-0.5" />
-            <div>
-              <p>Recent sync updates data from the last 30 days.</p>
-              <p>Historical sync retrieves all bookings from the past 4 years.</p>
-              <p>Data syncs automatically every 12 hours.</p>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-start">
+            <AlertCircle className="w-4 h-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-blue-800 space-y-1">
+              <p>• Recent sync updates data from the last 30 days</p>
+              <p>• Historical sync retrieves all bookings from the past 4 years</p>
+              <p>• Data syncs automatically every 12 hours</p>
             </div>
           </div>
         </div>
@@ -240,34 +287,40 @@ export const Settings = () => {
 
 
   return (
-    <div className="min-h-screen">
-      <nav className="p-4 border-b">
-        <div className="max-w-6xl mx-auto">
-          <Link to="/dashboard/overview" className="text-blue-600">← Back to Dashboard</Link>
+    <div className="min-h-screen bg-gray-50">
+      <nav className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <Link to="/dashboard/overview" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors">
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Dashboard
+          </Link>
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <p className="text-sm text-gray-600 mt-1">Manage your account, connections, and tax configurations</p>
+        </div>
 
-        <div className="mb-6 border-b">
-          <nav className="flex space-x-8">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-6">
+          <nav className="flex">
             <button
               onClick={() => setActiveTab('account')}
-              className={`pb-2 border-b-2 transition-colors ${
+              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all ${
                 activeTab === 'account'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
-              Account
+              Account & Sync
             </button>
             <button
               onClick={() => setActiveTab('tax')}
-              className={`pb-2 border-b-2 transition-colors flex items-center ${
+              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center ${
                 activeTab === 'tax'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
               <Calculator className="w-4 h-4 mr-2" />
@@ -277,7 +330,7 @@ export const Settings = () => {
         </div>
 
         {activeTab === 'account' ? (
-          <div className="space-y-6">
+          <div className="grid gap-6">
             <AccountInfo
               email={user.email}
               createdAt={user.createdAt}
@@ -294,15 +347,13 @@ export const Settings = () => {
           </div>
         ) : (
           <Suspense fallback={
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100">
               <div className="flex justify-center py-12">
                 <LoadingState />
               </div>
             </div>
           }>
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <TaxManagementPanel />
-            </div>
+            <TaxManagementPanel />
           </Suspense>
         )}
         

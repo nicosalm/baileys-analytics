@@ -110,7 +110,7 @@ const PLView: React.FC<PLViewProps> = ({ data, loading }) => {
         <div className="flex items-start">
           <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
           <div className="text-sm text-blue-800">
-            <strong>Profit & Loss:</strong> Shows how much money you actually keep after platforms take their fees (like Airbnb's 15% commission) and taxes
+            <strong>Profit & Loss:</strong> Shows how much money you actually keep after platforms take their fees and taxes
           </div>
         </div>
       </div>
@@ -814,8 +814,9 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
   
   // Count properties needing configuration
   const missingConfigs = taxStatus.filter((p: any) => !p.hasConfig)
-  const missingFees = taxStatus.filter((p: any) => p.missingMonths?.length > 0)
-  const totalIssues = missingConfigs.length + missingFees.length
+  const missingFees = taxStatus.filter((p: any) => p.feeStatus === 'none')
+  const partialFees = taxStatus.filter((p: any) => p.feeStatus === 'partial')
+  const totalIssues = missingConfigs.length + missingFees.length + partialFees.length
   
   const handleGoToSettings = () => {
     navigate('/settings?tab=tax')
@@ -929,7 +930,15 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
                         )}
                         {missingFees.length > 0 && (
                           <p>
-                            {missingFees.length} {missingFees.length === 1 ? 'property has' : 'properties have'} missing platform fee data
+                            {missingFees.length} {missingFees.length === 1 ? 'property has' : 'properties have'} no platform fee data
+                          </p>
+                        )}
+                        {partialFees.length > 0 && (
+                          <p className="text-orange-700">
+                            ⚠️ {partialFees.length} {partialFees.length === 1 ? 'property has' : 'properties have'} incomplete fee data 
+                            {partialFees[0]?.missingFeeMonths?.length > 0 && 
+                              ` (missing ${partialFees[0].missingFeeMonths.length} month${partialFees[0].missingFeeMonths.length > 1 ? 's' : ''})`
+                            }
                           </p>
                         )}
                       </>
@@ -960,13 +969,13 @@ const TaxCenter: React.FC<TaxCenterProps> = ({ data, loading }) => {
                         <Settings className="w-4 h-4 mr-2" />
                         Configure Now
                       </button>
-                    ) : missingFees.length > 0 ? (
+                    ) : missingFees.length > 0 || partialFees.length > 0 ? (
                       <button
                         onClick={() => navigate('/settings?tab=tax')}
                         className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-sm hover:bg-blue-700 transition-colors"
                       >
                         <Settings className="w-4 h-4 mr-2" />
-                        Add Platform Fees
+                        {missingFees.length > 0 ? 'Add Platform Fees' : 'Complete Fee Data'}
                       </button>
                     ) : null}
                     <button
