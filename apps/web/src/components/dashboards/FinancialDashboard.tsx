@@ -321,10 +321,10 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
         <MetricCard
           icon={TrendingUp}
           label="Year-over-Year"
-          value={periodGrowth}
-          format="percent"
+          value={`${periodGrowth >= 0 ? '+' : ''}${periodGrowth.toFixed(1)}%`}
+          format="string"
           color={periodGrowth >= 0 ? 'green' : 'red'}
-          subValue={data.lastYearData ? `Was ${formatCompactCurrency(data.lastYearData.gross)}` : 'No prior data'}
+          subValue={data.lastYearData ? `${formatCompactCurrency(data.gross)} vs ${formatCompactCurrency(data.lastYearData.gross)} last year` : 'No prior data'}
           tooltip="Growth compared to same period last year"
         />
         <MetricCard

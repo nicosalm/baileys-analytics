@@ -832,11 +832,21 @@ async function getLastYearRevenue(
     total_fees: string
     total_taxes: string
   }>(`
+    WITH platform_fee_lookup AS (
+      SELECT DISTINCT ON (platform_name)
+        platform_name, fee_type, fee_value
+      FROM platform_fees
+      WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
+        AND is_active = true
+        AND effective_from <= $3::date
+        AND (effective_to IS NULL OR effective_to >= $2::date)
+      ORDER BY platform_name, tenant_id DESC, effective_from DESC
+    )
     SELECT
-      COALESCE(SUM(total_amount), 0) as gross_revenue,
+      COALESCE(SUM(bookings.total_amount), 0) as gross_revenue,
       COALESCE(SUM(
         CASE
-          WHEN pf.fee_type = 'percentage' THEN total_amount * pf.fee_value
+          WHEN pf.fee_type = 'percentage' THEN bookings.total_amount * pf.fee_value
           WHEN pf.fee_type = 'flat' THEN pf.fee_value
           ELSE 0
         END
@@ -845,10 +855,20 @@ async function getLastYearRevenue(
         (SELECT SUM(amount) FROM booking_charges WHERE booking_id = bookings.id AND type = 'tax')
       ), 0) as total_taxes
     FROM bookings
-    WHERE tenant_id = $1
-      AND arrival >= $2
-      AND arrival <= $3
-      AND status != 'canceled'
+    LEFT JOIN platform_fee_lookup pf ON LOWER(
+      CASE
+        WHEN bookings.platform IS NULL OR bookings.platform = '' THEN 'direct'
+        WHEN LOWER(bookings.platform) LIKE '%direct%' THEN 'direct'
+        WHEN LOWER(bookings.platform) LIKE '%airbnb%' THEN 'airbnb'
+        WHEN LOWER(bookings.platform) LIKE '%vrbo%' OR LOWER(bookings.platform) LIKE '%homeaway%' THEN 'vrbo'
+        WHEN LOWER(bookings.platform) LIKE '%booking.com%' OR LOWER(bookings.platform) LIKE '%booking%' THEN 'booking.com'
+        ELSE LOWER(bookings.platform)
+      END
+    ) = pf.platform_name
+    WHERE bookings.tenant_id = $1
+      AND bookings.arrival >= $2
+      AND bookings.arrival <= $3
+      AND bookings.status != 'canceled'
       ${tagFilter}`,
     queryParams
   )
