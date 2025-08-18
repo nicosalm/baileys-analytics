@@ -110,8 +110,8 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
       FROM properties p
       LEFT JOIN bookings b ON p.id = b.property_id
         AND b.tenant_id = $1
+        AND b.arrival >= $2
         AND b.arrival <= $3
-        AND b.departure >= $2
         AND b.status != 'canceled'
         ${tagFilter}
       WHERE p.tenant_id = $1 AND p.active = true
