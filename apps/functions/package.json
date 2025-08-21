@@ -17,6 +17,7 @@
     "@baileys/utils": "workspace:*",
     "@types/pg": "^8.15.5",
     "axios": "^1.11.0",
+    "csv-parse": "^6.1.0",
     "date-fns": "^4.1.0",
     "jose": "^6.0.12",
     "jspdf": "^3.0.1",

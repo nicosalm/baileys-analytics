@@ -42,7 +42,6 @@ export async function propertyTaxConfigs(
       propertyAddress: config.property_address,
       configName: config.config_name,
       jurisdictions: typeof config.jurisdictions === 'string' ? JSON.parse(config.jurisdictions) : config.jurisdictions,
-      taxableItems: typeof config.taxable_items === 'string' ? JSON.parse(config.taxable_items) : config.taxable_items,
       platformSettings: typeof config.platform_settings === 'string' ? JSON.parse(config.platform_settings) : config.platform_settings,
       effectiveFrom: config.effective_from,
       effectiveTo: config.effective_to,
@@ -83,7 +82,6 @@ export async function propertyTaxConfigs(
     const {
       configName,
       jurisdictions,
-      taxableItems,
       platformSettings,
       effectiveFrom,
       isActive
@@ -91,16 +89,15 @@ export async function propertyTaxConfigs(
 
     const result = await query(
       `UPDATE property_tax_configs 
-       SET config_name = $2, jurisdictions = $3, taxable_items = $4,
-           platform_settings = $5, effective_from = $6, is_active = $7,
+       SET config_name = $2, jurisdictions = $3,
+           platform_settings = $4, effective_from = $5, is_active = $6,
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = $1 AND tenant_id = $8
+       WHERE id = $1 AND tenant_id = $7
        RETURNING *`,
       [
         configId,
         configName,
         JSON.stringify(jurisdictions),
-        JSON.stringify(taxableItems || ['base_rent']),
         JSON.stringify(platformSettings || {}),
         effectiveFrom,
         isActive !== undefined ? isActive : true,
@@ -142,7 +139,6 @@ export async function propertyTaxConfigs(
       propertyId,
       configName,
       jurisdictions,
-      taxableItems,
       platformSettings,
       effectiveFrom
     } = body
@@ -169,16 +165,14 @@ export async function propertyTaxConfigs(
       const result = await query(
         `UPDATE property_tax_configs 
          SET jurisdictions = $1,
-             taxable_items = $2,
-             platform_settings = $3,
-             effective_from = $4,
+             platform_settings = $2,
+             effective_from = $3,
              is_active = true,
              updated_at = CURRENT_TIMESTAMP
-         WHERE property_id = $5 AND config_name = $6 AND tenant_id = $7
+         WHERE property_id = $4 AND config_name = $5 AND tenant_id = $6
          RETURNING *`,
         [
           JSON.stringify(jurisdictions),
-          JSON.stringify(taxableItems || ['base_rent']),
           JSON.stringify(platformSettings || {}),
           effectiveFrom,
           propertyId,
@@ -214,16 +208,15 @@ export async function propertyTaxConfigs(
     const result = await query(
       `INSERT INTO property_tax_configs (
         property_id, tenant_id, config_name,
-        jurisdictions, taxable_items, platform_settings,
+        jurisdictions, platform_settings,
         is_active, effective_from
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *`,
       [
         propertyId,
         auth.tenantId,
         configName,
         JSON.stringify(jurisdictions),
-        JSON.stringify(taxableItems || ['base_rent']),
         JSON.stringify(platformSettings || {}),
         true,
         effectiveFrom
@@ -248,7 +241,6 @@ export async function propertyTaxConfigs(
           propertyId,
           configName,
           jurisdictions,
-          taxableItems,
           platformSettings,
           isActive: true,
           effectiveFrom,

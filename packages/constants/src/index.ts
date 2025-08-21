@@ -24,3 +24,5 @@ export const BOOKING_STATUS = {
   CANCELLED: 'cancelled',
   PENDING: 'pending',
 } as const;
+
+export * from './tax'

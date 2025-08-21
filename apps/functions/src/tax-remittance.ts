@@ -163,21 +163,16 @@ export async function calculateTax(
     const taxAmount = totalAmount * rate
     totalTaxDue += taxAmount
     
-    // Determine who remits the tax
+    // Calculate tax - remittance should be determined by platform config
     const platformFeesTax = (guestFee + hostFee) * rate
-    if (platform === 'airbnb' && jurisdiction.type === 'state') {
-      // Airbnb typically remits state taxes on their fees
-      platformRemitted += platformFeesTax
-      ownerRemitted += (bookingAmount * rate)
-    } else {
-      ownerRemitted += taxAmount
-    }
+    // TODO: Get actual remittance rules from tenant_platform_configs
+    ownerRemitted += taxAmount
     
     breakdown.push({
       jurisdiction: jurisdiction.name,
       rate,
       amount: taxAmount,
-      paidBy: platformFeesTax > 0 && platform === 'airbnb' ? 'split' : 'owner'
+      paidBy: 'owner' // Should be determined by platform configuration
     })
   }
 

@@ -421,4 +421,17 @@ export async function savePropertyTaxConfig(data: any): Promise<void> {
   }
   // Invalidate cache
   await globalMutate('/property-tax-status')
+  await globalMutate('/property-tax-configs')
+}
+
+// Tax Jurisdictions hook
+export function useTaxJurisdictions(propertyId?: string) {
+  return useSWR(
+    propertyId ? `/tax-jurisdiction-auto-detect?propertyId=${propertyId}` : null,
+    async () => {
+      const result = await api.request(`/tax-jurisdiction-auto-detect?propertyId=${propertyId}`)
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    }
+  )
 }

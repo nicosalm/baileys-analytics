@@ -314,6 +314,10 @@ class ApiClient {
         return this.request('/property-tax-configs')
     }
 
+    async getTaxJurisdictions(): Promise<ApiResult<any>> {
+        return this.request('/tax-jurisdictions')
+    }
+
     async savePropertyTaxConfig(data: any): Promise<ApiResult<any>> {
         return this.request('/property-tax-configs', {
             method: 'POST',

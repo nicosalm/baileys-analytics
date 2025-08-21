@@ -9,15 +9,10 @@ interface ReviewStepProps {
     configName: string
     jurisdictions: Array<{
       name: string
-      type: string
       rate: number
       description?: string
     }>
-    taxableItems: string[]
-    platformSettings: {
-      airbnb?: { remitsTax: boolean }
-      vrbo?: { remitsTax: boolean }
-    }
+    platformSettings: Record<string, { remitsTax: boolean }>
     effectiveFrom: string
   }
   totalRate: number
@@ -25,15 +20,6 @@ interface ReviewStepProps {
 }
 
 export const ReviewStep = ({ wizardData, totalRate, isEditMode }: ReviewStepProps) => {
-  const formatTaxableItem = (item: string): string => {
-    const labels: Record<string, string> = {
-      'base_rent': 'Base Rental Amount',
-      'cleaning_fee': 'Cleaning Fees',
-      'platform_fee': 'Platform Service Fees',
-      'other_fees': 'Other Fees & Charges'
-    }
-    return labels[item] || item
-  }
   
   return (
     <div className="space-y-6">
@@ -91,10 +77,9 @@ export const ReviewStep = ({ wizardData, totalRate, isEditMode }: ReviewStepProp
             <div key={index} className="flex justify-between items-center py-2 border-b last:border-0">
               <div>
                 <p className="text-sm font-medium">{jurisdiction.name}</p>
-                <p className="text-xs text-gray-500">
-                  {jurisdiction.type.charAt(0).toUpperCase() + jurisdiction.type.slice(1)} tax
-                  {jurisdiction.description && ` • ${jurisdiction.description}`}
-                </p>
+                {jurisdiction.description && (
+                  <p className="text-xs text-gray-500">{jurisdiction.description}</p>
+                )}
               </div>
               <span className="font-medium text-sm">{jurisdiction.rate}%</span>
             </div>
@@ -115,39 +100,34 @@ export const ReviewStep = ({ wizardData, totalRate, isEditMode }: ReviewStepProp
           Platform Settings
         </h3>
         
-        <div className="space-y-3">
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Platform Tax Remittance:</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="flex items-center text-sm">
-                <span className="mr-2">Airbnb:</span>
-                {wizardData.platformSettings.airbnb?.remitsTax ? (
-                  <span className="text-green-600 font-medium">Remits taxes</span>
-                ) : (
-                  <span className="text-gray-500">Does not remit</span>
-                )}
-              </div>
-              <div className="flex items-center text-sm">
-                <span className="mr-2">VRBO:</span>
-                {wizardData.platformSettings.vrbo?.remitsTax ? (
-                  <span className="text-green-600 font-medium">Remits taxes</span>
-                ) : (
-                  <span className="text-gray-500">Does not remit</span>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Taxable Items:</p>
-            <div className="flex flex-wrap gap-2">
-              {wizardData.taxableItems.map(item => (
-                <span key={item} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                  {formatTaxableItem(item)}
-                </span>
-              ))}
-            </div>
-          </div>
+        <div className="space-y-2">
+          {Object.entries(wizardData.platformSettings).length > 0 ? (
+            Object.entries(wizardData.platformSettings).map(([platform, settings]) => {
+              // Map platform keys to display names
+              const displayNames: Record<string, string> = {
+                'airbnb': 'Airbnb',
+                'vrbo': 'VRBO',
+                'bookingcom': 'Booking.com',
+                'direct': 'Direct Bookings',
+                'whimstay': 'Whimstay',
+                'rentalz': 'Rentalz'
+              }
+              const displayName = displayNames[platform] || platform
+              
+              return (
+                <div key={platform} className="flex justify-between items-center py-2 border-b last:border-0">
+                  <span className="text-sm">{displayName}</span>
+                  {settings.remitsTax ? (
+                    <span className="text-green-600 font-medium text-sm">Remits taxes</span>
+                  ) : (
+                    <span className="text-gray-500 text-sm">Does not remit</span>
+                  )}
+                </div>
+              )
+            })
+          ) : (
+            <p className="text-sm text-gray-500">No platform settings configured</p>
+          )}
         </div>
       </div>
       

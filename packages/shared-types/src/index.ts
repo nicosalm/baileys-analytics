@@ -34,3 +34,4 @@ export interface Booking {
 }
 
 export * from './schemas'
+export * from './tax'

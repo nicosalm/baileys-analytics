@@ -138,29 +138,9 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
   
   
   const metricsQuery = `
-    WITH platform_fee_lookup AS (
-      SELECT DISTINCT ON (platform_name)
-        platform_name, fee_type, fee_value
-      FROM platform_fees
-      WHERE (tenant_id = $1 OR tenant_id = '00000000-0000-0000-0000-000000000000')
-        AND is_active = true
-        AND effective_from <= $3::date
-        AND (effective_to IS NULL OR effective_to >= $2::date)
-      ORDER BY platform_name, tenant_id DESC, effective_from DESC
-    ),
-    booking_data AS (
+    WITH booking_data AS (
       SELECT
-        b.id, b.total_amount, b.arrival, b.departure, b.platform, b.guest_name, b.status,
-        LOWER(
-          CASE
-            WHEN b.platform IS NULL OR b.platform = '' THEN 'direct'
-            WHEN LOWER(b.platform) LIKE '%direct%' THEN 'direct'
-            WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'airbnb'
-            WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'vrbo'
-            WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'booking.com'
-            ELSE LOWER(b.platform)
-          END
-        ) as platform_key
+        b.id, b.total_amount, b.arrival, b.departure, b.platform, b.guest_name, b.status
       FROM bookings b
       ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
       WHERE b.tenant_id = $1
@@ -168,20 +148,6 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
         AND b.arrival <= $3::date
         AND b.status != 'canceled'
         ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
-    ),
-    fee_calc AS (
-      SELECT
-        bd.id, bd.total_amount, bd.arrival, bd.departure, bd.guest_name,
-        COALESCE(
-          CASE
-            WHEN pf.fee_type = 'percentage' THEN bd.total_amount * pf.fee_value
-            WHEN pf.fee_type = 'flat' THEN pf.fee_value
-            ELSE
-              0
-          END, 0
-        ) as platform_fee
-      FROM booking_data bd
-      LEFT JOIN platform_fee_lookup pf ON bd.platform_key = pf.platform_name
     ),
     tax_data AS (
       SELECT bd.id, COALESCE(SUM(bc.amount), 0) as tax_amount
@@ -191,17 +157,17 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
     ),
     booking_stats AS (
       SELECT
-        COUNT(DISTINCT fc.id) as total_bookings,
-        COUNT(DISTINCT CASE WHEN fc.arrival > CURRENT_DATE THEN fc.id END) as upcoming_bookings,
-        COALESCE(SUM(fc.total_amount), 0) as total_revenue,
-        COALESCE(SUM(fc.total_amount - fc.platform_fee - COALESCE(td.tax_amount, 0)), 0) as net_revenue,
-        COALESCE(SUM(fc.platform_fee), 0) as total_fees,
+        COUNT(DISTINCT bd.id) as total_bookings,
+        COUNT(DISTINCT CASE WHEN bd.arrival > CURRENT_DATE THEN bd.id END) as upcoming_bookings,
+        COALESCE(SUM(bd.total_amount), 0) as total_revenue,
+        COALESCE(SUM(bd.total_amount - COALESCE(td.tax_amount, 0)), 0) as net_revenue,
+        0 as total_fees,
         COALESCE(SUM(td.tax_amount), 0) as total_taxes,
-        COUNT(DISTINCT fc.guest_name) as unique_guests,
-        AVG(fc.departure::date - fc.arrival::date) as avg_nights,
-        AVG(fc.total_amount) as avg_booking_value
-      FROM fee_calc fc
-      LEFT JOIN tax_data td ON fc.id = td.id
+        COUNT(DISTINCT bd.guest_name) as unique_guests,
+        AVG(bd.departure::date - bd.arrival::date) as avg_nights,
+        AVG(bd.total_amount) as avg_booking_value
+      FROM booking_data bd
+      LEFT JOIN tax_data td ON bd.id = td.id
     ),
     cancelled_stats AS (
       SELECT

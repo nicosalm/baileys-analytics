@@ -2,21 +2,18 @@ import { z } from 'zod'
 
 export const taxJurisdictionSchema = z.object({
   name: z.string().min(1, 'Jurisdiction name is required'),
-  type: z.enum(['state', 'county', 'city', 'district', 'other']),
   rate: z.number().min(0).max(100),
-  description: z.string().optional()
+  description: z.string().optional(),
+  ownerrezPattern: z.string().optional()
 })
 
-export const platformSettingsSchema = z.object({
-  airbnb: z.object({
+export const platformSettingsSchema = z.record(
+  z.string(),
+  z.object({
     remitsTax: z.boolean(),
     remittedRate: z.number().optional()
-  }).optional(),
-  vrbo: z.object({
-    remitsTax: z.boolean(),
-    remittedRate: z.number().optional()
-  }).optional()
-})
+  })
+)
 
 export const taxConfigSchema = z.object({
   propertyId: z.string().uuid('Invalid property ID'),
@@ -24,9 +21,16 @@ export const taxConfigSchema = z.object({
   propertyAddress: z.string().optional(),
   configName: z.string().min(1, 'Configuration name is required'),
   jurisdictions: z.array(taxJurisdictionSchema).min(1, 'At least one jurisdiction is required'),
-  taxableItems: z.array(z.string()).default(['base_rent']),
   platformSettings: platformSettingsSchema,
-  effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
+  effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format'),
+  ownerrezMappings: z.array(z.object({
+    pattern: z.string(),
+    originalDescriptions: z.array(z.string()),
+    jurisdictionIndex: z.number(),
+    detectedRate: z.number(),
+    occurrenceCount: z.number()
+  })).optional(),
+  autoDetected: z.boolean().optional()
 })
 
 export const platformFeeSchema = z.object({

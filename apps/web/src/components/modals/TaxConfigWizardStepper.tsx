@@ -17,7 +17,9 @@ import { JurisdictionStep } from './wizard-steps/JurisdictionStep'
 import { PlatformSettingsStep } from './wizard-steps/PlatformSettingsStep'
 import { ReviewStep } from './wizard-steps/ReviewStep'
 
-export type WizardData = TaxConfig
+export type WizardData = TaxConfig & {
+  ownerrezMappings?: any[]
+}
 
 interface TaxConfigWizardStepperProps {
   defaultPropertyId?: string
@@ -48,14 +50,11 @@ export const TaxConfigWizardStepper = ({
     propertyAddress: '',
     configName: existingConfig?.configName || '',
     jurisdictions: existingConfig?.jurisdictions || [],
-    taxableItems: existingConfig?.taxableItems || ['base_rent', 'cleaning_fee', 'platform_fee', 'other_fees'],
-    platformSettings: existingConfig?.platformSettings || {
-      airbnb: { remitsTax: true },
-      vrbo: { remitsTax: false }
-    },
+    platformSettings: existingConfig?.platformSettings || {},
     effectiveFrom: existingConfig?.effectiveFrom 
       ? format(new Date(existingConfig.effectiveFrom), 'yyyy-MM-dd')
-      : format(new Date(), 'yyyy-MM-dd')
+      : format(new Date(), 'yyyy-MM-dd'),
+    ownerrezMappings: existingConfig?.ownerrezMappings || []
   })
   
   const properties = propertiesData || []
@@ -107,13 +106,20 @@ export const TaxConfigWizardStepper = ({
       
       const configToValidate = {
         ...wizardData,
-        configName: wizardData.configName || `Tax Config - ${wizardData.propertyName}`
+        configName: wizardData.configName || `Tax Config - ${wizardData.propertyName}`,
+        jurisdictions: wizardData.jurisdictions || [],
+        platformSettings: wizardData.platformSettings || {},
+        ownerrezMappings: wizardData.ownerrezMappings || [],
+        autoDetected: true
       }
       
       const validationResult = taxConfigSchema.safeParse(configToValidate)
       if (!validationResult.success) {
         const firstError = validationResult.error.issues[0]
-        addToast('error', firstError?.message || 'Invalid configuration data')
+        const errorMessage = firstError?.path?.length 
+          ? `Invalid ${firstError.path.join('.')}: ${firstError.message}`
+          : firstError?.message || 'Invalid configuration data'
+        addToast('error', errorMessage)
         setIsSubmitting(false)
         return
       }
@@ -231,16 +237,19 @@ export const TaxConfigWizardStepper = ({
           
           {currentStep === 1 && (
             <JurisdictionStep
+              propertyId={wizardData.propertyId}
+              propertyName={wizardData.propertyName}
               jurisdictions={wizardData.jurisdictions}
-              propertyAddress={wizardData.propertyAddress}
-              onUpdate={(jurisdictions) => updateWizardData({ jurisdictions })}
+              onUpdate={(jurisdictions, ownerrezMappings) => 
+                updateWizardData({ jurisdictions, ownerrezMappings })
+              }
             />
           )}
           
           {currentStep === 2 && (
             <PlatformSettingsStep
+              propertyId={wizardData.propertyId}
               platformSettings={wizardData.platformSettings}
-              taxableItems={wizardData.taxableItems}
               effectiveFrom={wizardData.effectiveFrom}
               onUpdate={(updates) => updateWizardData(updates)}
             />

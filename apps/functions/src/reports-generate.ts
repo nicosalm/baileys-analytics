@@ -337,15 +337,18 @@ function addTaxSection(doc: jsPDF, data: any, yPos: number, config: ReportConfig
   const summary = data.summary || {}
   const byProperty = data.byProperty || []
 
-  // Tax summary
+  // Tax summary - dynamically build from actual tax data
   const summaryData = [
     ['Tax Type', 'Amount'],
-    ['Total Tax Collected', formatCurrency(summary.totalTax || 0)],
-    ['State Tax', formatCurrency(summary.stateTax || 0)],
-    ['County Tax', formatCurrency(summary.countyTax || 0)],
-    ['City Tax', formatCurrency(summary.cityTax || 0)],
-    ['Tourism Tax', formatCurrency(summary.tourismTax || 0)]
+    ['Total Tax Collected', formatCurrency(summary.totalTax || 0)]
   ]
+  
+  // Add jurisdiction-specific taxes if present
+  if (summary.taxBreakdown && Array.isArray(summary.taxBreakdown)) {
+    summary.taxBreakdown.forEach((tax: any) => {
+      summaryData.push([tax.name || tax.type, formatCurrency(tax.amount || 0)])
+    })
+  }
 
   autoTable(doc, {
     startY: yPos,
@@ -526,25 +529,34 @@ function formatTaxDataForExcel(data: any, config: ReportConfig): any[][] {
   rows.push(['Tax Summary'])
   rows.push(['Type', 'Amount'])
   rows.push(['Total Tax Collected', summary.totalTax || 0])
-  rows.push(['State Tax', summary.stateTax || 0])
-  rows.push(['County Tax', summary.countyTax || 0])
-  rows.push(['City Tax', summary.cityTax || 0])
-  rows.push(['Tourism Tax', summary.tourismTax || 0])
+  
+  // Add dynamic tax breakdown if available
+  if (summary.taxBreakdown && Array.isArray(summary.taxBreakdown)) {
+    summary.taxBreakdown.forEach((tax: any) => {
+      rows.push([tax.name || tax.type || 'Tax', tax.amount || 0])
+    })
+  }
   
   if (data.byProperty && data.byProperty.length > 0) {
     rows.push([])
     rows.push(['Tax by Property'])
-    rows.push(['Property', 'Total Tax', 'State', 'County', 'City', 'Tourism'])
+    // Dynamic headers based on available tax types
+    const taxHeaders = ['Property', 'Total Tax']
+    if (data.byProperty[0]?.taxBreakdown) {
+      data.byProperty[0].taxBreakdown.forEach((tax: any) => {
+        taxHeaders.push(tax.name || tax.type)
+      })
+    }
+    rows.push(taxHeaders)
     
     data.byProperty.forEach((prop: any) => {
-      rows.push([
-        prop.propertyName || 'Unknown',
-        prop.totalTax || 0,
-        prop.stateTax || 0,
-        prop.countyTax || 0,
-        prop.cityTax || 0,
-        prop.tourismTax || 0
-      ])
+      const propRow = [prop.propertyName || 'Unknown', prop.totalTax || 0]
+      if (prop.taxBreakdown) {
+        prop.taxBreakdown.forEach((tax: any) => {
+          propRow.push(tax.amount || 0)
+        })
+      }
+      rows.push(propRow)
     })
   }
 

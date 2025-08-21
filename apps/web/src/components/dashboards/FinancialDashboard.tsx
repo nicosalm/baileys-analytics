@@ -322,7 +322,7 @@ const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({ data, loading }) => {
           icon={TrendingUp}
           label="Year-over-Year"
           value={`${periodGrowth >= 0 ? '+' : ''}${periodGrowth.toFixed(1)}%`}
-          format="string"
+          format="custom"
           color={periodGrowth >= 0 ? 'green' : 'red'}
           subValue={data.lastYearData ? `${formatCompactCurrency(data.gross)} vs ${formatCompactCurrency(data.lastYearData.gross)} last year` : 'No prior data'}
           tooltip="Growth compared to same period last year"

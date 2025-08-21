@@ -106,22 +106,13 @@ export const calculateSeasonalityIndex = (monthlyOccupancies: number[]): number 
 // Re-export date utilities from dates module
 export * from './dates';
 
-// Formatting
-export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
-};
-
-export const formatCompactCurrency = (amount: number): string => {
-  if (amount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(1)}M`;
-  } else if (amount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}k`;
-  }
-  return formatCurrency(amount);
-};
+// Currency formatting - re-export from currency module for international support
+export { 
+  formatCurrency, 
+  formatCompactCurrency, 
+  setCurrencyPreferences, 
+  getAvailableCurrencies 
+} from './currency';
 
 export const formatPercentage = (value: number, decimals = 1): string => {
   return `${value.toFixed(decimals)}%`;

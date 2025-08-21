@@ -89,20 +89,6 @@ CREATE TABLE booking_charges (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE platform_fees (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    platform_name VARCHAR(100) NOT NULL,
-    fee_type VARCHAR(50) NOT NULL DEFAULT 'percentage',
-    fee_value DECIMAL(10, 4) NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    effective_from DATE NOT NULL DEFAULT CURRENT_DATE,
-    effective_to DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(tenant_id, platform_name, effective_from)
-);
-
 CREATE TABLE expense_categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -156,19 +142,6 @@ CREATE TABLE budgets (
 );
 
 
-CREATE TABLE tax_calculations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    booking_id UUID REFERENCES bookings(id) ON DELETE CASCADE,
-    amount DECIMAL(10, 2) NOT NULL,
-    total_tax DECIMAL(10, 2) NOT NULL,
-    effective_rate DECIMAL(5, 4) NOT NULL,
-    applied_rules JSONB NOT NULL,
-    breakdown JSONB NOT NULL,
-    calculation_context JSONB NOT NULL,
-    calculated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE platform_fee_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -193,33 +166,16 @@ CREATE TABLE property_tax_configs (
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     config_name VARCHAR(255) NOT NULL,
     jurisdictions JSONB NOT NULL,
-    taxable_items JSONB NOT NULL,
     platform_settings JSONB NOT NULL,
+    ownerrez_mappings JSONB DEFAULT '[]'::jsonb,
+    auto_detected BOOLEAN DEFAULT false,
+    last_sync_date TIMESTAMP,
     is_active BOOLEAN DEFAULT true,
     effective_from DATE NOT NULL,
     effective_to DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(property_id, config_name)
-);
-
-CREATE TABLE tax_remittances (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    property_id UUID REFERENCES properties(id),
-    period_start DATE NOT NULL,
-    period_end DATE NOT NULL,
-    total_revenue DECIMAL(10, 2) NOT NULL,
-    total_platform_fees DECIMAL(10, 2) DEFAULT 0,
-    total_tax_due DECIMAL(10, 2) NOT NULL,
-    platform_remitted DECIMAL(10, 2) DEFAULT 0,
-    owner_remitted DECIMAL(10, 2) NOT NULL,
-    filing_status VARCHAR(50) DEFAULT 'pending',
-    filed_date DATE,
-    confirmation_number VARCHAR(100),
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE tags (
@@ -299,21 +255,17 @@ CREATE INDEX idx_bookings_guest ON bookings(tenant_id, guest_name, guest_email);
 CREATE INDEX idx_bookings_status ON bookings(tenant_id, status);
 CREATE INDEX idx_booking_charges_booking_id ON booking_charges(booking_id);
 CREATE INDEX idx_booking_charges_type ON booking_charges(booking_id, type);
-CREATE INDEX idx_platform_fees_lookup ON platform_fees(tenant_id, platform_name, is_active, effective_from, effective_to);
 CREATE INDEX idx_expenses_tenant_date ON expenses(tenant_id, expense_date);
 CREATE INDEX idx_expenses_property ON expenses(property_id) WHERE property_id IS NOT NULL;
 CREATE INDEX idx_expenses_category ON expenses(category_id);
 CREATE INDEX idx_expenses_booking ON expenses(booking_id) WHERE booking_id IS NOT NULL;
 CREATE INDEX idx_expense_allocations_property ON expense_allocations(property_id);
 CREATE INDEX idx_budgets_tenant_year ON budgets(tenant_id, budget_year);
-CREATE INDEX idx_tax_calculations_tenant_booking ON tax_calculations(tenant_id, booking_id);
-CREATE INDEX idx_tax_calculations_calculated_at ON tax_calculations(calculated_at);
 CREATE INDEX idx_platform_fee_entries_lookup ON platform_fee_entries(tenant_id, property_id, platform, month);
 CREATE INDEX idx_platform_fee_entries_booking ON platform_fee_entries(booking_id) WHERE booking_id IS NOT NULL;
 CREATE INDEX idx_property_tax_configs_property ON property_tax_configs(property_id, is_active);
 CREATE INDEX idx_property_tax_configs_effective ON property_tax_configs(effective_from, effective_to);
-CREATE INDEX idx_tax_remittances_tenant_period ON tax_remittances(tenant_id, period_start, period_end);
-CREATE INDEX idx_tax_remittances_status ON tax_remittances(filing_status) WHERE filing_status != 'paid';
+CREATE INDEX idx_property_tax_configs_ownerrez_mappings ON property_tax_configs USING gin(ownerrez_mappings);
 CREATE INDEX idx_tags_tenant_id ON tags(tenant_id);
 CREATE INDEX idx_tags_name ON tags(tenant_id, name);
 CREATE INDEX idx_property_tags_property_id ON property_tags(property_id);
@@ -328,9 +280,7 @@ CREATE INDEX idx_refresh_tokens_expires_at ON refresh_tokens(expires_at);
 CREATE INDEX idx_sync_progress_tenant_type ON sync_progress(tenant_id, sync_type);
 CREATE INDEX idx_sync_progress_status ON sync_progress(status);
 CREATE INDEX idx_platform_fee_entries_month ON platform_fee_entries(month, tenant_id);
-CREATE INDEX idx_tax_calculations_date ON tax_calculations(calculated_at DESC);
 CREATE INDEX idx_property_tax_configs_active ON property_tax_configs(property_id, is_active, effective_from DESC) WHERE is_active = true;
-CREATE INDEX idx_tax_remittances_period ON tax_remittances(tenant_id, period_start, period_end, filing_status);
 
 ALTER TABLE platform_fee_entries ADD CONSTRAINT positive_fees CHECK (guest_service_fee >= 0 AND host_service_fee >= 0 AND platform_tax_remitted >= 0);
 ALTER TABLE platform_fee_entries ADD CONSTRAINT valid_month_format CHECK (month ~ '^\d{4}-\d{2}$');
@@ -344,8 +294,6 @@ CREATE TRIGGER update_properties_updated_at BEFORE UPDATE ON properties
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_bookings_updated_at BEFORE UPDATE ON bookings
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_platform_fees_updated_at BEFORE UPDATE ON platform_fees
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_expense_categories_updated_at BEFORE UPDATE ON expense_categories
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_expenses_updated_at BEFORE UPDATE ON expenses
@@ -355,8 +303,6 @@ CREATE TRIGGER update_budgets_updated_at BEFORE UPDATE ON budgets
 CREATE TRIGGER update_platform_fee_entries_updated_at BEFORE UPDATE ON platform_fee_entries
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_property_tax_configs_updated_at BEFORE UPDATE ON property_tax_configs
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_tax_remittances_updated_at BEFORE UPDATE ON tax_remittances
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_tags_updated_at BEFORE UPDATE ON tags
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -468,3 +414,20 @@ ADD COLUMN IF NOT EXISTS data_source VARCHAR(20) DEFAULT 'manual',
 ADD COLUMN IF NOT EXISTS platform_collected_tax DECIMAL(10, 2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS effective_tax_rate DECIMAL(5, 4),
 ADD COLUMN IF NOT EXISTS api_sync_date TIMESTAMP WITH TIME ZONE;
+
+-- Tenant-specific platform remittance configuration
+CREATE TABLE tenant_platform_configs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    platform VARCHAR(50) NOT NULL,
+    remits_occupancy_tax BOOLEAN DEFAULT false,
+    remits_on_guest_fees BOOLEAN DEFAULT false,
+    jurisdictions JSONB,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(tenant_id, platform)
+);
+
+CREATE INDEX idx_tenant_platform_configs_tenant ON tenant_platform_configs(tenant_id);
+
