@@ -89,6 +89,7 @@ const fetchGuestSummary = async (
 ): Promise<DbResult<{
   guest_name: string
   guest_email: string
+  guest_phone: string
   first_visit: string
   last_visit: string
   total_spent: string
@@ -99,6 +100,7 @@ const fetchGuestSummary = async (
   const result = await query<{
     guest_name: string
     guest_email: string
+    guest_phone: string
     first_visit: string
     last_visit: string
     total_spent: string
@@ -108,7 +110,8 @@ const fetchGuestSummary = async (
   }>(
     `SELECT
       guest_name,
-      guest_email,
+      MAX(guest_email) as guest_email,
+      MAX(guest_phone) as guest_phone,
       MIN(arrival) as first_visit,
       MAX(arrival) as last_visit,
       SUM(CASE WHEN status != 'canceled' THEN total_amount ELSE 0 END) as total_spent,
@@ -122,7 +125,7 @@ const fetchGuestSummary = async (
         ($3 = '' AND (guest_email IS NULL OR guest_email = ''))
         OR (guest_email = $3)
       )
-    GROUP BY guest_name, guest_email`,
+    GROUP BY guest_name`,
     [tenantId, guest.name, guest.email]
   )
 
@@ -425,6 +428,7 @@ const buildGuestInfo = (
   summary: {
     guest_name: string
     guest_email: string
+    guest_phone: string
     first_visit: string
     last_visit: string
     total_spent: string
@@ -442,6 +446,7 @@ const buildGuestInfo = (
     id: guestId,
     name: summary.guest_name,
     email: summary.guest_email || undefined,
+    phone: summary.guest_phone || undefined,
     firstVisit: summary.first_visit,
     lastVisit: summary.last_visit,
     totalSpent,

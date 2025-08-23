@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useGuests } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
-import { Users, UserCheck, Calendar, DollarSign, Info, Star, Award } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, Info, Star } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
@@ -36,27 +36,6 @@ type GuestListItem = {
     periodSpent?: number
 }
 
-
-// New badge for top performers in the selected period
-const PerformanceBadge = ({ type }: {
-    type: 'spender' | 'frequent' | 'new'
-}) => {
-    const badges = {
-        spender: { color: 'bg-green-100 text-green-800', icon: DollarSign, label: 'Top Spender' },
-        frequent: { color: 'bg-blue-100 text-blue-800', icon: Star, label: 'Frequent' },
-        new: { color: 'bg-purple-100 text-purple-800', icon: Award, label: 'New Guest' }
-    }
-    
-    const badge = badges[type]
-    const Icon = badge.icon
-    
-    return (
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium ${badge.color}`}>
-            <Icon className="w-3 h-3 mr-1" />
-            {badge.label}
-        </span>
-    )
-}
 
 export const GuestsDashboard = () => {
     const { addToast } = useToast()
@@ -141,12 +120,21 @@ export const GuestsDashboard = () => {
     }, [filteredGuests, sortBy, sortOrder])
 
     const handleGuestClick = useCallback((guest: GuestListItem) => {
+        const isTopSpender = topPerformers.spenders.some(g => g.id === guest.id)
+        const isFrequent = topPerformers.frequent.some(g => g.id === guest.id)
+        const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
+        
         openModal({
             type: 'guest',
             guestId: guest.id,
-            guestName: guest.name
+            guestName: guest.name,
+            performanceData: {
+                isTopSpender,
+                isFrequent,
+                isNew
+            }
         })
-    }, [openModal])
+    }, [openModal, topPerformers, filters.dateRange.from])
 
     const handleSort = useCallback((column: string) => {
         if (column === sortBy) {
@@ -164,18 +152,9 @@ export const GuestsDashboard = () => {
             sortable: true,
             width: 250,
             render: (guest: GuestListItem) => {
-                const isTopSpender = topPerformers.spenders.some(g => g.id === guest.id)
-                const isFrequent = topPerformers.frequent.some(g => g.id === guest.id)
-                const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
-                
                 return (
                     <div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium">{guest.name}</span>
-                            {isTopSpender && <PerformanceBadge type="spender" />}
-                            {!isTopSpender && isFrequent && <PerformanceBadge type="frequent" />}
-                            {!isTopSpender && !isFrequent && isNew && <PerformanceBadge type="new" />}
-                        </div>
+                        <div className="font-medium">{guest.name}</div>
                         {guest.email && <div className="text-sm text-gray-500">{guest.email}</div>}
                     </div>
                 )

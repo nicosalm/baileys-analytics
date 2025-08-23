@@ -36,6 +36,7 @@ export const ModalManager = () => {
           <GuestDetailModal
             guestId={activeModal.guestId}
             guestName={activeModal.guestName}
+            performanceData={activeModal.performanceData}
           />
         )
     

@@ -377,9 +377,9 @@ const upsertBooking = async (
       `INSERT INTO bookings (
         tenant_id, property_id, ownerrez_booking_id,
         arrival, departure, adults, children, infants, pets,
-        guest_name, guest_email, total_amount, status, platform,
+        guest_name, guest_email, guest_phone, total_amount, status, platform,
         platform_reservation_number, booked_utc, canceled_utc
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       ON CONFLICT (tenant_id, ownerrez_booking_id) DO UPDATE SET
         property_id = EXCLUDED.property_id,
         arrival = EXCLUDED.arrival,
@@ -390,6 +390,7 @@ const upsertBooking = async (
         pets = EXCLUDED.pets,
         guest_name = EXCLUDED.guest_name,
         guest_email = EXCLUDED.guest_email,
+        guest_phone = EXCLUDED.guest_phone,
         total_amount = EXCLUDED.total_amount,
         status = EXCLUDED.status,
         platform = EXCLUDED.platform,
@@ -404,6 +405,7 @@ const upsertBooking = async (
         booking.infants || 0, booking.pets || 0,
         booking.guest ? `${booking.guest.first_name} ${booking.guest.last_name}` : null,
         booking.guest?.email || null,
+        null,
         booking.total_amount, booking.status,
         booking.listing_site, booking.platform_reservation_number,
         booking.booked_utc, booking.canceled_utc

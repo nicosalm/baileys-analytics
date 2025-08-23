@@ -66,6 +66,7 @@ CREATE TABLE bookings (
     pets INTEGER DEFAULT 0,
     guest_name VARCHAR(255),
     guest_email VARCHAR(255),
+    guest_phone VARCHAR(50),
     total_amount DECIMAL(10, 2),
     status VARCHAR(50),
     platform VARCHAR(100),

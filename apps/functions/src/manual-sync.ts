@@ -5,6 +5,7 @@ import {
   syncProperties,
   syncBookings
 } from './services/syncService';
+import { syncAllGuestDetailsInBulk } from './sync-all-guest-details';
 import { formatDateISO } from './utils/dates';
 
 export async function manualSync(
@@ -50,11 +51,19 @@ export async function manualSync(
     context.log(`Starting ${type} sync for tenant ${auth.tenantId}`, dateRange)
 
     if (type === 'historical') {
-      // Historical sync - bookings only
       const result = await syncBookings(tokenResult.data, auth.tenantId, dateRange, context)
 
       if (result.status === 'success') {
-        context.log(`Historical sync completed: ${result.synced} bookings synced out of ${result.totalFetched} fetched`)
+        context.log(`Historical sync completed: ${result.synced} bookings synced`)
+        
+        context.log('Starting bulk guest contact sync...')
+        const guestResult = await syncAllGuestDetailsInBulk(
+          tokenResult.data,
+          auth.tenantId,
+          context
+        )
+        context.log(`Guest sync completed: ${guestResult.updated} of ${guestResult.total} guests updated`)
+        
         return {
           status: 200,
           headers: corsHeaders(),
@@ -63,6 +72,7 @@ export async function manualSync(
             bookingsFound: result.totalFetched!,
             bookingsSynced: result.synced!,
             chargesSynced: result.charges!,
+            guestsUpdated: guestResult.updated,
             dateRange
           }
         }

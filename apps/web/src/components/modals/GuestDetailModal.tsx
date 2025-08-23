@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
+import { format, parseISO } from 'date-fns'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info } from 'lucide-react'
+import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -12,9 +13,14 @@ import { METRIC_COLORS } from '@/lib/theme'
 interface GuestDetailModalProps {
   guestId: string
   guestName: string
+  performanceData?: {
+    isTopSpender?: boolean
+    isFrequent?: boolean
+    isNew?: boolean
+  }
 }
 
-export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) => {
+export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestDetailModalProps) => {
   const { closeModal, openModal } = useModal()
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings'>('overview')
   
@@ -63,8 +69,9 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
     : 0)
 
   const chartData = spendingTrend.map((item: any) => ({
-    month: new Date(item.month).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-    amount: item.totalSpent
+    month: format(parseISO(`${item.month}-01`), 'MMM yyyy'),
+    amount: item.amount,
+    bookings: item.bookings
   }))
 
   return (
@@ -90,7 +97,7 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
         {/* Guest Info Card */}
         <div className="bg-gray-50 rounded-lg p-6">
           <div className="flex items-start justify-between">
-            <div>
+            <div className="flex-1">
               <div className="flex items-center mb-2">
                 <User className="w-5 h-5 mr-2 text-gray-600" />
                 <h3 className="text-lg font-bold">{guest?.name || guestName}</h3>
@@ -98,7 +105,17 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
               {guest?.email && (
                 <div className="flex items-center text-sm text-gray-600 mb-2">
                   <Mail className="w-4 h-4 mr-1" />
-                  {guest.email}
+                  <a href={`mailto:${guest.email}`} className="text-blue-600 hover:underline">
+                    {guest.email}
+                  </a>
+                </div>
+              )}
+              {guest?.phone && (
+                <div className="flex items-center text-sm text-gray-600 mb-2">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  {guest.phone}
                 </div>
               )}
               <div className="flex items-center space-x-4 text-sm text-gray-600">
@@ -106,9 +123,28 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
                 {guest?.lastVisit && <span>Last visit: {formatDateDisplay(new Date(guest.lastVisit))}</span>}
               </div>
             </div>
-            <div className="text-right">
-              {guest?.isRepeat && (
+            <div className="flex flex-col items-end gap-2">
+              {/* Performance Badges */}
+              {performanceData?.isTopSpender && (
                 <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  Top Spender
+                </span>
+              )}
+              {performanceData?.isFrequent && !performanceData?.isTopSpender && (
+                <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  <Star className="w-4 h-4 mr-1" />
+                  Frequent Guest
+                </span>
+              )}
+              {performanceData?.isNew && !performanceData?.isTopSpender && !performanceData?.isFrequent && (
+                <span className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-full">
+                  <Award className="w-4 h-4 mr-1" />
+                  New Guest
+                </span>
+              )}
+              {guest?.isRepeat && !performanceData?.isNew && (
+                <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">
                   <Star className="w-4 h-4 mr-1" />
                   Returning Guest
                 </span>
@@ -188,7 +224,11 @@ export const GuestDetailModal = ({ guestId, guestName }: GuestDetailModalProps) 
                   <XAxis dataKey="month" />
                   <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
                   <Tooltip 
-                    formatter={(value: any) => formatCurrency(value)}
+                    formatter={(value: any, name: string) => {
+                      if (name === 'amount') return formatCurrency(value)
+                      return value
+                    }}
+                    labelFormatter={(label) => `Month: ${label}`}
                     contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
                   />
                   <Line 

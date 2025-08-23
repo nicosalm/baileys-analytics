@@ -2,7 +2,7 @@ import { createContext, useContext, useState, ReactNode } from 'react'
 
 export type ModalType = 
   | { type: 'property'; propertyId: string; propertyName: string }
-  | { type: 'guest'; guestId: string; guestName: string }
+  | { type: 'guest'; guestId: string; guestName: string; performanceData?: { isTopSpender?: boolean; isFrequent?: boolean; isNew?: boolean } }
   | { type: 'month'; month: string; year: string }
   | { type: 'booking'; bookingId: string; guestName?: string }
   | { type: 'property-month'; propertyId: string; propertyName: string; month: string; year: string }

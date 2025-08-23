@@ -2,9 +2,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useToast } from '@/contexts/toast'
-import { useSyncStatus, manualSync, historicalSync } from '@/hooks/use-api'
+import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
-import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2 } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 
 // Lazy load the tax management panel
@@ -21,7 +21,7 @@ type SyncStatus = {
 
 type SyncState =
   | { type: 'idle' }
-  | { type: 'syncing'; mode: 'recent' | 'historical' }
+  | { type: 'syncing'; mode: 'recent' | 'historical' | 'guest-details' }
   | { type: 'complete' }
 
 const formatDate = (dateString: string | null): string =>
@@ -131,12 +131,14 @@ const OwnerRezConnection = ({
   syncStatus,
   onRecentSync,
   onHistoricalSync,
+  onGuestDetailsSync,
   syncState
 }: {
   isConnected: boolean
   syncStatus: SyncStatus | null
   onRecentSync: () => void
   onHistoricalSync: () => void
+  onGuestDetailsSync: () => void
   syncState: SyncState
 }) => {
   if (!isConnected) {
@@ -190,6 +192,15 @@ const OwnerRezConnection = ({
             variant="secondary"
           />
 
+          <SyncButton
+            label="Sync Guest Contacts"
+            icon={UserCheck}
+            onClick={onGuestDetailsSync}
+            disabled={isSyncing}
+            loading={isSyncing && syncState.mode === 'guest-details'}
+            variant="secondary"
+          />
+
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -198,6 +209,7 @@ const OwnerRezConnection = ({
             <div className="text-xs text-blue-800 space-y-1">
               <p>• Recent sync updates data from the last 30 days</p>
               <p>• Historical sync retrieves all bookings from the past 4 years</p>
+              <p>• Guest sync fetches contact details (email/phone) from OwnerRez</p>
               <p>• Data syncs automatically every 12 hours</p>
             </div>
           </div>
@@ -228,9 +240,15 @@ export const Settings = () => {
 
   const { user } = state
 
-  const handleSync = async (type: 'recent' | 'historical') => {
+  const handleSync = async (type: 'recent' | 'historical' | 'guest-details') => {
     if (type === 'historical' && !window.confirm(
       'This will download all your booking history (up to 4 years). It may take a few minutes. Continue?'
+    )) {
+      return
+    }
+
+    if (type === 'guest-details' && !window.confirm(
+      'This will fetch and update contact information (emails and phone numbers) for all guests. Continue?'
     )) {
       return
     }
@@ -239,12 +257,26 @@ export const Settings = () => {
 
     const result = type === 'historical'
       ? await historicalSync()
+      : type === 'guest-details'
+      ? await syncGuestDetails()
       : await manualSync()
 
     if (result.success) {
       let message: string
 
-      if (type === 'historical') {
+      if (type === 'guest-details') {
+        const guestsUpdated = result.data?.guestsUpdated || 0
+        const errors = result.data?.errors || 0
+        const totalProcessed = result.data?.totalProcessed || 0
+        
+        if (errors > 0) {
+          message = `Guest sync completed: ${guestsUpdated} contacts updated, ${errors} errors out of ${totalProcessed} processed`
+        } else if (guestsUpdated === 0) {
+          message = 'No guests needed contact information updates'
+        } else {
+          message = `Guest sync completed: ${guestsUpdated} contacts updated successfully`
+        }
+      } else if (type === 'historical') {
         // Check if we have the new response format with bookingsFound
         const bookingsFound = result.data.bookingsFound || result.data.totalBookingsFetched
         const bookingsSynced = result.data.bookingsSynced
@@ -278,7 +310,8 @@ export const Settings = () => {
       addToast('success', message)
       // Sync status will automatically refresh via SWR
     } else {
-      addToast('error', `${type === 'historical' ? 'Historical' : 'Recent'} sync failed`)
+      const typeLabel = type === 'historical' ? 'Historical' : type === 'guest-details' ? 'Guest details' : 'Recent'
+      addToast('error', `${typeLabel} sync failed`)
     }
 
     setSyncState({ type: 'complete' })
@@ -342,6 +375,7 @@ export const Settings = () => {
               syncStatus={syncStatus}
               onRecentSync={() => handleSync('recent')}
               onHistoricalSync={() => handleSync('historical')}
+              onGuestDetailsSync={() => handleSync('guest-details')}
               syncState={syncState}
             />
           </div>

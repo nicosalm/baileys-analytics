@@ -98,6 +98,14 @@ export async function manualSync() {
   return result
 }
 
+export async function syncGuestDetails() {
+  const result = await api.syncGuestDetails()
+  if (result.success) {
+    await globalMutate(() => true, undefined, true)
+  }
+  return result
+}
+
 export async function historicalSync(fromDate?: string, toDate?: string) {
   const result = await api.historicalSync(fromDate, toDate)
   if (result.success) {
