@@ -1,0 +1,424 @@
+import React, { useState, useMemo } from 'react'
+import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
+import { 
+  cn, 
+  formatDateISO, 
+  parseDate,
+  differenceInDays,
+  addMonths,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  getMonth,
+  getYear,
+  format,
+  isSameDay,
+  isAfter,
+  isBefore,
+  isWithinInterval,
+  addDays,
+  getDate,
+  subDays,
+  subYears,
+  startOfYear,
+  startOfQuarter
+} from '@baileys/utils'
+import { useSeasons } from '@/hooks/use-api'
+
+interface DateRange {
+  from: string
+  to: string
+}
+
+interface InlineDateRangePickerProps {
+  value: DateRange
+  onChange: (range: DateRange) => void
+  maxDays?: number
+  minDate?: Date
+  maxDate?: Date
+  className?: string
+}
+
+export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
+  value,
+  onChange,
+  maxDays = 1825,
+  minDate,
+  maxDate = new Date(),
+  className
+}) => {
+  const [localRange, setLocalRange] = useState<DateRange>(value)
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  
+  const { data: seasons = [] } = useSeasons()
+  const activeSeasons = useMemo(() => seasons.filter(s => s.isActive), [seasons])
+  
+  const isDateInSeason = (date: Date): boolean => {
+    if (activeSeasons.length === 0) return true
+    
+    const month = getMonth(date) + 1
+    const day = getDate(date)
+    
+    return activeSeasons.some(season => {
+      if (season.startMonth <= season.endMonth) {
+        return (
+          (month > season.startMonth || (month === season.startMonth && day >= season.startDay)) &&
+          (month < season.endMonth || (month === season.endMonth && day <= season.endDay))
+        )
+      } else {
+        return (
+          (month > season.startMonth || (month === season.startMonth && day >= season.startDay)) ||
+          (month < season.endMonth || (month === season.endMonth && day <= season.endDay))
+        )
+      }
+    })
+  }
+
+  const formatDateDisplay = (dateStr: string): string => {
+    const date = parseDate(dateStr)
+    return format(date, 'MMM d, yyyy')
+  }
+
+  const handleDateClick = (date: Date) => {
+    if (isDateDisabled(date)) return
+
+    const clickedDate = formatDateISO(date)
+    
+    if (!localRange.from || (localRange.from && localRange.to)) {
+      const newRange = { from: clickedDate, to: '' }
+      setLocalRange(newRange)
+      onChange(newRange)
+    } else if (localRange.from && !localRange.to) {
+      const fromDate = parseDate(localRange.from)
+      
+      if (isAfter(date, fromDate) || isSameDay(date, fromDate)) {
+        const daysDiff = differenceInDays(date, fromDate)
+        
+        if (maxDays && daysDiff > maxDays) {
+          const limitedTo = formatDateISO(addDays(fromDate, maxDays - 1))
+          const newRange = { from: localRange.from, to: limitedTo }
+          setLocalRange(newRange)
+          onChange(newRange)
+        } else {
+          const newRange = { from: localRange.from, to: clickedDate }
+          setLocalRange(newRange)
+          onChange(newRange)
+        }
+      } else {
+        const newRange = { from: clickedDate, to: localRange.from }
+        setLocalRange(newRange)
+        onChange(newRange)
+      }
+    }
+  }
+
+  const isDateInRange = (date: Date): boolean => {
+    if (!localRange.from || !localRange.to) return false
+    try {
+      return isWithinInterval(date, {
+        start: parseDate(localRange.from),
+        end: parseDate(localRange.to)
+      })
+    } catch {
+      return false
+    }
+  }
+
+  const isDateDisabled = (date: Date): boolean => {
+    if (minDate && isBefore(date, minDate)) return true
+    if (maxDate && isAfter(date, maxDate)) return true
+    if (!isDateInSeason(date)) return true
+    return false
+  }
+
+  const renderMonth = () => {
+    const start = startOfMonth(currentMonth)
+    const end = endOfMonth(currentMonth)
+    const days: Date[] = []
+    const startDay = start.getDay()
+    
+    for (let i = 0; i < startDay; i++) {
+      days.push(addDays(start, i - startDay))
+    }
+    
+    let day = start
+    while (day <= end) {
+      days.push(day)
+      day = addDays(day, 1)
+    }
+    
+    while (days.length < 42) {
+      days.push(day)
+      day = addDays(day, 1)
+    }
+    
+    return days
+  }
+
+  const days = renderMonth()
+  const dayCount = localRange.from && localRange.to
+    ? differenceInDays(parseDate(localRange.to), parseDate(localRange.from)) + 1
+    : 0
+
+  const handleQuickSelect = (from: string, to: string) => {
+    const newRange = { from, to }
+    setLocalRange(newRange)
+    onChange(newRange)
+  }
+
+  return (
+    <div className={cn("bg-white rounded-lg", className)}>
+      {/* Season Notice */}
+      {activeSeasons.length > 0 && (
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-green-800">
+            <p className="font-medium mb-1">Season Filter Active</p>
+            <p className="text-xs">Only dates within {activeSeasons.map(s => s.name).join(', ')} can be selected.</p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Calendar */}
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="font-semibold text-lg">
+              {format(currentMonth, 'MMMM yyyy')}
+            </span>
+            <button
+              type="button"
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              disabled={maxDate && currentMonth >= maxDate}
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Day headers */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+              <div key={day} className="text-sm text-center text-gray-500 font-medium py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Days grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((date, idx) => {
+              const isCurrentMonth = date.getMonth() === currentMonth.getMonth()
+              const isDisabled = isDateDisabled(date)
+              const isOutOfSeason = activeSeasons.length > 0 && !isDateInSeason(date)
+              const isInRange = isDateInRange(date)
+              const isStart = localRange.from && isSameDay(date, parseDate(localRange.from))
+              const isEnd = localRange.to && isSameDay(date, parseDate(localRange.to))
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => handleDateClick(date)}
+                  disabled={!isCurrentMonth || isDisabled}
+                  title={isOutOfSeason ? "Outside active seasons" : undefined}
+                  className={cn(
+                    "p-3 text-sm rounded-lg transition-colors relative",
+                    !isCurrentMonth && "text-gray-300",
+                    isCurrentMonth && !isDisabled && "hover:bg-gray-100",
+                    isDisabled && !isOutOfSeason && "text-gray-300 cursor-not-allowed",
+                    isOutOfSeason && "text-gray-400 cursor-not-allowed bg-gray-50",
+                    isInRange && !isOutOfSeason && "bg-blue-100",
+                    (isStart || isEnd) && "bg-blue-500 text-white hover:bg-blue-600"
+                  )}
+                >
+                  {date.getDate()}
+                  {isOutOfSeason && isCurrentMonth && (
+                    <span className="absolute inset-0 bg-gray-100 opacity-50 rounded-lg pointer-events-none" />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Quick Select & Info */}
+        <div>
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Select</h3>
+            <div className="space-y-3">
+              {/* Common Periods */}
+              <div>
+                <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Common Periods</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = formatDateISO(new Date())
+                      handleQuickSelect(today, today)
+                    }}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      handleQuickSelect(formatDateISO(subDays(today, 7)), formatDateISO(today))
+                    }}
+                  >
+                    Last 7 Days
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      handleQuickSelect(formatDateISO(subDays(today, 30)), formatDateISO(today))
+                    }}
+                  >
+                    Last 30 Days
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      handleQuickSelect(formatDateISO(subDays(today, 90)), formatDateISO(today))
+                    }}
+                  >
+                    Last 90 Days
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      handleQuickSelect(formatDateISO(startOfMonth(today)), formatDateISO(today))
+                    }}
+                  >
+                    Month to Date
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      handleQuickSelect(formatDateISO(startOfQuarter(today)), formatDateISO(today))
+                    }}
+                  >
+                    Quarter to Date
+                  </button>
+                </div>
+              </div>
+
+              {/* Year Periods */}
+              <div>
+                <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Year Periods</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      handleQuickSelect(formatDateISO(startOfYear(today)), formatDateISO(today))
+                    }}
+                  >
+                    Year to Date
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      const lastYear = subYears(today, 1)
+                      handleQuickSelect(
+                        formatDateISO(startOfYear(lastYear)), 
+                        formatDateISO(new Date(getYear(lastYear), 11, 31))
+                      )
+                    }}
+                  >
+                    Last Year
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      const currentMonth = getMonth(today)
+                      const currentYear = getYear(today)
+                      const fiscalYearStart = currentMonth >= 9 
+                        ? new Date(currentYear, 9, 1)
+                        : new Date(currentYear - 1, 9, 1)
+                      handleQuickSelect(formatDateISO(fiscalYearStart), formatDateISO(today))
+                    }}
+                    title="Fiscal Year to Date (Oct 1 - Sep 30)"
+                  >
+                    Fiscal YTD
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    onClick={() => {
+                      const today = new Date()
+                      const currentMonth = getMonth(today)
+                      const currentYear = getYear(today)
+                      const lastFiscalYearStart = currentMonth >= 9 
+                        ? new Date(currentYear - 1, 9, 1)
+                        : new Date(currentYear - 2, 9, 1)
+                      const lastFiscalYearEnd = currentMonth >= 9
+                        ? new Date(currentYear, 8, 30)
+                        : new Date(currentYear - 1, 8, 30)
+                      handleQuickSelect(formatDateISO(lastFiscalYearStart), formatDateISO(lastFiscalYearEnd))
+                    }}
+                    title="Previous Fiscal Year (Oct 1 - Sep 30)"
+                  >
+                    Last Fiscal Year
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Selected range display */}
+          {localRange.from && (
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">Selected Range</h3>
+              <div className="text-sm text-gray-900">
+                {localRange.to ? (
+                  <>
+                    <div>{formatDateDisplay(localRange.from)} - {formatDateDisplay(localRange.to)}</div>
+                    <div className="text-gray-500 mt-1">{dayCount} days</div>
+                  </>
+                ) : (
+                  <div>
+                    <div className="text-gray-600">Click another date to complete the range</div>
+                    <div className="mt-1">Start: {formatDateDisplay(localRange.from)}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!localRange.from && (
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-700 mb-2">How to select</h3>
+              <p className="text-sm text-gray-600">
+                Click a date to start your range, then click another date to complete it.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

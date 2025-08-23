@@ -9,7 +9,7 @@ import {
   ChevronRight, ChevronLeft, Check, 
   Building2, MapPin, Globe
 } from 'lucide-react'
-import { format } from 'date-fns'
+import { format } from '@baileys/utils'
 import { taxConfigSchema, type TaxConfig } from '@/schemas/taxConfig'
 
 import { PropertySelectionStep } from './wizard-steps/PropertySelectionStep'

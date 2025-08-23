@@ -1,8 +1,7 @@
 import { FileText, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
-import { formatCurrency, formatPercentage } from '@baileys/utils'
+import { formatCurrency, formatPercentage, format, parseDate } from '@baileys/utils'
 import { useFinancial } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
-import { format, parseISO } from 'date-fns'
 
 interface TaxRemittanceWidgetProps {
   propertyId?: string
@@ -64,7 +63,7 @@ export const TaxRemittanceWidget = ({
                 Tax Remittance Summary
               </h3>
               <p className="text-sm text-gray-600 mt-1">
-                {format(parseISO(periodStart), 'MMM d')} - {format(parseISO(periodEnd), 'MMM d, yyyy')}
+                {format(parseDate(periodStart), 'MMM d')} - {format(parseDate(periodEnd), 'MMM d, yyyy')}
               </p>
             </div>
             {totals.overdue > 0 && (

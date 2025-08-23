@@ -1,8 +1,7 @@
 import React from 'react'
 import { useSeasons } from '@/hooks/use-api'
 import { Calendar, AlertCircle } from 'lucide-react'
-import { cn } from '@baileys/utils'
-import { parseISO, getMonth, getDate } from 'date-fns'
+import { cn, parseDate, getMonth, getDate } from '@baileys/utils'
 import type { Season } from '@/types/season'
 
 const isDateInSeason = (date: Date, season: Season): boolean => {
@@ -40,8 +39,8 @@ export const SeasonIndicator: React.FC<{
     return null
   }
 
-  const rangeStart = parseISO(dateRange.from)
-  const rangeEnd = parseISO(dateRange.to)
+  const rangeStart = parseDate(dateRange.from)
+  const rangeEnd = parseDate(dateRange.to)
   
   // Check which seasons overlap with the date range
   const overlappingSeasons = activeSeasons.filter(season => {

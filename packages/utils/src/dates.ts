@@ -26,39 +26,40 @@ import {
   isSameMonth,
   addMonths,
   subMonths,
-  getDaysInMonth
+  getDaysInMonth,
+  eachDayOfInterval,
+  startOfWeek,
+  endOfWeek,
+  getDay,
+  setYear,
+  setMonth,
+  formatDistanceToNow
 } from 'date-fns'
 
-// Standard date formats
 export const DATE_FORMAT = 'yyyy-MM-dd'
 export const DATE_DISPLAY_FORMAT = 'MMM d, yyyy'
 export const DATE_TIME_FORMAT = 'MMM d, yyyy h:mm a'
 export const MONTH_YEAR_FORMAT = 'MMMM yyyy'
 
-// Format date to ISO string (YYYY-MM-DD)
 export const formatDateISO = (date: Date | string): string => {
   const d = typeof date === 'string' ? parseISO(date) : date
   return format(d, DATE_FORMAT)
 }
 
-// Format date for display
 export const formatDateDisplay = (date: Date | string): string => {
   const d = typeof date === 'string' ? parseISO(date) : date
   return format(d, DATE_DISPLAY_FORMAT)
 }
 
-// Format date with time for display
 export const formatDateTime = (date: Date | string): string => {
   const d = typeof date === 'string' ? parseISO(date) : date
   return format(d, DATE_TIME_FORMAT)
 }
 
-// Parse ISO date string to Date object
 export const parseDate = (dateString: string): Date => {
   return parseISO(dateString)
 }
 
-// Calculate nights between dates
 export const calculateNights = (arrival: Date | string, departure: Date | string): number => {
   const arrivalDate = typeof arrival === 'string' ? parseISO(arrival) : arrival
   const departureDate = typeof departure === 'string' ? parseISO(departure) : departure
@@ -66,7 +67,6 @@ export const calculateNights = (arrival: Date | string, departure: Date | string
 }
 
 
-// Get date range for common periods
 export const getDateRange = (period: 'month' | 'year' | 'last7' | 'last30' | 'last90' | 'yearToDate') => {
   const now = new Date()
   
@@ -104,12 +104,10 @@ export const getDateRange = (period: 'month' | 'year' | 'last7' | 'last30' | 'la
   }
 }
 
-// Get days in range
 export const getDaysInRange = (from: string, to: string): number => {
   return differenceInDays(parseISO(to), parseISO(from)) + 1
 }
 
-// Check if date is in range
 export const isDateInRange = (date: Date | string, from: string, to: string): boolean => {
   const d = typeof date === 'string' ? parseISO(date) : date
   return isWithinInterval(d, { 
@@ -118,7 +116,6 @@ export const isDateInRange = (date: Date | string, from: string, to: string): bo
   })
 }
 
-// Get relative date descriptions
 export const getRelativeDateDescription = (from: string, to: string): string => {
   const days = getDaysInRange(from, to)
   
@@ -130,7 +127,6 @@ export const getRelativeDateDescription = (from: string, to: string): string => 
   const fromDate = parseISO(from)
   const toDate = parseISO(to)
   
-  // Check if it's a complete month
   if (
     fromDate.getDate() === 1 && 
     toDate.getDate() === new Date(toDate.getFullYear(), toDate.getMonth() + 1, 0).getDate()
@@ -138,7 +134,6 @@ export const getRelativeDateDescription = (from: string, to: string): string => 
     return format(fromDate, MONTH_YEAR_FORMAT)
   }
   
-  // Check if it's a complete year
   if (
     fromDate.getMonth() === 0 && 
     fromDate.getDate() === 1 &&
@@ -151,7 +146,6 @@ export const getRelativeDateDescription = (from: string, to: string): string => 
   return `${formatDateDisplay(from)} - ${formatDateDisplay(to)}`
 }
 
-// Export commonly used date-fns functions for convenience
 export {
   format,
   parseISO,
@@ -174,10 +168,19 @@ export {
   getMonth,
   getYear,
   getDayOfMonth,
-  getDayOfMonth as getDate, // Re-export with alias for consistency
+  getDayOfMonth as getDate,
   isSameDay,
   isSameMonth,
   addMonths,
   subMonths,
-  getDaysInMonth
+  getDaysInMonth,
+  eachDayOfInterval,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  getDay,
+  setYear,
+  setMonth,
+  formatDistanceToNow
 }

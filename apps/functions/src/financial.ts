@@ -360,6 +360,8 @@ async function getPlatformFinancials(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<PlatformFinancials[]>> {
+  const seasons = await getActiveSeasons(tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
   const tagFilter = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
@@ -402,6 +404,7 @@ async function getPlatformFinancials(
         AND b.arrival <= $3::date
         AND b.status != 'canceled'
         ${tagFilter}
+        ${bookingFilters}
       GROUP BY 1, 2
     ),
     actual_fees AS (
@@ -588,6 +591,9 @@ async function getPreviousPeriodMetrics(
   fromDate: string,
   toDate: string
 ): Promise<{ revenue: { gross: number; net: number }; performance: { netRevenueRate: number } }> {
+  const seasons = await getActiveSeasons(tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
+  
   const currentFrom = new Date(fromDate)
   const currentTo = new Date(toDate)
   const periodLength = currentTo.getTime() - currentFrom.getTime()
@@ -617,6 +623,7 @@ async function getPreviousPeriodMetrics(
         AND b.arrival >= $2::date
         AND b.arrival <= $3::date
         AND b.status != 'canceled'
+        ${bookingFilters}
     )
     SELECT
       COALESCE(SUM(total_amount), 0)::text as gross_revenue,
@@ -646,6 +653,8 @@ async function getRevenueData(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<RevenueData>> {
+  const seasons = await getActiveSeasons(tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
   const tagFilter = buildTagFilter(tagIds, 'b')
   const tagFilterNoAlias = buildTagFilter(tagIds, 'bookings')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
@@ -670,6 +679,7 @@ async function getRevenueData(
           AND b.arrival <= $3
           AND b.status != 'canceled'
           ${tagFilter}
+          ${bookingFilters}
       ),
       platform_fees_actual AS (
         SELECT 
@@ -869,6 +879,8 @@ async function getTaxData(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<TaxData>> {
+  const seasons = await getActiveSeasons(tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
   const tagFilter = buildTagFilter(tagIds, 'b')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
@@ -889,7 +901,8 @@ async function getTaxData(
         AND b.arrival >= $2
         AND b.arrival <= $3
         AND b.status != 'canceled'
-        ${tagFilter}`,
+        ${tagFilter}
+        ${bookingFilters}`,
       queryParams
     ),
     
@@ -940,6 +953,7 @@ async function getTaxData(
         AND b.arrival <= $3
         AND b.status != 'canceled'
         ${tagFilter}
+        ${bookingFilters}
       GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
       ORDER BY month`,
       queryParams

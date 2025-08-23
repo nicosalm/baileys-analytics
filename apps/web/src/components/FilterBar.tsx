@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { DateRangePicker } from './DateRangePicker'
-import { SeasonIndicator } from './SeasonIndicator'
+import { SmartPeriodSelector } from './SmartPeriodSelector'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags } from '@/hooks/use-api'
 import { Filter, X, ChevronDown } from 'lucide-react'
@@ -18,7 +17,6 @@ export const FilterBar: React.FC = () => {
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Handle click outside for tag dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -37,15 +35,9 @@ export const FilterBar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
-            <DateRangePicker
+            <SmartPeriodSelector
               value={filters.dateRange}
               onChange={updateDateRange}
-              maxDays={1825}
-              className="shrink-0"
-            />
-            
-            <SeasonIndicator 
-              dateRange={filters.dateRange}
               className="shrink-0"
             />
 
@@ -55,6 +47,7 @@ export const FilterBar: React.FC = () => {
                 className={cn(
                   "flex items-center gap-2 px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 transition-colors",
                   "text-sm font-medium text-gray-700",
+                  showTagDropdown && "ring-2 ring-blue-500",
                   filters.selectedTags.length > 0 && "border-blue-500 bg-blue-50"
                 )}
               >
@@ -65,7 +58,10 @@ export const FilterBar: React.FC = () => {
                     : 'Filter by Tags'
                   }
                 </span>
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className={cn(
+                  "w-4 h-4 transition-transform",
+                  showTagDropdown && "rotate-180"
+                )} />
               </button>
 
               {showTagDropdown && (
@@ -134,7 +130,7 @@ export const FilterBar: React.FC = () => {
                 className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-4 h-4" />
-                Clear Filters
+                Clear Tags
               </button>
             )}
           </div>

@@ -3,6 +3,7 @@ import { query } from './services/database';
 import { calculateNights, safeDivide } from '@baileys/utils';
 import { formatDateISO, getYear, getDaysInMonth, differenceInDays } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 
 export async function getPropertyDetail(
   request: HttpRequest,
@@ -35,6 +36,10 @@ export async function getPropertyDetail(
     const fromDate = request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1));
     const toDate = request.query.get('to') || formatDateISO(new Date());
     const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
+    
+    // Get active seasons for filtering
+    const seasons = await getActiveSeasons(auth.tenantId);
+    const bookingFilters = buildBookingFilters(seasons, 'b');
     
     // Get property info
     const propertyResult = await query<{
@@ -109,7 +114,8 @@ export async function getPropertyDetail(
         AND b.arrival <= $3
         AND b.departure >= $2
         AND b.status != 'canceled'
-        ${tagFilter}`,
+        ${tagFilter}
+        ${bookingFilters || ''}`,
       queryParams
     );
 
@@ -162,6 +168,7 @@ export async function getPropertyDetail(
           WHERE bt.booking_id = b.id
           AND bt.tag_id = ANY($4::uuid[])
         )` : ''}
+        ${bookingFilters || ''}
       GROUP BY m.month_start
       ORDER BY month`,
       queryParams
@@ -199,6 +206,7 @@ export async function getPropertyDetail(
               (arrival <= $2 AND departure >= $3))
          AND status != 'canceled'
          ${tagFilter}
+         ${bookingFilters || ''}
        ORDER BY arrival DESC
        LIMIT 20`,
       queryParams

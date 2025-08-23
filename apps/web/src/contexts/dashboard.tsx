@@ -1,14 +1,17 @@
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { DashboardTab, FilterState, Tag, DateRange } from '@/types/dashboard'
-import { formatDateISO, getYear } from '@baileys/utils'
+import { formatDateISO, getYear, getMonth } from '@baileys/utils'
 import { isValidDateString, filterValidUUIDs } from '@/utils/validation'
+import type { Season } from '@/types/season'
 
 type DashboardContextValue = {
   activeTab: DashboardTab
   setActiveTab: (tab: DashboardTab) => void
   filters: FilterState
-  updateDateRange: (range: DateRange) => void
+  comparisonMode: 'none' | 'previous-period' | 'previous-year'
+  comparisonRange?: DateRange
+  updateDateRange: (range: DateRange, comparison?: DateRange) => void
   resetDateRange: () => void
   toggleTag: (tag: Tag) => void
   clearTags: () => void
@@ -25,10 +28,58 @@ export const useDashboard = () => {
   return context
 }
 
-const getDefaultDateRange = (): DateRange => ({
-  from: formatDateISO(new Date(getYear(new Date()), 0, 1)),
-  to: formatDateISO(new Date())
-})
+const getDefaultDateRange = (activeSeasons?: Season[]): DateRange => {
+  const today = new Date()
+  const currentYear = getYear(today)
+  const currentMonth = getMonth(today) + 1
+  const currentDay = today.getDate()
+  
+  if (activeSeasons && activeSeasons.length > 0) {
+    const season = activeSeasons[0]
+    
+    const inSeason = season.startMonth <= season.endMonth
+      ? (currentMonth > season.startMonth || (currentMonth === season.startMonth && currentDay >= season.startDay)) &&
+        (currentMonth < season.endMonth || (currentMonth === season.endMonth && currentDay <= season.endDay))
+      : (currentMonth > season.startMonth || (currentMonth === season.startMonth && currentDay >= season.startDay)) ||
+        (currentMonth < season.endMonth || (currentMonth === season.endMonth && currentDay <= season.endDay))
+    
+    const seasonStart = new Date(currentYear, season.startMonth - 1, season.startDay)
+    const hasStarted = today >= seasonStart || (season.startMonth > season.endMonth && currentMonth <= season.endMonth)
+    
+    if (!hasStarted) {
+      const startDate = new Date(currentYear - 1, season.startMonth - 1, season.startDay)
+      const endDate = season.startMonth <= season.endMonth
+        ? new Date(currentYear - 1, season.endMonth - 1, season.endDay)
+        : new Date(currentYear, season.endMonth - 1, season.endDay)
+      return {
+        from: formatDateISO(startDate),
+        to: formatDateISO(endDate)
+      }
+    } else if (inSeason) {
+      const startDate = season.startMonth > season.endMonth && currentMonth <= season.endMonth
+        ? new Date(currentYear - 1, season.startMonth - 1, season.startDay)
+        : new Date(currentYear, season.startMonth - 1, season.startDay)
+      return {
+        from: formatDateISO(startDate),
+        to: formatDateISO(today)
+      }
+    } else {
+      const startDate = new Date(currentYear, season.startMonth - 1, season.startDay)
+      const endDate = season.startMonth <= season.endMonth
+        ? new Date(currentYear, season.endMonth - 1, season.endDay)
+        : new Date(currentYear + 1, season.endMonth - 1, season.endDay)
+      return {
+        from: formatDateISO(startDate),
+        to: formatDateISO(endDate > today ? today : endDate)
+      }
+    }
+  }
+  
+  return {
+    from: formatDateISO(new Date(currentYear, 0, 1)),
+    to: formatDateISO(today)
+  }
+}
 
 const initialFilters: FilterState = {
   dateRange: getDefaultDateRange(),
@@ -36,12 +87,10 @@ const initialFilters: FilterState = {
   selectedProperties: []
 }
 
-// Parse filters from URL params with validation
 const parseUrlFilters = (searchParams: URLSearchParams): Partial<FilterState> => {
   const filters: Partial<FilterState> = {}
   const defaultRange = getDefaultDateRange()
   
-  // Parse and validate date range
   const from = searchParams.get('from')
   const to = searchParams.get('to')
   
@@ -49,33 +98,28 @@ const parseUrlFilters = (searchParams: URLSearchParams): Partial<FilterState> =>
     const validFrom = from && isValidDateString(from) ? from : defaultRange.from
     const validTo = to && isValidDateString(to) ? to : defaultRange.to
     
-    // Ensure from is before to
     if (new Date(validFrom) <= new Date(validTo)) {
       filters.dateRange = {
         from: validFrom,
         to: validTo
       }
     } else {
-      // If dates are invalid, use defaults
       filters.dateRange = defaultRange
     }
   }
   
-  // Parse and validate selected tags (must be valid UUIDs)
   const tags = searchParams.get('tags')
   if (tags) {
     const tagIds = tags.split(',').filter(Boolean)
     const validTagIds = filterValidUUIDs(tagIds)
     
-    // Only create tag objects for valid UUIDs
     filters.selectedTags = validTagIds.map(id => ({ 
       id, 
-      name: '', // Will be populated when tags load
+      name: '',
       type: 'custom' as const
     }))
   }
   
-  // Parse and validate selected properties (must be valid UUIDs)
   const properties = searchParams.get('properties')
   if (properties) {
     const propertyIds = properties.split(',').filter(Boolean)
@@ -85,7 +129,6 @@ const parseUrlFilters = (searchParams: URLSearchParams): Partial<FilterState> =>
   return filters
 }
 
-// Serialize filters to URL params
 const serializeFiltersToUrl = (filters: FilterState, searchParams: URLSearchParams): URLSearchParams => {
   const newParams = new URLSearchParams(searchParams)
   const defaultRange = getDefaultDateRange()
@@ -103,14 +146,12 @@ const serializeFiltersToUrl = (filters: FilterState, searchParams: URLSearchPara
     newParams.delete('to')
   }
   
-  // Selected tags
   if (filters.selectedTags.length > 0) {
     newParams.set('tags', filters.selectedTags.map(t => t.id).join(','))
   } else {
     newParams.delete('tags')
   }
   
-  // Selected properties
   if (filters.selectedProperties.length > 0) {
     newParams.set('properties', filters.selectedProperties.join(','))
   } else {
@@ -123,9 +164,11 @@ const serializeFiltersToUrl = (filters: FilterState, searchParams: URLSearchPara
 export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
+  const [comparisonMode, setComparisonMode] = useState<'none' | 'previous-period' | 'previous-year'>('previous-period')
+  const [comparisonRange, setComparisonRange] = useState<DateRange | undefined>()
   const isInitialMount = useRef(true)
   
-  // Parse tab from URL path
+  
   const getActiveTabFromPath = (): DashboardTab => {
     const pathSegments = location.pathname.split('/')
     const tab = pathSegments[pathSegments.length - 1] as DashboardTab
@@ -133,12 +176,11 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     if (tab && validTabs.includes(tab)) {
       return tab
     }
-    return 'overview' // Default to overview
+    return 'overview'
   }
   
   const [activeTab, setActiveTab] = useState<DashboardTab>(getActiveTabFromPath)
   
-  // Initialize filters from URL on mount
   const getInitialFilters = (): FilterState => {
     const urlFilters = parseUrlFilters(searchParams)
     return {
@@ -149,13 +191,11 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   
   const [filters, setFilters] = useState<FilterState>(getInitialFilters)
   
-  // Update active tab based on location
   useEffect(() => {
     const newTab = getActiveTabFromPath()
     setActiveTab(newTab)
   }, [location.pathname])
   
-  // Sync filters to URL when they change (but not on initial mount)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false
@@ -166,7 +206,6 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     setSearchParams(newParams, { replace: true })
   }, [filters, searchParams, setSearchParams])
   
-  // Listen for browser back/forward navigation
   useEffect(() => {
     const handlePopState = () => {
       const urlFilters = parseUrlFilters(new URLSearchParams(window.location.search))
@@ -180,8 +219,22 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  const updateDateRange = useCallback((range: DateRange) => {
+  const updateDateRange = useCallback((range: DateRange, comparison?: DateRange) => {
     setFilters(prev => ({ ...prev, dateRange: range }))
+    setComparisonRange(comparison)
+    if (!comparison) {
+      setComparisonMode('none')
+    } else {
+      const mainFrom = new Date(range.from)
+      const compFrom = new Date(comparison.from)
+      const daysDiff = Math.abs((mainFrom.getTime() - compFrom.getTime()) / (1000 * 60 * 60 * 24))
+      
+      if (daysDiff > 300 && daysDiff < 400) {
+        setComparisonMode('previous-year')
+      } else {
+        setComparisonMode('previous-period')
+      }
+    }
   }, [])
 
   const resetDateRange = useCallback(() => {
@@ -211,7 +264,13 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const clearFilters = useCallback(() => {
-    setFilters(initialFilters)
+    setFilters(prev => ({
+      ...prev,
+      selectedTags: [],
+      selectedProperties: []
+    }))
+    setComparisonRange(undefined)
+    setComparisonMode('none')
   }, [])
   
   const getShareableUrl = useCallback(() => {
@@ -225,6 +284,8 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
       activeTab,
       setActiveTab,
       filters,
+      comparisonMode,
+      comparisonRange,
       updateDateRange,
       resetDateRange,
       toggleTag,

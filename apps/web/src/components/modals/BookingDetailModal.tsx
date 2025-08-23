@@ -1,7 +1,7 @@
 import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, differenceInDays } from '@baileys/utils'
 import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin } from 'lucide-react'
-import { LoadingState } from '@/components/LoadingState'
+import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
@@ -15,50 +15,30 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
   const { closeModal, openModal } = useModal()
   const { data, isLoading, error } = useBookingDetail(bookingId)
 
-  if (isLoading) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title={guestName ? `${guestName}'s Booking` : 'Booking Details'}
-        subtitle="Loading booking information..."
-        size="md"
-      >
-        <div className="flex justify-center py-12">
-          <LoadingState />
-        </div>
-      </Modal>
-    )
-  }
-
-  if (error || !data) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title="Booking Details"
-        subtitle="Unable to load booking"
-        size="md"
-      >
-        <div className="text-center py-12">
-          <p className="text-gray-600">Something went wrong. Please try again.</p>
-        </div>
-      </Modal>
-    )
-  }
-
-  const booking = data.booking
-  const nights = differenceInDays(new Date(booking.departure), new Date(booking.arrival))
+  const booking = data?.booking
+  const subtitle = isLoading ? "Loading booking information..." :
+                   error ? "Unable to load booking" :
+                   `Booking #${booking?.confirmationCode || bookingId}`
+  const nights = booking ? differenceInDays(new Date(booking.departure), new Date(booking.arrival)) : 0
 
   return (
     <Modal
       isOpen={true}
       onClose={closeModal}
-      title={`Booking #${booking.confirmationCode || bookingId.slice(0, 8)}`}
-      subtitle={`${booking.guestName} at ${booking.propertyName}`}
+      title={guestName ? `${guestName}'s Booking` : 'Booking Details'}
+      subtitle={subtitle}
       size="md"
     >
-      <div className="space-y-6">
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading booking information..."
+        errorMessage="Failed to load booking details"
+        emptyMessage="No booking data available"
+        minHeight={300}
+      >
+        <div className="space-y-6">
         {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -201,7 +181,8 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             <div className="text-sm">{booking.notes}</div>
           </div>
         )}
-      </div>
+        </div>
+      </StateWrapper>
     </Modal>
   )
 }

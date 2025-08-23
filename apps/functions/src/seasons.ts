@@ -1,15 +1,14 @@
 import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
 import { query, transaction } from './services/database'
-import { requireAuth, corsHeaders, handleOptions, AuthenticatedRequest } from './middleware/auth'
+import { corsHeaders, handleOptions, AuthenticatedRequest } from './middleware/auth'
+import { requireAuthWithValidation } from './middleware/validation'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 
-// Helper function to check if two seasons overlap
 function checkSeasonOverlap(
   season1: { startMonth: number; startDay: number; endMonth: number; endDay: number },
   season2: { startMonth: number; startDay: number; endMonth: number; endDay: number }
 ): boolean {
-  // Convert month/day to a comparable number (month * 100 + day)
   const toNum = (month: number, day: number) => month * 100 + day
   
   const s1Start = toNum(season1.startMonth, season1.startDay)
@@ -17,27 +16,18 @@ function checkSeasonOverlap(
   const s2Start = toNum(season2.startMonth, season2.startDay)
   const s2End = toNum(season2.endMonth, season2.endDay)
   
-  // Handle seasons that don't cross year boundary
   if (s1Start <= s1End && s2Start <= s2End) {
     return !(s1End < s2Start || s2End < s1Start)
   }
   
-  // Handle seasons that cross year boundary
-  // If either season crosses the year, there's potential for overlap
-  // This is complex, so for now we'll be conservative and check all cases
   if (s1Start > s1End || s2Start > s2End) {
-    // Check if any part of season2 falls within season1's range
     if (s1Start > s1End) {
-      // Season 1 crosses year (e.g., Nov-Feb)
       if (s2Start > s2End) {
-        // Both cross year - they definitely overlap
         return true
       } else {
-        // Only season 1 crosses year
         return (s2Start >= s1Start || s2End >= s1Start || s2Start <= s1End || s2End <= s1End)
       }
     } else {
-      // Season 2 crosses year
       return (s1Start >= s2Start || s1End >= s2Start || s1Start <= s2End || s1End <= s2End)
     }
   }
@@ -95,7 +85,7 @@ async function handleGetSeasons(
       return {
         status: 500,
         jsonBody: { error: 'Failed to fetch seasons' },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
       }
     }
 
@@ -115,46 +105,37 @@ async function handleGetSeasons(
 }
 
 async function handleCreateSeason(
-  req: AuthenticatedRequest,
+  req: AuthenticatedRequest & { body: any },
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   try {
     const auth = req.auth!
-    const body = await req.json()
+    const body = req.body
     
     const validation = SeasonSchema.safeParse(body)
     if (!validation.success) {
       return {
         status: 400,
         jsonBody: { error: 'Invalid season data', details: validation.error.issues },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
       }
     }
 
     const { name, startMonth, startDay, endMonth, endDay } = validation.data
 
-    // Check for overlapping seasons
-    const existingSeasons = await query<Season>(
+    const existingActiveSeasons = await query<Season>(
       `SELECT * FROM season_configurations 
        WHERE tenant_id = $1 AND is_active = true`,
       [auth.tenantId]
     )
     
-    if (existingSeasons.success) {
-      for (const existing of existingSeasons.data) {
-        if (checkSeasonOverlap(
-          { startMonth, startDay, endMonth, endDay },
-          { startMonth: existing.startMonth, startDay: existing.startDay, 
-            endMonth: existing.endMonth, endDay: existing.endDay }
-        )) {
-          return {
-            status: 400,
-            jsonBody: { 
-              error: `Season overlaps with existing season "${existing.name}". Seasons cannot overlap as they define exclusive data windows.` 
-            },
-            headers: { ...corsHeaders }
-          }
-        }
+    if (existingActiveSeasons.success && existingActiveSeasons.data.length > 0) {
+      return {
+        status: 400,
+        jsonBody: { 
+          error: `Only one season can be active at a time. Please deactivate the existing season "${existingActiveSeasons.data[0].name}" first.` 
+        },
+        headers: { ...corsHeaders() }
       }
     }
 
@@ -181,7 +162,7 @@ async function handleCreateSeason(
       return {
         status: 500,
         jsonBody: { error: 'Failed to create season' },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
       }
     }
 
@@ -201,49 +182,25 @@ async function handleCreateSeason(
 }
 
 async function handleUpdateSeason(
-  req: AuthenticatedRequest,
+  req: AuthenticatedRequest & { body: any },
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   try {
     const auth = req.auth!
     const seasonId = req.params.id
-    const body = await req.json()
+    const body = req.body
     
     const validation = SeasonSchema.safeParse(body)
     if (!validation.success) {
       return {
         status: 400,
         jsonBody: { error: 'Invalid season data', details: validation.error.issues },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
       }
     }
 
     const { name, startMonth, startDay, endMonth, endDay } = validation.data
 
-    // Check for overlapping seasons (excluding current season)
-    const existingSeasons = await query<Season>(
-      `SELECT * FROM season_configurations 
-       WHERE tenant_id = $1 AND is_active = true AND id != $2`,
-      [auth.tenantId, seasonId]
-    )
-    
-    if (existingSeasons.success) {
-      for (const existing of existingSeasons.data) {
-        if (checkSeasonOverlap(
-          { startMonth, startDay, endMonth, endDay },
-          { startMonth: existing.startMonth, startDay: existing.startDay, 
-            endMonth: existing.endMonth, endDay: existing.endDay }
-        )) {
-          return {
-            status: 400,
-            jsonBody: { 
-              error: `Season overlaps with existing season "${existing.name}". Seasons cannot overlap as they define exclusive data windows.` 
-            },
-            headers: { ...corsHeaders }
-          }
-        }
-      }
-    }
 
     const result = await query<Season>(
       `UPDATE season_configurations
@@ -267,7 +224,7 @@ async function handleUpdateSeason(
       return {
         status: 404,
         jsonBody: { error: 'Season not found' },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
       }
     }
 
@@ -305,7 +262,7 @@ async function handleDeleteSeason(
       return {
         status: 404,
         jsonBody: { error: 'Season not found' },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
       }
     }
 
@@ -325,20 +282,46 @@ async function handleDeleteSeason(
 }
 
 async function handleToggleSeasonActive(
-  req: AuthenticatedRequest,
+  req: AuthenticatedRequest & { body: any },
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   try {
     const auth = req.auth!
-    const seasonId = req.params.id
-    const body: any = await req.json()
-    const { isActive } = body
+    const seasonId = req.params?.id
+    
+    if (!seasonId) {
+      context.error('Season ID not provided in params:', req.params)
+      return {
+        status: 400,
+        jsonBody: { error: 'Season ID is required' },
+        headers: { ...corsHeaders() }
+      }
+    }
+    
+    const { isActive } = req.body || {}
 
     if (typeof isActive !== 'boolean') {
       return {
         status: 400,
         jsonBody: { error: 'isActive must be a boolean' },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
+      }
+    }
+
+    if (isActive) {
+      const deactivateResult = await query(
+        `UPDATE season_configurations
+         SET is_active = false
+         WHERE tenant_id = $1 AND id != $2`,
+        [auth.tenantId, seasonId]
+      )
+      
+      if (!deactivateResult.success) {
+        return {
+          status: 500,
+          jsonBody: { error: 'Failed to deactivate other seasons' },
+          headers: { ...corsHeaders() }
+        }
       }
     }
 
@@ -350,8 +333,10 @@ async function handleToggleSeasonActive(
         id,
         tenant_id as "tenantId",
         name,
-        start_date as "startDate",
-        end_date as "endDate",
+        start_month as "startMonth",
+        start_day as "startDay",
+        end_month as "endMonth",
+        end_day as "endDay",
         is_active as "isActive",
         created_at as "createdAt",
         updated_at as "updatedAt"`,
@@ -362,7 +347,7 @@ async function handleToggleSeasonActive(
       return {
         status: 404,
         jsonBody: { error: 'Season not found' },
-        headers: { ...corsHeaders }
+        headers: { ...corsHeaders() }
       }
     }
 
@@ -389,31 +374,45 @@ export async function seasons(
     return handleOptions()
   }
 
-  const authResult = await requireAuth(req)
-  if (!authResult.authenticated) {
-    return authResult.response
+  let body: any = null
+  if (req.method === 'PATCH' || req.method === 'POST' || req.method === 'PUT') {
+    try {
+      body = await req.json()
+    } catch (e) {
+      body = {}
+    }
   }
 
-  const authReq = authResult.request as AuthenticatedRequest
+  const authCheck = await requireAuthWithValidation(req)
+  if (!authCheck.authenticated || !authCheck.valid) {
+    return authCheck.response
+  }
+
+  const authReq = authCheck.request as AuthenticatedRequest
   const method = req.method.toUpperCase()
-  const path = req.params.path || ''
+  const id = req.params.id || ''
 
-  // Route handling
-  if (method === 'GET' && !path) {
+  context.log('Seasons endpoint - Method:', method, 'ID:', id, 'Params:', req.params)
+
+  const requestWithId = {
+    ...authReq,
+    params: { id },
+    body
+  } as AuthenticatedRequest & { body: any }
+
+  if (method === 'GET' && !id) {
     return handleGetSeasons(authReq, context)
-  } else if (method === 'POST' && !path) {
-    return handleCreateSeason(authReq, context)
-  } else if (method === 'PUT' && path) {
-    authReq.params.id = path
-    return handleUpdateSeason(authReq, context)
-  } else if (method === 'DELETE' && path) {
-    authReq.params.id = path
-    return handleDeleteSeason(authReq, context)
-  } else if (method === 'PATCH' && path) {
-    authReq.params.id = path
-    return handleToggleSeasonActive(authReq, context)
+  } else if (method === 'POST' && !id) {
+    return handleCreateSeason({ ...authReq, body } as any, context)
+  } else if (method === 'PUT' && id) {
+    return handleUpdateSeason({ ...requestWithId, body } as any, context)
+  } else if (method === 'DELETE' && id) {
+    return handleDeleteSeason(requestWithId, context)
+  } else if (method === 'PATCH' && id) {
+    return handleToggleSeasonActive(requestWithId as any, context)
   }
 
+  context.error('No route matched - Method:', method, 'ID:', id)
   return {
     status: 404,
     jsonBody: { error: 'Not found' },
@@ -424,6 +423,6 @@ export async function seasons(
 app.http('seasons', {
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   authLevel: 'anonymous',
-  route: 'seasons/{path?}',
+  route: 'seasons/{id?}',
   handler: seasons
 })

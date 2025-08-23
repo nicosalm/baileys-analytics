@@ -4,6 +4,7 @@ import { OWNERREZ_API } from '@baileys/constants';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { formatDateISO, getYear } from './utils/dates';
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 
 type ValidationResult = {
   source: string
@@ -132,7 +133,8 @@ const getOwnerRezData = async (
 const getDatabaseData = async (
   tenantId: string,
   fromDate: string,
-  toDate: string
+  toDate: string,
+  bookingFilters: string | null
 ): Promise<ValidationResult> => {
   const result = await query<{
     ownerrez_booking_id: string
@@ -162,6 +164,7 @@ const getDatabaseData = async (
       AND b.arrival >= $2
       AND b.arrival <= $3
       AND b.status != 'canceled'
+      ${bookingFilters || ''}
     GROUP BY b.id, b.ownerrez_booking_id, p.name, b.arrival, b.departure,
              b.total_amount, b.guest_name, b.status
     ORDER BY b.arrival`,
@@ -265,6 +268,10 @@ export async function validateData(
   try {
     const fromDate = request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1))
     const toDate = request.query.get('to') || formatDateISO(new Date())
+    
+    // Get active seasons for filtering
+    const seasons = await getActiveSeasons(auth.tenantId)
+    const bookingFilters = buildBookingFilters(seasons, 'b')
 
     // Get OAuth token
     const tokenResult = await query<{ access_token: string }>(
@@ -303,7 +310,7 @@ export async function validateData(
     // Fetch and compare data
     const [ownerrezData, databaseData] = await Promise.all([
       getOwnerRezData(token, propertyIds, fromDate, toDate),
-      getDatabaseData(auth.tenantId, fromDate, toDate)
+      getDatabaseData(auth.tenantId, fromDate, toDate, bookingFilters)
     ])
 
     const discrepancies = compareResults(ownerrezData, databaseData)

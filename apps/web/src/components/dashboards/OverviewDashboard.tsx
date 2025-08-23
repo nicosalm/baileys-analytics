@@ -15,8 +15,6 @@ import { useDashboard } from '@/contexts/dashboard'
 import { METRIC_COLORS, CHART_COLORS } from '@/lib/theme'
 
 
-// MetricCard is now imported from the standardized component
-
 const AlertCard = ({ alert }: { alert: any }) => {
   const icons = {
     warning: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
@@ -49,13 +47,15 @@ const AlertCard = ({ alert }: { alert: any }) => {
 
 export const OverviewDashboard = () => {
   const { addToast } = useToast()
-  const { filters, setActiveTab } = useDashboard()
+  const { filters, setActiveTab, comparisonRange, comparisonMode } = useDashboard()
   
   const tagIds = filters.selectedTags.map(t => t.id)
   const { data, error, isLoading } = useOverview(
     filters.dateRange.from,
     filters.dateRange.to,
-    tagIds
+    tagIds,
+    comparisonRange?.from,
+    comparisonRange?.to
   )
 
   useEffect(() => {
@@ -83,10 +83,7 @@ export const OverviewDashboard = () => {
 
   const { metrics, alerts, recentActivity, charts } = data
 
-  // Extract upcoming arrivals count from alerts if available
-  // Look specifically for text about "guests arriving" or "Upcoming Arrivals"
   const upcomingArrivalsAlert = alerts?.find((alert: any) => {
-    // More specific check - must have "arriving" or be specifically about "Arrivals"
     const hasArrival = alert.description?.toLowerCase().includes('arriving') || 
                       alert.description?.toLowerCase().includes('guests arriving') ||
                       alert.title?.toLowerCase().includes('upcoming arrivals') ||
@@ -94,14 +91,12 @@ export const OverviewDashboard = () => {
     return hasArrival
   })
   
-  // Parse the number from alert description or title
   let upcomingFromAlert = null
   if (upcomingArrivalsAlert) {
-    // Try to match different patterns
     const patterns = [
-      /(\d+)\s+guest/i,  // "1 guests arriving"
-      /(\d+)\s+arrival/i, // "1 arrivals"
-      /(\d+)\s+booking/i, // "1 bookings"
+      /(\d+)\s+guest/i,
+      /(\d+)\s+arrival/i,
+      /(\d+)\s+booking/i,
     ]
     
     for (const pattern of patterns) {
@@ -114,8 +109,6 @@ export const OverviewDashboard = () => {
     }
   }
   
-  // Use the alert count if metrics.bookings.upcoming is 0 but we have arrivals in alerts
-  // Note: metrics.bookings.upcoming comes as a string from the API
   const metricsUpcoming = parseInt(metrics.bookings.upcoming) || 0
   const actualUpcoming = (metricsUpcoming === 0 && upcomingFromAlert) 
     ? parseInt(upcomingFromAlert) 
@@ -150,7 +143,10 @@ export const OverviewDashboard = () => {
           label="Money Earned"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
-          subValue={`After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`}
+          subValue={comparisonMode !== 'none' 
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(metrics.revenue.previous)} | After fees: ${formatCompactCurrency(metrics.revenue.net)}`
+            : `After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`
+          }
           trend={{
             value: metrics.revenue.growth,
             isPositive: metrics.revenue.growth > 0
@@ -162,10 +158,13 @@ export const OverviewDashboard = () => {
           icon={Calendar}
           label="Reservations Made"
           value={metrics.bookings.current}
-          subValue={`${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`}
+          subValue={comparisonMode !== 'none'
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.bookings.previous || 0} | ${actualUpcoming} upcoming`
+            : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
+          }
           trend={{
-            value: metrics.bookings.cancellationRate * -1,
-            isPositive: metrics.bookings.cancellationRate < 5
+            value: ((metrics.bookings.current - (metrics.bookings.previous || 0)) / (metrics.bookings.previous || 1)) * 100,
+            isPositive: metrics.bookings.current > (metrics.bookings.previous || 0)
           }}
           color="blue"
           onClick={() => setActiveTab('properties')}

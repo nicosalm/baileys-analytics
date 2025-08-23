@@ -207,6 +207,13 @@ export const SeasonManagementPanel: React.FC = () => {
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null)
 
   const handleCreateSeason = async (data: SeasonFormData) => {
+    // Check if there's already an active season
+    const activeSeasons = seasons.filter(s => s.isActive)
+    if (activeSeasons.length > 0) {
+      addToast('error', 'Only one season can be active. Please deactivate the current season first.')
+      return
+    }
+    
     const result = await createSeason(data)
     if (result.success) {
       addToast('success', 'Season created successfully')
@@ -243,6 +250,15 @@ export const SeasonManagementPanel: React.FC = () => {
   }
 
   const handleToggleActive = async (season: Season) => {
+    // If activating, check if there's already an active season
+    if (!season.isActive) {
+      const activeSeasons = seasons.filter(s => s.isActive && s.id !== season.id)
+      if (activeSeasons.length > 0) {
+        addToast('error', 'Only one season can be active. Please deactivate the current season first.')
+        return
+      }
+    }
+    
     const result = await toggleSeasonActive(season.id, !season.isActive)
     if (result.success) {
       addToast(
@@ -273,10 +289,13 @@ export const SeasonManagementPanel: React.FC = () => {
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Season Management</h3>
           <p className="text-sm text-gray-600 mt-1">
-            Define your operational seasons to filter out off-season blocks and focus on actual booking periods.
+            Define your operational season to filter out off-season blocks and focus on actual booking periods.
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            Note: Only one season can be active at a time.
           </p>
         </div>
-        {!isAddingNew && !editingSeasonId && (
+        {!isAddingNew && !editingSeasonId && seasons.filter(s => s.isActive).length === 0 && (
           <button
             onClick={() => setIsAddingNew(true)}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"

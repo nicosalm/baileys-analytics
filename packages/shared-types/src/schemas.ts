@@ -21,7 +21,13 @@ export const tagsQuerySchema = z.object({
 
 export const dateRangeWithTagsSchema = dateRangeSchema.merge(tagsQuerySchema)
 
-export const financialQuerySchema = dateRangeWithTagsSchema
+// Add comparison date range for overview and financial dashboards
+export const dateRangeWithComparisonSchema = dateRangeWithTagsSchema.extend({
+  comparisonFrom: dateStringSchema.optional(),
+  comparisonTo: dateStringSchema.optional(),
+})
+
+export const financialQuerySchema = dateRangeWithComparisonSchema
 
 export const guestsQuerySchema = dateRangeWithTagsSchema.extend({
   page: z.coerce.number().int().positive().default(1),

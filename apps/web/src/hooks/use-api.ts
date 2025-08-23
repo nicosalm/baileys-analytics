@@ -4,13 +4,21 @@ import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
 import type { Season, SeasonFormData } from '@/types/season'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
-export function useFinancial(from?: string, to?: string, tagIds?: string[]) {
+export function useFinancial(
+  from?: string, 
+  to?: string, 
+  tagIds?: string[],
+  comparisonFrom?: string,
+  comparisonTo?: string
+) {
   // Validate inputs
   const validFrom = from && isValidDateString(from) ? from : undefined
   const validTo = to && isValidDateString(to) ? to : undefined
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
+  const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
   
-  const key = validFrom || validTo || validTagIds ? ['/financial', validFrom, validTo, validTagIds] : null
+  const key = validFrom || validTo || validTagIds ? ['/financial', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
   return useSWR<any>(key)
 }
 
@@ -214,11 +222,19 @@ export function useDailyOccupancy(from?: string, to?: string, tagIds?: string[])
   )
 }
 
-export function useOverview(from?: string, to?: string, tagIds?: string[]) {
+export function useOverview(
+  from?: string, 
+  to?: string, 
+  tagIds?: string[],
+  comparisonFrom?: string,
+  comparisonTo?: string
+) {
   const params = new URLSearchParams()
   if (from) params.append('from', from)
   if (to) params.append('to', to)
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
+  if (comparisonFrom) params.append('comparisonFrom', comparisonFrom)
+  if (comparisonTo) params.append('comparisonTo', comparisonTo)
   
   const key = params.toString() ? `/overview?${params}` : '/overview'
   

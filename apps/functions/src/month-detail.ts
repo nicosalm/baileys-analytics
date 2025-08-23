@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { formatDateISO } from './utils/dates';
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 
 export async function getMonthDetail(
   request: HttpRequest,
@@ -43,6 +44,10 @@ export async function getMonthDetail(
 
     const startDate = `${year}-${month.padStart(2, '0')}-01`;
     const endDate = formatDateISO(new Date(parseInt(year), parseInt(month), 0));
+    
+    // Get active seasons for filtering
+    const seasons = await getActiveSeasons(auth.tenantId);
+    const bookingFilters = buildBookingFilters(seasons, 'b');
 
     // Get summary
     const summaryResult = await query<{
@@ -65,7 +70,8 @@ export async function getMonthDetail(
       WHERE b.tenant_id = $1
         AND b.arrival <= $3
         AND b.departure >= $2
-        AND b.status != 'canceled'`,
+        AND b.status != 'canceled'
+        ${bookingFilters || ''}`,
       [auth.tenantId, startDate, endDate]
     );
 
@@ -88,6 +94,7 @@ export async function getMonthDetail(
         AND b.arrival <= $3
         AND b.departure >= $2
         AND b.status != 'canceled'
+        ${bookingFilters || ''}
       LEFT JOIN booking_charges bc ON b.id = bc.booking_id
       WHERE p.tenant_id = $1 AND p.active = true
       GROUP BY p.id, p.name
@@ -124,6 +131,7 @@ export async function getMonthDetail(
         AND b.arrival <= $3
         AND b.departure >= $2
         AND b.status != 'canceled'
+        ${bookingFilters || ''}
       ORDER BY b.arrival`,
       [auth.tenantId, startDate, endDate]
     );

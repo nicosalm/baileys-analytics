@@ -3,7 +3,7 @@ import { useFinancial } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, calculatePercentage } from '@baileys/utils'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { DollarSign, Info, Calculator, PiggyBank } from 'lucide-react'
-import { LoadingState } from '@/components/LoadingState'
+import { StateWrapper } from '@/components/StateWrapper'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
@@ -25,45 +25,17 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
     filters.selectedTags.map(t => t.id)
   )
 
-  if (isLoading) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title="Financial Summary"
-        subtitle="Loading financial data..."
-        size="lg"
-      >
-        <div className="flex justify-center py-12">
-          <LoadingState />
-        </div>
-      </Modal>
-    )
-  }
+  const subtitle = isLoading ? "Loading financial data..." :
+                   error ? "Unable to load financial data" :
+                   "Your money at a glance"
 
-  if (error || !data) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title="Financial Summary"
-        subtitle="Unable to load financial data"
-        size="lg"
-      >
-        <div className="text-center py-12">
-          <p className="text-gray-600">Something went wrong. Please try again.</p>
-        </div>
-      </Modal>
-    )
-  }
-
-  const grossRevenue = data.pl?.metrics?.revenue?.gross || 0
-  const netRevenue = data.pl?.metrics?.revenue?.net || 0
-  const platformFees = data.pl?.metrics?.revenue?.platformFees || 0
-  const cleaningFees = data.pl?.metrics?.revenue?.cleaningFees || 0
-  const taxAmount = data.tax?.summary?.totalTax || 0
-  const ownerRemittedTax = data.tax?.summary?.ownerRemitted || taxAmount
-  const platformRemittedTax = data.tax?.summary?.platformRemitted || 0
+  const grossRevenue = data?.pl?.metrics?.revenue?.gross || 0
+  const netRevenue = data?.pl?.metrics?.revenue?.net || 0
+  const platformFees = data?.pl?.metrics?.revenue?.platformFees || 0
+  const cleaningFees = data?.pl?.metrics?.revenue?.cleaningFees || 0
+  const taxAmount = data?.tax?.summary?.totalTax || 0
+  const ownerRemittedTax = data?.tax?.summary?.ownerRemitted || taxAmount
+  const platformRemittedTax = data?.tax?.summary?.platformRemitted || 0
   
   const profitMargin = calculatePercentage(netRevenue, grossRevenue)
   
@@ -74,7 +46,7 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
     { name: 'Other', value: 0, color: CHART_COLORS[3] }
   ].filter(item => item.value > 0)
 
-  const monthlyData = data.pl?.monthlyTrend?.map((month: any) => ({
+  const monthlyData = data?.pl?.monthlyTrend?.map((month: any) => ({
     month: new Date(month.month).toLocaleDateString('en-US', { month: 'short' }),
     revenue: month.grossRevenue,
     profit: month.netRevenue,
@@ -86,10 +58,19 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
       isOpen={true}
       onClose={closeModal}
       title={propertyName ? `${propertyName} Finances` : "Financial Summary"}
-      subtitle="Your money at a glance"
+      subtitle={subtitle}
       size="lg"
     >
-      <div className="space-y-6">
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading financial data..."
+        errorMessage="Failed to load financial summary"
+        emptyMessage="No financial data available"
+        minHeight={400}
+      >
+        <div className="space-y-6">
         {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -271,7 +252,8 @@ export const FinancialSummaryModal = ({ propertyName }: FinancialSummaryModalPro
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </StateWrapper>
     </Modal>
   )
 }

@@ -5,8 +5,7 @@ import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
 import { mutate } from 'swr'
 import { Calculator, Info, DollarSign } from 'lucide-react'
-import { formatCurrency } from '@baileys/utils'
-import { format } from 'date-fns'
+import { formatCurrency, format } from '@baileys/utils'
 import { platformFeeSchema as PlatformFeeSchema, type PlatformFee as PlatformFeeData } from '@/schemas/taxConfig'
 
 interface PlatformFeeEntryModalProps {

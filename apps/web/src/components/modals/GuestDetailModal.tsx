@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
-import { formatCurrency, formatDateDisplay } from '@baileys/utils'
-import { format, parseISO } from 'date-fns'
+import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award } from 'lucide-react'
-import { LoadingState } from '@/components/LoadingState'
+import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
@@ -26,23 +25,11 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
   
   const { data, isLoading, error } = useGuestDetail(guestId)
 
-  if (isLoading) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title={guestName}
-        subtitle="Loading guest information..."
-        size="lg"
-      >
-        <div className="flex justify-center py-12">
-          <LoadingState />
-        </div>
-      </Modal>
-    )
-  }
-
-  if (error || !data) {
+  const subtitle = isLoading ? "Loading guest information..." :
+                   error ? "Unable to load guest details" :
+                   `Viewing guest profile`
+  
+  if (!isLoading && !error && !data) {
     return (
       <Modal
         isOpen={true}
@@ -58,9 +45,9 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
     )
   }
 
-  const guest = data.guest
-  const bookingHistory = data.bookings || []
-  const spendingTrend = data.spendingTrend || []
+  const guest = data?.guest
+  const bookingHistory = data?.bookings || []
+  const spendingTrend = data?.spendingTrend || []
 
   // Calculate simple metrics
   const totalSpent = guest?.totalSpent || bookingHistory.reduce((sum: number, b: any) => sum + b.totalAmount, 0)
@@ -69,7 +56,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
     : 0)
 
   const chartData = spendingTrend.map((item: any) => ({
-    month: format(parseISO(`${item.month}-01`), 'MMM yyyy'),
+    month: format(parseDate(`${item.month}-01`), 'MMM yyyy'),
     amount: item.amount,
     bookings: item.bookings
   }))
@@ -79,10 +66,19 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
       isOpen={true}
       onClose={closeModal}
       title={guestName}
-      subtitle="What we know about this guest"
+      subtitle={subtitle}
       size="lg"
     >
-      <div className="space-y-6">
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading guest information..."
+        errorMessage="Failed to load guest details"
+        emptyMessage="No guest data available"
+        minHeight={400}
+      >
+        <div className="space-y-6">
         {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -291,7 +287,8 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </StateWrapper>
     </Modal>
   )
 }

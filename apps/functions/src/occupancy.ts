@@ -3,6 +3,7 @@ import { query, DbResult } from './services/database';
 import { safeDivide, calculateOccupancyRate, calculateNights } from '@baileys/utils';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { formatDateISO, getYear } from './utils/dates';
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 
 type OccupancyData = {
   overall: number
@@ -55,7 +56,7 @@ const buildQueryParams = (params: QueryParams): any[] =>
     ? [params.tenantId, params.fromDate, params.toDate, params.tagIds]
     : [params.tenantId, params.fromDate, params.toDate]
 
-const fetchOverallOccupancy = async (params: QueryParams): Promise<DbResult<{
+const fetchOverallOccupancy = async (params: QueryParams, bookingFilters: string | null): Promise<DbResult<{
   booked_nights: number
   available_nights: number
 }>> => {
@@ -120,6 +121,7 @@ const fetchOverallOccupancy = async (params: QueryParams): Promise<DbResult<{
         AND b.status != 'canceled'
         AND p.active = true
         ${tagFilter}
+        ${bookingFilters || ''}
     )
     SELECT
       bn.total_booked::text as booked_nights,
@@ -143,7 +145,7 @@ const fetchOverallOccupancy = async (params: QueryParams): Promise<DbResult<{
   }
 }
 
-const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<readonly {
+const fetchPropertyOccupancy = async (params: QueryParams, bookingFilters: string | null): Promise<DbResult<readonly {
   property_id: string
   property_name: string
   booked_nights: string
@@ -205,6 +207,7 @@ const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<rea
         AND b.departure >= $2
         AND b.status != 'canceled'
         ${tagFilter}
+        ${bookingFilters || ''}
       WHERE p.tenant_id = $1 AND p.active = true
       GROUP BY p.id
     )
@@ -221,7 +224,7 @@ const fetchPropertyOccupancy = async (params: QueryParams): Promise<DbResult<rea
   )
 }
 
-const fetchMonthlyOccupancy = async (params: QueryParams): Promise<DbResult<readonly {
+const fetchMonthlyOccupancy = async (params: QueryParams, bookingFilters: string | null): Promise<DbResult<readonly {
   month: string
   booked_nights: string
   available_nights: string
@@ -278,6 +281,7 @@ const fetchMonthlyOccupancy = async (params: QueryParams): Promise<DbResult<read
         AND calendar_date >= b.arrival
         AND calendar_date < b.departure
         ${tagFilter}
+        ${bookingFilters || ''}
       JOIN properties p ON b.property_id = p.id
         AND p.active = true
       WHERE calendar_date <= CURRENT_DATE  -- Ensure we don't count future dates
@@ -338,11 +342,11 @@ const transformMonthlyOccupancy = (
     }
   })
 
-const fetchOccupancyData = async (params: QueryParams): Promise<DbResult<OccupancyData>> => {
+const fetchOccupancyData = async (params: QueryParams, bookingFilters: string | null): Promise<DbResult<OccupancyData>> => {
   const [overallResult, byPropertyResult, byMonthResult] = await Promise.all([
-    fetchOverallOccupancy(params),
-    fetchPropertyOccupancy(params),
-    fetchMonthlyOccupancy(params)
+    fetchOverallOccupancy(params, bookingFilters),
+    fetchPropertyOccupancy(params, bookingFilters),
+    fetchMonthlyOccupancy(params, bookingFilters)
   ])
 
   if (!overallResult.success) {
@@ -391,7 +395,12 @@ export async function getOccupancy(
   }
 
   const params = parseQueryParams(request, auth.tenantId)
-  const result = await fetchOccupancyData(params)
+  
+  // Get active seasons for filtering
+  const seasons = await getActiveSeasons(auth.tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
+  
+  const result = await fetchOccupancyData(params, bookingFilters)
 
   if (!result.success) {
     return {

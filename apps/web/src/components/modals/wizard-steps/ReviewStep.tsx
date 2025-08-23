@@ -1,5 +1,5 @@
 import { Check, Home, MapPin, Calculator, Globe, Calendar, AlertCircle } from 'lucide-react'
-import { format } from 'date-fns'
+import { format } from '@baileys/utils'
 
 interface ReviewStepProps {
   wizardData: {

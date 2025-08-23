@@ -98,6 +98,10 @@ export async function getGuests(
   }
 
   try {
+    // Get active seasons for filtering
+    const seasons = await getActiveSeasons(auth.tenantId);
+    const bookingFilters = buildBookingFilters(seasons, 'b');
+    
     // Use validated query parameters
     const startDate = validated?.query?.from;
     const endDate = validated?.query?.to;
@@ -114,6 +118,11 @@ export async function getGuests(
       dateFilter = `AND b.arrival >= $${paramIndex} AND b.arrival <= $${paramIndex + 1}`;
       queryParams.push(startDate, endDate);
       paramIndex += 2;
+    }
+    
+    // Apply season filtering
+    if (bookingFilters) {
+      dateFilter += ` ${bookingFilters}`;
     }
 
     let tagFilter = '';

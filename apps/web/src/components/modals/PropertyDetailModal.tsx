@@ -3,7 +3,7 @@ import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info } from 'lucide-react'
-import { LoadingState } from '@/components/LoadingState'
+import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { MetricCard } from '@/components/MetricCard'
 import { Modal } from '@/components/Modal'
@@ -28,46 +28,18 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
     filters.selectedTags.map(t => t.id)
   )
 
-  if (isLoading) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title={propertyName}
-        subtitle="Loading property details..."
-        size="xl"
-      >
-        <div className="flex justify-center py-12">
-          <LoadingState />
-        </div>
-      </Modal>
-    )
-  }
+  const subtitle = isLoading ? "Loading property details..." : 
+                   error ? "Unable to load property details" : 
+                   `Performance metrics for ${propertyName}`
 
-  if (error || !data) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title={propertyName}
-        subtitle="Unable to load property details"
-        size="xl"
-      >
-        <div className="text-center py-12">
-          <p className="text-gray-600">Something went wrong. Please try again.</p>
-        </div>
-      </Modal>
-    )
-  }
-
-  const monthlyChartData = data.monthlyData?.map((m: any) => ({
+  const monthlyChartData = data?.monthlyData?.map((m: any) => ({
     month: new Date(m.month).toLocaleDateString('en-US', { month: 'short' }),
     revenue: m.revenue,
     bookings: m.bookings,
     occupancy: m.occupancy
   })) || []
 
-  const platformData = data.revenueByPlatform?.map((p: any, index: number) => ({
+  const platformData = data?.revenueByPlatform?.map((p: any, index: number) => ({
     ...p,
     color: CHART_COLORS[index % CHART_COLORS.length]
   })) || []
@@ -77,10 +49,19 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
       isOpen={true}
       onClose={closeModal}
       title={propertyName}
-      subtitle="How this property is doing"
+      subtitle={subtitle}
       size="xl"
     >
-      <div className="space-y-6">
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading property details..."
+        errorMessage="Failed to load property details"
+        emptyMessage="No property data available"
+        minHeight={400}
+      >
+        <div className="space-y-6">
         {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -345,7 +326,8 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
             </div>
           </div>
         )}
-      </div>
+        </div>
+      </StateWrapper>
     </Modal>
   )
 }

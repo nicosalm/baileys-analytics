@@ -1,7 +1,7 @@
 import { useMonthDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import { Calendar, DollarSign, Home, TrendingUp, Info } from 'lucide-react'
-import { LoadingState } from '@/components/LoadingState'
+import { StateWrapper } from '@/components/StateWrapper'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
@@ -22,47 +22,28 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
   
   const { data, isLoading, error } = useMonthDetail(month, year, filters.selectedTags.map(t => t.id))
 
-  if (isLoading) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title={monthName}
-        subtitle="Loading month details..."
-        size="lg"
-      >
-        <div className="flex justify-center py-12">
-          <LoadingState />
-        </div>
-      </Modal>
-    )
-  }
-
-  if (error || !data) {
-    return (
-      <Modal
-        isOpen={true}
-        onClose={closeModal}
-        title={monthName}
-        subtitle="Unable to load month details"
-        size="lg"
-      >
-        <div className="text-center py-12">
-          <p className="text-gray-600">Something went wrong. Please try again.</p>
-        </div>
-      </Modal>
-    )
-  }
+  const subtitle = isLoading ? "Loading month details..." :
+                   error ? "Unable to load month details" :
+                   `Detailed breakdown for ${monthName}`
 
   return (
     <Modal
       isOpen={true}
       onClose={closeModal}
       title={monthName}
-      subtitle="How this month performed"
+      subtitle={subtitle}
       size="lg"
     >
-      <div className="space-y-6">
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading month details..."
+        errorMessage="Failed to load month details"
+        emptyMessage="No data available for this month"
+        minHeight={400}
+      >
+        <div className="space-y-6">
         {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -75,7 +56,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
         </div>
 
         {/* Key Metrics */}
-        {data.metrics && (
+        {data?.metrics && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
@@ -192,7 +173,8 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
             </table>
           </div>
         </div>
-      </div>
+        </div>
+      </StateWrapper>
     </Modal>
   )
 }

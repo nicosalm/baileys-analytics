@@ -1,4 +1,3 @@
-// apps/functions/src/overview.ts
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { requireAuthWithValidation } from './middleware/validation'
 import { financialQuerySchema } from '@baileys/shared-types'
@@ -16,6 +15,7 @@ interface OverviewMetrics {
   }
   bookings: {
     current: number
+    previous: number
     upcoming: number
     cancellationRate: number
     avgNights: number
@@ -59,28 +59,31 @@ export async function overview(
     }
   }
 
-  // Use validated query parameters
   const from = validated?.query?.from || formatDateISO(new Date(getYear(new Date()), 0, 1))
   const to = validated?.query?.to || formatDateISO(new Date())
   const tagIds = validated?.query?.tags || []
+  
+  let comparisonFrom: string
+  let comparisonTo: string
+  
+  if (validated?.query?.comparisonFrom && validated?.query?.comparisonTo) {
+    comparisonFrom = validated.query.comparisonFrom
+    comparisonTo = validated.query.comparisonTo
+  } else {
+    const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24))
+    comparisonFrom = formatDateISO(new Date(new Date(from).getTime() - daysDiff * 24 * 60 * 60 * 1000))
+    comparisonTo = formatDateISO(new Date(new Date(from).getTime() - 24 * 60 * 60 * 1000))
+  }
 
   try {
-    // Get current period metrics
     const currentMetrics = await getCurrentPeriodMetrics(tenantId, from, to, tagIds, userId)
 
-    // Get previous period for comparison
-    const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24))
-    const prevFrom = formatDateISO(new Date(new Date(from).getTime() - daysDiff * 24 * 60 * 60 * 1000))
-    const prevTo = formatDateISO(new Date(new Date(from).getTime() - 24 * 60 * 60 * 1000))
-    const previousMetrics = await getCurrentPeriodMetrics(tenantId, prevFrom, prevTo, tagIds, userId)
+    const previousMetrics = await getCurrentPeriodMetrics(tenantId, comparisonFrom, comparisonTo, tagIds, userId)
 
-    // Get charts data
     const charts = await getChartsData(tenantId, from, to, tagIds)
 
-    // Get alerts
     const alerts = await getAlerts(tenantId, from, to)
 
-    // Get recent activity
     const recentActivity = await getRecentActivity(tenantId)
 
     const metrics: OverviewMetrics = {
@@ -95,6 +98,7 @@ export async function overview(
       },
       bookings: {
         current: currentMetrics.bookings,
+        previous: previousMetrics.bookings,
         upcoming: currentMetrics.upcomingBookings,
         cancellationRate: currentMetrics.cancellationRate,
         avgNights: currentMetrics.avgNights
@@ -152,6 +156,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
         AND b.arrival <= $3::date
         AND b.status != 'canceled'
         ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+        ${bookingFilters}
     ),
     tax_data AS (
       SELECT bd.id, COALESCE(SUM(bc.amount), 0) as tax_amount
@@ -247,6 +252,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
           AND b.arrival <= $3::date
           AND b.status != 'canceled'
           ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+          ${bookingFilters}
         GROUP BY LOWER(TRIM(b.guest_name)), COALESCE(LOWER(TRIM(b.guest_email)), '')
       )
       SELECT
@@ -367,9 +373,10 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
 }
 
 async function getChartsData(tenantId: string, from: string, to: string, tagIds: string[] = []) {
+  const seasons = await getActiveSeasons(tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
   const hasTagFilter = tagIds.length > 0
   
-  // Revenue last 7 days
   const revenueQuery = `
     SELECT
       b.arrival::date as day,
@@ -385,7 +392,6 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
     LIMIT 7
   `
 
-  // Top properties
   const propertiesQuery = `
     SELECT
       p.name,
@@ -404,7 +410,6 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
     LIMIT 5
   `
 
-  // Bookings by source
   const sourcesQuery = `
     SELECT
       COALESCE(b.platform, 'Direct') as source,
@@ -416,11 +421,11 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
       AND b.arrival <= $3::date
       AND b.status != 'canceled'
       ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+      ${bookingFilters}
     GROUP BY b.platform
     ORDER BY count DESC
   `
 
-  // Occupancy trend (last 6 months)
   const occupancyQuery = `
     WITH months AS (
       SELECT generate_series(
@@ -499,7 +504,6 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
     query(occupancyQuery, [tenantId])  // Occupancy trend doesn't need tag filtering for historical view
   ])
 
-  // Check all queries succeeded
   if (!revenue.success || !properties.success || !sources.success || !occupancy.success) {
     throw new Error('Failed to fetch chart data')
   }
@@ -518,7 +522,6 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
 async function getAlerts(tenantId: string, from: string, to: string) {
   const alerts = []
 
-  // Check for low occupancy
   const occupancyCheckQuery = `
     WITH next_30_days AS (
       SELECT
@@ -549,7 +552,6 @@ async function getAlerts(tenantId: string, from: string, to: string) {
     })
   }
 
-  // Check for upcoming arrivals
   const upcomingArrivalsQuery = `
     SELECT COUNT(*) as count
     FROM bookings
@@ -570,7 +572,6 @@ async function getAlerts(tenantId: string, from: string, to: string) {
     })
   }
 
-  // Check for high cancellation rate in selected period
   const cancellationQuery = `
     SELECT
       COUNT(DISTINCT CASE WHEN status = 'canceled' THEN id END)::numeric / 
@@ -593,7 +594,6 @@ async function getAlerts(tenantId: string, from: string, to: string) {
     })
   }
 
-  // Check for revenue milestone
   const revenueQuery = `
     SELECT SUM(total_amount) as month_revenue
     FROM bookings
@@ -614,7 +614,6 @@ async function getAlerts(tenantId: string, from: string, to: string) {
     })
   }
 
-  // Check for properties needing attention
   const underperformingQuery = `
     SELECT
       p.name,
@@ -646,7 +645,6 @@ async function getAlerts(tenantId: string, from: string, to: string) {
 }
 
 async function getRecentActivity(tenantId: string) {
-  // Simply show most recent bookings by any available date
   const activityQuery = `
     SELECT
       b.id,
@@ -684,7 +682,7 @@ async function getRecentActivity(tenantId: string) {
   const result = await query(activityQuery, [tenantId])
 
   if (!result.success) {
-    return [] // Return empty array if query fails
+    return []
   }
 
   return result.data || []

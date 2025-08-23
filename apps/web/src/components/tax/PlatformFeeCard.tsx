@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { DollarSign, Plus, AlertCircle, Edit2, ChevronDown, ChevronUp } from 'lucide-react'
-import { formatCurrency } from '@baileys/utils'
-import { format } from 'date-fns'
+import { formatCurrency, format } from '@baileys/utils'
 import { usePlatformFees } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 import { useModal } from '@/contexts/modal'
