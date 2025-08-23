@@ -1,6 +1,7 @@
 import useSWR, { mutate as globalMutate } from 'swr'
 import { api } from '@/lib/api'
 import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
+import type { Season, SeasonFormData } from '@/types/season'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
 export function useFinancial(from?: string, to?: string, tagIds?: string[]) {
@@ -420,6 +421,46 @@ export function usePropertyTaxConfigs() {
     }
     return result.data || []
   })
+}
+
+export function useSeasons() {
+  return useSWR<Season[]>('/seasons', async () => {
+    const result = await api.getSeasons()
+    if (!result.success) throw new Error(result.error)
+    return result.data?.seasons || []
+  })
+}
+
+export async function createSeason(data: SeasonFormData) {
+  const result = await api.createSeason(data)
+  if (result.success) {
+    await globalMutate('/seasons')
+  }
+  return result
+}
+
+export async function updateSeason(id: string, data: SeasonFormData) {
+  const result = await api.updateSeason(id, data)
+  if (result.success) {
+    await globalMutate('/seasons')
+  }
+  return result
+}
+
+export async function deleteSeason(id: string) {
+  const result = await api.deleteSeason(id)
+  if (result.success) {
+    await globalMutate('/seasons')
+  }
+  return result
+}
+
+export async function toggleSeasonActive(id: string, isActive: boolean) {
+  const result = await api.toggleSeasonActive(id, isActive)
+  if (result.success) {
+    await globalMutate('/seasons')
+  }
+  return result
 }
 
 export async function savePropertyTaxConfig(data: any): Promise<void> {

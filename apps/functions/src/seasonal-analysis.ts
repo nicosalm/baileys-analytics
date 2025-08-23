@@ -3,6 +3,7 @@ import { query } from './services/database';
 import { calculateGrowthRate, safeDivide, calculateAverage, calculateStandardDeviation } from '@baileys/utils';
 import { getYear } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 
 type SeasonalData = {
     yearOverYear: {
@@ -108,6 +109,10 @@ export async function getSeasonalAnalysis(
         const previousYear = year - 1;
         const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 
+        // Get active seasons for filtering
+        const seasons = await getActiveSeasons(auth.tenantId);
+        const bookingFilters = buildBookingFilters(seasons, 'b');
+
         // Build tag filter for queries
         const tagFilter = tagIds.length > 0
             ? `AND EXISTS (
@@ -129,6 +134,7 @@ export async function getSeasonalAnalysis(
             FROM properties p
             LEFT JOIN bookings b ON p.id = b.property_id
                 AND b.status != 'canceled'
+                ${bookingFilters}
                 ${tagFilter}
             WHERE p.tenant_id = $1`,
             queryParams
@@ -178,15 +184,16 @@ export async function getSeasonalAnalysis(
             ),
             yearly_stats AS (
                 SELECT
-                    EXTRACT(YEAR FROM arrival)::integer as year,
-                    SUM(total_amount) as revenue,
+                    EXTRACT(YEAR FROM b.arrival)::integer as year,
+                    SUM(b.total_amount) as revenue,
                     COUNT(*) as bookings,
-                    SUM(departure - arrival) as nights
-                FROM bookings
-                WHERE tenant_id = $1
-                    AND status != 'canceled'
-                    AND EXTRACT(YEAR FROM arrival) IN ($2, $3)
-                GROUP BY EXTRACT(YEAR FROM arrival)
+                    SUM(b.departure - b.arrival) as nights
+                FROM bookings b
+                WHERE b.tenant_id = $1
+                    AND b.status != 'canceled'
+                    AND EXTRACT(YEAR FROM b.arrival) IN ($2, $3)
+                    ${bookingFilters}
+                GROUP BY EXTRACT(YEAR FROM b.arrival)
             ),
             property_count AS (
                 SELECT COUNT(*) as prop_count
@@ -228,17 +235,18 @@ export async function getSeasonalAnalysis(
         }>(
             `WITH monthly_data AS (
                 SELECT
-                    TO_CHAR(arrival, 'MM') as month,
-                    TO_CHAR(arrival, 'Month') as month_name,
-                    EXTRACT(YEAR FROM arrival) as year,
-                    SUM(total_amount) as revenue,
+                    TO_CHAR(b.arrival, 'MM') as month,
+                    TO_CHAR(b.arrival, 'Month') as month_name,
+                    EXTRACT(YEAR FROM b.arrival) as year,
+                    SUM(b.total_amount) as revenue,
                     COUNT(*) as bookings,
-                    SUM(departure - arrival) as nights
-                FROM bookings
-                WHERE tenant_id = $1
-                    AND status != 'canceled'
-                    AND EXTRACT(YEAR FROM arrival) IN ($2, $3)
-                GROUP BY TO_CHAR(arrival, 'MM'), TO_CHAR(arrival, 'Month'), EXTRACT(YEAR FROM arrival)
+                    SUM(b.departure - b.arrival) as nights
+                FROM bookings b
+                WHERE b.tenant_id = $1
+                    AND b.status != 'canceled'
+                    AND EXTRACT(YEAR FROM b.arrival) IN ($2, $3)
+                    ${bookingFilters}
+                GROUP BY TO_CHAR(b.arrival, 'MM'), TO_CHAR(b.arrival, 'Month'), EXTRACT(YEAR FROM b.arrival)
             ),
             property_count AS (
                 SELECT COUNT(*) as prop_count
@@ -294,16 +302,17 @@ export async function getSeasonalAnalysis(
         }>(
             `WITH monthly_aggregates AS (
                 SELECT
-                    TO_CHAR(arrival, 'MM') as month,
-                    TO_CHAR(arrival, 'Month') as month_name,
-                    SUM(departure - arrival) as total_nights,
-                    AVG(total_amount) as avg_revenue_per_booking,
+                    TO_CHAR(b.arrival, 'MM') as month,
+                    TO_CHAR(b.arrival, 'Month') as month_name,
+                    SUM(b.departure - b.arrival) as total_nights,
+                    AVG(b.total_amount) as avg_revenue_per_booking,
                     COUNT(*) as booking_count
-                FROM bookings
-                WHERE tenant_id = $1
-                    AND status != 'canceled'
-                    AND arrival >= CURRENT_DATE - INTERVAL '2 years'
-                GROUP BY TO_CHAR(arrival, 'MM'), TO_CHAR(arrival, 'Month')
+                FROM bookings b
+                WHERE b.tenant_id = $1
+                    AND b.status != 'canceled'
+                    AND b.arrival >= CURRENT_DATE - INTERVAL '2 years'
+                    ${bookingFilters}
+                GROUP BY TO_CHAR(b.arrival, 'MM'), TO_CHAR(b.arrival, 'Month')
             ),
             property_count AS (
                 SELECT COUNT(*) as prop_count
@@ -390,17 +399,19 @@ export async function getSeasonalAnalysis(
                 WHERE p.tenant_id = $1
                     AND b.status != 'canceled'
                     AND b.arrival >= CURRENT_DATE - INTERVAL '6 months'
+                    ${bookingFilters}
                 GROUP BY p.id, p.name, TO_CHAR(b.arrival, 'MM'), TO_CHAR(b.arrival, 'Month')
             ),
             market_stats AS (
                 SELECT
-                    TO_CHAR(arrival, 'MM') as month,
-                    AVG(total_amount / NULLIF(departure - arrival, 0)) as market_avg_rate
-                FROM bookings
-                WHERE tenant_id = $1
-                    AND status != 'canceled'
-                    AND arrival >= CURRENT_DATE - INTERVAL '6 months'
-                GROUP BY TO_CHAR(arrival, 'MM')
+                    TO_CHAR(b.arrival, 'MM') as month,
+                    AVG(b.total_amount / NULLIF(b.departure - b.arrival, 0)) as market_avg_rate
+                FROM bookings b
+                WHERE b.tenant_id = $1
+                    AND b.status != 'canceled'
+                    AND b.arrival >= CURRENT_DATE - INTERVAL '6 months'
+                    ${bookingFilters}
+                GROUP BY TO_CHAR(b.arrival, 'MM')
             )
             SELECT
                 pms.property_id,

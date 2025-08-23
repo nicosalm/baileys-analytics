@@ -4,6 +4,7 @@ import { requireAuthWithValidation } from './middleware/validation'
 import { financialQuerySchema } from '@baileys/shared-types'
 import { query } from './services/database'
 import { formatDateISO, getYear } from './utils/dates'
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService'
 
 interface OverviewMetrics {
   revenue: {
@@ -134,8 +135,11 @@ export async function overview(
 }
 
 async function getCurrentPeriodMetrics(tenantId: string, from: string, to: string, tagIds: string[] = [], userId?: string) {
-  const hasTagFilter = tagIds.length > 0
+  const seasons = await getActiveSeasons(tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
+  const bookingFiltersHistorical = buildBookingFilters(seasons, 'b_hist')
   
+  const hasTagFilter = tagIds.length > 0
   
   const metricsQuery = `
     WITH booking_data AS (
@@ -179,6 +183,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
         AND b.arrival <= $3::date
         AND b.status = 'canceled'
         ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+        ${bookingFilters}
     ),
     occupancy_stats AS (
       WITH property_availability AS (
@@ -190,6 +195,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
         LEFT JOIN bookings b_hist ON p.id = b_hist.property_id
           AND b_hist.tenant_id = p.tenant_id
           AND b_hist.status != 'canceled'
+          ${bookingFiltersHistorical}
         WHERE p.tenant_id = $1
           AND p.active = true
         GROUP BY p.id
@@ -220,6 +226,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
           AND b.status != 'canceled'
           AND p.active = true
           ${hasTagFilter ? `AND b.id IN (SELECT booking_id FROM booking_tags WHERE tag_id = ANY($4::uuid[]))` : ''}
+          ${bookingFilters}
       )
       SELECT
         bn.total_booked as booked_nights,
@@ -273,6 +280,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
         LEFT JOIN bookings b_hist ON p.id = b_hist.property_id
           AND b_hist.tenant_id = p.tenant_id
           AND b_hist.status != 'canceled'
+          ${bookingFiltersHistorical}
         WHERE p.tenant_id = $1
           AND p.active = true
         GROUP BY p.id, p.name

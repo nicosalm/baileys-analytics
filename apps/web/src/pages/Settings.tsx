@@ -12,6 +12,11 @@ const TaxManagementPanel = lazy(() =>
   import('@/components/settings/TaxManagementPanel').then(m => ({ default: m.TaxManagementPanel }))
 )
 
+// Lazy load the season management panel
+const SeasonManagementPanel = lazy(() => 
+  import('@/components/settings/SeasonManagementPanel').then(m => ({ default: m.SeasonManagementPanel }))
+)
+
 type SyncStatus = {
   lastPropertySync: string | null
   lastBookingSync: string | null
@@ -224,7 +229,7 @@ export const Settings = () => {
   const { addToast } = useToast()
   const [searchParams] = useSearchParams()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
-  const [activeTab, setActiveTab] = useState<'account' | 'tax'>('account')
+  const [activeTab, setActiveTab] = useState<'account' | 'tax' | 'seasons'>('account')
   
   const { data: syncStatus } = useSyncStatus()
   
@@ -233,6 +238,8 @@ export const Settings = () => {
     const tab = searchParams.get('tab')
     if (tab === 'tax') {
       setActiveTab('tax')
+    } else if (tab === 'seasons') {
+      setActiveTab('seasons')
     }
   }, [searchParams])
 
@@ -359,6 +366,17 @@ export const Settings = () => {
               <Calculator className="w-4 h-4 mr-2" />
               Tax Configuration
             </button>
+            <button
+              onClick={() => setActiveTab('seasons')}
+              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center ${
+                activeTab === 'seasons'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Calendar className="w-4 h-4 mr-2" />
+              Seasons
+            </button>
           </nav>
         </div>
 
@@ -379,7 +397,7 @@ export const Settings = () => {
               syncState={syncState}
             />
           </div>
-        ) : (
+        ) : activeTab === 'tax' ? (
           <Suspense fallback={
             <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100">
               <div className="flex justify-center py-12">
@@ -388,6 +406,16 @@ export const Settings = () => {
             </div>
           }>
             <TaxManagementPanel />
+          </Suspense>
+        ) : (
+          <Suspense fallback={
+            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+              <div className="flex justify-center py-12">
+                <LoadingState />
+              </div>
+            </div>
+          }>
+            <SeasonManagementPanel />
           </Suspense>
         )}
         

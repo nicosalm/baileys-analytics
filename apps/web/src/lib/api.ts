@@ -342,6 +342,37 @@ class ApiClient {
         })
     }
 
+    async getSeasons(): Promise<ApiResult<any>> {
+        return this.request('/seasons')
+    }
+
+    async createSeason(data: { name: string; startMonth: number; startDay: number; endMonth: number; endDay: number }): Promise<ApiResult<any>> {
+        return this.request('/seasons', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async updateSeason(id: string, data: { name: string; startMonth: number; startDay: number; endMonth: number; endDay: number }): Promise<ApiResult<any>> {
+        return this.request(`/seasons/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async deleteSeason(id: string): Promise<ApiResult<any>> {
+        return this.request(`/seasons/${id}`, {
+            method: 'DELETE'
+        })
+    }
+
+    async toggleSeasonActive(id: string, isActive: boolean): Promise<ApiResult<any>> {
+        return this.request(`/seasons/${id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isActive })
+        })
+    }
+
 }
 
 export const api = new ApiClient()

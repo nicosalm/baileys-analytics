@@ -4,6 +4,7 @@ import { query } from './services/database';
 import { corsHeaders, handleOptions } from './middleware/auth';
 import { requireAuthWithValidation } from './middleware/validation';
 import { guestsQuerySchema } from '@baileys/shared-types';
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 
 type GuestMetrics = {
   totalGuests: number;

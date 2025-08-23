@@ -3,6 +3,7 @@ import { query, DbResult } from './services/database';
 import { safeDivide } from '@baileys/utils';
 import { formatDateISO, getYear } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 
 type PropertyMetrics = {
   propertyId: string
@@ -52,6 +53,9 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
   total_nights: string
   available_nights: string
 }[]>> => {
+  const seasons = await getActiveSeasons(params.tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
+  
   const tagFilter = buildTagFilter(params.tagIds)
   const queryParams = buildQueryParams(params)
 
@@ -73,6 +77,7 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
       LEFT JOIN bookings b ON p.id = b.property_id
         AND b.tenant_id = p.tenant_id
         AND b.status != 'canceled'
+        ${bookingFilters}
       WHERE p.tenant_id = $1
         AND p.active = true
       GROUP BY p.id, p.name
@@ -114,6 +119,7 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
         AND b.arrival <= $3
         AND b.status != 'canceled'
         ${tagFilter}
+        ${bookingFilters}
       WHERE p.tenant_id = $1 AND p.active = true
       GROUP BY p.id
     )

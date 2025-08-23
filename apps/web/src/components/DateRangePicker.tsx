@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
+import { Calendar, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { 
   cn, 
   formatDateISO, 
@@ -20,8 +20,10 @@ import {
   isAfter,
   isBefore,
   isWithinInterval,
-  addDays
+  addDays,
+  getDate
 } from '@baileys/utils'
+import { useSeasons } from '@/hooks/use-api'
 
 interface DateRange {
   from: string
@@ -56,6 +58,34 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceTimer = useRef<NodeJS.Timeout | null>(null)
+  
+  // Fetch active seasons
+  const { data: seasons = [] } = useSeasons()
+  const activeSeasons = useMemo(() => seasons.filter(s => s.isActive), [seasons])
+  
+  // Helper function to check if a date is within any active season
+  const isDateInSeason = (date: Date): boolean => {
+    if (activeSeasons.length === 0) return true // No seasons = all dates allowed
+    
+    const month = getMonth(date) + 1 // getMonth is 0-indexed
+    const day = getDate(date)
+    
+    return activeSeasons.some(season => {
+      // Handle seasons that don't cross year boundary
+      if (season.startMonth <= season.endMonth) {
+        return (
+          (month > season.startMonth || (month === season.startMonth && day >= season.startDay)) &&
+          (month < season.endMonth || (month === season.endMonth && day <= season.endDay))
+        )
+      } else {
+        // Handle seasons that cross year boundary (e.g., Dec to Feb)
+        return (
+          (month > season.startMonth || (month === season.startMonth && day >= season.startDay)) ||
+          (month < season.endMonth || (month === season.endMonth && day <= season.endDay))
+        )
+      }
+    })
+  }
 
   // Using date-fns functions from utils package
 
@@ -163,6 +193,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
   const isDateDisabled = (date: Date): boolean => {
     if (minDate && isBefore(date, minDate)) return true
     if (maxDate && isAfter(date, maxDate)) return true
+    // Disable dates outside of active seasons
+    if (!isDateInSeason(date)) return true
     return false
   }
 
@@ -200,6 +232,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
           "flex items-center gap-2 px-3 py-2 bg-white border rounded-sm",
           "hover:bg-gray-50 transition-colors",
           disabled && "opacity-50 cursor-not-allowed",
+          activeSeasons.length > 0 && "border-green-500 bg-green-50",
           className
         )}
       >
@@ -214,10 +247,27 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
             <span className="text-gray-500">{placeholder}</span>
           )}
         </span>
+        {activeSeasons.length > 0 && (
+          <div className="flex items-center gap-1 ml-2" title="Date selection limited to active seasons">
+            <AlertCircle className="w-3 h-3 text-green-600" />
+            <span className="text-xs text-green-700 font-medium">Seasons Active</span>
+          </div>
+        )}
       </button>
 
       {isOpen && (
         <div className="absolute z-50 mt-2 p-4 bg-white border rounded-lg shadow-lg min-w-[320px]">
+          {/* Season Notice */}
+          {activeSeasons.length > 0 && (
+            <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-md flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-green-800">
+                <p className="font-medium mb-1">Season Filter Active</p>
+                <p>Only dates within {activeSeasons.map(s => s.name).join(', ')} can be selected.</p>
+              </div>
+            </div>
+          )}
+          
           {/* Quick Select Buttons */}
           <div className="mb-4 flex flex-wrap gap-2">
             <button
@@ -403,6 +453,7 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
               {days.map((date, idx) => {
                 const isCurrentMonth = date.getMonth() === currentMonth.getMonth()
                 const isDisabled = isDateDisabled(date)
+                const isOutOfSeason = activeSeasons.length > 0 && !isDateInSeason(date)
                 const isInRange = isDateInRange(date)
                 const isStart = localRange.from && localRange.from !== '' && isSameDay(date, parseDate(localRange.from))
                 const isEnd = localRange.to && localRange.to !== '' && isSameDay(date, parseDate(localRange.to))
@@ -413,16 +464,21 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({
                     type="button"
                     onClick={() => handleDateClick(date)}
                     disabled={!isCurrentMonth || isDisabled}
+                    title={isOutOfSeason ? "Outside active seasons" : undefined}
                     className={cn(
-                      "p-2 text-xs rounded transition-colors",
+                      "p-2 text-xs rounded transition-colors relative",
                       !isCurrentMonth && "text-gray-300",
                       isCurrentMonth && !isDisabled && "hover:bg-gray-100",
-                      isDisabled && "text-gray-300 cursor-not-allowed",
-                      isInRange && "bg-blue-100",
+                      isDisabled && !isOutOfSeason && "text-gray-300 cursor-not-allowed",
+                      isOutOfSeason && "text-gray-400 cursor-not-allowed bg-gray-50",
+                      isInRange && !isOutOfSeason && "bg-blue-100",
                       (isStart || isEnd) && "bg-blue-500 text-white hover:bg-blue-600"
                     )}
                   >
                     {date.getDate()}
+                    {isOutOfSeason && isCurrentMonth && (
+                      <span className="absolute inset-0 bg-gray-100 opacity-50 rounded pointer-events-none" />
+                    )}
                   </button>
                 )
               })}

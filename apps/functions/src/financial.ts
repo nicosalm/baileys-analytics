@@ -5,6 +5,7 @@ import { requireAuthWithValidation } from './middleware/validation'
 import { financialQuerySchema } from '@baileys/shared-types'
 import { safeDivide, calculatePercentage } from '@baileys/utils'
 import { formatDateISO, getYear } from './utils/dates'
+import { getActiveSeasons, buildBookingFilters } from './services/seasonService'
 
 
 type UnifiedFinancialResponse = {
@@ -164,6 +165,9 @@ async function getPLData(
   toDate: string,
   tagIds: string[]
 ): Promise<DbResult<PLData>> {
+  const seasons = await getActiveSeasons(tenantId)
+  const bookingFilters = buildBookingFilters(seasons, 'b')
+  
   const tagFilter = buildTagFilter(tagIds, 'b')
   const queryParams = buildQueryParams(tenantId, fromDate, toDate, tagIds)
 
@@ -201,6 +205,7 @@ async function getPLData(
             AND b.arrival <= $3::date
             AND b.status != 'canceled'
             ${tagFilter}
+            ${bookingFilters}
         ),
         platform_fees_actual AS (
           SELECT 

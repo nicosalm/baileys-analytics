@@ -432,3 +432,24 @@ CREATE TABLE tenant_platform_configs (
 
 CREATE INDEX idx_tenant_platform_configs_tenant ON tenant_platform_configs(tenant_id);
 
+-- Season configuration for defining repeating annual operational periods
+CREATE TABLE season_configurations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    start_month INTEGER NOT NULL CHECK (start_month >= 1 AND start_month <= 12),
+    start_day INTEGER NOT NULL CHECK (start_day >= 1 AND start_day <= 31),
+    end_month INTEGER NOT NULL CHECK (end_month >= 1 AND end_month <= 12),
+    end_day INTEGER NOT NULL CHECK (end_day >= 1 AND end_day <= 31),
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_season_configurations_tenant ON season_configurations(tenant_id);
+CREATE INDEX idx_season_configurations_months ON season_configurations(start_month, end_month);
+CREATE INDEX idx_season_configurations_active ON season_configurations(tenant_id, is_active);
+
+CREATE TRIGGER update_season_configurations_updated_at BEFORE UPDATE ON season_configurations
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

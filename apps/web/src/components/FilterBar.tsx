@@ -1,6 +1,6 @@
-// components/FilterBar.tsx
 import React, { useState, useEffect, useRef } from 'react'
 import { DateRangePicker } from './DateRangePicker'
+import { SeasonIndicator } from './SeasonIndicator'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags } from '@/hooks/use-api'
 import { Filter, X, ChevronDown } from 'lucide-react'
@@ -37,15 +37,18 @@ export const FilterBar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
-            {/* Date Range Picker */}
             <DateRangePicker
               value={filters.dateRange}
               onChange={updateDateRange}
               maxDays={1825}
               className="shrink-0"
             />
+            
+            <SeasonIndicator 
+              dateRange={filters.dateRange}
+              className="shrink-0"
+            />
 
-            {/* Tag Filter Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
@@ -65,7 +68,6 @@ export const FilterBar: React.FC = () => {
                 <ChevronDown className="w-4 h-4" />
               </button>
 
-              {/* Tag Dropdown Menu */}
               {showTagDropdown && (
                 <div className="absolute top-full mt-2 left-0 bg-white border rounded-lg shadow-lg p-2 min-w-[200px] max-h-[300px] overflow-y-auto z-50">
                   {isTagsLoading ? (
@@ -105,7 +107,6 @@ export const FilterBar: React.FC = () => {
               )}
             </div>
 
-            {/* Selected Tags Display */}
             {filters.selectedTags.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
                 {filters.selectedTags.map(tag => (
@@ -127,7 +128,6 @@ export const FilterBar: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Clear Filters Button */}
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
