@@ -70,7 +70,11 @@ const FinancialDashboard = () => {
     metrics: data.pl.metrics,
     byMonth: data.revenue.byMonth,
     platforms: data.pl.platforms,
-    previousPeriod: data.pl.previousPeriod
+    previousPeriod: data.pl.previousPeriod,
+    fees: data.revenue.fees,
+    taxes: data.revenue.taxes,
+    gross: data.revenue.gross,
+    net: data.revenue.net
   } : null
 
   const taxData = data ? {
@@ -79,7 +83,8 @@ const FinancialDashboard = () => {
       byProperty: data.tax.byProperty,
       byMonth: data.tax.byMonth
     },
-    metrics: data.pl.metrics
+    metrics: data.pl.metrics,
+    previousPeriod: data.pl.previousPeriod
   } : null
 
   useEffect(() => {
@@ -92,11 +97,10 @@ const FinancialDashboard = () => {
     // Handle different date formats
     let year: string
     let month: string
-    let day: string | undefined
     
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       // Format: YYYY-MM-DD (daily or weekly data)
-      [year, month, day] = dateStr.split('-')
+      [year, month] = dateStr.split('-')
     } else if (dateStr.match(/^\d{4}-\d{2}$/)) {
       // Format: YYYY-MM (monthly data)
       [year, month] = dateStr.split('-')
@@ -112,9 +116,7 @@ const FinancialDashboard = () => {
     openModal({ 
       type: 'month', 
       month, 
-      year,
-      day, // Include day if available for daily/weekly views
-      originalDate: dateStr // Pass original date for reference
+      year
     })
   }
 

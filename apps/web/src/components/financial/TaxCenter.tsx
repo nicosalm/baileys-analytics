@@ -24,7 +24,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   data,
   loading,
   onPropertyClick,
-  onMonthClick
+  onMonthClick,
+  comparisonMode = 'none'
 }) => {
   const { filters } = useDashboard()
   const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary')
@@ -33,6 +34,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
     if (!data?.tax) return null
     
     const { summary, byProperty, byMonth } = data.tax
+    const previousPeriod = data.previousPeriod
     
     // Determine granularity based on data format
     const granularity = detectGranularity(byMonth, 'month')
@@ -47,6 +49,17 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       ? (totalTax / grossRevenue) * 100
       : 0
     
+    // Calculate comparison metrics
+    const previousGross = previousPeriod?.revenue?.gross || 0
+    const previousTaxes = previousPeriod?.revenue?.taxes || 0
+    const previousEffectiveRate = previousGross > 0 
+      ? (previousTaxes / previousGross) * 100
+      : 0
+    
+    const taxGrowth = previousTaxes > 0
+      ? ((totalTax - previousTaxes) / previousTaxes) * 100
+      : 0
+    
     return {
       totalTax,
       ownerRemitted,
@@ -55,9 +68,16 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       propertyCount: byProperty?.length || 0,
       byProperty: byProperty || [],
       byMonth: byMonth || [],
-      granularity
+      granularity,
+      comparison: {
+        previousTaxes,
+        previousEffectiveRate,
+        taxGrowth,
+        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
+                     comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
+      }
     }
-  }, [data])
+  }, [data, comparisonMode])
   
   if (loading || !taxData) {
     return (
@@ -105,8 +125,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           value={taxData.totalTax}
           format="currency"
           color="green"
-          subValue={`${formatTaxRate(taxData.effectiveTaxRate / 100)} rate`}
+          subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
+            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousTaxes)} | ${formatTaxRate(taxData.effectiveTaxRate / 100)} rate`
+            : `${formatTaxRate(taxData.effectiveTaxRate / 100)} rate`}
           tooltip="Total tax liability including platform fees"
+          trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
+            value: taxData.comparison.taxGrowth,
+            isPositive: taxData.comparison.taxGrowth > 0  // Keep standard: up arrow for increases
+          } : undefined}
         />
         <MetricCard
           icon={DollarSign}
@@ -114,7 +140,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           value={taxData.ownerRemitted}
           format="currency"
           color="blue"
-          subValue="Your responsibility"
+          subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
+            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousTaxes * (taxData.ownerRemitted / Math.max(taxData.totalTax, 1)))}`
+            : "Your responsibility"}
           tooltip="Tax amount you need to pay directly"
         />
         <MetricCard

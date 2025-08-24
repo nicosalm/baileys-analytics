@@ -45,7 +45,7 @@ type PLData = {
   monthlyTrend: MonthlyTrend[]
   weeklyRevenue: WeeklyRevenue[]
   previousPeriod?: {
-    revenue: { gross: number; net: number }
+    revenue: { gross: number; net: number; taxes: number; platformFees: number }
     performance: { netRevenueRate: number }
   }
 }
@@ -1156,7 +1156,9 @@ export async function financial(
       previousPeriodData = {
         revenue: {
           gross: previousPLResult.data.metrics.revenue.gross,
-          net: previousPLResult.data.metrics.revenue.net
+          net: previousPLResult.data.metrics.revenue.net,
+          taxes: previousPLResult.data.metrics.revenue.taxes,
+          platformFees: previousPLResult.data.metrics.revenue.platformFees
         },
         performance: {
           netRevenueRate: previousPLResult.data.metrics.performance.netRevenueRate

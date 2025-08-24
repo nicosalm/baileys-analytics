@@ -21,20 +21,31 @@ interface CashFlowViewProps {
 export const CashFlowView: React.FC<CashFlowViewProps> = ({
   data,
   loading,
-  onMonthClick
+  onMonthClick,
+  comparisonMode = 'none'
 }) => {
   const cashFlowData = useMemo(() => {
     if (!data) return null
     
-    const { byMonth } = data
+    const { byMonth, fees, taxes, gross, previousPeriod } = data
+    
+    // Calculate actual outflow from fees and taxes
+    const totalFees = fees || 0
+    const totalTaxes = taxes || 0
+    const totalGross = gross || 0
+    const actualOutflowRate = totalGross > 0 ? (totalFees + totalTaxes) / totalGross : 0.3
     
     // Calculate cash flow metrics
-    const monthlyData = byMonth?.map((month: any) => ({
-      month: month.month,
-      inflow: month.revenue || month.amount || 0,
-      outflow: month.revenue ? month.revenue * 0.3 : 0, // Approximate fees at 30%
-      netFlow: month.revenue ? month.revenue * 0.7 : 0
-    })) || []
+    const monthlyData = byMonth?.map((month: any) => {
+      const monthRevenue = month.revenue || month.amount || 0
+      const monthOutflow = monthRevenue * actualOutflowRate
+      return {
+        month: month.month,
+        inflow: monthRevenue,
+        outflow: monthOutflow,
+        netFlow: monthRevenue - monthOutflow
+      }
+    }) || []
     
     const totalInflow = monthlyData.reduce((sum: number, m: any) => sum + m.inflow, 0)
     const totalOutflow = monthlyData.reduce((sum: number, m: any) => sum + m.outflow, 0)
@@ -43,15 +54,42 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       ? monthlyData.reduce((sum: number, m: any) => sum + m.netFlow, 0) / monthlyData.length
       : 0
     
+    // Calculate comparison metrics
+    const previousInflow = previousPeriod?.revenue?.gross || 0
+    const previousOutflow = previousInflow * actualOutflowRate
+    const previousNetFlow = previousInflow - previousOutflow
+    
+    const inflowGrowth = previousInflow > 0 
+      ? ((totalInflow - previousInflow) / previousInflow) * 100
+      : 0
+    const outflowGrowth = previousOutflow > 0
+      ? ((totalOutflow - previousOutflow) / previousOutflow) * 100
+      : 0
+    const netFlowGrowth = previousNetFlow !== 0
+      ? ((netCashFlow - previousNetFlow) / Math.abs(previousNetFlow)) * 100
+      : 0
+    
     return {
       totalInflow,
       totalOutflow,
       netCashFlow,
       avgMonthlyFlow,
       monthlyData,
-      flowRatio: totalInflow > 0 ? (netCashFlow / totalInflow) * 100 : 0
+      flowRatio: totalInflow > 0 ? (netCashFlow / totalInflow) * 100 : 0,
+      totalFees: totalFees,
+      totalTaxes: totalTaxes,
+      comparison: {
+        previousInflow,
+        previousOutflow,
+        previousNetFlow,
+        inflowGrowth,
+        outflowGrowth,
+        netFlowGrowth,
+        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
+                     comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
+      }
     }
-  }, [data])
+  }, [data, comparisonMode])
   
   if (loading || !cashFlowData) {
     return (
@@ -87,7 +125,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.totalInflow}
           format="currency"
           color="green"
-          subValue={`${cashFlowData.monthlyData.length} months | Avg: ${formatCurrency(cashFlowData.totalInflow / Math.max(cashFlowData.monthlyData.length, 1))}`}
+          subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousInflow > 0
+            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousInflow)} | Avg: ${formatCurrency(cashFlowData.totalInflow / Math.max(cashFlowData.monthlyData.length, 1))}`
+            : `${cashFlowData.monthlyData.length} months | Avg: ${formatCurrency(cashFlowData.totalInflow / Math.max(cashFlowData.monthlyData.length, 1))}`}
+          trend={comparisonMode !== 'none' && cashFlowData.comparison.inflowGrowth !== 0 ? {
+            value: cashFlowData.comparison.inflowGrowth,
+            isPositive: cashFlowData.comparison.inflowGrowth > 0
+          } : undefined}
         />
         <MetricCard
           icon={ArrowDownRight}
@@ -95,7 +139,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.totalOutflow}
           format="currency"
           color="red"
-          subValue={`${formatPercentage(cashFlowData.totalOutflow / cashFlowData.totalInflow * 100, 1)} of inflow | Fees & taxes`}
+          subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousOutflow > 0
+            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousOutflow)} | ${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow`
+            : `${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow | Fees: ${formatCurrency(cashFlowData.totalFees)} + Tax: ${formatCurrency(cashFlowData.totalTaxes)}`}
+          trend={comparisonMode !== 'none' && cashFlowData.comparison.outflowGrowth !== 0 ? {
+            value: cashFlowData.comparison.outflowGrowth,
+            isPositive: cashFlowData.comparison.outflowGrowth > 0  // Keep standard: up arrow for increases
+          } : undefined}
         />
         <MetricCard
           icon={Wallet}
@@ -103,7 +153,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.netCashFlow}
           format="currency"
           color={cashFlowData.netCashFlow > 0 ? 'green' : 'red'}
-          subValue={`${formatPercentage(cashFlowData.flowRatio, 1)} retained | ${cashFlowData.netCashFlow > 0 ? 'Positive' : 'Negative'} flow`}
+          subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousNetFlow !== 0
+            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousNetFlow)} | ${formatPercentage(cashFlowData.flowRatio, 1)} retained`
+            : `${formatPercentage(cashFlowData.flowRatio, 1)} retained | ${cashFlowData.netCashFlow > 0 ? 'Positive' : 'Negative'} flow`}
+          trend={comparisonMode !== 'none' && cashFlowData.comparison.netFlowGrowth !== 0 ? {
+            value: cashFlowData.comparison.netFlowGrowth,
+            isPositive: cashFlowData.comparison.netFlowGrowth > 0
+          } : undefined}
         />
         <MetricCard
           icon={TrendingUp}
