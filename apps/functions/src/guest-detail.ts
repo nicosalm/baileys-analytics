@@ -2,6 +2,9 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { calculateNights, safeDivide } from '@baileys/utils';
 import { query, DbResult } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { createSuccessResponse, createErrorResponse, createNotFoundResponse, requireTenant } from './utils/httpResponses';
+import { buildGuestFilter } from './utils/queryBuilders';
+import { parseNumericField, parseIntField, createGuestId, parseGuestId } from './utils/dataTransformers';
 
 type GuestDetail = {
   guest: GuestInfo
@@ -79,8 +82,8 @@ type GuestIdentifier = {
 }
 
 const parseGuestIdentifier = (guestId: string): GuestIdentifier => {
-  const [guestName, guestEmail = ''] = guestId.split('|')
-  return { name: guestName, email: guestEmail }
+  const { name, email } = parseGuestId(guestId)
+  return { name, email: email || '' }
 }
 
 const fetchGuestSummary = async (
@@ -121,10 +124,7 @@ const fetchGuestSummary = async (
     FROM bookings
     WHERE tenant_id = $1
       AND guest_name = $2
-      AND (
-        ($3 = '' AND (guest_email IS NULL OR guest_email = ''))
-        OR (guest_email = $3)
-      )
+      ${buildGuestFilter(3)}
     GROUP BY guest_name`,
     [tenantId, guest.name, guest.email]
   )
@@ -153,10 +153,7 @@ const fetchFavoriteProperty = async (
     JOIN properties p ON b.property_id = p.id
     WHERE b.tenant_id = $1
       AND b.guest_name = $2
-      AND (
-        ($3 = '' AND (b.guest_email IS NULL OR b.guest_email = ''))
-        OR (b.guest_email = $3)
-      )
+      ${buildGuestFilter(3)}
       AND b.status != 'canceled'
     GROUP BY p.id, p.name
     ORDER BY booking_count DESC, MAX(b.arrival) DESC
@@ -174,7 +171,7 @@ const fetchFavoriteProperty = async (
     data: {
       id: favorite.property_id,
       name: favorite.property_name,
-      bookingCount: parseInt(favorite.booking_count)
+      bookingCount: parseIntField(favorite.booking_count)
     }
   }
 }
@@ -206,16 +203,13 @@ const fetchGuestBookings = async (
     JOIN properties p ON b.property_id = p.id
     WHERE b.tenant_id = $1
       AND b.guest_name = $2
-      AND (
-        ($3 = '' AND (b.guest_email IS NULL OR b.guest_email = ''))
-        OR (b.guest_email = $3)
-      )
+      ${buildGuestFilter(3)}
     ORDER BY b.arrival DESC`,
     [tenantId, guest.name, guest.email]
   )
 
   if (!result.success) {
-    return result
+    return { success: false, error: result.error }
   }
 
   const bookings = result.data.map(b => ({
@@ -225,7 +219,7 @@ const fetchGuestBookings = async (
     arrival: b.arrival,
     departure: b.departure,
     nights: calculateNights(b.arrival, b.departure),
-    totalAmount: parseFloat(b.total_amount),
+    totalAmount: parseNumericField(b.total_amount),
     status: b.status,
     platform: b.platform || undefined
   }))
@@ -256,10 +250,7 @@ const fetchPropertyStays = async (
     JOIN properties p ON b.property_id = p.id
     WHERE b.tenant_id = $1
       AND b.guest_name = $2
-      AND (
-        ($3 = '' AND (b.guest_email IS NULL OR b.guest_email = ''))
-        OR (b.guest_email = $3)
-      )
+      ${buildGuestFilter(3)}
       AND b.status != 'canceled'
     GROUP BY p.id, p.name
     ORDER BY booking_count DESC, last_stay DESC`,
@@ -267,15 +258,15 @@ const fetchPropertyStays = async (
   )
 
   if (!result.success) {
-    return result
+    return { success: false, error: result.error }
   }
 
   const properties = result.data.map(p => ({
     propertyId: p.property_id,
     propertyName: p.property_name,
-    bookingCount: parseInt(p.booking_count),
-    totalSpent: parseFloat(p.total_spent),
-    avgNightlyRate: safeDivide(parseFloat(p.total_spent), parseInt(p.total_nights)),
+    bookingCount: parseIntField(p.booking_count),
+    totalSpent: parseNumericField(p.total_spent),
+    avgNightlyRate: safeDivide(parseNumericField(p.total_spent), parseIntField(p.total_nights)),
     lastStay: p.last_stay
   }))
 
@@ -298,10 +289,7 @@ const fetchSpendingTrend = async (
     FROM bookings
     WHERE tenant_id = $1
       AND guest_name = $2
-      AND (
-        ($3 = '' AND (guest_email IS NULL OR guest_email = ''))
-        OR (guest_email = $3)
-      )
+      ${buildGuestFilter(3)}
       AND status != 'canceled'
       AND arrival >= CURRENT_DATE - INTERVAL '2 years'
     GROUP BY TO_CHAR(arrival, 'YYYY-MM')
@@ -310,13 +298,13 @@ const fetchSpendingTrend = async (
   )
 
   if (!result.success) {
-    return result
+    return { success: false, error: result.error }
   }
 
   const trends = result.data.map(t => ({
     month: t.month,
-    amount: parseFloat(t.amount),
-    bookings: parseInt(t.bookings)
+    amount: parseNumericField(t.amount),
+    bookings: parseIntField(t.bookings)
   }))
 
   return { success: true, data: trends }
@@ -340,16 +328,13 @@ const fetchGuestTags = async (
     JOIN tags t ON bt.tag_id = t.id
     WHERE b.tenant_id = $1
       AND b.guest_name = $2
-      AND (
-        ($3 = '' AND (b.guest_email IS NULL OR b.guest_email = ''))
-        OR (b.guest_email = $3)
-      )
+      ${buildGuestFilter(3)}
     ORDER BY t.name`,
     [tenantId, guest.name, guest.email]
   )
 
   if (!result.success) {
-    return result
+    return { success: false, error: result.error }
   }
 
   const tags = result.data.map(t => ({
@@ -394,10 +379,7 @@ const fetchPaymentMethods = async (
       FROM bookings b
       WHERE b.tenant_id = $1
         AND b.guest_name = $2
-        AND (
-          ($3 = '' AND (b.guest_email IS NULL OR b.guest_email = ''))
-          OR (b.guest_email = $3)
-        )
+        ${buildGuestFilter(3)}
         AND b.status != 'canceled'
     )
     SELECT
@@ -411,13 +393,13 @@ const fetchPaymentMethods = async (
   )
 
   if (!result.success) {
-    return result
+    return { success: false, error: result.error }
   }
 
   const methods = result.data.map(m => ({
     method: m.method,
-    count: parseInt(m.count),
-    total: parseFloat(m.total)
+    count: parseIntField(m.count),
+    total: parseNumericField(m.total)
   }))
 
   return { success: true, data: methods }
@@ -438,9 +420,9 @@ const buildGuestInfo = (
   },
   favoriteProperty: FavoriteProperty | null
 ): GuestInfo => {
-  const totalSpent = parseFloat(summary.total_spent)
-  const bookingCount = parseInt(summary.booking_count)
-  const totalNights = parseInt(summary.total_nights)
+  const totalSpent = parseNumericField(summary.total_spent)
+  const bookingCount = parseIntField(summary.booking_count)
+  const totalNights = parseIntField(summary.total_nights)
 
   return {
     id: guestId,
@@ -451,7 +433,7 @@ const buildGuestInfo = (
     lastVisit: summary.last_visit,
     totalSpent,
     bookingCount,
-    canceledCount: parseInt(summary.canceled_count),
+    canceledCount: parseIntField(summary.canceled_count),
     avgNightlyRate: safeDivide(totalSpent, totalNights),
     avgStayLength: safeDivide(totalNights, bookingCount),
     totalNights,
@@ -484,7 +466,7 @@ const fetchGuestDetail = async (
   ])
 
   if (!summaryResult.success) {
-    return summaryResult
+    return { success: false, error: summaryResult.error }
   }
 
   const guestInfo = buildGuestInfo(
@@ -521,33 +503,22 @@ export async function getGuestDetail(
 
   const { auth } = authCheck.request
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    }
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
   }
 
   const guestId = request.params.guestId
-  const result = await fetchGuestDetail(auth.tenantId, guestId)
+  if (!guestId) {
+    return createErrorResponse('Guest ID is required', 400)
+  }
+  const result = await fetchGuestDetail(auth.tenantId!, guestId)
 
   if (!result.success) {
-    return {
-      status: 404,
-      headers: corsHeaders(),
-      jsonBody: { error: result.error }
-    }
+    return createNotFoundResponse(result.error)
   }
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: result.data
-  }
+  return createSuccessResponse(result.data)
 }
 
 app.http('guest-detail', {

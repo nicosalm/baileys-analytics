@@ -5,6 +5,9 @@ import { corsHeaders, handleOptions } from './middleware/auth';
 import { requireAuthWithValidation } from './middleware/validation';
 import { guestsQuerySchema } from '@baileys/shared-types';
 import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
+import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses';
+import { buildDateRangeFilter, buildTagFilter, normalizePlatformSQL } from './utils/queryBuilders';
+import { parseNumericField, parseIntField, createGuestId } from './utils/dataTransformers';
 
 type GuestMetrics = {
   totalGuests: number;
@@ -86,15 +89,9 @@ export async function getGuests(
 
   const { auth, validated } = authCheck.request;
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    };
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
   }
 
   try {
@@ -115,7 +112,7 @@ export async function getGuests(
     let paramIndex = 2;
 
     if (startDate && endDate) {
-      dateFilter = `AND b.arrival >= $${paramIndex} AND b.arrival <= $${paramIndex + 1}`;
+      dateFilter = buildDateRangeFilter('arrival', paramIndex);
       queryParams.push(startDate, endDate);
       paramIndex += 2;
     }
@@ -127,13 +124,9 @@ export async function getGuests(
 
     let tagFilter = '';
     if (tagIds.length > 0) {
-      const tagPlaceholders = tagIds.map((_: string, i: number) => `$${paramIndex + i}`).join(',');
-      tagFilter = `AND EXISTS (
-        SELECT 1 FROM booking_tags bt
-        WHERE bt.booking_id = b.id
-        AND bt.tag_id IN (${tagPlaceholders})
-      )`;
-      queryParams.push(...tagIds);
+      tagFilter = buildTagFilter(paramIndex);
+      queryParams.push(tagIds);
+      paramIndex += 1;
     }
 
     // Get metrics for the selected period
@@ -171,16 +164,12 @@ export async function getGuests(
     );
 
     if (!metricsResult.success || metricsResult.data.length === 0) {
-      return {
-        status: 500,
-        headers: corsHeaders(),
-        jsonBody: { error: 'Failed to fetch guest metrics' }
-      };
+      return createErrorResponse('Failed to fetch guest metrics', 500);
     }
 
     const metrics = metricsResult.data[0];
-    const totalGuests = parseInt(metrics.total_guests) || 0;
-    const repeatGuests = parseInt(metrics.repeat_guests) || 0;
+    const totalGuests = parseIntField(metrics.total_guests);
+    const repeatGuests = parseIntField(metrics.repeat_guests);
 
     // Get top spenders with period-specific data
     const topSpendersResult = await query<{
@@ -247,14 +236,7 @@ export async function getGuests(
       revenue: string;
     }>(
       `SELECT
-        CASE
-          WHEN b.platform IS NULL OR b.platform = '' THEN 'Direct'
-          WHEN LOWER(b.platform) LIKE '%direct%' THEN 'Direct'
-          WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'Airbnb'
-          WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'VRBO'
-          WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'Booking.com'
-          ELSE b.platform
-        END as source,
+        ${normalizePlatformSQL('b.platform')} as source,
         COUNT(DISTINCT (b.guest_name, COALESCE(b.guest_email, ''))) as count,
         SUM(b.total_amount) as revenue
       FROM bookings b
@@ -262,15 +244,7 @@ export async function getGuests(
         AND b.status != 'canceled'
         ${dateFilter}
         ${tagFilter}
-      GROUP BY
-        CASE
-          WHEN b.platform IS NULL OR b.platform = '' THEN 'Direct'
-          WHEN LOWER(b.platform) LIKE '%direct%' THEN 'Direct'
-          WHEN LOWER(b.platform) LIKE '%airbnb%' THEN 'Airbnb'
-          WHEN LOWER(b.platform) LIKE '%vrbo%' OR LOWER(b.platform) LIKE '%homeaway%' THEN 'VRBO'
-          WHEN LOWER(b.platform) LIKE '%booking.com%' OR LOWER(b.platform) LIKE '%booking%' THEN 'Booking.com'
-          ELSE b.platform
-        END
+      GROUP BY ${normalizePlatformSQL('b.platform')}
       ORDER BY revenue DESC`,
       queryParams
     );
@@ -310,7 +284,7 @@ export async function getGuests(
       queryParams
     );
 
-    const totalItems = countResult.success ? parseInt(countResult.data[0].count) : 0;
+    const totalItems = countResult.success ? parseIntField(countResult.data[0].count) : 0;
     const totalPages = Math.ceil(totalItems / pageSize);
 
     // Get guest list with both period and all-time data
@@ -429,7 +403,7 @@ export async function getGuests(
     const guestTagsMap = new Map<string, Array<any>>();
     if (guestTagsResult.success) {
       for (const row of guestTagsResult.data) {
-        const key = `${row.guest_name}|${row.guest_email || ''}`;
+        const key = createGuestId(row.guest_name, row.guest_email);
         if (!guestTagsMap.has(key)) {
           guestTagsMap.set(key, []);
         }
@@ -446,47 +420,47 @@ export async function getGuests(
         totalGuests,
         repeatGuests,
         repeatRate: safeDivide(repeatGuests, totalGuests),
-        avgStayLength: parseFloat(metrics.avg_stay_length) || 0,
-        avgSpend: parseFloat(metrics.avg_spend) || 0,
-        totalRevenue: parseFloat(metrics.total_revenue) || 0,
+        avgStayLength: parseNumericField(metrics.avg_stay_length),
+        avgSpend: parseNumericField(metrics.avg_spend),
+        totalRevenue: parseNumericField(metrics.total_revenue),
         topSpenders: topSpendersResult.success ? topSpendersResult.data.map(s => ({
-          id: `${s.guest_name}|${s.guest_email || ''}`,
+          id: createGuestId(s.guest_name, s.guest_email),
           name: s.guest_name,
           email: s.guest_email || undefined,
-          totalSpent: parseFloat(s.total_spent),
-          bookingCount: parseInt(s.booking_count),
-          avgNightlyRate: parseFloat(s.avg_nightly_rate) || 0,
-          periodSpent: parseFloat(s.period_spent),
-          periodBookings: parseInt(s.period_bookings)
+          totalSpent: parseNumericField(s.total_spent),
+          bookingCount: parseIntField(s.booking_count),
+          avgNightlyRate: parseNumericField(s.avg_nightly_rate),
+          periodSpent: parseNumericField(s.period_spent),
+          periodBookings: parseIntField(s.period_bookings)
         })) : [],
         guestsBySource: guestsBySourceResult.success ? guestsBySourceResult.data.map(s => ({
           source: s.source,
-          count: parseInt(s.count),
-          revenue: parseFloat(s.revenue)
+          count: parseIntField(s.count),
+          revenue: parseNumericField(s.revenue)
         })) : [],
         tagDistribution: tagDistributionResult.success ? tagDistributionResult.data.map(t => ({
           id: t.tag_id,
           name: t.tag_name,
           color: t.tag_color || undefined,
-          count: parseInt(t.count)
+          count: parseIntField(t.count)
         })) : []
       },
       guests: guestsListResult.success ? guestsListResult.data.map(g => {
-        const guestKey = `${g.guest_name}|${g.guest_email || ''}`;
+        const guestKey = createGuestId(g.guest_name, g.guest_email);
         return {
           id: guestKey,
           name: g.guest_name,
           email: g.guest_email || undefined,
           firstVisit: g.first_visit,
           lastVisit: g.last_visit,
-          bookingCount: parseInt(g.booking_count),
-          totalSpent: parseFloat(g.total_spent),
-          avgNightlyRate: parseFloat(g.avg_nightly_rate) || 0,
+          bookingCount: parseIntField(g.booking_count),
+          totalSpent: parseNumericField(g.total_spent),
+          avgNightlyRate: parseNumericField(g.avg_nightly_rate),
           properties: g.properties ? g.properties.split(', ') : [],
           tags: guestTagsMap.get(guestKey) || [],
           // Add period-specific data
-          periodBookings: parseInt(g.period_bookings),
-          periodSpent: parseFloat(g.period_spent)
+          periodBookings: parseIntField(g.period_bookings),
+          periodSpent: parseNumericField(g.period_spent)
         };
       }) : [],
       pagination: {
@@ -498,19 +472,11 @@ export async function getGuests(
       }
     };
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: response
-    };
+    return createSuccessResponse(response);
   } catch (error) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: error instanceof Error ? error.message : 'Failed to fetch guests data'
-      }
-    };
+    return createErrorResponse(
+      error instanceof Error ? error.message : 'Failed to fetch guests data'
+    );
   }
 }
 

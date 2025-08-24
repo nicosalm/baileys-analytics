@@ -4,6 +4,9 @@ import { financialQuerySchema } from '@baileys/shared-types'
 import { query } from './services/database'
 import { formatDateISO, getYear } from './utils/dates'
 import { getActiveSeasons, buildBookingFilters } from './services/seasonService'
+import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses'
+import { buildDateRangeFilter, buildTagFilter, buildQueryParams as buildParams, QueryParams, normalizePlatformSQL } from './utils/queryBuilders'
+import { parseNumericField, parseIntField, calculateDaysDifference } from './utils/dataTransformers'
 
 interface OverviewMetrics {
   revenue: {
@@ -52,12 +55,8 @@ export async function overview(
   const tenantId = auth.tenantId
   const userId = auth.userId
 
-  if (!tenantId) {
-    return {
-      status: 403,
-      jsonBody: { error: 'No tenant associated with user' }
-    }
-  }
+  const tenantError = requireTenant(tenantId)
+  if (tenantError) return tenantError
 
   const from = validated?.query?.from || formatDateISO(new Date(getYear(new Date()), 0, 1))
   const to = validated?.query?.to || formatDateISO(new Date())
@@ -70,7 +69,7 @@ export async function overview(
     comparisonFrom = validated.query.comparisonFrom
     comparisonTo = validated.query.comparisonTo
   } else {
-    const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24))
+    const daysDiff = calculateDaysDifference(from, to)
     comparisonFrom = formatDateISO(new Date(new Date(from).getTime() - daysDiff * 24 * 60 * 60 * 1000))
     comparisonTo = formatDateISO(new Date(new Date(from).getTime() - 24 * 60 * 60 * 1000))
   }
@@ -120,21 +119,15 @@ export async function overview(
       }
     }
 
-    return {
-      status: 200,
-      jsonBody: {
-        metrics,
-        alerts,
-        recentActivity,
-        charts
-      }
-    }
+    return createSuccessResponse({
+      metrics,
+      alerts,
+      recentActivity,
+      charts
+    })
   } catch (error) {
     context.error('Error in overview function:', error)
-    return {
-      status: 500,
-      jsonBody: { error: 'Failed to fetch overview data' }
-    }
+    return createErrorResponse('Failed to fetch overview data')
   }
 }
 

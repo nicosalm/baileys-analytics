@@ -5,6 +5,17 @@ import { z } from 'zod'
 import { validate, ValidationSchemas } from './middleware/validation'
 import { randomUUID } from 'crypto'
 import { seedDefaultReportTemplates } from './report-templates-seed'
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  createNotFoundResponse,
+  requireTenant
+} from './utils/httpResponses'
+import {
+  buildQueryParams,
+  QueryParams
+} from './utils/queryBuilders'
+import { calculateNextRun } from './utils/scheduleUtils'
 
 // Validation schemas
 const reportConfigSchema = z.object({
@@ -47,6 +58,35 @@ const createReportTemplateSchema = z.object({
 
 const updateReportTemplateSchema = createReportTemplateSchema
 
+// Helper functions for common report template operations
+function parseReportTemplateFields(row: any): any {
+  return {
+    ...row,
+    config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config,
+    schedule: row.schedule ? (typeof row.schedule === 'string' ? JSON.parse(row.schedule) : row.schedule) : null
+  }
+}
+
+function transformReportTemplates(rows: any[]): any[] {
+  return rows.map(parseReportTemplateFields)
+}
+
+function buildReportTemplateQuery(includeId: boolean = false): string {
+  const baseQuery = `SELECT * FROM report_templates WHERE tenant_id = $1`
+  if (includeId) {
+    return `${baseQuery} AND id = $2`
+  }
+  return `${baseQuery} ORDER BY created_at DESC`
+}
+
+async function checkTemplateExists(templateId: string, tenantId: string): Promise<boolean> {
+  const result = await query(
+    `SELECT id FROM report_templates WHERE id = $1 AND tenant_id = $2`,
+    [templateId, tenantId]
+  )
+  return result.success && result.data.length > 0
+}
+
 // Get all report templates
 async function getReportTemplates(
   request: HttpRequest,
@@ -58,42 +98,24 @@ async function getReportTemplates(
   }
   const { auth } = authResult.request
 
+  const tenantError = requireTenant(auth.tenantId)
+  if (tenantError) return tenantError
+
   try {
     // Seed default templates if this is the first access
-    if (auth.tenantId) {
-      await seedDefaultReportTemplates(auth.tenantId)
-    }
+    await seedDefaultReportTemplates(auth.tenantId!)
     
-    const result = await query(
-      `SELECT * FROM report_templates 
-       WHERE tenant_id = $1 
-       ORDER BY created_at DESC`,
-      [auth.tenantId]
-    )
+    const result = await query(buildReportTemplateQuery(), [auth.tenantId])
 
     if (!result.success) {
       throw new Error(result.error)
     }
 
-    // Parse JSON fields
-    const templates = result.data.map((row: any) => ({
-      ...row,
-      config: typeof row.config === 'string' ? JSON.parse(row.config) : row.config,
-      schedule: row.schedule ? (typeof row.schedule === 'string' ? JSON.parse(row.schedule) : row.schedule) : null
-    }))
-
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      body: JSON.stringify(templates)
-    }
+    const templates = transformReportTemplates(result.data)
+    return createSuccessResponse(templates)
   } catch (error) {
     context.error('Error fetching report templates:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Failed to fetch report templates' })
-    }
+    return createErrorResponse('Failed to fetch report templates')
   }
 }
 
@@ -108,51 +130,30 @@ async function getReportTemplate(
   }
   const { auth } = authResult.request
 
-  const templateId = request.params?.id
+  const tenantError = requireTenant(auth.tenantId)
+  if (tenantError) return tenantError
 
+  const templateId = request.params?.id
   if (!templateId) {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Template ID is required' })
-    }
+    return createErrorResponse('Template ID is required', 400)
   }
 
   try {
-    const result = await query(
-      `SELECT * FROM report_templates 
-       WHERE id = $1 AND tenant_id = $2`,
-      [templateId, auth.tenantId]
-    )
+    const result = await query(buildReportTemplateQuery(true), [auth.tenantId, templateId])
 
     if (!result.success) {
       throw new Error(result.error)
     }
 
     if (result.data.length === 0) {
-      return {
-        status: 404,
-        headers: corsHeaders(),
-        body: JSON.stringify({ error: 'Report template not found' })
-      }
+      return createNotFoundResponse('Report template not found')
     }
 
-    const template = result.data[0]
-    template.config = typeof template.config === 'string' ? JSON.parse(template.config) : template.config
-    template.schedule = template.schedule ? (typeof template.schedule === 'string' ? JSON.parse(template.schedule) : template.schedule) : null
-
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      body: JSON.stringify(template)
-    }
+    const template = parseReportTemplateFields(result.data[0])
+    return createSuccessResponse(template)
   } catch (error) {
     context.error('Error fetching report template:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Failed to fetch report template' })
-    }
+    return createErrorResponse('Failed to fetch report template')
   }
 }
 
@@ -166,6 +167,9 @@ async function createReportTemplate(
     return authResult.response
   }
   const { auth } = authResult.request
+
+  const tenantError = requireTenant(auth.tenantId)
+  if (tenantError) return tenantError
 
   // Validate request body
   const validationSchemas: ValidationSchemas = {
@@ -209,22 +213,15 @@ async function createReportTemplate(
       throw new Error(result.error)
     }
 
-    const template = result.data[0]
-    template.config = JSON.parse(template.config)
-    template.schedule = template.schedule ? JSON.parse(template.schedule) : null
-
+    const template = parseReportTemplateFields(result.data[0])
     return {
       status: 201,
       headers: corsHeaders(),
-      body: JSON.stringify(template)
+      jsonBody: template
     }
   } catch (error) {
     context.error('Error creating report template:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Failed to create report template' })
-    }
+    return createErrorResponse('Failed to create report template')
   }
 }
 
@@ -239,14 +236,12 @@ async function updateReportTemplate(
   }
   const { auth } = authResult.request
 
-  const templateId = request.params?.id
+  const tenantError = requireTenant(auth.tenantId)
+  if (tenantError) return tenantError
 
+  const templateId = request.params?.id
   if (!templateId) {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Template ID is required' })
-    }
+    return createErrorResponse('Template ID is required', 400)
   }
 
   // Validate request body
@@ -261,21 +256,9 @@ async function updateReportTemplate(
 
   try {
     // Check if template exists and belongs to tenant
-    const existing = await query(
-      `SELECT id FROM report_templates WHERE id = $1 AND tenant_id = $2`,
-      [templateId, auth.tenantId]
-    )
-
-    if (!existing.success) {
-      throw new Error(existing.error)
-    }
-
-    if (existing.data.length === 0) {
-      return {
-        status: 404,
-        headers: corsHeaders(),
-        body: JSON.stringify({ error: 'Report template not found' })
-      }
+    const templateExists = await checkTemplateExists(templateId, auth.tenantId!)
+    if (!templateExists) {
+      return createNotFoundResponse('Report template not found')
     }
 
     // Calculate next run time if schedule is enabled
@@ -306,22 +289,11 @@ async function updateReportTemplate(
       throw new Error(result.error)
     }
 
-    const template = result.data[0]
-    template.config = JSON.parse(template.config)
-    template.schedule = template.schedule ? JSON.parse(template.schedule) : null
-
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      body: JSON.stringify(template)
-    }
+    const template = parseReportTemplateFields(result.data[0])
+    return createSuccessResponse(template)
   } catch (error) {
     context.error('Error updating report template:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Failed to update report template' })
-    }
+    return createErrorResponse('Failed to update report template')
   }
 }
 
@@ -336,14 +308,12 @@ async function deleteReportTemplate(
   }
   const { auth } = authResult.request
 
-  const templateId = request.params?.id
+  const tenantError = requireTenant(auth.tenantId)
+  if (tenantError) return tenantError
 
+  const templateId = request.params?.id
   if (!templateId) {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Template ID is required' })
-    }
+    return createErrorResponse('Template ID is required', 400)
   }
 
   try {
@@ -359,62 +329,16 @@ async function deleteReportTemplate(
     }
 
     if (result.data.length === 0) {
-      return {
-        status: 404,
-        headers: corsHeaders(),
-        body: JSON.stringify({ error: 'Report template not found' })
-      }
+      return createNotFoundResponse('Report template not found')
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      body: JSON.stringify({ message: 'Report template deleted successfully' })
-    }
+    return createSuccessResponse({ message: 'Report template deleted successfully' })
   } catch (error) {
     context.error('Error deleting report template:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({ error: 'Failed to delete report template' })
-    }
+    return createErrorResponse('Failed to delete report template')
   }
 }
 
-// Helper function to calculate next run time
-function calculateNextRun(schedule: any): string {
-  const now = new Date()
-  const [hours, minutes] = schedule.time.split(':').map(Number)
-  
-  let nextRun = new Date()
-  nextRun.setHours(hours, minutes, 0, 0)
-
-  // If the time has already passed today, move to next occurrence
-  if (nextRun <= now) {
-    switch (schedule.frequency) {
-      case 'daily':
-        nextRun.setDate(nextRun.getDate() + 1)
-        break
-      case 'weekly':
-        nextRun.setDate(nextRun.getDate() + 7)
-        break
-      case 'monthly':
-        nextRun.setMonth(nextRun.getMonth() + 1)
-        if (schedule.dayOfMonth) {
-          nextRun.setDate(schedule.dayOfMonth)
-        }
-        break
-      case 'quarterly':
-        nextRun.setMonth(nextRun.getMonth() + 3)
-        if (schedule.dayOfMonth) {
-          nextRun.setDate(schedule.dayOfMonth)
-        }
-        break
-    }
-  }
-
-  return nextRun.toISOString()
-}
 
 // Register Azure Functions
 app.http('getReportTemplates', {

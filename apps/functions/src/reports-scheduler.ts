@@ -2,10 +2,14 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext, Timer } from '@a
 import * as cron from 'node-cron'
 import * as nodemailer from 'nodemailer'
 import { query, transaction } from './services/database'
+import { fetchSimpleReportData, ReportDateRange } from './services/reportService'
 import { requireAuth, corsHeaders } from './middleware/auth'
 import { formatCurrency } from '@baileys/utils'
 import { formatDateISO, formatDateDisplay, setYear, addMonths, setMonth, getYear, getMonth, getDay, getDate } from './utils/dates'
 import { randomUUID } from 'crypto'
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses'
+import { buildDateRangeFilter, normalizePlatformSQL } from './utils/queryBuilders'
+import { parseNumericField, parseIntField, normalizePlatformName } from './utils/dataTransformers'
 
 interface ScheduledReport {
   id: string
@@ -117,8 +121,8 @@ async function generateAndEmailReport(report: ScheduledReport, context: Invocati
     // Calculate date range based on frequency
     const dateRange = calculateDateRangeForSchedule(report.schedule.frequency)
     
-    // Fetch data for all modules in the report
-    const reportData = await fetchReportData(report.config.modules, dateRange, report.tenant_id)
+    // Fetch data for all modules in the report using the report service
+    const reportData = await fetchSimpleReportData(report.config.modules, dateRange, report.tenant_id)
     
     // Generate report summary for email
     const summary = generateEmailSummary(reportData, report.name)
@@ -183,7 +187,7 @@ async function generateAndEmailReport(report: ScheduledReport, context: Invocati
 }
 
 // Calculate date range based on schedule frequency
-function calculateDateRangeForSchedule(frequency: string): { from: string; to: string } {
+function calculateDateRangeForSchedule(frequency: string): ReportDateRange {
   const today = new Date()
   let from = new Date()
   let to = new Date()
@@ -218,70 +222,8 @@ function calculateDateRangeForSchedule(frequency: string): { from: string; to: s
   }
 }
 
-// Fetch report data (simplified version)
-async function fetchReportData(modules: string[], dateRange: any, tenantId: string): Promise<any> {
-  const data: any = {
-    dateRange,
-    modules: {}
-  }
-  
-  // This is a simplified version - in production, you'd call the actual data fetching functions
-  for (const module of modules) {
-    switch (module) {
-      case 'revenue':
-      case 'pl':
-        const revenueResult = await query<any>(
-          `SELECT 
-            SUM(total_amount) as revenue,
-            COUNT(*) as bookings
-           FROM bookings 
-           WHERE tenant_id = $1 
-             AND arrival >= $2::date 
-             AND arrival <= $3::date`,
-          [tenantId, dateRange.from, dateRange.to]
-        )
-        if (revenueResult.success && revenueResult.data.length > 0) {
-          data.modules[module] = revenueResult.data[0]
-        }
-        break
-        
-      case 'occupancy':
-        // Calculate occupancy from bookings
-        const occupancyResult = await query<any>(
-          `SELECT 
-            COUNT(DISTINCT property_id) as properties,
-            COUNT(*) as total_bookings
-           FROM bookings 
-           WHERE tenant_id = $1 
-             AND arrival >= $2::date 
-             AND departure <= $3::date`,
-          [tenantId, dateRange.from, dateRange.to]
-        )
-        if (occupancyResult.success && occupancyResult.data.length > 0) {
-          data.modules[module] = occupancyResult.data[0]
-        }
-        break
-        
-      case 'guests':
-        const guestsResult = await query<any>(
-          `SELECT 
-            COUNT(DISTINCT guest_email) as totalGuests,
-            AVG(total_amount) as avgSpend
-           FROM bookings 
-           WHERE tenant_id = $1 
-             AND arrival >= $2::date 
-             AND arrival <= $3::date`,
-          [tenantId, dateRange.from, dateRange.to]
-        )
-        if (guestsResult.success && guestsResult.data.length > 0) {
-          data.modules[module] = { metrics: guestsResult.data[0] }
-        }
-        break
-    }
-  }
-  
-  return data
-}
+// The fetchReportData function has been moved to the reportService.ts
+// and is now imported as fetchSimpleReportData for scheduler use
 
 // Generate email summary HTML
 function generateEmailSummary(data: any, reportName: string): string {
@@ -297,13 +239,13 @@ function generateEmailSummary(data: any, reportName: string): string {
       <tr style="border-bottom: 1px solid #e5e7eb;">
         <td style="padding: 10px 0;">Total Revenue</td>
         <td style="padding: 10px 0; text-align: right; font-weight: bold;">
-          ${formatCurrency(revenue.revenue || 0)}
+          ${formatCurrency(parseNumericField(revenue.revenue))}
         </td>
       </tr>
       <tr style="border-bottom: 1px solid #e5e7eb;">
         <td style="padding: 10px 0;">Total Bookings</td>
         <td style="padding: 10px 0; text-align: right; font-weight: bold;">
-          ${revenue.bookings || 0}
+          ${parseIntField(revenue.bookings)}
         </td>
       </tr>
     `
@@ -315,7 +257,7 @@ function generateEmailSummary(data: any, reportName: string): string {
       <tr style="border-bottom: 1px solid #e5e7eb;">
         <td style="padding: 10px 0;">Average Occupancy</td>
         <td style="padding: 10px 0; text-align: right; font-weight: bold;">
-          ${((occupancy.overall || 0) * 100).toFixed(1)}%
+          ${(parseNumericField(occupancy.overall) * 100).toFixed(1)}%
         </td>
       </tr>
     `
@@ -327,13 +269,13 @@ function generateEmailSummary(data: any, reportName: string): string {
       <tr style="border-bottom: 1px solid #e5e7eb;">
         <td style="padding: 10px 0;">Total Guests</td>
         <td style="padding: 10px 0; text-align: right; font-weight: bold;">
-          ${guests.totalGuests || 0}
+          ${parseIntField(guests.totalGuests)}
         </td>
       </tr>
       <tr style="border-bottom: 1px solid #e5e7eb;">
         <td style="padding: 10px 0;">Average Guest Spend</td>
         <td style="padding: 10px 0; text-align: right; font-weight: bold;">
-          ${formatCurrency(guests.avgSpend || 0)}
+          ${formatCurrency(parseNumericField(guests.avgSpend))}
         </td>
       </tr>
     `
@@ -394,9 +336,15 @@ export async function manageScheduledReports(
   try {
     const authResult = await requireAuth(request)
     if (!authResult.authenticated) {
-      return authResult.response
+      return createErrorResponse('Unauthorized', 401)
     }
     const { auth } = authResult.request
+    
+    // Tenant validation
+    const tenantError = requireTenant(auth.tenantId)
+    if (tenantError) {
+      return tenantError
+    }
     
     const method = request.method.toUpperCase()
     
@@ -405,24 +353,21 @@ export async function manageScheduledReports(
         // List scheduled reports
         const reportsResult = await query<any>(
           `SELECT * FROM scheduled_reports WHERE tenant_id = $1`,
-          [auth.tenantId || '']
+          [auth.tenantId]
         )
         
         if (!reportsResult.success) {
           throw new Error('Failed to fetch reports: ' + reportsResult.error)
         }
         
-        return {
-          status: 200,
-          body: JSON.stringify({
-            success: true,
-            data: reportsResult.data.map(r => ({
-              ...r,
-              config: typeof r.config === 'string' ? JSON.parse(r.config) : r.config,
-              schedule: typeof r.schedule === 'string' ? JSON.parse(r.schedule) : r.schedule
-            }))
-          })
-        }
+        return createSuccessResponse({
+          success: true,
+          data: reportsResult.data.map(r => ({
+            ...r,
+            config: typeof r.config === 'string' ? JSON.parse(r.config) : r.config,
+            schedule: typeof r.schedule === 'string' ? JSON.parse(r.schedule) : r.schedule
+          }))
+        })
         
       case 'POST':
         // Create or update scheduled report
@@ -430,10 +375,7 @@ export async function manageScheduledReports(
         const { templateId, name, config, schedule } = body
         
         if (!templateId || !name || !config || !schedule) {
-          return {
-            status: 400,
-            body: JSON.stringify({ error: 'Missing required fields' })
-          }
+          return createErrorResponse('Missing required fields', 400)
         }
         
         const nextRun = schedule.enabled ? getNextRunTime(schedule) : null
@@ -455,7 +397,7 @@ export async function manageScheduledReports(
           RETURNING id`,
           [
             reportId,
-            auth.tenantId || '',
+            auth.tenantId,
             templateId,
             name,
             config,
@@ -469,10 +411,7 @@ export async function manageScheduledReports(
           throw new Error('Failed to save report: ' + upsertResult.error)
         }
         
-        return {
-          status: 200,
-          body: JSON.stringify({ success: true, data: { id: reportId } })
-        }
+        return createSuccessResponse({ success: true, data: { id: reportId } })
         
       case 'DELETE':
         // Delete scheduled report
@@ -480,33 +419,21 @@ export async function manageScheduledReports(
         
         const deleteResult = await query(
           `DELETE FROM scheduled_reports WHERE id = $1 AND tenant_id = $2`,
-          [deleteReportId, auth.tenantId || '']
+          [deleteReportId, auth.tenantId]
         )
         
         if (!deleteResult.success) {
           throw new Error('Failed to delete report: ' + deleteResult.error)
         }
         
-        return {
-          status: 200,
-          body: JSON.stringify({ success: true })
-        }
+        return createSuccessResponse({ success: true })
         
       default:
-        return {
-          status: 405,
-          body: JSON.stringify({ error: 'Method not allowed' })
-        }
+        return createErrorResponse('Method not allowed', 405)
     }
   } catch (error) {
     context.error('Error managing scheduled reports:', error)
-    return {
-      status: 500,
-      body: JSON.stringify({ 
-        error: 'Failed to manage scheduled reports',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      })
-    }
+    return createErrorResponse('Failed to manage scheduled reports', 500)
   }
 }
 

@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import axios, { AxiosError } from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
+import { createSuccessResponse, createErrorResponse } from './utils/httpResponses';
 
 type OwnerRezAddress = {
   street1?: string;
@@ -110,33 +111,16 @@ const getErrorDetails = (error: unknown): { message: string; details?: unknown }
 const stateToHttpResponse = (state: FetchPropertiesState): HttpResponseInit => {
   switch (state.status) {
     case 'success':
-      return {
-        status: 200,
-        jsonBody: {
-          totalCount: state.totalCount,
-          properties: state.data
-        }
-      };
+      return createSuccessResponse({
+        totalCount: state.totalCount,
+        properties: state.data
+      });
 
     case 'error':
-      const errorResponse: any = {
-        error: state.error
-      };
-
-      if (state.details) {
-        errorResponse.details = state.details;
-      }
-
-      return {
-        status: 500,
-        jsonBody: errorResponse
-      };
+      return createErrorResponse(state.error, 500);
 
     case 'loading':
-      return {
-        status: 500,
-        body: 'Unexpected loading state'
-      };
+      return createErrorResponse('Unexpected loading state');
   }
 };
 

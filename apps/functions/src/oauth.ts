@@ -5,6 +5,11 @@ import { formatDateISO, differenceInDays } from './utils/dates';
 import { randomBytes } from 'crypto';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { syncProperties, syncBookings } from './services/syncService';
+import {
+  createErrorResponse,
+  createSuccessResponse
+} from './utils/httpResponses';
+import { parseIntField } from './utils/dataTransformers';
 
 type TokenResponse = {
   access_token: string
@@ -201,7 +206,7 @@ const checkIfFirstConnection = async (tenantId: string): Promise<boolean> => {
     return true
   }
 
-  return parseInt(result.data[0].count) === 0
+  return parseIntField(result.data[0].count) === 0
 }
 
 // Perform initial sync using the shared service functions
@@ -331,26 +336,15 @@ export async function oauthInitiate(
 
   const storeResult = await storeOAuthState(state, auth.email, auth.userId)
   if (!storeResult.success) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: {
-        status: 'error',
-        error: 'Failed to initiate OAuth'
-      }
-    }
+    return createErrorResponse('Failed to initiate OAuth')
   }
 
   const authUrl = buildAuthUrl(state)
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: {
-      status: 'pending',
-      authUrl
-    }
-  }
+  return createSuccessResponse({
+    status: 'pending',
+    authUrl
+  })
 }
 
 export async function oauthCallback(

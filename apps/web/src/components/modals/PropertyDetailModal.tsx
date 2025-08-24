@@ -61,6 +61,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
         emptyMessage="No property data available"
         minHeight={400}
       >
+        {data && (
         <div className="space-y-6">
         {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -327,6 +328,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
           </div>
         )}
         </div>
+        )}
       </StateWrapper>
     </Modal>
   )

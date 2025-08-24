@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { createSuccessResponse, createErrorResponse, createNotFoundResponse, requireTenant } from './utils/httpResponses';
+import { parseNumericField, parseIntField } from './utils/dataTransformers';
 
 export async function getPropertyMonthDetail(
   request: HttpRequest,
@@ -17,15 +19,9 @@ export async function getPropertyMonthDetail(
 
   const { auth } = authCheck.request;
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    };
+  const tenantError = requireTenant(auth.tenantId);
+  if (tenantError) {
+    return tenantError;
   }
 
   try {
@@ -35,8 +31,8 @@ export async function getPropertyMonthDetail(
 
     // Ensure month is padded to 2 digits
     const monthPadded = month.padStart(2, '0');
-    const yearInt = parseInt(year);
-    const monthInt = parseInt(month);
+    const yearInt = parseIntField(year);
+    const monthInt = parseIntField(month);
 
     // Calculate correct start and end dates for the month
     const startDate = `${year}-${monthPadded}-01`;
@@ -51,11 +47,7 @@ export async function getPropertyMonthDetail(
     );
 
     if (!propertyResult.success || propertyResult.data.length === 0) {
-      return {
-        status: 404,
-        headers: corsHeaders(),
-        jsonBody: { error: 'Property not found' }
-      };
+      return createNotFoundResponse('Property not found');
     }
 
     const property = propertyResult.data[0];
@@ -163,41 +155,33 @@ export async function getPropertyMonthDetail(
       avg_nightly_rate: '0'
     };
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
-        property: {
-          id: property.id,
-          name: property.name
-        },
+    return createSuccessResponse({
+      property: {
+        id: property.id,
+        name: property.name
+      },
         summary: {
-          revenue: parseFloat(summary.revenue),
-          tax: parseFloat(summary.tax),
-          bookings: parseInt(summary.bookings),
-          nights: parseInt(summary.nights),
-          avgNightlyRate: parseFloat(summary.avg_nightly_rate)
+          revenue: parseNumericField(summary.revenue),
+          tax: parseNumericField(summary.tax),
+          bookings: parseIntField(summary.bookings),
+          nights: parseIntField(summary.nights),
+          avgNightlyRate: parseNumericField(summary.avg_nightly_rate)
         },
         bookings: bookingsResult.success ? bookingsResult.data.map(b => ({
           id: b.id,
           guestName: b.guest_name,
           arrival: b.arrival,
           departure: b.departure,
-          nights: parseInt(b.nights),
-          totalAmount: parseFloat(b.total_amount),
-          taxAmount: parseFloat(b.tax_amount),
+          nights: parseIntField(b.nights),
+          totalAmount: parseNumericField(b.total_amount),
+          taxAmount: parseNumericField(b.tax_amount),
           status: b.status
         })) : []
-      }
-    };
+    });
   } catch (error) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: error instanceof Error ? error.message : 'Failed to fetch property month detail'
-      }
-    };
+    return createErrorResponse(
+      error instanceof Error ? error.message : 'Failed to fetch property month detail'
+    );
   }
 }
 

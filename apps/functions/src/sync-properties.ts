@@ -4,6 +4,8 @@ import { OWNERREZ_API } from '@baileys/constants';
 import { query, DbResult } from './services/database';
 import { syncPropertyTags, bulkSyncPropertyTags } from './services/tagSync';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses';
+import { parseNumericField, parseIntField } from './utils/dataTransformers';
 
 type OwnerRezAddress = {
   street1?: string
@@ -154,11 +156,11 @@ const createPropertyRecord = (property: OwnerRezProperty, tenantId: string) => (
   city: property.address?.city || '',
   state: property.address?.state || '',
   postal_code: property.address?.postal_code || '',
-  bedrooms: property.bedrooms || 0,
-  bathrooms: property.bathrooms || 0,
-  max_guests: property.max_guests || 0,
-  latitude: property.latitude,
-  longitude: property.longitude,
+  bedrooms: parseIntField(property.bedrooms),
+  bathrooms: parseNumericField(property.bathrooms),
+  max_guests: parseIntField(property.max_guests),
+  latitude: parseNumericField(property.latitude),
+  longitude: parseNumericField(property.longitude),
   thumbnail_url: property.thumbnail_url,
   public_url: property.public_url,
   active: property.active !== false
@@ -289,24 +291,14 @@ export async function syncProperties(
 
   const { auth } = authCheck.request
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    }
+  const tenantValidation = requireTenant(auth.tenantId);
+  if (tenantValidation) {
+    return tenantValidation;
   }
 
-  const credentialsResult = await getTenantCredentials(auth.tenantId)
+  const credentialsResult = await getTenantCredentials(auth.tenantId!)
   if (!credentialsResult.success) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: { error: credentialsResult.error }
-    }
+    return createErrorResponse(credentialsResult.error, 403);
   }
 
   context.log('Syncing properties for tenant:', auth.tenantId)
@@ -318,20 +310,12 @@ export async function syncProperties(
       context.error('OwnerRez API error:', syncResult.error)
     }
 
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: syncResult
-    }
+    return createErrorResponse(syncResult.error);
   }
 
   context.log(`Synced ${syncResult.propertiesSynced} properties`)
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: syncResult
-  }
+  return createSuccessResponse(syncResult);
 }
 
 app.http('sync-properties', {

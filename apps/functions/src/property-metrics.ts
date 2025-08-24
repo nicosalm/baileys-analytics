@@ -4,6 +4,9 @@ import { safeDivide } from '@baileys/utils';
 import { formatDateISO, getYear } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
+import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses';
+import { buildTagFilter } from './utils/queryBuilders';
+import { parseNumericField, parseIntField, transformPropertyRow } from './utils/dataTransformers';
 
 type PropertyMetrics = {
   propertyId: string
@@ -31,14 +34,8 @@ const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams =
   tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
 })
 
-const buildTagFilter = (tagIds: readonly string[]): string =>
-  tagIds.length > 0
-    ? `AND EXISTS (
-        SELECT 1 FROM booking_tags bt
-        WHERE bt.booking_id = b.id
-        AND bt.tag_id = ANY($4::uuid[])
-      )`
-    : ''
+const buildCustomTagFilter = (tagIds: readonly string[]): string =>
+  tagIds.length > 0 ? buildTagFilter(4) : ''
 
 const buildQueryParams = (params: QueryParams): any[] =>
   params.tagIds.length > 0
@@ -56,7 +53,7 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
   const seasons = await getActiveSeasons(params.tenantId)
   const bookingFilters = buildBookingFilters(seasons, 'b')
   
-  const tagFilter = buildTagFilter(params.tagIds)
+  const tagFilter = buildCustomTagFilter(params.tagIds)
   const queryParams = buildQueryParams(params)
 
   return query<{
@@ -145,10 +142,10 @@ const calculatePropertyMetrics = (row: {
   total_nights: string
   available_nights: string
 }): PropertyMetrics => {
-  const revenue = parseFloat(row.total_revenue)
-  const bookings = parseInt(row.booking_count)
-  const nights = parseInt(row.total_nights)
-  const availableNights = parseInt(row.available_nights)
+  const revenue = parseNumericField(row.total_revenue)
+  const bookings = parseIntField(row.booking_count)
+  const nights = parseIntField(row.total_nights)
+  const availableNights = parseIntField(row.available_nights)
 
   return {
     propertyId: row.property_id,
@@ -190,35 +187,24 @@ export async function getPropertyMetrics(
 
   const { auth } = authCheck.request
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    }
+  const tenantError = requireTenant(auth.tenantId);
+  if (tenantError) {
+    return tenantError;
   }
+  
+  // Type assertion after validation
+  const tenantId = auth.tenantId!
 
-  const params = parseQueryParams(request, auth.tenantId)
+  const params = parseQueryParams(request, tenantId)
   const result = await fetchPropertyMetrics(params)
 
   if (!result.success) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Failed to fetch property metrics' }
-    }
+    return createErrorResponse('Failed to fetch property metrics');
   }
 
   const metrics = transformMetrics(result.data)
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: metrics
-  }
+  return createSuccessResponse(metrics);
 }
 
 app.http('property-metrics', {

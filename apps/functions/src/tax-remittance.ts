@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { query } from './services/database'
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth'
+import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses'
+import { parseNumericField } from './utils/dataTransformers'
 
 // GET /api/tax-remittance
 export async function getTaxRemittance(
@@ -17,6 +19,11 @@ export async function getTaxRemittance(
   }
 
   const { auth } = authCheck.request
+  
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
+  }
   
   const propertyId = request.query.get('property')
   const periodStart = request.query.get('start')
@@ -56,11 +63,7 @@ export async function getTaxRemittance(
   )
 
   if (!result.success) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: result.error }
-    }
+    return createErrorResponse(result.error)
   }
 
   const data = result.data.map(row => ({
@@ -70,11 +73,11 @@ export async function getTaxRemittance(
     propertyName: row.property_name,
     periodStart: row.period_start,
     periodEnd: row.period_end,
-    totalRevenue: parseFloat(row.total_revenue || 0),
-    totalPlatformFees: parseFloat(row.total_platform_fees || 0),
-    totalTaxDue: parseFloat(row.total_tax_due || 0),
-    platformRemitted: parseFloat(row.platform_remitted || 0),
-    ownerRemitted: parseFloat(row.owner_remitted || 0),
+    totalRevenue: parseNumericField(row.total_revenue),
+    totalPlatformFees: parseNumericField(row.total_platform_fees),
+    totalTaxDue: parseNumericField(row.total_tax_due),
+    platformRemitted: parseNumericField(row.platform_remitted),
+    ownerRemitted: parseNumericField(row.owner_remitted),
     filingStatus: row.filing_status,
     filedDate: row.filed_date,
     confirmationNumber: row.confirmation_number,
@@ -83,11 +86,7 @@ export async function getTaxRemittance(
     updatedAt: row.updated_at
   }))
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: { status: 'success', data }
-  }
+  return createSuccessResponse({ status: 'success', data })
 }
 
 // POST /api/tax-calculate
@@ -106,28 +105,22 @@ export async function calculateTax(
 
   const { auth } = authCheck.request
   
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
+  }
+  
   let body: any
   try {
     body = await request.json()
   } catch {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Invalid JSON body' }
-    }
+    return createErrorResponse('Invalid JSON body', 400)
   }
 
   const { propertyId, bookingAmount, platformFees, bookingDate, platform } = body
   
   if (!propertyId || !bookingAmount || !bookingDate) {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      jsonBody: { 
-        status: 'error', 
-        error: 'Property ID, booking amount, and booking date are required' 
-      }
-    }
+    return createErrorResponse('Property ID, booking amount, and booking date are required', 400)
   }
 
   // Get property tax configuration
@@ -178,21 +171,17 @@ export async function calculateTax(
 
   const effectiveRate = totalAmount > 0 ? totalTaxDue / totalAmount : 0
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: { 
-      status: 'success', 
-      data: {
-        totalRevenue: totalAmount,
-        totalTaxDue,
-        platformRemitted,
-        ownerRemitted,
-        effectiveRate,
-        breakdown
-      }
+  return createSuccessResponse({ 
+    status: 'success', 
+    data: {
+      totalRevenue: totalAmount,
+      totalTaxDue,
+      platformRemitted,
+      ownerRemitted,
+      effectiveRate,
+      breakdown
     }
-  }
+  })
 }
 
 app.http('tax-remittance', {

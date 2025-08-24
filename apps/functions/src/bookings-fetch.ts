@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import axios from 'axios';
 import { OWNERREZ_API } from '@baileys/constants';
 import { formatDateISO } from './utils/dates';
+import { createSuccessResponse, createErrorResponse } from './utils/httpResponses';
 
 type BookingCharge = {
   amount: number;
@@ -48,10 +49,7 @@ export async function fetchBookings(
   const token = process.env.OWNERREZ_PAT;
 
   if (!token) {
-    return {
-      status: 500,
-      body: 'OWNERREZ_PAT environment variable not set'
-    };
+    return createErrorResponse('OWNERREZ_PAT environment variable not set');
   }
 
   try {
@@ -87,10 +85,7 @@ export async function fetchBookings(
       totalCount: response.data.items.length
     };
 
-    return {
-      status: 200,
-      jsonBody: state
-    };
+    return createSuccessResponse(state);
 
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -102,24 +97,14 @@ export async function fetchBookings(
         data: error.response?.data
       });
 
-      return {
-        status,
-        jsonBody: {
-          status: 'error',
-          error: `OwnerRez API Error: ${status} ${statusText}`,
-          details: error.response?.data
-        }
-      };
+      return createErrorResponse(
+        `OwnerRez API Error: ${status} ${statusText}`,
+        status
+      );
     }
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return {
-      status: 500,
-      jsonBody: {
-        status: 'error',
-        error: errorMessage
-      }
-    };
+    return createErrorResponse(errorMessage);
   }
 }
 

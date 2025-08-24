@@ -12,6 +12,12 @@ import {
 } from './services/auth';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { authLimiter, withRateLimit } from './middleware/rateLimiter';
+import {
+  createErrorResponse,
+  createSuccessResponse,
+  createValidationErrorResponse,
+  createNotFoundResponse
+} from './utils/httpResponses';
 
 const refreshRequestSchema = z.object({
   refreshToken: z.string()
@@ -123,17 +129,7 @@ export async function signup(
     const parseResult = signupRequestSchema.safeParse(bodyData)
 
     if (!parseResult.success) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { 
-          error: 'Validation error',
-          details: parseResult.error.issues.map((e: any) => ({
-            path: e.path.join('.'),
-            message: e.message
-          }))
-        }
-      }
+      return createValidationErrorResponse(parseResult.error)
     }
     
     const body = parseResult.data
@@ -144,11 +140,7 @@ export async function signup(
     }
 
     if (existsResult.data) {
-      return {
-        status: 409,
-        headers: corsHeaders(),
-        jsonBody: { error: 'User already exists' }
-      }
+      return createErrorResponse('User already exists', 409)
     }
 
     const passwordHash = await hashPassword(body.password)
@@ -170,11 +162,7 @@ export async function signup(
     }
   } catch (error) {
     context.error('Signup error:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Internal server error' }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -191,37 +179,19 @@ export async function login(
     const parseResult = loginRequestSchema.safeParse(bodyData)
 
     if (!parseResult.success) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { 
-          error: 'Validation error',
-          details: parseResult.error.issues.map((e: any) => ({
-            path: e.path.join('.'),
-            message: e.message
-          }))
-        }
-      }
+      return createValidationErrorResponse(parseResult.error)
     }
     
     const body = parseResult.data
 
     const userResult = await findUserByEmail(body.email)
     if (!userResult.success) {
-      return {
-        status: 401,
-        headers: corsHeaders(),
-        jsonBody: { error: 'Invalid email or password' }
-      }
+      return createErrorResponse('Invalid email or password', 401)
     }
 
     const isValid = await verifyPassword(body.password, userResult.data.password_hash)
     if (!isValid) {
-      return {
-        status: 401,
-        headers: corsHeaders(),
-        jsonBody: { error: 'Invalid email or password' }
-      }
+      return createErrorResponse('Invalid email or password', 401)
     }
 
     const responseResult = await createUserResponse(
@@ -236,18 +206,10 @@ export async function login(
 
     await cleanupExpiredTokens()
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: responseResult.data
-    }
+    return createSuccessResponse(responseResult.data)
   } catch (error) {
     context.error('Login error:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Internal server error' }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -264,33 +226,19 @@ export async function refresh(
     const parseResult = refreshRequestSchema.safeParse(bodyData)
     
     if (!parseResult.success) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { 
-          error: 'Invalid refresh token format'
-        }
-      }
+      return createErrorResponse('Invalid refresh token format', 400)
     }
     
     const body = parseResult.data
     const { refreshToken } = body
 
     if (!refreshToken) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { error: 'Refresh token is required' }
-      }
+      return createErrorResponse('Refresh token is required', 400)
     }
 
     const authResult = await verifyRefreshToken(refreshToken)
     if (!authResult.success) {
-      return {
-        status: authResult.status || 401,
-        headers: corsHeaders(),
-        jsonBody: { error: authResult.error }
-      }
+      return createErrorResponse(authResult.error, authResult.status || 401)
     }
 
     await revokeRefreshToken(authResult.userId)
@@ -305,18 +253,10 @@ export async function refresh(
       throw new Error(responseResult.error)
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: responseResult.data
-    }
+    return createSuccessResponse(responseResult.data)
   } catch (error) {
     context.error('Refresh error:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Internal server error' }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -350,27 +290,19 @@ export async function me(
   )
 
   if (!result.success || result.data.length === 0) {
-    return {
-      status: 404,
-      headers: corsHeaders(),
-      jsonBody: { error: 'User not found' }
-    }
+    return createNotFoundResponse('User not found')
   }
 
   const user = result.data[0]
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: {
-      id: user.id,
-      email: user.email,
-      tenantId: user.tenant_id,
-      companyName: user.company_name,
-      hasOwnerRezConnection: !!user.tenant_id,
-      createdAt: user.created_at
-    }
-  }
+  return createSuccessResponse({
+    id: user.id,
+    email: user.email,
+    tenantId: user.tenant_id,
+    companyName: user.company_name,
+    hasOwnerRezConnection: !!user.tenant_id,
+    createdAt: user.created_at
+  })
 }
 
 export async function logout(
@@ -391,18 +323,10 @@ export async function logout(
   try {
     await revokeRefreshToken(auth.userId)
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: { message: 'Logged out successfully' }
-    }
+    return createSuccessResponse({ message: 'Logged out successfully' })
   } catch (error) {
     context.error('Logout error:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Internal server error' }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -420,10 +344,7 @@ export async function createTestUser(
     )
 
     if (!tenantResult.success || tenantResult.data.length === 0) {
-      return {
-        status: 400,
-        jsonBody: { error: 'Tenant not found' }
-      }
+      return createErrorResponse('Tenant not found', 400)
     }
 
     const tenantId = tenantResult.data[0].id
@@ -442,15 +363,7 @@ export async function createTestUser(
     )
 
     if (!createResult.success) {
-      return {
-        status: 500,
-        jsonBody: {
-          error: 'Failed to create user',
-          details: createResult.error,
-          email: email.toLowerCase(),
-          tenantId: tenantId
-        }
-      }
+      return createErrorResponse('Failed to create user', 500)
     }
 
     const userId = createResult.data[0].id
@@ -460,20 +373,14 @@ export async function createTestUser(
       [userId, tenantId]
     )
 
-    return {
-      status: 200,
-      jsonBody: {
-        message: 'User created successfully',
-        email: email,
-        password: password,
-        instruction: 'Now you can login at http://localhost:5173'
-      }
-    }
+    return createSuccessResponse({
+      message: 'User created successfully',
+      email: email,
+      password: password,
+      instruction: 'Now you can login at http://localhost:5173'
+    })
   } catch (error) {
-    return {
-      status: 500,
-      jsonBody: { error: error instanceof Error ? error.message : 'Failed' }
-    }
+    return createErrorResponse(error instanceof Error ? error.message : 'Failed')
   }
 }
 

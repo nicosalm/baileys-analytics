@@ -2,6 +2,8 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { query } from './services/database'
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth'
 import { z } from 'zod'
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses'
+import { normalizePlatformName } from './utils/dataTransformers'
 
 // Schema for platform remittance configuration
 const PlatformRemittanceSchema = z.object({
@@ -10,6 +12,15 @@ const PlatformRemittanceSchema = z.object({
   remitsOnGuestFees: z.boolean(),
   jurisdictions: z.array(z.string()).optional(),
   notes: z.string().optional()
+})
+
+// Shared function to transform platform remittance config row data
+const transformPlatformRemittanceConfigRow = (row: any) => ({
+  platform: normalizePlatformName(row.platform),
+  remitsOccupancyTax: row.remits_occupancy_tax,
+  remitsOnGuestFees: row.remits_on_guest_fees,
+  jurisdictions: row.jurisdictions,
+  notes: row.notes
 })
 
 const UpdateRemittanceConfigSchema = z.object({
@@ -32,6 +43,9 @@ export async function getPlatformRemittanceConfig(
 
   const { auth } = authCheck.request
 
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) return tenantCheck
+
   try {
     // First check if tenant has custom configuration
     const configResult = await query(
@@ -41,66 +55,48 @@ export async function getPlatformRemittanceConfig(
 
     if (configResult.success && configResult.data.length > 0) {
       // Return tenant's custom configuration
-      const configs = configResult.data.map(row => ({
-        platform: row.platform,
-        remitsOccupancyTax: row.remits_occupancy_tax,
-        remitsOnGuestFees: row.remits_on_guest_fees,
-        jurisdictions: row.jurisdictions,
-        notes: row.notes
-      }))
+      const configs = configResult.data.map(transformPlatformRemittanceConfigRow)
 
-      return {
-        status: 200,
-        headers: corsHeaders(),
-        jsonBody: { status: 'success', data: configs, source: 'custom' }
-      }
+      return createSuccessResponse({ status: 'success', data: configs, source: 'custom' })
     }
 
     // Return default suggestions (not hardcoded rules, just suggestions)
     const defaultSuggestions = [
       {
-        platform: 'airbnb',
+        platform: normalizePlatformName('airbnb'),
         remitsOccupancyTax: true,
         remitsOnGuestFees: true,
         notes: 'Airbnb remittance varies by jurisdiction - verify with local authorities'
       },
       {
-        platform: 'vrbo',
+        platform: normalizePlatformName('vrbo'),
         remitsOccupancyTax: false,
         remitsOnGuestFees: false,
         notes: 'VRBO remittance varies by location - verify with local tax authority'
       },
       {
-        platform: 'booking.com',
+        platform: normalizePlatformName('booking.com'),
         remitsOccupancyTax: false,
         remitsOnGuestFees: false,
         notes: 'Booking.com remittance policies vary - check your agreement'
       },
       {
-        platform: 'direct',
+        platform: normalizePlatformName('direct'),
         remitsOccupancyTax: false,
         remitsOnGuestFees: false,
         notes: 'Direct bookings - owner responsible for all tax remittance'
       }
     ]
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: { 
-        status: 'success', 
-        data: defaultSuggestions, 
-        source: 'suggestions',
-        message: 'These are suggestions only. Please verify with your local tax authority.'
-      }
-    }
+    return createSuccessResponse({ 
+      status: 'success', 
+      data: defaultSuggestions, 
+      source: 'suggestions',
+      message: 'These are suggestions only. Please verify with your local tax authority.'
+    })
   } catch (error) {
     context.error('Error fetching platform remittance config:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Failed to fetch configuration' }
-    }
+    return createErrorResponse('Failed to fetch configuration')
   }
 }
 
@@ -120,6 +116,9 @@ export async function updatePlatformRemittanceConfig(
 
   const { auth } = authCheck.request
 
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) return tenantCheck
+
   try {
     const body = await request.json()
     const parsed = UpdateRemittanceConfigSchema.parse(body)
@@ -137,7 +136,7 @@ export async function updatePlatformRemittanceConfig(
          VALUES ($1, $2, $3, $4, $5, $6)`,
         [
           auth.tenantId,
-          config.platform,
+          normalizePlatformName(config.platform),
           config.remitsOccupancyTax,
           config.remitsOnGuestFees,
           config.jurisdictions || null,
@@ -146,29 +145,17 @@ export async function updatePlatformRemittanceConfig(
       )
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: { 
-        status: 'success', 
-        message: 'Platform remittance configuration updated'
-      }
-    }
+    return createSuccessResponse({ 
+      status: 'success', 
+      message: 'Platform remittance configuration updated'
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: 'Invalid configuration', details: error.issues }
-      }
+      return createErrorResponse('Invalid configuration', 400)
     }
 
     context.error('Error updating platform remittance config:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Failed to update configuration' }
-    }
+    return createErrorResponse('Failed to update configuration')
   }
 }
 

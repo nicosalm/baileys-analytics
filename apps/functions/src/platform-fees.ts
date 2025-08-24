@@ -2,6 +2,8 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import { query } from './services/database'
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth'
 import { z } from 'zod'
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses'
+import { parseNumericField, parseIntField, normalizePlatformName } from './utils/dataTransformers'
 
 const PlatformFeeSchema = z.object({
   propertyId: z.string().uuid(),
@@ -13,6 +15,25 @@ const PlatformFeeSchema = z.object({
   platformTaxRemitted: z.number().min(0).default(0),
   bookingId: z.string().uuid().optional().nullable(),
   notes: z.string().optional().nullable()
+})
+
+// Shared function to transform platform fee row data
+const transformPlatformFeeRow = (row: any) => ({
+  id: row.id,
+  tenantId: row.tenant_id,
+  propertyId: row.property_id,
+  bookingId: row.booking_id,
+  platform: normalizePlatformName(row.platform),
+  month: row.month,
+  guestServiceFee: parseNumericField(row.guest_service_fee),
+  hostServiceFee: parseNumericField(row.host_service_fee),
+  platformRemitsTax: row.platform_remits_tax || false,
+  platformTaxRemitted: parseNumericField(row.platform_tax_remitted),
+  notes: row.notes,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+  createdBy: row.created_by,
+  createdByEmail: row.created_by_email
 })
 
 export async function platformFees(
@@ -30,16 +51,15 @@ export async function platformFees(
 
   const { auth } = authCheck.request
   
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) return tenantCheck
+  
   if (request.method === 'GET') {
     const propertyId = request.query.get('property')
     const month = request.query.get('month')
     
     if (!propertyId || !month) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: 'Property ID and month are required' }
-      }
+      return createErrorResponse('Property ID and month are required', 400)
     }
     
     const result = await query(
@@ -52,57 +72,25 @@ export async function platformFees(
     )
 
     if (!result.success) {
-      return {
-        status: 500,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: result.error }
-      }
+      return createErrorResponse(result.error || 'Failed to fetch platform fees')
     }
 
-    const data = result.data.map(row => ({
-      id: row.id,
-      tenantId: row.tenant_id,
-      propertyId: row.property_id,
-      bookingId: row.booking_id,
-      platform: row.platform,
-      month: row.month,
-      guestServiceFee: parseFloat(row.guest_service_fee || '0'),
-      hostServiceFee: parseFloat(row.host_service_fee || '0'),
-      platformRemitsTax: row.platform_remits_tax || false,
-      platformTaxRemitted: parseFloat(row.platform_tax_remitted || '0'),
-      notes: row.notes,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      createdBy: row.created_by,
-      createdByEmail: row.created_by_email
-    }))
+    const data = result.data.map(transformPlatformFeeRow)
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: { status: 'success', data }
-    }
+    return createSuccessResponse({ status: 'success', data })
   }
   
   if (request.method === 'POST') {
     let body: any
-  try {
-    body = await request.json()
-  } catch {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Invalid JSON body' }
+    try {
+      body = await request.json()
+    } catch {
+      return createErrorResponse('Invalid JSON body', 400)
     }
-  }
 
     const validation = PlatformFeeSchema.safeParse(body)
     if (!validation.success) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: 'Invalid data', details: validation.error.flatten() }
-      }
+      return createErrorResponse('Invalid data', 400)
     }
 
     const data = validation.data
@@ -139,33 +127,21 @@ export async function platformFees(
   )
 
     if (!result.success) {
-      return {
-        status: 500,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: result.error || 'Failed to save platform fee' }
-      }
+      return createErrorResponse(result.error || 'Failed to save platform fee')
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: { 
-        status: 'success', 
-        data: {
-          id: result.data[0].id,
-          ...data,
-          createdAt: result.data[0].created_at,
-          updatedAt: result.data[0].updated_at
-        }
+    return createSuccessResponse({ 
+      status: 'success', 
+      data: {
+        id: result.data[0].id,
+        ...data,
+        createdAt: result.data[0].created_at,
+        updatedAt: result.data[0].updated_at
       }
-    }
+    })
   }
   
-  return {
-    status: 405,
-    headers: corsHeaders(),
-    jsonBody: { status: 'error', error: 'Method not allowed' }
-  }
+  return createErrorResponse('Method not allowed', 405)
 }
 
 export async function deletePlatformFee(
@@ -182,14 +158,14 @@ export async function deletePlatformFee(
   }
 
   const { auth } = authCheck.request
+  
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) return tenantCheck
+  
   const feeId = request.params.id
 
   if (!feeId) {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Fee ID is required' }
-    }
+    return createErrorResponse('Fee ID is required', 400)
   }
 
   const result = await query(
@@ -200,26 +176,14 @@ export async function deletePlatformFee(
   )
 
   if (!result.success) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Failed to delete platform fee' }
-    }
+    return createErrorResponse('Failed to delete platform fee')
   }
 
   if (result.data.length === 0) {
-    return {
-      status: 404,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Platform fee not found' }
-    }
+    return createErrorResponse('Platform fee not found', 404)
   }
 
-  return {
-    status: 200,
-    headers: corsHeaders(),
-    jsonBody: { status: 'success', message: 'Platform fee deleted' }
-  }
+  return createSuccessResponse({ status: 'success', message: 'Platform fee deleted' })
 }
 
 app.http('platform-fees', {

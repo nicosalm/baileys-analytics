@@ -1,9 +1,12 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
-import { calculateGrowthRate, safeDivide, calculateAverage, calculateStandardDeviation } from '@baileys/utils';
+import { calculateGrowthRate, safeDivide, calculateAverage, calculateStandardDeviation, calculatePercentage } from '@baileys/utils';
 import { getYear } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses';
+import { buildDateRangeFilter, normalizePlatformSQL } from './utils/queryBuilders';
+import { parseNumericField, parseIntField } from './utils/dataTransformers';
 
 type SeasonalData = {
     yearOverYear: {
@@ -93,24 +96,21 @@ export async function getSeasonalAnalysis(
 
     const { auth } = authCheck.request;
 
-    if (!auth.tenantId) {
-        return {
-            status: 403,
-            headers: corsHeaders(),
-            jsonBody: {
-                error: 'OwnerRez connection required',
-                code: 'NO_OWNERREZ_CONNECTION'
-            }
-        };
+    const tenantValidation = requireTenant(auth.tenantId);
+    if (tenantValidation) {
+        return tenantValidation;
     }
+    
+    // Type assertion after validation
+    const tenantId = auth.tenantId!;
 
     try {
-        const year = parseInt(request.query.get('year') || getYear(new Date()).toString());
+        const year = parseIntField(request.query.get('year') || getYear(new Date()).toString(), getYear(new Date()));
         const previousYear = year - 1;
         const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
 
         // Get active seasons for filtering
-        const seasons = await getActiveSeasons(auth.tenantId);
+        const seasons = await getActiveSeasons(tenantId);
         const bookingFilters = buildBookingFilters(seasons, 'b');
 
         // Build tag filter for queries
@@ -121,7 +121,7 @@ export async function getSeasonalAnalysis(
                 AND bt.tag_id = ANY($2::uuid[])
               )`
             : '';
-        const queryParams = tagIds.length > 0 ? [auth.tenantId, tagIds] : [auth.tenantId];
+        const queryParams = tagIds.length > 0 ? [tenantId, tagIds] : [tenantId];
 
         // Check if we have any data at all
         const dataCheck = await query<{
@@ -140,32 +140,28 @@ export async function getSeasonalAnalysis(
             queryParams
         );
 
-        if (!dataCheck.success || parseInt(dataCheck.data[0]?.total_bookings || '0') === 0) {
+        if (!dataCheck.success || parseIntField(dataCheck.data[0]?.total_bookings || '0') === 0) {
             // Return empty but valid structure
-            return {
-                status: 200,
-                headers: corsHeaders(),
-                jsonBody: {
-                    yearOverYear: {
-                        currentYear: 0,
-                        previousYear: 0,
-                        years: []
-                    },
-                    monthlyTrends: [],
-                    seasonalPatterns: {
-                        peakMonths: [],
-                        lowMonths: [],
-                        avgPeakOccupancy: 0,
-                        avgLowOccupancy: 0,
-                        seasonalityIndex: 0
-                    },
-                    propertySeasonality: [],
-                    priceOptimization: {
-                        underpriced: [],
-                        overpriced: []
-                    }
+            return createSuccessResponse({
+                yearOverYear: {
+                    currentYear: 0,
+                    previousYear: 0,
+                    years: []
+                },
+                monthlyTrends: [],
+                seasonalPatterns: {
+                    peakMonths: [],
+                    lowMonths: [],
+                    avgPeakOccupancy: 0,
+                    avgLowOccupancy: 0,
+                    seasonalityIndex: 0
+                },
+                propertySeasonality: [],
+                priceOptimization: {
+                    underpriced: [],
+                    overpriced: []
                 }
-            };
+            });
         }
 
         // Year-over-year query
@@ -215,7 +211,7 @@ export async function getSeasonalAnalysis(
             CROSS JOIN property_count pc
             LEFT JOIN yearly_stats ys ON y.year = ys.year
             ORDER BY y.year DESC`,
-            [auth.tenantId, year, previousYear]
+            [tenantId, year, previousYear]
         );
 
         // Monthly trends query
@@ -289,7 +285,7 @@ export async function getSeasonalAnalysis(
             LEFT JOIN (SELECT * FROM monthly_data WHERE year = $3) p
                 ON m.month = p.month
             ORDER BY m.month`,
-            [auth.tenantId, year, previousYear]
+            [tenantId, year, previousYear]
         );
 
         // Seasonal patterns query
@@ -334,7 +330,7 @@ export async function getSeasonalAnalysis(
             FROM monthly_aggregates ma
             CROSS JOIN property_count pc
             ORDER BY ma.month`,
-            [auth.tenantId]
+            [tenantId]
         );
 
         // Property-level seasonality query
@@ -372,7 +368,7 @@ export async function getSeasonalAnalysis(
             FROM property_monthly
             WHERE month IS NOT NULL
             ORDER BY property_id, month`,
-            [auth.tenantId]
+            [tenantId]
         );
 
         // Fixed price optimization query - removed created_at usage
@@ -433,7 +429,7 @@ export async function getSeasonalAnalysis(
             FROM property_month_stats pms
             LEFT JOIN market_stats ms ON pms.month = ms.month
             ORDER BY pms.property_id, pms.month`,
-            [auth.tenantId]
+            [tenantId]
         );
 
         // Process the results
@@ -448,33 +444,33 @@ export async function getSeasonalAnalysis(
                 month: m.month,
                 monthName: m.month_name.trim(),
                 currentYear: {
-                    revenue: parseFloat(m.current_revenue) || 0,
-                    bookings: parseInt(m.current_bookings) || 0,
-                    occupancy: Math.min(100, parseFloat(m.current_occupancy) || 0),
-                    avgNightlyRate: parseFloat(m.current_avg_rate) || 0
+                    revenue: parseNumericField(m.current_revenue),
+                    bookings: parseIntField(m.current_bookings),
+                    occupancy: Math.min(100, parseNumericField(m.current_occupancy)),
+                    avgNightlyRate: parseNumericField(m.current_avg_rate)
                 },
                 previousYear: {
-                    revenue: parseFloat(m.previous_revenue) || 0,
-                    bookings: parseInt(m.previous_bookings) || 0,
-                    occupancy: Math.min(100, parseFloat(m.previous_occupancy) || 0),
-                    avgNightlyRate: parseFloat(m.previous_avg_rate) || 0
+                    revenue: parseNumericField(m.previous_revenue),
+                    bookings: parseIntField(m.previous_bookings),
+                    occupancy: Math.min(100, parseNumericField(m.previous_occupancy)),
+                    avgNightlyRate: parseNumericField(m.previous_avg_rate)
                 },
                 yoyGrowth: {
                     revenue: calculateGrowthRate(
-                        parseFloat(m.current_revenue) || 0,
-                        parseFloat(m.previous_revenue) || 0
+                        parseNumericField(m.current_revenue),
+                        parseNumericField(m.previous_revenue)
                     ),
                     bookings: calculateGrowthRate(
-                        parseInt(m.current_bookings) || 0,
-                        parseInt(m.previous_bookings) || 0
+                        parseIntField(m.current_bookings),
+                        parseIntField(m.previous_bookings)
                     ),
                     occupancy: calculateGrowthRate(
-                        parseFloat(m.current_occupancy) || 0,
-                        parseFloat(m.previous_occupancy) || 0
+                        parseNumericField(m.current_occupancy),
+                        parseNumericField(m.previous_occupancy)
                     ),
                     avgNightlyRate: calculateGrowthRate(
-                        parseFloat(m.current_avg_rate) || 0,
-                        parseFloat(m.previous_avg_rate) || 0
+                        parseNumericField(m.current_avg_rate),
+                        parseNumericField(m.previous_avg_rate)
                     )
                 }
             })) : [];
@@ -482,21 +478,21 @@ export async function getSeasonalAnalysis(
         // Calculate seasonal patterns
         const seasonalData = seasonalResult.success ? seasonalResult.data : [];
         const validSeasonalData = seasonalData.filter(d =>
-            parseFloat(d.avg_occupancy) >= 0 && parseFloat(d.avg_occupancy) <= 100
+            parseNumericField(d.avg_occupancy) >= 0 && parseNumericField(d.avg_occupancy) <= 100
         );
 
         const sortedByOccupancy = [...validSeasonalData].sort((a, b) =>
-            parseFloat(b.avg_occupancy) - parseFloat(a.avg_occupancy)
+            parseNumericField(b.avg_occupancy) - parseNumericField(a.avg_occupancy)
         );
 
         const peakMonths = sortedByOccupancy.slice(0, 3).map(m => ({
             month: m.month_name.trim(),
-            score: Math.min(100, parseFloat(m.avg_occupancy) || 0)
+            score: Math.min(100, parseNumericField(m.avg_occupancy))
         }));
 
         const lowMonths = sortedByOccupancy.slice(-3).reverse().map(m => ({
             month: m.month_name.trim(),
-            score: Math.min(100, parseFloat(m.avg_occupancy) || 0)
+            score: Math.min(100, parseNumericField(m.avg_occupancy))
         }));
 
         const avgPeakOccupancy = safeDivide(
@@ -533,12 +529,12 @@ export async function getSeasonalAnalysis(
                     });
                 }
 
-                const occupancy = Math.min(100, parseFloat(row.occupancy) || 0);
+                const occupancy = Math.min(100, parseNumericField(row.occupancy));
 
                 propertyMap.get(row.property_id)!.monthlyOccupancy.push({
-                    month: parseInt(row.month),
+                    month: parseIntField(row.month),
                     occupancy: occupancy,
-                    revenue: parseFloat(row.revenue) || 0
+                    revenue: parseNumericField(row.revenue)
                 });
             });
         }
@@ -556,7 +552,7 @@ export async function getSeasonalAnalysis(
             const occupancies = validOccupancies.map(m => m.occupancy);
             const avgOccupancy = calculateAverage(occupancies);
             const stdDev = calculateStandardDeviation(occupancies);
-            const seasonalityScore = Math.min(100, safeDivide(stdDev, avgOccupancy) * 100);
+            const seasonalityScore = Math.min(100, calculatePercentage(stdDev, avgOccupancy));
 
             return {
                 ...property,
@@ -591,9 +587,9 @@ export async function getSeasonalAnalysis(
 
         if (priceOptimizationResult.success) {
             priceOptimizationResult.data.forEach(row => {
-                const currentRate = parseFloat(row.avg_nightly_rate) || 0;
-                const suggestedRate = parseFloat(row.suggested_rate) || 0;
-                const occupancy = parseFloat(row.occupancy_rate) || 0;
+                const currentRate = parseNumericField(row.avg_nightly_rate);
+                const suggestedRate = parseNumericField(row.suggested_rate);
+                const occupancy = parseNumericField(row.occupancy_rate);
 
                 if (occupancy > 0.8 && suggestedRate > currentRate) {
                     priceOptimization.underpriced.push({
@@ -619,14 +615,14 @@ export async function getSeasonalAnalysis(
 
         const seasonalAnalysisData: SeasonalData = {
             yearOverYear: {
-                currentYear: currentYearData ? parseFloat(currentYearData.revenue) : 0,
-                previousYear: previousYearData ? parseFloat(previousYearData.revenue) : 0,
+                currentYear: currentYearData ? parseNumericField(currentYearData.revenue) : 0,
+                previousYear: previousYearData ? parseNumericField(previousYearData.revenue) : 0,
                 years: yearData.map(y => ({
                     year: y.year,
-                    revenue: parseFloat(y.revenue) || 0,
-                    bookings: parseInt(y.bookings) || 0,
-                    occupancy: Math.min(100, parseFloat(y.avg_occupancy) || 0),
-                    avgNightlyRate: parseFloat(y.avg_nightly_rate) || 0
+                    revenue: parseNumericField(y.revenue),
+                    bookings: parseIntField(y.bookings),
+                    occupancy: Math.min(100, parseNumericField(y.avg_occupancy)),
+                    avgNightlyRate: parseNumericField(y.avg_nightly_rate)
                 }))
             },
             monthlyTrends,
@@ -641,19 +637,11 @@ export async function getSeasonalAnalysis(
             priceOptimization
         };
 
-        return {
-            status: 200,
-            headers: corsHeaders(),
-            jsonBody: seasonalAnalysisData
-        };
+        return createSuccessResponse(seasonalAnalysisData);
     } catch (error) {
-        return {
-            status: 500,
-            headers: corsHeaders(),
-            jsonBody: {
-                error: error instanceof Error ? error.message : 'Failed to fetch seasonal analysis'
-            }
-        };
+        return createErrorResponse(
+            error instanceof Error ? error.message : 'Failed to fetch seasonal analysis'
+        );
     }
 }
 

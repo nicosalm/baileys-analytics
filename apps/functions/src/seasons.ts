@@ -1,9 +1,10 @@
 import { HttpRequest, HttpResponseInit, InvocationContext, app } from '@azure/functions'
 import { query, transaction } from './services/database'
-import { corsHeaders, handleOptions, AuthenticatedRequest } from './middleware/auth'
+import { handleOptions, AuthenticatedRequest } from './middleware/auth'
 import { requireAuthWithValidation } from './middleware/validation'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
+import { createSuccessResponse, createErrorResponse, createValidationErrorResponse, requireTenant } from './utils/httpResponses'
 
 function checkSeasonOverlap(
   season1: { startMonth: number; startDay: number; endMonth: number; endDay: number },
@@ -63,6 +64,11 @@ async function handleGetSeasons(
   try {
     const auth = req.auth!
     
+    const tenantValidation = requireTenant(auth.tenantId)
+    if (tenantValidation) {
+      return tenantValidation
+    }
+    
     const result = await query<Season>(
       `SELECT 
         id,
@@ -82,25 +88,13 @@ async function handleGetSeasons(
     )
 
     if (!result.success) {
-      return {
-        status: 500,
-        jsonBody: { error: 'Failed to fetch seasons' },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse('Failed to fetch seasons')
     }
 
-    return {
-      status: 200,
-      jsonBody: { seasons: result.data },
-      headers: { ...corsHeaders }
-    }
+    return createSuccessResponse({ seasons: result.data })
   } catch (error) {
     context.error('Error fetching seasons:', error)
-    return {
-      status: 500,
-      jsonBody: { error: 'Internal server error' },
-      headers: { ...corsHeaders }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -112,13 +106,14 @@ async function handleCreateSeason(
     const auth = req.auth!
     const body = req.body
     
+    const tenantValidation = requireTenant(auth.tenantId)
+    if (tenantValidation) {
+      return tenantValidation
+    }
+    
     const validation = SeasonSchema.safeParse(body)
     if (!validation.success) {
-      return {
-        status: 400,
-        jsonBody: { error: 'Invalid season data', details: validation.error.issues },
-        headers: { ...corsHeaders() }
-      }
+      return createValidationErrorResponse(validation.error)
     }
 
     const { name, startMonth, startDay, endMonth, endDay } = validation.data
@@ -130,15 +125,11 @@ async function handleCreateSeason(
     )
     
     if (existingActiveSeasons.success && existingActiveSeasons.data.length > 0) {
-      return {
-        status: 400,
-        jsonBody: { 
-          error: `Only one season can be active at a time. Please deactivate the existing season "${existingActiveSeasons.data[0].name}" first.` 
-        },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse(
+        `Only one season can be active at a time. Please deactivate the existing season "${existingActiveSeasons.data[0].name}" first.`,
+        400
+      )
     }
-
 
     const result = await query<Season>(
       `INSERT INTO season_configurations (
@@ -159,25 +150,14 @@ async function handleCreateSeason(
     )
 
     if (!result.success) {
-      return {
-        status: 500,
-        jsonBody: { error: 'Failed to create season' },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse('Failed to create season')
     }
 
-    return {
-      status: 201,
-      jsonBody: { season: result.data[0] },
-      headers: { ...corsHeaders }
-    }
+    const response = createSuccessResponse({ season: result.data[0] })
+    return { ...response, status: 201 }
   } catch (error) {
     context.error('Error creating season:', error)
-    return {
-      status: 500,
-      jsonBody: { error: 'Internal server error' },
-      headers: { ...corsHeaders }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -190,17 +170,17 @@ async function handleUpdateSeason(
     const seasonId = req.params.id
     const body = req.body
     
+    const tenantValidation = requireTenant(auth.tenantId)
+    if (tenantValidation) {
+      return tenantValidation
+    }
+    
     const validation = SeasonSchema.safeParse(body)
     if (!validation.success) {
-      return {
-        status: 400,
-        jsonBody: { error: 'Invalid season data', details: validation.error.issues },
-        headers: { ...corsHeaders() }
-      }
+      return createValidationErrorResponse(validation.error)
     }
 
     const { name, startMonth, startDay, endMonth, endDay } = validation.data
-
 
     const result = await query<Season>(
       `UPDATE season_configurations
@@ -221,25 +201,13 @@ async function handleUpdateSeason(
     )
 
     if (!result.success || result.data.length === 0) {
-      return {
-        status: 404,
-        jsonBody: { error: 'Season not found' },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse('Season not found', 404)
     }
 
-    return {
-      status: 200,
-      jsonBody: { season: result.data[0] },
-      headers: { ...corsHeaders }
-    }
+    return createSuccessResponse({ season: result.data[0] })
   } catch (error) {
     context.error('Error updating season:', error)
-    return {
-      status: 500,
-      jsonBody: { error: 'Internal server error' },
-      headers: { ...corsHeaders }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -251,6 +219,11 @@ async function handleDeleteSeason(
     const auth = req.auth!
     const seasonId = req.params.id
 
+    const tenantValidation = requireTenant(auth.tenantId)
+    if (tenantValidation) {
+      return tenantValidation
+    }
+
     const result = await query(
       `DELETE FROM season_configurations
       WHERE id = $1 AND tenant_id = $2
@@ -259,25 +232,13 @@ async function handleDeleteSeason(
     )
 
     if (!result.success || result.data.length === 0) {
-      return {
-        status: 404,
-        jsonBody: { error: 'Season not found' },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse('Season not found', 404)
     }
 
-    return {
-      status: 200,
-      jsonBody: { message: 'Season deleted successfully' },
-      headers: { ...corsHeaders }
-    }
+    return createSuccessResponse({ message: 'Season deleted successfully' })
   } catch (error) {
     context.error('Error deleting season:', error)
-    return {
-      status: 500,
-      jsonBody: { error: 'Internal server error' },
-      headers: { ...corsHeaders }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -289,23 +250,20 @@ async function handleToggleSeasonActive(
     const auth = req.auth!
     const seasonId = req.params?.id
     
+    const tenantValidation = requireTenant(auth.tenantId)
+    if (tenantValidation) {
+      return tenantValidation
+    }
+    
     if (!seasonId) {
       context.error('Season ID not provided in params:', req.params)
-      return {
-        status: 400,
-        jsonBody: { error: 'Season ID is required' },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse('Season ID is required', 400)
     }
     
     const { isActive } = req.body || {}
 
     if (typeof isActive !== 'boolean') {
-      return {
-        status: 400,
-        jsonBody: { error: 'isActive must be a boolean' },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse('isActive must be a boolean', 400)
     }
 
     if (isActive) {
@@ -317,11 +275,7 @@ async function handleToggleSeasonActive(
       )
       
       if (!deactivateResult.success) {
-        return {
-          status: 500,
-          jsonBody: { error: 'Failed to deactivate other seasons' },
-          headers: { ...corsHeaders() }
-        }
+        return createErrorResponse('Failed to deactivate other seasons')
       }
     }
 
@@ -344,25 +298,13 @@ async function handleToggleSeasonActive(
     )
 
     if (!result.success || result.data.length === 0) {
-      return {
-        status: 404,
-        jsonBody: { error: 'Season not found' },
-        headers: { ...corsHeaders() }
-      }
+      return createErrorResponse('Season not found', 404)
     }
 
-    return {
-      status: 200,
-      jsonBody: { season: result.data[0] },
-      headers: { ...corsHeaders }
-    }
+    return createSuccessResponse({ season: result.data[0] })
   } catch (error) {
     context.error('Error toggling season active state:', error)
-    return {
-      status: 500,
-      jsonBody: { error: 'Internal server error' },
-      headers: { ...corsHeaders }
-    }
+    return createErrorResponse('Internal server error')
   }
 }
 
@@ -413,11 +355,7 @@ export async function seasons(
   }
 
   context.error('No route matched - Method:', method, 'ID:', id)
-  return {
-    status: 404,
-    jsonBody: { error: 'Not found' },
-    headers: { ...corsHeaders }
-  }
+  return createErrorResponse('Not found', 404)
 }
 
 app.http('seasons', {

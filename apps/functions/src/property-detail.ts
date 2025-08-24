@@ -4,6 +4,9 @@ import { calculateNights, safeDivide } from '@baileys/utils';
 import { formatDateISO, getYear, getDaysInMonth, differenceInDays } from './utils/dates';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
 import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
+import { createSuccessResponse, createErrorResponse, createNotFoundResponse, requireTenant } from './utils/httpResponses';
+import { buildDateRangeFilter, buildTagFilter, normalizePlatformSQL } from './utils/queryBuilders';
+import { parseNumericField, parseIntField, createGuestId } from './utils/dataTransformers';
 
 export async function getPropertyDetail(
   request: HttpRequest,
@@ -20,16 +23,13 @@ export async function getPropertyDetail(
 
   const { auth } = authCheck.request;
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    };
+  const tenantError = requireTenant(auth.tenantId);
+  if (tenantError) {
+    return tenantError;
   }
+  
+  // Type assertion after validation
+  const tenantId = auth.tenantId!
 
   try {
     const propertyId = request.params.propertyId;
@@ -38,7 +38,7 @@ export async function getPropertyDetail(
     const tagIds = request.query.get('tags')?.split(',').filter(Boolean) || [];
     
     // Get active seasons for filtering
-    const seasons = await getActiveSeasons(auth.tenantId);
+    const seasons = await getActiveSeasons(tenantId);
     const bookingFilters = buildBookingFilters(seasons, 'b');
     
     // Get property info
@@ -55,27 +55,17 @@ export async function getPropertyDetail(
       `SELECT id, name, address, city, state, bedrooms, bathrooms, max_guests
        FROM properties
        WHERE id = $1 AND tenant_id = $2`,
-      [propertyId, auth.tenantId]
+      [propertyId, tenantId]
     );
 
     if (!propertyResult.success || propertyResult.data.length === 0) {
-      return {
-        status: 404,
-        headers: corsHeaders(),
-        jsonBody: { error: 'Property not found' }
-      };
+      return createNotFoundResponse('Property not found');
     }
 
     const property = propertyResult.data[0];
 
     // Build tag filter for queries
-    const tagFilter = tagIds.length > 0
-      ? `AND EXISTS (
-          SELECT 1 FROM booking_tags bt
-          WHERE bt.booking_id = b.id
-          AND bt.tag_id = ANY($4::uuid[])
-        )`
-      : '';
+    const tagFilter = tagIds.length > 0 ? buildTagFilter(4) : '';
     
     const queryParams = tagIds.length > 0
       ? [propertyId, fromDate, toDate, tagIds]
@@ -178,15 +168,66 @@ export async function getPropertyDetail(
     const monthlyData = monthlyResult.success ? monthlyResult.data.map(row => {
       const [year, month] = row.month.split('-');
       const daysInMonthCount = getDaysInMonth(new Date(parseInt(year), parseInt(month) - 1, 1));
-      const occupancy = safeDivide(parseInt(row.nights), daysInMonthCount) * 100;
+      const occupancy = safeDivide(parseIntField(row.nights), daysInMonthCount) * 100;
 
       return {
         month: row.month,
-        revenue: parseFloat(row.revenue),
-        bookings: parseInt(row.bookings),
+        revenue: parseNumericField(row.revenue),
+        bookings: parseIntField(row.bookings),
         occupancy: Math.min(occupancy, 100)
       };
     }) : [];
+
+    // Get revenue by platform
+    const platformResult = await query<{
+      platform: string;
+      revenue: string;
+      bookings: string;
+    }>(
+      `SELECT
+        ${normalizePlatformSQL('b.platform')} as platform,
+        COALESCE(SUM(b.total_amount), 0) as revenue,
+        COUNT(DISTINCT b.id) as bookings
+       FROM bookings b
+       WHERE b.property_id = $1
+         AND b.arrival >= $2
+         AND b.arrival <= $3
+         AND b.status != 'canceled'
+         ${tagFilter}
+         ${bookingFilters || ''}
+       GROUP BY ${normalizePlatformSQL('b.platform')}
+       ORDER BY revenue DESC`,
+      queryParams
+    );
+
+    // Get guest statistics
+    const guestStatsResult = await query<{
+      total_guests: string;
+      repeat_guests: string;
+    }>(
+      `WITH guest_bookings AS (
+        SELECT 
+          LOWER(TRIM(b.guest_name)) as normalized_name,
+          COALESCE(LOWER(TRIM(b.guest_email)), '') as normalized_email,
+          COUNT(*) as booking_count
+        FROM bookings b
+        WHERE b.property_id = $1
+          AND b.arrival >= $2
+          AND b.arrival <= $3
+          AND b.status != 'canceled'
+          ${tagFilter}
+          ${bookingFilters || ''}
+        GROUP BY LOWER(TRIM(b.guest_name)), COALESCE(LOWER(TRIM(b.guest_email)), '')
+      )
+      SELECT
+        COUNT(DISTINCT (normalized_name, normalized_email)) as total_guests,
+        COUNT(DISTINCT CASE 
+          WHEN booking_count > 1 
+          THEN (normalized_name, normalized_email) 
+        END) as repeat_guests
+      FROM guest_bookings`,
+      queryParams
+    );
 
     // Get recent bookings within the date range
     const bookingsResult = await query<{
@@ -223,12 +264,21 @@ export async function getPropertyDetail(
     const currentDate = new Date();
     const effectiveEndDate = endDate > currentDate ? currentDate : endDate;
     const totalDays = differenceInDays(effectiveEndDate, startDate) + 1;
-    const occupancyRate = safeDivide(parseInt(metrics.total_nights), totalDays);
+    const occupancyRate = safeDivide(parseIntField(metrics.total_nights), totalDays);
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
+    const guestStats = guestStatsResult.success && guestStatsResult.data[0] ? {
+      totalGuests: parseIntField(guestStatsResult.data[0].total_guests),
+      repeatGuests: parseIntField(guestStatsResult.data[0].repeat_guests),
+      returnRate: parseIntField(guestStatsResult.data[0].total_guests) > 0 
+        ? (parseIntField(guestStatsResult.data[0].repeat_guests) / parseIntField(guestStatsResult.data[0].total_guests)) * 100
+        : 0
+    } : {
+      totalGuests: 0,
+      repeatGuests: 0,
+      returnRate: 0
+    };
+
+    return createSuccessResponse({
         property: {
           id: property.id,
           name: property.name,
@@ -238,35 +288,36 @@ export async function getPropertyDetail(
           maxGuests: property.max_guests
         },
         metrics: {
-          totalRevenue: parseFloat(metrics.total_revenue),
-          totalBookings: parseInt(metrics.total_bookings),
-          totalNights: parseInt(metrics.total_nights),
-          avgNightlyRate: parseFloat(metrics.avg_nightly_rate),
-          avgStayLength: parseInt(metrics.total_bookings) > 0 ? parseInt(metrics.total_nights) / parseInt(metrics.total_bookings) : 0,
+          totalRevenue: parseNumericField(metrics.total_revenue),
+          totalBookings: parseIntField(metrics.total_bookings),
+          totalNights: parseIntField(metrics.total_nights),
+          avgNightlyRate: parseNumericField(metrics.avg_nightly_rate),
+          avgStayLength: parseIntField(metrics.total_bookings) > 0 ? parseIntField(metrics.total_nights) / parseIntField(metrics.total_bookings) : 0,
           occupancyRate,
           totalDays
         },
         monthlyData,
+        revenueByPlatform: platformResult.success ? platformResult.data.map(p => ({
+          platform: p.platform,
+          revenue: parseNumericField(p.revenue),
+          bookings: parseIntField(p.bookings)
+        })) : [],
+        guestStats,
         recentBookings: bookingsResult.success ? bookingsResult.data.map(b => ({
           id: b.id,
-          guestId: `${b.guest_name}|${b.guest_email || ''}`,
+          guestId: createGuestId(b.guest_name, b.guest_email),
           guestName: b.guest_name,
           guestEmail: b.guest_email,
           arrival: b.arrival,
           departure: b.departure,
-          totalAmount: parseFloat(b.total_amount),
+          totalAmount: parseNumericField(b.total_amount),
           status: b.status
         })) : []
-      }
-    };
+      });
   } catch (error) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: error instanceof Error ? error.message : 'Failed to fetch property detail'
-      }
-    };
+    return createErrorResponse(
+      error instanceof Error ? error.message : 'Failed to fetch property detail'
+    );
   }
 }
 

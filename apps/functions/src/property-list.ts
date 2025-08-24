@@ -1,6 +1,7 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses';
 
 export async function getProperties(
   request: HttpRequest,
@@ -17,15 +18,9 @@ export async function getProperties(
 
   const { auth } = authCheck.request;
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    };
+  const tenantError = requireTenant(auth.tenantId);
+  if (tenantError) {
+    return tenantError;
   }
 
   try {
@@ -52,21 +47,13 @@ export async function getProperties(
       throw new Error('Failed to fetch properties');
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
-        properties: result.data
-      }
-    };
+    return createSuccessResponse({
+      properties: result.data
+    });
   } catch (error) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: error instanceof Error ? error.message : 'Failed to fetch properties'
-      }
-    };
+    return createErrorResponse(
+      error instanceof Error ? error.message : 'Failed to fetch properties'
+    );
   }
 }
 

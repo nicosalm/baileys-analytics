@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
-import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { requireAuth, handleOptions } from './middleware/auth';
+import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses';
+import { parseIntField } from './utils/dataTransformers';
 
 type Tag = {
   id: string;
@@ -24,15 +26,9 @@ export async function getTags(
 
   const { auth } = authCheck.request;
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    };
+  const tenantValidation = requireTenant(auth.tenantId);
+  if (tenantValidation) {
+    return tenantValidation;
   }
 
   try {
@@ -67,22 +63,12 @@ export async function getTags(
       id: row.id,
       name: row.name,
       color: row.color || undefined,
-      usageCount: parseInt(row.property_count) + parseInt(row.booking_count)
+      usageCount: parseIntField(row.property_count) + parseIntField(row.booking_count)
     }));
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: tags
-    };
+    return createSuccessResponse(tags);
   } catch (error) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: error instanceof Error ? error.message : 'Failed to fetch tags'
-      }
-    };
+    return createErrorResponse(error instanceof Error ? error.message : 'Failed to fetch tags');
   }
 }
 

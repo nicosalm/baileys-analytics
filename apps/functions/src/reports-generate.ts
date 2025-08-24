@@ -1,12 +1,16 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { requireAuth, corsHeaders } from './middleware/auth'
 import { query, transaction } from './services/database'
+import { fetchReportData, ReportModuleData, ReportDateRange, ReportFilters } from './services/reportService'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import * as XLSX from 'xlsx'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
 import { randomUUID } from 'crypto'
 import { formatDateISO } from './utils/dates'
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses'
+import { buildDateRangeFilter, normalizePlatformSQL } from './utils/queryBuilders'
+import { parseNumericField, parseIntField, normalizePlatformName } from './utils/dataTransformers'
 
 interface ReportConfig {
   format: 'pdf' | 'excel'
@@ -26,11 +30,11 @@ interface ReportConfig {
 interface ReportData {
   metadata: {
     generatedAt: string
-    dateRange: { from: string; to: string }
+    dateRange: ReportDateRange
     modules: string[]
-    filters: any
+    filters: ReportFilters
   }
-  modules: Record<string, any>
+  modules: ReportModuleData
 }
 
 // Generate PDF Report
@@ -192,11 +196,11 @@ function addFinancialSection(doc: jsPDF, data: any, yPos: number, config: Report
 
   const tableData = [
     ['Metric', 'Current Period', 'Previous Period', 'Change'],
-    ['Gross Revenue', formatCurrency(data.pl.revenue || 0), formatCurrency(data.pl.previousRevenue || 0), formatPercentage(data.pl.revenueGrowth || 0)],
-    ['Net Revenue', formatCurrency(data.pl.netRevenue || 0), formatCurrency(data.pl.previousNetRevenue || 0), formatPercentage(data.pl.netRevenueGrowth || 0)],
-    ['Total Expenses', formatCurrency(data.pl.expenses || 0), formatCurrency(data.pl.previousExpenses || 0), formatPercentage(data.pl.expenseGrowth || 0)],
-    ['Net Profit', formatCurrency(data.pl.netProfit || 0), formatCurrency(data.pl.previousNetProfit || 0), formatPercentage(data.pl.profitGrowth || 0)],
-    ['Profit Margin', formatPercentage(data.pl.profitMargin || 0), formatPercentage(data.pl.previousProfitMargin || 0), '-']
+    ['Gross Revenue', formatCurrency(parseNumericField(data.pl.revenue)), formatCurrency(parseNumericField(data.pl.previousRevenue)), formatPercentage(parseNumericField(data.pl.revenueGrowth))],
+    ['Net Revenue', formatCurrency(parseNumericField(data.pl.netRevenue)), formatCurrency(parseNumericField(data.pl.previousNetRevenue)), formatPercentage(parseNumericField(data.pl.netRevenueGrowth))],
+    ['Total Expenses', formatCurrency(parseNumericField(data.pl.expenses)), formatCurrency(parseNumericField(data.pl.previousExpenses)), formatPercentage(parseNumericField(data.pl.expenseGrowth))],
+    ['Net Profit', formatCurrency(parseNumericField(data.pl.netProfit)), formatCurrency(parseNumericField(data.pl.previousNetProfit)), formatPercentage(parseNumericField(data.pl.profitGrowth))],
+    ['Profit Margin', formatPercentage(parseNumericField(data.pl.profitMargin)), formatPercentage(parseNumericField(data.pl.previousProfitMargin)), '-']
   ]
 
   autoTable(doc, {
@@ -221,10 +225,10 @@ function addPropertySection(doc: jsPDF, data: any, yPos: number, config: ReportC
   data.forEach((property: any) => {
     tableData.push([
       property.propertyName || 'Unknown',
-      formatCurrency(property.revenue || 0),
-      String(property.bookings || 0),
-      formatPercentage((property.occupancyRate || 0) * 100),
-      formatCurrency(property.avgNightlyRate || 0)
+      formatCurrency(parseNumericField(property.revenue)),
+      String(parseIntField(property.bookings)),
+      formatPercentage(parseNumericField(property.occupancyRate) * 100),
+      formatCurrency(parseNumericField(property.avgNightlyRate))
     ])
   })
 
@@ -241,7 +245,7 @@ function addPropertySection(doc: jsPDF, data: any, yPos: number, config: ReportC
 }
 
 function addOccupancySection(doc: jsPDF, data: any, yPos: number, config: ReportConfig): number {
-  const overall = data.overall || 0
+  const overall = parseNumericField(data.overall)
   const byProperty = data.byProperty || []
 
   doc.setFontSize(10)
@@ -256,9 +260,9 @@ function addOccupancySection(doc: jsPDF, data: any, yPos: number, config: Report
     byProperty.forEach((prop: any) => {
       tableData.push([
         prop.propertyName || 'Unknown',
-        formatPercentage((prop.rate || 0) * 100),
-        String(prop.bookedNights || 0),
-        String(prop.availableNights || 0)
+        formatPercentage(parseNumericField(prop.rate) * 100),
+        String(parseIntField(prop.bookedNights)),
+        String(parseIntField(prop.availableNights))
       ])
     })
 
@@ -284,11 +288,11 @@ function addGuestSection(doc: jsPDF, data: any, yPos: number, config: ReportConf
   // Guest metrics summary
   const summaryData = [
     ['Metric', 'Value'],
-    ['Total Guests', String(metrics.totalGuests || 0)],
-    ['Repeat Guests', String(metrics.repeatGuests || 0)],
-    ['Repeat Rate', formatPercentage(metrics.repeatRate || 0)],
-    ['Average Spend', formatCurrency(metrics.avgSpend || 0)],
-    ['Total Revenue', formatCurrency(metrics.totalRevenue || 0)]
+    ['Total Guests', String(parseIntField(metrics.totalGuests))],
+    ['Repeat Guests', String(parseIntField(metrics.repeatGuests))],
+    ['Repeat Rate', formatPercentage(parseNumericField(metrics.repeatRate))],
+    ['Average Spend', formatCurrency(parseNumericField(metrics.avgSpend))],
+    ['Total Revenue', formatCurrency(parseNumericField(metrics.totalRevenue))]
   ]
 
   autoTable(doc, {
@@ -312,9 +316,9 @@ function addGuestSection(doc: jsPDF, data: any, yPos: number, config: ReportConf
     guests.slice(0, 10).forEach((guest: any) => {
       guestTableData.push([
         guest.name || 'Unknown',
-        String(guest.bookingCount || 0),
-        formatCurrency(guest.totalSpent || 0),
-        formatCurrency(guest.avgNightlyRate || 0)
+        String(parseIntField(guest.bookingCount)),
+        formatCurrency(parseNumericField(guest.totalSpent)),
+        formatCurrency(parseNumericField(guest.avgNightlyRate))
       ])
     })
 
@@ -340,13 +344,13 @@ function addTaxSection(doc: jsPDF, data: any, yPos: number, config: ReportConfig
   // Tax summary - dynamically build from actual tax data
   const summaryData = [
     ['Tax Type', 'Amount'],
-    ['Total Tax Collected', formatCurrency(summary.totalTax || 0)]
+    ['Total Tax Collected', formatCurrency(parseNumericField(summary.totalTax))]
   ]
   
   // Add jurisdiction-specific taxes if present
   if (summary.taxBreakdown && Array.isArray(summary.taxBreakdown)) {
     summary.taxBreakdown.forEach((tax: any) => {
-      summaryData.push([tax.name || tax.type, formatCurrency(tax.amount || 0)])
+      summaryData.push([tax.name || tax.type, formatCurrency(parseNumericField(tax.amount))])
     })
   }
 
@@ -403,11 +407,11 @@ function formatFinancialDataForExcel(data: any, config: ReportConfig): any[][] {
   rows.push(['Metric', 'Current Period', 'Previous Period', 'Change'])
   
   if (data.pl) {
-    rows.push(['Gross Revenue', data.pl.revenue || 0, data.pl.previousRevenue || 0, data.pl.revenueGrowth || 0])
-    rows.push(['Net Revenue', data.pl.netRevenue || 0, data.pl.previousNetRevenue || 0, data.pl.netRevenueGrowth || 0])
-    rows.push(['Total Expenses', data.pl.expenses || 0, data.pl.previousExpenses || 0, data.pl.expenseGrowth || 0])
-    rows.push(['Net Profit', data.pl.netProfit || 0, data.pl.previousNetProfit || 0, data.pl.profitGrowth || 0])
-    rows.push(['Profit Margin', data.pl.profitMargin || 0, data.pl.previousProfitMargin || 0, ''])
+    rows.push(['Gross Revenue', parseNumericField(data.pl.revenue), parseNumericField(data.pl.previousRevenue), parseNumericField(data.pl.revenueGrowth)])
+    rows.push(['Net Revenue', parseNumericField(data.pl.netRevenue), parseNumericField(data.pl.previousNetRevenue), parseNumericField(data.pl.netRevenueGrowth)])
+    rows.push(['Total Expenses', parseNumericField(data.pl.expenses), parseNumericField(data.pl.previousExpenses), parseNumericField(data.pl.expenseGrowth)])
+    rows.push(['Net Profit', parseNumericField(data.pl.netProfit), parseNumericField(data.pl.previousNetProfit), parseNumericField(data.pl.profitGrowth)])
+    rows.push(['Profit Margin', parseNumericField(data.pl.profitMargin), parseNumericField(data.pl.previousProfitMargin), ''])
   }
 
   if (data.breakdown && config.includeRawData) {
@@ -434,12 +438,12 @@ function formatPropertyDataForExcel(data: any, config: ReportConfig): any[][] {
     data.forEach((property: any) => {
       rows.push([
         property.propertyName || 'Unknown',
-        property.revenue || 0,
-        property.bookings || 0,
-        (property.occupancyRate || 0) * 100,
-        property.avgNightlyRate || 0,
-        property.bookedNights || 0,
-        property.availableNights || 0
+        parseNumericField(property.revenue),
+        parseIntField(property.bookings),
+        parseNumericField(property.occupancyRate) * 100,
+        parseNumericField(property.avgNightlyRate),
+        parseIntField(property.bookedNights),
+        parseIntField(property.availableNights)
       ])
     })
   }
@@ -452,7 +456,7 @@ function formatOccupancyDataForExcel(data: any, config: ReportConfig): any[][] {
   
   rows.push(['Occupancy Analysis'])
   rows.push([])
-  rows.push(['Overall Occupancy', (data.overall || 0) * 100])
+  rows.push(['Overall Occupancy', parseNumericField(data.overall) * 100])
   rows.push([])
   
   if (data.byProperty && data.byProperty.length > 0) {
@@ -460,9 +464,9 @@ function formatOccupancyDataForExcel(data: any, config: ReportConfig): any[][] {
     data.byProperty.forEach((prop: any) => {
       rows.push([
         prop.propertyName || 'Unknown',
-        (prop.rate || 0) * 100,
-        prop.bookedNights || 0,
-        prop.availableNights || 0
+        parseNumericField(prop.rate) * 100,
+        parseIntField(prop.bookedNights),
+        parseIntField(prop.availableNights)
       ])
     })
   }
@@ -474,9 +478,9 @@ function formatOccupancyDataForExcel(data: any, config: ReportConfig): any[][] {
     data.byMonth.forEach((month: any) => {
       rows.push([
         month.month,
-        (month.rate || 0) * 100,
-        month.bookedNights || 0,
-        month.availableNights || 0
+        parseNumericField(month.rate) * 100,
+        parseIntField(month.bookedNights),
+        parseIntField(month.availableNights)
       ])
     })
   }
@@ -492,12 +496,12 @@ function formatGuestDataForExcel(data: any, config: ReportConfig): any[][] {
   rows.push(['Guest Analytics'])
   rows.push([])
   rows.push(['Metric', 'Value'])
-  rows.push(['Total Guests', metrics.totalGuests || 0])
-  rows.push(['Repeat Guests', metrics.repeatGuests || 0])
-  rows.push(['Repeat Rate', (metrics.repeatRate || 0)])
-  rows.push(['Average Stay Length', metrics.avgStayLength || 0])
-  rows.push(['Average Spend', metrics.avgSpend || 0])
-  rows.push(['Total Revenue', metrics.totalRevenue || 0])
+  rows.push(['Total Guests', parseIntField(metrics.totalGuests)])
+  rows.push(['Repeat Guests', parseIntField(metrics.repeatGuests)])
+  rows.push(['Repeat Rate', parseNumericField(metrics.repeatRate)])
+  rows.push(['Average Stay Length', parseNumericField(metrics.avgStayLength)])
+  rows.push(['Average Spend', parseNumericField(metrics.avgSpend)])
+  rows.push(['Total Revenue', parseNumericField(metrics.totalRevenue)])
   
   if (config.includeRawData && guests.length > 0) {
     rows.push([])
@@ -510,9 +514,9 @@ function formatGuestDataForExcel(data: any, config: ReportConfig): any[][] {
         guest.email || '',
         guest.firstVisit || '',
         guest.lastVisit || '',
-        guest.bookingCount || 0,
-        guest.totalSpent || 0,
-        guest.avgNightlyRate || 0
+        parseIntField(guest.bookingCount),
+        parseNumericField(guest.totalSpent),
+        parseNumericField(guest.avgNightlyRate)
       ])
     })
   }
@@ -528,12 +532,12 @@ function formatTaxDataForExcel(data: any, config: ReportConfig): any[][] {
   rows.push([])
   rows.push(['Tax Summary'])
   rows.push(['Type', 'Amount'])
-  rows.push(['Total Tax Collected', summary.totalTax || 0])
+  rows.push(['Total Tax Collected', parseNumericField(summary.totalTax)])
   
   // Add dynamic tax breakdown if available
   if (summary.taxBreakdown && Array.isArray(summary.taxBreakdown)) {
     summary.taxBreakdown.forEach((tax: any) => {
-      rows.push([tax.name || tax.type || 'Tax', tax.amount || 0])
+      rows.push([tax.name || tax.type || 'Tax', parseNumericField(tax.amount)])
     })
   }
   
@@ -550,10 +554,10 @@ function formatTaxDataForExcel(data: any, config: ReportConfig): any[][] {
     rows.push(taxHeaders)
     
     data.byProperty.forEach((prop: any) => {
-      const propRow = [prop.propertyName || 'Unknown', prop.totalTax || 0]
+      const propRow = [prop.propertyName || 'Unknown', parseNumericField(prop.totalTax)]
       if (prop.taxBreakdown) {
         prop.taxBreakdown.forEach((tax: any) => {
-          propRow.push(tax.amount || 0)
+          propRow.push(parseNumericField(tax.amount))
         })
       }
       rows.push(propRow)
@@ -597,17 +601,17 @@ function generateExecutiveSummary(data: ReportData): string {
       case 'pl':
       case 'revenue':
         if (moduleData.pl) {
-          summary += `Total revenue for the period was ${formatCurrency(moduleData.pl.revenue || 0)} with a net profit of ${formatCurrency(moduleData.pl.netProfit || 0)}. `
+          summary += `Total revenue for the period was ${formatCurrency(parseNumericField(moduleData.pl.revenue))} with a net profit of ${formatCurrency(parseNumericField(moduleData.pl.netProfit))}. `
         }
         break
       case 'occupancy':
         if (moduleData.overall) {
-          summary += `Overall occupancy rate was ${formatPercentage(moduleData.overall * 100)}. `
+          summary += `Overall occupancy rate was ${formatPercentage(parseNumericField(moduleData.overall) * 100)}. `
         }
         break
       case 'guests':
         if (moduleData.metrics) {
-          summary += `You hosted ${moduleData.metrics.totalGuests || 0} guests with a repeat rate of ${formatPercentage(moduleData.metrics.repeatRate || 0)}. `
+          summary += `You hosted ${parseIntField(moduleData.metrics.totalGuests)} guests with a repeat rate of ${formatPercentage(parseNumericField(moduleData.metrics.repeatRate))}. `
         }
         break
     }
@@ -646,21 +650,58 @@ export async function reportsGenerate(
     // Auth check
     const authResult = await requireAuth(request)
     if (!authResult.authenticated) {
-      return authResult.response
+      return createErrorResponse('Unauthorized', 401)
     }
     const { auth } = authResult.request
 
-    const body = await request.json() as {
-      templateId: string
-      data: ReportData
-      config: ReportConfig
+    // Tenant validation
+    const tenantError = requireTenant(auth.tenantId)
+    if (tenantError) {
+      return tenantError
     }
 
-    if (!body.data || !body.config) {
-      return {
-        status: 400,
-        body: JSON.stringify({ error: 'Missing required data or config' })
+    const body = await request.json() as {
+      templateId: string
+      data?: ReportData
+      config: ReportConfig
+      generateData?: boolean
+    }
+
+    if (!body.config) {
+      return createErrorResponse('Missing required config', 400)
+    }
+
+    let reportData: ReportData
+
+    // If data is provided, use it. Otherwise, fetch the data using the service
+    if (body.data) {
+      reportData = body.data
+    } else if (body.generateData !== false) {
+      // Validate tenant ID before proceeding
+      const tenantValidation = requireTenant(auth.tenantId);
+      if (tenantValidation) {
+        return tenantValidation;
       }
+
+      // Generate data using the report service
+      const moduleData = await fetchReportData(
+        body.config.modules,
+        body.config.dateRange,
+        auth.tenantId!, // Now we know it's defined
+        body.config.filters
+      )
+
+      reportData = {
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          dateRange: body.config.dateRange,
+          modules: body.config.modules,
+          filters: body.config.filters
+        },
+        modules: moduleData
+      }
+    } else {
+      return createErrorResponse('No data provided and data generation disabled', 400)
     }
 
     const reportName = `Report-${formatDateISO(new Date())}`
@@ -668,14 +709,11 @@ export async function reportsGenerate(
 
     // Generate report based on format
     if (body.config.format === 'pdf') {
-      reportBuffer = await generatePDF(body.data, body.config, reportName)
+      reportBuffer = await generatePDF(reportData, body.config, reportName)
     } else if (body.config.format === 'excel') {
-      reportBuffer = await generateExcel(body.data, body.config, reportName)
+      reportBuffer = await generateExcel(reportData, body.config, reportName)
     } else {
-      return {
-        status: 400,
-        body: JSON.stringify({ error: 'Unsupported format. Use PDF or Excel.' })
-      }
+      return createErrorResponse('Unsupported format. Use PDF or Excel.', 400)
     }
 
     // Store report in database
@@ -690,7 +728,7 @@ export async function reportsGenerate(
       RETURNING id`,
       [
         reportId,
-        auth.tenantId || '',
+        auth.tenantId,
         body.templateId || null,
         reportName,
         body.config.format,
@@ -701,28 +739,22 @@ export async function reportsGenerate(
     )
 
     if (!insertResult.success) {
-      throw new Error('Failed to store report: ' + insertResult.error)
+      throw new Error('Failed to store report')
     }
 
-    return {
-      status: 200,
-      body: JSON.stringify({
-        success: true,
-        data: {
-          reportId,
-          downloadUrl: `/api/reports/download/${reportId}`
-        }
-      })
-    }
+    return createSuccessResponse({
+      success: true,
+      data: {
+        reportId,
+        downloadUrl: `/api/reports/download/${reportId}`
+      }
+    })
   } catch (error) {
     context.error('Error generating report:', error)
-    return {
-      status: 500,
-      body: JSON.stringify({ 
-        error: 'Failed to generate report',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      })
-    }
+    return createErrorResponse(
+      'Failed to generate report',
+      500
+    )
   }
 }
 

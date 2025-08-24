@@ -3,6 +3,9 @@ import { query } from './services/database'
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth'
 import { format, startOfMonth, endOfMonth, getDaysInMonth, differenceInDays, parseISO } from 'date-fns'
 import { z } from 'zod'
+import { createSuccessResponse, createErrorResponse, createNotFoundResponse, createValidationErrorResponse, requireTenant } from './utils/httpResponses'
+import { buildDateRangeFilter } from './utils/queryBuilders'
+import { parseNumericField, parseIntField } from './utils/dataTransformers'
 
 // Flexible tax report schema
 const TaxReportRequestSchema = z.object({
@@ -75,6 +78,11 @@ export async function generateTaxReport(
   }
 
   const { auth } = authCheck.request
+  
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
+  }
 
   try {
     // Parse and validate request
@@ -100,11 +108,7 @@ export async function generateTaxReport(
     )
 
     if (!propertyResult.success || propertyResult.data.length === 0) {
-      return {
-        status: 404,
-        headers: corsHeaders(),
-        jsonBody: { error: 'Property not found' }
-      }
+      return createNotFoundResponse('Property not found')
     }
 
     const property = propertyResult.data[0]
@@ -119,14 +123,7 @@ export async function generateTaxReport(
     )
 
     if (!taxConfigResult.success || taxConfigResult.data.length === 0) {
-      return {
-        status: 404,
-        headers: corsHeaders(),
-        jsonBody: { 
-          error: 'No tax configuration found',
-          message: 'Please configure tax settings for this property first'
-        }
-      }
+      return createNotFoundResponse('No tax configuration found - Please configure tax settings for this property first')
     }
 
     const taxConfig = taxConfigResult.data[0]
@@ -150,8 +147,7 @@ export async function generateTaxReport(
        LEFT JOIN booking_charges bc ON b.id = bc.booking_id
        WHERE b.property_id = $1 
          AND b.tenant_id = $2
-         AND b.arrival >= $3 
-         AND b.arrival <= $4
+         ${buildDateRangeFilter('arrival', 3)}
          AND b.status != 'canceled'
        GROUP BY b.property_id`,
       [propertyId, auth.tenantId, startDate, endDate]
@@ -198,9 +194,9 @@ export async function generateTaxReport(
 
     // Calculate revenue totals
     const revenue = {
-      bookingRevenue: parseFloat(bookingData.booking_revenue),
-      cleaningFees: parseFloat(bookingData.cleaning_fees),
-      otherFees: parseFloat(bookingData.other_fees),
+      bookingRevenue: parseNumericField(bookingData.booking_revenue),
+      cleaningFees: parseNumericField(bookingData.cleaning_fees),
+      otherFees: parseNumericField(bookingData.other_fees),
       platformFees: {
         guest: 0,
         host: 0
@@ -214,9 +210,9 @@ export async function generateTaxReport(
 
     if (platformResult.success) {
       for (const platform of platformResult.data) {
-        const guestFees = parseFloat(platform.guest_fees)
-        const hostFees = parseFloat(platform.host_fees)
-        const platformRemitted = parseFloat(platform.platform_remitted)
+        const guestFees = parseNumericField(platform.guest_fees)
+        const hostFees = parseNumericField(platform.host_fees)
+        const platformRemitted = parseNumericField(platform.platform_remitted)
         
         revenue.platformFees.guest += guestFees
         revenue.platformFees.host += hostFees
@@ -229,7 +225,7 @@ export async function generateTaxReport(
 
         platformBreakdown.push({
           name: platform.platform,
-          bookingCount: parseInt(platform.booking_count),
+          bookingCount: parseIntField(platform.booking_count),
           revenue: 0, // Would need to join with bookings for platform-specific revenue
           guestFees,
           hostFees,
@@ -268,9 +264,9 @@ export async function generateTaxReport(
         startDate,
         endDate,
         daysInMonth,
-        daysOccupied: parseInt(bookingData.days_occupied),
+        daysOccupied: parseIntField(bookingData.days_occupied),
         occupancyRate: daysInMonth > 0 
-          ? Math.round((parseInt(bookingData.days_occupied) / daysInMonth) * 100)
+          ? Math.round((parseIntField(bookingData.days_occupied) / daysInMonth) * 100)
           : 0
       },
       revenue,
@@ -284,38 +280,23 @@ export async function generateTaxReport(
       platforms: includeDetails ? platformBreakdown : []
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: { 
-        status: 'success', 
-        data: report,
-        metadata: {
-          generatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'Z'"),
-          reportType: 'monthly_tax_report',
-          jurisdiction: 'multi_jurisdiction',
-          configSource: taxConfig.auto_detected ? 'auto_detected' : 'manual'
-        }
+    return createSuccessResponse({ 
+      status: 'success', 
+      data: report,
+      metadata: {
+        generatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss'Z'"),
+        reportType: 'monthly_tax_report',
+        jurisdiction: 'multi_jurisdiction',
+        configSource: taxConfig.auto_detected ? 'auto_detected' : 'manual'
       }
-    }
+    })
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { 
-          error: 'Invalid request parameters',
-          details: error.issues
-        }
-      }
+      return createValidationErrorResponse(error)
     }
 
     context.error('Error generating tax report:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Failed to generate tax report' }
-    }
+    return createErrorResponse('Failed to generate tax report')
   }
 }
 
@@ -334,6 +315,12 @@ export async function getTaxReportSummary(
   }
 
   const { auth } = authCheck.request
+  
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
+  }
+  
   const year = request.query.get('year') || format(new Date(), 'yyyy')
 
   try {
@@ -390,12 +377,12 @@ export async function getTaxReportSummary(
       summaryByProperty.push({
         propertyId: property.id,
         propertyName: property.name,
-        year: parseInt(year),
-        totalBookings: parseInt(yearlyData.total_bookings),
-        totalRevenue: parseFloat(yearlyData.total_revenue),
-        totalPlatformFees: parseFloat(feesData.total_fees),
-        totalPlatformRemitted: parseFloat(feesData.total_remitted),
-        monthsActive: parseInt(yearlyData.months_active)
+        year: parseIntField(year),
+        totalBookings: parseIntField(yearlyData.total_bookings),
+        totalRevenue: parseNumericField(yearlyData.total_revenue),
+        totalPlatformFees: parseNumericField(feesData.total_fees),
+        totalPlatformRemitted: parseNumericField(feesData.total_remitted),
+        monthsActive: parseIntField(yearlyData.months_active)
       })
     }
 
@@ -414,25 +401,17 @@ export async function getTaxReportSummary(
       platformRemitted: 0
     })
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
-        status: 'success',
-        data: {
-          year: parseInt(year),
-          totals,
-          properties: summaryByProperty
-        }
+    return createSuccessResponse({
+      status: 'success',
+      data: {
+        year: parseIntField(year),
+        totals,
+        properties: summaryByProperty
       }
-    }
+    })
   } catch (error) {
     context.error('Error generating tax report summary:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Failed to generate summary' }
-    }
+    return createErrorResponse('Failed to generate summary')
   }
 }
 

@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { query } from './services/database'
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth'
+import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses'
+import { parseNumericField, parseIntField } from './utils/dataTransformers'
 
 interface SimplifiedJurisdiction {
   name: string
@@ -25,14 +27,16 @@ export async function autoDetectJurisdictions(
   }
 
   const { auth } = authCheck.request
+  
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
+  }
+  
   const propertyId = request.query.get('propertyId')
 
   if (!propertyId) {
-    return {
-      status: 400,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'propertyId is required' }
-    }
+    return createErrorResponse('propertyId is required', 400)
   }
 
   try {
@@ -54,17 +58,13 @@ export async function autoDetectJurisdictions(
     )
 
     if (!taxChargesResult.success || taxChargesResult.data.length === 0) {
-      return {
-        status: 200,
-        headers: corsHeaders(),
-        jsonBody: {
-          status: 'success',
-          data: {
-            jurisdictions: [],
-            message: 'No tax data found. Import more bookings to enable auto-detection.'
-          }
+      return createSuccessResponse({
+        status: 'success',
+        data: {
+          jurisdictions: [],
+          message: 'No tax data found. Import more bookings to enable auto-detection.'
         }
-      }
+      })
     }
 
     // Group similar tax names and detect patterns
@@ -73,7 +73,7 @@ export async function autoDetectJurisdictions(
     for (const charge of taxChargesResult.data) {
       const taxName = charge.tax_name
       // Parse the rate, ensuring it's treated as a percentage value
-      const avgRate = Number(charge.avg_rate)
+      const avgRate = parseNumericField(charge.avg_rate)
       
       let simplifiedName = taxName.trim()
 
@@ -81,8 +81,8 @@ export async function autoDetectJurisdictions(
       const existing = jurisdictionMap.get(simplifiedName)
       if (existing && existing.occurrence_count) {
         // Update with weighted average rate
-        const totalOccurrences = existing.occurrence_count + charge.occurrence_count
-        existing.rate = (existing.rate * existing.occurrence_count + avgRate * charge.occurrence_count) / totalOccurrences
+        const totalOccurrences = existing.occurrence_count + parseIntField(charge.occurrence_count)
+        existing.rate = (existing.rate * existing.occurrence_count + avgRate * parseIntField(charge.occurrence_count)) / totalOccurrences
         existing.occurrence_count = totalOccurrences
       } else {
         jurisdictionMap.set(simplifiedName, {
@@ -90,7 +90,7 @@ export async function autoDetectJurisdictions(
           rate: avgRate, // Keep the actual rate without rounding yet
           ownerrezName: taxName,
           pattern: taxName,
-          occurrence_count: charge.occurrence_count
+          occurrence_count: parseIntField(charge.occurrence_count)
         })
       }
     }
@@ -112,30 +112,22 @@ export async function autoDetectJurisdictions(
     // Calculate total effective rate
     const totalRate = jurisdictions.reduce((sum, j) => sum + j.rate, 0)
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
-        status: 'success',
-        data: {
-          jurisdictions,
-          summary: {
-            totalRate,
-            jurisdictionCount: jurisdictions.length,
-            hasExistingConfig,
-            detectionConfidence: jurisdictions.length > 0 ? 'high' : 'low'
-          },
-          recommendations: generateRecommendations(jurisdictions, totalRate)
-        }
+    return createSuccessResponse({
+      status: 'success',
+      data: {
+        jurisdictions,
+        summary: {
+          totalRate,
+          jurisdictionCount: jurisdictions.length,
+          hasExistingConfig,
+          detectionConfidence: jurisdictions.length > 0 ? 'high' : 'low'
+        },
+        recommendations: generateRecommendations(jurisdictions, totalRate)
       }
-    }
+    })
   } catch (error) {
     context.error('Error auto-detecting jurisdictions:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Failed to auto-detect jurisdictions' }
-    }
+    return createErrorResponse('Failed to auto-detect jurisdictions')
   }
 }
 
@@ -155,16 +147,17 @@ export async function autoApplyJurisdictions(
 
   const { auth } = authCheck.request
   
+  const tenantCheck = requireTenant(auth.tenantId)
+  if (tenantCheck) {
+    return tenantCheck
+  }
+  
   try {
     const body = await request.json() as { propertyId: string; jurisdictions: SimplifiedJurisdiction[] }
     const { propertyId, jurisdictions } = body
 
     if (!propertyId || !jurisdictions) {
-      return {
-        status: 400,
-        headers: corsHeaders(),
-        jsonBody: { status: 'error', error: 'propertyId and jurisdictions are required' }
-      }
+      return createErrorResponse('propertyId and jurisdictions are required', 400)
     }
 
     // Deactivate existing configs
@@ -196,24 +189,16 @@ export async function autoApplyJurisdictions(
       throw new Error('Failed to save configuration')
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
-        status: 'success',
-        data: {
-          configId: result.data[0].id,
-          message: 'Tax jurisdictions auto-applied successfully'
-        }
+    return createSuccessResponse({
+      status: 'success',
+      data: {
+        configId: result.data[0].id,
+        message: 'Tax jurisdictions auto-applied successfully'
       }
-    }
+    })
   } catch (error) {
     context.error('Error applying jurisdictions:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Failed to apply jurisdictions' }
-    }
+    return createErrorResponse('Failed to apply jurisdictions')
   }
 }
 

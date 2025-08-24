@@ -5,6 +5,7 @@ import { corsHeaders, handleOptions } from './middleware/auth';
 import { requireAuthWithValidation } from './middleware/validation';
 import { getTenantToken, buildAuthHeaders } from './services/syncService';
 import { query } from './services/database';
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses';
 
 type GuestInfo = {
   id: number
@@ -34,23 +35,16 @@ export async function syncGuestDetailsHandler(
 
   const { auth } = authCheck.request
   
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: { error: 'OwnerRez connection required', code: 'NO_OWNERREZ_CONNECTION' }
-    }
+  const tenantValidation = requireTenant(auth.tenantId);
+  if (tenantValidation) {
+    return tenantValidation;
   }
 
   try {
     // Get OwnerRez token
-    const tokenResult = await getTenantToken(auth.tenantId)
+    const tokenResult = await getTenantToken(auth.tenantId!)
     if (!tokenResult.success) {
-      return {
-        status: 403,
-        headers: corsHeaders(),
-        jsonBody: { error: tokenResult.error }
-      }
+      return createErrorResponse(tokenResult.error, 403);
     }
 
     const guestsResult = await query<{ guest_name: string }>(
@@ -61,19 +55,15 @@ export async function syncGuestDetailsHandler(
          AND (guest_phone IS NULL OR guest_email IS NULL)
        ORDER BY guest_name
        LIMIT 100`,
-      [auth.tenantId]
+      [auth.tenantId!]
     )
 
     if (!guestsResult.success || guestsResult.data.length === 0) {
-      return {
-        status: 200,
-        headers: corsHeaders(),
-        jsonBody: { 
-          status: 'success', 
-          message: 'No guests need updating',
-          guestsUpdated: 0 
-        }
-      }
+      return createSuccessResponse({ 
+        status: 'success', 
+        message: 'No guests need updating',
+        guestsUpdated: 0 
+      });
     }
 
     context.log(`Found ${guestsResult.data.length} unique guests needing contact info`)
@@ -124,7 +114,7 @@ export async function syncGuestDetailsHandler(
                  WHERE tenant_id = $1 
                    AND guest_name = $4
                    AND (guest_phone IS NULL OR guest_email IS NULL)`,
-                [auth.tenantId, email, phone, guest_name]
+                [auth.tenantId!, email, phone, guest_name]
               )
               
               if (updateResult.success) {
@@ -148,23 +138,15 @@ export async function syncGuestDetailsHandler(
 
     context.log(`Processed ${totalProcessed} guests, updated ${totalUpdated}`)
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
-        status: 'success',
-        guestsUpdated: totalUpdated,
-        guestsProcessed: totalProcessed,
-        message: `Updated contact info for ${totalUpdated} out of ${totalProcessed} guests`
-      }
-    }
+    return createSuccessResponse({
+      status: 'success',
+      guestsUpdated: totalUpdated,
+      guestsProcessed: totalProcessed,
+      message: `Updated contact info for ${totalUpdated} out of ${totalProcessed} guests`
+    });
   } catch (error) {
     context.error('Guest sync failed:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Guest sync failed' }
-    }
+    return createErrorResponse('Guest sync failed');
   }
 }
 

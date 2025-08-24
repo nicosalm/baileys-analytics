@@ -1,6 +1,8 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import { query } from './services/database';
 import { requireAuth, corsHeaders, handleOptions } from './middleware/auth';
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses';
+import { parseIntField } from './utils/dataTransformers';
 
 type SyncStatus = {
   lastPropertySync: string | null
@@ -35,15 +37,9 @@ export async function syncStatus(
 
   const { auth } = authCheck.request;
 
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: 'OwnerRez connection required',
-        code: 'NO_OWNERREZ_CONNECTION'
-      }
-    };
+  const tenantValidation = requireTenant(auth.tenantId);
+  if (tenantValidation) {
+    return tenantValidation;
   }
 
   try {
@@ -59,7 +55,7 @@ export async function syncStatus(
         (SELECT MAX(updated_at) FROM bookings WHERE tenant_id = $1) as last_booking_sync,
         (SELECT COUNT(*) FROM properties WHERE tenant_id = $1) as property_count,
         (SELECT COUNT(*) FROM bookings WHERE tenant_id = $1 AND status != 'canceled') as booking_count`,
-      [auth.tenantId]
+      [auth.tenantId!]
     );
 
     if (!result.success || result.data.length === 0) {
@@ -88,7 +84,7 @@ export async function syncStatus(
        WHERE tenant_id = $1 AND sync_type = 'initial'
        ORDER BY started_at DESC
        LIMIT 1`,
-      [auth.tenantId]
+      [auth.tenantId!]
     );
 
     let initialSyncStatus: SyncStatus['initialSync'] = {
@@ -103,17 +99,17 @@ export async function syncStatus(
 
     if (syncProgressResult.success && syncProgressResult.data.length > 0) {
       const progress = syncProgressResult.data[0];
-      const totalItems = progress.total_items ? parseInt(progress.total_items) : null;
-      const processedItems = progress.processed_items ? parseInt(progress.processed_items) : null;
+      const totalItems = parseIntField(progress.total_items);
+      const processedItems = parseIntField(progress.processed_items);
 
       initialSyncStatus = {
         status: progress.status as any,
         startedAt: progress.started_at,
         completedAt: progress.completed_at,
-        totalItems,
-        processedItems,
+        totalItems: totalItems || null,
+        processedItems: processedItems || null,
         errorMessage: progress.error_message,
-        progressPercentage: totalItems && processedItems
+        progressPercentage: totalItems && processedItems && totalItems > 0
           ? Math.round((processedItems / totalItems) * 100)
           : 0
       };
@@ -129,8 +125,8 @@ export async function syncStatus(
     }
 
     // Determine if data is ready for use
-    const propertyCount = parseInt(status.property_count);
-    const bookingCount = parseInt(status.booking_count);
+    const propertyCount = parseIntField(status.property_count);
+    const bookingCount = parseIntField(status.booking_count);
     const hasData = propertyCount > 0 || bookingCount > 0;
     const isInitialSyncComplete = !initialSyncStatus.status ||
                                   initialSyncStatus.status === 'completed';
@@ -146,19 +142,11 @@ export async function syncStatus(
       isDataReady
     };
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: response
-    };
+    return createSuccessResponse(response);
   } catch (error) {
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: {
-        error: error instanceof Error ? error.message : 'Failed to get sync status'
-      }
-    };
+    return createErrorResponse(
+      error instanceof Error ? error.message : 'Failed to get sync status'
+    );
   }
 }
 

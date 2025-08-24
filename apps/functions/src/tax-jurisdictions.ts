@@ -6,6 +6,8 @@ import {
   type JurisdictionType,
   taxJurisdictionsResponseSchema 
 } from '@baileys/shared-types'
+import { createSuccessResponse, createErrorResponse, createForbiddenResponse, requireTenant } from './utils/httpResponses'
+import { parseNumericField, parseIntField } from './utils/dataTransformers'
 
 /**
  * Analyzes OwnerRez tax charge descriptions to detect jurisdictions
@@ -27,12 +29,9 @@ export async function getTaxJurisdictions(
   const { auth } = authCheck.request
   const tenantId = auth.tenantId
 
-  if (!tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: { error: 'No tenant associated with user' }
-    }
+  const tenantCheck = requireTenant(tenantId)
+  if (tenantCheck) {
+    return tenantCheck
   }
 
   try {
@@ -85,9 +84,9 @@ export async function getTaxJurisdictions(
     for (const row of taxDataResult.data) {
       const propertyId = row.property_id
       const description = row.description
-      const occurrenceCount = parseInt(row.occurrence_count)
-      const totalAmount = parseFloat(row.total_amount)
-      const avgBookingAmount = parseFloat(row.avg_booking_amount)
+      const occurrenceCount = parseIntField(row.occurrence_count)
+      const totalAmount = parseNumericField(row.total_amount)
+      const avgBookingAmount = parseNumericField(row.avg_booking_amount)
 
       if (!propertiesMap.has(propertyId)) {
         propertiesMap.set(propertyId, {
@@ -137,26 +136,18 @@ export async function getTaxJurisdictions(
       property.jurisdictions.sort((a, b) => b.occurrenceCount - a.occurrenceCount)
     }
 
-    return {
-      status: 200,
-      headers: corsHeaders(),
-      jsonBody: {
-        properties: Array.from(propertiesMap.values()),
-        summary: {
-          totalProperties: propertiesMap.size,
-          averageJurisdictionsPerProperty: 
-            Array.from(propertiesMap.values()).reduce((sum, p) => sum + p.jurisdictions.length, 0) / 
-            Math.max(propertiesMap.size, 1)
-        }
+    return createSuccessResponse({
+      properties: Array.from(propertiesMap.values()),
+      summary: {
+        totalProperties: propertiesMap.size,
+        averageJurisdictionsPerProperty: 
+          Array.from(propertiesMap.values()).reduce((sum, p) => sum + p.jurisdictions.length, 0) / 
+          Math.max(propertiesMap.size, 1)
       }
-    }
+    })
   } catch (error) {
     context.error('Error fetching tax jurisdictions:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { error: 'Failed to fetch tax jurisdictions' }
-    }
+    return createErrorResponse('Failed to fetch tax jurisdictions')
   }
 }
 

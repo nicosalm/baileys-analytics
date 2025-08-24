@@ -4,6 +4,7 @@ import { requireAuthWithValidation } from './middleware/validation';
 import { getTenantToken, getPropertyMapping, syncBookings } from './services/syncService';
 import { syncRequestSchema } from '@baileys/shared-types';
 import { getDefaultDateRange } from './utils/dates';
+import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses';
 
 export async function syncBookingsHandler(
   request: HttpRequest,
@@ -22,22 +23,18 @@ export async function syncBookingsHandler(
 
   const { auth, validated } = authCheck.request
   
-  if (!auth.tenantId) {
-    return {
-      status: 403,
-      headers: corsHeaders(),
-      jsonBody: { error: 'OwnerRez connection required', code: 'NO_OWNERREZ_CONNECTION' }
-    }
+  const tenantValidation = requireTenant(auth.tenantId);
+  if (tenantValidation) {
+    return tenantValidation;
   }
+  
+  // Type assertion after validation
+  const tenantId = auth.tenantId!
 
   try {
-    const tokenResult = await getTenantToken(auth.tenantId)
+    const tokenResult = await getTenantToken(tenantId)
     if (!tokenResult.success) {
-      return {
-        status: 403,
-        headers: corsHeaders(),
-        jsonBody: { error: tokenResult.error }
-      }
+      return createErrorResponse(tokenResult.error, 403);
     }
 
     // Use validated query params with date-fns helper
@@ -47,29 +44,23 @@ export async function syncBookingsHandler(
       to: validated?.query?.to || defaultRange.to
     }
 
-    context.log(`Syncing bookings for tenant ${auth.tenantId}`, dateRange)
+    context.log(`Syncing bookings for tenant ${tenantId}`, dateRange)
 
-    const result = await syncBookings(tokenResult.data, auth.tenantId, dateRange, context)
+    const result = await syncBookings(tokenResult.data, tenantId, dateRange, context)
 
-    return {
-      status: result.status === 'error' ? 500 : 200,
-      headers: corsHeaders(),
-      jsonBody: result.status === 'success'
-        ? {
-            status: 'success',
-            bookingsSynced: result.synced!,
-            chargesSynced: result.charges!,
-            totalBookingsFetched: result.totalFetched!
-          }
-        : { status: 'error', error: result.error }
+    if (result.status === 'error') {
+      return createErrorResponse(result.error || 'Sync failed');
     }
+
+    return createSuccessResponse({
+      status: 'success',
+      bookingsSynced: result.synced!,
+      chargesSynced: result.charges!,
+      totalBookingsFetched: result.totalFetched!
+    });
   } catch (error) {
     context.error('Sync failed:', error)
-    return {
-      status: 500,
-      headers: corsHeaders(),
-      jsonBody: { status: 'error', error: 'Sync failed' }
-    }
+    return createErrorResponse('Sync failed');
   }
 }
 
