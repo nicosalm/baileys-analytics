@@ -174,14 +174,23 @@ export function useGuestDetail(guestId?: string) {
   )
 }
 
-export function useMonthDetail(month?: string, year?: string, tagIds?: string[]) {
+export function useMonthDetail(monthOrFrom?: string, yearOrTo?: string, tagIds?: string[], isDateRange: boolean = false) {
   const params = new URLSearchParams()
-  if (year) params.append('year', year)
-  if (month) params.append('month', month)
+  
+  if (isDateRange) {
+    // When called with date range (for daily/weekly views)
+    if (monthOrFrom) params.append('from', monthOrFrom)
+    if (yearOrTo) params.append('to', yearOrTo)
+  } else {
+    // Legacy month/year format
+    if (yearOrTo) params.append('year', yearOrTo)
+    if (monthOrFrom) params.append('month', monthOrFrom)
+  }
+  
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
   
   return useSWR<any>(
-    month && year ? [`/month-detail`, year, month, tagIds] : null,
+    monthOrFrom && yearOrTo ? [`/month-detail`, yearOrTo, monthOrFrom, tagIds, isDateRange] : null,
     async () => {
       const url = `/month-detail?${params}`
       const result = await api.request(url)

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { Calendar, ChevronDown, Check, GitCompare, AlertCircle } from 'lucide-react'
+import { Calendar, ChevronDown, Check, GitCompare } from 'lucide-react'
 import { 
   cn, 
   formatDateISO, 
@@ -130,8 +130,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   className
 }) => {
   const [isOpen, setIsOpen] = useState(false)
-  const [comparisonType, setComparisonType] = useState<ComparisonType>('lastPeriod')
-  const [comparisonError, setComparisonError] = useState<string | undefined>()
+  const [comparisonType, setComparisonType] = useState<ComparisonType>('none')
   const [comparisonDropdownOpen, setComparisonDropdownOpen] = useState(false)
   const [customRangeOpen, setCustomRangeOpen] = useState(false)
   const [tempCustomRange, setTempCustomRange] = useState<DateRange>(value)
@@ -156,17 +155,29 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           const activeSeason = activeSeasons[0]
           const comparisonResult = calculateComparisonRange(lastSeasonDates, comparisonType, activeSeason)
           onChange(lastSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
-          setComparisonError(comparisonResult.isValid ? undefined : comparisonResult.message)
         } else {
           const currentSeasonDates = getCurrentSeasonDates(season)
           const activeSeason = activeSeasons[0]
           const comparisonResult = calculateComparisonRange(currentSeasonDates, comparisonType, activeSeason)
           onChange(currentSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
-          setComparisonError(comparisonResult.isValid ? undefined : comparisonResult.message)
         }
       }
     }
   }, [seasonsLoading, activeSeasons, value.from, onChange])
+  
+  // Check if current comparison is still valid when date range changes
+  useEffect(() => {
+    if (comparisonType !== 'none' && value.from && value.to) {
+      const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
+      const comparisonResult = calculateComparisonRange(value, comparisonType, activeSeason)
+      
+      if (!comparisonResult.isValid) {
+        // Reset to no comparison if current comparison is invalid
+        setComparisonType('none')
+        onChange(value, undefined)
+      }
+    }
+  }, [value, activeSeasons])
   
   const uiMode = useMemo(() => {
     if (activeSeasons.length === 0) return 'year-round'
@@ -285,16 +296,9 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
       const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
       const comparisonResult = calculateComparisonRange(range, comparisonType, activeSeason)
       
-      if (comparisonResult.isValid && comparisonResult.range) {
-        onChange(range, comparisonResult.range)
-        setComparisonError(undefined)
-      } else {
-        onChange(range, undefined)
-        setComparisonError(comparisonResult.message)
-      }
+      onChange(range, comparisonResult.isValid ? comparisonResult.range : undefined)
     } else {
       onChange(range, undefined)
-      setComparisonError(undefined)
     }
     
     setIsOpen(false)
@@ -422,7 +426,6 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   onClick={() => {
                     setComparisonType('none')
                     setComparisonDropdownOpen(false)
-                    setComparisonError(undefined)
                     if (value.from && value.to) {
                       onChange(value, undefined)
                     }
@@ -438,74 +441,82 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   {comparisonType === 'none' && <Check className="w-4 h-4" />}
                 </button>
                 
-                <button
-                  onClick={() => {
-                    setComparisonType('lastPeriod')
-                    setComparisonDropdownOpen(false)
-                    if (value.from && value.to) {
-                      const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-                      const comparisonResult = calculateComparisonRange(value, 'lastPeriod', activeSeason)
-                      
-                      if (comparisonResult.isValid && comparisonResult.range) {
-                        onChange(value, comparisonResult.range)
-                        setComparisonError(undefined)
-                      } else {
-                        onChange(value, undefined)
-                        setComparisonError(comparisonResult.message)
-                      }
-                    }
-                  }}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
-                    comparisonType === 'lastPeriod' 
-                      ? "bg-blue-50 text-blue-700" 
-                      : "hover:bg-gray-100 text-gray-700"
-                  )}
-                >
-                  <span>vs Last Period</span>
-                  {comparisonType === 'lastPeriod' && <Check className="w-4 h-4" />}
-                </button>
+                {/* Check if Last Period is valid for current selection */}
+                {(() => {
+                  const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
+                  const lastPeriodResult = value.from && value.to 
+                    ? calculateComparisonRange(value, 'lastPeriod', activeSeason)
+                    : { isValid: true }
+                  const isDisabled = !lastPeriodResult.isValid
+                  
+                  return (
+                    <button
+                      onClick={() => {
+                        if (!isDisabled) {
+                          setComparisonType('lastPeriod')
+                          setComparisonDropdownOpen(false)
+                          if (value.from && value.to && lastPeriodResult.isValid && lastPeriodResult.range) {
+                            onChange(value, lastPeriodResult.range)
+                          }
+                        }
+                      }}
+                      disabled={isDisabled}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
+                        isDisabled 
+                          ? "opacity-50 cursor-not-allowed text-gray-400"
+                          : comparisonType === 'lastPeriod' 
+                            ? "bg-blue-50 text-blue-700" 
+                            : "hover:bg-gray-100 text-gray-700"
+                      )}
+                      title={isDisabled ? "No data available in previous period for selected season" : undefined}
+                    >
+                      <span>vs Last Period</span>
+                      {comparisonType === 'lastPeriod' && !isDisabled && <Check className="w-4 h-4" />}
+                    </button>
+                  )
+                })()}
                 
-                <button
-                  onClick={() => {
-                    setComparisonType('lastYear')
-                    setComparisonDropdownOpen(false)
-                    if (value.from && value.to) {
-                      const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-                      const comparisonResult = calculateComparisonRange(value, 'lastYear', activeSeason)
-                      
-                      if (comparisonResult.isValid && comparisonResult.range) {
-                        onChange(value, comparisonResult.range)
-                        setComparisonError(undefined)
-                      } else {
-                        onChange(value, undefined)
-                        setComparisonError(comparisonResult.message)
-                      }
-                    }
-                  }}
-                  className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
-                    comparisonType === 'lastYear' 
-                      ? "bg-blue-50 text-blue-700" 
-                      : "hover:bg-gray-100 text-gray-700"
-                  )}
-                >
-                  <span>vs Last Year</span>
-                  {comparisonType === 'lastYear' && <Check className="w-4 h-4" />}
-                </button>
+                {/* Check if Last Year is valid for current selection */}
+                {(() => {
+                  const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
+                  const lastYearResult = value.from && value.to 
+                    ? calculateComparisonRange(value, 'lastYear', activeSeason)
+                    : { isValid: true }
+                  const isDisabled = !lastYearResult.isValid
+                  
+                  return (
+                    <button
+                      onClick={() => {
+                        if (!isDisabled) {
+                          setComparisonType('lastYear')
+                          setComparisonDropdownOpen(false)
+                          if (value.from && value.to && lastYearResult.isValid && lastYearResult.range) {
+                            onChange(value, lastYearResult.range)
+                          }
+                        }
+                      }}
+                      disabled={isDisabled}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
+                        isDisabled
+                          ? "opacity-50 cursor-not-allowed text-gray-400"
+                          : comparisonType === 'lastYear' 
+                            ? "bg-blue-50 text-blue-700" 
+                            : "hover:bg-gray-100 text-gray-700"
+                      )}
+                      title={isDisabled ? "No data available in last year for selected season" : undefined}
+                    >
+                      <span>vs Last Year</span>
+                      {comparisonType === 'lastYear' && !isDisabled && <Check className="w-4 h-4" />}
+                    </button>
+                  )
+                })()}
               </div>
             </div>
           )}
         </div>
       </div>
-      
-      {/* Comparison Error Message */}
-      {comparisonError && (
-        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 shrink-0" />
-          <span className="text-sm text-yellow-800">{comparisonError}</span>
-        </div>
-      )}
       
       {/* Dropdown menu */}
       {isOpen && (

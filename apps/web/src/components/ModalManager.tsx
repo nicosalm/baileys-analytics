@@ -7,7 +7,6 @@ const PropertyDetailModal = lazy(() => import('./modals/PropertyDetailModal').th
 const GuestDetailModal = lazy(() => import('./modals/GuestDetailModal').then(m => ({ default: m.GuestDetailModal })))
 const MonthDetailModal = lazy(() => import('./modals/MonthDetailModal').then(m => ({ default: m.MonthDetailModal })))
 const BookingDetailModal = lazy(() => import('./modals/BookingDetailModal').then(m => ({ default: m.BookingDetailModal })))
-const FinancialSummaryModal = lazy(() => import('./modals/FinancialSummaryModal').then(m => ({ default: m.FinancialSummaryModal })))
 const ReportBuilderModal = lazy(() => import('./modals/ReportBuilderModal').then(m => ({ default: m.ReportBuilderModal })))
 const ReportPreviewModal = lazy(() => import('./modals/ReportPreviewModal').then(m => ({ default: m.ReportPreviewModal })))
 const ReportHistoryModal = lazy(() => import('./modals/ReportHistoryModal').then(m => ({ default: m.ReportHistoryModal })))
@@ -61,14 +60,6 @@ export const ModalManager = () => {
         // Or create a specialized modal if needed
         return (
           <PropertyDetailModal
-            propertyId={activeModal.propertyId}
-            propertyName={activeModal.propertyName}
-          />
-        )
-    
-      case 'financial-summary':
-        return (
-          <FinancialSummaryModal
             propertyId={activeModal.propertyId}
             propertyName={activeModal.propertyName}
           />

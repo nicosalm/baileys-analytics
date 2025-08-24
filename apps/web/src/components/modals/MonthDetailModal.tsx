@@ -1,6 +1,7 @@
 import { useMonthDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import { Calendar, DollarSign, Home, TrendingUp, Info } from 'lucide-react'
+import { format, parseISO, addDays, startOfMonth, endOfMonth } from 'date-fns'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
@@ -9,28 +10,60 @@ import { useDashboard } from '@/contexts/dashboard'
 interface MonthDetailModalProps {
   month: string
   year: string
+  day?: string
+  originalDate?: string
 }
 
-export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
+export const MonthDetailModal = ({ month, year, day, originalDate }: MonthDetailModalProps) => {
   const { closeModal, openModal } = useModal()
   const { filters } = useDashboard()
   
-  const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { 
-    month: 'long', 
-    year: 'numeric' 
-  })
+  // Format the display name based on what data we have
+  let displayName: string
+  let dateRangeStart: string
+  let dateRangeEnd: string
   
-  const { data, isLoading, error } = useMonthDetail(month, year, filters.selectedTags.map(t => t.id))
+  if (day) {
+    // Daily data - show specific date or week range
+    const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    const date = parseISO(dateStr)
+    
+    if (originalDate?.includes('Week')) {
+      // Weekly data
+      displayName = `Week of ${format(date, 'MMM d, yyyy')}`
+      dateRangeStart = dateStr
+      dateRangeEnd = format(addDays(date, 6), 'yyyy-MM-dd')
+    } else {
+      // Daily data
+      displayName = format(date, 'EEEE, MMMM d, yyyy')
+      dateRangeStart = dateStr
+      dateRangeEnd = dateStr
+    }
+  } else {
+    // Monthly data
+    const monthDate = new Date(parseInt(year), parseInt(month) - 1)
+    displayName = format(monthDate, 'MMMM yyyy')
+    dateRangeStart = format(startOfMonth(monthDate), 'yyyy-MM-dd')
+    dateRangeEnd = format(endOfMonth(monthDate), 'yyyy-MM-dd')
+  }
+  
+  // Use the date range for fetching data
+  const { data, isLoading, error } = useMonthDetail(
+    day ? dateRangeStart : month, 
+    day ? dateRangeEnd : year, 
+    filters.selectedTags.map(t => t.id),
+    day !== undefined // Flag to indicate if this is a specific date range
+  )
 
-  const subtitle = isLoading ? "Loading month details..." :
-                   error ? "Unable to load month details" :
-                   `Detailed breakdown for ${monthName}`
+  const subtitle = isLoading ? "Loading details..." :
+                   error ? "Unable to load details" :
+                   `Detailed breakdown for ${displayName}`
 
   return (
     <Modal
       isOpen={true}
       onClose={closeModal}
-      title={monthName}
+      title={displayName}
       subtitle={subtitle}
       size="lg"
     >
@@ -49,7 +82,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>Monthly Summary:</strong> See how {monthName} performed across all your properties. 
+              <strong>{day ? (day === dateRangeEnd ? 'Daily' : 'Weekly') : 'Monthly'} Summary:</strong> See how {displayName} performed across all your properties. 
               Click any property or guest name for more details.
             </div>
           </div>
@@ -63,28 +96,28 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
                 <DollarSign className="w-4 h-4 mr-1" />
                 Revenue
               </div>
-              <div className="text-2xl font-bold">{formatCurrency(data.metrics.revenue)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(data?.metrics?.revenue || 0)}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
                 <Calendar className="w-4 h-4 mr-1" />
                 Bookings
               </div>
-              <div className="text-2xl font-bold">{data.metrics.bookings}</div>
+              <div className="text-2xl font-bold">{data?.metrics?.bookings || 0}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
                 <Home className="w-4 h-4 mr-1" />
                 Occupancy
               </div>
-              <div className="text-2xl font-bold">{formatPercentage(data.metrics.occupancyRate * 100, 0)}</div>
+              <div className="text-2xl font-bold">{formatPercentage((data?.metrics?.occupancyRate || 0) * 100, 0)}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
                 <TrendingUp className="w-4 h-4 mr-1" />
                 Avg Rate
               </div>
-              <div className="text-2xl font-bold">{formatCurrency(data.metrics.avgNightlyRate)}</div>
+              <div className="text-2xl font-bold">{formatCurrency(data?.metrics?.avgNightlyRate || 0)}</div>
             </div>
           </div>
         )}
@@ -95,7 +128,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
             <h3 className="font-semibold">Top Properties This Month</h3>
           </div>
           <div className="divide-y">
-            {data.topProperties?.slice(0, 5).map((property: any) => (
+            {data?.topProperties?.slice(0, 5).map((property: any) => (
               <div
                 key={property.propertyId}
                 className="p-4 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
@@ -122,7 +155,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
         {/* Bookings List */}
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">
-            <h3 className="font-semibold">All Bookings in {monthName}</h3>
+            <h3 className="font-semibold">All Bookings in {displayName}</h3>
           </div>
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full">
@@ -135,7 +168,7 @@ export const MonthDetailModal = ({ month, year }: MonthDetailModalProps) => {
                 </tr>
               </thead>
               <tbody>
-                {data.bookings?.map((booking: any) => (
+                {data?.bookings?.map((booking: any) => (
                   <tr key={booking.id} className="border-t hover:bg-gray-50">
                     <td 
                       className="p-4 cursor-pointer"

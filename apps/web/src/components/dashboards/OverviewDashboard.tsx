@@ -12,7 +12,7 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
-import { METRIC_COLORS, CHART_COLORS } from '@/lib/theme'
+import { METRIC_COLORS, getPlatformColor } from '@/lib/theme'
 
 
 const AlertCard = ({ alert }: { alert: any }) => {
@@ -125,7 +125,6 @@ export const OverviewDashboard = () => {
         </div>
       </div>
 
-      {/* Info Banner */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start">
           <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
@@ -135,8 +134,6 @@ export const OverviewDashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* Primary Metrics - 4 columns */}
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={DollarSign}
@@ -147,10 +144,10 @@ export const OverviewDashboard = () => {
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(metrics.revenue.previous)} | After fees: ${formatCompactCurrency(metrics.revenue.net)}`
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`
           }
-          trend={{
+          trend={comparisonMode !== 'none' ? {
             value: metrics.revenue.growth,
             isPositive: metrics.revenue.growth > 0
-          }}
+          } : undefined}
           color="green"
           onClick={() => setActiveTab('financial')}
         />
@@ -162,10 +159,10 @@ export const OverviewDashboard = () => {
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.bookings.previous || 0} | ${actualUpcoming} upcoming`
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
           }
-          trend={{
+          trend={comparisonMode !== 'none' ? {
             value: ((metrics.bookings.current - (metrics.bookings.previous || 0)) / (metrics.bookings.previous || 1)) * 100,
             isPositive: metrics.bookings.current > (metrics.bookings.previous || 0)
-          }}
+          } : undefined}
           color="blue"
           onClick={() => setActiveTab('properties')}
         />
@@ -174,13 +171,13 @@ export const OverviewDashboard = () => {
           label="How Full You Are"
           value={Number(metrics.occupancy.current || 0) * 100}
           format="percent"
-          subValue={`${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} average`}
-          trend={metrics.occupancy.trend === 'up' ? {
-            value: 5,
-            isPositive: true
-          } : metrics.occupancy.trend === 'down' ? {
-            value: 5,
-            isPositive: false
+          subValue={comparisonMode !== 'none'
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(Number(metrics.occupancy.previous || 0) * 100, 0)} | ${metrics.properties.total} properties`
+            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} average`
+          }
+          trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
+            value: metrics.occupancy.growth,
+            isPositive: metrics.occupancy.growth > 0
           } : undefined}
           color="purple"
           onClick={() => setActiveTab('occupancy')}
@@ -189,11 +186,14 @@ export const OverviewDashboard = () => {
           icon={Users}
           label="Guest Count"
           value={metrics.guests.total}
-          subValue={`${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`}
-          trend={{
-            value: metrics.guests.repeatRate * 100,
-            isPositive: metrics.guests.repeatRate > 0.3
-          }}
+          subValue={comparisonMode !== 'none'
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.guests.previous || 0} | ${metrics.guests.newThisMonth} new`
+            : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`
+          }
+          trend={comparisonMode !== 'none' && metrics.guests.growth !== undefined ? {
+            value: metrics.guests.growth,
+            isPositive: metrics.guests.growth > 0
+          } : undefined}
           color="orange"
           onClick={() => setActiveTab('guests')}
         />
@@ -261,7 +261,15 @@ export const OverviewDashboard = () => {
       <div className="grid md:grid-cols-2 gap-6">
         {/* Revenue Trend */}
         <ChartWrapper
-          title="Money Made (Last 7 Days)"
+          title={`Money Made${
+            charts.revenueLastWeek.length > 0 
+              ? charts.revenueLastWeek[0].day?.includes('Week of') 
+                ? ' (Weekly)' 
+                : charts.revenueLastWeek[0].day?.length > 7 
+                  ? ' (Monthly)' 
+                  : ' (Daily)'
+              : ''
+          }`}
           icon={TrendingUp}
           height={192}
           noData={charts.revenueLastWeek.length === 0}
@@ -342,8 +350,8 @@ export const OverviewDashboard = () => {
               fill="#8884d8"
               dataKey="count"
             >
-              {charts.bookingsBySource.map((_: any, index: any) => (
-                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+              {charts.bookingsBySource.map((entry: any, index: any) => (
+                <Cell key={`cell-${index}`} fill={getPlatformColor(entry.source, index)} />
               ))}
             </Pie>
             <Tooltip 
@@ -355,7 +363,7 @@ export const OverviewDashboard = () => {
 
         {/* Occupancy Trend */}
         <ChartWrapper
-          title="How Full You've Been (6 Months)"
+          title={`How Full You've Been${charts.occupancyTrend.length > 0 && charts.occupancyTrend[0].month?.includes('/') ? ' (Daily)' : ' (Monthly)'}`}
           icon={Calendar}
           height={192}
           noData={charts.occupancyTrend.length === 0}
@@ -406,8 +414,7 @@ export const OverviewDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Activity Feed */}
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">What's New</h3>
             <span className="text-xs text-gray-500">Recent bookings</span>

@@ -7,7 +7,7 @@ import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
 import { SeasonalDashboard } from '@/components/dashboards/SeasonalDashboard'
 import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
-import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
+import FinancialDashboard from '@/components/dashboards/FinancialDashboard'
 import ReportsModule from '@/components/ReportsModule'
 import { FilterBar } from '@/components/FilterBar'
 import { DashboardTab } from '@/types/dashboard'

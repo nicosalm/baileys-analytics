@@ -97,8 +97,30 @@ export const buildBookingChargesSubquery = (bookingIdColumn: string = 'b.id'): s
   return `(SELECT SUM(amount) FROM booking_charges WHERE booking_id = ${bookingIdColumn} AND type = 'tax')`;
 };
 
-export const buildMonthlyGrouping = (dateColumn: string = 'arrival'): string => {
-  return `TO_CHAR(${dateColumn}, 'YYYY-MM')`;
+export type DateGranularity = 'daily' | 'weekly' | 'monthly';
+
+export interface GranularityConfig {
+  granularity: DateGranularity;
+  useDaily: boolean;
+  useWeekly: boolean;
+}
+
+/**
+ * Determines the appropriate date granularity based on the date range
+ * @param fromDate Start date
+ * @param toDate End date
+ * @returns GranularityConfig with granularity type and boolean flags
+ */
+export const determineGranularity = (fromDate: string, toDate: string): GranularityConfig => {
+  const daysDiff = Math.ceil((new Date(toDate).getTime() - new Date(fromDate).getTime()) / (1000 * 60 * 60 * 24));
+  
+  if (daysDiff <= 30) {
+    return { granularity: 'daily', useDaily: true, useWeekly: false };
+  } else if (daysDiff <= 180) {
+    return { granularity: 'weekly', useDaily: false, useWeekly: true };
+  } else {
+    return { granularity: 'monthly', useDaily: false, useWeekly: false };
+  }
 };
 
 export const buildWeeklyGrouping = (dateColumn: string = 'arrival'): string => {

@@ -16,7 +16,8 @@ import {
   buildTagFilter,
   buildQueryParams as buildParams,
   normalizePlatformSQL,
-  QueryParams
+  QueryParams,
+  determineGranularity
 } from './utils/queryBuilders'
 import {
   parseNumericField,
@@ -173,6 +174,9 @@ async function getPLData(
   const tagFilter = tagIds.length > 0 ? buildTagFilter(4) : ''
   const queryParams: QueryParams = { tenantId, fromDate, toDate, tagIds }
   const params = buildParams(queryParams)
+  
+  // Use helper to determine granularity
+  const { useDaily: useDailyPL, useWeekly: useWeeklyPL } = determineGranularity(fromDate, toDate)
 
   const [metricsResult, platformsResult, monthlyResult, weeklyResult, upcomingResult, propertyResult, bookingStatsResult] =
     await Promise.all([
@@ -302,24 +306,94 @@ async function getPLData(
         ORDER BY gross_revenue DESC
       `, params),
 
-      // Monthly trend query
+      // Trend query with adaptive granularity
       query<{
         month: string
         revenue: string
         bookings: string
-      }>(`
+      }>(useDailyPL ? `
+        -- Daily trend for short date ranges
+        WITH date_series AS (
+          SELECT generate_series($2::date, $3::date, '1 day'::interval)::date as day
+        ),
+        daily_bookings AS (
+          SELECT
+            b.arrival::date as day,
+            COALESCE(SUM(b.total_amount), 0) as revenue,
+            COUNT(*) as bookings
+          FROM bookings b
+          WHERE b.tenant_id = $1
+            ${buildDateRangeFilter('arrival', 2)}
+            AND b.status != 'canceled'
+            ${tagFilter}
+            ${bookingFilters}
+          GROUP BY b.arrival::date
+        )
         SELECT
-          TO_CHAR(b.arrival, 'YYYY-MM') as month,
-          COALESCE(SUM(b.total_amount), 0) as revenue,
-          COUNT(*) as bookings
-        FROM bookings b
-        WHERE b.tenant_id = $1
-          ${buildDateRangeFilter('arrival', 2)}
-          AND b.status != 'canceled'
-          ${tagFilter}
-          ${bookingFilters}
-        GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
-        ORDER BY month
+          TO_CHAR(ds.day, 'YYYY-MM-DD') as month,
+          COALESCE(db.revenue, 0) as revenue,
+          COALESCE(db.bookings, 0) as bookings
+        FROM date_series ds
+        LEFT JOIN daily_bookings db ON ds.day = db.day
+        ORDER BY ds.day
+      ` : useWeeklyPL ? `
+        -- Weekly trend for medium date ranges
+        WITH week_series AS (
+          SELECT generate_series(
+            date_trunc('week', $2::date),
+            date_trunc('week', $3::date),
+            '1 week'::interval
+          )::date as week_start
+        ),
+        weekly_bookings AS (
+          SELECT
+            date_trunc('week', b.arrival)::date as week_start,
+            COALESCE(SUM(b.total_amount), 0) as revenue,
+            COUNT(*) as bookings
+          FROM bookings b
+          WHERE b.tenant_id = $1
+            ${buildDateRangeFilter('arrival', 2)}
+            AND b.status != 'canceled'
+            ${tagFilter}
+            ${bookingFilters}
+          GROUP BY date_trunc('week', b.arrival)
+        )
+        SELECT
+          TO_CHAR(ws.week_start, 'YYYY-MM-DD') as month,
+          COALESCE(wb.revenue, 0) as revenue,
+          COALESCE(wb.bookings, 0) as bookings
+        FROM week_series ws
+        LEFT JOIN weekly_bookings wb ON ws.week_start = wb.week_start
+        ORDER BY ws.week_start
+      ` : `
+        -- Monthly trend for long date ranges  
+        WITH month_series AS (
+          SELECT TO_CHAR(generate_series(
+            date_trunc('month', $2::date),
+            date_trunc('month', $3::date),
+            '1 month'::interval
+          )::date, 'YYYY-MM') as month
+        ),
+        monthly_bookings AS (
+          SELECT
+            TO_CHAR(b.arrival, 'YYYY-MM') as month,
+            COALESCE(SUM(b.total_amount), 0) as revenue,
+            COUNT(*) as bookings
+          FROM bookings b
+          WHERE b.tenant_id = $1
+            ${buildDateRangeFilter('arrival', 2)}
+            AND b.status != 'canceled'
+            ${tagFilter}
+            ${bookingFilters}
+          GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+        )
+        SELECT
+          ms.month,
+          COALESCE(mb.revenue, 0) as revenue,
+          COALESCE(mb.bookings, 0) as bookings
+        FROM month_series ms
+        LEFT JOIN monthly_bookings mb ON ms.month = mb.month
+        ORDER BY ms.month
       `, params),
 
       // Weekly revenue query
@@ -420,8 +494,8 @@ async function getPLData(
   const bookingCount = parseIntField(metrics?.booking_count)
   const totalNights = parseIntField(bookingStats?.total_nights)
 
-  const daysDiff = calculateDaysDifference(fromDate, toDate) + 1
-  const revpar = safeDivide(grossRevenue, propertyCount * daysDiff)
+  const plDateRange = calculateDaysDifference(fromDate, toDate) + 1
+  const revpar = safeDivide(grossRevenue, propertyCount * plDateRange)
   const adr = safeDivide(grossRevenue, totalNights)
 
   const plData: PLData = {
@@ -498,6 +572,9 @@ async function getRevenueData(
   const lastYearNum = getYear(fromDate) - 1
   const lastYearFrom = fromDate.replace(/\d{4}/, lastYearNum.toString())
   const lastYearTo = toDate.replace(/\d{4}/, lastYearNum.toString())
+  
+  // Use helper to determine granularity
+  const { useDaily, useWeekly } = determineGranularity(fromDate, toDate)
 
   const [currentResult, sourceResult, monthlyResult, lastYearResult] = await Promise.all([
     query<{
@@ -557,18 +634,83 @@ async function getRevenueData(
     query<{
       month: string
       amount: string
-    }>(`
+    }>(useDaily ? `
+      -- Daily revenue for short date ranges
+      WITH date_series AS (
+        SELECT generate_series($2::date, $3::date, '1 day'::interval)::date as period
+      ),
+      daily_revenue AS (
+        SELECT
+          b.arrival::date as period,
+          COALESCE(SUM(b.total_amount), 0) as amount
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          ${buildDateRangeFilter('arrival', 2)}
+          AND b.status != 'canceled'
+          ${tagFilter}
+          ${bookingFilters}
+        GROUP BY b.arrival::date
+      )
       SELECT
-        TO_CHAR(b.arrival, 'YYYY-MM') as month,
-        COALESCE(SUM(b.total_amount), 0) as amount
-      FROM bookings b
-      WHERE b.tenant_id = $1
-        ${buildDateRangeFilter('arrival', 2)}
-        AND b.status != 'canceled'
-        ${tagFilter}
-        ${bookingFilters}
-      GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
-      ORDER BY month
+        TO_CHAR(ds.period, 'YYYY-MM-DD') as month,
+        COALESCE(dr.amount, 0) as amount
+      FROM date_series ds
+      LEFT JOIN daily_revenue dr ON ds.period = dr.period
+      ORDER BY ds.period
+    ` : useWeekly ? `
+      -- Weekly revenue for medium date ranges
+      WITH week_series AS (
+        SELECT generate_series(
+          date_trunc('week', $2::date),
+          date_trunc('week', $3::date),
+          '1 week'::interval
+        )::date as period
+      ),
+      weekly_revenue AS (
+        SELECT
+          date_trunc('week', b.arrival)::date as period,
+          COALESCE(SUM(b.total_amount), 0) as amount
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          ${buildDateRangeFilter('arrival', 2)}
+          AND b.status != 'canceled'
+          ${tagFilter}
+          ${bookingFilters}
+        GROUP BY date_trunc('week', b.arrival)
+      )
+      SELECT
+        TO_CHAR(ws.period, 'YYYY-MM-DD') as month,
+        COALESCE(wr.amount, 0) as amount
+      FROM week_series ws
+      LEFT JOIN weekly_revenue wr ON ws.period = wr.period
+      ORDER BY ws.period
+    ` : `
+      -- Monthly revenue for long date ranges
+      WITH month_series AS (
+        SELECT TO_CHAR(generate_series(
+          date_trunc('month', $2::date),
+          date_trunc('month', $3::date),
+          '1 month'::interval
+        )::date, 'YYYY-MM') as month
+      ),
+      monthly_revenue AS (
+        SELECT
+          TO_CHAR(b.arrival, 'YYYY-MM') as month,
+          COALESCE(SUM(b.total_amount), 0) as amount
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          ${buildDateRangeFilter('arrival', 2)}
+          AND b.status != 'canceled'
+          ${tagFilter}
+          ${bookingFilters}
+        GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+      )
+      SELECT
+        ms.month,
+        COALESCE(mr.amount, 0) as amount
+      FROM month_series ms
+      LEFT JOIN monthly_revenue mr ON ms.month = mr.month
+      ORDER BY ms.month
     `, params),
 
     query<{
@@ -729,6 +871,9 @@ async function getTaxData(
   const tagFilter = tagIds.length > 0 ? buildTagFilter(4) : ''
   const queryParams: QueryParams = { tenantId, fromDate, toDate, tagIds }
   const params = buildParams(queryParams)
+  
+  // Use helper to determine granularity
+  const { useDaily: useDailyTax, useWeekly: useWeeklyTax } = determineGranularity(fromDate, toDate)
 
   const [summaryResult, propertyResult, monthlyResult] = await Promise.all([
     query<{
@@ -810,20 +955,95 @@ async function getTaxData(
       total_tax: string
       total_rent: string
       booking_count: string
-    }>(`
+    }>(useDailyTax ? `
+      -- Daily tax data for short date ranges
+      WITH date_series AS (
+        SELECT generate_series($2::date, $3::date, '1 day'::interval)::date as period
+      ),
+      daily_tax_data AS (
+        SELECT
+          b.arrival::date as period,
+          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as total_tax,
+          COALESCE(SUM(b.total_amount), 0) as total_rent,
+          COUNT(*) as booking_count
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          ${buildDateRangeFilter('arrival', 2)}
+          AND b.status != 'canceled'
+          ${tagFilter}
+          ${bookingFilters}
+        GROUP BY b.arrival::date
+      )
       SELECT
-        TO_CHAR(b.arrival, 'YYYY-MM') as month,
-        COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as total_tax,
-        COALESCE(SUM(b.total_amount), 0) as total_rent,
-        COUNT(*) as booking_count
-      FROM bookings b
-      WHERE b.tenant_id = $1
-        ${buildDateRangeFilter('arrival', 2)}
-        AND b.status != 'canceled'
-        ${tagFilter}
-        ${bookingFilters}
-      GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
-      ORDER BY month
+        TO_CHAR(ds.period, 'YYYY-MM-DD') as month,
+        COALESCE(dtd.total_tax, 0) as total_tax,
+        COALESCE(dtd.total_rent, 0) as total_rent,
+        COALESCE(dtd.booking_count, 0) as booking_count
+      FROM date_series ds
+      LEFT JOIN daily_tax_data dtd ON ds.period = dtd.period
+      ORDER BY ds.period
+    ` : useWeeklyTax ? `
+      -- Weekly tax data for medium date ranges
+      WITH week_series AS (
+        SELECT generate_series(
+          date_trunc('week', $2::date),
+          date_trunc('week', $3::date),
+          '1 week'::interval
+        )::date as period
+      ),
+      weekly_tax_data AS (
+        SELECT
+          date_trunc('week', b.arrival)::date as period,
+          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as total_tax,
+          COALESCE(SUM(b.total_amount), 0) as total_rent,
+          COUNT(*) as booking_count
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          ${buildDateRangeFilter('arrival', 2)}
+          AND b.status != 'canceled'
+          ${tagFilter}
+          ${bookingFilters}
+        GROUP BY date_trunc('week', b.arrival)
+      )
+      SELECT
+        TO_CHAR(ws.period, 'YYYY-MM-DD') as month,
+        COALESCE(wtd.total_tax, 0) as total_tax,
+        COALESCE(wtd.total_rent, 0) as total_rent,
+        COALESCE(wtd.booking_count, 0) as booking_count
+      FROM week_series ws
+      LEFT JOIN weekly_tax_data wtd ON ws.period = wtd.period
+      ORDER BY ws.period
+    ` : `
+      -- Monthly tax data for long date ranges
+      WITH month_series AS (
+        SELECT TO_CHAR(generate_series(
+          date_trunc('month', $2::date),
+          date_trunc('month', $3::date),
+          '1 month'::interval
+        )::date, 'YYYY-MM') as month
+      ),
+      monthly_tax_data AS (
+        SELECT
+          TO_CHAR(b.arrival, 'YYYY-MM') as month,
+          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as total_tax,
+          COALESCE(SUM(b.total_amount), 0) as total_rent,
+          COUNT(*) as booking_count
+        FROM bookings b
+        WHERE b.tenant_id = $1
+          ${buildDateRangeFilter('arrival', 2)}
+          AND b.status != 'canceled'
+          ${tagFilter}
+          ${bookingFilters}
+        GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+      )
+      SELECT
+        ms.month,
+        COALESCE(mtd.total_tax, 0) as total_tax,
+        COALESCE(mtd.total_rent, 0) as total_rent,
+        COALESCE(mtd.booking_count, 0) as booking_count
+      FROM month_series ms
+      LEFT JOIN monthly_tax_data mtd ON ms.month = mtd.month
+      ORDER BY ms.month
     `, params)
   ])
 
@@ -902,6 +1122,20 @@ export async function financial(
 
   const { from, to, tagIds = [] } = validated?.query || {}
 
+  // Handle comparison dates like overview.ts does
+  let comparisonFrom: string | undefined
+  let comparisonTo: string | undefined
+  
+  if (validated?.query?.comparisonFrom && validated?.query?.comparisonTo) {
+    comparisonFrom = validated.query.comparisonFrom
+    comparisonTo = validated.query.comparisonTo
+  } else if (from && to) {
+    // Auto-calculate previous period if not provided
+    const daysDiff = calculateDaysDifference(from, to)
+    comparisonFrom = formatDateISO(new Date(new Date(from).getTime() - daysDiff * 24 * 60 * 60 * 1000))
+    comparisonTo = formatDateISO(new Date(new Date(from).getTime() - 24 * 60 * 60 * 1000))
+  }
+
   const [plResult, revenueResult, cashflowResult, taxResult] = await Promise.all([
     getPLData(tenantId, from, to, tagIds),
     getRevenueData(tenantId, from, to, tagIds),
@@ -914,8 +1148,28 @@ export async function financial(
   if (!cashflowResult.success) return createErrorResponse(cashflowResult.error)
   if (!taxResult.success) return createErrorResponse(taxResult.error)
 
+  // Fetch previous period data if comparison dates are available
+  let previousPeriodData = undefined
+  if (comparisonFrom && comparisonTo) {
+    const previousPLResult = await getPLData(tenantId, comparisonFrom, comparisonTo, tagIds)
+    if (previousPLResult.success) {
+      previousPeriodData = {
+        revenue: {
+          gross: previousPLResult.data.metrics.revenue.gross,
+          net: previousPLResult.data.metrics.revenue.net
+        },
+        performance: {
+          netRevenueRate: previousPLResult.data.metrics.performance.netRevenueRate
+        }
+      }
+    }
+  }
+
   const response: UnifiedFinancialResponse = {
-    pl: plResult.data,
+    pl: {
+      ...plResult.data,
+      previousPeriod: previousPeriodData
+    },
     revenue: revenueResult.data,
     cashflow: cashflowResult.data,
     tax: taxResult.data,

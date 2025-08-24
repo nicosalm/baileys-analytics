@@ -25,11 +25,15 @@ interface OverviewMetrics {
   }
   occupancy: {
     current: number
+    previous: number
+    growth: number
     trend: 'up' | 'down' | 'stable'
     avgPropertyOccupancy: number
   }
   guests: {
     total: number
+    previous: number
+    growth: number
     newThisMonth: number
     repeatRate: number
   }
@@ -104,12 +108,20 @@ export async function overview(
       },
       occupancy: {
         current: currentMetrics.occupancyRate,
+        previous: previousMetrics.occupancyRate,
+        growth: previousMetrics.occupancyRate > 0
+          ? ((currentMetrics.occupancyRate - previousMetrics.occupancyRate) / previousMetrics.occupancyRate) * 100
+          : 0,
         trend: currentMetrics.occupancyRate > previousMetrics.occupancyRate ? 'up' :
                currentMetrics.occupancyRate < previousMetrics.occupancyRate ? 'down' : 'stable',
         avgPropertyOccupancy: currentMetrics.avgPropertyOccupancy
       },
       guests: {
         total: currentMetrics.totalGuests,
+        previous: previousMetrics.totalGuests,
+        growth: previousMetrics.totalGuests > 0
+          ? ((currentMetrics.totalGuests - previousMetrics.totalGuests) / previousMetrics.totalGuests) * 100
+          : 0,
         newThisMonth: currentMetrics.newGuests,
         repeatRate: currentMetrics.repeatGuestRate
       },
@@ -370,19 +382,94 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
   const bookingFilters = buildBookingFilters(seasons, 'b')
   const hasTagFilter = tagIds.length > 0
   
-  const revenueQuery = `
+  // Determine aggregation level for revenue chart
+  const revenueDaysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24))
+  const revenueUseDaily = revenueDaysDiff <= 30 // Daily for ≤30 days
+  const revenueUseWeekly = revenueDaysDiff > 30 && revenueDaysDiff <= 180 // Weekly for 30-180 days
+  
+  const revenueQuery = revenueUseDaily ? `
+    -- Daily revenue for short date ranges (including $0 days)
+    WITH date_series AS (
+      SELECT generate_series($2::date, $3::date, '1 day'::interval)::date as day
+    ),
+    daily_revenue AS (
+      SELECT
+        b.arrival::date as day,
+        SUM(b.total_amount) as revenue
+      FROM bookings b
+      ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status != 'canceled'
+        ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+        ${bookingFilters}
+      GROUP BY b.arrival::date
+    )
     SELECT
-      b.arrival::date as day,
-      SUM(b.total_amount) as revenue
-    FROM bookings b
-    ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
-    WHERE b.tenant_id = $1
-      AND b.arrival >= CURRENT_DATE - INTERVAL '7 days'
-      AND b.status != 'canceled'
-      ${hasTagFilter ? `AND bt.tag_id = ANY($2::uuid[])` : ''}
-    GROUP BY b.arrival::date
-    ORDER BY day DESC
-    LIMIT 7
+      ds.day,
+      COALESCE(dr.revenue, 0) as revenue
+    FROM date_series ds
+    LEFT JOIN daily_revenue dr ON ds.day = dr.day
+    ORDER BY ds.day DESC
+  ` : revenueUseWeekly ? `
+    -- Weekly revenue for medium date ranges (including $0 weeks)
+    WITH week_series AS (
+      SELECT generate_series(
+        date_trunc('week', $2::date),
+        date_trunc('week', $3::date),
+        '1 week'::interval
+      )::date as week_start
+    ),
+    weekly_revenue AS (
+      SELECT
+        date_trunc('week', b.arrival)::date as week_start,
+        SUM(b.total_amount) as revenue
+      FROM bookings b
+      ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status != 'canceled'
+        ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+        ${bookingFilters}
+      GROUP BY date_trunc('week', b.arrival)
+    )
+    SELECT
+      ws.week_start as day,
+      COALESCE(wr.revenue, 0) as revenue
+    FROM week_series ws
+    LEFT JOIN weekly_revenue wr ON ws.week_start = wr.week_start
+    ORDER BY ws.week_start DESC
+  ` : `
+    -- Monthly revenue for long date ranges (including $0 months)
+    WITH month_series AS (
+      SELECT generate_series(
+        date_trunc('month', $2::date),
+        date_trunc('month', $3::date),
+        '1 month'::interval
+      )::date as month_start
+    ),
+    monthly_revenue AS (
+      SELECT
+        date_trunc('month', b.arrival)::date as month_start,
+        SUM(b.total_amount) as revenue
+      FROM bookings b
+      ${hasTagFilter ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status != 'canceled'
+        ${hasTagFilter ? `AND bt.tag_id = ANY($4::uuid[])` : ''}
+        ${bookingFilters}
+      GROUP BY date_trunc('month', b.arrival)
+    )
+    SELECT
+      ms.month_start as day,
+      COALESCE(mr.revenue, 0) as revenue
+    FROM month_series ms
+    LEFT JOIN monthly_revenue mr ON ms.month_start = mr.month_start
+    ORDER BY ms.month_start DESC
   `
 
   const propertiesQuery = `
@@ -419,18 +506,78 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
     ORDER BY count DESC
   `
 
-  const occupancyQuery = `
+  // Determine whether to show daily or monthly data based on date range
+  const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24))
+  const useDaily = daysDiff <= 60 // Use daily for 60 days or less, monthly for more
+  
+  const occupancyQuery = useDaily ? `
+    -- Daily occupancy for short date ranges
+    WITH days AS (
+      SELECT generate_series(
+        $2::date,
+        $3::date,
+        '1 day'::interval
+      )::date as day
+    ),
+    property_availability AS (
+      SELECT
+        p.id as property_id,
+        COALESCE(MIN(b.arrival), $2::date) as first_booking
+      FROM properties p
+      LEFT JOIN bookings b ON p.id = b.property_id
+        AND b.tenant_id = p.tenant_id
+        AND b.status != 'canceled'
+      WHERE p.tenant_id = $1
+        AND p.active = true
+      GROUP BY p.id
+    ),
+    daily_available AS (
+      SELECT
+        d.day,
+        COUNT(DISTINCT pa.property_id) as total_properties
+      FROM days d
+      CROSS JOIN property_availability pa
+      WHERE pa.first_booking <= d.day
+      GROUP BY d.day
+    ),
+    daily_booked AS (
+      SELECT
+        d.day,
+        COUNT(DISTINCT b.property_id) as booked_properties
+      FROM days d
+      LEFT JOIN bookings b ON b.tenant_id = $1
+        AND b.status != 'canceled'
+        AND d.day >= b.arrival
+        AND d.day < b.departure
+      ${hasTagFilter ? 'LEFT JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      JOIN properties p ON b.property_id = p.id
+        AND p.active = true
+      ${hasTagFilter ? 'WHERE bt.tag_id = ANY($4::uuid[])' : ''}
+      GROUP BY d.day
+    )
+    SELECT
+      TO_CHAR(da.day, 'MM/DD') as month,
+      CASE 
+        WHEN da.total_properties > 0 THEN
+          ROUND((COALESCE(db.booked_properties, 0)::numeric / da.total_properties) * 100, 1)
+        ELSE 0
+      END as rate
+    FROM daily_available da
+    LEFT JOIN daily_booked db ON da.day = db.day
+    ORDER BY da.day
+  ` : `
+    -- Monthly occupancy for longer date ranges
     WITH months AS (
       SELECT generate_series(
-        date_trunc('month', CURRENT_DATE - INTERVAL '5 months'),
-        date_trunc('month', CURRENT_DATE),
+        date_trunc('month', $2::date),
+        date_trunc('month', $3::date),
         '1 month'::interval
       )::date as month_start
     ),
     property_availability AS (
       SELECT
         p.id as property_id,
-        COALESCE(MIN(b.arrival), date_trunc('month', CURRENT_DATE - INTERVAL '5 months')) as first_booking
+        COALESCE(MIN(b.arrival), date_trunc('month', $2::date)) as first_booking
       FROM properties p
       LEFT JOIN bookings b ON p.id = b.property_id
         AND b.tenant_id = p.tenant_id
@@ -471,8 +618,10 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
         AND b.status != 'canceled'
         AND b.arrival <= m.month_start + interval '1 month' - interval '1 day'
         AND b.departure > m.month_start
+      ${hasTagFilter ? 'LEFT JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
       JOIN properties p ON b.property_id = p.id
         AND p.active = true
+      ${hasTagFilter ? 'WHERE bt.tag_id = ANY($4::uuid[])' : ''}
       GROUP BY m.month_start
     )
     SELECT
@@ -487,25 +636,41 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
     ORDER BY ma.month_start
   `
 
-  const revenueParams = hasTagFilter ? [tenantId, tagIds] : [tenantId]
   const chartParams = hasTagFilter ? [tenantId, from, to, tagIds] : [tenantId, from, to]
   
   const [revenue, properties, sources, occupancy] = await Promise.all([
-    query(revenueQuery, revenueParams),
+    query(revenueQuery, chartParams),  // Now uses date range like other charts
     query(propertiesQuery, chartParams),
     query(sourcesQuery, chartParams),
-    query(occupancyQuery, [tenantId])  // Occupancy trend doesn't need tag filtering for historical view
+    query(occupancyQuery, chartParams)  // Use date range and tag filters
   ])
 
   if (!revenue.success || !properties.success || !sources.success || !occupancy.success) {
     throw new Error('Failed to fetch chart data')
   }
 
+  // Format revenue data based on granularity
+  const formatRevenueData = () => {
+    if (revenueUseDaily) {
+      return revenue.data.map((r: any) => ({
+        day: new Date(r.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        revenue: parseFloat(r.revenue || 0)
+      })).reverse()
+    } else if (revenueUseWeekly) {
+      return revenue.data.map((r: any) => ({
+        day: `Week of ${new Date(r.day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+        revenue: parseFloat(r.revenue || 0)
+      })).reverse()
+    } else {
+      return revenue.data.map((r: any) => ({
+        day: new Date(r.day).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        revenue: parseFloat(r.revenue || 0)
+      })).reverse()
+    }
+  }
+  
   return {
-    revenueLastWeek: revenue.data.map((r: any) => ({
-      day: new Date(r.day).toLocaleDateString('en-US', { weekday: 'short' }),
-      revenue: parseFloat(r.revenue || 0)
-    })).reverse(),
+    revenueLastWeek: formatRevenueData(),  // Now respects date range and granularity
     topProperties: properties.data,
     bookingsBySource: sources.data,
     occupancyTrend: occupancy.data

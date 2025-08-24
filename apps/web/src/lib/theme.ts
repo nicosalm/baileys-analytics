@@ -73,10 +73,30 @@ export const METRIC_COLORS = {
   bookings: '#F59E0B',
   tax: '#EF4444',
   expenses: '#8B5CF6',
-  profit: '#14B8A6'
+  profit: '#14B8A6',
+  primary: '#3B82F6',
+  success: '#10B981',
+  danger: '#EF4444'
+} as const
+
+export const PLATFORM_COLORS: Record<string, string> = {
+  'Airbnb': '#FF5A5F',
+  'VRBO': '#0061A7',
+  'Booking.com': '#003580',
+  'Direct': '#22C55E',
+  'Other': '#6B7280'
 } as const
 
 export const getChartColor = (index: number): string => {
+  return CHART_COLORS[index % CHART_COLORS.length]
+}
+
+export const getPlatformColor = (platform: string, index: number = 0): string => {
+  // Check if we have a specific color for this platform
+  if (PLATFORM_COLORS[platform]) {
+    return PLATFORM_COLORS[platform]
+  }
+  // Otherwise use the standard chart colors
   return CHART_COLORS[index % CHART_COLORS.length]
 }
 

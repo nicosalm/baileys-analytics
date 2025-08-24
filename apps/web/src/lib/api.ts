@@ -153,7 +153,13 @@ class ApiClient {
         return this.request('/oauth/initiate')
     }
 
-    async getFinancial(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
+    async getFinancial(
+        from?: string, 
+        to?: string, 
+        tagIds?: string[], 
+        comparisonFrom?: string, 
+        comparisonTo?: string
+    ): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
         if (from && isValidDateString(from)) params.append('from', from)
         if (to && isValidDateString(to)) params.append('to', to)
@@ -161,6 +167,8 @@ class ApiClient {
             const validTagIds = filterValidUUIDs(tagIds)
             if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
         }
+        if (comparisonFrom && isValidDateString(comparisonFrom)) params.append('comparisonFrom', comparisonFrom)
+        if (comparisonTo && isValidDateString(comparisonTo)) params.append('comparisonTo', comparisonTo)
         return this.request(`/financial?${params}`)
     }
 

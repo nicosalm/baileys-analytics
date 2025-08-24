@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useGuests } from '@/hooks/use-api'
-import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
+import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -10,7 +10,7 @@ import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
-import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
+import { CHART_COLORS, METRIC_COLORS, getPlatformColor } from '@/lib/theme'
 import {
     BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip
@@ -242,7 +242,7 @@ export const GuestsDashboard = () => {
 
     const sourceChartData = data.metrics.guestsBySource.map((source: any, index: any) => ({
         ...source,
-        color: CHART_COLORS[index % CHART_COLORS.length]
+        color: getPlatformColor(source.source, index)
     }))
 
     // Calculate tag distribution
@@ -426,9 +426,11 @@ export const GuestsDashboard = () => {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={(entry: any) =>
-                                `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`
-                            }
+                            label={(entry: any) => {
+                                const total = sourceChartData.reduce((sum: number, item: any) => sum + item.count, 0)
+                                const percent = ((entry.count / total) * 100).toFixed(0)
+                                return `${entry.source} ${percent}%`
+                            }}
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="count"
