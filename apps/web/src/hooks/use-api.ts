@@ -84,16 +84,32 @@ export function usePropertyMetrics(
   })
 }
 
-export function useGuests(from?: string, to?: string, tagIds?: string[]) {
+export function useGuests(
+  from?: string, 
+  to?: string, 
+  tagIds?: string[],
+  comparisonFrom?: string,
+  comparisonTo?: string
+) {
   // Validate inputs
   const validFrom = from && isValidDateString(from) ? from : undefined
   const validTo = to && isValidDateString(to) ? to : undefined
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
+  const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
   
-  const key = validFrom || validTo || validTagIds ? ['/guests', validFrom, validTo, validTagIds] : null
+  const key = validFrom || validTo || validTagIds ? ['/guests', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
   return useSWR<any>(key, async () => {
     if (!key) return null
-    const result = await api.getGuests(validFrom || '', validTo || '', validTagIds || [])
+    const params = new URLSearchParams()
+    if (validFrom) params.append('from', validFrom)
+    if (validTo) params.append('to', validTo)
+    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
+    if (validCompTo) params.append('comparisonTo', validCompTo)
+    
+    const endpoint = params.toString() ? `/guests?${params}` : '/guests'
+    const result = await api.request(endpoint)
     if (!result.success) throw new Error(result.error)
     return result.data
   })

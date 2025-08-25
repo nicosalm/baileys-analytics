@@ -29,7 +29,7 @@ export const dateRangeWithComparisonSchema = dateRangeWithTagsSchema.extend({
 
 export const financialQuerySchema = dateRangeWithComparisonSchema
 
-export const guestsQuerySchema = dateRangeWithTagsSchema.extend({
+export const guestsQuerySchema = dateRangeWithComparisonSchema.extend({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(50),
 })

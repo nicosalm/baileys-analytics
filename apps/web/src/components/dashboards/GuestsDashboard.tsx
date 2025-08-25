@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useGuests } from '@/hooks/use-api'
-import { formatCurrency, formatDateDisplay } from '@baileys/utils'
+import { formatCurrency, formatDateDisplay, formatPercentage, differenceInDays } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -40,13 +40,33 @@ type GuestListItem = {
 export const GuestsDashboard = () => {
     const { addToast } = useToast()
     const { openModal } = useModal()
-    const { filters } = useDashboard()
+    const { filters, comparisonRange, comparisonMode } = useDashboard()
     
-    const { data, error, isLoading } = useGuests(
+    const { data: rawData, error, isLoading } = useGuests(
         filters.dateRange.from,
         filters.dateRange.to,
-        filters.selectedTags.map(t => t.id)
+        filters.selectedTags.map(t => t.id),
+        comparisonRange?.from,
+        comparisonRange?.to
     )
+    
+    // Handle both API response formats
+    const data = rawData?.current || rawData
+    const previousData = rawData?.previous || null
+    
+    // Determine time period based on date range
+    const getTimePeriod = () => {
+        if (!filters.dateRange.from || !filters.dateRange.to) return ''
+        const daysDiff = differenceInDays(
+            new Date(filters.dateRange.to),
+            new Date(filters.dateRange.from)
+        )
+        
+        if (daysDiff <= 7) return ' (Daily)'
+        if (daysDiff <= 35) return ' (Weekly)'
+        return ' (Monthly)'
+    }
+    
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
     // Removed unused selectedGuests state
@@ -292,8 +312,8 @@ export const GuestsDashboard = () => {
                 <div className="flex items-start">
                     <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
                     <div className="text-sm text-blue-800">
-                        <strong>Period Analysis:</strong> All metrics reflect the selected date range. 
-                        "Top Performers" are based on activity within this period, not lifetime values.
+                        <strong>Guest Analysis:</strong> Metrics show guests who had bookings in the selected period. 
+                        Guest totals and spending reflect their activity during this timeframe only.
                     </div>
                 </div>
             </div>
@@ -305,7 +325,14 @@ export const GuestsDashboard = () => {
                     label="Active Guests"
                     value={data.metrics.totalGuests}
                     format="number"
-                    subValue="In selected period"
+                    subValue={comparisonMode !== 'none' && previousData?.metrics
+                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.metrics.totalGuests} | In period`
+                        : "In selected period"
+                    }
+                    trend={comparisonMode !== 'none' && previousData?.metrics ? {
+                        value: ((data.metrics.totalGuests - previousData.metrics.totalGuests) / (previousData.metrics.totalGuests || 1)) * 100,
+                        isPositive: data.metrics.totalGuests > previousData.metrics.totalGuests
+                    } : undefined}
                     tooltip="Guests with bookings in the selected date range"
                     color="blue"
                 />
@@ -314,10 +341,16 @@ export const GuestsDashboard = () => {
                     label="Repeat Rate"
                     value={data.metrics.repeatRate * 100}
                     format="percent"
-                    subValue={`${data.metrics.repeatGuests} returning guests`}
+                    subValue={comparisonMode !== 'none' && previousData?.metrics
+                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(previousData.metrics.repeatRate * 100, 0)} | ${data.metrics.repeatGuests} returning`
+                        : `${data.metrics.repeatGuests} returning guests`
+                    }
                     tooltip="Percentage of guests with multiple bookings"
                     color="green"
-                    trend={{
+                    trend={comparisonMode !== 'none' && previousData?.metrics ? {
+                        value: ((data.metrics.repeatRate - previousData.metrics.repeatRate) / (previousData.metrics.repeatRate || 0.01)) * 100,
+                        isPositive: data.metrics.repeatRate > previousData.metrics.repeatRate
+                    } : {
                         value: data.metrics.repeatRate * 100,
                         isPositive: data.metrics.repeatRate > 0.3
                     }}
@@ -327,7 +360,14 @@ export const GuestsDashboard = () => {
                     label="Avg Stay"
                     value={`${data.metrics.avgStayLength.toFixed(1)} nights`}
                     format="custom"
-                    subValue="Per booking"
+                    subValue={comparisonMode !== 'none' && previousData?.metrics
+                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.metrics.avgStayLength.toFixed(1)} nights`
+                        : "Per booking"
+                    }
+                    trend={comparisonMode !== 'none' && previousData?.metrics ? {
+                        value: ((data.metrics.avgStayLength - previousData.metrics.avgStayLength) / (previousData.metrics.avgStayLength || 1)) * 100,
+                        isPositive: data.metrics.avgStayLength > previousData.metrics.avgStayLength
+                    } : undefined}
                     tooltip="Average length of stay per reservation"
                     color="purple"
                 />
@@ -336,7 +376,14 @@ export const GuestsDashboard = () => {
                     label="Avg Guest Value"
                     value={data.metrics.avgSpend}
                     format="currency"
-                    subValue="Per guest this period"
+                    subValue={comparisonMode !== 'none' && previousData?.metrics
+                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(previousData.metrics.avgSpend)}`
+                        : "Per guest this period"
+                    }
+                    trend={comparisonMode !== 'none' && previousData?.metrics && previousData.metrics.avgSpend > 0 ? {
+                        value: ((data.metrics.avgSpend - previousData.metrics.avgSpend) / previousData.metrics.avgSpend) * 100,
+                        isPositive: data.metrics.avgSpend > previousData.metrics.avgSpend
+                    } : undefined}
                     tooltip="Average spending per guest in selected period"
                     color="orange"
                 />
@@ -416,7 +463,8 @@ export const GuestsDashboard = () => {
             {/* Charts Section */}
             <div className="grid md:grid-cols-2 gap-6">
                 <ChartWrapper
-                    title="Guest Sources"
+                    title={`Guest Sources${getTimePeriod()}`}
+                    subtitle={comparisonMode !== 'none' ? `Current period distribution` : undefined}
                     height={320}
                     noData={sourceChartData.length === 0}
                 >
@@ -444,7 +492,8 @@ export const GuestsDashboard = () => {
                 </ChartWrapper>
 
                 <ChartWrapper
-                    title="Guest Tags Distribution"
+                    title={`Guest Tags Distribution${getTimePeriod()}`}
+                    subtitle="Most common guest characteristics"
                     height={320}
                     noData={!tagChartData || tagChartData.length === 0}
                     noDataMessage="No tag data available"

@@ -102,6 +102,8 @@ export async function getGuests(
     // Use validated query parameters
     const startDate = validated?.query?.from;
     const endDate = validated?.query?.to;
+    const comparisonFrom = validated?.query?.comparisonFrom;
+    const comparisonTo = validated?.query?.comparisonTo;
     const tagIds = validated?.query?.tags || [];
     const page = validated?.query?.page || 1;
     const pageSize = validated?.query?.pageSize || 50;
@@ -415,7 +417,7 @@ export async function getGuests(
       }
     }
 
-    const response: PaginatedResponse = {
+    const currentPeriodData: PaginatedResponse = {
       metrics: {
         totalGuests,
         repeatGuests,
@@ -472,7 +474,84 @@ export async function getGuests(
       }
     };
 
-    return createSuccessResponse(response);
+    // If comparison dates are provided, fetch comparison data
+    if (comparisonFrom && comparisonTo) {
+      // Fetch comparison period metrics
+      const comparisonParams: any[] = [auth.tenantId];
+      let compParamIndex = 2;
+      
+      let compDateFilter = buildDateRangeFilter('arrival', compParamIndex);
+      comparisonParams.push(comparisonFrom, comparisonTo);
+      compParamIndex += 2;
+      
+      if (bookingFilters) {
+        compDateFilter += ` ${bookingFilters}`;
+      }
+      
+      let compTagFilter = '';
+      if (tagIds.length > 0) {
+        compTagFilter = buildTagFilter(compParamIndex);
+        comparisonParams.push(tagIds);
+      }
+      
+      const compMetricsResult = await query<{
+        total_guests: string;
+        repeat_guests: string;
+        avg_stay_length: string;
+        avg_spend: string;
+        total_revenue: string;
+      }>(
+        `WITH guest_stats AS (
+          SELECT
+            b.guest_name,
+            b.guest_email,
+            COUNT(*) as booking_count,
+            SUM(b.total_amount) as total_spent,
+            SUM(b.departure - b.arrival) as total_nights,
+            MIN(b.arrival) as first_visit,
+            MAX(b.arrival) as last_visit
+          FROM bookings b
+          WHERE b.tenant_id = $1
+            AND b.status != 'canceled'
+            ${compDateFilter}
+            ${compTagFilter}
+          GROUP BY b.guest_name, b.guest_email
+        )
+        SELECT
+          COUNT(DISTINCT (guest_name, COALESCE(guest_email, ''))) as total_guests,
+          COUNT(DISTINCT CASE WHEN booking_count > 1 THEN (guest_name, COALESCE(guest_email, '')) END) as repeat_guests,
+          AVG(total_nights::float / booking_count) as avg_stay_length,
+          AVG(total_spent) as avg_spend,
+          SUM(total_spent) as total_revenue
+        FROM guest_stats`,
+        comparisonParams
+      );
+      
+      if (compMetricsResult.success && compMetricsResult.data.length > 0) {
+        const compMetrics = compMetricsResult.data[0];
+        const compTotalGuests = parseIntField(compMetrics.total_guests);
+        const compRepeatGuests = parseIntField(compMetrics.repeat_guests);
+        
+        const previousPeriodData: GuestMetrics = {
+          totalGuests: compTotalGuests,
+          repeatGuests: compRepeatGuests,
+          repeatRate: safeDivide(compRepeatGuests, compTotalGuests),
+          avgStayLength: parseNumericField(compMetrics.avg_stay_length),
+          avgSpend: parseNumericField(compMetrics.avg_spend),
+          totalRevenue: parseNumericField(compMetrics.total_revenue),
+          topSpenders: [],
+          guestsBySource: [],
+          tagDistribution: []
+        };
+        
+        return createSuccessResponse({
+          current: currentPeriodData,
+          previous: { metrics: previousPeriodData }
+        });
+      }
+    }
+
+    return createSuccessResponse(currentPeriodData);
   } catch (error) {
     return createErrorResponse(
       error instanceof Error ? error.message : 'Failed to fetch guests data'
