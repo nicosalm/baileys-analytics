@@ -35,13 +35,36 @@ export async function getOccupancy(
   const seasons = await getActiveSeasons(auth.tenantId!)
   const bookingFilters = buildBookingFilters(seasons, 'b')
   
-  const result = await getOccupancyData(params, bookingFilters)
+  // Fetch current period data
+  const currentResult = await getOccupancyData(params, bookingFilters)
 
-  if (!result.success) {
-    return createErrorResponse(result.error || 'Failed to get occupancy data')
+  if (!currentResult.success) {
+    return createErrorResponse(currentResult.error || 'Failed to get occupancy data')
   }
 
-  return createSuccessResponse(result.data)
+  // If comparison dates are provided, fetch previous period data
+  if (params.comparisonFrom && params.comparisonTo) {
+    const previousResult = await getOccupancyData(
+      params, 
+      bookingFilters,
+      params.comparisonFrom,
+      params.comparisonTo
+    )
+    
+    if (!previousResult.success) {
+      // If comparison fails, still return current data
+      return createSuccessResponse(currentResult.data)
+    }
+    
+    // Return both current and previous data
+    return createSuccessResponse({
+      current: currentResult.data,
+      previous: previousResult.data
+    })
+  }
+
+  // No comparison requested, return current data only
+  return createSuccessResponse(currentResult.data)
 }
 
 app.http('occupancy', {

@@ -1,19 +1,19 @@
 import { useEffect } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import { Calendar, Home, AlertCircle, Info, Percent, BarChart3 } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { Calendar, Home, AlertCircle, Info, Percent, BarChart3, TrendingUp, TrendingDown } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useOccupancy } from '@/hooks/use-api'
 import { useToast } from '@/contexts/toast'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { formatPercentage, minBy } from '@baileys/utils'
+import { formatPercentage, minBy, differenceInDays } from '@baileys/utils'
 import { METRIC_COLORS } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 
 export const OccupancyDashboard = () => {
-  const { filters } = useDashboard()
+  const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { addToast } = useToast()
   const { openModal } = useModal()
   
@@ -21,8 +21,14 @@ export const OccupancyDashboard = () => {
   const { data, error, isLoading } = useOccupancy(
     filters.dateRange.from,
     filters.dateRange.to,
-    tagIds
+    tagIds,
+    comparisonRange?.from,
+    comparisonRange?.to
   )
+
+  // Handle both API response formats
+  const currentData = data?.current || data
+  const previousData = data?.previous || null
 
   useEffect(() => {
     if (error) {
@@ -30,11 +36,11 @@ export const OccupancyDashboard = () => {
     }
   }, [error?.message, addToast])
 
-  if (isLoading || !data) {
+  if (isLoading || !currentData) {
     return (
       <StateWrapper
         loading={isLoading}
-        empty={!data && !isLoading}
+        empty={!currentData && !isLoading}
         loadingMessage="Loading occupancy data..."
         emptyMessage="No occupancy data available"
         minHeight={400}
@@ -45,16 +51,33 @@ export const OccupancyDashboard = () => {
     )
   }
 
-  const monthlyChartData = data.byMonth.map((m: any) => ({
-    month: m.month.slice(5),
-    fullMonth: m.month,
-    rate: m.rate * 100,
-    bookedNights: m.bookedNights,
-    availableNights: m.availableNights,
-    tooltip: `${m.bookedNights} / ${m.availableNights} nights`
-  }))
+  // Determine time period based on date range
+  const getTimePeriod = () => {
+    if (!filters.dateRange.from || !filters.dateRange.to) return ''
+    const daysDiff = differenceInDays(
+      new Date(filters.dateRange.to),
+      new Date(filters.dateRange.from)
+    )
+    
+    if (daysDiff <= 7) return ' (Daily)'
+    if (daysDiff <= 35) return ' (Weekly)'
+    return ' (Monthly)'
+  }
 
-  const lowestMonth = minBy(data.byMonth, (m: any) => m.rate) || { month: '', rate: 1 }
+  const monthlyChartData = currentData.byMonth.map((m: any) => {
+    const prevMonth = previousData?.byMonth?.find((pm: any) => pm.month.slice(5) === m.month.slice(5))
+    return {
+      month: m.month.slice(5),
+      fullMonth: m.month,
+      rate: m.rate * 100,
+      previousRate: prevMonth ? prevMonth.rate * 100 : undefined,
+      bookedNights: m.bookedNights,
+      availableNights: m.availableNights,
+      tooltip: `${m.bookedNights} / ${m.availableNights} nights`
+    }
+  })
+
+  const lowestMonth = minBy(currentData.byMonth, (m: any) => m.rate) || { month: '', rate: 1 }
 
   const formatMonthDisplay = (monthStr: string): string => {
     if (!monthStr) return 'N/A'
@@ -101,27 +124,44 @@ export const OccupancyDashboard = () => {
         <MetricCard
           icon={Percent}
           label="How Full You Were"
-          value={data.overall * 100}
+          value={currentData.overall * 100}
           format="percent"
-          subValue={`${data.bookedNights.toLocaleString()} booked out of ${data.availableNights.toLocaleString()}`}
+          subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(previousData.overall * 100, 0)} | ${currentData.bookedNights.toLocaleString()} nights`
+            : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
+          }
+          trend={comparisonMode !== 'none' && previousData?.overall !== undefined ? {
+            value: ((currentData.overall - previousData.overall) / previousData.overall) * 100,
+            isPositive: currentData.overall > previousData.overall
+          } : undefined}
           tooltip="Percentage of nights that were booked"
-          color={data.overall > 0.7 ? "green" : data.overall > 0.5 ? "yellow" : "red"}
+          color={currentData.overall > 0.7 ? "green" : currentData.overall > 0.5 ? "yellow" : "red"}
         />
         <MetricCard
           icon={Calendar}
           label="Nights With Guests"
-          value={data.bookedNights}
+          value={currentData.bookedNights}
           format="number"
-          subValue="In selected period"
+          subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.bookedNights.toLocaleString()} nights`
+            : "In selected period"
+          }
+          trend={comparisonMode !== 'none' && previousData?.bookedNights ? {
+            value: ((currentData.bookedNights - previousData.bookedNights) / previousData.bookedNights) * 100,
+            isPositive: currentData.bookedNights > previousData.bookedNights
+          } : undefined}
           tooltip="Total nights with guests"
           color="blue"
         />
         <MetricCard
           icon={Home}
           label="Total Bookable Nights"
-          value={data.availableNights}
+          value={currentData.availableNights}
           format="number"
-          subValue="Across all properties"
+          subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.availableNights.toLocaleString()}`
+            : "Across all properties"
+          }
           tooltip="Total nights properties could be booked"
           color="purple"
         />
@@ -138,7 +178,11 @@ export const OccupancyDashboard = () => {
 
       <div className="grid md:grid-cols-2 gap-6">
         <ChartWrapper
-          title="Monthly Booking Patterns"
+          title={`Monthly Booking Patterns${getTimePeriod()}`}
+          subtitle={comparisonMode !== 'none' && previousData 
+            ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+            : undefined
+          }
           icon={BarChart3}
           height={320}
         >
@@ -150,7 +194,10 @@ export const OccupancyDashboard = () => {
               domain={[0, 100]}
             />
             <Tooltip
-              formatter={(value: number) => [`${value.toFixed(1)}% booked`, 'Occupancy']}
+              formatter={(value: number, name: string) => [
+                `${value.toFixed(1)}% booked`, 
+                name === 'rate' ? 'Current' : comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'
+              ]}
               labelFormatter={(label: any, payload: any) => {
                 const data = payload?.[0]?.payload
                 if (data?.bookedNights && data?.availableNights) {
@@ -160,6 +207,7 @@ export const OccupancyDashboard = () => {
               }}
               contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
             />
+            {comparisonMode !== 'none' && previousData && <Legend />}
             <Line
               type="monotone"
               dataKey="rate"
@@ -167,7 +215,19 @@ export const OccupancyDashboard = () => {
               strokeWidth={3}
               dot={{ fill: METRIC_COLORS.occupancy, r: 6, cursor: 'pointer' }}
               activeDot={{ r: 8 }}
+              name="Current Period"
             />
+            {comparisonMode !== 'none' && previousData && (
+              <Line
+                type="monotone"
+                dataKey="previousRate"
+                stroke="#94a3b8"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ fill: '#94a3b8', r: 4 }}
+                name={comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'}
+              />
+            )}
           </LineChart>
         </ChartWrapper>
 
@@ -177,11 +237,13 @@ export const OccupancyDashboard = () => {
             How Each Property Is Doing
           </h3>
           <div className="space-y-3">
-            {data.byProperty.length > 0 ? (
-              data.byProperty
+            {currentData.byProperty.length > 0 ? (
+              currentData.byProperty
                 .sort((a: any, b: any) => b.rate - a.rate)
                 .map((property: any) => {
                   const occupancyPercent = property.rate * 100
+                  const prevProperty = previousData?.byProperty?.find((p: any) => p.propertyId === property.propertyId)
+                  const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
                   const occupancyColor = occupancyPercent >= 70 ? 'bg-green-500' :
                                          occupancyPercent >= 50 ? 'bg-yellow-500' :
                                          'bg-red-500'
@@ -192,9 +254,21 @@ export const OccupancyDashboard = () => {
                         <span className="font-medium text-sm truncate max-w-[200px]" title={property.propertyName}>
                           {property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}
                         </span>
-                        <span className="text-sm font-semibold">
-                          {formatPercentage(occupancyPercent, 0)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold">
+                            {formatPercentage(occupancyPercent, 0)}
+                          </span>
+                          {comparisonMode !== 'none' && prevOccupancy !== null && (
+                            <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-green-600' : occupancyPercent < prevOccupancy ? 'text-red-600' : 'text-gray-500'}`}>
+                              {occupancyPercent > prevOccupancy ? (
+                                <TrendingUp className="w-3 h-3" />
+                              ) : occupancyPercent < prevOccupancy ? (
+                                <TrendingDown className="w-3 h-3" />
+                              ) : null}
+                              {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="relative">
                         <div className="w-full bg-gray-200 rounded-full h-6">
@@ -221,7 +295,7 @@ export const OccupancyDashboard = () => {
               </div>
             )}
           </div>
-          {data.byProperty.length > 0 && (
+          {currentData.byProperty.length > 0 && (
             <div className="mt-4 pt-4 border-t">
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div className="flex items-center">

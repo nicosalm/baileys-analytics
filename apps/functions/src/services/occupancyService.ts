@@ -39,6 +39,8 @@ export interface OccupancyQueryParams extends BaseQueryParams {
   fromDate: string
   toDate: string
   tagIds: string[]
+  comparisonFrom?: string
+  comparisonTo?: string
 }
 
 // Query parameter parsing
@@ -49,7 +51,9 @@ export const parseOccupancyQueryParams = (
   tenantId,
   fromDate: request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1)),
   toDate: request.query.get('to') || formatDateISO(new Date()),
-  tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
+  tagIds: request.query.get('tags')?.split(',').filter(Boolean) || [],
+  comparisonFrom: request.query.get('comparisonFrom') || undefined,
+  comparisonTo: request.query.get('comparisonTo') || undefined
 })
 
 // Query builders
@@ -62,21 +66,26 @@ export const buildOccupancyTagFilter = (tagIds: readonly string[], tableAlias: s
       )`
     : ''
 
-export const buildOccupancyQueryParams = (params: OccupancyQueryParams): any[] =>
-  params.tagIds.length > 0
-    ? [params.tenantId, params.fromDate, params.toDate, params.tagIds]
-    : [params.tenantId, params.fromDate, params.toDate]
+export const buildOccupancyQueryParams = (params: Omit<OccupancyQueryParams, 'comparisonFrom' | 'comparisonTo'>, fromDate?: string, toDate?: string): any[] => {
+  const from = fromDate || params.fromDate
+  const to = toDate || params.toDate
+  return params.tagIds.length > 0
+    ? [params.tenantId, from, to, params.tagIds]
+    : [params.tenantId, from, to]
+}
 
 // Data fetchers
 export const fetchOverallOccupancy = async (
-  params: OccupancyQueryParams,
-  bookingFilters: string | null
+  params: Omit<OccupancyQueryParams, 'comparisonFrom' | 'comparisonTo'>,
+  bookingFilters: string | null,
+  fromDate?: string,
+  toDate?: string
 ): Promise<DbResult<{
   booked_nights: number
   available_nights: number
 }>> => {
   const tagFilter = buildOccupancyTagFilter(params.tagIds, 'b')
-  const queryParams = buildOccupancyQueryParams(params)
+  const queryParams = buildOccupancyQueryParams(params, fromDate, toDate)
 
   const result = await query<{
     booked_nights: string
@@ -161,8 +170,10 @@ export const fetchOverallOccupancy = async (
 }
 
 export const fetchPropertyOccupancy = async (
-  params: OccupancyQueryParams,
-  bookingFilters: string | null
+  params: Omit<OccupancyQueryParams, 'comparisonFrom' | 'comparisonTo'>,
+  bookingFilters: string | null,
+  fromDate?: string,
+  toDate?: string
 ): Promise<DbResult<readonly {
   property_id: string
   property_name: string
@@ -171,7 +182,7 @@ export const fetchPropertyOccupancy = async (
   availability_start: string | null
 }[]>> => {
   const tagFilter = buildOccupancyTagFilter(params.tagIds, 'b')
-  const queryParams = buildOccupancyQueryParams(params)
+  const queryParams = buildOccupancyQueryParams(params, fromDate, toDate)
 
   return query<{
     property_id: string
@@ -243,15 +254,17 @@ export const fetchPropertyOccupancy = async (
 }
 
 export const fetchMonthlyOccupancy = async (
-  params: OccupancyQueryParams,
-  bookingFilters: string | null
+  params: Omit<OccupancyQueryParams, 'comparisonFrom' | 'comparisonTo'>,
+  bookingFilters: string | null,
+  fromDate?: string,
+  toDate?: string
 ): Promise<DbResult<readonly {
   month: string
   booked_nights: string
   available_nights: string
 }[]>> => {
   const tagFilter = buildOccupancyTagFilter(params.tagIds, 'b')
-  const queryParams = buildOccupancyQueryParams(params)
+  const queryParams = buildOccupancyQueryParams(params, fromDate, toDate)
 
   return query<{
     month: string
@@ -323,14 +336,16 @@ export const fetchMonthlyOccupancy = async (
 }
 
 export const fetchDailyOccupancy = async (
-  params: OccupancyQueryParams
+  params: Omit<OccupancyQueryParams, 'comparisonFrom' | 'comparisonTo'>,
+  fromDate?: string,
+  toDate?: string
 ): Promise<DbResult<readonly {
   date: string
   booked_properties: string
   total_properties: string
 }[]>> => {
   const tagFilter = buildOccupancyTagFilter(params.tagIds, 'b')
-  const queryParams = buildOccupancyQueryParams(params)
+  const queryParams = buildOccupancyQueryParams(params, fromDate, toDate)
 
   return query<{
     date: string
@@ -455,13 +470,15 @@ export const transformDailyOccupancy = (
 
 // Main service functions
 export const getOccupancyData = async (
-  params: OccupancyQueryParams,
-  bookingFilters: string | null
+  params: Omit<OccupancyQueryParams, 'comparisonFrom' | 'comparisonTo'>,
+  bookingFilters: string | null,
+  fromDate?: string,
+  toDate?: string
 ): Promise<DbResult<OccupancyData>> => {
   const [overallResult, byPropertyResult, byMonthResult] = await Promise.all([
-    fetchOverallOccupancy(params, bookingFilters),
-    fetchPropertyOccupancy(params, bookingFilters),
-    fetchMonthlyOccupancy(params, bookingFilters)
+    fetchOverallOccupancy(params, bookingFilters, fromDate, toDate),
+    fetchPropertyOccupancy(params, bookingFilters, fromDate, toDate),
+    fetchMonthlyOccupancy(params, bookingFilters, fromDate, toDate)
   ])
 
   if (!overallResult.success) {
@@ -484,9 +501,11 @@ export const getOccupancyData = async (
 }
 
 export const getDailyOccupancyData = async (
-  params: OccupancyQueryParams
+  params: Omit<OccupancyQueryParams, 'comparisonFrom' | 'comparisonTo'>,
+  fromDate?: string,
+  toDate?: string
 ): Promise<DbResult<readonly DailyOccupancy[]>> => {
-  const result = await fetchDailyOccupancy(params)
+  const result = await fetchDailyOccupancy(params, fromDate, toDate)
 
   if (!result.success) {
     return { success: false, error: 'Failed to fetch daily occupancy' }
