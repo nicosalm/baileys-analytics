@@ -11,6 +11,7 @@ import ReportsModule from '@/components/ReportsModule'
 import { FilterBar } from '@/components/FilterBar'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
+import { Footer } from '@/components/Footer'
 
 // Tab config with overview as first tab
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -107,7 +108,7 @@ export const DashboardLayout = () => {
     }
 
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
         <nav className="bg-white shadow-xs border-b">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
@@ -119,7 +120,7 @@ export const DashboardLayout = () => {
             </div>
           </div>
         </nav>
-        <div className="max-w-7xl mx-auto p-8">
+        <div className="max-w-7xl mx-auto p-8 flex-1">
           <div className="bg-white rounded-lg shadow-xs p-12 text-center">
             <div className="max-w-md mx-auto">
               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -138,13 +139,14 @@ export const DashboardLayout = () => {
             </div>
           </div>
         </div>
+        <Footer />
       </div>
     )
   }
 
   return (
     <DashboardProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 flex flex-col">
           <nav className="bg-white shadow-xs border-b">
             <div className="max-w-7xl mx-auto px-6 py-3">
               <div className="flex justify-between items-center">
@@ -182,9 +184,11 @@ export const DashboardLayout = () => {
           <DashboardTabs />
           <FilterBar />
 
-          <main className="max-w-7xl mx-auto px-6 py-4">
+          <main className="max-w-7xl mx-auto px-6 py-4 flex-1 w-full">
             <DashboardContent />
           </main>
+          
+          <Footer />
         </div>
     </DashboardProvider>
   )

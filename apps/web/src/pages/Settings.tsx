@@ -5,8 +5,9 @@ import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
-import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck, Lightbulb } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck, Lightbulb, Trash2 } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
+import { Footer } from '@/components/Footer'
 
 // Lazy load the tax management panel
 const TaxManagementPanel = lazy(() => 
@@ -154,6 +155,29 @@ const AccountInfo = ({ email, createdAt, companyName }: {
   )
 }
 
+const DangerZone = ({ onDeleteAccount }: { onDeleteAccount: () => void }) => (
+  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+      <div className="flex items-start">
+        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+        <div className="flex-1">
+          <h4 className="text-sm font-medium text-red-900 mb-1">Danger Zone</h4>
+          <p className="text-sm text-red-700 mb-3">
+            Permanently delete your account and all associated data. This action cannot be undone.
+          </p>
+          <button
+            onClick={onDeleteAccount}
+            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Account
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)
+
 const OwnerRezConnection = ({
   isConnected,
   syncStatus,
@@ -248,11 +272,14 @@ const OwnerRezConnection = ({
 }
 
 export const Settings = () => {
-  const { state } = useAuth()
+  const { state, logout } = useAuth()
   const { addToast } = useToast()
   const [searchParams] = useSearchParams()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
   const [activeTab, setActiveTab] = useState<'account' | 'tax' | 'seasons'>('account')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
   
   const { data: syncStatus } = useSyncStatus()
   
@@ -348,9 +375,43 @@ export const Settings = () => {
     setTimeout(() => setSyncState({ type: 'idle' }), 1000)
   }
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      addToast('error', 'Please type DELETE to confirm')
+      return
+    }
+
+    setIsDeleting(true)
+    
+    try {
+      const response = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.ok) {
+        addToast('success', 'Account deleted successfully')
+        await logout()
+        window.location.href = '/'
+      } else {
+        const error = await response.json().catch(() => ({ error: 'Failed to delete account' }))
+        addToast('error', error.error || 'Failed to delete account')
+      }
+    } catch (error) {
+      addToast('error', 'Network error while deleting account')
+    } finally {
+      setIsDeleting(false)
+      setShowDeleteConfirm(false)
+      setDeleteConfirmText('')
+    }
+  }
+
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <Link to="/dashboard/overview" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors">
@@ -360,7 +421,7 @@ export const Settings = () => {
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-6 py-8 w-full flex-1">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
           <p className="text-sm text-gray-600 mt-1">Manage your account, connections, and tax configurations</p>
@@ -419,6 +480,8 @@ export const Settings = () => {
               onGuestDetailsSync={() => handleSync('guest-details')}
               syncState={syncState}
             />
+            
+            <DangerZone onDeleteAccount={() => setShowDeleteConfirm(true)} />
           </div>
         ) : activeTab === 'tax' ? (
           <Suspense fallback={
@@ -443,6 +506,88 @@ export const Settings = () => {
         )}
         
       </div>
+      
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" onClick={() => {
+            setShowDeleteConfirm(false)
+            setDeleteConfirmText('')
+          }} />
+          <div className="flex min-h-screen items-center justify-center p-4">
+          <div className="relative bg-white rounded-lg shadow-2xl ring-1 ring-gray-200 max-w-md w-full p-6">
+            <div className="flex items-start mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900">Delete Account</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  This will permanently delete your account and all associated data including:
+                </p>
+                <ul className="text-sm text-gray-600 mt-2 space-y-1 list-disc list-inside">
+                  <li>All property and booking data</li>
+                  <li>Tax configurations and reports</li>
+                  <li>Historical analytics data</li>
+                  <li>Account settings and preferences</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-red-800">
+                <strong>Warning:</strong> This action cannot be undone. Your data will be permanently deleted within 30 days.
+              </p>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type <span className="font-bold">DELETE</span> to confirm
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                placeholder="Type DELETE here"
+                disabled={isDeleting}
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setDeleteConfirmText('')
+                }}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Account
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          </div>
+        </div>
+      )}
+      
+      <Footer />
     </div>
   )
 }

@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { Footer } from '@/components/Footer'
 
 export const Landing = () => {
   const { state } = useAuth()
   const isAuthenticated = state.status === 'authenticated'
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen flex flex-col">
       <nav className="p-4 border-b">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold">Baileys Analytics</h1>
@@ -158,6 +159,7 @@ export const Landing = () => {
           <p className="text-sm">Secure, tenant-isolated data with automatic backups</p>
         </section>
       </main>
+      <Footer />
     </div>
   )
 }

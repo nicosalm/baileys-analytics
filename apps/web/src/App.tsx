@@ -16,6 +16,8 @@ const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login }
 const Signup = lazy(() => import('@/pages/Signup').then(m => ({ default: m.Signup })))
 const DashboardLayout = lazy(() => import('@/pages/DashboardLayout').then(m => ({ default: m.DashboardLayout })))
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })))
+const Terms = lazy(() => import('@/pages/Terms').then(m => ({ default: m.Terms })))
+const Privacy = lazy(() => import('@/pages/Privacy').then(m => ({ default: m.Privacy })))
 const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })))
 
 export const App = () => {
@@ -29,6 +31,8 @@ export const App = () => {
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/privacy" element={<Privacy />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Navigate to="/dashboard/overview" replace />} />
