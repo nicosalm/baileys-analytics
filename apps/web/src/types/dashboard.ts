@@ -22,7 +22,6 @@ export type DashboardTab =
   | 'financial'
   | 'properties'
   | 'occupancy'
-  | 'seasonal'
   | 'guests'
   | 'reports'
 
