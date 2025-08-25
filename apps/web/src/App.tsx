@@ -16,6 +16,7 @@ const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login }
 const Signup = lazy(() => import('@/pages/Signup').then(m => ({ default: m.Signup })))
 const DashboardLayout = lazy(() => import('@/pages/DashboardLayout').then(m => ({ default: m.DashboardLayout })))
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })))
+const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })))
 
 export const App = () => {
   return (
@@ -53,7 +54,7 @@ export const App = () => {
                 />
               </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
           </ToastProvider>
