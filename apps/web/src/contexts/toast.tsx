@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react'
+import '../styles/toast.css'
 
 type ToastType = 'success' | 'error' | 'info'
 
