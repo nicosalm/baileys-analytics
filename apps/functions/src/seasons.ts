@@ -11,16 +11,16 @@ function checkSeasonOverlap(
   season2: { startMonth: number; startDay: number; endMonth: number; endDay: number }
 ): boolean {
   const toNum = (month: number, day: number) => month * 100 + day
-  
+
   const s1Start = toNum(season1.startMonth, season1.startDay)
   const s1End = toNum(season1.endMonth, season1.endDay)
   const s2Start = toNum(season2.startMonth, season2.startDay)
   const s2End = toNum(season2.endMonth, season2.endDay)
-  
+
   if (s1Start <= s1End && s2Start <= s2End) {
     return !(s1End < s2Start || s2End < s1Start)
   }
-  
+
   if (s1Start > s1End || s2Start > s2End) {
     if (s1Start > s1End) {
       if (s2Start > s2End) {
@@ -32,7 +32,7 @@ function checkSeasonOverlap(
       return (s1Start >= s2Start || s1End >= s2Start || s1Start <= s2End || s1End <= s2End)
     }
   }
-  
+
   return false
 }
 
@@ -63,14 +63,14 @@ async function handleGetSeasons(
 ): Promise<HttpResponseInit> {
   try {
     const auth = req.auth!
-    
+
     const tenantValidation = requireTenant(auth.tenantId)
     if (tenantValidation) {
       return tenantValidation
     }
-    
+
     const result = await query<Season>(
-      `SELECT 
+      `SELECT
         id,
         tenant_id as "tenantId",
         name,
@@ -105,12 +105,12 @@ async function handleCreateSeason(
   try {
     const auth = req.auth!
     const body = req.body
-    
+
     const tenantValidation = requireTenant(auth.tenantId)
     if (tenantValidation) {
       return tenantValidation
     }
-    
+
     const validation = SeasonSchema.safeParse(body)
     if (!validation.success) {
       return createValidationErrorResponse(validation.error)
@@ -119,11 +119,11 @@ async function handleCreateSeason(
     const { name, startMonth, startDay, endMonth, endDay } = validation.data
 
     const existingActiveSeasons = await query<Season>(
-      `SELECT * FROM season_configurations 
+      `SELECT * FROM season_configurations
        WHERE tenant_id = $1 AND is_active = true`,
       [auth.tenantId]
     )
-    
+
     if (existingActiveSeasons.success && existingActiveSeasons.data.length > 0) {
       return createErrorResponse(
         `Only one season can be active at a time. Please deactivate the existing season "${existingActiveSeasons.data[0].name}" first.`,
@@ -135,7 +135,7 @@ async function handleCreateSeason(
       `INSERT INTO season_configurations (
         tenant_id, name, start_month, start_day, end_month, end_day
       ) VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING 
+      RETURNING
         id,
         tenant_id as "tenantId",
         name,
@@ -169,12 +169,12 @@ async function handleUpdateSeason(
     const auth = req.auth!
     const seasonId = req.params.id
     const body = req.body
-    
+
     const tenantValidation = requireTenant(auth.tenantId)
     if (tenantValidation) {
       return tenantValidation
     }
-    
+
     const validation = SeasonSchema.safeParse(body)
     if (!validation.success) {
       return createValidationErrorResponse(validation.error)
@@ -186,7 +186,7 @@ async function handleUpdateSeason(
       `UPDATE season_configurations
       SET name = $3, start_month = $4, start_day = $5, end_month = $6, end_day = $7, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1 AND tenant_id = $2
-      RETURNING 
+      RETURNING
         id,
         tenant_id as "tenantId",
         name,
@@ -249,17 +249,17 @@ async function handleToggleSeasonActive(
   try {
     const auth = req.auth!
     const seasonId = req.params?.id
-    
+
     const tenantValidation = requireTenant(auth.tenantId)
     if (tenantValidation) {
       return tenantValidation
     }
-    
+
     if (!seasonId) {
       context.error('Season ID not provided in params:', req.params)
       return createErrorResponse('Season ID is required', 400)
     }
-    
+
     const { isActive } = req.body || {}
 
     if (typeof isActive !== 'boolean') {
@@ -273,7 +273,7 @@ async function handleToggleSeasonActive(
          WHERE tenant_id = $1 AND id != $2`,
         [auth.tenantId, seasonId]
       )
-      
+
       if (!deactivateResult.success) {
         return createErrorResponse('Failed to deactivate other seasons')
       }
@@ -283,7 +283,7 @@ async function handleToggleSeasonActive(
       `UPDATE season_configurations
       SET is_active = $3, updated_at = CURRENT_TIMESTAMP
       WHERE id = $1 AND tenant_id = $2
-      RETURNING 
+      RETURNING
         id,
         tenant_id as "tenantId",
         name,
@@ -333,8 +333,6 @@ export async function seasons(
   const authReq = authCheck.request as AuthenticatedRequest
   const method = req.method.toUpperCase()
   const id = req.params.id || ''
-
-  context.log('Seasons endpoint - Method:', method, 'ID:', id, 'Params:', req.params)
 
   const requestWithId = {
     ...authReq,

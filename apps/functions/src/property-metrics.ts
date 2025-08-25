@@ -25,24 +25,31 @@ type QueryParams = {
   fromDate: string
   toDate: string
   tagIds: readonly string[]
+  comparisonFrom?: string
+  comparisonTo?: string
 }
 
 const parseQueryParams = (request: HttpRequest, tenantId: string): QueryParams => ({
   tenantId,
   fromDate: request.query.get('from') || formatDateISO(new Date(getYear(new Date()), 0, 1)),
   toDate: request.query.get('to') || formatDateISO(new Date()),
-  tagIds: request.query.get('tags')?.split(',').filter(Boolean) || []
+  tagIds: request.query.get('tags')?.split(',').filter(Boolean) || [],
+  comparisonFrom: request.query.get('comparisonFrom') || undefined,
+  comparisonTo: request.query.get('comparisonTo') || undefined
 })
 
 const buildCustomTagFilter = (tagIds: readonly string[]): string =>
   tagIds.length > 0 ? buildTagFilter(4) : ''
 
-const buildQueryParams = (params: QueryParams): any[] =>
-  params.tagIds.length > 0
-    ? [params.tenantId, params.fromDate, params.toDate, params.tagIds]
-    : [params.tenantId, params.fromDate, params.toDate]
+const buildQueryParams = (params: Omit<QueryParams, 'comparisonFrom' | 'comparisonTo'>, fromDate?: string, toDate?: string): any[] => {
+  const from = fromDate || params.fromDate
+  const to = toDate || params.toDate
+  return params.tagIds.length > 0
+    ? [params.tenantId, from, to, params.tagIds]
+    : [params.tenantId, from, to]
+}
 
-const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<readonly {
+const fetchPropertyMetrics = async (params: Omit<QueryParams, 'comparisonFrom' | 'comparisonTo'>, fromDate?: string, toDate?: string): Promise<DbResult<readonly {
   property_id: string
   property_name: string
   total_revenue: string
@@ -54,7 +61,7 @@ const fetchPropertyMetrics = async (params: QueryParams): Promise<DbResult<reado
   const bookingFilters = buildBookingFilters(seasons, 'b')
   
   const tagFilter = buildCustomTagFilter(params.tagIds)
-  const queryParams = buildQueryParams(params)
+  const queryParams = buildQueryParams(params, fromDate, toDate)
 
   return query<{
     property_id: string
@@ -196,15 +203,34 @@ export async function getPropertyMetrics(
   const tenantId = auth.tenantId!
 
   const params = parseQueryParams(request, tenantId)
-  const result = await fetchPropertyMetrics(params)
-
-  if (!result.success) {
+  
+  // Fetch current period metrics
+  const currentResult = await fetchPropertyMetrics(params)
+  if (!currentResult.success) {
     return createErrorResponse('Failed to fetch property metrics');
   }
+  const currentMetrics = transformMetrics(currentResult.data)
 
-  const metrics = transformMetrics(result.data)
+  // If comparison dates are provided, fetch previous period metrics
+  if (params.comparisonFrom && params.comparisonTo) {
+    const previousResult = await fetchPropertyMetrics(params, params.comparisonFrom, params.comparisonTo)
+    
+    if (!previousResult.success) {
+      // If comparison fails, still return current data
+      return createSuccessResponse(currentMetrics);
+    }
+    
+    const previousMetrics = transformMetrics(previousResult.data)
+    
+    // Return both current and previous data
+    return createSuccessResponse({
+      current: currentMetrics,
+      previous: previousMetrics
+    });
+  }
 
-  return createSuccessResponse(metrics);
+  // No comparison requested, return current metrics only
+  return createSuccessResponse(currentMetrics);
 }
 
 app.http('property-metrics', {
