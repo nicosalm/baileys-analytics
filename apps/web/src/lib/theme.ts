@@ -80,11 +80,11 @@ export const METRIC_COLORS = {
 } as const
 
 export const PLATFORM_COLORS: Record<string, string> = {
-  'Airbnb': '#FF5A5F',
-  'VRBO': '#0061A7',
-  'Booking.com': '#003580',
-  'Direct': '#22C55E',
-  'Other': '#6B7280'
+  'airbnb': '#FF5A5F',
+  'vrbo': '#0061A7',
+  'booking.com': '#003580',
+  'direct': '#22C55E',
+  'other': '#6B7280'
 } as const
 
 export const getChartColor = (index: number): string => {
@@ -92,11 +92,11 @@ export const getChartColor = (index: number): string => {
 }
 
 export const getPlatformColor = (platform: string, index: number = 0): string => {
-  // Check if we have a specific color for this platform
-  if (PLATFORM_COLORS[platform]) {
-    return PLATFORM_COLORS[platform]
+  const lowerPlatform = platform.toLowerCase()
+  if (PLATFORM_COLORS[lowerPlatform]) {
+    return PLATFORM_COLORS[lowerPlatform]
   }
-  // Otherwise use the standard chart colors
+  
   return CHART_COLORS[index % CHART_COLORS.length]
 }
 

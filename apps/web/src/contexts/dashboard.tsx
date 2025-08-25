@@ -164,7 +164,7 @@ const serializeFiltersToUrl = (filters: FilterState, searchParams: URLSearchPara
 export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
-  const [comparisonMode, setComparisonMode] = useState<'none' | 'previous-period' | 'previous-year'>('previous-period')
+  const [comparisonMode, setComparisonMode] = useState<'none' | 'previous-period' | 'previous-year'>('none')
   const [comparisonRange, setComparisonRange] = useState<DateRange | undefined>()
   const isInitialMount = useRef(true)
   

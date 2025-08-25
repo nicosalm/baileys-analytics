@@ -354,10 +354,7 @@ export const GuestsDashboard = () => {
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
                         value: ((data.metrics.repeatRate - previousData.metrics.repeatRate) / (previousData.metrics.repeatRate || 0.01)) * 100,
                         isPositive: data.metrics.repeatRate > previousData.metrics.repeatRate
-                    } : {
-                        value: data.metrics.repeatRate * 100,
-                        isPositive: data.metrics.repeatRate > 0.3
-                    }}
+                    } : undefined}
                 />
                 <MetricCard
                     icon={Calendar}
