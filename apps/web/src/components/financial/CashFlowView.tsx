@@ -3,6 +3,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
+import { useTips } from '@/hooks/use-tips'
 import { 
   TrendingUp, Wallet,
   Info, ArrowUpRight, ArrowDownRight
@@ -24,6 +25,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   onMonthClick,
   comparisonMode = 'none'
 }) => {
+  const { showTips } = useTips()
   const cashFlowData = useMemo(() => {
     if (!data) return null
     
@@ -108,14 +110,16 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Info Banner */}
-      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-        <div className="flex items-start">
-          <Info className="w-5 h-5 text-purple-600 mr-2 mt-0.5" />
-          <div className="text-sm text-purple-800">
-            <strong>Cash Flow:</strong> Track money coming in (revenue) versus money going out (fees, taxes) to understand your liquidity
+      {showTips && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-purple-600 mr-2 mt-0.5" />
+            <div className="text-sm text-purple-800">
+              <strong>Cash Flow:</strong> Track money coming in (revenue) versus money going out (fees, taxes) to understand your liquidity
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Key Metrics */}
       <div className="grid md:grid-cols-4 gap-4">

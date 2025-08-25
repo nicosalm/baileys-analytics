@@ -5,6 +5,7 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
+import { useTips } from '@/hooks/use-tips'
 
 interface BookingDetailModalProps {
   bookingId: string
@@ -13,6 +14,7 @@ interface BookingDetailModalProps {
 
 export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalProps) => {
   const { closeModal, openModal } = useModal()
+  const { showTips } = useTips()
   const { data, isLoading, error } = useBookingDetail(bookingId)
 
   const booking = data?.booking
@@ -40,15 +42,17 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
       >
         <div className="space-y-6">
         {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
-              <strong>Booking Details:</strong> Complete information about this reservation. 
-              Click guest or property names to view their details.
+        {showTips && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <strong>Booking Details:</strong> Complete information about this reservation. 
+                Click guest or property names to view their details.
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Status */}
         <div className="flex items-center justify-between">

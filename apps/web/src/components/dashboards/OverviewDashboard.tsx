@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useOverview } from '@/hooks/use-api'
+import { useTips } from '@/hooks/use-tips'
 import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import {
   AlertCircle, CheckCircle, TrendingUp,
@@ -48,6 +49,7 @@ const AlertCard = ({ alert }: { alert: any }) => {
 export const OverviewDashboard = () => {
   const { addToast } = useToast()
   const { filters, setActiveTab, comparisonRange, comparisonMode } = useDashboard()
+  const { showTips } = useTips()
   
   const tagIds = filters.selectedTags.map(t => t.id)
   const { data, error, isLoading } = useOverview(
@@ -125,15 +127,17 @@ export const OverviewDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start">
-          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <strong>Quick Start:</strong> Click any metric card to dive deeper into that area. 
-            Green arrows mean improvement, red arrows mean decline. All numbers reflect your selected date range.
+      {showTips && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              <strong>Quick Start:</strong> Click any metric card to dive deeper into that area. 
+              Green arrows mean improvement, red arrows mean decline. All numbers reflect your selected date range.
+            </div>
           </div>
         </div>
-      </div>
+      )}
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={DollarSign}

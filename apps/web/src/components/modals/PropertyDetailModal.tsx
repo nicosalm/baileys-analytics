@@ -9,6 +9,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
+import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS, CHART_COLORS } from '@/lib/theme'
 
 interface PropertyDetailModalProps {
@@ -18,6 +19,7 @@ interface PropertyDetailModalProps {
 
 export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetailModalProps) => {
   const { closeModal, openModal } = useModal()
+  const { showTips } = useTips()
   const { filters } = useDashboard()
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'revenue'>('overview')
   
@@ -64,15 +66,17 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
         {data && (
         <div className="space-y-6">
         {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
-              <strong>Property Overview:</strong> All metrics shown are for your selected date range. 
-              Click on any guest name to see their booking history.
+        {showTips && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <strong>Property Overview:</strong> All metrics shown are for your selected date range. 
+                Click on any guest name to see their booking history.
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Property Info Card */}
         <div className="bg-gray-50 rounded-lg p-6">

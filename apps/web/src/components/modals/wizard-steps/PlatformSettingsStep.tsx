@@ -2,6 +2,7 @@ import { Calendar, Info, Building2 } from 'lucide-react'
 import useSWR from 'swr'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
+import { useTips } from '@/hooks/use-tips'
 
 interface PlatformSettingsStepProps {
   propertyId: string
@@ -16,6 +17,7 @@ export const PlatformSettingsStep = ({
   effectiveFrom,
   onUpdate 
 }: PlatformSettingsStepProps) => {
+  const { showTips } = useTips()
   const { data: platformsResponse, isLoading } = useSWR(
     propertyId ? `/property-platforms?propertyId=${propertyId}` : null,
     async (url: string) => {
@@ -39,15 +41,17 @@ export const PlatformSettingsStep = ({
   
   return (
     <div className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start">
-          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <strong>Platform Tax Remittance:</strong> Indicate which booking platforms collect and remit taxes directly to the government. 
-            This helps calculate your actual tax liability by excluding taxes already paid by platforms.
+      {showTips && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              <strong>Platform Tax Remittance:</strong> Indicate which booking platforms collect and remit taxes directly to the government. 
+              This helps calculate your actual tax liability by excluding taxes already paid by platforms.
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
       <div>
         <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
@@ -100,12 +104,14 @@ export const PlatformSettingsStep = ({
           })}
           </div>
         )}
-        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-xs text-amber-800">
-            <strong>Important:</strong> Platform tax remittance varies by jurisdiction. Verify with each platform 
-            and your local tax authority. Platforms typically only remit taxes on their service fees, not on the base rental amount.
-          </p>
-        </div>
+        {showTips && (
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs text-amber-800">
+              <strong>Important:</strong> Platform tax remittance varies by jurisdiction. Verify with each platform 
+              and your local tax authority. Platforms typically only remit taxes on their service fees, not on the base rental amount.
+            </p>
+          </div>
+        )}
       </div>
       
       <div>

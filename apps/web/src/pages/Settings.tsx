@@ -3,8 +3,9 @@ import { useAuth } from '@/contexts/auth'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
+import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
-import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck, Lightbulb } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 
 // Lazy load the tax management panel
@@ -109,27 +110,49 @@ const AccountInfo = ({ email, createdAt, companyName }: {
   email: string
   createdAt: string
   companyName?: string | null
-}) => (
-  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-    <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
-    <div className="space-y-3">
-      <div className="flex justify-between items-center py-2 border-b border-gray-50">
-        <span className="text-sm text-gray-600">Email Address</span>
-        <span className="text-sm font-medium text-gray-900">{email}</span>
-      </div>
-      <div className="flex justify-between items-center py-2 border-b border-gray-50">
-        <span className="text-sm text-gray-600">Member Since</span>
-        <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
-      </div>
-      {companyName && (
-        <div className="flex justify-between items-center py-2">
-          <span className="text-sm text-gray-600">Company</span>
-          <span className="text-sm font-medium text-gray-900">{companyName}</span>
+}) => {
+  const { showTips, toggleTips } = useTips()
+  
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
+      <div className="space-y-3">
+        <div className="flex justify-between items-center py-2 border-b border-gray-50">
+          <span className="text-sm text-gray-600">Email Address</span>
+          <span className="text-sm font-medium text-gray-900">{email}</span>
         </div>
-      )}
+        <div className="flex justify-between items-center py-2 border-b border-gray-50">
+          <span className="text-sm text-gray-600">Member Since</span>
+          <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
+        </div>
+        {companyName && (
+          <div className="flex justify-between items-center py-2 border-b border-gray-50">
+            <span className="text-sm text-gray-600">Company</span>
+            <span className="text-sm font-medium text-gray-900">{companyName}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center py-2">
+          <div className="flex items-center">
+            <Lightbulb className="w-4 h-4 text-gray-500 mr-2" />
+            <span className="text-sm text-gray-600">Show Tips & Hints</span>
+          </div>
+          <button
+            onClick={toggleTips}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              showTips ? 'bg-blue-600' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                showTips ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 const OwnerRezConnection = ({
   isConnected,

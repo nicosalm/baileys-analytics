@@ -5,6 +5,7 @@ import { Calendar, Home, AlertCircle, Info, Percent, BarChart3, TrendingUp, Tren
 import { useDashboard } from '@/contexts/dashboard'
 import { useOccupancy } from '@/hooks/use-api'
 import { useToast } from '@/contexts/toast'
+import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -16,6 +17,7 @@ export const OccupancyDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { addToast } = useToast()
   const { openModal } = useModal()
+  const { showTips } = useTips()
   
   const tagIds = filters.selectedTags.map(t => t.id)
   const { data, error, isLoading } = useOccupancy(
@@ -110,15 +112,17 @@ export const OccupancyDashboard = () => {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start">
-          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <strong>Understanding Your Numbers:</strong> Occupancy shows what percentage of available nights were booked. 
-            Higher percentages mean fewer empty nights. Look for patterns to optimize pricing and availability.
+      {showTips && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              <strong>Understanding Your Numbers:</strong> Occupancy shows what percentage of available nights were booked. 
+              Higher percentages mean fewer empty nights. Look for patterns to optimize pricing and availability.
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard

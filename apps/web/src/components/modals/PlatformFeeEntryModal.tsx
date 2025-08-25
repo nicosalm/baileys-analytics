@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
+import { useTips } from '@/hooks/use-tips'
 import { api } from '@/lib/api'
 import { mutate } from 'swr'
 import { Calculator, Info, DollarSign } from 'lucide-react'
@@ -31,6 +32,7 @@ export const PlatformFeeEntryModal = ({
 }: PlatformFeeEntryModalProps) => {
   const { closeModal } = useModal()
   const { addToast } = useToast()
+  const { showTips } = useTips()
   
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<Partial<PlatformFeeData>>({
@@ -304,7 +306,7 @@ export const PlatformFeeEntryModal = ({
                 <span className="font-medium">Total Platform Fees:</span>
                 <span className="font-bold">{formatCurrency(totalFees)}</span>
               </div>
-              {formData.platformRemitsTax && (
+              {formData.platformRemitsTax && showTips && (
                 <p className="text-xs text-blue-700 mt-2">
                   ℹ️ Platform remits taxes on their fees directly
                 </p>

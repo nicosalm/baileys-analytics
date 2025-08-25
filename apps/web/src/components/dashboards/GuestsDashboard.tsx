@@ -10,6 +10,7 @@ import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
+import { useTips } from '@/hooks/use-tips'
 import { CHART_COLORS, METRIC_COLORS, getPlatformColor } from '@/lib/theme'
 import {
     BarChart, Bar, PieChart, Pie, Cell,
@@ -41,6 +42,7 @@ export const GuestsDashboard = () => {
     const { addToast } = useToast()
     const { openModal } = useModal()
     const { filters, comparisonRange, comparisonMode } = useDashboard()
+    const { showTips } = useTips()
     
     const { data: rawData, error, isLoading } = useGuests(
         filters.dateRange.from,
@@ -308,15 +310,17 @@ export const GuestsDashboard = () => {
             </div>
 
             {/* Info Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start">
-                    <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-                    <div className="text-sm text-blue-800">
-                        <strong>Guest Analysis:</strong> Metrics show guests who had bookings in the selected period. 
-                        Guest totals and spending reflect their activity during this timeframe only.
+            {showTips && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start">
+                        <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+                        <div className="text-sm text-blue-800">
+                            <strong>Guest Analysis:</strong> Metrics show guests who had bookings in the selected period. 
+                            Guest totals and spending reflect their activity during this timeframe only.
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Key Metrics */}
             <div className="grid md:grid-cols-4 gap-4">

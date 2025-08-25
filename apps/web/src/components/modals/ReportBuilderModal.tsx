@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
+import { useTips } from '@/hooks/use-tips'
 import { createReportTemplate, updateReportTemplate } from '@/hooks/use-api'
 import { reportTemplateSchema, type ReportTemplate } from '@/schemas/reports'
 import { Calendar, Settings, Clock } from 'lucide-react'
@@ -40,6 +41,7 @@ const formatOptions = [
 export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
   const { closeModal } = useModal()
   const { addToast } = useToast()
+  const { showTips } = useTips()
   
   const isEditMode = !!(template?.id)
   
@@ -352,20 +354,38 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
         {activeTab === 'schedule' && (
           <div className="space-y-6">
             {/* Enable Schedule */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={scheduleEnabled}
-                  onChange={(e) => setScheduleEnabled(e.target.checked)}
-                  className="mr-3 rounded-sm"
-                />
-                <div>
-                  <div className="font-medium">Enable Automated Schedule</div>
-                  <div className="text-sm text-gray-600">Automatically generate and send this report</div>
-                </div>
-              </label>
-            </div>
+            {showTips && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={scheduleEnabled}
+                    onChange={(e) => setScheduleEnabled(e.target.checked)}
+                    className="mr-3 rounded-sm"
+                  />
+                  <div>
+                    <div className="font-medium">Enable Automated Schedule</div>
+                    <div className="text-sm text-gray-600">Automatically generate and send this report</div>
+                  </div>
+                </label>
+              </div>
+            )}
+            {!showTips && (
+              <div className="p-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={scheduleEnabled}
+                    onChange={(e) => setScheduleEnabled(e.target.checked)}
+                    className="mr-3 rounded-sm"
+                  />
+                  <div>
+                    <div className="font-medium">Enable Automated Schedule</div>
+                    <div className="text-sm text-gray-600">Automatically generate and send this report</div>
+                  </div>
+                </label>
+              </div>
+            )}
 
             {scheduleEnabled && (
               <>

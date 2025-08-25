@@ -4,6 +4,7 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { SimpleTable } from '@/components/tables'
 import { TaxTrendChart } from '@/components/charts/TaxTrendChart'
 import { TaxRemittanceWidget } from '@/components/tax/TaxRemittanceWidget'
+import { useTips } from '@/hooks/use-tips'
 import { 
   FileText, DollarSign, CheckCircle, Home,
   Info, AlertTriangle
@@ -27,6 +28,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   onMonthClick,
   comparisonMode = 'none'
 }) => {
+  const { showTips } = useTips()
   const { filters } = useDashboard()
   const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary')
   
@@ -96,14 +98,16 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   return (
     <div className="space-y-6">
       {/* Info Banner */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start">
-          <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <strong>Tax Tracking:</strong> Monitors occupancy taxes collected from guests that you'll need to pay to local authorities
+      {showTips && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+            <div className="text-sm text-blue-800">
+              <strong>Tax Tracking:</strong> Monitors occupancy taxes collected from guests that you'll need to pay to local authorities
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* View Toggle */}
       <div className="flex justify-between items-center">
@@ -181,7 +185,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           />
           
           {/* Tax Rate Alert */}
-          {taxData.effectiveTaxRate > 15 && (
+          {showTips && taxData.effectiveTaxRate > 15 && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="flex items-start">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
