@@ -1,75 +1,82 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { Footer } from '@/components/Footer'
+import { BarChart3, Home, AlertCircle, ArrowLeft } from 'lucide-react'
 
 export const NotFound = () => {
   const { state } = useAuth()
   const isAuthenticated = state.status === 'authenticated'
 
   return (
-    <div className="min-h-screen">
-      <nav className="p-4 border-b">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold">Baileys Analytics</h1>
-          <div className="space-x-4">
-            {isAuthenticated ? (
-              <Link to="/dashboard/overview" className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
-                Dashboard
-              </Link>
-            ) : (
-              <>
-                <Link to="/login" className="px-4 py-2 hover:text-blue-600 transition-colors">Login</Link>
-                <Link to="/signup" className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors">
-                  Sign Up
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex justify-between items-center">
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                <BarChart3 className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900 ml-3">Baileys Analytics</h1>
+            </Link>
+            <div className="flex items-center gap-3">
+              {isAuthenticated ? (
+                <Link to="/dashboard/overview" className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium">
+                  Open Dashboard
                 </Link>
-              </>
-            )}
+              ) : (
+                <>
+                  <Link to="/login" className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-all hover:bg-gray-100/70 rounded-lg">
+                    Login
+                  </Link>
+                  <Link to="/signup" className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium">
+                    Start Free Trial
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </nav>
+      </header>
 
-      <main className="max-w-6xl mx-auto p-4 py-16">
-        <div className="text-center">
-          <h2 className="text-6xl font-bold text-gray-200 mb-4">404</h2>
-          <h3 className="text-2xl font-bold mb-4">Page Not Found</h3>
-          <p className="text-gray-600 mb-8">
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full flex items-center justify-center">
+        <div className="text-center max-w-lg">
+          {/* Error Message */}
+          <h2 className="text-6xl font-light text-gray-300 mb-4">404</h2>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Page Not Found</h3>
+          <p className="text-gray-600 mb-8 text-sm">
             The page you're looking for doesn't exist or has been moved.
           </p>
           
-          <div className="space-x-4">
+          {/* Action Buttons */}
+          <div className="flex items-center justify-center gap-3">
             <Link 
               to="/" 
-              className="inline-block px-6 py-3 border border-gray-300 rounded-sm hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
             >
-              Go Home
+              <ArrowLeft className="w-4 h-4" />
+              Back to Home
             </Link>
             {isAuthenticated ? (
               <Link 
                 to="/dashboard/overview" 
-                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
               >
                 Go to Dashboard
               </Link>
             ) : (
               <Link 
                 to="/login" 
-                className="inline-block px-6 py-3 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
               >
                 Sign In
               </Link>
             )}
           </div>
         </div>
-
-        <div className="mt-16 text-center">
-          <p className="text-gray-600 mb-4">Need help? Here are some helpful links:</p>
-          <div className="flex justify-center space-x-6 text-blue-600">
-            <Link to="/dashboard/overview" className="hover:underline">Overview</Link>
-            <Link to="/dashboard/financial" className="hover:underline">Financial</Link>
-            <Link to="/dashboard/properties" className="hover:underline">Properties</Link>
-            <Link to="/settings" className="hover:underline">Settings</Link>
-          </div>
-        </div>
       </main>
+      
+      <Footer />
     </div>
   )
 }
