@@ -366,12 +366,12 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             setComparisonDropdownOpen(false) // Close comparison when opening period selector
           }}
           className={cn(
-            "flex items-center gap-2 px-3 py-2 bg-white border rounded-lg",
-            "hover:bg-gray-50 transition-colors",
-            isOpen && "ring-2 ring-blue-500",
-            seasonStatus === 'in-season' && "border-green-500 bg-green-50",
-            seasonStatus === 'pre-season' && "border-blue-500 bg-blue-50",
-            seasonStatus === 'post-season' && "border-gray-400 bg-gray-50"
+            "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg",
+            "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
+            isOpen && "ring-2 ring-blue-600 border-blue-600",
+            seasonStatus === 'in-season' && "border-green-600 bg-green-50/50",
+            seasonStatus === 'pre-season' && "border-blue-600 bg-blue-50/50",
+            seasonStatus === 'post-season' && "border-gray-400 bg-gray-50/50"
           )}
         >
           <Calendar className={cn(
@@ -381,7 +381,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             seasonStatus === 'post-season' && "text-gray-500",
             !seasonStatus && "text-gray-500"
           )} />
-          <span className="text-sm font-medium">
+          <span>
             {formatRangeDisplay()}
           </span>
           <ChevronDown className={cn(
@@ -399,17 +399,17 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               setIsOpen(false) // Close period selector when opening comparison
             }}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 bg-white border rounded-lg",
-              "hover:bg-gray-50 transition-colors",
-              comparisonDropdownOpen && "ring-2 ring-blue-500",
-              comparisonType !== 'none' && "border-blue-500 bg-blue-50"
+              "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg",
+              "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
+              comparisonDropdownOpen && "ring-2 ring-blue-600 border-blue-600",
+              comparisonType !== 'none' && "border-blue-600 bg-blue-50/50"
             )}
           >
             <GitCompare className={cn(
               "w-4 h-4",
               comparisonType !== 'none' ? "text-blue-600" : "text-gray-500"
             )} />
-            <span className="text-sm font-medium">
+            <span>
               {getComparisonLabel(comparisonType, activeSeasons.length > 0)}
             </span>
             <ChevronDown className={cn(
