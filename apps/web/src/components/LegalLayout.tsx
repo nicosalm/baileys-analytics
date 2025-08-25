@@ -17,36 +17,38 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-50">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/" className="flex items-center">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center mr-3">
-                <BarChart3 className="w-5 h-5 text-white" />
+            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                <BarChart3 className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">Baileys Analytics</span>
-              <ChevronRight className="w-5 h-5 mx-2 text-gray-400" />
-              <span className="text-xl text-gray-600">Legal</span>
+              <div className="ml-3 flex items-center">
+                <h1 className="text-xl font-semibold text-gray-900">Baileys Analytics</h1>
+                <ChevronRight className="w-5 h-5 mx-2 text-gray-400" />
+                <span className="text-xl text-gray-600">Legal</span>
+              </div>
             </Link>
 
             {/* Back to home */}
             <Link 
               to="/" 
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors flex items-center"
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all flex items-center gap-1 px-3 py-1.5 hover:bg-gray-100 rounded-lg"
             >
-              <ArrowLeft className="w-4 h-4 mr-1" />
+              <ArrowLeft className="w-4 h-4" />
               Back to home
             </Link>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-6 w-full">
         <div className="grid md:grid-cols-4 gap-8">
           {/* Sidebar Navigation */}
           <aside className="md:col-span-1">
-            <nav className="sticky top-24 space-y-1">
+            <nav className="sticky top-28 space-y-1">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 Legal Documents
               </h3>
@@ -96,7 +98,7 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
 
           {/* Main Content */}
           <main className="md:col-span-3">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 md:p-12">
+            <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-8 md:p-12">
               {children}
             </div>
           </main>

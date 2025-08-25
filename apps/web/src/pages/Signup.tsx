@@ -50,12 +50,12 @@ export const Signup = () => {
             Back to home
           </Link>
 
-          {/* Logo placeholder */}
+          {/* Logo */}
           <div className="flex items-center mb-8">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center mr-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
               <BarChart3 className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Baileys Analytics</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 ml-3">Baileys Analytics</h1>
           </div>
 
           {/* Welcome text */}

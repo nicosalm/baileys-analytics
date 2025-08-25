@@ -31,8 +31,8 @@ export const FilterBar: React.FC = () => {
   const hasActiveFilters = filters.selectedTags.length > 0
 
   return (
-    <div className="bg-white border-b sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 py-3">
+    <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-30">
+      <div className="max-w-7xl mx-auto px-6 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
             <SmartPeriodSelector
@@ -45,10 +45,10 @@ export const FilterBar: React.FC = () => {
               <button
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 transition-colors",
+                  "flex items-center gap-2 px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 transition-all",
                   "text-sm font-medium text-gray-700",
-                  showTagDropdown && "ring-2 ring-blue-500",
-                  filters.selectedTags.length > 0 && "border-blue-500 bg-blue-50"
+                  showTagDropdown && "ring-2 ring-blue-600 border-blue-600",
+                  filters.selectedTags.length > 0 && "border-blue-600 bg-blue-50/50"
                 )}
               >
                 <Filter className="w-4 h-4" />
@@ -65,7 +65,7 @@ export const FilterBar: React.FC = () => {
               </button>
 
               {showTagDropdown && (
-                <div className="absolute top-full mt-2 left-0 bg-white border rounded-lg shadow-lg p-2 min-w-[200px] max-h-[300px] overflow-y-auto z-50">
+                <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-xl p-2 min-w-[200px] max-h-[300px] overflow-y-auto z-50">
                   {isTagsLoading ? (
                     <div className="text-center py-4 text-gray-500">Loading tags...</div>
                   ) : availableTags.length === 0 ? (
@@ -79,10 +79,10 @@ export const FilterBar: React.FC = () => {
                             key={tag.id}
                             onClick={() => toggleTag(tag)}
                             className={cn(
-                              "w-full text-left px-3 py-2 rounded-sm text-sm transition-colors",
+                              "w-full text-left px-3 py-2 rounded-lg text-sm transition-all",
                               isSelected
-                                ? "bg-blue-100 text-blue-700"
-                                : "hover:bg-gray-100 text-gray-700"
+                                ? "bg-blue-50 text-blue-700 font-medium"
+                                : "hover:bg-gray-50 text-gray-700"
                             )}
                           >
                             <div className="flex items-center justify-between">
@@ -108,12 +108,12 @@ export const FilterBar: React.FC = () => {
                 {filters.selectedTags.map(tag => (
                   <span
                     key={tag.id}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium"
                   >
                     <span>{tag.name}</span>
                     <button
                       onClick={() => toggleTag(tag)}
-                      className="hover:bg-blue-200 rounded-sm p-0.5"
+                      className="hover:bg-blue-100 rounded-md p-0.5 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -127,7 +127,7 @@ export const FilterBar: React.FC = () => {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
               >
                 <X className="w-4 h-4" />
                 Clear Tags

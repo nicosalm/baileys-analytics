@@ -1,11 +1,11 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
-import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck, Lightbulb, Trash2 } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, LogOut, ChevronDown } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
 
@@ -52,13 +52,13 @@ const SyncButton = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`flex items-center px-4 py-2.5 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
       variant === 'primary' 
-        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md' 
-        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:scale-[1.02]' 
+        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
     }`}
   >
-    {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Icon className="w-4 h-4 mr-2" />}
+    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
     {label}
   </button>
 )
@@ -67,21 +67,21 @@ const SyncStatusDisplay = ({ status }: { status: SyncStatus | null }) => {
   if (!status) return null
 
   return (
-    <div className="bg-gray-50 p-4 rounded-lg space-y-3 border border-gray-100">
+    <div className="bg-gray-50/50 p-4 rounded-lg space-y-4 border border-gray-200">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <div className="flex items-center text-xs text-gray-500 mb-1">
-            <Building2 className="w-3 h-3 mr-1" />
+          <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
+            <Building2 className="w-3 h-3" />
             Properties
           </div>
-          <div className="text-lg font-semibold text-gray-900">{status.propertyCount}</div>
+          <div className="text-2xl font-semibold text-gray-900">{status.propertyCount}</div>
         </div>
         <div>
-          <div className="flex items-center text-xs text-gray-500 mb-1">
-            <Calendar className="w-3 h-3 mr-1" />
+          <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
+            <Calendar className="w-3 h-3" />
             Total Bookings
           </div>
-          <div className="text-lg font-semibold text-gray-900">
+          <div className="text-2xl font-semibold text-gray-900">
             {status.bookingCount}
             <span className="text-xs text-gray-500 ml-1 font-normal">(excl. canceled)</span>
           </div>
@@ -89,15 +89,15 @@ const SyncStatusDisplay = ({ status }: { status: SyncStatus | null }) => {
       </div>
       <div className="pt-3 border-t border-gray-200 space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 flex items-center">
-            <Clock className="w-3 h-3 mr-1.5" />
+          <span className="text-gray-600 flex items-center gap-1.5">
+            <Clock className="w-3 h-3" />
             Last Property Sync
           </span>
           <span className="font-medium text-gray-900">{formatDate(status.lastPropertySync)}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 flex items-center">
-            <Clock className="w-3 h-3 mr-1.5" />
+          <span className="text-gray-600 flex items-center gap-1.5">
+            <Clock className="w-3 h-3" />
             Last Booking Sync
           </span>
           <span className="font-medium text-gray-900">{formatDate(status.lastBookingSync)}</span>
@@ -115,40 +115,44 @@ const AccountInfo = ({ email, createdAt, companyName }: {
   const { showTips, toggleTips } = useTips()
   
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h2>
-      <div className="space-y-3">
-        <div className="flex justify-between items-center py-2 border-b border-gray-50">
+    <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
+      </div>
+      <div className="p-6 space-y-4">
+        <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">Email Address</span>
           <span className="text-sm font-medium text-gray-900">{email}</span>
         </div>
-        <div className="flex justify-between items-center py-2 border-b border-gray-50">
+        <div className="flex justify-between items-center">
           <span className="text-sm text-gray-600">Member Since</span>
           <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
         </div>
         {companyName && (
-          <div className="flex justify-between items-center py-2 border-b border-gray-50">
+          <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Company</span>
             <span className="text-sm font-medium text-gray-900">{companyName}</span>
           </div>
         )}
-        <div className="flex justify-between items-center py-2">
-          <div className="flex items-center">
-            <Lightbulb className="w-4 h-4 text-gray-500 mr-2" />
-            <span className="text-sm text-gray-600">Show Tips & Hints</span>
-          </div>
-          <button
-            onClick={toggleTips}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              showTips ? 'bg-blue-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                showTips ? 'translate-x-6' : 'translate-x-1'
+        <div className="pt-4 border-t border-gray-100">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-gray-500" />
+              <span className="text-sm text-gray-700 font-medium">Show Tips & Hints</span>
+            </div>
+            <button
+              onClick={toggleTips}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                showTips ? 'bg-blue-600' : 'bg-gray-300'
               }`}
-            />
-          </button>
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                  showTips ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -156,22 +160,27 @@ const AccountInfo = ({ email, createdAt, companyName }: {
 }
 
 const DangerZone = ({ onDeleteAccount }: { onDeleteAccount: () => void }) => (
-  <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-      <div className="flex items-start">
-        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-        <div className="flex-1">
-          <h4 className="text-sm font-medium text-red-900 mb-1">Danger Zone</h4>
-          <p className="text-sm text-red-700 mb-3">
-            Permanently delete your account and all associated data. This action cannot be undone.
-          </p>
-          <button
-            onClick={onDeleteAccount}
-            className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors flex items-center"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete Account
-          </button>
+  <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
+    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+      <h2 className="text-lg font-semibold text-gray-900">Danger Zone</h2>
+    </div>
+    <div className="p-6">
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-start">
+          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-red-900 mb-1">Delete Account</h4>
+            <p className="text-sm text-red-700 mb-4">
+              Permanently delete your account and all associated data. This action cannot be undone.
+            </p>
+            <button
+              onClick={onDeleteAccount}
+              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-all flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Account
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -195,16 +204,20 @@ const OwnerRezConnection = ({
 }) => {
   if (!isConnected) {
     return (
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Property Management Connection</h2>
-        <div className="text-center py-8">
-          <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <AlertCircle className="w-6 h-6 text-gray-400" />
+      <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+          <h2 className="text-lg font-semibold text-gray-900">Property Management Connection</h2>
+        </div>
+        <div className="p-6">
+          <div className="text-center py-8">
+            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <AlertCircle className="w-6 h-6 text-gray-400" />
+            </div>
+            <p className="text-gray-600 mb-4">No property management system connected</p>
+            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium">
+              Connect OwnerRez
+            </button>
           </div>
-          <p className="text-gray-600 mb-4">No property management system connected</p>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
-            Connect OwnerRez
-          </button>
         </div>
       </div>
     )
@@ -213,19 +226,18 @@ const OwnerRezConnection = ({
   const isSyncing = syncState.type === 'syncing'
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">Property Management Connection</h2>
-        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-          <Check className="w-3 h-3 mr-1" />
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+          <Check className="w-3 h-3" />
           Connected
         </span>
       </div>
-      <div className="space-y-4">
-
+      <div className="p-6 space-y-4">
         <SyncStatusDisplay status={syncStatus} />
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <SyncButton
             label="Sync Recent"
             icon={RefreshCw}
@@ -252,13 +264,12 @@ const OwnerRezConnection = ({
             loading={isSyncing && syncState.mode === 'guest-details'}
             variant="secondary"
           />
-
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="flex items-start">
-            <AlertCircle className="w-4 h-4 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-blue-800 space-y-1">
+        <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-blue-700 space-y-1">
               <p>• Recent sync updates data from the last 30 days</p>
               <p>• Historical sync retrieves all bookings from the past 4 years</p>
               <p>• Guest sync fetches contact details (email/phone) from OwnerRez</p>
@@ -274,6 +285,7 @@ const OwnerRezConnection = ({
 export const Settings = () => {
   const { state, logout } = useAuth()
   const { addToast } = useToast()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
   const [activeTab, setActiveTab] = useState<'account' | 'tax' | 'seasons'>('account')
@@ -375,6 +387,11 @@ export const Settings = () => {
     setTimeout(() => setSyncState({ type: 'idle' }), 1000)
   }
 
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== 'DELETE') {
       addToast('error', 'Please type DELETE to confirm')
@@ -411,54 +428,82 @@ export const Settings = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <nav className="bg-white border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
+      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
-          <Link to="/dashboard/overview" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to Dashboard
-          </Link>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center">
+              <Link to="/dashboard/overview" className="flex items-center hover:opacity-80 transition-opacity">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                  <BarChart3 className="w-6 h-6 text-white" />
+                </div>
+                <div className="ml-3">
+                  <h1 className="text-xl font-semibold text-gray-900">Baileys Analytics</h1>
+                  {user.companyName && (
+                    <p className="text-xs text-gray-500 -mt-0.5">for {user.companyName}</p>
+                  )}
+                </div>
+              </Link>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500 hidden sm:inline">{user.email}</span>
+              <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="hidden sm:inline">Logout</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </nav>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 w-full flex-1">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage your account, connections, and tax configurations</p>
+      <div className="max-w-7xl mx-auto px-6 py-6 w-full flex-1">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
+            <Link to="/dashboard/overview" className="hover:text-gray-700 transition-colors">Dashboard</Link>
+            <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
+            <span className="text-gray-900 font-medium">Settings</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-600 mt-1">Manage your account, connections, and preferences</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 mb-6">
+        <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 mb-6 overflow-hidden">
           <nav className="flex">
             <button
               onClick={() => setActiveTab('account')}
               className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all ${
                 activeTab === 'account'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
               }`}
             >
               Account & Sync
             </button>
             <button
               onClick={() => setActiveTab('tax')}
-              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center ${
+              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'tax'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
               }`}
             >
-              <Calculator className="w-4 h-4 mr-2" />
+              <Calculator className="w-4 h-4" />
               Tax Configuration
             </button>
             <button
               onClick={() => setActiveTab('seasons')}
-              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center ${
+              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center gap-2 ${
                 activeTab === 'seasons'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
               }`}
             >
-              <Calendar className="w-4 h-4 mr-2" />
+              <Calendar className="w-4 h-4" />
               Seasons
             </button>
           </nav>
@@ -466,11 +511,14 @@ export const Settings = () => {
 
         {activeTab === 'account' ? (
           <div className="grid gap-6">
-            <AccountInfo
-              email={user.email}
-              createdAt={user.createdAt}
-              companyName={user.companyName}
-            />
+            <div className="grid lg:grid-cols-2 gap-6">
+              <AccountInfo
+                email={user.email}
+                createdAt={user.createdAt}
+                companyName={user.companyName}
+              />
+              <DangerZone onDeleteAccount={() => setShowDeleteConfirm(true)} />
+            </div>
 
             <OwnerRezConnection
               isConnected={user.hasOwnerRezConnection}
@@ -480,12 +528,10 @@ export const Settings = () => {
               onGuestDetailsSync={() => handleSync('guest-details')}
               syncState={syncState}
             />
-            
-            <DangerZone onDeleteAccount={() => setShowDeleteConfirm(true)} />
           </div>
         ) : activeTab === 'tax' ? (
           <Suspense fallback={
-            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+            <div className="bg-white/90 backdrop-blur-sm p-8 rounded-xl border border-gray-200">
               <div className="flex justify-center py-12">
                 <LoadingState />
               </div>
@@ -495,7 +541,7 @@ export const Settings = () => {
           </Suspense>
         ) : (
           <Suspense fallback={
-            <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+            <div className="bg-white/90 backdrop-blur-sm p-8 rounded-xl border border-gray-200">
               <div className="flex justify-center py-12">
                 <LoadingState />
               </div>

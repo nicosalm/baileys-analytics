@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, BarChart3 } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
@@ -60,18 +60,18 @@ const DashboardTabs = () => {
   const displayActiveTab = activeTab
 
   return (
-    <div className="bg-white border-b">
+    <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto">
-        <nav className="flex space-x-6 px-6" aria-label="Tabs">
+        <nav className="flex gap-1 px-6" aria-label="Tabs">
           {tabConfig.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => handleTabClick(id)}
               className={`
-                py-3 px-1 border-b-2 font-medium text-sm flex items-center transition-all
+                py-3 px-4 border-b-2 font-medium text-sm flex items-center transition-all
                 ${displayActiveTab === id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
                 }
               `}
               aria-current={displayActiveTab === id ? 'page' : undefined}
@@ -146,45 +146,50 @@ export const DashboardLayout = () => {
 
   return (
     <DashboardProvider>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-          <nav className="bg-white shadow-xs border-b">
-            <div className="max-w-7xl mx-auto px-6 py-3">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
+          <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto px-6 py-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
-                  <div className="flex flex-col">
-                    <h1 className="text-2xl font-bold text-gray-900">Baileys Analytics</h1>
-                    {user.companyName && (
-                      <span className="text-sm text-gray-500 mt-0.5">for {user.companyName}</span>
-                    )}
+                  <div className="flex items-center">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                      <BarChart3 className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="ml-3">
+                      <h1 className="text-xl font-semibold text-gray-900">Baileys Analytics</h1>
+                      {user.companyName && (
+                        <p className="text-xs text-gray-500 -mt-0.5">for {user.companyName}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-600">{user.email}</span>
-                  <div className="flex items-center space-x-2 pl-4 border-l border-gray-200">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-500 hidden sm:inline">{user.email}</span>
+                  <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
                     <Link
                       to="/settings"
-                      className="text-gray-600 hover:text-gray-800 transition-colors p-2 rounded-md hover:bg-gray-100"
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
                       title="Settings"
                     >
                       <Settings className="w-5 h-5" />
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-colors px-3 py-1.5 rounded-md hover:bg-gray-100"
+                      className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
                     >
-                      <LogOut className="w-4 h-4 mr-1.5" />
-                      Logout
+                      <LogOut className="w-4 h-4" />
+                      <span className="hidden sm:inline">Logout</span>
                     </button>
                   </div>
                 </div>
               </div>
             </div>
-          </nav>
+          </header>
 
           <DashboardTabs />
           <FilterBar />
 
-          <main className="max-w-7xl mx-auto px-6 py-4 flex-1 w-full">
+          <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
             <DashboardContent />
           </main>
           
