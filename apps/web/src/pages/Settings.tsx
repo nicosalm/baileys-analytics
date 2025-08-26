@@ -5,7 +5,11 @@ import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
-import { RefreshCw, Calendar, AlertCircle, Calculator, Check, Clock, Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, LogOut, ChevronDown } from 'lucide-react'
+import { 
+  RefreshCw, Calendar, AlertCircle, Calculator, Check,
+  Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, 
+  LogOut, User, Home
+} from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
@@ -33,8 +37,28 @@ type SyncState =
   | { type: 'syncing'; mode: 'recent' | 'historical' | 'guest-details' }
   | { type: 'complete' }
 
+type SettingsTab = 'account' | 'tax' | 'seasons'
+
 const formatDate = (dateString: string | null): string =>
   dateString ? formatDateDisplay(new Date(dateString)) : 'Never'
+
+const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { 
+    id: 'account', 
+    label: 'Account & Sync', 
+    icon: User
+  },
+  { 
+    id: 'tax', 
+    label: 'Tax Configuration', 
+    icon: Calculator
+  },
+  { 
+    id: 'seasons', 
+    label: 'Seasons', 
+    icon: Calendar
+  }
+]
 
 const SyncButton = ({
   label,
@@ -54,10 +78,10 @@ const SyncButton = ({
   <button
     onClick={onClick}
     disabled={disabled}
-    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
       variant === 'primary' 
-        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:scale-[1.02]' 
-        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 hover:border-gray-300'
+        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
     }`}
   >
     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
@@ -65,119 +89,96 @@ const SyncButton = ({
   </button>
 )
 
-const SyncStatusDisplay = ({ status }: { status: SyncStatus | null }) => {
-  if (!status) return null
-
-  return (
-    <div className="bg-gray-50/50 p-4 rounded-lg space-y-4 border border-gray-200">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
-            <Building2 className="w-3 h-3" />
-            Properties
-          </div>
-          <div className="text-2xl font-semibold text-gray-900">{status.propertyCount}</div>
-        </div>
-        <div>
-          <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
-            <Calendar className="w-3 h-3" />
-            Total Bookings
-          </div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {status.bookingCount}
-            <span className="text-xs text-gray-500 ml-1 font-normal">(excl. canceled)</span>
-          </div>
-        </div>
-      </div>
-      <div className="pt-3 border-t border-gray-200 space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 flex items-center gap-1.5">
-            <Clock className="w-3 h-3" />
-            Last Property Sync
-          </span>
-          <span className="font-medium text-gray-900">{formatDate(status.lastPropertySync)}</span>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-600 flex items-center gap-1.5">
-            <Clock className="w-3 h-3" />
-            Last Booking Sync
-          </span>
-          <span className="font-medium text-gray-900">{formatDate(status.lastBookingSync)}</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const AccountInfo = ({ email, createdAt, companyName }: {
+const AccountTab = ({ 
+  email, 
+  createdAt, 
+  companyName, 
+  isConnected,
+  syncStatus,
+  onRecentSync,
+  onHistoricalSync,
+  onGuestDetailsSync,
+  syncState,
+  onDeleteAccount 
+}: {
   email: string
   createdAt: string
   companyName?: string | null
+  isConnected: boolean
+  syncStatus: SyncStatus | null
+  onRecentSync: () => void
+  onHistoricalSync: () => void
+  onGuestDetailsSync: () => void
+  syncState: SyncState
+  onDeleteAccount: () => void
 }) => {
   const { showTips, toggleTips } = useTips()
+  const { addToast } = useToast()
+  
+  const handleToggleTips = () => {
+    toggleTips()
+    addToast('success', showTips ? 'Tips & hints disabled' : 'Tips & hints enabled')
+  }
+
+  const isSyncing = syncState.type === 'syncing'
   
   return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-        <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
-      </div>
-      <div className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">Email Address</span>
-          <span className="text-sm font-medium text-gray-900">{email}</span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-gray-600">Member Since</span>
-          <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
-        </div>
-        {companyName && (
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Company</span>
-            <span className="text-sm font-medium text-gray-900">{companyName}</span>
-          </div>
-        )}
-        <div className="pt-4 border-t border-gray-100">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-gray-500" />
-              <span className="text-sm text-gray-700 font-medium">Show Tips & Hints</span>
+    <div className="grid gap-6">
+      {/* Top row - Account info and Preferences */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Account Information */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Email</span>
+              <span className="text-sm font-medium text-gray-900">{email}</span>
             </div>
-            <button
-              onClick={toggleTips}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                showTips ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                  showTips ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            {companyName && (
+              <div className="flex justify-between items-center pt-3 border-t">
+                <span className="text-sm text-gray-600">Company</span>
+                <span className="text-sm font-medium text-gray-900">{companyName}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-3 border-t">
+              <span className="text-sm text-gray-600">Member Since</span>
+              <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
 
-const DangerZone = ({ onDeleteAccount }: { onDeleteAccount: () => void }) => (
-  <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
-    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-      <h2 className="text-lg font-semibold text-gray-900">Danger Zone</h2>
-    </div>
-    <div className="p-6">
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-        <div className="flex items-start">
-          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3 flex-shrink-0" />
-          <div className="flex-1">
-            <h4 className="text-sm font-semibold text-red-900 mb-1">Delete Account</h4>
-            <p className="text-sm text-red-700 mb-4">
-              Permanently delete your account and all associated data. This action cannot be undone.
-            </p>
+        {/* Preferences */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Preferences</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-4 h-4 text-gray-500" />
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Tips & Hints</span>
+                  <p className="text-xs text-gray-500">Show helpful tips throughout the dashboard</p>
+                </div>
+              </div>
+              <button
+                onClick={handleToggleTips}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  showTips ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                    showTips ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="mt-6 pt-6 border-t">
             <button
               onClick={onDeleteAccount}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-all flex items-center gap-2"
+              className="w-full px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all flex items-center justify-center gap-2 border border-red-200"
             >
               <Trash2 className="w-4 h-4" />
               Delete Account
@@ -185,99 +186,97 @@ const DangerZone = ({ onDeleteAccount }: { onDeleteAccount: () => void }) => (
           </div>
         </div>
       </div>
-    </div>
-  </div>
-)
 
-const OwnerRezConnection = ({
-  isConnected,
-  syncStatus,
-  onRecentSync,
-  onHistoricalSync,
-  onGuestDetailsSync,
-  syncState
-}: {
-  isConnected: boolean
-  syncStatus: SyncStatus | null
-  onRecentSync: () => void
-  onHistoricalSync: () => void
-  onGuestDetailsSync: () => void
-  syncState: SyncState
-}) => {
-  if (!isConnected) {
-    return (
-      <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="text-lg font-semibold text-gray-900">Property Management Connection</h2>
+      {/* OwnerRez Connection */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">OwnerRez Connection</h3>
+          {isConnected && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+              <Check className="w-3 h-3" />
+              Connected
+            </span>
+          )}
         </div>
+        
         <div className="p-6">
-          <div className="text-center py-8">
-            <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <AlertCircle className="w-6 h-6 text-gray-400" />
+          {!isConnected ? (
+            <div className="text-center py-8">
+              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <AlertCircle className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-gray-600 mb-4">No property management system connected</p>
+              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium">
+                Connect OwnerRez
+              </button>
             </div>
-            <p className="text-gray-600 mb-4">No property management system connected</p>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium">
-              Connect OwnerRez
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+          ) : (
+            <div className="space-y-4">
+              {/* Sync Status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
+                    <Building2 className="w-3 h-3" />
+                    Properties
+                  </div>
+                  <div className="text-2xl font-semibold text-gray-900">{syncStatus?.propertyCount || 0}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Last: {formatDate(syncStatus?.lastPropertySync || null)}
+                  </div>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
+                    <Calendar className="w-3 h-3" />
+                    Bookings
+                  </div>
+                  <div className="text-2xl font-semibold text-gray-900">{syncStatus?.bookingCount || 0}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Last: {formatDate(syncStatus?.lastBookingSync || null)}
+                  </div>
+                </div>
+              </div>
 
-  const isSyncing = syncState.type === 'syncing'
+              {/* Sync Actions */}
+              <div className="flex flex-wrap gap-2">
+                <SyncButton
+                  label="Sync Recent"
+                  icon={RefreshCw}
+                  onClick={onRecentSync}
+                  disabled={isSyncing}
+                  loading={isSyncing && syncState.mode === 'recent'}
+                  variant="primary"
+                />
+                <SyncButton
+                  label="Historical (4 Years)"
+                  icon={Calendar}
+                  onClick={onHistoricalSync}
+                  disabled={isSyncing}
+                  loading={isSyncing && syncState.mode === 'historical'}
+                  variant="secondary"
+                />
+                <SyncButton
+                  label="Guest Contacts"
+                  icon={UserCheck}
+                  onClick={onGuestDetailsSync}
+                  disabled={isSyncing}
+                  loading={isSyncing && syncState.mode === 'guest-details'}
+                  variant="secondary"
+                />
+              </div>
 
-  return (
-    <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900">Property Management Connection</h2>
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-          <Check className="w-3 h-3" />
-          Connected
-        </span>
-      </div>
-      <div className="p-6 space-y-4">
-        <SyncStatusDisplay status={syncStatus} />
-
-        <div className="flex flex-wrap gap-3">
-          <SyncButton
-            label="Sync Recent"
-            icon={RefreshCw}
-            onClick={onRecentSync}
-            disabled={isSyncing}
-            loading={isSyncing && syncState.mode === 'recent'}
-            variant="primary"
-          />
-
-          <SyncButton
-            label="Sync Historical (4 Years)"
-            icon={Calendar}
-            onClick={onHistoricalSync}
-            disabled={isSyncing}
-            loading={isSyncing && syncState.mode === 'historical'}
-            variant="secondary"
-          />
-
-          <SyncButton
-            label="Sync Guest Contacts"
-            icon={UserCheck}
-            onClick={onGuestDetailsSync}
-            disabled={isSyncing}
-            loading={isSyncing && syncState.mode === 'guest-details'}
-            variant="secondary"
-          />
-        </div>
-
-        <div className="bg-blue-50/50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-blue-700 space-y-1">
-              <p>• Recent sync updates data from the last 30 days</p>
-              <p>• Historical sync retrieves all bookings from the past 4 years</p>
-              <p>• Guest sync fetches contact details (email/phone) from OwnerRez</p>
-              <p>• Data syncs automatically every 12 hours</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-blue-700 space-y-0.5">
+                    <p>• Recent: Updates last 30 days</p>
+                    <p>• Historical: All bookings from past 4 years</p>
+                    <p>• Guest: Contact details from OwnerRez</p>
+                    <p>• Auto-syncs every 12 hours</p>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -288,9 +287,9 @@ export const Settings = () => {
   const { state, logout } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
-  const [activeTab, setActiveTab] = useState<'account' | 'tax' | 'seasons'>('account')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
@@ -303,13 +302,17 @@ export const Settings = () => {
   
   // Handle URL parameter for tab selection
   useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (tab === 'tax') {
-      setActiveTab('tax')
-    } else if (tab === 'seasons') {
-      setActiveTab('seasons')
+    const tab = searchParams.get('tab') as SettingsTab | null
+    if (tab && tabConfig.some(t => t.id === tab)) {
+      setActiveTab(tab)
     }
   }, [searchParams])
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: SettingsTab) => {
+    setActiveTab(tab)
+    setSearchParams({ tab })
+  }
 
   if (state.status !== 'authenticated') return null
 
@@ -424,9 +427,9 @@ export const Settings = () => {
     }
   }
 
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
+      {/* Header - matches dashboard exactly */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
@@ -446,6 +449,13 @@ export const Settings = () => {
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-500 hidden sm:inline">{user.email}</span>
               <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+                <Link
+                  to="/dashboard/overview"
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                  title="Dashboard"
+                >
+                  <Home className="w-5 h-5" />
+                </Link>
                 <button
                   onClick={handleLogout}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
@@ -459,77 +469,49 @@ export const Settings = () => {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-6 w-full flex-1">
-        <div className="mb-6">
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-            <Link to="/dashboard/overview" className="hover:text-gray-700 transition-colors">Dashboard</Link>
-            <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
-            <span className="text-gray-900 font-medium">Settings</span>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-1">Manage your account, connections, and preferences</p>
-        </div>
-
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 mb-6 overflow-hidden">
-          <nav className="flex">
-            <button
-              onClick={() => setActiveTab('account')}
-              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all ${
-                activeTab === 'account'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
-              }`}
-            >
-              Account & Sync
-            </button>
-            <button
-              onClick={() => setActiveTab('tax')}
-              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'tax'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
-              }`}
-            >
-              <Calculator className="w-4 h-4" />
-              Tax Configuration
-            </button>
-            <button
-              onClick={() => setActiveTab('seasons')}
-              className={`flex-1 px-6 py-4 font-medium text-sm border-b-2 transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'seasons'
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
-              }`}
-            >
-              <Calendar className="w-4 h-4" />
-              Seasons
-            </button>
+      {/* Tab Navigation - horizontal like dashboard */}
+      <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto">
+          <nav className="flex gap-1 px-6" aria-label="Tabs">
+            {tabConfig.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => handleTabChange(id)}
+                className={`
+                  py-3 px-4 border-b-2 font-medium text-sm flex items-center transition-all
+                  ${activeTab === id
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/30'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
+                  }
+                `}
+                aria-current={activeTab === id ? 'page' : undefined}
+              >
+                <Icon className="w-4 h-4 mr-2" />
+                {label}
+              </button>
+            ))}
           </nav>
         </div>
+      </div>
 
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
         {activeTab === 'account' ? (
-          <div className="grid gap-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <AccountInfo
-                email={user.email}
-                createdAt={user.createdAt}
-                companyName={user.companyName}
-              />
-              <DangerZone onDeleteAccount={() => setShowDeleteConfirm(true)} />
-            </div>
-
-            <OwnerRezConnection
-              isConnected={user.hasOwnerRezConnection}
-              syncStatus={syncStatus}
-              onRecentSync={() => handleSync('recent')}
-              onHistoricalSync={() => handleSync('historical')}
-              onGuestDetailsSync={() => handleSync('guest-details')}
-              syncState={syncState}
-            />
-          </div>
+          <AccountTab
+            email={user.email}
+            createdAt={user.createdAt}
+            companyName={user.companyName}
+            isConnected={user.hasOwnerRezConnection}
+            syncStatus={syncStatus}
+            onRecentSync={() => handleSync('recent')}
+            onHistoricalSync={() => handleSync('historical')}
+            onGuestDetailsSync={() => handleSync('guest-details')}
+            syncState={syncState}
+            onDeleteAccount={() => setShowDeleteConfirm(true)}
+          />
         ) : activeTab === 'tax' ? (
           <Suspense fallback={
-            <div className="bg-white/90 backdrop-blur-sm p-8 rounded-xl border border-gray-200">
+            <div className="bg-white p-8 rounded-xl border border-gray-200">
               <div className="flex justify-center py-12">
                 <LoadingState />
               </div>
@@ -539,7 +521,7 @@ export const Settings = () => {
           </Suspense>
         ) : (
           <Suspense fallback={
-            <div className="bg-white/90 backdrop-blur-sm p-8 rounded-xl border border-gray-200">
+            <div className="bg-white p-8 rounded-xl border border-gray-200">
               <div className="flex justify-center py-12">
                 <LoadingState />
               </div>
@@ -548,8 +530,7 @@ export const Settings = () => {
             <SeasonManagementPanel />
           </Suspense>
         )}
-        
-      </div>
+      </main>
 
       <ConfirmModal
         isOpen={confirmModal.isOpen}

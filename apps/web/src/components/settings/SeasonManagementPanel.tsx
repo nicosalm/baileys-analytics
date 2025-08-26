@@ -292,14 +292,9 @@ export const SeasonManagementPanel: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Season Management</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Define your operational season to filter out off-season blocks and focus on actual booking periods.
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Note: Only one season can be active at a time.
-          </p>
+        <div className="text-sm text-gray-600">
+          <p>Define your operational season to filter out off-season blocks and focus on actual booking periods.</p>
+          <p className="text-xs text-gray-500 mt-1">Note: Only one season can be active at a time.</p>
         </div>
         {!isAddingNew && !editingSeasonId && seasons.filter(s => s.isActive).length === 0 && (
           <button
