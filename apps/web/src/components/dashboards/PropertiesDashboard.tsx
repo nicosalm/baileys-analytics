@@ -36,7 +36,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
 
   return (
     <div
-      className="bg-white p-6 rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => openModal({
         type: 'property',
         propertyId: property.propertyId,

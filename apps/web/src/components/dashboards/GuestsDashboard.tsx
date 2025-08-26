@@ -71,7 +71,6 @@ export const GuestsDashboard = () => {
     
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-    // Removed unused selectedGuests state
     const [viewMode, setViewMode] = useState<'all' | 'repeat' | 'new' | 'top'>('all')
 
     // Handle error state
@@ -392,7 +391,7 @@ export const GuestsDashboard = () => {
 
             {/* Top Performers Section */}
             <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold">Top Spenders This Period</h3>
                         <DollarSign className="w-5 h-5 text-green-600" />
@@ -426,7 +425,7 @@ export const GuestsDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-lg shadow-sm">
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-lg font-bold">Most Frequent This Period</h3>
                         <Star className="w-5 h-5 text-blue-600" />
@@ -526,14 +525,14 @@ export const GuestsDashboard = () => {
             </div>
 
             {/* Guest Table */}
-            <div className="bg-white rounded-lg shadow-sm">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-4 border-b">
                     <div className="flex justify-between items-center">
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
                         <div className="flex items-center space-x-2">
                             <button
                                 onClick={() => setViewMode('all')}
-                                className={`px-3 py-1 rounded text-sm ${
+                                className={`px-3 py-1 rounded-sm text-sm ${
                                     viewMode === 'all'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-200 hover:bg-gray-300'
@@ -543,7 +542,7 @@ export const GuestsDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setViewMode('repeat')}
-                                className={`px-3 py-1 rounded text-sm ${
+                                className={`px-3 py-1 rounded-sm text-sm ${
                                     viewMode === 'repeat'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-200 hover:bg-gray-300'
@@ -553,7 +552,7 @@ export const GuestsDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setViewMode('new')}
-                                className={`px-3 py-1 rounded text-sm ${
+                                className={`px-3 py-1 rounded-sm text-sm ${
                                     viewMode === 'new'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-200 hover:bg-gray-300'
@@ -563,7 +562,7 @@ export const GuestsDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setViewMode('top')}
-                                className={`px-3 py-1 rounded text-sm ${
+                                className={`px-3 py-1 rounded-sm text-sm ${
                                     viewMode === 'top'
                                         ? 'bg-blue-600 text-white'
                                         : 'bg-gray-200 hover:bg-gray-300'

@@ -203,69 +203,51 @@ export const OverviewDashboard = () => {
         />
       </div>
 
-      {/* Secondary Metrics - Additional KPIs */}
-      <div className="grid md:grid-cols-6 gap-3">
+      {/* Secondary Metrics - Key Supporting KPIs */}
+      <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
-          icon={CreditCard}
-          label="Properties"
-          value={metrics.properties.total}
-          format="number"
-          subValue={filters.selectedTags.length > 0 ? 'Tagged properties' : 'Total active'}
-          size="sm"
-          color="gray"
-        />
-        <MetricCard
-          icon={Activity}
-          label="Typical Stay"
-          value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
-          format="custom"
+          icon={TrendingUp}
+          label="Avg Booking Value"
+          value={Number(metrics.revenue.avgBookingValue) || 0}
+          format="currency"
           subValue="Per reservation"
           size="sm"
           color="gray"
         />
         <MetricCard
-          icon={TrendingUp}
-          label="Booking Value"
-          value={Number(metrics.revenue.avgBookingValue) || 0}
-          format="currency"
-          subValue="Average per stay"
+          icon={Activity}
+          label="Avg Stay Length"
+          value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
+          format="custom"
+          subValue="Per guest"
           size="sm"
           color="gray"
         />
         <MetricCard
           icon={Users}
-          label="First-Time Guests"
-          value={metrics.guests.newThisMonth}
-          format="number"
-          subValue="New this period"
-          size="sm"
-          color="gray"
-        />
-        <MetricCard
-          icon={BarChart3}
-          label="Return Guests"
+          label="Repeat Guests"
           value={Number(metrics.guests.repeatRate || 0) * 100}
           format="percent"
-          subValue={metrics.guests.total > 0 ? 'Come back again' : 'No data yet'}
+          subValue={metrics.guests.total > 0 ? 'Return rate' : 'No data yet'}
           size="sm"
           color="gray"
         />
         <MetricCard
           icon={AlertCircle}
-          label="Cancellations"
+          label="Cancellation Rate"
           value={Number(metrics.bookings.cancellationRate || 0)}
           format="percent"
-          subValue="Of bookings"
+          subValue="This period"
           size="sm"
-          color="red"
+          color={Number(metrics.bookings.cancellationRate || 0) > 10 ? "red" : "gray"}
         />
       </div>
 
-      {/* 2x2 Grid of Mini Charts with h-48 height */}
+      {/* 2x2 Grid of Overview Charts */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Revenue Trend */}
         <ChartWrapper
-          title={`Money Made${
+          title={`Revenue Trend${
             charts.revenueLastWeek.length > 0 
               ? charts.revenueLastWeek[0].day?.includes('Week of') 
                 ? ' (Weekly)' 
@@ -275,7 +257,7 @@ export const OverviewDashboard = () => {
               : ''
           }`}
           icon={TrendingUp}
-          height={192}
+          height={240}
           noData={charts.revenueLastWeek.length === 0}
         >
           <AreaChart data={charts.revenueLastWeek}>
@@ -305,9 +287,9 @@ export const OverviewDashboard = () => {
 
         {/* Top Properties Performance */}
         <ChartWrapper
-          title="Your Best Performing Properties"
+          title="Top Properties"
           icon={Home}
-          height={192}
+          height={240}
           noData={charts.topProperties.length === 0}
         >
           <BarChart data={charts.topProperties.slice(0, 5).map((item: any) => ({
@@ -335,9 +317,9 @@ export const OverviewDashboard = () => {
 
         {/* Booking Sources Distribution */}
         <ChartWrapper
-          title="Where Bookings Come From"
+          title="Booking Sources"
           icon={BarChart3}
-          height={256}
+          height={240}
           noData={charts.bookingsBySource.length === 0}
         >
           <PieChart>
@@ -418,7 +400,7 @@ export const OverviewDashboard = () => {
           </div>
         </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">What's New</h3>
             <span className="text-xs text-gray-500">Recent bookings</span>

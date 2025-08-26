@@ -319,7 +319,7 @@ export const OccupancyDashboard = () => {
           </LineChart>
         </ChartWrapper>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Home className="w-5 h-5 mr-2" />
             Property Performance

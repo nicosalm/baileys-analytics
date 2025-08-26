@@ -44,6 +44,7 @@ const FinancialDashboard = () => {
     comparisonRange?.to
   )
   
+  
   // Process data for each tab from the unified response
   const financialData = data ? {
     metrics: data.pl.metrics,

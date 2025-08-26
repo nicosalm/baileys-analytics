@@ -58,12 +58,27 @@ export const PLView: React.FC<PLViewProps> = ({
       percentage: grossRevenue > 0 ? (p.grossRevenue / grossRevenue) * 100 : 0
     })) || []
     
-    const monthlyData = monthlyTrend?.map((m: any) => ({
-      month: m.month,
-      revenue: m.revenue || 0,
-      profit: m.revenue * 0.7 || 0, // Approximate profit at 70% of revenue
-      taxes: 0
-    })) || []
+    const monthlyData = monthlyTrend?.map((m: any, index: number) => {
+      // Find matching previous period data
+      const prevData = previousPeriod?.monthlyTrend?.find((pm: any) => pm.month === m.month) ||
+                      previousPeriod?.monthlyTrend?.[index]
+      
+      const monthRevenue = m.revenue || 0
+      const monthFees = monthRevenue * (platformFees / Math.max(grossRevenue, 1))
+      const monthTaxes = monthRevenue * (taxes / Math.max(grossRevenue, 1))
+      const monthProfit = monthRevenue - monthFees - monthTaxes
+      
+      return {
+        month: m.month,
+        revenue: monthRevenue,
+        platformFees: monthFees,
+        taxes: monthTaxes,
+        profit: monthProfit,
+        costs: monthFees + monthTaxes,
+        previousRevenue: prevData ? (prevData.revenue || 0) : undefined,
+        previousProfit: prevData ? ((prevData.revenue || 0) * 0.7) : undefined
+      }
+    }) || []
     
     return {
       revenue: {
@@ -81,7 +96,8 @@ export const PLView: React.FC<PLViewProps> = ({
         previousRevenue: previousPeriod?.revenue?.gross || 0,
         previousProfit: previousPeriod?.revenue?.net || 0,
         periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
-                     comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
+                     comparisonMode === 'previous-period' ? 'vs Previous Period' : '',
+        hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some(m => m.previousRevenue !== undefined)
       },
       platforms: platformData,
       monthly: monthlyData,
@@ -168,18 +184,58 @@ export const PLView: React.FC<PLViewProps> = ({
         />
       </div>
       
-      <div className="grid md:grid-cols-2 gap-6">
-        <RevenueChart
-          data={monthly}
-          title={`${granularity} P&L Trend`}
-          showProfit={true}
-          onMonthClick={onMonthClick}
-        />
-        <PlatformDistributionChart
-          data={platforms}
-          title="Revenue by Platform"
-        />
-      </div>
+      {/* P&L Chart - Direct without wrapper */}
+      <RevenueChart
+        data={monthly}
+        title={`${granularity} Profit & Loss Trend`}
+        subtitle={comparison.hasComparison 
+          ? `Comparing with ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+          : undefined
+        }
+        showProfit={true}
+        showComparison={comparison.hasComparison}
+        comparisonMode={comparisonMode}
+        onMonthClick={onMonthClick}
+        height={320}
+      />
+      
+      {/* Platform Distribution (2/3) and Cost Breakdown (1/3) */}
+      <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <PlatformDistributionChart
+              data={platforms}
+              title="Revenue by Platform"
+            />
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <h4 className="font-semibold text-gray-900 mb-3">Cost Breakdown</h4>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Platform Fees</span>
+                <div className="text-right">
+                  <p className="font-semibold">{formatCurrency(revenue.platformFees)}</p>
+                  <p className="text-xs text-gray-500">{formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue</p>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Taxes</span>
+                <div className="text-right">
+                  <p className="font-semibold">{formatCurrency(revenue.taxes)}</p>
+                  <p className="text-xs text-gray-500">{formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} of revenue</p>
+                </div>
+              </div>
+              <div className="border-t pt-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-900">Total Costs</span>
+                  <div className="text-right">
+                    <p className="font-bold text-red-600">{formatCurrency(revenue.platformFees + revenue.taxes)}</p>
+                    <p className="text-xs text-gray-500">{formatPercentage(((revenue.platformFees + revenue.taxes) / revenue.gross) * 100, 1)} of revenue</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       
       {showTips && profitability.marginPercent < 60 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

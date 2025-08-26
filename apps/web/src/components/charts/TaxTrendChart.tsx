@@ -19,7 +19,7 @@ interface TaxTrendChartProps {
 export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
   data,
   title = 'Monthly Tax Trend',
-  height = 256,
+  height = 320,
   onMonthClick
 }) => {
   if (!data || data.length === 0) {

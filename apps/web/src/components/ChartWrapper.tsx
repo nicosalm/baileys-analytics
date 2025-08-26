@@ -60,7 +60,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   if (loading) {
     return (
       <div className={cn(
-        "bg-white rounded-lg shadow-sm",
+        "bg-white rounded-lg shadow-sm border border-gray-200",
         paddingClasses[padding],
         className
       )}>
@@ -83,7 +83,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   if (error) {
     return (
       <div className={cn(
-        "bg-white rounded-lg shadow-sm",
+        "bg-white rounded-lg shadow-sm border border-gray-200",
         paddingClasses[padding],
         className
       )}>
@@ -108,7 +108,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   if (noData) {
     return (
       <div className={cn(
-        "bg-white rounded-lg shadow-sm",
+        "bg-white rounded-lg shadow-sm border border-gray-200",
         paddingClasses[padding],
         className
       )}>
@@ -133,7 +133,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   return (
     <div 
       className={cn(
-        "bg-white rounded-lg shadow-sm",
+        "bg-white rounded-lg shadow-sm border border-gray-200",
         paddingClasses[padding],
         className
       )}

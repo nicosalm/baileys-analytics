@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useMemo } from 'react'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { SimpleTable } from '@/components/tables'
@@ -7,7 +7,7 @@ import { TaxRemittanceWidget } from '@/components/tax/TaxRemittanceWidget'
 import { useTips } from '@/hooks/use-tips'
 import { 
   FileText, DollarSign, CheckCircle, Home,
-  Info, AlertTriangle
+  Info, AlertTriangle, Building
 } from 'lucide-react'
 import { formatCurrency, formatTaxRate } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
@@ -30,7 +30,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
 }) => {
   const { showTips } = useTips()
   const { filters } = useDashboard()
-  const [viewMode, setViewMode] = useState<'summary' | 'detail'>('summary')
   
   const taxData = useMemo(() => {
     if (!data?.tax) return null
@@ -109,18 +108,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         </div>
       )}
       
-      {/* View Toggle */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-xl font-bold">Tax Summary</h3>
-        <button
-          onClick={() => setViewMode(viewMode === 'summary' ? 'detail' : 'summary')}
-          className="px-4 py-2 bg-gray-200 rounded-sm hover:bg-gray-300 flex items-center"
-        >
-          <FileText className="w-4 h-4 mr-2" />
-          {viewMode === 'summary' ? 'Property Details' : 'Summary View'}
-        </button>
-      </div>
-      
       {/* Key Metrics */}
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
@@ -169,41 +156,38 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         />
       </div>
       
-      {/* Tax Remittance Widget */}
-      <TaxRemittanceWidget
-        periodStart={filters.dateRange.from}
-        periodEnd={filters.dateRange.to}
+      {/* Tax Trend Chart */}
+      <TaxTrendChart
+        data={taxData.byMonth}
+        title={`${taxData.granularity} Tax Trend`}
+        onMonthClick={onMonthClick}
       />
       
-      {viewMode === 'summary' ? (
-        <>
-          {/* Tax Trend Chart */}
-          <TaxTrendChart
-            data={taxData.byMonth}
-            title={`${taxData.granularity} Tax Trend`}
-            onMonthClick={onMonthClick}
-          />
-          
-          {/* Tax Rate Alert */}
-          {showTips && taxData.effectiveTaxRate > 15 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
-                <div className="text-sm text-yellow-800">
-                  <strong>High Tax Rate:</strong> Your effective tax rate is {formatTaxRate(taxData.effectiveTaxRate / 100)}. 
-                  Consider reviewing your tax settings and jurisdictions to ensure accuracy.
-                </div>
-              </div>
+      {/* Tax Remittance and Property Details Side by Side */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Tax Remittance Widget */}
+        <TaxRemittanceWidget
+          periodStart={filters.dateRange.from}
+          periodEnd={filters.dateRange.to}
+        />
+        
+        {/* Property Tax Details Table */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-4 border-b border-gray-200">
+            <div>
+              <h3 className="font-semibold text-gray-900 flex items-center">
+                <Building className="w-4 h-4 mr-2" />
+                Tax by Property
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                {taxData.propertyCount} {taxData.propertyCount === 1 ? 'property' : 'properties'} with tax data
+              </p>
             </div>
-          )}
-        </>
-      ) : (
-        /* Property Tax Details Table */
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h3 className="text-lg font-semibold mb-3">Tax by Property</h3>
-          <SimpleTable
-            data={taxData.byProperty}
-            columns={[
+          </div>
+          <div className="p-4">
+            <SimpleTable
+              data={taxData.byProperty}
+              columns={[
               {
                 key: 'propertyName',
                 header: 'Property',
@@ -241,6 +225,20 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
               }
             ]}
           />
+          </div>
+        </div>
+      </div>
+      
+      {/* Tax Rate Alert */}
+      {showTips && taxData.effectiveTaxRate > 15 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
+            <div className="text-sm text-yellow-800">
+              <strong>High Tax Rate:</strong> Your effective tax rate is {formatTaxRate(taxData.effectiveTaxRate / 100)}. 
+              Consider reviewing your tax settings and jurisdictions to ensure accuracy.
+            </div>
+          </div>
         </div>
       )}
     </div>

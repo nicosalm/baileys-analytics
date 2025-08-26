@@ -66,6 +66,24 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       ? ((totalRevenue - previousPeriod.revenue.gross) / previousPeriod.revenue.gross) * 100
       : 0
     
+    // Process monthly data with comparison data
+    const monthlyData = byMonth?.map((m: any, index: number) => {
+      // Try to find matching previous period data by month or by index
+      // The previousPeriod.monthlyTrend now has the comparison data
+      const prevData = previousPeriod?.monthlyTrend?.find((pm: any) => pm.month === m.month) ||
+                      previousPeriod?.monthlyTrend?.[index]
+      
+      // Extract revenue values - handle different field names
+      const currentRevenue = m.amount || m.revenue || m.gross || 0
+      const previousRevenue = prevData ? (prevData.revenue || prevData.amount || prevData.gross || 0) : undefined
+      
+      return {
+        ...m,
+        revenue: currentRevenue,
+        previousRevenue
+      }
+    }) || []
+    
     return {
       totalRevenue,
       avgMonthlyRevenue,
@@ -73,13 +91,11 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       previousRevenue: previousPeriod?.revenue?.gross || 0,
       topProperties,
       bottomProperties,
-      monthlyData: byMonth?.map((m: any) => ({
-        ...m,
-        revenue: m.amount || m.revenue || 0
-      })) || [],
-      granularity
+      monthlyData,
+      granularity,
+      hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some(m => m.previousRevenue !== undefined)
     }
-  }, [data, propertyData])
+  }, [data, propertyData, comparisonMode])
   
   if (loading || !analysis) {
     return (
@@ -153,7 +169,13 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       <RevenueChart
         data={analysis.monthlyData}
         title={`${analysis.granularity} Revenue Trend`}
+        subtitle={analysis.hasComparison 
+          ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+          : undefined
+        }
         onMonthClick={onMonthClick}
+        showComparison={analysis.hasComparison}
+        comparisonMode={comparisonMode}
       />
       
       {/* Property Performance Tables */}

@@ -176,7 +176,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       </div>
       
       {/* Cash Flow Chart */}
-      <ChartWrapper title="Monthly Cash Flow" height={300}>
+      <ChartWrapper title="Monthly Cash Flow" height={320}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={cashFlowData.monthlyData}

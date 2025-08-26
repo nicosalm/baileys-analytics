@@ -17,7 +17,7 @@ interface PlatformDistributionChartProps {
 export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps> = ({
   data,
   title = 'Revenue by Platform',
-  height = 256
+  height = 320
 }) => {
   if (!data || data.length === 0) {
     return (
