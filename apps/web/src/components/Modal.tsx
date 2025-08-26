@@ -1,4 +1,5 @@
 import { useEffect, useRef, ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 
 interface ModalProps {
@@ -46,7 +47,7 @@ export const Modal = ({
     full: 'max-w-[95vw]'
   }
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       {/* Backdrop with blur effect */}
       <div 
@@ -86,4 +87,13 @@ export const Modal = ({
       </div>
     </div>
   )
+
+  // Use portal to render modal at document root
+  const modalRoot = document.getElementById('modal-root')
+  if (modalRoot) {
+    return createPortal(modalContent, modalRoot)
+  }
+  
+  // Fallback to rendering in place if modal-root doesn't exist
+  return modalContent
 }

@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useDailyOccupancy } from '@/hooks/use-api'
 import { cn, formatDateDisplay } from '@baileys/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
+import { useModal } from '@/contexts/modal'
 
 type DailyOccupancy = {
   date: string
@@ -22,7 +23,8 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
     dateRange.to, 
     tagIds
   )
-  const [currentMonthIndex, setCurrentMonthIndex] = useState(0)
+  const [currentMonthIndex, setCurrentMonthIndex] = useState(-1) // Will be set to last month
+  const { openModal } = useModal()
 
   const monthsData = useMemo(() => {
     if (!data || !Array.isArray(data)) return []
@@ -36,18 +38,39 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
 
     return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b))
   }, [data])
+  
+  // Set initial month to the most recent month when data loads
+  useEffect(() => {
+    if (currentMonthIndex === -1 && monthsData.length > 0) {
+      setCurrentMonthIndex(monthsData.length - 1)
+    }
+  }, [monthsData.length, currentMonthIndex])
 
-  const currentMonthData = monthsData[currentMonthIndex] || ['', []]
+  // Ensure currentMonthIndex is valid
+  const validIndex = currentMonthIndex === -1 || currentMonthIndex >= monthsData.length 
+    ? monthsData.length - 1 
+    : currentMonthIndex
+  const currentMonthData = monthsData[validIndex] || ['', []]
   const [currentMonth, currentMonthDays] = currentMonthData as [string, DailyOccupancy[]]
 
   const calendarDays = useMemo(() => {
-    if (!currentMonthDays.length) return []
-    const firstDay = new Date(currentMonthDays[0].date).getDay()
-    const days: (DailyOccupancy | null)[] = Array(firstDay).fill(null)
-    days.push(...currentMonthDays)
-    while (days.length % 7 !== 0) {
-      days.push(null)
+    // Always return 42 slots (6 weeks) for consistent sizing
+    const days: (DailyOccupancy | null)[] = Array(42).fill(null)
+    
+    if (currentMonthDays.length > 0) {
+      // Parse date components to avoid timezone issues
+      const [year, month, day] = currentMonthDays[0].date.split('-')
+      const firstDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      const firstDay = firstDate.getDay()
+      
+      // Place the month's days starting at the correct position
+      currentMonthDays.forEach((day, index) => {
+        if (firstDay + index < 42) {
+          days[firstDay + index] = day
+        }
+      })
     }
+    
     return days
   }, [currentMonthDays])
 
@@ -64,12 +87,12 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   }, [currentMonthDays])
 
   const getColor = (rate: number) => {
-    if (rate === 0) return 'bg-gray-100'
-    if (rate < 0.25) return 'bg-red-100'
-    if (rate < 0.5) return 'bg-yellow-100'
-    if (rate < 0.75) return 'bg-green-100'
-    if (rate < 0.9) return 'bg-green-300'
-    return 'bg-green-500'
+    if (rate === 0) return 'bg-gray-50 border border-gray-200'
+    if (rate < 0.25) return 'bg-red-50 border border-red-200 hover:bg-red-100'
+    if (rate < 0.5) return 'bg-amber-50 border border-amber-200 hover:bg-amber-100'
+    if (rate < 0.75) return 'bg-emerald-50 border border-emerald-200 hover:bg-emerald-100'
+    if (rate < 0.9) return 'bg-emerald-100 border border-emerald-300 hover:bg-emerald-200'
+    return 'bg-emerald-200 border border-emerald-400 hover:bg-emerald-300'
   }
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -88,38 +111,38 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
       <div className="flex justify-between items-center">
         <button
           onClick={() => setCurrentMonthIndex(i => Math.max(0, i - 1))}
-          disabled={currentMonthIndex === 0}
-          className={cn("p-2 rounded-sm", currentMonthIndex === 0 && "opacity-50")}
+          disabled={validIndex === 0}
+          className={cn("p-2 rounded-sm", validIndex === 0 && "opacity-50")}
         >
           <ChevronLeft />
         </button>
         <div className="text-center">
           <h4 className="text-lg font-semibold">{monthName} {year}</h4>
-          <p className="text-sm text-gray-600">{currentMonthIndex + 1} of {monthsData.length}</p>
+          <p className="text-sm text-gray-600">{validIndex + 1} of {monthsData.length}</p>
         </div>
         <button
           onClick={() => setCurrentMonthIndex(i => Math.min(monthsData.length - 1, i + 1))}
-          disabled={currentMonthIndex === monthsData.length - 1}
-          className={cn("p-2 rounded-sm", currentMonthIndex === monthsData.length - 1 && "opacity-50")}
+          disabled={validIndex === monthsData.length - 1}
+          className={cn("p-2 rounded-sm", validIndex === monthsData.length - 1 && "opacity-50")}
         >
           <ChevronRight />
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Compact Stats */}
       {monthStats && (
-        <div className="grid grid-cols-3 gap-4 text-sm text-center">
-          <div>
-            <div className="text-gray-600">Avg Occupancy</div>
-            <div className="font-semibold">{monthStats.avgOccupancy}%</div>
+        <div className="flex justify-around text-xs">
+          <div className="text-center">
+            <div className="font-semibold text-lg">{monthStats.avgOccupancy}%</div>
+            <div className="text-gray-500">Avg</div>
           </div>
-          <div>
-            <div className="text-gray-600">Booked Nights</div>
-            <div className="font-semibold">{monthStats.totalBooked}</div>
+          <div className="text-center">
+            <div className="font-semibold text-lg">{monthStats.totalBooked}</div>
+            <div className="text-gray-500">Booked</div>
           </div>
-          <div>
-            <div className="text-gray-600">Utilization</div>
-            <div className="font-semibold">{monthStats.utilizationRate}%</div>
+          <div className="text-center">
+            <div className="font-semibold text-lg">{monthStats.utilizationRate}%</div>
+            <div className="text-gray-500">Used</div>
           </div>
         </div>
       )}
@@ -131,26 +154,52 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
             <div key={day} className="text-xs text-gray-500 text-center">{day}</div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((day, idx) => (
-            <div key={idx} className={cn(
-              'aspect-square text-xs flex items-center justify-center rounded-sm relative group',
-              day ? getColor(day.occupancyRate) : 'bg-transparent'
-            )}>
-              {day && (
-                <>
-                  <span className="font-medium">{new Date(day.date).getDate()}</span>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block z-10">
-                    <div className="bg-black text-white text-xs px-2 py-1 rounded-sm shadow-sm">
-                      <div>{formatDateDisplay(new Date(day.date))}</div>
-                      <div>{Math.round(day.occupancyRate * 100)}%</div>
-                      <div>{day.bookedProperties}/{day.totalProperties}</div>
+        <div className="grid grid-cols-7 gap-0.5">
+          {calendarDays.map((day, idx) => {
+            const handleDayClick = () => {
+              if (day) {
+                const [year, month, dayNum] = day.date.split('-')
+                openModal({
+                  type: 'period',
+                  month,
+                  year,
+                  day: dayNum,
+                  originalDate: day.date,
+                  granularity: 'daily'
+                })
+              }
+            }
+            
+            return (
+              <div 
+                key={idx} 
+                onClick={handleDayClick}
+                className={cn(
+                  'aspect-square text-[11px] flex items-center justify-center rounded relative group transition-all',
+                  day ? `${getColor(day.occupancyRate)} hover:scale-105 hover:z-20 cursor-pointer` : 'bg-transparent cursor-default'
+                )}
+              >
+                {day && (
+                  <>
+                    <span className="font-medium">{parseInt(day.date.split('-')[2])}</span>
+                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block z-30 pointer-events-none">
+                      <div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
+                        <div className="font-semibold">{(() => {
+                          const [y, m, d] = day.date.split('-')
+                          const localDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+                          return formatDateDisplay(localDate)
+                        })()}</div>
+                        <div>{Math.round(day.occupancyRate * 100)}% occupied</div>
+                        <div className="text-gray-300">{day.bookedProperties} of {day.totalProperties} props</div>
+                        <div className="text-gray-400 mt-1 border-t border-gray-700 pt-1">Click to view details</div>
+                      </div>
+                      <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-900 rotate-45"></div>
                     </div>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
+                  </>
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 

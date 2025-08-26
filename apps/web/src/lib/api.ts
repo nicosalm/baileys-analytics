@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
+import { aggregateDailyToWeekly, transformDailyToPeriodFormat } from '@/utils/occupancy-helpers'
 
 const API_BASE = '/api'
 
@@ -208,15 +209,158 @@ class ApiClient {
         return this.request(`/property-metrics?${params}`)
     }
 
-    async getOccupancy(from?: string, to?: string, tagIds?: string[]): Promise<ApiResult<any>> {
+    async getOccupancy(
+        from?: string, 
+        to?: string, 
+        tagIds?: string[], 
+        comparisonFrom?: string, 
+        comparisonTo?: string
+    ): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
         if (from && isValidDateString(from)) params.append('from', from)
         if (to && isValidDateString(to)) params.append('to', to)
+        
+        // Determine which endpoint to use based on date range
+        let endpoint = '/occupancy'
+        if (from && to) {
+            const startDate = new Date(from)
+            const endDate = new Date(to)
+            const diffInDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+            
+            // Use daily endpoint for shorter date ranges
+            if (diffInDays <= 31) {
+                endpoint = '/occupancy/daily'
+                // For daily endpoint, we need to aggregate the daily data into the expected format
+            } else if (diffInDays <= 90) {
+                // For weekly, fetch daily data and aggregate it
+                endpoint = '/occupancy/daily'
+            }
+        }
+        
         if (tagIds && tagIds.length > 0) {
             const validTagIds = filterValidUUIDs(tagIds)
             if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
         }
-        return this.request(`/occupancy?${params}`)
+        if (comparisonFrom && isValidDateString(comparisonFrom)) params.append('comparisonFrom', comparisonFrom)
+        if (comparisonTo && isValidDateString(comparisonTo)) params.append('comparisonTo', comparisonTo)
+        
+        // For daily endpoint, fetch both daily and regular data
+        if (endpoint === '/occupancy/daily' && from && to) {
+            // Fetch daily data for the chart
+            const dailyResult = await this.request(`${endpoint}?${params}`)
+            
+            if (!dailyResult.success) return dailyResult
+            
+            // Also fetch the regular occupancy data to get property breakdowns
+            const regularResult = await this.request(`/occupancy?${params}`)
+            
+            // If comparison dates are provided, also fetch daily data for comparison period
+            let comparisonDailyResult = null
+            if (comparisonFrom && comparisonTo) {
+                const compParams = new URLSearchParams()
+                compParams.append('from', comparisonFrom)
+                compParams.append('to', comparisonTo)
+                if (tagIds && tagIds.length > 0) {
+                    const validTagIds = filterValidUUIDs(tagIds)
+                    if (validTagIds.length > 0) compParams.append('tags', validTagIds.join(','))
+                }
+                comparisonDailyResult = await this.request(`${endpoint}?${compParams}`)
+            }
+            
+            // Transform daily data to match the expected occupancy format
+            const dailyData = dailyResult.data as Array<{
+                date: string
+                occupancyRate: number
+                bookedProperties: number
+                totalProperties: number
+            }>
+            
+            // Use property data from regular endpoint if available
+            const regularData = regularResult.success ? regularResult.data as any : null
+            const propertyData = regularData?.byProperty || []
+            
+            // Determine if we should aggregate to weekly
+            const startDate = new Date(from)
+            const endDate = new Date(to)
+            const diffInDays = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+            const shouldAggregateWeekly = diffInDays > 31 && diffInDays <= 90
+            
+            // Transform daily data based on date range
+            const byPeriod = shouldAggregateWeekly 
+                ? aggregateDailyToWeekly(dailyData)
+                : transformDailyToPeriodFormat(dailyData)
+            
+            // Check if we have comparison data
+            if (regularData?.current && regularData?.previous && comparisonDailyResult?.success) {
+                // Process comparison daily data similar to current period
+                const comparisonDailyData = comparisonDailyResult.data as Array<{
+                    date: string
+                    occupancyRate: number
+                    bookedProperties: number
+                    totalProperties: number
+                }>
+                
+                // Transform comparison data the same way
+                const comparisonByPeriod = shouldAggregateWeekly
+                    ? aggregateDailyToWeekly(comparisonDailyData)
+                    : transformDailyToPeriodFormat(comparisonDailyData)
+                
+                // Return with properly formatted comparison data
+                return {
+                    success: true,
+                    data: {
+                        current: {
+                            overall: regularData.current.overall,
+                            byProperty: regularData.current.byProperty || [],
+                            byMonth: byPeriod,
+                            bookedNights: regularData.current.bookedNights,
+                            availableNights: regularData.current.availableNights
+                        },
+                        previous: {
+                            overall: regularData.previous.overall,
+                            byProperty: regularData.previous.byProperty || [],
+                            byMonth: comparisonByPeriod,
+                            bookedNights: regularData.previous.bookedNights,
+                            availableNights: regularData.previous.availableNights
+                        }
+                    }
+                }
+            } else if (regularData?.current && regularData?.previous) {
+                // Regular comparison data without daily (shouldn't happen but handle it)
+                return {
+                    success: true,
+                    data: {
+                        current: {
+                            overall: regularData.current.overall,
+                            byProperty: regularData.current.byProperty || [],
+                            byMonth: byPeriod,
+                            bookedNights: regularData.current.bookedNights,
+                            availableNights: regularData.current.availableNights
+                        },
+                        previous: regularData.previous
+                    }
+                }
+            } else {
+                // No comparison data, return simple format
+                return {
+                    success: true,
+                    data: {
+                        overall: regularData?.overall || 
+                            (dailyData.reduce((sum, d) => sum + d.bookedProperties, 0) / 
+                             dailyData.reduce((sum, d) => sum + d.totalProperties, 0) || 0),
+                        byProperty: propertyData,
+                        byMonth: byPeriod,
+                        bookedNights: regularData?.bookedNights || 
+                            dailyData.reduce((sum, d) => sum + d.bookedProperties, 0),
+                        availableNights: regularData?.availableNights || 
+                            dailyData.reduce((sum, d) => sum + d.totalProperties, 0)
+                    }
+                }
+            }
+        }
+        
+        // For monthly, use the regular endpoint
+        return this.request(`${endpoint}?${params}`)
     }
 
     async getTags(): Promise<ApiResult<any>> {

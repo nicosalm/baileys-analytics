@@ -10,7 +10,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { StateWrapper } from '@/components/StateWrapper'
-import { formatPercentage, minBy, differenceInDays } from '@baileys/utils'
+import { formatPercentage, minBy } from '@baileys/utils'
 import { METRIC_COLORS } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 
@@ -54,50 +54,100 @@ export const OccupancyDashboard = () => {
     )
   }
 
-  // Determine time period based on date range
-  const getTimePeriod = () => {
-    if (!filters.dateRange.from || !filters.dateRange.to) return ''
-    const daysDiff = differenceInDays(
-      new Date(filters.dateRange.to),
-      new Date(filters.dateRange.from)
-    )
-    
-    if (daysDiff <= 7) return ' (Daily)'
-    if (daysDiff <= 35) return ' (Weekly)'
-    return ' (Monthly)'
+  // The data field is named byMonth but can contain daily, weekly, or monthly data
+  // Detect actual data granularity from the time intervals
+  const timeSeriesData = currentData.byMonth || []
+  const dataGranularity = detectGranularity(timeSeriesData, 'month')
+  
+  // Get appropriate chart title based on granularity
+  const getChartTitle = () => {
+    switch (dataGranularity) {
+      case 'Daily':
+        return 'Daily Booking Patterns'
+      case 'Weekly':
+        return 'Weekly Booking Patterns'
+      case 'Monthly':
+      default:
+        return 'Monthly Booking Patterns'
+    }
   }
 
-  const monthlyChartData = currentData.byMonth.map((m: any) => {
-    const prevMonth = previousData?.byMonth?.find((pm: any) => pm.month.slice(5) === m.month.slice(5))
+  // Process time series data based on detected granularity
+  const chartData = timeSeriesData.map((dataPoint: any, index: number) => {
+    // For comparison data, try to match by index position when dates don't align
+    // This handles cases where current is daily/weekly but previous is monthly
+    const prevDataPoint = previousData?.byMonth?.find((pd: any) => pd.month === dataPoint.month) ||
+                         (previousData?.byMonth?.[index])
+    
+    // Format label based on granularity
+    let label: string
+    if (dataGranularity === 'Daily') {
+      // For daily data, show "Jun 22" format
+      const [year, month, day] = dataPoint.month.split('-')
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day || '1'))
+      label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    } else if (dataGranularity === 'Weekly') {
+      // For weekly data, show shorter format "Jun 22"
+      const [year, month, day] = dataPoint.month.split('-')
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day || '1'))
+      label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    } else {
+      // For monthly data, show month abbreviation
+      const [year, month] = dataPoint.month.split('-')
+      const date = new Date(parseInt(year), parseInt(month) - 1)
+      // Show year only if multiple years in data
+      const hasMultipleYears = timeSeriesData.some((d: any) => {
+        const [y] = d.month.split('-')
+        return y !== year
+      })
+      label = hasMultipleYears 
+        ? date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+        : date.toLocaleDateString('en-US', { month: 'short' })
+    }
+    
     return {
-      month: m.month.slice(5),
-      fullMonth: m.month,
-      rate: m.rate * 100,
-      previousRate: prevMonth ? prevMonth.rate * 100 : undefined,
-      bookedNights: m.bookedNights,
-      availableNights: m.availableNights,
-      tooltip: `${m.bookedNights} / ${m.availableNights} nights`
+      month: label,
+      fullMonth: dataPoint.month,
+      rate: dataPoint.rate * 100,
+      previousRate: prevDataPoint ? prevDataPoint.rate * 100 : undefined,
+      bookedNights: dataPoint.bookedNights,
+      availableNights: dataPoint.availableNights,
+      tooltip: `${dataPoint.bookedNights} / ${dataPoint.availableNights} nights`
     }
   })
 
-  const lowestMonth = minBy(currentData.byMonth, (m: any) => m.rate) || { month: '', rate: 1 }
+  const lowestPeriod = minBy(timeSeriesData, (d: any) => d.rate) || { month: '', rate: 1 }
 
-  const formatMonthDisplay = (monthStr: string): string => {
-    if (!monthStr) return 'N/A'
-    const [year, month] = monthStr.split('-')
+  const formatPeriodDisplay = (dateStr: string): string => {
+    if (!dateStr) return 'N/A'
+    
+    // Handle different date formats based on granularity
+    if (dataGranularity === 'Daily' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-')
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    }
+    
+    if (dataGranularity === 'Weekly' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateStr.split('-')
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+      return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    }
+    
+    // Monthly format
+    const [year, month] = dateStr.split('-')
     const date = new Date(parseInt(year), parseInt(month) - 1)
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
   }
 
   const handlePeriodClick = (data: any) => {
     if (data && data.activeLabel) {
-      const monthData = monthlyChartData.find((m: any) => m.month === data.activeLabel)
-      if (monthData) {
-        // Detect the actual granularity of the data
-        const detectedGranularity = detectGranularity(currentData.byMonth || [], 'month')
+      const clickedData = chartData.find((d: any) => d.month === data.activeLabel)
+      if (clickedData) {
+        // Use the already detected granularity
         let granularity: 'daily' | 'weekly' | 'monthly' = 'monthly'
         
-        switch (detectedGranularity) {
+        switch (dataGranularity) {
           case 'Daily':
             granularity = 'daily'
             break
@@ -110,15 +160,14 @@ export const OccupancyDashboard = () => {
             break
         }
         
-        const [year, month] = monthData.fullMonth.split('-')
-        const day = monthData.fullMonth.split('-')[2] // Will be undefined for monthly data
+        const [year, month, day] = clickedData.fullMonth.split('-')
         
         openModal({
           type: 'period',
           month,
           year,
           day,
-          originalDate: monthData.fullMonth,
+          originalDate: clickedData.fullMonth,
           granularity
         })
       }
@@ -194,18 +243,19 @@ export const OccupancyDashboard = () => {
         />
         <MetricCard
           icon={AlertCircle}
-          label="Most Empty Nights"
-          value={formatMonthDisplay(lowestMonth.month)}
+          label={`Lowest ${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'}`}
+          value={formatPeriodDisplay(lowestPeriod.month)}
           format="custom"
-          subValue={`Only ${formatPercentage(lowestMonth.rate * 100, 0)} booked`}
-          tooltip="Month with most empty nights"
+          subValue={`Only ${formatPercentage(lowestPeriod.rate * 100, 0)} booked`}
+          tooltip={`${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'} with lowest occupancy`}
           color="orange"
         />
       </div>
 
+      {/* Chart and Properties grid */}
       <div className="grid md:grid-cols-2 gap-6">
         <ChartWrapper
-          title={`Monthly Booking Patterns${getTimePeriod()}`}
+          title={getChartTitle()}
           subtitle={comparisonMode !== 'none' && previousData 
             ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
             : undefined
@@ -213,9 +263,19 @@ export const OccupancyDashboard = () => {
           icon={BarChart3}
           height={320}
         >
-          <LineChart data={monthlyChartData} onClick={handlePeriodClick}>
+          <LineChart data={chartData} onClick={handlePeriodClick}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
+            <XAxis 
+              dataKey="month"
+              angle={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? -45 : 0}
+              textAnchor={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 'end' : 'middle'}
+              height={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 60 : undefined}
+              interval={
+                dataGranularity === 'Daily' && chartData.length > 30 ? Math.ceil(chartData.length / 15) : 
+                dataGranularity === 'Weekly' && chartData.length > 12 ? 1 : 
+                0
+              }
+            />
             <YAxis
               tickFormatter={(value: any) => `${value}%`}
               domain={[0, 100]}
@@ -227,10 +287,11 @@ export const OccupancyDashboard = () => {
               ]}
               labelFormatter={(label: any, payload: any) => {
                 const data = payload?.[0]?.payload
+                const prefix = dataGranularity === 'Weekly' ? 'Week of ' : ''
                 if (data?.bookedNights && data?.availableNights) {
-                  return `${label}: ${data.bookedNights} nights booked out of ${data.availableNights}`
+                  return `${prefix}${label}: ${data.bookedNights} nights booked out of ${data.availableNights}`
                 }
-                return label
+                return `${prefix}${label}`
               }}
               contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
             />
@@ -261,7 +322,7 @@ export const OccupancyDashboard = () => {
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Home className="w-5 h-5 mr-2" />
-            How Each Property Is Doing
+            Property Performance
           </h3>
           <div className="space-y-3">
             {currentData.byProperty.length > 0 ? (
@@ -271,9 +332,9 @@ export const OccupancyDashboard = () => {
                   const occupancyPercent = property.rate * 100
                   const prevProperty = previousData?.byProperty?.find((p: any) => p.propertyId === property.propertyId)
                   const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
-                  const occupancyColor = occupancyPercent >= 70 ? 'bg-green-500' :
-                                         occupancyPercent >= 50 ? 'bg-yellow-500' :
-                                         'bg-red-500'
+                  const occupancyColor = occupancyPercent >= 70 ? 'bg-gradient-to-r from-green-500 to-green-600' :
+                                         occupancyPercent >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
+                                         'bg-gradient-to-r from-red-500 to-red-600'
 
                   return (
                     <div key={property.propertyId} className="space-y-2">
@@ -298,12 +359,12 @@ export const OccupancyDashboard = () => {
                         </div>
                       </div>
                       <div className="relative">
-                        <div className="w-full bg-gray-200 rounded-full h-6">
+                        <div className="w-full bg-gray-100 rounded-full h-5 overflow-hidden">
                           <div
-                            className={`${occupancyColor} h-6 rounded-full flex items-center justify-end pr-2 transition-all duration-500`}
+                            className={`${occupancyColor} h-5 rounded-full flex items-center justify-end pr-2 transition-all duration-500`}
                             style={{ width: `${Math.max(occupancyPercent, 5)}%` }}
                           >
-                            {occupancyPercent >= 20 && (
+                            {occupancyPercent >= 25 && (
                               <span className="text-xs text-white font-medium">
                                 {property.bookedNights}/{property.availableNights}
                               </span>
@@ -324,18 +385,18 @@ export const OccupancyDashboard = () => {
           </div>
           {currentData.byProperty.length > 0 && (
             <div className="mt-4 pt-4 border-t">
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="flex justify-center gap-4 text-xs">
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-green-500 rounded-sm mr-1"></div>
-                  <span className="text-gray-600">Great (70%+)</span>
+                  <span className="text-gray-600">Excellent (70%+)</span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-yellow-500 rounded-sm mr-1"></div>
-                  <span className="text-gray-600">OK (50-69%)</span>
+                  <span className="text-gray-600">Good (50-70%)</span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-3 h-3 bg-red-500 rounded-sm mr-1"></div>
-                  <span className="text-gray-600">Needs Work (&lt;50%)</span>
+                  <span className="text-gray-600">Low (&lt;50%)</span>
                 </div>
               </div>
             </div>
@@ -346,10 +407,10 @@ export const OccupancyDashboard = () => {
       <div className="bg-white p-6 rounded-lg shadow-sm">
         <h3 className="text-lg font-bold mb-4 flex items-center">
           <Calendar className="w-5 h-5 mr-2" />
-          Daily Booking Calendar
+          Daily Occupancy Calendar
         </h3>
         <p className="text-sm text-gray-600 mb-4">
-          Darker colors show busier days. Click any date to see details.
+          Click any day to see details
         </p>
         <OccupancyHeatmap
           dateRange={filters.dateRange}
