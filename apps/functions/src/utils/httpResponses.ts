@@ -1,15 +1,21 @@
 import { HttpResponseInit } from '@azure/functions';
-import { corsHeaders } from '../middleware/auth';
+import { corsHeaders, securityHeaders } from '../middleware/auth';
+
+// Combine CORS and security headers
+const getResponseHeaders = () => ({
+  ...corsHeaders(),
+  ...securityHeaders()
+});
 
 export const createSuccessResponse = (data: any): HttpResponseInit => ({
   status: 200,
-  headers: corsHeaders(),
+  headers: getResponseHeaders(),
   jsonBody: data
 });
 
 export const createErrorResponse = (error: string, status: number = 500, code?: string): HttpResponseInit => ({
   status,
-  headers: corsHeaders(),
+  headers: getResponseHeaders(),
   jsonBody: code ? { error, code } : { error }
 });
 
@@ -24,7 +30,7 @@ export const createForbiddenResponse = (message: string, code?: string): HttpRes
 
 export const createValidationErrorResponse = (zodError: any): HttpResponseInit => ({
   status: 400,
-  headers: corsHeaders(),
+  headers: getResponseHeaders(),
   jsonBody: { 
     error: 'Validation error',
     details: zodError.issues ? zodError.issues.map((e: any) => ({

@@ -74,6 +74,16 @@ export const corsHeaders = (origin?: string) => ({
   'Access-Control-Allow-Credentials': 'true'
 })
 
+// Security headers to prevent common attacks
+export const securityHeaders = () => ({
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'X-XSS-Protection': '1; mode=block',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'Content-Security-Policy': "default-src 'self'",
+  'Referrer-Policy': 'strict-origin-when-cross-origin'
+})
+
 export const handleOptions = (): HttpResponseInit => ({
   status: 204,
   headers: corsHeaders()

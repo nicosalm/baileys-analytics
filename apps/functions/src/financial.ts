@@ -46,6 +46,8 @@ type PLData = {
   previousPeriod?: {
     revenue: { gross: number; net: number; taxes: number; platformFees: number }
     performance: { netRevenueRate: number }
+    monthlyTrend?: MonthlyTrend[]
+    weeklyRevenue?: WeeklyRevenue[]
   }
 }
 
@@ -159,6 +161,8 @@ type MonthlyTaxData = {
   totalRent: number
   bookingCount: number
   effectiveRate: number
+  ownerRemitted?: number
+  platformRemitted?: number
 }
 
 async function getPLData(
@@ -954,6 +958,8 @@ async function getTaxData(
       total_tax: string
       total_rent: string
       booking_count: string
+      owner_tax: string
+      platform_tax: string
     }>(useDailyTax ? `
       -- Daily tax data for short date ranges
       WITH date_series AS (
@@ -962,7 +968,7 @@ async function getTaxData(
       daily_tax_data AS (
         SELECT
           b.arrival::date as period,
-          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as total_tax,
+          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as owner_tax,
           COALESCE(SUM(b.total_amount), 0) as total_rent,
           COUNT(*) as booking_count
         FROM bookings b
@@ -972,14 +978,27 @@ async function getTaxData(
           ${tagFilter}
           ${bookingFilters}
         GROUP BY b.arrival::date
+      ),
+      platform_tax_data AS (
+        SELECT
+          TO_CHAR(TO_DATE(month || '-01', 'YYYY-MM-DD'), 'YYYY-MM-DD') as period,
+          COALESCE(SUM(platform_tax_remitted), 0) as platform_tax
+        FROM platform_fee_entries
+        WHERE tenant_id = $1
+          AND TO_DATE(month || '-01', 'YYYY-MM-DD') >= $2::date
+          AND TO_DATE(month || '-01', 'YYYY-MM-DD') <= $3::date
+        GROUP BY month
       )
       SELECT
         TO_CHAR(ds.period, 'YYYY-MM-DD') as month,
-        COALESCE(dtd.total_tax, 0) as total_tax,
+        COALESCE(dtd.owner_tax, 0) + COALESCE(ptd.platform_tax, 0) as total_tax,
         COALESCE(dtd.total_rent, 0) as total_rent,
-        COALESCE(dtd.booking_count, 0) as booking_count
+        COALESCE(dtd.booking_count, 0) as booking_count,
+        COALESCE(dtd.owner_tax, 0) as owner_tax,
+        COALESCE(ptd.platform_tax, 0) as platform_tax
       FROM date_series ds
       LEFT JOIN daily_tax_data dtd ON ds.period = dtd.period
+      LEFT JOIN platform_tax_data ptd ON TO_CHAR(ds.period, 'YYYY-MM-DD') = ptd.period
       ORDER BY ds.period
     ` : useWeeklyTax ? `
       -- Weekly tax data for medium date ranges
@@ -993,7 +1012,7 @@ async function getTaxData(
       weekly_tax_data AS (
         SELECT
           date_trunc('week', b.arrival)::date as period,
-          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as total_tax,
+          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as owner_tax,
           COALESCE(SUM(b.total_amount), 0) as total_rent,
           COUNT(*) as booking_count
         FROM bookings b
@@ -1003,14 +1022,27 @@ async function getTaxData(
           ${tagFilter}
           ${bookingFilters}
         GROUP BY date_trunc('week', b.arrival)
+      ),
+      platform_tax_data AS (
+        SELECT
+          date_trunc('week', TO_DATE(month || '-01', 'YYYY-MM-DD'))::date as period,
+          COALESCE(SUM(platform_tax_remitted), 0) as platform_tax
+        FROM platform_fee_entries
+        WHERE tenant_id = $1
+          AND TO_DATE(month || '-01', 'YYYY-MM-DD') >= $2::date
+          AND TO_DATE(month || '-01', 'YYYY-MM-DD') <= $3::date
+        GROUP BY date_trunc('week', TO_DATE(month || '-01', 'YYYY-MM-DD'))
       )
       SELECT
         TO_CHAR(ws.period, 'YYYY-MM-DD') as month,
-        COALESCE(wtd.total_tax, 0) as total_tax,
+        COALESCE(wtd.owner_tax, 0) + COALESCE(ptd.platform_tax, 0) as total_tax,
         COALESCE(wtd.total_rent, 0) as total_rent,
-        COALESCE(wtd.booking_count, 0) as booking_count
+        COALESCE(wtd.booking_count, 0) as booking_count,
+        COALESCE(wtd.owner_tax, 0) as owner_tax,
+        COALESCE(ptd.platform_tax, 0) as platform_tax
       FROM week_series ws
       LEFT JOIN weekly_tax_data wtd ON ws.period = wtd.period
+      LEFT JOIN platform_tax_data ptd ON ws.period = ptd.period
       ORDER BY ws.period
     ` : `
       -- Monthly tax data for long date ranges
@@ -1024,7 +1056,7 @@ async function getTaxData(
       monthly_tax_data AS (
         SELECT
           TO_CHAR(b.arrival, 'YYYY-MM') as month,
-          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as total_tax,
+          COALESCE(SUM((SELECT SUM(amount) FROM booking_charges WHERE booking_id = b.id AND type = 'tax')), 0) as owner_tax,
           COALESCE(SUM(b.total_amount), 0) as total_rent,
           COUNT(*) as booking_count
         FROM bookings b
@@ -1034,14 +1066,27 @@ async function getTaxData(
           ${tagFilter}
           ${bookingFilters}
         GROUP BY TO_CHAR(b.arrival, 'YYYY-MM')
+      ),
+      platform_tax_data AS (
+        SELECT
+          month,
+          COALESCE(SUM(platform_tax_remitted), 0) as platform_tax
+        FROM platform_fee_entries
+        WHERE tenant_id = $1
+          AND month >= TO_CHAR($2::date, 'YYYY-MM')
+          AND month <= TO_CHAR($3::date, 'YYYY-MM')
+        GROUP BY month
       )
       SELECT
         ms.month,
-        COALESCE(mtd.total_tax, 0) as total_tax,
+        COALESCE(mtd.owner_tax, 0) + COALESCE(ptd.platform_tax, 0) as total_tax,
         COALESCE(mtd.total_rent, 0) as total_rent,
-        COALESCE(mtd.booking_count, 0) as booking_count
+        COALESCE(mtd.booking_count, 0) as booking_count,
+        COALESCE(mtd.owner_tax, 0) as owner_tax,
+        COALESCE(ptd.platform_tax, 0) as platform_tax
       FROM month_series ms
       LEFT JOIN monthly_tax_data mtd ON ms.month = mtd.month
+      LEFT JOIN platform_tax_data ptd ON ms.month = ptd.month
       ORDER BY ms.month
     `, params)
   ])
@@ -1081,12 +1126,16 @@ async function getTaxData(
       byMonth: monthlyResult.data.map(m => {
         const tax = parseNumericField(m.total_tax)
         const rent = parseNumericField(m.total_rent)
+        const ownerTax = parseNumericField(m.owner_tax)
+        const platformTax = parseNumericField(m.platform_tax)
         return {
           month: m.month,
           totalTax: tax,
           totalRent: rent,
           bookingCount: parseIntField(m.booking_count),
-          effectiveRate: calculatePercentage(tax, rent)
+          effectiveRate: calculatePercentage(tax, rent),
+          ownerRemitted: ownerTax,
+          platformRemitted: platformTax
         }
       })
     }
@@ -1161,7 +1210,9 @@ export async function financial(
         },
         performance: {
           netRevenueRate: previousPLResult.data.metrics.performance.netRevenueRate
-        }
+        },
+        monthlyTrend: previousPLResult.data.monthlyTrend,
+        weeklyRevenue: previousPLResult.data.weeklyRevenue
       }
     }
   }

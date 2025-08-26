@@ -9,6 +9,8 @@ type RateLimitConfig = {
 type RateLimitAttempt = {
   count: number
   resetAt: number
+  firstAttemptAt: number
+  lastAttemptAt: number
 }
 
 type RateLimitCheck =
@@ -47,9 +49,36 @@ class RateLimiter {
     if (!attempt || attempt.resetAt < now) {
       this.attempts.set(key, {
         count: 1,
-        resetAt: now + this.config.windowMs
+        resetAt: now + this.config.windowMs,
+        firstAttemptAt: now,
+        lastAttemptAt: now
       })
       return { allowed: true }
+    }
+
+    // Add progressive delay for auth endpoints (exponential backoff)
+    const isAuthEndpoint = request.url.includes('/auth/login') || request.url.includes('/auth/register')
+    if (isAuthEndpoint && attempt.count > 2) {
+      const delayMs = Math.min(Math.pow(2, attempt.count - 2) * 1000, 30000) // Max 30 seconds
+      const timeSinceLastAttempt = now - attempt.lastAttemptAt
+      
+      if (timeSinceLastAttempt < delayMs) {
+        const retryAfter = Math.ceil((delayMs - timeSinceLastAttempt) / 1000)
+        return {
+          allowed: false,
+          response: {
+            status: 429,
+            headers: {
+              ...corsHeaders(),
+              'Retry-After': retryAfter.toString()
+            },
+            jsonBody: {
+              error: 'Too many requests. Please wait before trying again.',
+              retryAfter
+            }
+          }
+        }
+      }
     }
 
     if (attempt.count >= this.config.maxRequests) {
@@ -72,7 +101,8 @@ class RateLimiter {
 
     this.attempts.set(key, {
       ...attempt,
-      count: attempt.count + 1
+      count: attempt.count + 1,
+      lastAttemptAt: now
     })
 
     return { allowed: true }
@@ -80,8 +110,8 @@ class RateLimiter {
 }
 
 export const authLimiter = new RateLimiter({
-  windowMs: 15 * 60 * 1000,
-  maxRequests: 5
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 10 // Allow 10 attempts per 15 minutes (progressive delay kicks in after 3)
 })
 
 export const apiLimiter = new RateLimiter({

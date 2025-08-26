@@ -1,10 +1,14 @@
 import { SignJWT, jwtVerify } from 'jose';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
+import bcrypt from 'bcrypt';
 import { query } from './database';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'development-secret-change-in-production'
-);
+// Ensure JWT_SECRET is properly configured
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  throw new Error('JWT_SECRET must be set and at least 32 characters long');
+}
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 const JWT_ISSUER = 'baileys-analytics';
 const JWT_AUDIENCE = 'baileys-analytics-api';
 const ACCESS_TOKEN_EXPIRY = '15m';
@@ -19,22 +23,16 @@ export type TokenPair = {
   refreshToken: string;
 };
 
-// Hash password using crypto (built-in to Node.js)
+// Hash password using bcrypt (secure password hashing)
+const BCRYPT_ROUNDS = 12; // Adjustable based on security/performance needs
+
 export const hashPassword = async (password: string): Promise<string> => {
-  const salt = randomBytes(16).toString('hex');
-  const hash = createHash('sha256')
-    .update(password + salt)
-    .digest('hex');
-  return `${salt}:${hash}`;
+  return await bcrypt.hash(password, BCRYPT_ROUNDS);
 };
 
-// Verify password
+// Verify password using bcrypt (timing-safe by default)
 export const verifyPassword = async (password: string, storedHash: string): Promise<boolean> => {
-  const [salt, hash] = storedHash.split(':');
-  const inputHash = createHash('sha256')
-    .update(password + salt)
-    .digest('hex');
-  return hash === inputHash;
+  return await bcrypt.compare(password, storedHash);
 };
 
 // Generate access token
