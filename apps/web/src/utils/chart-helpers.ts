@@ -1,5 +1,6 @@
 import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from './formatters'
+import { differenceInDays } from 'date-fns'
 
 export interface ChartConfig {
   height?: number
@@ -225,12 +226,7 @@ export function detectGranularity(data: any[], dateField = 'month'): DateGranula
   const firstDate = data[0][dateField];
   if (!firstDate) return 'Monthly';
   
-  // Check if it's a daily format (YYYY-MM-DD or MM/DD)
-  if (firstDate.match(/^\d{4}-\d{2}-\d{2}$/) || firstDate.match(/^\d{2}\/\d{2}$/)) {
-    return 'Daily';
-  }
-  
-  // Check if it's a weekly format (contains "Week of")
+  // Check if it's explicitly marked as weekly (contains "Week of")
   if (firstDate.includes('Week of')) {
     return 'Weekly';
   }
@@ -240,11 +236,32 @@ export function detectGranularity(data: any[], dateField = 'month'): DateGranula
     return 'Monthly';
   }
   
-  // If we have at least 2 data points, check the interval
-  if (data.length >= 2 && firstDate.match(/^\d{2}\/\d{2}$/)) {
-    // If both are MM/DD format, we need to look at the actual interval
-    // This is a heuristic: if the second date is 7 days after the first, it's weekly
-    // For now, let's assume MM/DD without year is daily unless proven otherwise
+  // For YYYY-MM-DD format, we need to check the interval between dates
+  if (firstDate.match(/^\d{4}-\d{2}-\d{2}$/) && data.length >= 2) {
+    const secondDate = data[1][dateField];
+    if (secondDate && secondDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const date1 = new Date(firstDate);
+      const date2 = new Date(secondDate);
+      // Use date-fns for consistent date difference calculation
+      const diffDays = differenceInDays(date2, date1);
+      
+      // Weekly data: exactly 7 days between points
+      if (diffDays === 7) {
+        return 'Weekly';
+      }
+      // Daily data: 1 day between points (allowing 2 for weekends/gaps)
+      if (diffDays >= 1 && diffDays <= 2) {
+        return 'Daily';
+      }
+      // Monthly data: 28-31 days (varies by month)
+      if (diffDays >= 28 && diffDays <= 31) {
+        return 'Monthly';
+      }
+    }
+  }
+  
+  // Check if it's a daily format (YYYY-MM-DD or MM/DD) as fallback
+  if (firstDate.match(/^\d{4}-\d{2}-\d{2}$/) || firstDate.match(/^\d{2}\/\d{2}$/)) {
     return 'Daily';
   }
   
@@ -257,7 +274,9 @@ export function formatChartDate(dateStr: string): string {
   
   // Check if it's a daily format (YYYY-MM-DD)
   if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-    const date = new Date(dateStr);
+    // Parse as local date to avoid timezone shifts
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
   

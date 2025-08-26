@@ -3,6 +3,7 @@ import { useFinancial } from '@/hooks/use-api'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
+import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
 
 import { PLView } from '@/components/financial/PLView'
 import { RevenueAnalysis } from '@/components/financial/RevenueAnalysis'
@@ -93,29 +94,124 @@ const FinancialDashboard = () => {
     }
   }, [error?.message, addToast])
 
-  const handleMonthClick = (dateStr: string) => {
-    // Handle different date formats
-    let year: string
-    let month: string
+  const handlePeriodClick = (dateStr: string) => {
+    // Detect the granularity based on the current data
+    // This ensures we match what the chart is displaying
+    let chartData: any[] = []
     
+    // Get the appropriate data based on active tab
+    switch (activeTab) {
+      case 'pl':
+        chartData = financialData?.monthlyTrend || []
+        break
+      case 'revenue_analysis':
+        chartData = revenueData?.byMonth || []
+        break
+      case 'cashflow':
+        chartData = cashFlowData?.byMonth || []
+        break
+      case 'tax_center':
+        chartData = taxData?.tax?.byMonth || []
+        break
+    }
+    
+    const detectedGranularity = detectGranularity(chartData, 'month')
+    
+    // Handle different date formats based on detected granularity
+    let year: string = new Date().getFullYear().toString()
+    let month: string = (new Date().getMonth() + 1).toString().padStart(2, '0')
+    let day: string | undefined
+    let granularity: 'daily' | 'weekly' | 'monthly'
+    
+    // Convert DateGranularity type to lowercase for modal
+    switch (detectedGranularity) {
+      case 'Daily':
+        granularity = 'daily'
+        break
+      case 'Weekly':
+        granularity = 'weekly'
+        break
+      case 'Monthly':
+      default:
+        granularity = 'monthly'
+        break
+    }
+    
+    // Parse the date string based on expected format
     if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      // Format: YYYY-MM-DD (daily or weekly data)
-      [year, month] = dateStr.split('-')
+      // Format: YYYY-MM-DD (daily data)
+      const parts = dateStr.split('-')
+      year = parts[0]
+      month = parts[1]
+      day = parts[2]
+    } else if (dateStr.includes('Week')) {
+      // Format: Week of YYYY-MM-DD or similar weekly format
+      const match = dateStr.match(/\d{4}-\d{2}-\d{2}/)
+      if (match) {
+        const parts = match[0].split('-')
+        year = parts[0]
+        month = parts[1]
+        day = parts[2]
+      } else {
+        // Fallback for weekly without clear date
+        const date = new Date()
+        year = date.getFullYear().toString()
+        month = (date.getMonth() + 1).toString().padStart(2, '0')
+      }
     } else if (dateStr.match(/^\d{4}-\d{2}$/)) {
       // Format: YYYY-MM (monthly data)
       [year, month] = dateStr.split('-')
     } else {
-      // Fallback for unexpected formats
-      const date = new Date()
-      year = date.getFullYear().toString()
-      month = (date.getMonth() + 1).toString().padStart(2, '0')
+      // Try to parse other formats (e.g., "Jun 22" or "Jan 2024")
+      // First, try to find the original date from the chart data
+      const dataPoint = chartData.find(d => formatChartDate(d.month) === dateStr)
+      
+      if (dataPoint && dataPoint.month) {
+        // Found the original date, parse it properly
+        const originalDateStr = dataPoint.month
+        if (originalDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          const parts = originalDateStr.split('-')
+          year = parts[0]
+          month = parts[1]
+          day = parts[2]
+        } else if (originalDateStr.match(/^\d{4}-\d{2}$/)) {
+          [year, month] = originalDateStr.split('-')
+        }
+      } else {
+        // Fallback: Parse the formatted date
+        // For dates like "Jun 22", add current year
+        let parseStr = dateStr
+        if (dateStr.match(/^[A-Za-z]{3} \d{1,2}$/)) {
+          // Format like "Jun 22" - add current year
+          const currentYear = new Date().getFullYear()
+          parseStr = `${dateStr}, ${currentYear}`
+        }
+        
+        const date = new Date(parseStr)
+        if (!isNaN(date.getTime())) {
+          year = date.getFullYear().toString()
+          month = (date.getMonth() + 1).toString().padStart(2, '0')
+          // For daily or weekly granularity, we need the day
+          if (granularity === 'daily' || granularity === 'weekly') {
+            day = date.getDate().toString().padStart(2, '0')
+          }
+        } else {
+          // Final fallback
+          const now = new Date()
+          year = now.getFullYear().toString()
+          month = (now.getMonth() + 1).toString().padStart(2, '0')
+        }
+      }
     }
     
-    // Open modal with the parsed date information
+    // Open modal with full date context
     openModal({ 
-      type: 'month', 
+      type: 'period', 
       month, 
-      year
+      year,
+      day,
+      originalDate: dateStr,
+      granularity
     })
   }
 
@@ -149,10 +245,10 @@ const FinancialDashboard = () => {
         </div>
 
         <div className="p-6">
-          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} onMonthClick={handleMonthClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} onMonthClick={handleMonthClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'cashflow' && <CashFlowView data={cashFlowData} loading={isLoading} onMonthClick={handleMonthClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onMonthClick={handleMonthClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} onMonthClick={handlePeriodClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} onMonthClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'cashflow' && <CashFlowView data={cashFlowData} loading={isLoading} onMonthClick={handlePeriodClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onMonthClick={handlePeriodClick} comparisonMode={comparisonMode} />}
         </div>
       </div>
     </div>

@@ -41,7 +41,19 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           data={formattedData}
           onClick={(e: any) => {
             if (e && e.activeLabel && onMonthClick) {
-              onMonthClick(e.activeLabel)
+              // Find the original data point using the formatted label
+              const dataPoint = formattedData.find(d => d.month === e.activeLabel)
+              if (dataPoint) {
+                // Look for the original date in the source data
+                const index = formattedData.indexOf(dataPoint)
+                const originalDate = data[index]?.month
+                if (originalDate) {
+                  onMonthClick(originalDate)
+                } else {
+                  // Fallback to the formatted label
+                  onMonthClick(e.activeLabel)
+                }
+              }
             }
           }}
         >

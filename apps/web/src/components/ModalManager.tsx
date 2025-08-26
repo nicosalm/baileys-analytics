@@ -5,7 +5,7 @@ import { LoadingState } from './LoadingState'
 // Lazy load all modals for better performance
 const PropertyDetailModal = lazy(() => import('./modals/PropertyDetailModal').then(m => ({ default: m.PropertyDetailModal })))
 const GuestDetailModal = lazy(() => import('./modals/GuestDetailModal').then(m => ({ default: m.GuestDetailModal })))
-const MonthDetailModal = lazy(() => import('./modals/MonthDetailModal').then(m => ({ default: m.MonthDetailModal })))
+const PeriodDetailModal = lazy(() => import('./modals/PeriodDetailModal').then(m => ({ default: m.PeriodDetailModal })))
 const BookingDetailModal = lazy(() => import('./modals/BookingDetailModal').then(m => ({ default: m.BookingDetailModal })))
 const ReportBuilderModal = lazy(() => import('./modals/ReportBuilderModal').then(m => ({ default: m.ReportBuilderModal })))
 const ReportPreviewModal = lazy(() => import('./modals/ReportPreviewModal').then(m => ({ default: m.ReportPreviewModal })))
@@ -39,11 +39,14 @@ export const ModalManager = () => {
           />
         )
     
-      case 'month':
+      case 'period':
         return (
-          <MonthDetailModal
+          <PeriodDetailModal
             month={activeModal.month}
             year={activeModal.year}
+            day={activeModal.day}
+            originalDate={activeModal.originalDate}
+            granularity={activeModal.granularity}
           />
         )
     

@@ -8,6 +8,7 @@ import { useToast } from '@/contexts/toast'
 import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
+import { detectGranularity } from '@/utils/chart-helpers'
 import { StateWrapper } from '@/components/StateWrapper'
 import { formatPercentage, minBy, differenceInDays } from '@baileys/utils'
 import { METRIC_COLORS } from '@/lib/theme'
@@ -88,15 +89,37 @@ export const OccupancyDashboard = () => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
   }
 
-  const handleMonthClick = (data: any) => {
+  const handlePeriodClick = (data: any) => {
     if (data && data.activeLabel) {
       const monthData = monthlyChartData.find((m: any) => m.month === data.activeLabel)
       if (monthData) {
+        // Detect the actual granularity of the data
+        const detectedGranularity = detectGranularity(currentData.byMonth || [], 'month')
+        let granularity: 'daily' | 'weekly' | 'monthly' = 'monthly'
+        
+        switch (detectedGranularity) {
+          case 'Daily':
+            granularity = 'daily'
+            break
+          case 'Weekly':
+            granularity = 'weekly'
+            break
+          case 'Monthly':
+          default:
+            granularity = 'monthly'
+            break
+        }
+        
         const [year, month] = monthData.fullMonth.split('-')
+        const day = monthData.fullMonth.split('-')[2] // Will be undefined for monthly data
+        
         openModal({
-          type: 'month',
+          type: 'period',
           month,
-          year
+          year,
+          day,
+          originalDate: monthData.fullMonth,
+          granularity
         })
       }
     }
@@ -190,7 +213,7 @@ export const OccupancyDashboard = () => {
           icon={BarChart3}
           height={320}
         >
-          <LineChart data={monthlyChartData} onClick={handleMonthClick}>
+          <LineChart data={monthlyChartData} onClick={handlePeriodClick}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
             <YAxis

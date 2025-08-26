@@ -8,41 +8,42 @@ import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
 
-interface MonthDetailModalProps {
+interface PeriodDetailModalProps {
   month: string
   year: string
   day?: string
   originalDate?: string
+  granularity?: 'daily' | 'weekly' | 'monthly'
 }
 
-export const MonthDetailModal = ({ month, year, day, originalDate }: MonthDetailModalProps) => {
+export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDate, granularity }: PeriodDetailModalProps) => {
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
   const { filters } = useDashboard()
   
-  // Format the display name based on what data we have
+  // Format the display name based on granularity and data
+  // IMPORTANT: All date ranges are INCLUSIVE on both ends (from <= date <= to)
   let displayName: string
   let dateRangeStart: string
   let dateRangeEnd: string
   
-  if (day) {
-    // Daily data - show specific date or week range
+  if (granularity === 'daily' && day) {
+    // Daily data - show specific date
     const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
     const date = parseISO(dateStr)
-    
-    if (originalDate?.includes('Week')) {
-      // Weekly data
-      displayName = `Week of ${format(date, 'MMM d, yyyy')}`
-      dateRangeStart = dateStr
-      dateRangeEnd = format(addDays(date, 6), 'yyyy-MM-dd')
-    } else {
-      // Daily data
-      displayName = format(date, 'EEEE, MMMM d, yyyy')
-      dateRangeStart = dateStr
-      dateRangeEnd = dateStr
-    }
+    displayName = format(date, 'EEEE, MMMM d, yyyy')
+    dateRangeStart = dateStr
+    dateRangeEnd = dateStr
+  } else if (granularity === 'weekly' && day) {
+    // Weekly data - show week range (7 days inclusive)
+    const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    const date = parseISO(dateStr)
+    displayName = `Week of ${format(date, 'MMM d, yyyy')}`
+    dateRangeStart = dateStr
+    // Add 6 days to get 7-day inclusive range (e.g., Mon-Sun)
+    dateRangeEnd = format(addDays(date, 6), 'yyyy-MM-dd')
   } else {
-    // Monthly data
+    // Monthly data (default)
     const monthDate = new Date(parseInt(year), parseInt(month) - 1)
     displayName = format(monthDate, 'MMMM yyyy')
     dateRangeStart = format(startOfMonth(monthDate), 'yyyy-MM-dd')
@@ -85,7 +86,7 @@ export const MonthDetailModal = ({ month, year, day, originalDate }: MonthDetail
             <div className="flex items-start">
               <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
               <div className="text-sm text-blue-800">
-                <strong>{day ? (day === dateRangeEnd ? 'Daily' : 'Weekly') : 'Monthly'} Summary:</strong> See how {displayName} performed across all your properties. 
+                <strong>{granularity === 'daily' ? 'Daily' : granularity === 'weekly' ? 'Weekly' : 'Monthly'} Summary:</strong> See how {displayName} performed across all your properties. 
                 Click any property or guest name for more details.
               </div>
             </div>

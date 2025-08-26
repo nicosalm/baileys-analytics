@@ -6,10 +6,10 @@ import { financialQuerySchema } from '@baileys/shared-types'
 import { safeDivide, calculatePercentage } from '@baileys/utils'
 import { formatDateISO, getYear } from './utils/dates'
 import { getActiveSeasons, buildBookingFilters } from './services/seasonService'
-import { 
-  createSuccessResponse, 
-  createErrorResponse, 
-  requireTenant 
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  requireTenant
 } from './utils/httpResponses'
 import {
   buildDateRangeFilter,
@@ -27,7 +27,6 @@ import {
   transformBookingRow
 } from './utils/dataTransformers'
 
-// Type definitions remain the same
 type UnifiedFinancialResponse = {
   pl: PLData
   revenue: RevenueData
@@ -170,11 +169,11 @@ async function getPLData(
 ): Promise<DbResult<PLData>> {
   const seasons = await getActiveSeasons(tenantId)
   const bookingFilters = buildBookingFilters(seasons, 'b')
-  
+
   const tagFilter = tagIds.length > 0 ? buildTagFilter(4) : ''
   const queryParams: QueryParams = { tenantId, fromDate, toDate, tagIds }
   const params = buildParams(queryParams)
-  
+
   // Use helper to determine granularity
   const { useDaily: useDailyPL, useWeekly: useWeeklyPL } = determineGranularity(fromDate, toDate)
 
@@ -190,10 +189,10 @@ async function getPLData(
       }>(`
         WITH booking_data AS (
           SELECT
-            b.id, 
+            b.id,
             b.property_id,
-            b.total_amount, 
-            b.arrival, 
+            b.total_amount,
+            b.arrival,
             b.platform,
             TO_CHAR(b.arrival, 'YYYY-MM') as month,
             LOWER(${normalizePlatformSQL('b.platform')}) as platform_key
@@ -205,7 +204,7 @@ async function getPLData(
             ${bookingFilters}
         ),
         platform_fees_actual AS (
-          SELECT 
+          SELECT
             pfe.property_id,
             pfe.month,
             SUM(pfe.guest_service_fee + pfe.host_service_fee) as total_platform_fees,
@@ -217,12 +216,12 @@ async function getPLData(
           GROUP BY pfe.property_id, pfe.month
         ),
         property_taxes AS (
-          SELECT 
+          SELECT
             ptc.property_id,
             ptc.jurisdictions,
             COALESCE(
-              (SELECT SUM((j->>'rate')::numeric) 
-               FROM jsonb_array_elements(ptc.jurisdictions) j), 
+              (SELECT SUM((j->>'rate')::numeric)
+               FROM jsonb_array_elements(ptc.jurisdictions) j),
               0
             ) as total_tax_rate
           FROM property_tax_configs ptc
@@ -233,15 +232,15 @@ async function getPLData(
         ),
         fee_tax_calc AS (
           SELECT
-            bd.id, 
-            bd.total_amount, 
+            bd.id,
+            bd.total_amount,
             bd.arrival,
             COALESCE(pfa.total_platform_fees, 0) as platform_fee,
-            CASE 
-              WHEN pt.total_tax_rate IS NOT NULL AND pt.total_tax_rate > 0 THEN 
+            CASE
+              WHEN pt.total_tax_rate IS NOT NULL AND pt.total_tax_rate > 0 THEN
                 COALESCE((SELECT SUM(amount) FROM booking_charges WHERE booking_id = bd.id AND type = 'tax'), 0) +
                 (COALESCE(pfa.total_platform_fees, 0) * (pt.total_tax_rate / 100))
-              ELSE 
+              ELSE
                 COALESCE((SELECT SUM(amount) FROM booking_charges WHERE booking_id = bd.id AND type = 'tax'), 0)
             END as tax_amount
           FROM booking_data bd
@@ -281,7 +280,7 @@ async function getPLData(
             ${bookingFilters}
         ),
         platform_fees AS (
-          SELECT 
+          SELECT
             pfe.property_id,
             pfe.month,
             pfe.platform,
@@ -298,9 +297,9 @@ async function getPLData(
           COALESCE(SUM(pf.total_fees), 0) as total_fees,
           COUNT(DISTINCT bd.id) as booking_count
         FROM booking_data bd
-        LEFT JOIN platform_fees pf ON 
-          bd.property_id = pf.property_id 
-          AND bd.month = pf.month 
+        LEFT JOIN platform_fees pf ON
+          bd.property_id = pf.property_id
+          AND bd.month = pf.month
           AND LOWER(bd.platform) = LOWER(pf.platform)
         GROUP BY bd.platform
         ORDER BY gross_revenue DESC
@@ -366,7 +365,7 @@ async function getPLData(
         LEFT JOIN weekly_bookings wb ON ws.week_start = wb.week_start
         ORDER BY ws.week_start
       ` : `
-        -- Monthly trend for long date ranges  
+        -- Monthly trend for long date ranges
         WITH month_series AS (
           SELECT TO_CHAR(generate_series(
             date_trunc('month', $2::date),
@@ -424,17 +423,17 @@ async function getPLData(
         days_90: string
       }>(`
         SELECT
-          COALESCE(SUM(CASE 
-            WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days' 
-            THEN b.total_amount ELSE 0 
+          COALESCE(SUM(CASE
+            WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
+            THEN b.total_amount ELSE 0
           END), 0) as days_30,
-          COALESCE(SUM(CASE 
-            WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days' 
-            THEN b.total_amount ELSE 0 
+          COALESCE(SUM(CASE
+            WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days'
+            THEN b.total_amount ELSE 0
           END), 0) as days_60,
-          COALESCE(SUM(CASE 
-            WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' 
-            THEN b.total_amount ELSE 0 
+          COALESCE(SUM(CASE
+            WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'
+            THEN b.total_amount ELSE 0
           END), 0) as days_90
         FROM bookings b
         WHERE b.tenant_id = $1
@@ -564,7 +563,7 @@ async function getRevenueData(
 ): Promise<DbResult<RevenueData>> {
   const seasons = await getActiveSeasons(tenantId)
   const bookingFilters = buildBookingFilters(seasons, 'b')
-  
+
   const tagFilter = tagIds.length > 0 ? buildTagFilter(4) : ''
   const queryParams: QueryParams = { tenantId, fromDate, toDate, tagIds }
   const params = buildParams(queryParams)
@@ -572,7 +571,7 @@ async function getRevenueData(
   const lastYearNum = getYear(fromDate) - 1
   const lastYearFrom = fromDate.replace(/\d{4}/, lastYearNum.toString())
   const lastYearTo = toDate.replace(/\d{4}/, lastYearNum.toString())
-  
+
   // Use helper to determine granularity
   const { useDaily, useWeekly } = determineGranularity(fromDate, toDate)
 
@@ -596,7 +595,7 @@ async function getRevenueData(
           ${bookingFilters}
       ),
       platform_fees AS (
-        SELECT 
+        SELECT
           pfe.property_id,
           pfe.month,
           SUM(pfe.guest_service_fee + pfe.host_service_fee) as total_fees
@@ -733,7 +732,7 @@ async function getRevenueData(
           ${bookingFilters}
       ),
       platform_fees AS (
-        SELECT 
+        SELECT
           pfe.property_id,
           pfe.month,
           SUM(pfe.guest_service_fee + pfe.host_service_fee) as total_fees
@@ -800,7 +799,7 @@ async function getCashflowData(
 ): Promise<DbResult<CashflowData>> {
   const seasons = await getActiveSeasons(tenantId)
   const bookingFilters = buildBookingFilters(seasons, 'b')
-  
+
   const tagFilter = tagIds.length > 0 ? buildTagFilter(4) : ''
   const queryParams: QueryParams = { tenantId, fromDate, toDate, tagIds }
   const params = buildParams(queryParams)
@@ -817,17 +816,17 @@ async function getCashflowData(
       COALESCE(SUM(CASE WHEN b.arrival <= CURRENT_DATE THEN b.total_amount ELSE 0 END), 0) as collected,
       COALESCE(SUM(CASE WHEN b.arrival > CURRENT_DATE THEN b.total_amount ELSE 0 END), 0) as pending,
       COALESCE(SUM(b.total_amount), 0) as total,
-      COALESCE(SUM(CASE 
-        WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days' 
-        THEN b.total_amount ELSE 0 
+      COALESCE(SUM(CASE
+        WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '30 days'
+        THEN b.total_amount ELSE 0
       END), 0) as next_30,
-      COALESCE(SUM(CASE 
-        WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days' 
-        THEN b.total_amount ELSE 0 
+      COALESCE(SUM(CASE
+        WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days'
+        THEN b.total_amount ELSE 0
       END), 0) as next_60,
-      COALESCE(SUM(CASE 
-        WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days' 
-        THEN b.total_amount ELSE 0 
+      COALESCE(SUM(CASE
+        WHEN b.arrival BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '90 days'
+        THEN b.total_amount ELSE 0
       END), 0) as next_90
     FROM bookings b
     WHERE b.tenant_id = $1
@@ -867,11 +866,11 @@ async function getTaxData(
 ): Promise<DbResult<TaxData>> {
   const seasons = await getActiveSeasons(tenantId)
   const bookingFilters = buildBookingFilters(seasons, 'b')
-  
+
   const tagFilter = tagIds.length > 0 ? buildTagFilter(4) : ''
   const queryParams: QueryParams = { tenantId, fromDate, toDate, tagIds }
   const params = buildParams(queryParams)
-  
+
   // Use helper to determine granularity
   const { useDaily: useDailyTax, useWeekly: useWeeklyTax } = determineGranularity(fromDate, toDate)
 
@@ -897,7 +896,7 @@ async function getTaxData(
           ${bookingFilters}
       ),
       platform_taxes AS (
-        SELECT 
+        SELECT
           pfe.property_id,
           pfe.month,
           SUM(pfe.platform_tax_remitted) as platform_tax
@@ -1107,16 +1106,16 @@ export async function financial(
   const authCheck = await requireAuthWithValidation(request, {
     query: financialQuerySchema
   })
-  
+
   if (!authCheck.authenticated || !authCheck.valid) {
     return authCheck.response
   }
 
   const { auth, validated } = authCheck.request
-  
+
   const tenantError = requireTenant(auth.tenantId)
   if (tenantError) return tenantError
-  
+
   // Type assertion after validation
   const tenantId = auth.tenantId!
 
@@ -1125,7 +1124,7 @@ export async function financial(
   // Handle comparison dates like overview.ts does
   let comparisonFrom: string | undefined
   let comparisonTo: string | undefined
-  
+
   if (validated?.query?.comparisonFrom && validated?.query?.comparisonTo) {
     comparisonFrom = validated.query.comparisonFrom
     comparisonTo = validated.query.comparisonTo
