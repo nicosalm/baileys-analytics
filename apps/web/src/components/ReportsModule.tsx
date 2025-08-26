@@ -17,6 +17,7 @@ import {
 import { api } from '@/lib/api'
 import type { ReportTemplate } from '@/schemas/reports'
 import { LoadingState } from '@/components/LoadingState'
+import { ConfirmModal } from '@/components/ConfirmModal'
 
 const dateRangeOptions = [
   { value: 'last7days', label: 'Last 7 Days' },
@@ -42,6 +43,7 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
   const { openModal } = useModal()
   const { addToast } = useToast()
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
   const handleRun = async () => {
     try {
@@ -71,9 +73,11 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
     })
   }
   
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete "${template.name}"?`)) return
-    
+  const handleDelete = () => {
+    setShowDeleteConfirm(true)
+  }
+
+  const handleConfirmDelete = async () => {
     setIsDeleting(true)
     try {
       await deleteTemplate(template.id)
@@ -195,6 +199,18 @@ const TemplateCard = ({ template }: { template: ReportTemplate }) => {
           Run Now
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Report Template"
+        message={`Are you sure you want to delete "${template.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+      />
     </div>
   )
 }

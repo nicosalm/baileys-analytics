@@ -10,8 +10,6 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@baileys/constants": "workspace:*",
-    "@baileys/shared-types": "workspace:*",
     "@baileys/utils": "workspace:*",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.539.0",

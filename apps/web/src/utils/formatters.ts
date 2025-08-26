@@ -1,17 +1,18 @@
-import { formatCurrency as formatCurrencyBase, formatCompactCurrency as formatCompactBase } from '@baileys/utils'
+import { 
+  formatCurrency as formatCurrencyBase, 
+  formatCompactCurrency as formatCompactBase,
+  formatPercentage as formatPercentageBase 
+} from '@baileys/utils'
 
 export { formatCurrencyBase as formatCurrency, formatCompactBase as formatCompactCurrency }
 
-export const formatPercentage = (value: number, decimals = 1, showSign = false): string => {
-  const formatted = `${value.toFixed(decimals)}%`
-  if (showSign && value > 0) return `+${formatted}`
-  return formatted
-}
+export const formatPercentage = formatPercentageBase
 
 export const formatGrowthRate = (current: number, previous: number): string => {
   if (previous === 0) return current > 0 ? '+100%' : '0%'
   const rate = ((current - previous) / previous) * 100
-  return formatPercentage(rate, 1, true)
+  const formatted = formatPercentageBase(rate, 1)
+  return rate > 0 ? `+${formatted}` : formatted
 }
 
 export const formatCompactNumber = (value: number): string => {
@@ -60,11 +61,11 @@ export const normalizePlatformName = (platform: string | null): string => {
 }
 
 export const formatTaxRate = (rate: number): string => {
-  return formatPercentage(rate * 100, 2)
+  return formatPercentageBase(rate * 100, 2)
 }
 
 export const formatOccupancyRate = (rate: number): string => {
-  return formatPercentage(rate * 100, 1)
+  return formatPercentageBase(rate * 100, 1)
 }
 
 export const formatADR = (adr: number): string => {
@@ -115,7 +116,7 @@ export const formatMetricValue = (
     case 'currency':
       return formatCurrencyBase(numValue)
     case 'percentage':
-      return formatPercentage(numValue, 1)
+      return formatPercentageBase(numValue, 1)
     case 'compact':
       return formatCompactNumber(numValue)
     default:

@@ -3,11 +3,12 @@ import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
 import { 
   TrendingUp, BarChart3, PieChart, LineChart, 
-  DollarSign, Users, Home, Calendar,
+  DollarSign, Users, Home,
   ArrowRight, CheckCircle, Sparkles,
   Zap, Shield, Clock, ChevronRight
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { BRAND } from '@/constants'
 
 // Animated counter component
 const AnimatedCounter = ({ end, duration = 2000, prefix = '', suffix = '', decimals = 0 }: { 
@@ -51,14 +52,14 @@ export const Landing = () => {
       <nav className="absolute top-0 left-0 right-0 z-50 p-6">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+            <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
               <BarChart3 className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-semibold text-gray-900 ml-3">Baileys Analytics</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
           </div>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Link to="/dashboard/overview" className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium">
+              <Link to="/dashboard/overview" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
                 Open Dashboard
               </Link>
             ) : (
@@ -66,7 +67,7 @@ export const Landing = () => {
                 <Link to="/login" className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-all hover:bg-gray-100/70 rounded-lg">
                   Login
                 </Link>
-                <Link to="/signup" className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium">
+                <Link to="/signup" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
                   Start Free Trial
                 </Link>
               </>
@@ -103,7 +104,7 @@ export const Landing = () => {
           
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/signup" className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full text-lg font-medium hover:shadow-xl transition-all transform hover:scale-105 flex items-center">
+              <Link to="/signup" className={`group px-8 py-4 ${BRAND.buttonGradient} text-white rounded-full text-lg font-medium hover:shadow-xl transition-all transform hover:scale-105 flex items-center`}>
                 Start 14-Day Free Trial
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -394,7 +395,7 @@ export const Landing = () => {
                     <span className="text-sm">Priority support</span>
                   </div>
                 </div>
-                <Link to="/signup" className="block w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full hover:shadow-lg transition-all transform hover:scale-105 font-medium">
+                <Link to="/signup" className={`block w-full py-3 ${BRAND.buttonGradient} text-white rounded-full hover:shadow-lg transition-all transform hover:scale-105 font-medium`}>
                   Start Free Trial
                 </Link>
               </div>

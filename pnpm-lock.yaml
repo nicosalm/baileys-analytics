@@ -97,12 +97,6 @@ importers:
 
   apps/web:
     dependencies:
-      '@baileys/constants':
-        specifier: workspace:*
-        version: link:../../packages/constants
-      '@baileys/shared-types':
-        specifier: workspace:*
-        version: link:../../packages/shared-types
       '@baileys/utils':
         specifier: workspace:*
         version: link:../../packages/utils

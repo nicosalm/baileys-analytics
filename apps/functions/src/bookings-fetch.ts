@@ -77,8 +77,6 @@ export async function fetchBookings(
       }
     });
 
-    context.log('Sample booking:', JSON.stringify(response.data.items[0], null, 2));
-
     const state: FetchBookingsState = {
       status: 'success',
       bookings: response.data.items,

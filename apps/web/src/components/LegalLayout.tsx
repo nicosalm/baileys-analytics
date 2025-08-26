@@ -1,9 +1,11 @@
+import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
 import { BarChart3, FileText, Shield, ArrowLeft, ChevronRight } from 'lucide-react'
+import { BRAND } from '@/constants'
 
 interface LegalLayoutProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export const LegalLayout = ({ children }: LegalLayoutProps) => {
@@ -22,11 +24,11 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+              <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
                 <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div className="ml-3 flex items-center">
-                <h1 className="text-xl font-semibold text-gray-900">Baileys Analytics</h1>
+                <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
                 <ChevronRight className="w-5 h-5 mx-2 text-gray-400" />
                 <span className="text-xl text-gray-600">Legal</span>
               </div>

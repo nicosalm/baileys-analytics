@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ReactNode, FC } from 'react'
 import { useFinancial } from '@/hooks/use-api'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
@@ -12,10 +12,10 @@ import { TaxCenter } from '@/components/financial/TaxCenter'
 interface TabButtonProps {
   active: boolean
   onClick: () => void
-  children: React.ReactNode
+  children: ReactNode
 }
 
-const TabButton: React.FC<TabButtonProps> = ({ active, onClick, children }) => (
+const TabButton: FC<TabButtonProps> = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
     className={`px-6 py-3 font-medium text-sm ${
@@ -106,7 +106,6 @@ const FinancialDashboard = () => {
       [year, month] = dateStr.split('-')
     } else {
       // Fallback for unexpected formats
-      console.warn('Unexpected date format:', dateStr)
       const date = new Date()
       year = date.getFullYear().toString()
       month = (date.getMonth() + 1).toString().padStart(2, '0')

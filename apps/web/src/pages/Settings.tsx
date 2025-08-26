@@ -1,13 +1,15 @@
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense, ComponentType } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
-import { RefreshCw, Calendar, AlertCircle, Calculator, ArrowLeft, Check, Clock, Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, LogOut, ChevronDown } from 'lucide-react'
+import { RefreshCw, Calendar, AlertCircle, Calculator, Check, Clock, Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, LogOut, ChevronDown } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
+import { BRAND } from '@/constants'
+import { ConfirmModal } from '@/components/ConfirmModal'
 
 // Lazy load the tax management panel
 const TaxManagementPanel = lazy(() => 
@@ -43,7 +45,7 @@ const SyncButton = ({
   variant = 'primary'
 }: {
   label: string
-  icon: React.ComponentType<{ className?: string }>
+  icon: ComponentType<{ className?: string }>
   onClick: () => void
   disabled: boolean
   loading: boolean
@@ -292,6 +294,10 @@ export const Settings = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean
+    type?: 'historical' | 'guest-details'
+  }>({ isOpen: false })
   
   const { data: syncStatus } = useSyncStatus()
   
@@ -310,18 +316,15 @@ export const Settings = () => {
   const { user } = state
 
   const handleSync = async (type: 'recent' | 'historical' | 'guest-details') => {
-    if (type === 'historical' && !window.confirm(
-      'This will download all your booking history (up to 4 years). It may take a few minutes. Continue?'
-    )) {
+    if (type === 'historical' || type === 'guest-details') {
+      setConfirmModal({ isOpen: true, type })
       return
     }
 
-    if (type === 'guest-details' && !window.confirm(
-      'This will fetch and update contact information (emails and phone numbers) for all guests. Continue?'
-    )) {
-      return
-    }
+    await performSync(type)
+  }
 
+  const performSync = async (type: 'recent' | 'historical' | 'guest-details') => {
     setSyncState({ type: 'syncing', mode: type })
 
     const result = type === 'historical'
@@ -346,7 +349,6 @@ export const Settings = () => {
           message = `Guest sync completed: ${guestsUpdated} contacts updated successfully`
         }
       } else if (type === 'historical') {
-        // Check if we have the new response format with bookingsFound
         const bookingsFound = result.data.bookingsFound || result.data.totalBookingsFetched
         const bookingsSynced = result.data.bookingsSynced
 
@@ -356,9 +358,7 @@ export const Settings = () => {
           message = `Historical sync completed: ${bookingsSynced} bookings synced`
         }
       } else {
-        // For recent sync, check if it's full sync or just bookings
         if (result.data.bookings) {
-          // Full sync response
           const bookingInfo = result.data.bookings
           if (bookingInfo.status === 'success') {
             const totalFetched = bookingInfo.totalFetched || bookingInfo.synced
@@ -371,13 +371,11 @@ export const Settings = () => {
             message = 'Sync completed with errors'
           }
         } else {
-          // Simple sync response
           message = 'Sync completed successfully'
         }
       }
 
       addToast('success', message)
-      // Sync status will automatically refresh via SWR
     } else {
       const typeLabel = type === 'historical' ? 'Historical' : type === 'guest-details' ? 'Guest details' : 'Recent'
       addToast('error', `${typeLabel} sync failed`)
@@ -434,11 +432,11 @@ export const Settings = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <Link to="/dashboard/overview" className="flex items-center hover:opacity-80 transition-opacity">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
                   <BarChart3 className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-3">
-                  <h1 className="text-xl font-semibold text-gray-900">Baileys Analytics</h1>
+                  <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
                   {user.companyName && (
                     <p className="text-xs text-gray-500 -mt-0.5">for {user.companyName}</p>
                   )}
@@ -552,6 +550,24 @@ export const Settings = () => {
         )}
         
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false })}
+        onConfirm={async () => {
+          const type = confirmModal.type
+          if (!type) return
+          await performSync(type)
+        }}
+        title={confirmModal.type === 'historical' ? 'Sync Historical Data' : 'Sync Guest Details'}
+        message={
+          confirmModal.type === 'historical'
+            ? 'This will fetch all bookings from the past 4 years. This operation may take several minutes.'
+            : 'This will fetch contact details (email/phone) for all guests. This operation may take a few minutes.'
+        }
+        confirmText="Start Sync"
+        variant="warning"
+      />
       
       {showDeleteConfirm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">

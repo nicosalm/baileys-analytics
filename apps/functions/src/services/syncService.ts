@@ -3,6 +3,7 @@ import { OWNERREZ_API } from '@baileys/constants';
 import { query, transaction, DbResult } from './database';
 import { bulkSyncPropertyTags, bulkSyncBookingTags } from './tagSync';
 import { InvocationContext } from '@azure/functions';
+import { batchProcess, retryWithBackoff, apiLimiter, dbLimiter } from '../utils/concurrency';
 
 // ============= TYPES =============
 export type OwnerRezTag = {
@@ -114,38 +115,45 @@ export const buildAuthHeaders = (token: string) => {
 
 // ============= TAG DEFINITIONS =============
 export const fetchAllTagDefinitions = async (token: string): Promise<DbResult<TagMapping>> => {
-  try {
-    const authConfig = buildAuthHeaders(token)
-    const tagMap = new Map<string, OwnerRezTag>()
-    let offset = 0
-    const limit = 100
+  return retryWithBackoff<DbResult<TagMapping>>(
+    async () => {
+      const authConfig = buildAuthHeaders(token)
+      const tagMap = new Map<string, OwnerRezTag>()
+      let offset = 0
+      const limit = 100
 
-    while (true) {
-      const response = await axios.get(`${OWNERREZ_API.BASE_URL}/tagdefinitions`, {
-        ...authConfig,
-        params: { active: true, limit, offset }
-      })
+      while (true) {
+        const response = await apiLimiter(() =>
+          axios.get(`${OWNERREZ_API.BASE_URL}/tagdefinitions`, {
+            ...authConfig,
+            params: { active: true, limit, offset }
+          })
+        )
 
-      const tags = response.data.items || []
-      tags.forEach((tag: any) => {
-        tagMap.set(tag.name, {
-          id: tag.id,
-          name: tag.name,
-          color: tag.color
+        const tags = response.data.items || []
+        tags.forEach((tag: any) => {
+          tagMap.set(tag.name, {
+            id: tag.id,
+            name: tag.name,
+            color: tag.color
+          })
         })
-      })
 
-      if (!response.data.next_page_url || tags.length < limit) break
-      offset += limit
-    }
+        if (!response.data.next_page_url || tags.length < limit) break
+        offset += limit
+      }
 
-    return { success: true, data: tagMap }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch tag definitions'
+      return { success: true as const, data: tagMap }
+    },
+    {
+      maxRetries: 3,
+      initialDelay: 1000,
+      factor: 2
     }
-  }
+  ).catch(error => ({
+    success: false as const,
+    error: error instanceof Error ? error.message : 'Failed to fetch tag definitions'
+  }))
 }
 
 const convertTags = (
@@ -161,19 +169,26 @@ const convertTags = (
 
 // ============= PROPERTIES =============
 export const fetchProperties = async (token: string): Promise<DbResult<OwnerRezProperty[]>> => {
-  try {
-    const authConfig = buildAuthHeaders(token)
-    const response = await axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
-      ...authConfig,
-      params: { active: true, include_tags: true }
-    })
-    return { success: true, data: response.data.items || [] }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch properties'
+  return retryWithBackoff<DbResult<OwnerRezProperty[]>>(
+    async () => {
+      const authConfig = buildAuthHeaders(token)
+      const response = await apiLimiter(() => 
+        axios.get(`${OWNERREZ_API.BASE_URL}/properties`, {
+          ...authConfig,
+          params: { active: true, include_tags: true }
+        })
+      )
+      return { success: true as const, data: response.data.items || [] }
+    },
+    {
+      maxRetries: 3,
+      initialDelay: 1000,
+      factor: 2
     }
-  }
+  ).catch(error => ({
+    success: false as const,
+    error: error instanceof Error ? error.message : 'Failed to fetch properties'
+  }))
 }
 
 export const getPropertyMapping = async (tenantId: string): Promise<DbResult<PropertyMapping>> => {
@@ -251,11 +266,22 @@ export const syncProperties = async (
 
   context?.log(`Syncing ${fetchResult.data.length} properties for tenant ${tenantId}`)
 
-  const syncResults: Array<{ result: DbResult<string>, property: OwnerRezProperty }> = []
-  for (const property of fetchResult.data) {
-    const result = await upsertProperty(property, tenantId)
-    syncResults.push({ result, property })
-  }
+  // Use batchProcess for parallel property upserting with controlled concurrency
+  const syncResults = await batchProcess(
+    fetchResult.data,
+    async (property) => {
+      const result = await dbLimiter(() => upsertProperty(property, tenantId))
+      return { result, property }
+    },
+    {
+      concurrency: 5, // Process 5 properties in parallel
+      onProgress: (completed, total) => {
+        if (completed % 10 === 0) {
+          context?.log(`Property sync progress: ${completed}/${total}`)
+        }
+      }
+    }
+  )
 
   // Bulk sync tags
   const propertyTagsMap = new Map<string, OwnerRezTag[]>()
@@ -294,19 +320,28 @@ const fetchBookingsBatch = async (
   while (continueLoop) {
     try {
       const authConfig = buildAuthHeaders(token)
-      const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
-        ...authConfig,
-        params: {
-          property_ids: propertyIds.join(','),
-          from: dateRange.from,
-          to: dateRange.to,
-          include_charges: true,
-          include_guest: true,
-          include_tags: true,
-          limit,
-          offset
+      const response = await retryWithBackoff(
+        async () => apiLimiter(() =>
+          axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
+            ...authConfig,
+            params: {
+              property_ids: propertyIds.join(','),
+              from: dateRange.from,
+              to: dateRange.to,
+              include_charges: true,
+              include_guest: true,
+              include_tags: true,
+              limit,
+              offset
+            }
+          })
+        ),
+        {
+          maxRetries: 3,
+          initialDelay: 1000,
+          factor: 2
         }
-      })
+      )
 
       const items = response.data.items || []
       const nextPageUrl = response.data.next_page_url
@@ -458,23 +493,24 @@ export const syncBookings = async (
     mappingResult.data.has(b.property_id.toString())
   )
 
-  // Process bookings in batches
-  const BATCH_SIZE = 100
-  const allResults: Array<{ result: DbResult<{ bookingId: string; chargeCount: number }>, booking: OwnerRezBooking }> = []
-
-  for (let i = 0; i < validBookings.length; i += BATCH_SIZE) {
-    const batch = validBookings.slice(i, i + BATCH_SIZE)
-    const batchResults = await Promise.all(
-      batch.map(booking =>
-        upsertBooking(
-          booking,
-          mappingResult.data.get(booking.property_id.toString())!,
-          tenantId
-        ).then(result => ({ result, booking }))
-      )
-    )
-    allResults.push(...batchResults)
-  }
+  // Process bookings with controlled concurrency
+  const allResults = await batchProcess(
+    validBookings,
+    async (booking) => {
+      const propertyId = mappingResult.data.get(booking.property_id.toString())!
+      const result = await dbLimiter(() => upsertBooking(booking, propertyId, tenantId))
+      return { result, booking }
+    },
+    {
+      concurrency: 10, // Process 10 bookings in parallel
+      batchSize: 100, // Process in batches of 100
+      onProgress: (completed, total) => {
+        if (completed % 50 === 0) {
+          context?.log(`Booking sync progress: ${completed}/${total}`)
+        }
+      }
+    }
+  )
 
   // Bulk sync tags
   const bookingTagsMap = new Map<string, OwnerRezTag[]>()

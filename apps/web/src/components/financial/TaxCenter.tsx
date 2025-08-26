@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatTaxRate } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
-import { detectGranularity } from '@/utils/chartUtils'
+import { detectGranularity } from '@/utils/chart-helpers'
 
 interface TaxCenterProps {
   data: any

@@ -2,8 +2,7 @@ import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { METRIC_COLORS } from '@/lib/theme'
-import { chartFormatters, tooltipFormatters } from '@/utils/chart-helpers'
-import { formatChartData } from '@/utils/chartUtils'
+import { chartFormatters, tooltipFormatters, formatChartData } from '@/utils/chart-helpers'
 
 interface TaxTrendChartProps {
   data: Array<{

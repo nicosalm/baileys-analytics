@@ -9,7 +9,7 @@ import {
   Info, Target, TrendingDown 
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
-import { detectGranularity } from '@/utils/chartUtils'
+import { detectGranularity } from '@/utils/chart-helpers'
 
 interface PLViewProps {
   data: any

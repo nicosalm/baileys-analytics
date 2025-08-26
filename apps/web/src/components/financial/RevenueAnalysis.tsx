@@ -11,7 +11,7 @@ import {
 import { formatCurrency } from '@/utils/formatters'
 import { usePropertyMetrics } from '@/hooks/use-api'
 import { useDashboard } from '@/contexts/dashboard'
-import { detectGranularity } from '@/utils/chartUtils'
+import { detectGranularity } from '@/utils/chart-helpers'
 
 interface RevenueAnalysisProps {
   data: any

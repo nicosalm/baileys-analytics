@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react'
-import '../styles/toast.css'
 
 type ToastType = 'success' | 'error' | 'info'
 
@@ -69,21 +68,21 @@ const ToastContainer = ({ toasts, removeToast }: { toasts: Toast[], removeToast:
   }
 
   return (
-    <div className="fixed bottom-4 right-4 space-y-2 z-50">
+    <div className="fixed bottom-6 right-6 space-y-3 z-50">
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className={`p-4 rounded shadow-lg max-w-sm flex items-center ${
+          className={`p-4 rounded-xl shadow-lg max-w-sm flex items-center gap-3 ${
             toast.type === 'success' ? 'bg-green-600 text-white' :
             toast.type === 'error' ? 'bg-red-600 text-white' :
             'bg-blue-600 text-white'
           }`}
         >
-          <span className="mr-2">{icons[toast.type]}</span>
-          <span className="flex-1">{toast.message}</span>
+          <span className="flex-shrink-0">{icons[toast.type]}</span>
+          <span className="flex-1 text-sm font-medium">{toast.message}</span>
           <button
             onClick={() => removeToast(toast.id)}
-            className="ml-4 text-white hover:text-gray-200"
+            className="ml-2 p-1 text-white/80 hover:text-white hover:bg-white/10 rounded-lg"
           >
             <X className="w-4 h-4" />
           </button>

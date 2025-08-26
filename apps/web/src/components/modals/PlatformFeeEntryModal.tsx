@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, FormEvent } from 'react'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
@@ -59,7 +59,7 @@ export const PlatformFeeEntryModal = ({
     }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     
     try {

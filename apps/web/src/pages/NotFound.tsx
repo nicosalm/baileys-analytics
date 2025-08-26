@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
-import { BarChart3, Home, AlertCircle, ArrowLeft } from 'lucide-react'
+import { BarChart3, ArrowLeft } from 'lucide-react'
+import { BRAND } from '@/constants'
 
 export const NotFound = () => {
   const { state } = useAuth()
@@ -14,14 +15,14 @@ export const NotFound = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+              <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
                 <BarChart3 className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-semibold text-gray-900 ml-3">Baileys Analytics</h1>
+              <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
             </Link>
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
-                <Link to="/dashboard/overview" className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium">
+                <Link to="/dashboard/overview" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
                   Open Dashboard
                 </Link>
               ) : (
@@ -29,7 +30,7 @@ export const NotFound = () => {
                   <Link to="/login" className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-all hover:bg-gray-100/70 rounded-lg">
                     Login
                   </Link>
-                  <Link to="/signup" className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium">
+                  <Link to="/signup" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
                     Start Free Trial
                   </Link>
                 </>

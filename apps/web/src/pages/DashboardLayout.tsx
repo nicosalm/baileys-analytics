@@ -12,6 +12,7 @@ import { FilterBar } from '@/components/FilterBar'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
 import { Footer } from '@/components/Footer'
+import { BRAND } from '@/constants'
 
 // Tab config with overview as first tab
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -39,7 +40,6 @@ const DashboardContent = () => {
       return <GuestsDashboard />
     case 'reports':
       return <ReportsModule />
-    // No longer needed - tax and revenue merged into financial
     default:
       return <OverviewDashboard />
   }
@@ -152,11 +152,11 @@ export const DashboardLayout = () => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+                    <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
                       <BarChart3 className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-3">
-                      <h1 className="text-xl font-semibold text-gray-900">Baileys Analytics</h1>
+                      <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
                       {user.companyName && (
                         <p className="text-xs text-gray-500 -mt-0.5">for {user.companyName}</p>
                       )}

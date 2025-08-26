@@ -3,6 +3,7 @@ import { useSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonActiv
 import { Plus, Edit2, Trash2, Calendar, Check, X, AlertCircle, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
+import { ConfirmModal } from '@/components/ConfirmModal'
 import type { Season, SeasonFormData } from '@/types/season'
 
 const months = [
@@ -205,6 +206,7 @@ export const SeasonManagementPanel: React.FC = () => {
   const { addToast } = useToast()
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; season: Season | null }>({ show: false, season: null })
 
   const handleCreateSeason = async (data: SeasonFormData) => {
     // Check if there's already an active season
@@ -235,18 +237,22 @@ export const SeasonManagementPanel: React.FC = () => {
     }
   }
 
-  const handleDeleteSeason = async (season: Season) => {
-    if (!confirm(`Are you sure you want to delete the "${season.name}" season?`)) {
-      return
-    }
+  const handleDeleteSeason = (season: Season) => {
+    setDeleteConfirm({ show: true, season })
+  }
 
-    const result = await deleteSeason(season.id)
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm.season) return
+    
+    const result = await deleteSeason(deleteConfirm.season.id)
     if (result.success) {
       addToast('success', 'Season deleted successfully')
       mutate()
     } else {
       addToast('error', result.error || 'Failed to delete season')
     }
+    
+    setDeleteConfirm({ show: false, season: null })
   }
 
   const handleToggleActive = async (season: Season) => {
@@ -363,6 +369,17 @@ export const SeasonManagementPanel: React.FC = () => {
           ))
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={deleteConfirm.show}
+        onClose={() => setDeleteConfirm({ show: false, season: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Season"
+        message={`Are you sure you want to delete the "${deleteConfirm.season?.name}" season? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+      />
     </div>
   )
 }

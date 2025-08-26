@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
 import { ArrowLeft, Mail, Lock, BarChart3 } from 'lucide-react'
+import { BRAND } from '@/constants'
 
 export const Login = () => {
   const navigate = useNavigate()
@@ -41,10 +42,10 @@ export const Login = () => {
 
           {/* Logo */}
           <div className="flex items-center mb-8">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-sm">
+            <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
               <BarChart3 className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-2xl font-semibold text-gray-900 ml-3">Baileys Analytics</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
           </div>
 
           {/* Welcome text */}
@@ -111,7 +112,7 @@ export const Login = () => {
               type="submit"
               loading={loading}
               loadingText="Signing in..."
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:shadow-lg transition-all transform hover:scale-[1.02]"
+              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:shadow-lg transition-all transform hover:scale-[1.02]`}
             >
               Sign in
             </LoadingButton>

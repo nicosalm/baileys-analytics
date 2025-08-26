@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 interface ModalProps {
@@ -6,7 +6,7 @@ interface ModalProps {
   onClose: () => void
   title: string
   subtitle?: string
-  children: React.ReactNode
+  children: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
 }
 

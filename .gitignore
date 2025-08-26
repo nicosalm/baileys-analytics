@@ -40,3 +40,20 @@ coverage/
 # Azure Functions
 local.settings.json
 .python_packages/
+.funcignore
+bin/
+obj/
+*.azurefunctions
+
+# Claude AI
+.claude/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+diff.txt
+PACKAGES.txt
+setup-local-dev.sh.backup
