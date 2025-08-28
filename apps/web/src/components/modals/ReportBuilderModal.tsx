@@ -31,12 +31,6 @@ const dateRangeOptions = [
   { value: 'custom', label: 'Custom Range' }
 ]
 
-const formatOptions = [
-  { value: 'pdf', label: 'PDF', description: 'Easy to share and print' },
-  { value: 'excel', label: 'Excel', description: 'Great for number crunching' },
-  { value: 'csv', label: 'CSV', description: 'Simple spreadsheet format' },
-  { value: 'json', label: 'JSON', description: 'For developers' }
-]
 
 export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
   const { closeModal } = useModal()
@@ -52,23 +46,20 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
   const [dateRange, setDateRange] = useState<string>(template?.config?.dateRange || 'last30days')
   const [customFrom, setCustomFrom] = useState(template?.config?.customDateRange?.from || '')
   const [customTo, setCustomTo] = useState(template?.config?.customDateRange?.to || '')
-  const [format, setFormat] = useState(template?.config?.format || 'pdf')
+  const format = 'pdf'
   const [includeCharts, setIncludeCharts] = useState(template?.config?.includeCharts ?? true)
   const [includeRawData, setIncludeRawData] = useState(template?.config?.includeRawData ?? false)
   const [includeSummary, setIncludeSummary] = useState(template?.config?.includeSummary ?? true)
   const [compareWithPrevious, setCompareWithPrevious] = useState(template?.config?.compareWithPrevious ?? false)
   
-  // Schedule settings
   const [scheduleEnabled, setScheduleEnabled] = useState(template?.schedule?.enabled || false)
   const [frequency, setFrequency] = useState(template?.schedule?.frequency || 'monthly')
   const [scheduleTime, setScheduleTime] = useState(template?.schedule?.time || '09:00')
-  const [recipients, setRecipients] = useState(template?.schedule?.recipients?.join(', ') || '')
   
   const [isSaving, setIsSaving] = useState(false)
 
   const handleSave = async () => {
     try {
-      // Build the template data
       const templateData = {
         name,
         description: description || undefined,
@@ -91,7 +82,6 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
           enabled: scheduleEnabled,
           frequency: frequency as any,
           time: scheduleTime,
-          recipients: recipients.split(',').map(r => r.trim()).filter(Boolean),
           dayOfWeek: frequency === 'weekly' ? 1 : undefined,
           dayOfMonth: frequency === 'monthly' ? 1 : undefined
         } : undefined,
@@ -285,26 +275,6 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
               </div>
             </div>
 
-            {/* Output Format */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Output Format</h3>
-              <div className="grid grid-cols-2 gap-3">
-                {formatOptions.map(option => (
-                  <div
-                    key={option.value}
-                    onClick={() => setFormat(option.value as any)}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      format === option.value
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-medium">{option.label}</div>
-                    <div className="text-xs text-gray-500 mt-1">{option.description}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             {/* Options */}
             <div>
@@ -419,22 +389,6 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
                   />
                 </div>
 
-                {/* Recipients */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email Recipients
-                  </label>
-                  <textarea
-                    value={recipients}
-                    onChange={(e) => setRecipients(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={3}
-                    placeholder="Enter email addresses separated by commas"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Separate multiple email addresses with commas
-                  </p>
-                </div>
 
                 {/* Next Run Info */}
                 <div className="bg-gray-50 rounded-lg p-4">

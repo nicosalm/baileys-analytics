@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
 import { ArrowLeft, Mail, BarChart3, CheckCircle, Home, Sparkles } from 'lucide-react'
 import { BRAND } from '@/constants'
 
 export const Waitlist = () => {
-  const navigate = useNavigate()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [company, setCompany] = useState('')
@@ -20,7 +19,7 @@ export const Waitlist = () => {
     
     try {
       // Use environment variable for API URL
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:7071/api'
+      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:7071/api'
       
       const response = await fetch(`${apiUrl}/waitlist`, {
         method: 'POST',

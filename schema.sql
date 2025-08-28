@@ -312,19 +312,6 @@ CREATE TRIGGER update_oauth_tokens_updated_at BEFORE UPDATE ON oauth_tokens
 CREATE TRIGGER update_sync_progress_updated_at BEFORE UPDATE ON sync_progress
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TABLE generated_reports (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    template_id UUID,
-    name VARCHAR(255) NOT NULL,
-    format VARCHAR(10) NOT NULL CHECK (format IN ('pdf', 'excel', 'csv', 'json')),
-    size INTEGER NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    last_accessed TIMESTAMP WITH TIME ZONE,
-    data BYTEA NOT NULL
-);
-
 CREATE TABLE scheduled_reports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -383,10 +370,6 @@ CREATE TABLE report_history (
     error_message TEXT,
     metrics JSONB
 );
-
-CREATE INDEX idx_generated_reports_tenant_id ON generated_reports(tenant_id);
-CREATE INDEX idx_generated_reports_expires_at ON generated_reports(expires_at);
-CREATE INDEX idx_generated_reports_template_id ON generated_reports(template_id) WHERE template_id IS NOT NULL;
 
 CREATE INDEX idx_scheduled_reports_tenant_id ON scheduled_reports(tenant_id);
 CREATE INDEX idx_scheduled_reports_next_run ON scheduled_reports(next_run) WHERE enabled = true;

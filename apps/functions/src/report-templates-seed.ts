@@ -35,7 +35,7 @@ async function insertDefaultTemplate(
       template.schedule ? JSON.stringify(template.schedule) : null,
       timestamp,
       timestamp,
-      true // Mark as default templates
+      true
     ]
   )
 }
@@ -61,7 +61,6 @@ function createDefaultTemplates(): any[] {
         frequency: 'monthly',
         dayOfMonth: 1,
         time: '09:00',
-        recipients: [],
         nextRun: calculateNextMonthlyRun(1, '09:00')
       }
     },
@@ -69,12 +68,12 @@ function createDefaultTemplates(): any[] {
       id: randomUUID(),
       name: 'Weekly Property Performance',
       description: 'Property metrics, occupancy rates, and revenue by property',
-      type: 'property',
+      type: 'operational',
       config: {
         modules: ['properties', 'occupancy'],
         dateRange: 'last7days',
         filters: {},
-        format: 'excel',
+        format: 'pdf',
         includeCharts: true,
         includeRawData: true,
         includeSummary: false
@@ -84,7 +83,6 @@ function createDefaultTemplates(): any[] {
         frequency: 'weekly',
         dayOfWeek: 1,
         time: '08:00',
-        recipients: [],
         nextRun: calculateNextWeeklyRun(1, '08:00')
       }
     },
@@ -92,7 +90,7 @@ function createDefaultTemplates(): any[] {
       id: randomUUID(),
       name: 'Quarterly Tax Report',
       description: 'Comprehensive tax calculations and obligations',
-      type: 'tax',
+      type: 'financial',
       config: {
         modules: ['tax'],
         dateRange: 'lastQuarter',
@@ -106,15 +104,14 @@ function createDefaultTemplates(): any[] {
         enabled: false,
         frequency: 'quarterly',
         dayOfMonth: 1,
-        time: '09:00',
-        recipients: []
+        time: '09:00'
       }
     },
     {
       id: randomUUID(),
       name: 'Year-End Overview',
       description: 'Annual summary of all properties and financial performance',
-      type: 'overview',
+      type: 'analytics',
       config: {
         modules: ['pl', 'revenue', 'properties', 'occupancy', 'guests', 'seasonal'],
         dateRange: 'lastYear',
@@ -132,20 +129,17 @@ function createDefaultTemplates(): any[] {
 
 export async function seedDefaultReportTemplates(tenantId: string): Promise<void> {
   try {
-    // Check if tenant already has templates
     if (await hasExistingTemplates(tenantId)) {
-      return // Templates already exist
+      return
     }
 
     const now = new Date().toISOString()
     const defaultTemplates = createDefaultTemplates()
 
-    // Insert all templates
     for (const template of defaultTemplates) {
       await insertDefaultTemplate(template, tenantId, now)
     }
   } catch (error) {
-    // Don't throw - this is not critical for the application flow
     console.warn('Failed to seed default report templates:', error)
   }
 }

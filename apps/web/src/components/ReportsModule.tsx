@@ -1,272 +1,278 @@
 import { useState } from 'react'
 import {
-  Download, Calendar, Clock, FileText,
-  Play, CheckCircle,
-  Edit2, Trash2, Copy, Table, FileSpreadsheet,
-  Plus, History, AlertCircle
+  Calendar, Clock, FileText,
+  Play, TrendingUp, Users,
+  AlertCircle, Home, DollarSign,
+  BarChart3, Zap, Building2, PieChart, Lock,
+  Sparkles
 } from 'lucide-react'
-import { formatDateDisplay, subDays, formatDateISO } from '@baileys/utils'
-import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
-import { 
-  useReportTemplates, 
-  createReportTemplate, 
-  deleteReportTemplate as deleteTemplate,
-  generateReport 
-} from '@/hooks/use-api'
+import { useReportTemplates } from '@/hooks/use-api'
 import { api } from '@/lib/api'
-import type { ReportTemplate } from '@/schemas/reports'
 import { LoadingState } from '@/components/LoadingState'
-import { ConfirmModal } from '@/components/ConfirmModal'
 
-const dateRangeOptions = [
-  { value: 'last7days', label: 'Last 7 Days' },
-  { value: 'last30days', label: 'Last 30 Days' },
-  { value: 'lastMonth', label: 'Last Month' },
-  { value: 'lastQuarter', label: 'Last Quarter' },
-  { value: 'lastYear', label: 'Last Year' },
-  { value: 'yearToDate', label: 'Year to Date' },
-  { value: 'monthToDate', label: 'Month to Date' },
-  { value: 'quarterToDate', label: 'Quarter to Date' },
-  { value: 'custom', label: 'Custom Range' }
+const REPORT_CATEGORIES = {
+  operational: {
+    label: 'Operational',
+    icon: Home,
+    color: 'blue',
+    description: 'Daily operations and logistics'
+  },
+  financial: {
+    label: 'Financial',
+    icon: DollarSign,
+    color: 'green',
+    description: 'Revenue, P&L, and financial metrics'
+  },
+  analytics: {
+    label: 'Analytics',
+    icon: BarChart3,
+    color: 'purple',
+    description: 'Performance insights and trends'
+  },
+  custom: {
+    label: 'Custom',
+    icon: FileText,
+    color: 'gray',
+    description: 'Your custom report templates'
+  }
+}
+
+// Enhanced Quick Reports that mirror & improve upon OwnerRez reports
+const QUICK_REPORTS = [
+  {
+    id: 'daily-ops',
+    name: 'Daily Operations Digest',
+    description: 'Today\'s arrivals, departures & action items',
+    icon: Zap,
+    category: 'operational',
+    badge: 'Enhanced',
+    config: {
+      modules: ['arrivals', 'departures', 'turnovers', 'alerts'],
+      dateRange: 'today',
+      format: 'pdf'
+    }
+  },
+  {
+    id: 'property-performance',
+    name: 'Property Performance',
+    description: 'Detailed metrics by property with comparisons',
+    icon: Building2,
+    category: 'analytics',
+    badge: 'Popular',
+    config: {
+      modules: ['properties', 'occupancy', 'revenue_by_property'],
+      dateRange: 'last30days',
+      format: 'pdf'
+    }
+  },
+  {
+    id: 'financial-summary',
+    name: 'Financial Summary',
+    description: 'P&L with visual breakdowns and trends',
+    icon: TrendingUp,
+    category: 'financial',
+    badge: 'Enhanced',
+    config: {
+      modules: ['pl', 'revenue', 'expenses', 'trends'],
+      dateRange: 'lastMonth',
+      format: 'pdf'
+    }
+  },
+  {
+    id: 'booking-details',
+    name: 'Booking Details',
+    description: 'Complete booking list with guest information',
+    icon: Calendar,
+    category: 'operational',
+    config: {
+      modules: ['bookings', 'guests', 'payments'],
+      dateRange: 'last30days',
+      format: 'pdf'
+    }
+  },
+  {
+    id: 'tax-report',
+    name: 'Tax Report',
+    description: 'Tax collected by jurisdiction with details',
+    icon: FileText,
+    category: 'financial',
+    badge: 'Detailed',
+    config: {
+      modules: ['tax', 'jurisdictions', 'tax_breakdown'],
+      dateRange: 'lastQuarter',
+      format: 'pdf'
+    }
+  },
+  {
+    id: 'channel-analysis',
+    name: 'Channel Analysis',
+    description: 'Performance by booking source',
+    icon: PieChart,
+    category: 'analytics',
+    badge: 'New',
+    config: {
+      modules: ['channels', 'conversion', 'revenue_by_channel'],
+      dateRange: 'last90days',
+      format: 'pdf'
+    }
+  },
+  {
+    id: 'occupancy-trends',
+    name: 'Occupancy Trends',
+    description: 'Historical and forecasted occupancy',
+    icon: BarChart3,
+    category: 'analytics',
+    config: {
+      modules: ['occupancy', 'availability', 'seasonal_trends'],
+      dateRange: 'last90days',
+      format: 'pdf'
+    }
+  },
+  {
+    id: 'guest-analytics',
+    name: 'Guest Analytics',
+    description: 'Guest demographics and repeat visitors',
+    icon: Users,
+    category: 'analytics',
+    badge: 'Insights',
+    config: {
+      modules: ['guests', 'repeat_rate', 'demographics'],
+      dateRange: 'lastYear',
+      format: 'pdf'
+    }
+  }
 ]
 
-const formatOptions = [
-  { value: 'pdf', label: 'PDF', icon: FileText, description: 'Best for printing and sharing' },
-  { value: 'excel', label: 'Excel', icon: FileSpreadsheet, description: 'Best for data analysis' },
-  { value: 'csv', label: 'CSV', icon: Table, description: 'Simple data export' },
-  { value: 'json', label: 'JSON', icon: FileText, description: 'For API integration' }
-]
-
-// Template Card Component
-const TemplateCard = ({ template }: { template: ReportTemplate }) => {
-  const { openModal } = useModal()
+const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
   const { addToast } = useToast()
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   
-  const handleRun = async () => {
+  const category = REPORT_CATEGORIES[report.category as keyof typeof REPORT_CATEGORIES]
+  const Icon = report.icon
+  
+  const handleQuickGenerate = async () => {
+    setIsGenerating(true)
     try {
-      await generateReport(template.id)
-      openModal({
-        type: 'report-preview',
-        templateId: template.id,
-        templateName: template.name
+      // Get auth token
+      const tokenData = localStorage.getItem('baileys_tokens')
+      if (!tokenData) {
+        throw new Error('Not authenticated')
+      }
+      const { access: token } = JSON.parse(tokenData)
+      
+      // Generate and download PDF directly
+      const response = await fetch('http://localhost:7071/api/reports/quick-generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(report.config)
       })
-    } catch (error) {
-      addToast('error', 'Failed to generate report')
-    }
-  }
-  
-  const handleEdit = () => {
-    openModal({
-      type: 'report-builder',
-      template
-    })
-  }
-  
-  const handleHistory = () => {
-    openModal({
-      type: 'report-history',
-      templateId: template.id,
-      templateName: template.name
-    })
-  }
-  
-  const handleDelete = () => {
-    setShowDeleteConfirm(true)
-  }
-
-  const handleConfirmDelete = async () => {
-    setIsDeleting(true)
-    try {
-      await deleteTemplate(template.id)
-      addToast('success', 'Report template deleted')
-    } catch (error) {
-      addToast('error', 'Failed to delete template')
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-  
-  const handleDuplicate = async () => {
-    try {
-      const duplicatedTemplate = {
-        name: `${template.name} (Copy)`,
-        description: template.description,
-        type: template.type,
-        config: template.config,
-        schedule: template.schedule ? { ...template.schedule, enabled: false } : undefined
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate report')
       }
       
-      await createReportTemplate(duplicatedTemplate)
-      addToast('success', 'Report template duplicated')
+      // Get the PDF blob
+      const blob = await response.blob()
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${report.name}-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+      
+      addToast('success', 'Report downloaded successfully')
     } catch (error) {
-      addToast('error', 'Failed to duplicate template')
+      addToast('error', error instanceof Error ? error.message : 'Failed to generate report')
+    } finally {
+      setIsGenerating(false)
     }
   }
-
-  const isScheduled = template.schedule?.enabled
-  const nextRun = template.schedule?.nextRun
-    ? new Date(template.schedule.nextRun).toLocaleString()
-    : null
-
+  
   return (
-    <div className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-shadow p-6">
-      <div className="flex justify-between items-start mb-4">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold">{template.name}</h3>
-          {template.description && (
-            <p className="text-sm text-gray-600 mt-1">{template.description}</p>
-          )}
-        </div>
-        <div className="flex items-center space-x-2">
-          {isScheduled && (
-            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full flex items-center">
-              <Clock className="w-3 h-3 mr-1" />
-              Scheduled
-            </span>
-          )}
-          <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full flex items-center">
-            {(() => {
-              const formatOption = formatOptions.find(f => f.value === template.config.format)
-              const Icon = formatOption?.icon
-              return Icon ? <Icon className="w-3 h-3 mr-1" /> : null
-            })()}
-            {template.config.format.toUpperCase()}
-          </span>
-        </div>
-      </div>
-
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center text-sm text-gray-500">
-          <FileText className="w-4 h-4 mr-2" />
-          {template.config.modules.length} modules • {dateRangeOptions.find(d => d.value === template.config.dateRange)?.label}
-        </div>
-
-        {template.lastRun && (
-          <div className="flex items-center text-sm text-gray-500">
-            <CheckCircle className="w-4 h-4 mr-2" />
-            Last run: {formatDateDisplay(new Date(template.lastRun))}
+    <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all p-5">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-start gap-3 flex-1">
+          <div className={`p-2.5 rounded-lg ${
+            category.color === 'blue' ? 'bg-blue-50' :
+            category.color === 'green' ? 'bg-green-50' :
+            category.color === 'purple' ? 'bg-purple-50' :
+            'bg-gray-50'
+          }`}>
+            <Icon className={`w-5 h-5 ${
+              category.color === 'blue' ? 'text-blue-600' :
+              category.color === 'green' ? 'text-green-600' :
+              category.color === 'purple' ? 'text-purple-600' :
+              'text-gray-600'
+            }`} />
           </div>
-        )}
-
-        {nextRun && (
-          <div className="flex items-center text-sm text-blue-600">
-            <Calendar className="w-4 h-4 mr-2" />
-            Next run: {nextRun}
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="font-medium text-gray-900">{report.name}</h4>
+              {report.badge && (
+                <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full">
+                  {report.badge}
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-600">{report.description}</p>
           </div>
-        )}
-      </div>
-
-      <div className="flex justify-between items-center pt-4 border-t">
-        <div className="flex space-x-2">
-          <button
-            onClick={handleEdit}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-sm"
-            title="Edit template"
-          >
-            <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleDuplicate}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-sm"
-            title="Duplicate template"
-          >
-            <Copy className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleHistory}
-            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-sm"
-            title="View history"
-          >
-            <History className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-sm disabled:opacity-50"
-            title="Delete template"
-          >
-            {isDeleting ? <LoadingState /> : <Trash2 className="w-4 h-4" />}
-          </button>
         </div>
-        <button
-          onClick={handleRun}
-          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 transition-colors"
-        >
-          <Play className="w-4 h-4 mr-2" />
-          Run Now
-        </button>
       </div>
-
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Report Template"
-        message={`Are you sure you want to delete "${template.name}"? This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        variant="danger"
-        isLoading={isDeleting}
-      />
+      
+      <button
+        onClick={handleQuickGenerate}
+        disabled={isGenerating}
+        className="w-full flex items-center justify-center px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50"
+      >
+        {isGenerating ? (
+          <LoadingState />
+        ) : (
+          <>
+            <Play className="w-4 h-4 mr-2" />
+            Generate Report
+          </>
+        )}
+      </button>
     </div>
   )
 }
 
-// Main Component
+const ComingSoonOverlay = ({ feature }: { feature: string }) => (
+  <div className="relative rounded-lg overflow-hidden">
+    <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 text-center max-w-sm mx-4">
+        <div className="inline-flex p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full mb-4">
+          <Lock className="w-8 h-8 text-white" />
+        </div>
+        <h3 className="text-2xl font-bold text-white mb-2">Coming Soon</h3>
+        <p className="text-gray-200 mb-4">{feature} will be available in a future update</p>
+        <div className="flex items-center justify-center gap-2 text-sm text-gray-300">
+          <Sparkles className="w-4 h-4" />
+          <span>Stay tuned for updates</span>
+        </div>
+      </div>
+    </div>
+  </div>
+)
+
 export default function ReportsModule() {
-  const { addToast } = useToast()
-  const { openModal } = useModal()
-  const { data: templates, error, isLoading } = useReportTemplates()
-  const [filterType, setFilterType] = useState<'all' | 'scheduled' | 'manual'>('all')
+  const { error } = useReportTemplates()
+  const [activeTab, setActiveTab] = useState<'quick' | 'templates' | 'scheduled'>('quick')
 
-  const handleCreateNew = () => {
-    openModal({
-      type: 'report-builder',
-      template: undefined
-    })
-  }
-
-  const filteredTemplates = templates?.filter(t => {
-    if (filterType === 'scheduled') return t.schedule?.enabled
-    if (filterType === 'manual') return !t.schedule?.enabled
-    return true
-  }) || []
-
-  // Quick export function for current view
-  const handleQuickExport = async () => {
-    try {
-      const today = new Date()
-      const thirtyDaysAgo = subDays(today, 30)
-      
-      const response = await api.request('/reports/quick-export', {
-        method: 'POST',
-        body: JSON.stringify({
-          dateRange: {
-            from: formatDateISO(thirtyDaysAgo),
-            to: formatDateISO(today)
-          },
-          tags: [],
-          format: 'excel'
-        })
-      })
-
-      if (response.success) {
-        window.open(`/api/reports/download/${(response.data as any).reportId}`, '_blank')
-        addToast('success', 'Export generated successfully')
-      }
-    } catch (error) {
-      addToast('error', 'Failed to generate export')
-    }
-  }
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-64">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <p className="text-gray-600">Failed to load report templates</p>
+        <p className="text-gray-600">Failed to load reports</p>
         <p className="text-sm text-gray-500 mt-2">{error.message}</p>
       </div>
     )
@@ -274,107 +280,99 @@ export default function ReportsModule() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Reports</h2>
           <p className="text-gray-600 text-sm mt-1">
-            Create, schedule, and manage your reports
+            Professional PDF reports that exceed OwnerRez capabilities
           </p>
-        </div>
-        <div className="flex space-x-3">
-          <button
-            onClick={handleQuickExport}
-            className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Quick Export
-          </button>
-          <button
-            onClick={handleCreateNew}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Report
-          </button>
         </div>
       </div>
 
-      {/* Filter Tabs */}
+      {/* Tab Navigation */}
       <div className="border-b">
         <nav className="flex space-x-6">
           <button
-            onClick={() => setFilterType('all')}
-            className={`pb-2 border-b-2 transition-colors ${
-              filterType === 'all'
+            onClick={() => setActiveTab('quick')}
+            className={`pb-3 border-b-2 transition-colors flex items-center ${
+              activeTab === 'quick'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            All Templates
+            <Zap className="w-4 h-4 mr-2" />
+            Quick Reports
+            <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+              {QUICK_REPORTS.length}
+            </span>
           </button>
           <button
-            onClick={() => setFilterType('scheduled')}
-            className={`pb-2 border-b-2 transition-colors ${
-              filterType === 'scheduled'
+            onClick={() => setActiveTab('templates')}
+            className={`pb-3 border-b-2 transition-colors flex items-center ${
+              activeTab === 'templates'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            <div className="flex items-center">
-              <Clock className="w-4 h-4 mr-2" />
-              Scheduled
-            </div>
+            <FileText className="w-4 h-4 mr-2" />
+            Custom Templates
+            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+              Soon
+            </span>
           </button>
           <button
-            onClick={() => setFilterType('manual')}
-            className={`pb-2 border-b-2 transition-colors ${
-              filterType === 'manual'
+            onClick={() => setActiveTab('scheduled')}
+            className={`pb-3 border-b-2 transition-colors flex items-center ${
+              activeTab === 'scheduled'
                 ? 'border-blue-600 text-blue-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
             }`}
           >
-            Manual
+            <Clock className="w-4 h-4 mr-2" />
+            Scheduled
+            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+              Soon
+            </span>
           </button>
         </nav>
       </div>
 
-      {/* Templates Grid */}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <LoadingState />
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTemplates.map(template => (
-            <TemplateCard
-              key={template.id}
-              template={template}
-            />
-          ))}
-          
-          {filteredTemplates.length === 0 && (
-            <div className="col-span-full text-center py-12 bg-gray-50 rounded-lg">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600">
-                {filterType === 'scheduled' 
-                  ? 'No scheduled reports' 
-                  : filterType === 'manual'
-                  ? 'No manual reports'
-                  : 'No report templates'}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Create a report template to get started
-              </p>
-              <button
-                onClick={handleCreateNew}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                Create Report Template
-              </button>
+      {/* Tab Content */}
+      {activeTab === 'quick' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Professional PDF Reports
+                </h3>
+                <p className="text-sm text-gray-600 max-w-2xl">
+                  Generate beautiful PDF reports with enhanced visualizations and insights. 
+                  Our reports go beyond basic data exports to provide actionable intelligence 
+                  for your vacation rental business.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 rounded-full">
+                <FileText className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-gray-700">PDF Format</span>
+              </div>
             </div>
-          )}
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {QUICK_REPORTS.map(report => (
+              <QuickReportCard key={report.id} report={report} />
+            ))}
+          </div>
         </div>
+      )}
+
+      {activeTab === 'templates' && (
+        <ComingSoonOverlay feature="Custom report templates" />
+      )}
+
+      {activeTab === 'scheduled' && (
+        <ComingSoonOverlay feature="Scheduled report automation" />
       )}
     </div>
   )

@@ -5,7 +5,7 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisp
 import {
   AlertCircle, CheckCircle, TrendingUp,
   DollarSign, Users, Home, Calendar, Clock,
-  BarChart3, Activity, CreditCard, AlertTriangle, Info
+  BarChart3, Activity, AlertTriangle, Info
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'

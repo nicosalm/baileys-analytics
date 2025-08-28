@@ -97,7 +97,7 @@ export const PLView: React.FC<PLViewProps> = ({
         previousProfit: previousPeriod?.revenue?.net || 0,
         periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
                      comparisonMode === 'previous-period' ? 'vs Previous Period' : '',
-        hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some(m => m.previousRevenue !== undefined)
+        hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some((m: any) => m.previousRevenue !== undefined)
       },
       platforms: platformData,
       monthly: monthlyData,

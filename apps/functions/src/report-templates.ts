@@ -17,7 +17,6 @@ import {
 } from './utils/queryBuilders'
 import { calculateNextRun } from './utils/scheduleUtils'
 
-// Validation schemas
 const reportConfigSchema = z.object({
   modules: z.array(z.string()).min(1),
   dateRange: z.enum(['custom', 'last7days', 'last30days', 'lastMonth', 'lastQuarter', 'lastYear', 'yearToDate']),
@@ -30,7 +29,7 @@ const reportConfigSchema = z.object({
     properties: z.array(z.string()).optional(),
     guestSegments: z.array(z.string()).optional()
   }),
-  format: z.enum(['pdf', 'excel', 'csv', 'json']),
+  format: z.enum(['pdf']),
   includeCharts: z.boolean(),
   includeRawData: z.boolean(),
   includeSummary: z.boolean(),
@@ -44,21 +43,19 @@ const scheduleConfigSchema = z.object({
   dayOfWeek: z.number().min(0).max(6).optional(),
   dayOfMonth: z.number().min(1).max(31).optional(),
   time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-  recipients: z.array(z.string().email()),
   nextRun: z.string().optional()
 })
 
 const createReportTemplateSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  type: z.enum(['financial', 'property', 'tax', 'occupancy', 'guest', 'seasonal', 'overview', 'custom']),
+  type: z.enum(['operational', 'financial', 'analytics', 'custom']),
   config: reportConfigSchema,
   schedule: scheduleConfigSchema.optional()
 })
 
 const updateReportTemplateSchema = createReportTemplateSchema
 
-// Helper functions for common report template operations
 function parseReportTemplateFields(row: any): any {
   return {
     ...row,
@@ -87,7 +84,6 @@ async function checkTemplateExists(templateId: string, tenantId: string): Promis
   return result.success && result.data.length > 0
 }
 
-// Get all report templates
 async function getReportTemplates(
   request: HttpRequest,
   context: InvocationContext
@@ -102,7 +98,6 @@ async function getReportTemplates(
   if (tenantError) return tenantError
 
   try {
-    // Seed default templates if this is the first access
     await seedDefaultReportTemplates(auth.tenantId!)
     
     const result = await query(buildReportTemplateQuery(), [auth.tenantId])
@@ -119,7 +114,6 @@ async function getReportTemplates(
   }
 }
 
-// Get single report template
 async function getReportTemplate(
   request: HttpRequest,
   context: InvocationContext
@@ -157,7 +151,6 @@ async function getReportTemplate(
   }
 }
 
-// Create report template
 async function createReportTemplate(
   request: HttpRequest,
   context: InvocationContext
@@ -225,7 +218,6 @@ async function createReportTemplate(
   }
 }
 
-// Update report template
 async function updateReportTemplate(
   request: HttpRequest,
   context: InvocationContext
@@ -297,7 +289,6 @@ async function updateReportTemplate(
   }
 }
 
-// Delete report template
 async function deleteReportTemplate(
   request: HttpRequest,
   context: InvocationContext
@@ -340,7 +331,6 @@ async function deleteReportTemplate(
 }
 
 
-// Register Azure Functions
 app.http('getReportTemplates', {
   methods: ['GET'],
   authLevel: 'anonymous',

@@ -93,7 +93,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       bottomProperties,
       monthlyData,
       granularity,
-      hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some(m => m.previousRevenue !== undefined)
+      hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some((m: any) => m.previousRevenue !== undefined)
     }
   }, [data, propertyData, comparisonMode])
   

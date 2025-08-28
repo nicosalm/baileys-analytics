@@ -759,7 +759,8 @@ export async function reportsGenerate(
 }
 
 app.http('reports-generate', {
-  methods: ['POST'],
+  methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
+  route: 'reports/generate/{templateId}',
   handler: reportsGenerate
 })
