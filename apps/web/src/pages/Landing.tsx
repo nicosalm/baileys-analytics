@@ -68,7 +68,7 @@ export const Landing = () => {
                   Login
                 </Link>
                 <Link to="/signup" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
-                  Start Free Trial
+                  Join Early Access
                 </Link>
               </>
             )}
@@ -105,10 +105,10 @@ export const Landing = () => {
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/signup" className={`group px-8 py-4 ${BRAND.buttonGradient} text-white rounded-full text-lg font-medium hover:shadow-xl transition-all transform hover:scale-105 flex items-center`}>
-                Start 14-Day Free Trial
+                Join Early Access Waitlist
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <span className="text-gray-500">No credit card required</span>
+              <span className="text-gray-500">Be first to know when we launch</span>
             </div>
           )}
           
@@ -356,7 +356,7 @@ export const Landing = () => {
                 </div>
               </div>
               <Link to="/signup" className="block w-full py-3 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors font-medium">
-                Start Free Trial
+                Join Waitlist
               </Link>
             </div>
             
@@ -396,7 +396,7 @@ export const Landing = () => {
                   </div>
                 </div>
                 <Link to="/signup" className={`block w-full py-3 ${BRAND.buttonGradient} text-white rounded-full hover:shadow-lg transition-all transform hover:scale-105 font-medium`}>
-                  Start Free Trial
+                  Join Waitlist
                 </Link>
               </div>
             </div>
@@ -436,7 +436,7 @@ export const Landing = () => {
             </div>
           </div>
           
-          <p className="text-sm text-gray-500 mt-8">All plans include 14-day free trial. No credit card required.</p>
+          <p className="text-sm text-gray-500 mt-8">All plans will include 14-day free trial at launch. Join the waitlist for early access.</p>
         </div>
       </section>
 
@@ -467,7 +467,7 @@ export const Landing = () => {
           </p>
           {!isAuthenticated && (
             <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-white text-blue-600 rounded-full text-lg font-bold hover:shadow-xl transition-all transform hover:scale-105">
-              Get Started Free
+              Request Early Access
               <ArrowRight className="w-5 h-5 ml-2" />
             </Link>
           )}

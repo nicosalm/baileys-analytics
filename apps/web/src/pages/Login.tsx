@@ -51,7 +51,10 @@ export const Login = () => {
           {/* Welcome text */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h2>
-            <p className="text-gray-600">Enter your credentials to access your dashboard</p>
+            <p className="text-gray-600 mb-3">Enter your credentials to access your dashboard</p>
+            <p className="text-sm text-gray-500">
+              Baileys Analytics - Vacation rental analytics and reporting for OwnerRez users
+            </p>
           </div>
 
           {/* Login form */}

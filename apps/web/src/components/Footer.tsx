@@ -16,6 +16,12 @@ export const Footer = () => {
           
           <nav className="flex items-center gap-6 text-sm">
             <a 
+              href="mailto:support@baileysanalytics.com" 
+              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+            >
+              Support
+            </a>
+            <a 
               href="https://status.baileysanalytics.com" 
               target="_blank" 
               rel="noopener noreferrer"

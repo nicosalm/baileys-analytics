@@ -209,7 +209,21 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Contact Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Customer Support</h2>
+            <div className="bg-blue-50 p-6 rounded-lg mb-4">
+              <p className="leading-relaxed mb-3">
+                <strong>For customer service and general support:</strong>
+              </p>
+              <div className="space-y-2">
+                <p><strong>Email:</strong> support@baileysanalytics.com</p>
+                <p><strong>Response Time:</strong> Within 24-48 hours on business days</p>
+                <p><strong>Business Hours:</strong> Monday - Friday, 9 AM - 5 PM EST</p>
+              </div>
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">14. Contact Information</h2>
             <div className="bg-gray-50 p-6 rounded-lg">
               <p className="leading-relaxed">
                 For questions about this Privacy Policy or our privacy practices, contact us at:
