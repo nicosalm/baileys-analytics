@@ -1,11 +1,28 @@
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions'
 import { requireAuth, corsHeaders } from './middleware/auth'
-import { fetchReportData } from './services/reportService'
+import { 
+  ReportDateRange 
+} from './services/reportService'
+import {
+  fetchFinancialData,
+  fetchDailyOperations,
+  fetchChannelData,
+  fetchMonthlyTrends,
+  fetchBookingsList
+} from './utils/reportDataFetcher'
+import {
+  fetchPropertyMetricsForReport,
+  fetchOccupancyDataForReport,
+  fetchGuestDataForReport,
+  fetchTaxDataForReport
+} from './utils/reportDataService'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { formatCurrency, formatPercentage, formatDateISO } from '@baileys/utils'
+import { formatCurrency, formatPercentage } from '@baileys/utils'
+import { formatDateISO } from './utils/dates'
+import { format, subDays, subMonths, startOfMonth, endOfMonth, startOfYear, endOfYear, getYear, getMonth } from 'date-fns'
 import { createErrorResponse, createSuccessResponse, requireTenant } from './utils/httpResponses'
-import { buildDateRangeFilter } from './utils/queryBuilders'
+import { addDataTable } from './utils/pdfHelpers'
 
 interface QuickReportConfig {
   modules: string[]
@@ -15,7 +32,7 @@ interface QuickReportConfig {
   properties?: string[]
 }
 
-function calculateDateRange(dateRangeType: string): { from: string; to: string } {
+function calculateDateRange(dateRangeType: string): ReportDateRange {
   const today = new Date()
   const todayISO = formatDateISO(today)
   
@@ -24,40 +41,30 @@ function calculateDateRange(dateRangeType: string): { from: string; to: string }
       return { from: todayISO, to: todayISO }
     
     case 'last7days':
-      const sevenDaysAgo = new Date(today)
-      sevenDaysAgo.setDate(today.getDate() - 7)
-      return { from: formatDateISO(sevenDaysAgo), to: todayISO }
+      return { from: formatDateISO(subDays(today, 7)), to: todayISO }
     
     case 'last30days':
-      const thirtyDaysAgo = new Date(today)
-      thirtyDaysAgo.setDate(today.getDate() - 30)
-      return { from: formatDateISO(thirtyDaysAgo), to: todayISO }
+      return { from: formatDateISO(subDays(today, 30)), to: todayISO }
     
     case 'last90days':
-      const ninetyDaysAgo = new Date(today)
-      ninetyDaysAgo.setDate(today.getDate() - 90)
-      return { from: formatDateISO(ninetyDaysAgo), to: todayISO }
+      return { from: formatDateISO(subDays(today, 90)), to: todayISO }
     
     case 'lastMonth':
-      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-      const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0)
-      return { from: formatDateISO(lastMonth), to: formatDateISO(lastMonthEnd) }
+      const lastMonth = subMonths(today, 1)
+      return { from: formatDateISO(startOfMonth(lastMonth)), to: formatDateISO(endOfMonth(lastMonth)) }
     
     case 'lastQuarter':
-      const currentQuarter = Math.floor(today.getMonth() / 3)
-      const lastQuarterStart = new Date(today.getFullYear(), (currentQuarter - 1) * 3, 1)
-      const lastQuarterEnd = new Date(today.getFullYear(), currentQuarter * 3, 0)
+      const currentQuarter = Math.floor(getMonth(today) / 3)
+      const lastQuarterStart = new Date(getYear(today), (currentQuarter - 1) * 3, 1)
+      const lastQuarterEnd = new Date(getYear(today), currentQuarter * 3, 0)
       return { from: formatDateISO(lastQuarterStart), to: formatDateISO(lastQuarterEnd) }
     
     case 'lastYear':
-      const lastYear = new Date(today.getFullYear() - 1, 0, 1)
-      const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31)
-      return { from: formatDateISO(lastYear), to: formatDateISO(lastYearEnd) }
+      const lastYear = subMonths(today, 12)
+      return { from: formatDateISO(startOfYear(lastYear)), to: formatDateISO(endOfYear(lastYear)) }
     
     default:
-      const defaultThirtyDaysAgo = new Date(today)
-      defaultThirtyDaysAgo.setDate(today.getDate() - 30)
-      return { from: formatDateISO(defaultThirtyDaysAgo), to: todayISO }
+      return { from: formatDateISO(subDays(today, 30)), to: todayISO }
   }
 }
 
@@ -71,36 +78,35 @@ async function generateQuickPDF(
   let yPosition = 20
   
   // Header
-  doc.setFontSize(20)
+  doc.setFontSize(14)
   doc.setFont('helvetica', 'bold')
   doc.text(reportName, 105, yPosition, { align: 'center' })
-  yPosition += 10
+  yPosition += 8
   
   // Date range
   const dateRange = calculateDateRange(config.dateRange)
-  doc.setFontSize(10)
+  doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
   doc.text(`Period: ${dateRange.from} to ${dateRange.to}`, 105, yPosition, { align: 'center' })
+  doc.text(`Generated: ${format(new Date(), 'MM/dd/yyyy, HH:mm:ss')}`, 105, yPosition + 5, { align: 'center' })
   yPosition += 15
   
-  // Process modules
+  const renderedModules = new Set<string>()
   for (const module of config.modules) {
-    if (yPosition > 250) {
+    if (yPosition > 260) {
       doc.addPage()
       yPosition = 20
     }
     
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text(getModuleTitle(module), 20, yPosition)
-    yPosition += 10
+    const startY = yPosition
+    yPosition = await addModuleContent(doc, module, data[module], yPosition, renderedModules)
     
-    // Add module content based on type
-    yPosition = await addModuleContent(doc, module, data, yPosition)
-    yPosition += 10
+    if (yPosition > startY) {
+      yPosition += 8
+    }
   }
   
-  // Footer
+  // Footer on all pages
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
   const pageCount = doc.getNumberOfPages()
@@ -108,7 +114,6 @@ async function generateQuickPDF(
     doc.setPage(i)
     doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' })
     doc.text('Generated by Baileys Analytics', 20, 285)
-    doc.text(new Date().toLocaleString(), 190, 285, { align: 'right' })
   }
   
   return Buffer.from(doc.output('arraybuffer'))
@@ -123,12 +128,12 @@ function getModuleTitle(module: string): string {
     properties: 'Property Performance',
     occupancy: 'Occupancy Analysis',
     revenue_by_property: 'Revenue by Property',
-    pl: 'Profit & Loss',
+    pl: 'Profit & Loss Statement',
     revenue: 'Revenue Analysis',
     expenses: 'Expense Breakdown',
     trends: 'Financial Trends',
     bookings: 'Booking Details',
-    guests: 'Guest Information',
+    guests: 'Guest Analytics',
     payments: 'Payment Summary',
     tax: 'Tax Summary',
     jurisdictions: 'Tax by Jurisdiction',
@@ -148,66 +153,907 @@ async function addModuleContent(
   doc: jsPDF,
   module: string,
   data: any,
-  yPosition: number
+  yPosition: number,
+  renderedModules: Set<string>
 ): Promise<number> {
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
+  // Map similar modules to their primary handler
+  const moduleGroups: Record<string, string> = {
+    'properties': 'property_performance',
+    'revenue_by_property': 'property_performance',
+    'occupancy': 'occupancy_analysis',
+    'availability': 'occupancy_analysis',
+    'guests': 'guest_analytics',
+    'repeat_rate': 'guest_analytics',
+    'demographics': 'guest_analytics',
+    'tax': 'tax_report',
+    'jurisdictions': 'tax_report',
+    'tax_breakdown': 'tax_report',
+    'channels': 'channel_analysis',
+    'revenue_by_channel': 'channel_analysis',
+    'trends': 'trends_analysis',
+    'seasonal_trends': 'trends_analysis',
+    'revenue': 'financial',
+    'pl': 'financial',
+    'expenses': 'financial'
+  }
   
-  // For now, add placeholder content
-  // This will be replaced with actual data processing
+  const primaryModule = moduleGroups[module] || module
+  
+  // Skip if we've already rendered this module group
+  if (renderedModules.has(primaryModule)) {
+    return yPosition
+  }
+  
+  renderedModules.add(primaryModule)
+  
+  if (!data) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(120, 120, 120)
+    doc.text('No data available', 20, yPosition)
+    doc.setTextColor(0, 0, 0)
+    return yPosition + 8
+  }
+
   switch (module) {
     case 'arrivals':
     case 'departures':
+    case 'turnovers':
+      return await addBookingsList(doc, module, data, yPosition)
+    
     case 'bookings':
-      // Table format for booking data
-      autoTable(doc, {
-        startY: yPosition,
-        head: [['Property', 'Guest', 'Check-in', 'Check-out', 'Status']],
-        body: [
-          ['Property 1', 'John Doe', '2024-01-15', '2024-01-20', 'Confirmed'],
-          ['Property 2', 'Jane Smith', '2024-01-16', '2024-01-22', 'Confirmed']
-        ],
-        margin: { left: 20 },
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [59, 130, 246] }
-      })
-      return (doc as any).lastAutoTable.finalY + 5
+      return await addBookingsDetails(doc, data, yPosition)
       
     case 'revenue':
     case 'pl':
-      // Financial summary
-      const financialData = [
-        ['Gross Revenue', formatCurrency(50000)],
-        ['Platform Fees', formatCurrency(-5000)],
-        ['Net Revenue', formatCurrency(45000)],
-        ['Operating Expenses', formatCurrency(-15000)],
-        ['Net Profit', formatCurrency(30000)],
-        ['Profit Margin', formatPercentage(0.60)]
-      ]
-      autoTable(doc, {
-        startY: yPosition,
-        body: financialData,
-        margin: { left: 20 },
-        styles: { fontSize: 10 },
-        columnStyles: {
-          0: { fontStyle: 'bold', cellWidth: 100 },
-          1: { halign: 'right', cellWidth: 70 }
-        }
-      })
-      return (doc as any).lastAutoTable.finalY + 5
+    case 'expenses':
+      return await addFinancialAnalysis(doc, data, yPosition)
+      
+    case 'properties':
+    case 'revenue_by_property':
+      return await addPropertyPerformance(doc, data, yPosition)
       
     case 'occupancy':
-      // Occupancy metrics
-      doc.text('Overall Occupancy Rate: 75%', 20, yPosition)
-      doc.text('Booked Nights: 225 / 300', 20, yPosition + 5)
-      doc.text('Average Daily Rate: $250', 20, yPosition + 10)
-      return yPosition + 20
+    case 'availability':
+      return await addOccupancyAnalysis(doc, data, yPosition)
+      
+    case 'guests':
+    case 'repeat_rate':
+    case 'demographics':
+      return await addGuestAnalytics(doc, data, yPosition)
+      
+    case 'tax':
+    case 'jurisdictions':
+    case 'tax_breakdown':
+      return await addTaxReport(doc, data, yPosition)
+      
+    case 'channels':
+    case 'revenue_by_channel':
+      return await addChannelAnalysis(doc, data, yPosition)
+      
+    case 'trends':
+    case 'seasonal_trends':
+      return await addTrendsAnalysis(doc, data, yPosition)
       
     default:
-      // Default text content
-      doc.text(`${getModuleTitle(module)} data will appear here`, 20, yPosition)
-      return yPosition + 10
+      return await addGenericData(doc, data, yPosition)
   }
+}
+
+async function addBookingsList(doc: jsPDF, type: string, data: any, yPos: number): Promise<number> {
+  const bookings = Array.isArray(data) ? data : []
+  
+  if (bookings.length === 0) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'italic')
+    doc.text(`No ${type === 'arrivals' ? 'arrivals' : type === 'departures' ? 'departures' : 'turnovers'} scheduled`, 20, yPos)
+    return yPos + 10
+  }
+  
+  // Different headers based on type
+  let headers: string[]
+  let rows: any[][]
+  
+  if (type === 'turnovers') {
+    headers = ['Property', 'Departing Guest', 'Departure', 'Arriving Guest', 'Arrival']
+    rows = bookings.slice(0, 15).map((turnover: any) => [
+      turnover.property_name || 'N/A',
+      turnover.departing_guest || 'Guest',
+      format(new Date(turnover.departure_time), 'HH:mm'),
+      turnover.arriving_guest || 'Guest',
+      format(new Date(turnover.arrival_time), 'HH:mm')
+    ])
+  } else {
+    headers = ['Property', 'Guest', 'Check-in', 'Check-out', 'Amount', 'Status']
+    rows = bookings.slice(0, 15).map((booking: any) => [
+      booking.property_name || 'N/A',
+      booking.guest_name || 'Guest',
+      format(new Date(booking.arrival), 'MM/dd/yyyy'),
+      format(new Date(booking.departure), 'MM/dd/yyyy'),
+      formatCurrency(booking.total_amount || 0),
+      booking.status || 'Confirmed'
+    ])
+  }
+  
+  const titleMap: Record<string, string> = {
+    arrivals: 'TODAY\'S ARRIVALS',
+    departures: 'TODAY\'S DEPARTURES',
+    turnovers: 'TODAY\'S TURNOVERS'
+  }
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text(titleMap[type], 20, yPos)
+  yPos += 8
+  
+  // Summary metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${bookings.length} ${type === 'arrivals' ? 'Arrivals' : type === 'departures' ? 'Departures' : 'Turnovers'} Scheduled`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  return addDataTable(doc, yPos, headers, rows, {
+    columnStyles: type === 'turnovers' ? {
+      2: { halign: 'center' },
+      4: { halign: 'center' }
+    } : {
+      4: { halign: 'right' },
+      5: { halign: 'center' }
+    }
+  })
+}
+
+async function addBookingsDetails(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  const bookings = Array.isArray(data) ? data : []
+  
+  if (bookings.length === 0) {
+    doc.setFontSize(10)
+    doc.text('No bookings found for this period', 20, yPos)
+    return yPos + 10
+  }
+  
+  // Calculate comprehensive metrics
+  const totalRevenue = bookings.reduce((sum: number, b: any) => {
+    const amount = parseFloat(b.total_amount) || 0
+    return sum + amount
+  }, 0)
+  const totalNights = bookings.reduce((sum: number, b: any) => sum + (parseInt(b.nights) || 0), 0)
+  const avgStay = bookings.length > 0 ? totalNights / bookings.length : 0
+  const avgBookingValue = bookings.length > 0 ? totalRevenue / bookings.length : 0
+  
+  // Guest analytics from bookings
+  const uniqueGuests = new Set(bookings.map((b: any) => b.guest_name || 'Unknown'))
+  const guestBookings: Record<string, number> = {}
+  bookings.forEach((b: any) => {
+    const guest = b.guest_name || 'Unknown'
+    guestBookings[guest] = (guestBookings[guest] || 0) + 1
+  })
+  const repeatGuests = Object.values(guestBookings).filter(count => count > 1).length
+  
+  // Platform/payment summary
+  const platformSummary: Record<string, { count: number; amount: number }> = {}
+  bookings.forEach((b: any) => {
+    const platform = b.platform || 'Direct'
+    if (!platformSummary[platform]) {
+      platformSummary[platform] = { count: 0, amount: 0 }
+    }
+    platformSummary[platform].count++
+    const amount = parseFloat(b.total_amount) || 0
+    platformSummary[platform].amount += amount
+  })
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('BOOKING DETAILS', 20, yPos)
+  yPos += 8
+  
+  // Summary metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${bookings.length} Bookings  •  ${formatCurrency(totalRevenue)} Revenue  •  ${formatCurrency(avgBookingValue)} Avg Value  •  ${avgStay.toFixed(1)} nights Avg Stay`, 20, yPos)
+  yPos += 6
+  const repeatPercentage = uniqueGuests.size > 0 ? (repeatGuests / uniqueGuests.size) * 100 : 0
+  doc.text(`${uniqueGuests.size} Unique Guests  •  ${repeatGuests} Repeat (${repeatPercentage.toFixed(1)}%)`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  // Payment summary subsection
+  yPos += 4
+  
+  const paymentHeaders = ['Channel', 'Bookings', 'Revenue', 'Avg Value']
+  const paymentRows = Object.entries(platformSummary)
+    .sort((a, b) => b[1].amount - a[1].amount)
+    .map(([platform, data]) => [
+      platform,
+      data.count.toString(),
+      formatCurrency(data.amount),
+      formatCurrency(data.count > 0 ? data.amount / data.count : 0)
+    ])
+  
+  yPos = addDataTable(doc, yPos, paymentHeaders, paymentRows, {
+    columnStyles: {
+      1: { halign: 'center' },
+      2: { halign: 'right' },
+      3: { halign: 'right' }
+    },
+    showTotals: true
+  })
+  
+  // Recent bookings table  
+  if (yPos > 200) {
+    doc.addPage()
+    yPos = 30
+  }
+  
+  // Recent bookings subsection
+  if (yPos < 200) {
+    yPos += 6
+  }
+  
+  const headers = ['Property', 'Guest', 'Dates', 'Nights', 'Amount']
+  const rows = bookings.slice(0, 10).map((booking: any) => [
+    booking.property_name || 'N/A',
+    booking.guest_name || 'Guest',
+    `${format(new Date(booking.arrival), 'MM/dd/yyyy')} - ${format(new Date(booking.departure), 'MM/dd/yyyy')}`,
+    (parseInt(booking.nights) || 0).toString(),
+    formatCurrency(parseFloat(booking.total_amount) || 0)
+  ])
+  
+  return addDataTable(doc, yPos, headers, rows, {
+    columnStyles: {
+      3: { halign: 'center' },
+      4: { halign: 'right' }
+    }
+  })
+}
+
+async function addFinancialAnalysis(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  if (!data || !data.pl) {
+    doc.setFontSize(10)
+    doc.text('No financial data available', 20, yPos)
+    return yPos + 10
+  }
+  
+  const pl = data.pl
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('FINANCIAL SUMMARY', 20, yPos)
+  yPos += 8
+  
+  // Key financial metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${formatCurrency(pl.revenue || 0)} Gross  •  ${formatCurrency(pl.netRevenue || 0)} Net  •  ${formatCurrency(pl.netProfit || 0)} Profit  •  ${formatPercentage(pl.profitMargin || 0)} Margin`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  // P&L Table
+  const plData = [
+    ['Gross Revenue', formatCurrency(pl.revenue || 0), formatCurrency(pl.previousRevenue || 0), formatPercentage(pl.revenueGrowth || 0)],
+    ['Platform Fees', formatCurrency(-(pl.platformFees || 0)), '-', '-'],
+    ['Net Revenue', formatCurrency(pl.netRevenue || 0), formatCurrency(pl.previousNetRevenue || 0), formatPercentage(pl.netRevenueGrowth || 0)],
+    ['Operating Expenses', formatCurrency(-(pl.expenses || 0)), formatCurrency(-(pl.previousExpenses || 0)), formatPercentage(pl.expenseGrowth || 0)],
+    ['Net Profit', formatCurrency(pl.netProfit || 0), formatCurrency(pl.previousNetProfit || 0), formatPercentage(pl.profitGrowth || 0)],
+    ['Profit Margin', formatPercentage(pl.profitMargin || 0), formatPercentage(pl.previousProfitMargin || 0), '-']
+  ]
+  
+  yPos = addDataTable(doc, yPos, ['Metric', 'Current Period', 'Previous Period', 'Change'], plData, {
+    columnStyles: {
+      1: { halign: 'right' },
+      2: { halign: 'right' },
+      3: { halign: 'center' }
+    }
+  })
+  
+  // Expenses Breakdown
+  if (pl.platformFees > 0) {
+    if (yPos > 200) {
+      doc.addPage()
+      yPos = 30
+    }
+    
+    // Expenses breakdown subsection
+    
+    const expenseData = [
+      ['Platform Fees', formatCurrency(pl.platformFees || 0), formatPercentage((pl.platformFees / pl.expenses) * 100 || 0)],
+      ['  - Airbnb', formatCurrency(pl.airbnbFees || 0), '-'],
+      ['  - VRBO', formatCurrency(pl.vrboFees || 0), '-'],
+      ['  - Booking.com', formatCurrency(pl.bookingFees || 0), '-'],
+      ['Total Expenses', formatCurrency(pl.expenses || 0), '100%']
+    ]
+    
+    yPos = addDataTable(doc, yPos, ['Expense Type', 'Amount', 'Percentage'], expenseData, {
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'center' }
+      }
+    })
+    yPos += 10
+  }
+  
+  // Revenue trend chart (if we have monthly data)
+  if (data.monthlyRevenue && data.monthlyRevenue.length > 0) {
+    if (yPos > 200) {
+      doc.addPage()
+      yPos = 30
+    }
+    
+    // Financial trends subsection
+    
+    // Convert to table format
+    const trendHeaders = ['Month', 'Revenue', 'Bookings', 'Avg Booking', 'MoM Change']
+    const trendRows = data.monthlyRevenue.map((m: any, i: number) => {
+      const date = new Date(m.month)
+      const prevRevenue = i > 0 ? data.monthlyRevenue[i-1].revenue : m.revenue
+      const change = i > 0 ? ((m.revenue - prevRevenue) / prevRevenue * 100) : 0
+      return [
+        format(date, 'MMM yy'),
+        formatCurrency(m.revenue),
+        m.bookings ? m.bookings.toString() : '-',
+        m.bookings ? formatCurrency(m.revenue / m.bookings) : '-',
+        i > 0 ? `${change >= 0 ? '+' : ''}${change.toFixed(1)}%` : '-'
+      ]
+    })
+    
+    yPos = addDataTable(doc, yPos, trendHeaders, trendRows, {
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'center' },
+        3: { halign: 'right' },
+        4: { halign: 'center' }
+      }
+    })
+  }
+  
+  return yPos
+}
+
+async function addPropertyPerformance(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  const properties = Array.isArray(data) ? data : (data?.properties || [])
+  
+  if (properties.length === 0) {
+    return yPos
+  }
+  
+  const totalRevenue = properties.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
+  const totalBookings = properties.reduce((sum: number, p: any) => sum + (p.bookings || 0), 0)
+  const avgOccupancy = properties.length > 0 ? properties.reduce((sum: number, p: any) => sum + (p.occupancyRate || 0), 0) / properties.length : 0
+  
+  // Section title with metrics on separate lines
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('PROPERTY PERFORMANCE', 20, yPos)
+  yPos += 8
+  
+  // Key metrics - indented and smaller
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${properties.length} Properties  •  ${formatCurrency(totalRevenue)} Total Revenue  •  ${totalBookings} Bookings  •  ${formatPercentage(Math.min(avgOccupancy, 1) * 100)} Avg Occupancy`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  // Remove the bar chart - the table below provides the same information
+  
+  // Properties table
+  const headers = ['Property', 'Revenue', 'Bookings', 'Occupancy', 'ADR', 'RevPAR']
+  const rows = properties
+    .sort((a: any, b: any) => (b.revenue || 0) - (a.revenue || 0))
+    .slice(0, 10)
+    .map((prop: any) => {
+      const revpar = (prop.revenue || 0) / (prop.availableNights || 1)
+      return [
+        prop.propertyName || 'Unknown',
+        formatCurrency(prop.revenue || 0),
+        (prop.bookings || 0).toString(),
+        formatPercentage(Math.min(prop.occupancyRate || 0, 1) * 100),
+        formatCurrency(prop.avgNightlyRate || 0),
+        formatCurrency(revpar)
+      ]
+    })
+  
+  if (yPos > 200) {
+    doc.addPage()
+    yPos = 30
+  }
+  
+  return addDataTable(doc, yPos, headers, rows, {
+    columnStyles: {
+      1: { halign: 'right' },
+      2: { halign: 'center' },
+      3: { halign: 'center' },
+      4: { halign: 'right' },
+      5: { halign: 'right' }
+    }
+  })
+}
+
+async function addOccupancyAnalysis(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  if (!data) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'italic')
+    doc.text('No occupancy data available for this period', 20, yPos)
+    return yPos + 10
+  }
+  
+  const overall = data.overall || 0
+  const bookedNights = data.bookedNights || 0
+  const availableNights = data.availableNights || 0
+  const vacantNights = Math.max(0, availableNights - bookedNights)
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('OCCUPANCY ANALYSIS', 20, yPos)
+  yPos += 8
+  
+  // Summary metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${formatPercentage(Math.min(overall, 1) * 100)} Overall  •  ${bookedNights} Booked  •  ${availableNights} Available  •  ${vacantNights} Vacant`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  // Occupancy by property
+  if (data.byProperty && data.byProperty.length > 0) {
+    const headers = ['Property', 'Occupancy Rate', 'Booked', 'Available', 'Vacant']
+    const rows = data.byProperty.map((prop: any) => [
+      prop.propertyName || 'Unknown',
+      formatPercentage(Math.min(prop.rate || 0, 1) * 100),
+      (prop.bookedNights || 0).toString(),
+      (prop.availableNights || 0).toString(),
+      ((prop.availableNights || 0) - (prop.bookedNights || 0)).toString()
+    ])
+    
+    yPos = addDataTable(doc, yPos, headers, rows, {
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+        4: { halign: 'center' }
+      }
+    })
+  }
+  
+  // Monthly trend table
+  if (data.byMonth && data.byMonth.length > 0) {
+    if (yPos > 200) {
+      doc.addPage()
+      yPos = 30
+    }
+    
+    // Monthly occupancy trend subsection
+    
+    const monthHeaders = ['Month', 'Occupancy %', 'Booked Nights', 'Available', 'Utilization']
+    const monthRows = data.byMonth.map((m: any) => [
+      m.month,
+      formatPercentage(Math.min(m.rate || 0, 1) * 100),
+      (m.bookedNights || 0).toString(),
+      (m.availableNights || 0).toString(),
+      `${m.availableNights > 0 ? ((m.bookedNights / m.availableNights) * 100).toFixed(0) : '0'}%`
+    ])
+    
+    yPos = addDataTable(doc, yPos, monthHeaders, monthRows, {
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+        4: { halign: 'center' }
+      }
+    })
+  }
+  
+  return yPos
+}
+
+async function addGuestAnalytics(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  if (!data || !data.metrics) {
+    return yPos
+  }
+  
+  const metrics = data.metrics
+  
+  // Check if we have any data
+  if (metrics.totalGuests === 0) {
+    return yPos
+  }
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('GUEST ANALYTICS', 20, yPos)
+  yPos += 8
+  
+  // Summary metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${metrics.totalGuests} Total  •  ${metrics.repeatGuests} Repeat (${formatPercentage((metrics.repeatRate || 0) * 100)})  •  ${formatCurrency(metrics.avgSpend)} Avg Spend  •  ${(metrics.avgStayLength || 0).toFixed(1)} nights Avg Stay`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  // Top guests table
+  if (data.guests && data.guests.length > 0) {
+    const headers = ['Guest Name', 'Bookings', 'Total Spent', 'Avg/Night', 'Last Visit']
+    const rows = data.guests.slice(0, 10).map((guest: any) => [
+      guest.name || 'Unknown',
+      (guest.bookingCount || 0).toString(),
+      formatCurrency(guest.totalSpent || 0),
+      formatCurrency(guest.avgNightlyRate || 0),
+      guest.lastVisit ? format(new Date(guest.lastVisit), 'MM/dd/yyyy') : 'N/A'
+    ])
+    
+    yPos = addDataTable(doc, yPos, headers, rows, {
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'right' },
+        3: { halign: 'right' },
+        4: { halign: 'center' }
+      }
+    })
+  }
+  
+  // Guest segments breakdown table
+  if (metrics.totalGuests > 0) {
+    if (yPos > 200) {
+      doc.addPage()
+      yPos = 30
+    }
+    
+    // Guest segmentation subsection
+    
+    const segmentHeaders = ['Segment', 'Count', 'Percentage', 'Avg Spend']
+    const newGuests = metrics.totalGuests - metrics.repeatGuests
+    const newGuestPercentage = metrics.totalGuests > 0 ? (newGuests / metrics.totalGuests) * 100 : 0
+    const repeatGuestPercentage = metrics.totalGuests > 0 ? (metrics.repeatGuests / metrics.totalGuests) * 100 : 0
+    const segmentRows = [
+      ['New Guests', newGuests.toString(), `${newGuestPercentage.toFixed(1)}%`, '-'],
+      ['Repeat Guests', metrics.repeatGuests.toString(), `${repeatGuestPercentage.toFixed(1)}%`, '-'],
+      ['Total', metrics.totalGuests.toString(), '100.0%', formatCurrency(metrics.avgSpend || 0)]
+    ]
+    
+    yPos = addDataTable(doc, yPos, segmentHeaders, segmentRows, {
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'right' }
+      }
+    })
+  }
+  
+  return yPos
+}
+
+async function addTaxReport(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  if (!data || !data.summary) {
+    return yPos
+  }
+  
+  const summary = data.summary
+  
+  // Check if no tax is configured
+  if (summary.totalTax === 0) {
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(120, 120, 120)
+    doc.text('No tax configurations or taxable bookings in this period', 20, yPos)
+    doc.setTextColor(0, 0, 0)
+    return yPos + 8
+  }
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('TAX SUMMARY', 20, yPos)
+  yPos += 8
+  
+  // Summary metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${formatCurrency(summary.totalTax || 0)} Total Tax  •  ${summary.taxBreakdown ? summary.taxBreakdown.length : 0} Tax Types`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  doc.setDrawColor(220, 220, 220)
+  doc.setLineWidth(0.1)
+  doc.line(20, yPos, 190, yPos)
+  yPos += 4
+  
+  // Total tax collected
+  doc.setFontSize(7)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(60, 60, 60)
+  doc.text(`Total Tax Collected: ${formatCurrency(summary.totalTax || 0)}`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 10
+  
+  // Tax breakdown by type
+  if (summary.taxBreakdown && summary.taxBreakdown.length > 0) {
+    const headers = ['Tax Type', 'Amount', 'Percentage']
+    const total = summary.totalTax || 1
+    const rows = summary.taxBreakdown.map((tax: any) => [
+      tax.name || tax.type || 'Tax',
+      formatCurrency(tax.amount || 0),
+      formatPercentage((tax.amount || 0) / total * 100)
+    ])
+    
+    yPos = addDataTable(doc, yPos, headers, rows, {
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'center' }
+      },
+      showTotals: true
+    })
+  }
+  
+  // Tax by property
+  if (data.byProperty && data.byProperty.length > 0) {
+    if (yPos > 200) {
+      doc.addPage()
+      yPos = 30
+    }
+    
+    const headers = ['Property', 'Total Tax', 'Bookings']
+    const rows = data.byProperty.slice(0, 10).map((prop: any) => [
+      prop.propertyName || 'Unknown',
+      formatCurrency(prop.totalTax || 0),
+      (prop.bookingCount || 0).toString()
+    ])
+    
+    yPos = addDataTable(doc, yPos, headers, rows, {
+      columnStyles: {
+        1: { halign: 'right' },
+        2: { halign: 'center' }
+      },
+      showTotals: true
+    })
+  }
+  
+  return yPos
+}
+
+async function addChannelAnalysis(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return yPos
+  }
+  
+  // Calculate totals for summary
+  const totalRevenue = data.reduce((sum: number, c: any) => sum + (c.revenue || 0), 0)
+  const totalBookings = data.reduce((sum: number, c: any) => sum + (c.bookings || 0), 0)
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('CHANNEL ANALYSIS', 20, yPos)
+  yPos += 8
+  
+  // Summary metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${data.length} Channels  •  ${totalBookings} Total Bookings  •  ${formatCurrency(totalRevenue)} Total Revenue`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  // Channel performance table
+  const headers = ['Channel', 'Bookings', 'Revenue', 'Avg Booking', 'Avg Stay']
+  const rows = data.map(channel => [
+    channel.name || 'Unknown',
+    channel.bookings.toString(),
+    formatCurrency(channel.revenue),
+    formatCurrency(channel.avgBookingValue),
+    `${(channel.avgStayLength || 0).toFixed(1)} nights`
+  ])
+  
+  yPos = addDataTable(doc, yPos, headers, rows, {
+    columnStyles: {
+      1: { halign: 'center' },
+      2: { halign: 'right' },
+      3: { halign: 'right' },
+      4: { halign: 'center' }
+    },
+    showTotals: true
+  })
+  
+  // Channel distribution breakdown
+  if (data.length > 1) {
+    if (yPos > 200) {
+      doc.addPage()
+      yPos = 30
+    }
+    
+    // Channel distribution subsection
+    
+    const totalRevenue = data.reduce((sum, c) => sum + c.revenue, 0)
+    const distHeaders = ['Channel', 'Revenue Share %', 'Booking Share %', 'Performance Index']
+    const totalBookings = data.reduce((sum, c) => sum + c.bookings, 0)
+    
+    const distRows = data.map(channel => {
+      const revenueShare = (channel.revenue / totalRevenue) * 100
+      const bookingShare = (channel.bookings / totalBookings) * 100
+      const perfIndex = bookingShare > 0 ? revenueShare / bookingShare : 0
+      return [
+        channel.name,
+        formatPercentage(revenueShare),
+        formatPercentage(bookingShare),
+        perfIndex.toFixed(2)
+      ]
+    })
+    
+    yPos = addDataTable(doc, yPos, distHeaders, distRows, {
+      columnStyles: {
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' }
+      }
+    })
+    
+    // Add Performance Index explanation
+    yPos += 2
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'italic')
+    doc.setTextColor(100, 100, 100)
+    doc.text('Performance Index: >1.0 = higher value bookings, <1.0 = lower value bookings (Revenue Share ÷ Booking Share)', 20, yPos)
+    doc.setTextColor(0, 0, 0)
+    doc.setFont('helvetica', 'normal')
+    yPos += 6
+  }
+  
+  return yPos
+}
+
+async function addTrendsAnalysis(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'italic')
+    doc.text('No historical data available for trend analysis', 20, yPos)
+    return yPos + 10
+  }
+  
+  if (data.length < 2) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'italic')
+    doc.text('Limited data available (only 1 month)', 20, yPos)
+    return yPos + 10
+  }
+  
+  const totalMonthlyRevenue = data.reduce((sum: number, m: any) => sum + (m.revenue || 0), 0)
+  const totalMonthlyBookings = data.reduce((sum: number, m: any) => sum + (m.bookings || 0), 0)
+  const avgMonthlyRevenue = data.length > 0 ? totalMonthlyRevenue / data.length : 0
+  const avgMonthlyBookings = data.length > 0 ? totalMonthlyBookings / data.length : 0
+  
+  // Section title
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('TRENDS ANALYSIS', 20, yPos)
+  yPos += 8
+  
+  // Summary metrics
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  doc.text(`${data.length} Months  •  ${formatCurrency(avgMonthlyRevenue)} Avg Monthly Revenue  •  ${avgMonthlyBookings.toFixed(0)} Avg Monthly Bookings`, 20, yPos)
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  // Seasonal breakdown subsection
+  
+  const seasonalData: Record<string, { revenue: number; bookings: number; occupancy: number; months: number }> = {}
+  
+  data.forEach((month: any) => {
+    const date = new Date(month.month)
+    const monthNum = getMonth(date)
+    let season = 'Winter'
+    
+    if (monthNum >= 2 && monthNum <= 4) season = 'Spring'
+    else if (monthNum >= 5 && monthNum <= 7) season = 'Summer'
+    else if (monthNum >= 8 && monthNum <= 10) season = 'Fall'
+    
+    if (!seasonalData[season]) {
+      seasonalData[season] = { revenue: 0, bookings: 0, occupancy: 0, months: 0 }
+    }
+    
+    seasonalData[season].revenue += month.revenue || 0
+    seasonalData[season].bookings += month.bookings || 0
+    seasonalData[season].occupancy += month.occupancy || 0
+    seasonalData[season].months++
+  })
+  
+  // Seasonal summary table
+  const seasonHeaders = ['Season', 'Avg Revenue', 'Avg Bookings', 'Avg Occupancy']
+  const seasonRows = Object.entries(seasonalData).map(([season, data]) => [
+    season,
+    formatCurrency(data.revenue / data.months),
+    (data.bookings / data.months).toFixed(1),
+    `${(data.occupancy / data.months).toFixed(1)}%`
+  ])
+  
+  yPos = addDataTable(doc, yPos, seasonHeaders, seasonRows, {
+    columnStyles: {
+      1: { halign: 'right' },
+      2: { halign: 'center' },
+      3: { halign: 'center' }
+    }
+  })
+  yPos += 10
+  
+  // Combined trends table
+  if (yPos > 200) {
+    doc.addPage()
+    yPos = 30
+  }
+  
+  // Monthly performance metrics subsection
+  
+  const trendHeaders = ['Month', 'Revenue', 'Bookings', 'Occupancy %', 'ADR', 'YoY Change']
+  const trendRows = data.map((d: any, i: number) => {
+    const date = new Date(d.month)
+    const monthStr = format(date, 'MMM yy')
+    const adr = d.bookings ? d.revenue / d.bookings : 0
+    
+    // Find same month from previous year
+    const currentYear = getYear(date)
+    const currentMonth = getMonth(date)
+    const prevYearData = data.find((item: any) => {
+      const itemDate = new Date(item.month)
+      return getYear(itemDate) === currentYear - 1 && getMonth(itemDate) === currentMonth
+    })
+    
+    const yoyChange = prevYearData && prevYearData.revenue > 0 ? 
+      ((d.revenue - prevYearData.revenue) / prevYearData.revenue * 100) : null
+    
+    return [
+      monthStr,
+      formatCurrency(d.revenue || 0),
+      (d.bookings || 0).toString(),
+      `${(d.occupancy || 0).toFixed(1)}%`,
+      formatCurrency(adr),
+      yoyChange !== null ? `${yoyChange >= 0 ? '+' : ''}${yoyChange.toFixed(1)}%` : '-'
+    ]
+  })
+  
+  yPos = addDataTable(doc, yPos, trendHeaders, trendRows, {
+    columnStyles: {
+      1: { halign: 'right' },
+      2: { halign: 'center' },
+      3: { halign: 'center' },
+      4: { halign: 'right' },
+      5: { halign: 'center' }
+    }
+  })
+  
+  return yPos
+}
+
+async function addGenericData(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  doc.setFontSize(10)
+  
+  if (Array.isArray(data) && data.length > 0) {
+    const headers = Object.keys(data[0])
+    const rows = data.slice(0, 15).map(item => 
+      headers.map(h => {
+        const value = item[h]
+        if (typeof value === 'number' && h.toLowerCase().includes('amount')) {
+          return formatCurrency(value)
+        }
+        return String(value || '')
+      })
+    )
+    
+    return addDataTable(doc, yPos, headers, rows)
+  }
+  
+  doc.text('Data will be displayed here', 20, yPos)
+  return yPos + 10
 }
 
 async function quickGenerateReport(
@@ -226,21 +1072,124 @@ async function quickGenerateReport(
   try {
     const body = await request.json() as QuickReportConfig
     
+    if (!body.modules || body.modules.length === 0) {
+      return createErrorResponse('No modules selected for report')
+    }
+    
+    if (!body.dateRange) {
+      return createErrorResponse('Date range is required')
+    }
+    
     // Calculate date range
     const dateRange = calculateDateRange(body.dateRange)
     
-    // Fetch report data based on modules
-    const reportData = await fetchReportData(
-      body.modules,
-      dateRange,
-      auth.tenantId!,
-      {
-        tags: body.tags,
-        properties: body.properties
-      }
-    )
+    // Fetch all required data based on modules
+    const reportData: any = {}
     
-    // Generate PDF
+    for (const module of body.modules) {
+      try {
+        switch (module) {
+          case 'arrivals':
+          case 'departures':
+          case 'turnovers':
+            const dailyOps = await fetchDailyOperations(auth.tenantId!)
+            if (module === 'arrivals') {
+              reportData[module] = dailyOps.arrivals
+            } else if (module === 'departures') {
+              reportData[module] = dailyOps.departures
+            } else {
+              reportData[module] = dailyOps.turnovers
+            }
+            break
+            
+          case 'bookings':
+            // Get bookings for the period
+            reportData[module] = await fetchBookingsList(auth.tenantId!, dateRange)
+            break
+            
+          case 'pl':
+          case 'revenue':
+          case 'expenses':
+            // Fetch comprehensive financial data
+            const financialData = await fetchFinancialData(auth.tenantId!, dateRange, {})
+            
+            if (financialData) {
+              reportData[module] = financialData
+              context.log(`Financial data fetched successfully for ${module}`)
+            } else {
+              context.log(`Financial data fetch failed for ${module}`)
+              reportData[module] = null
+            }
+            
+            // Also fetch monthly trends
+            const monthlyTrends = await fetchMonthlyTrends(auth.tenantId!, dateRange, ['revenue'])
+            if (monthlyTrends.length > 0) {
+              reportData.monthlyRevenue = monthlyTrends
+              context.log(`Monthly trends fetched: ${monthlyTrends.length} months`)
+            }
+            break
+            
+          case 'properties':
+          case 'revenue_by_property':
+            // Fetch property performance data
+            const propertyData = await fetchPropertyMetricsForReport(auth.tenantId!, dateRange)
+            reportData[module] = propertyData
+            context.log(`Property data fetched: ${propertyData.length} properties`)
+            break
+            
+          case 'occupancy':
+          case 'availability':
+            // Fetch occupancy data
+            const occupancyData = await fetchOccupancyDataForReport(auth.tenantId!, dateRange)
+            reportData[module] = occupancyData
+            break
+            
+          case 'guests':
+          case 'repeat_rate':
+          case 'demographics':
+            // Fetch guest analytics
+            const guestData = await fetchGuestDataForReport(auth.tenantId!, dateRange)
+            reportData[module] = guestData
+            break
+            
+          case 'tax':
+          case 'jurisdictions':
+          case 'tax_breakdown':
+            // Fetch tax data
+            const taxData = await fetchTaxDataForReport(auth.tenantId!, dateRange)
+            reportData[module] = taxData
+            break
+            
+          case 'channels':
+          case 'revenue_by_channel':
+            // Fetch real channel data
+            const channelData = await fetchChannelData(auth.tenantId!, dateRange)
+            reportData[module] = channelData
+            break
+            
+          case 'trends':
+          case 'seasonal_trends':
+            // For trends, always fetch at least 12 months of data regardless of selected date range
+            const today = new Date()
+            const twelveMonthsAgo = subMonths(today, 12)
+            const trendDateRange = {
+              from: formatDateISO(twelveMonthsAgo),
+              to: formatDateISO(today)
+            }
+            const trends = await fetchMonthlyTrends(auth.tenantId!, trendDateRange, ['revenue', 'occupancy', 'bookings'])
+            reportData[module] = trends
+            break
+            
+          default:
+            reportData[module] = null
+        }
+      } catch (error) {
+        context.error(`Error fetching ${module} data:`, error)
+        reportData[module] = null
+      }
+    }
+    
+    // Generate PDF with the fetched data
     const pdfBuffer = await generateQuickPDF(
       'Quick Report',
       body,

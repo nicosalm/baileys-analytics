@@ -4,12 +4,14 @@ interface LoadingStateProps {
   message?: string
   size?: 'sm' | 'md' | 'lg'
   fullScreen?: boolean
+  inline?: boolean
 }
 
 export const LoadingState = ({ 
   message, 
   size = 'md',
-  fullScreen = false 
+  fullScreen = false,
+  inline = false 
 }: LoadingStateProps) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
@@ -36,6 +38,17 @@ export const LoadingState = ({
     return (
       <div className="flex items-center justify-center h-screen">
         {content}
+      </div>
+    )
+  }
+
+  if (inline) {
+    return (
+      <div className="inline-flex items-center gap-2">
+        <Loader2 className={`animate-spin text-current ${sizeClasses[size]}`} />
+        {message && (
+          <span className={`text-current ${textSizes[size]}`}>{message}</span>
+        )}
       </div>
     )
   }

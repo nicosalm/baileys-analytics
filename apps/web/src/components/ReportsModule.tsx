@@ -37,7 +37,7 @@ const REPORT_CATEGORIES = {
   }
 }
 
-// Enhanced Quick Reports that mirror & improve upon OwnerRez reports
+// Quick Reports that mirror OwnerRez reports
 const QUICK_REPORTS = [
   {
     id: 'daily-ops',
@@ -45,7 +45,6 @@ const QUICK_REPORTS = [
     description: 'Today\'s arrivals, departures & action items',
     icon: Zap,
     category: 'operational',
-    badge: 'Enhanced',
     config: {
       modules: ['arrivals', 'departures', 'turnovers', 'alerts'],
       dateRange: 'today',
@@ -58,7 +57,6 @@ const QUICK_REPORTS = [
     description: 'Detailed metrics by property with comparisons',
     icon: Building2,
     category: 'analytics',
-    badge: 'Popular',
     config: {
       modules: ['properties', 'occupancy', 'revenue_by_property'],
       dateRange: 'last30days',
@@ -71,7 +69,6 @@ const QUICK_REPORTS = [
     description: 'P&L with visual breakdowns and trends',
     icon: TrendingUp,
     category: 'financial',
-    badge: 'Enhanced',
     config: {
       modules: ['pl', 'revenue', 'expenses', 'trends'],
       dateRange: 'lastMonth',
@@ -96,7 +93,6 @@ const QUICK_REPORTS = [
     description: 'Tax collected by jurisdiction with details',
     icon: FileText,
     category: 'financial',
-    badge: 'Detailed',
     config: {
       modules: ['tax', 'jurisdictions', 'tax_breakdown'],
       dateRange: 'lastQuarter',
@@ -109,7 +105,6 @@ const QUICK_REPORTS = [
     description: 'Performance by booking source',
     icon: PieChart,
     category: 'analytics',
-    badge: 'New',
     config: {
       modules: ['channels', 'conversion', 'revenue_by_channel'],
       dateRange: 'last90days',
@@ -134,7 +129,6 @@ const QUICK_REPORTS = [
     description: 'Guest demographics and repeat visitors',
     icon: Users,
     category: 'analytics',
-    badge: 'Insights',
     config: {
       modules: ['guests', 'repeat_rate', 'demographics'],
       dateRange: 'lastYear',
@@ -213,14 +207,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
             }`} />
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-medium text-gray-900">{report.name}</h4>
-              {report.badge && (
-                <span className="px-2 py-0.5 text-xs font-medium bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full">
-                  {report.badge}
-                </span>
-              )}
-            </div>
+            <h4 className="font-medium text-gray-900 mb-1">{report.name}</h4>
             <p className="text-sm text-gray-600">{report.description}</p>
           </div>
         </div>
@@ -232,7 +219,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
         className="w-full flex items-center justify-center px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all disabled:opacity-50"
       >
         {isGenerating ? (
-          <LoadingState />
+          <LoadingState size="sm" inline message="Generating..." />
         ) : (
           <>
             <Play className="w-4 h-4 mr-2" />
@@ -338,9 +325,8 @@ export default function ReportsModule() {
                   Professional PDF Reports
                 </h3>
                 <p className="text-sm text-gray-600 max-w-2xl">
-                  Generate beautiful PDF reports with enhanced visualizations and insights. 
-                  Our reports go beyond basic data exports to provide actionable intelligence 
-                  for your vacation rental business.
+                  Generate PDF reports with visualizations and insights. 
+                  Get actionable intelligence for your vacation rental business.
                 </p>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 rounded-full">
