@@ -8,7 +8,6 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { useReportTemplates } from '@/hooks/use-api'
-import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 
 const REPORT_CATEGORIES = {
@@ -307,30 +306,22 @@ export default function ReportsModule() {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('templates')}
-            className={`pb-3 border-b-2 transition-colors flex items-center ${
-              activeTab === 'templates'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            disabled
+            className="pb-3 border-b-2 border-transparent text-gray-400 cursor-not-allowed flex items-center"
           >
-            <FileText className="w-4 h-4 mr-2" />
-            Custom Templates
-            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+            <FileText className="w-4 h-4 mr-2 opacity-50" />
+            <span className="opacity-50">Custom Templates</span>
+            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-400 rounded-full">
               Soon
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('scheduled')}
-            className={`pb-3 border-b-2 transition-colors flex items-center ${
-              activeTab === 'scheduled'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            disabled
+            className="pb-3 border-b-2 border-transparent text-gray-400 cursor-not-allowed flex items-center"
           >
-            <Clock className="w-4 h-4 mr-2" />
-            Scheduled
-            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">
+            <Clock className="w-4 h-4 mr-2 opacity-50" />
+            <span className="opacity-50">Scheduled</span>
+            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-400 rounded-full">
               Soon
             </span>
           </button>
