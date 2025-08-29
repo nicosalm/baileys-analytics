@@ -29,7 +29,6 @@ export async function fetchPropertyMetricsForReport(
   tenantId: string,
   dateRange: ReportDateRange
 ): Promise<PropertyMetrics[]> {
-  console.log('[fetchPropertyMetricsForReport] Fetching for tenant:', tenantId, 'dateRange:', dateRange)
   
   try {
     // Simplified query similar to financial data pattern
@@ -53,11 +52,9 @@ export async function fetchPropertyMetricsForReport(
     )
 
     if (!result.success) {
-      console.error('[fetchPropertyMetricsForReport] Query failed')
       return []
     }
 
-    console.log('[fetchPropertyMetricsForReport] Got', result.data.length, 'properties')
     
     const days = Math.ceil((new Date(dateRange.to).getTime() - new Date(dateRange.from).getTime()) / (1000 * 60 * 60 * 24)) + 1
 
@@ -79,10 +76,8 @@ export async function fetchPropertyMetricsForReport(
       }
     })
     
-    console.log('[fetchPropertyMetricsForReport] Returning', mappedResults.length, 'mapped properties')
     return mappedResults
   } catch (error) {
-    console.error('[fetchPropertyMetricsForReport] Error:', error)
     return []
   }
 }
@@ -95,7 +90,6 @@ export async function fetchOccupancyDataForReport(
   tenantId: string,
   dateRange: ReportDateRange
 ) {
-  console.log('[fetchOccupancyDataForReport] Fetching for tenant:', tenantId, 'dateRange:', dateRange)
   
   // Overall occupancy - simplified query
   const overallResult = await query(
@@ -228,8 +222,6 @@ export async function fetchOccupancyDataForReport(
     }
   }) : []
 
-  console.log('[fetchOccupancyDataForReport] Overall:', (overall * 100).toFixed(1), '%')
-
   return {
     overall,
     bookedNights,
@@ -247,7 +239,6 @@ export async function fetchGuestDataForReport(
   tenantId: string,
   dateRange: ReportDateRange
 ) {
-  console.log('[fetchGuestDataForReport] Fetching for tenant:', tenantId, 'dateRange:', dateRange)
   
   // Guest metrics - simplified and fixed
   const metricsResult = await query(
@@ -329,8 +320,6 @@ export async function fetchGuestDataForReport(
     lastVisit: row.last_visit
   })) : []
 
-  console.log('[fetchGuestDataForReport] Metrics:', metrics.totalGuests, 'guests')
-
   return { metrics, guests }
 }
 
@@ -341,9 +330,8 @@ export async function fetchTaxDataForReport(
   tenantId: string,
   dateRange: ReportDateRange
 ) {
-  console.log('[fetchTaxDataForReport] Fetching for tenant:', tenantId, 'dateRange:', dateRange)
   
-  // Tax summary from bookings with configured tax rates
+  // Tax summary from bookings with configured tax rates (using JSONB jurisdictions)
   const taxResult = await query<{
     property_name: string
     tax_name: string
@@ -351,22 +339,32 @@ export async function fetchTaxDataForReport(
     total_revenue: string
     estimated_tax: string
   }>(
-    `SELECT 
+    `WITH tax_jurisdictions AS (
+      SELECT 
+        ptc.property_id,
+        ptc.tenant_id,
+        jsonb_array_elements(ptc.jurisdictions) as jurisdiction
+      FROM property_tax_configs ptc
+      WHERE ptc.tenant_id = $1 
+        AND ptc.is_active = true
+        AND ptc.effective_from <= $3::date
+        AND (ptc.effective_to IS NULL OR ptc.effective_to >= $2::date)
+    )
+    SELECT 
       p.name as property_name,
-      COALESCE(ptc.tax_name, 'Tax') as tax_name,
-      COALESCE(ptc.tax_rate, 0)::text as tax_rate,
+      COALESCE(tj.jurisdiction->>'name', 'Tax') as tax_name,
+      COALESCE((tj.jurisdiction->>'rate')::numeric, 0)::text as tax_rate,
       COALESCE(SUM(b.total_amount), 0)::text as total_revenue,
-      COALESCE(SUM(b.total_amount * COALESCE(ptc.tax_rate, 0) / 100), 0)::text as estimated_tax
+      COALESCE(SUM(b.total_amount * COALESCE((tj.jurisdiction->>'rate')::numeric, 0) / 100), 0)::text as estimated_tax
     FROM properties p
-    LEFT JOIN property_tax_configs ptc ON p.id = ptc.property_id
-      AND ptc.tenant_id = $1
+    LEFT JOIN tax_jurisdictions tj ON p.id = tj.property_id
     LEFT JOIN bookings b ON p.id = b.property_id
       AND b.tenant_id = $1
       AND b.arrival >= $2::date
       AND b.arrival <= $3::date
       AND b.status != 'canceled'
     WHERE p.tenant_id = $1 AND p.active = true
-    GROUP BY p.name, ptc.tax_name, ptc.tax_rate
+    GROUP BY p.name, tj.jurisdiction->>'name', tj.jurisdiction->>'rate'
     ORDER BY estimated_tax DESC`,
     [tenantId, dateRange.from, dateRange.to]
   )
@@ -388,23 +386,35 @@ export async function fetchTaxDataForReport(
     })
   }
 
-  // By property
+  // By property - sum all tax jurisdictions per property
   const byPropertyResult = await query<{
     property_id: string
     property_name: string
     booking_count: string
     total_tax: string
   }>(
-    `SELECT 
+    `WITH property_tax_rates AS (
+      SELECT 
+        ptc.property_id,
+        COALESCE(SUM((j->>'rate')::numeric), 0) as total_rate
+      FROM property_tax_configs ptc,
+        jsonb_array_elements(ptc.jurisdictions) as j
+      WHERE ptc.tenant_id = $1 
+        AND ptc.is_active = true
+        AND ptc.effective_from <= $3::date
+        AND (ptc.effective_to IS NULL OR ptc.effective_to >= $2::date)
+      GROUP BY ptc.property_id
+    )
+    SELECT 
       p.id as property_id,
       p.name as property_name,
       COUNT(b.id)::text as booking_count,
       COALESCE(
-        SUM(b.total_amount * COALESCE(ptc.tax_rate, 0) / 100), 
+        SUM(b.total_amount * COALESCE(ptr.total_rate, 0) / 100), 
         0
       )::text as total_tax
     FROM properties p
-    LEFT JOIN property_tax_configs ptc ON p.id = ptc.property_id
+    LEFT JOIN property_tax_rates ptr ON p.id = ptr.property_id
     LEFT JOIN bookings b ON p.id = b.property_id
       AND b.tenant_id = $1
       AND b.arrival >= $2::date
@@ -422,8 +432,6 @@ export async function fetchTaxDataForReport(
     bookingCount: parseIntField(row.booking_count),
     totalTax: parseNumericField(row.total_tax)
   })) : []
-
-  console.log('[fetchTaxDataForReport] Total tax:', totalTax)
 
   return {
     summary: {

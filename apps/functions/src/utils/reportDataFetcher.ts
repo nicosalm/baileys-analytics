@@ -16,7 +16,6 @@ export async function fetchFinancialData(
   dateRange: ReportDateRange,
   filters: ReportFilters = {}
 ) {
-  console.log('fetchFinancialData called with:', { tenantId, dateRange, filters })
   try {
     // For now, use a simpler direct query instead of fetchRevenueData
     const revenueResult = await query(
@@ -32,10 +31,7 @@ export async function fetchFinancialData(
       [tenantId, dateRange.from, dateRange.to]
     )
     
-    console.log('Direct revenue query result:', revenueResult.success ? 'success' : 'failed')
-    
     if (!revenueResult.success || !revenueResult.data[0]) {
-      console.error('Revenue query failed')
       return null
     }
     
@@ -87,17 +83,14 @@ export async function fetchFinancialData(
       }
     }
     
-    console.log('Returning financial data with keys:', Object.keys(result))
     return result
   } catch (error) {
-    console.error('Error fetching financial data:', error)
     return null
   }
 }
 
 // Fetch today's arrivals and departures
 export async function fetchDailyOperations(tenantId: string, date: string = 'CURRENT_DATE') {
-  console.log('Fetching daily operations for tenant:', tenantId, 'date:', date)
   try {
     const dateFilter = date === 'CURRENT_DATE' ? 'CURRENT_DATE' : `$2::date`
     const params = date === 'CURRENT_DATE' ? [tenantId] : [tenantId, date]
@@ -175,26 +168,18 @@ export async function fetchDailyOperations(tenantId: string, date: string = 'CUR
       params
     )
 
-    console.log('Daily ops results:', {
-      arrivals: arrivalsResult.success ? arrivalsResult.data.length : 'failed',
-      departures: departuresResult.success ? departuresResult.data.length : 'failed',
-      turnovers: turnoversResult.success ? turnoversResult.data.length : 'failed'
-    })
-    
     return {
       arrivals: arrivalsResult.success ? arrivalsResult.data : [],
       departures: departuresResult.success ? departuresResult.data : [],
       turnovers: turnoversResult.success ? turnoversResult.data : []
     }
   } catch (error) {
-    console.error('Error fetching daily operations:', error)
     return { arrivals: [], departures: [], turnovers: [] }
   }
 }
 
 // Fetch channel/platform analysis
 export async function fetchChannelData(tenantId: string, dateRange: ReportDateRange) {
-  console.log('fetchChannelData called for tenant:', tenantId, 'dateRange:', dateRange)
   try {
     const result = await query(
       `SELECT 
@@ -213,10 +198,7 @@ export async function fetchChannelData(tenantId: string, dateRange: ReportDateRa
       [tenantId, dateRange.from, dateRange.to]
     )
 
-    console.log('Channel query result:', result.success ? `${result.data.length} channels` : 'failed')
-    
     if (!result.success || result.data.length === 0) {
-      console.log('No channel data found')
       return []
     }
 
@@ -228,10 +210,8 @@ export async function fetchChannelData(tenantId: string, dateRange: ReportDateRa
       avgStayLength: parseFloat(row.avg_stay_length) || 0
     }))
     
-    console.log('Returning channel data:', mapped.length, 'channels')
     return mapped
   } catch (error) {
-    console.error('Error fetching channel data:', error)
     return []
   }
 }
@@ -242,7 +222,6 @@ export async function fetchMonthlyTrends(
   dateRange: ReportDateRange,
   metrics: ('revenue' | 'occupancy' | 'bookings')[] = ['revenue']
 ) {
-  console.log('fetchMonthlyTrends called with:', { tenantId, dateRange })
   try {
     const result = await query(
       `SELECT 
@@ -290,7 +269,6 @@ export async function fetchMonthlyTrends(
       }
     })
   } catch (error) {
-    console.error('Error fetching monthly trends:', error)
     return []
   }
 }
@@ -330,7 +308,6 @@ export async function fetchBookingsList(
 
     return result.success ? result.data : []
   } catch (error) {
-    console.error('Error fetching bookings list:', error)
     return []
   }
 }

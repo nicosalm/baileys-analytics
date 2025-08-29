@@ -54,9 +54,12 @@ function calculateDateRange(dateRangeType: string): ReportDateRange {
       return { from: formatDateISO(startOfMonth(lastMonth)), to: formatDateISO(endOfMonth(lastMonth)) }
     
     case 'lastQuarter':
-      const currentQuarter = Math.floor(getMonth(today) / 3)
-      const lastQuarterStart = new Date(getYear(today), (currentQuarter - 1) * 3, 1)
-      const lastQuarterEnd = new Date(getYear(today), currentQuarter * 3, 0)
+      const currentMonth = getMonth(today)
+      const currentQuarter = Math.floor(currentMonth / 3)
+      const year = currentQuarter === 0 ? getYear(today) - 1 : getYear(today)
+      const lastQ = currentQuarter === 0 ? 3 : currentQuarter - 1
+      const lastQuarterStart = new Date(year, lastQ * 3, 1)
+      const lastQuarterEnd = new Date(year, (lastQ + 1) * 3, 0)
       return { from: formatDateISO(lastQuarterStart), to: formatDateISO(lastQuarterEnd) }
     
     case 'lastYear':
@@ -201,6 +204,9 @@ async function addModuleContent(
     case 'turnovers':
       return await addBookingsList(doc, module, data, yPosition)
     
+    case 'alerts':
+      return await addAlerts(doc, data, yPosition)
+    
     case 'bookings':
       return await addBookingsDetails(doc, data, yPosition)
       
@@ -238,6 +244,44 @@ async function addModuleContent(
     default:
       return await addGenericData(doc, data, yPosition)
   }
+}
+
+async function addAlerts(doc: jsPDF, data: any, yPos: number): Promise<number> {
+  doc.setFontSize(11)
+  doc.setFont('helvetica', 'bold')
+  doc.text('ACTION ITEMS', 20, yPos)
+  yPos += 8
+  
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(80, 80, 80)
+  
+  const alerts = Array.isArray(data) ? data : []
+  if (alerts.length === 0) {
+    doc.text('No action items for today', 20, yPos)
+  } else {
+    doc.text(`${alerts.length} items requiring attention`, 20, yPos)
+  }
+  doc.setTextColor(0, 0, 0)
+  yPos += 8
+  
+  if (alerts.length > 0) {
+    const headers = ['Type', 'Property', 'Description', 'Priority']
+    const rows = alerts.map((alert: any) => [
+      alert.type || 'Alert',
+      alert.property || 'N/A',
+      alert.description || 'No description',
+      alert.priority || 'Normal'
+    ])
+    
+    yPos = addDataTable(doc, yPos, headers, rows, {
+      columnStyles: {
+        3: { halign: 'center' }
+      }
+    })
+  }
+  
+  return yPos
 }
 
 async function addBookingsList(doc: jsPDF, type: string, data: any, yPos: number): Promise<number> {
@@ -760,21 +804,11 @@ async function addTaxReport(doc: jsPDF, data: any, yPos: number): Promise<number
   doc.setFontSize(8)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(80, 80, 80)
-  doc.text(`${formatCurrency(summary.totalTax || 0)} Total Tax  •  ${summary.taxBreakdown ? summary.taxBreakdown.length : 0} Tax Types`, 20, yPos)
+  const taxTypes = summary.taxBreakdown ? summary.taxBreakdown.length : 0
+  const propertyCount = data.byProperty ? data.byProperty.length : 0
+  doc.text(`${formatCurrency(summary.totalTax || 0)} Total Tax  •  ${taxTypes} Tax Types  •  ${propertyCount} Properties`, 20, yPos)
   doc.setTextColor(0, 0, 0)
   yPos += 8
-  doc.setDrawColor(220, 220, 220)
-  doc.setLineWidth(0.1)
-  doc.line(20, yPos, 190, yPos)
-  yPos += 4
-  
-  // Total tax collected
-  doc.setFontSize(7)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(60, 60, 60)
-  doc.text(`Total Tax Collected: ${formatCurrency(summary.totalTax || 0)}`, 20, yPos)
-  doc.setTextColor(0, 0, 0)
-  yPos += 10
   
   // Tax breakdown by type
   if (summary.taxBreakdown && summary.taxBreakdown.length > 0) {
@@ -783,7 +817,7 @@ async function addTaxReport(doc: jsPDF, data: any, yPos: number): Promise<number
     const rows = summary.taxBreakdown.map((tax: any) => [
       tax.name || tax.type || 'Tax',
       formatCurrency(tax.amount || 0),
-      formatPercentage((tax.amount || 0) / total * 100)
+      `${((tax.amount || 0) / total * 100).toFixed(1)}%`
     ])
     
     yPos = addDataTable(doc, yPos, headers, rows, {
@@ -1092,13 +1126,17 @@ async function quickGenerateReport(
           case 'arrivals':
           case 'departures':
           case 'turnovers':
+          case 'alerts':
             const dailyOps = await fetchDailyOperations(auth.tenantId!)
             if (module === 'arrivals') {
               reportData[module] = dailyOps.arrivals
             } else if (module === 'departures') {
               reportData[module] = dailyOps.departures
-            } else {
+            } else if (module === 'turnovers') {
               reportData[module] = dailyOps.turnovers
+            } else {
+              // For now, alerts returns empty array
+              reportData[module] = []
             }
             break
             
@@ -1115,9 +1153,7 @@ async function quickGenerateReport(
             
             if (financialData) {
               reportData[module] = financialData
-              context.log(`Financial data fetched successfully for ${module}`)
             } else {
-              context.log(`Financial data fetch failed for ${module}`)
               reportData[module] = null
             }
             
@@ -1125,7 +1161,6 @@ async function quickGenerateReport(
             const monthlyTrends = await fetchMonthlyTrends(auth.tenantId!, dateRange, ['revenue'])
             if (monthlyTrends.length > 0) {
               reportData.monthlyRevenue = monthlyTrends
-              context.log(`Monthly trends fetched: ${monthlyTrends.length} months`)
             }
             break
             
@@ -1134,7 +1169,6 @@ async function quickGenerateReport(
             // Fetch property performance data
             const propertyData = await fetchPropertyMetricsForReport(auth.tenantId!, dateRange)
             reportData[module] = propertyData
-            context.log(`Property data fetched: ${propertyData.length} properties`)
             break
             
           case 'occupancy':
@@ -1184,7 +1218,6 @@ async function quickGenerateReport(
             reportData[module] = null
         }
       } catch (error) {
-        context.error(`Error fetching ${module} data:`, error)
         reportData[module] = null
       }
     }
@@ -1211,7 +1244,6 @@ async function quickGenerateReport(
       body: pdfBuffer
     }
   } catch (error) {
-    context.error('Error generating quick report:', error)
     return createErrorResponse('Failed to generate report')
   }
 }
