@@ -91,6 +91,65 @@ export async function fetchOccupancyDataForReport(
   dateRange: ReportDateRange
 ) {
   
+  // Get detailed gap nights analysis with property and date info
+  const gapAnalysisResult = await query<{
+    property_name: string
+    gap_start: string
+    gap_end: string
+    gap_days: string
+  }>(
+    `WITH booking_gaps AS (
+      SELECT 
+        p.name as property_name,
+        b1.departure as gap_start,
+        b2.arrival as gap_end,
+        (b2.arrival::date - b1.departure::date) as gap_days
+      FROM bookings b1
+      JOIN bookings b2 ON b1.property_id = b2.property_id
+        AND b2.arrival > b1.departure
+        AND b2.arrival = (
+          SELECT MIN(b3.arrival)
+          FROM bookings b3
+          WHERE b3.property_id = b1.property_id
+            AND b3.arrival > b1.departure
+            AND b3.tenant_id = $1
+        )
+      JOIN properties p ON b1.property_id = p.id
+      WHERE b1.tenant_id = $1
+        AND b1.departure >= $2::date
+        AND b1.departure <= $3::date
+        AND b1.status != 'canceled'
+        AND b2.status != 'canceled'
+    )
+    SELECT 
+      property_name,
+      TO_CHAR(gap_start, 'MM/DD') as gap_start,
+      TO_CHAR(gap_end, 'MM/DD') as gap_end,
+      gap_days::text
+    FROM booking_gaps
+    WHERE gap_days <= 7  -- Focus on fillable gaps
+    ORDER BY gap_days ASC, gap_start ASC
+    LIMIT 20`,
+    [tenantId, dateRange.from, dateRange.to]
+  )
+  
+  // Get booking lead time analysis
+  const leadTimeResult = await query(
+    `SELECT 
+      AVG(arrival::date - created_at::date) as avg_lead_days,
+      PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY arrival::date - created_at::date) as median_lead_days,
+      COUNT(CASE WHEN (arrival::date - created_at::date) <= 7 THEN 1 END) as last_minute_bookings,
+      COUNT(CASE WHEN (arrival::date - created_at::date) > 30 THEN 1 END) as advance_bookings,
+      COUNT(*) as total_bookings
+    FROM bookings
+    WHERE tenant_id = $1
+      AND arrival >= $2::date
+      AND arrival <= $3::date
+      AND status != 'canceled'
+      AND created_at IS NOT NULL`,
+    [tenantId, dateRange.from, dateRange.to]
+  )
+  
   // Overall occupancy - simplified query
   const overallResult = await query(
     `WITH booking_nights AS (
@@ -222,12 +281,68 @@ export async function fetchOccupancyDataForReport(
     }
   }) : []
 
+  const gapDetails = gapAnalysisResult.success ? gapAnalysisResult.data.map(row => ({
+    propertyName: row.property_name,
+    gapStart: row.gap_start,
+    gapEnd: row.gap_end,
+    gapDays: parseInt(row.gap_days) || 0
+  })) : []
+  
+  // Also get summary counts
+  const gapSummaryResult = await query(
+    `WITH booking_gaps AS (
+      SELECT 
+        (b2.arrival::date - b1.departure::date) as gap_days
+      FROM bookings b1
+      JOIN bookings b2 ON b1.property_id = b2.property_id
+        AND b2.arrival > b1.departure
+        AND b2.arrival = (
+          SELECT MIN(b3.arrival)
+          FROM bookings b3
+          WHERE b3.property_id = b1.property_id
+            AND b3.arrival > b1.departure
+            AND b3.tenant_id = $1
+        )
+      WHERE b1.tenant_id = $1
+        AND b1.departure >= $2::date
+        AND b1.departure <= $3::date
+        AND b1.status != 'canceled'
+        AND b2.status != 'canceled'
+    )
+    SELECT 
+      COUNT(CASE WHEN gap_days = 1 THEN 1 END) as single_night,
+      COUNT(CASE WHEN gap_days = 2 THEN 1 END) as two_night,
+      COUNT(CASE WHEN gap_days >= 3 AND gap_days <= 7 THEN 1 END) as short_stay,
+      COUNT(*) as total
+    FROM booking_gaps
+    WHERE gap_days <= 7`,
+    [tenantId, dateRange.from, dateRange.to]
+  )
+  
+  const gapSummary = gapSummaryResult.success && gapSummaryResult.data[0] ? {
+    singleNight: parseInt(gapSummaryResult.data[0].single_night) || 0,
+    twoNight: parseInt(gapSummaryResult.data[0].two_night) || 0,
+    shortStay: parseInt(gapSummaryResult.data[0].short_stay) || 0,
+    total: parseInt(gapSummaryResult.data[0].total) || 0
+  } : null
+  
+  const leadTimeMetrics = leadTimeResult.success && leadTimeResult.data[0] ? {
+    avgLeadDays: parseFloat(leadTimeResult.data[0].avg_lead_days) || 0,
+    medianLeadDays: parseFloat(leadTimeResult.data[0].median_lead_days) || 0,
+    lastMinuteBookings: parseInt(leadTimeResult.data[0].last_minute_bookings) || 0,
+    advanceBookings: parseInt(leadTimeResult.data[0].advance_bookings) || 0,
+    totalBookings: parseInt(leadTimeResult.data[0].total_bookings) || 0
+  } : null
+  
   return {
     overall,
     bookedNights,
     availableNights,
     byProperty,
-    byMonth
+    byMonth,
+    gapAnalysis: gapDetails,
+    gapSummary: gapSummary,
+    leadTime: leadTimeMetrics
   }
 }
 
@@ -240,7 +355,7 @@ export async function fetchGuestDataForReport(
   dateRange: ReportDateRange
 ) {
   
-  // Guest metrics - simplified and fixed
+  // Enhanced guest metrics with historical context
   const metricsResult = await query(
     `WITH guest_bookings AS (
       SELECT 
@@ -257,22 +372,38 @@ export async function fetchGuestDataForReport(
         AND guest_name IS NOT NULL
         AND guest_name != ''
       GROUP BY guest_name
+    ),
+    historical_guests AS (
+      SELECT DISTINCT guest_name
+      FROM bookings
+      WHERE tenant_id = $1
+        AND arrival < $2::date
+        AND status != 'canceled'
+        AND guest_name IS NOT NULL
+        AND guest_name != ''
     )
     SELECT 
-      COUNT(*)::numeric as total_guests,
-      COUNT(CASE WHEN booking_count > 1 THEN 1 END)::numeric as repeat_guests,
-      COALESCE(AVG(avg_stay_length), 0)::numeric as avg_stay_length,
-      COALESCE(AVG(avg_spent), 0)::numeric as avg_spend,
-      COALESCE(SUM(total_spent), 0)::numeric as total_revenue
-    FROM guest_bookings`,
+      COUNT(gb.guest_name)::numeric as total_guests,
+      COUNT(CASE WHEN gb.booking_count > 1 THEN 1 END)::numeric as repeat_in_period,
+      COUNT(hg.guest_name)::numeric as returning_guests,
+      COALESCE(AVG(gb.avg_stay_length), 0)::numeric as avg_stay_length,
+      COALESCE(AVG(gb.avg_spent), 0)::numeric as avg_spend,
+      COALESCE(SUM(gb.total_spent), 0)::numeric as total_revenue
+    FROM guest_bookings gb
+    LEFT JOIN historical_guests hg ON gb.guest_name = hg.guest_name`,
     [tenantId, dateRange.from, dateRange.to]
   )
 
   const metrics = metricsResult.success && metricsResult.data[0] ? {
     totalGuests: parseInt(metricsResult.data[0].total_guests) || 0,
-    repeatGuests: parseInt(metricsResult.data[0].repeat_guests) || 0,
+    repeatGuests: parseInt(metricsResult.data[0].repeat_in_period) || 0,
+    returningGuests: parseInt(metricsResult.data[0].returning_guests) || 0,
     repeatRate: safeDivide(
-      parseInt(metricsResult.data[0].repeat_guests) || 0,
+      parseInt(metricsResult.data[0].repeat_in_period) || 0,
+      parseInt(metricsResult.data[0].total_guests) || 1
+    ),
+    returningRate: safeDivide(
+      parseInt(metricsResult.data[0].returning_guests) || 0,
       parseInt(metricsResult.data[0].total_guests) || 1
     ),
     avgStayLength: parseFloat(metricsResult.data[0].avg_stay_length) || 0,
@@ -281,31 +412,59 @@ export async function fetchGuestDataForReport(
   } : {
     totalGuests: 0,
     repeatGuests: 0,
+    returningGuests: 0,
     repeatRate: 0,
+    returningRate: 0,
     avgStayLength: 0,
     avgSpend: 0,
     totalRevenue: 0
   }
 
-  // Top guests
+  // Enhanced top guests with lifetime value
   const guestsResult = await query(
-    `SELECT 
-      guest_name as name,
-      guest_email as email,
-      COUNT(*)::numeric as booking_count,
-      SUM(total_amount)::numeric as total_spent,
-      AVG(total_amount / NULLIF(departure - arrival, 0))::numeric as avg_nightly_rate,
-      TO_CHAR(MIN(arrival), 'YYYY-MM-DD') as first_visit,
-      TO_CHAR(MAX(arrival), 'YYYY-MM-DD') as last_visit
-    FROM bookings
-    WHERE tenant_id = $1
-      AND arrival >= $2::date
-      AND arrival <= $3::date
-      AND status != 'canceled'
-      AND guest_name IS NOT NULL
-      AND guest_name != ''
-    GROUP BY guest_name, guest_email
-    ORDER BY SUM(total_amount) DESC
+    `WITH period_bookings AS (
+      SELECT 
+        guest_name,
+        guest_email,
+        COUNT(*) as period_bookings,
+        SUM(total_amount) as period_spent,
+        AVG(total_amount / NULLIF(departure - arrival, 0)) as avg_nightly_rate,
+        MAX(arrival) as last_visit
+      FROM bookings
+      WHERE tenant_id = $1
+        AND arrival >= $2::date
+        AND arrival <= $3::date
+        AND status != 'canceled'
+        AND guest_name IS NOT NULL
+        AND guest_name != ''
+      GROUP BY guest_name, guest_email
+    ),
+    lifetime_bookings AS (
+      SELECT 
+        guest_name,
+        COUNT(*) as total_bookings,
+        SUM(total_amount) as lifetime_value,
+        MIN(arrival) as first_visit_ever
+      FROM bookings
+      WHERE tenant_id = $1
+        AND status != 'canceled'
+        AND guest_name IS NOT NULL
+        AND guest_name != ''
+      GROUP BY guest_name
+    )
+    SELECT 
+      pb.guest_name as name,
+      pb.guest_email as email,
+      pb.period_bookings::numeric as booking_count,
+      pb.period_spent::numeric as total_spent,
+      pb.avg_nightly_rate::numeric,
+      lb.total_bookings::numeric as lifetime_bookings,
+      lb.lifetime_value::numeric,
+      TO_CHAR(lb.first_visit_ever, 'YYYY-MM-DD') as first_visit,
+      TO_CHAR(pb.last_visit, 'YYYY-MM-DD') as last_visit
+    FROM period_bookings pb
+    LEFT JOIN lifetime_bookings lb ON pb.guest_name = lb.guest_name
+    ORDER BY pb.period_spent DESC
     LIMIT 20`,
     [tenantId, dateRange.from, dateRange.to]
   )
@@ -316,6 +475,8 @@ export async function fetchGuestDataForReport(
     bookingCount: parseInt(row.booking_count) || 0,
     totalSpent: parseFloat(row.total_spent) || 0,
     avgNightlyRate: parseFloat(row.avg_nightly_rate) || 0,
+    lifetimeBookings: parseInt(row.lifetime_bookings) || 0,
+    lifetimeValue: parseFloat(row.lifetime_value) || 0,
     firstVisit: row.first_visit,
     lastVisit: row.last_visit
   })) : []

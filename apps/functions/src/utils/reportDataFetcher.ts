@@ -56,19 +56,48 @@ export async function fetchFinancialData(
     const fees = feesResult.success ? feesResult.data[0] : { platform_fees: 0 }
     
     const platformFees = parseFloat(fees.platform_fees) || 0
+    
+    // Get tax collected (if configured)
+    const taxResult = await query(
+      `WITH property_tax_rates AS (
+        SELECT 
+          ptc.property_id,
+          COALESCE(SUM((j->>'rate')::numeric), 0) as total_rate
+        FROM property_tax_configs ptc,
+          jsonb_array_elements(ptc.jurisdictions) as j
+        WHERE ptc.tenant_id = $1 
+          AND ptc.is_active = true
+          AND ptc.effective_from <= $3::date
+          AND (ptc.effective_to IS NULL OR ptc.effective_to >= $2::date)
+        GROUP BY ptc.property_id
+      )
+      SELECT 
+        COALESCE(SUM(b.total_amount * COALESCE(ptr.total_rate, 0) / 100), 0) as total_tax
+      FROM bookings b
+      LEFT JOIN property_tax_rates ptr ON b.property_id = ptr.property_id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status != 'canceled'`,
+      [tenantId, dateRange.from, dateRange.to]
+    )
+    
+    const taxCollected = taxResult.success && taxResult.data[0] ? 
+      parseFloat(taxResult.data[0].total_tax) || 0 : 0
 
     // Structure as simplified P&L data
     const result = {
       pl: {
         revenue: revenue,
         previousRevenue: 0, // TODO: Calculate previous period
-        netRevenue: revenue - platformFees,
+        netRevenue: revenue - platformFees - taxCollected,
         previousNetRevenue: 0,
         expenses: platformFees,
         previousExpenses: 0,
-        netProfit: revenue - platformFees,
+        taxCollected: taxCollected,
+        netProfit: revenue - platformFees - taxCollected,
         previousNetProfit: 0,
-        profitMargin: revenue > 0 ? ((revenue - platformFees) / revenue) : 0,
+        profitMargin: revenue > 0 ? ((revenue - platformFees - taxCollected) / revenue) : 0,
         previousProfitMargin: 0,
         revenueGrowth: 0,
         netRevenueGrowth: 0,
@@ -265,7 +294,8 @@ export async function fetchMonthlyTrends(
         month: formatDateISO(monthDate),
         revenue: parseFloat(row.revenue) || 0,
         bookings: parseInt(row.bookings) || 0,
-        occupancy: Math.min((totalNights / availableNights) * 100, 100)
+        occupancy: Math.min((totalNights / availableNights) * 100, 100),
+        totalNights: totalNights
       }
     })
   } catch (error) {
