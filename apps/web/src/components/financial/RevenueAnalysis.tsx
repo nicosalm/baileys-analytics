@@ -16,7 +16,7 @@ import { detectGranularity } from '@/utils/chart-helpers'
 interface RevenueAnalysisProps {
   data: any
   loading: boolean
-  onMonthClick?: (month: string) => void
+  onPeriodClick?: (period: string) => void
   onPropertyClick?: (propertyId: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
 }
@@ -24,7 +24,7 @@ interface RevenueAnalysisProps {
 export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
   data,
   loading,
-  onMonthClick,
+  onPeriodClick,
   onPropertyClick,
   comparisonMode = 'none'
 }) => {
@@ -51,6 +51,15 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
     const totalRevenue = gross || metrics?.revenue?.gross || 0
     const avgMonthlyRevenue = byMonth?.length > 0 
       ? byMonth.reduce((sum: number, m: any) => sum + (m.amount || m.revenue || 0), 0) / byMonth.length
+      : 0
+    
+    const previousMonthlyData = previousPeriod?.monthlyTrend || []
+    const previousAvgMonthlyRevenue = previousMonthlyData.length > 0
+      ? previousMonthlyData.reduce((sum: number, m: any) => sum + (m.revenue || m.amount || 0), 0) / previousMonthlyData.length
+      : 0
+    
+    const avgMonthlyGrowth = previousAvgMonthlyRevenue > 0
+      ? ((avgMonthlyRevenue - previousAvgMonthlyRevenue) / previousAvgMonthlyRevenue) * 100
       : 0
     
     // Find best/worst performing properties using propertyData
@@ -87,6 +96,8 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
     return {
       totalRevenue,
       avgMonthlyRevenue,
+      avgMonthlyGrowth,
+      previousAvgMonthlyRevenue,
       revenueGrowth,
       previousRevenue: previousPeriod?.revenue?.gross || 0,
       topProperties,
@@ -147,7 +158,13 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           value={analysis.avgMonthlyRevenue}
           format="currency"
           color="blue"
-          subValue={`${analysis.monthlyData.length} months | Best: ${formatCurrency(Math.max(...analysis.monthlyData.map((m: any) => m.revenue || 0)))}`}
+          subValue={comparisonMode !== 'none' && analysis.previousAvgMonthlyRevenue > 0
+            ? `${comparisonMode === 'previous-year' ? 'vs Last Year' : 'vs Previous Period'}: ${formatCurrency(analysis.previousAvgMonthlyRevenue)} | ${analysis.monthlyData.length} months`
+            : `${analysis.monthlyData.length} months | Best: ${formatCurrency(Math.max(...analysis.monthlyData.map((m: any) => m.revenue || 0)))}`}
+          trend={comparisonMode !== 'none' && analysis.avgMonthlyGrowth !== 0 ? {
+            value: analysis.avgMonthlyGrowth,
+            isPositive: analysis.avgMonthlyGrowth > 0
+          } : undefined}
         />
         <MetricCard
           icon={ArrowUp}
@@ -173,7 +190,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
           : undefined
         }
-        onMonthClick={onMonthClick}
+        onPeriodClick={onPeriodClick}
         showComparison={analysis.hasComparison}
         comparisonMode={comparisonMode}
       />

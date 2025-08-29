@@ -14,14 +14,14 @@ import { detectGranularity } from '@/utils/chart-helpers'
 interface PLViewProps {
   data: any
   loading: boolean
-  onMonthClick?: (month: string) => void
+  onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
 }
 
 export const PLView: React.FC<PLViewProps> = ({
   data,
   loading,
-  onMonthClick,
+  onPeriodClick,
   comparisonMode = 'none'
 }) => {
   const { showTips } = useTips()
@@ -50,6 +50,14 @@ export const PLView: React.FC<PLViewProps> = ({
     
     const profitGrowth = previousPeriod?.revenue?.net
       ? ((netRevenue - previousPeriod.revenue.net) / previousPeriod.revenue.net) * 100
+      : 0
+    
+    const previousProfitMargin = previousPeriod?.revenue?.gross > 0
+      ? ((previousPeriod.revenue.net / previousPeriod.revenue.gross) * 100)
+      : 0
+    
+    const profitMarginChange = previousProfitMargin > 0
+      ? profitMargin - previousProfitMargin
       : 0
     
     const platformData = platforms?.map((p: any) => ({
@@ -93,8 +101,10 @@ export const PLView: React.FC<PLViewProps> = ({
       comparison: {
         revenueGrowth,
         profitGrowth,
+        profitMarginChange,
         previousRevenue: previousPeriod?.revenue?.gross || 0,
         previousProfit: previousPeriod?.revenue?.net || 0,
+        previousProfitMargin,
         periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
                      comparisonMode === 'previous-period' ? 'vs Previous Period' : '',
         hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some((m: any) => m.previousRevenue !== undefined)
@@ -157,7 +167,7 @@ export const PLView: React.FC<PLViewProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && comparison.previousProfit > 0
-            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousProfit)} | ${formatPercentage(profitability.marginPercent, 1)} margin`
+            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousProfit)}`
             : `${formatPercentage(profitability.marginPercent, 1)} margin | After ${formatCurrency(revenue.platformFees)} fees`}
           trend={comparisonMode !== 'none' && comparison.profitGrowth !== 0 ? {
             value: comparison.profitGrowth,
@@ -179,8 +189,14 @@ export const PLView: React.FC<PLViewProps> = ({
           value={profitability.marginPercent}
           format="percent"
           color={profitability.marginPercent > 70 ? 'green' : profitability.marginPercent > 50 ? 'yellow' : 'red'}
-          subValue={`Target: 70% | ${profitability.marginPercent > 70 ? 'Above' : 'Below'} target`}
+          subValue={comparisonMode !== 'none' && comparison.previousProfitMargin > 0
+            ? `${comparison.periodLabel}: ${comparison.previousProfitMargin.toFixed(1)}% | Target: 70%`
+            : `Target: 70% | ${profitability.marginPercent > 70 ? 'Above' : 'Below'} target`}
           tooltip="Percentage of revenue kept after all costs"
+          trend={comparisonMode !== 'none' && comparison.profitMarginChange !== 0 ? {
+            value: comparison.profitMarginChange,
+            isPositive: comparison.profitMarginChange > 0
+          } : undefined}
         />
       </div>
       
@@ -195,7 +211,7 @@ export const PLView: React.FC<PLViewProps> = ({
         showProfit={true}
         showComparison={comparison.hasComparison}
         comparisonMode={comparisonMode}
-        onMonthClick={onMonthClick}
+        onPeriodClick={onPeriodClick}
         height={320}
       />
       

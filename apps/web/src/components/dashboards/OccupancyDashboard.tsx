@@ -238,6 +238,10 @@ export const OccupancyDashboard = () => {
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.availableNights.toLocaleString()}`
             : "Across all properties"
           }
+          trend={comparisonMode !== 'none' && previousData?.availableNights ? {
+            value: ((currentData.availableNights - previousData.availableNights) / previousData.availableNights) * 100,
+            isPositive: currentData.availableNights > previousData.availableNights
+          } : undefined}
           tooltip="Total nights properties could be booked"
           color="purple"
         />

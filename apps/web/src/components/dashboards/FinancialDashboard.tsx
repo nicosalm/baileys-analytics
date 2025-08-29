@@ -246,10 +246,10 @@ const FinancialDashboard = () => {
         </div>
 
         <div className="p-6">
-          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} onMonthClick={handlePeriodClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} onMonthClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'cashflow' && <CashFlowView data={cashFlowData} loading={isLoading} onMonthClick={handlePeriodClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onMonthClick={handlePeriodClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} onPeriodClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'cashflow' && <CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} />}
         </div>
       </div>
     </div>

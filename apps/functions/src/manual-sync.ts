@@ -24,7 +24,6 @@ export async function manualSync(
     return tenantValidation
   }
   
-  // Type assertion after validation
   const tenantId = auth.tenantId!
 
   const tokenResult = await getTenantToken(tenantId)

@@ -1,4 +1,4 @@
-import { useMonthDetail } from '@/hooks/use-api'
+import { usePeriodDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import { Calendar, DollarSign, Home, TrendingUp, Info } from 'lucide-react'
 import { format, parseISO, addDays, startOfMonth, endOfMonth } from 'date-fns'
@@ -21,41 +21,34 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
   const { showTips } = useTips()
   const { filters } = useDashboard()
   
-  // Format the display name based on granularity and data
-  // IMPORTANT: All date ranges are INCLUSIVE on both ends (from <= date <= to)
   let displayName: string
   let dateRangeStart: string
   let dateRangeEnd: string
   
   if (granularity === 'daily' && day) {
-    // Daily data - show specific date
     const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
     const date = parseISO(dateStr)
     displayName = format(date, 'EEEE, MMMM d, yyyy')
     dateRangeStart = dateStr
     dateRangeEnd = dateStr
   } else if (granularity === 'weekly' && day) {
-    // Weekly data - show week range (7 days inclusive)
     const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
     const date = parseISO(dateStr)
     displayName = `Week of ${format(date, 'MMM d, yyyy')}`
     dateRangeStart = dateStr
-    // Add 6 days to get 7-day inclusive range (e.g., Mon-Sun)
     dateRangeEnd = format(addDays(date, 6), 'yyyy-MM-dd')
   } else {
-    // Monthly data (default)
     const monthDate = new Date(parseInt(year), parseInt(month) - 1)
     displayName = format(monthDate, 'MMMM yyyy')
     dateRangeStart = format(startOfMonth(monthDate), 'yyyy-MM-dd')
     dateRangeEnd = format(endOfMonth(monthDate), 'yyyy-MM-dd')
   }
   
-  // Use the date range for fetching data
-  const { data, isLoading, error } = useMonthDetail(
+  const { data, isLoading, error } = usePeriodDetail(
     day ? dateRangeStart : month, 
     day ? dateRangeEnd : year, 
     filters.selectedTags.map(t => t.id),
-    day !== undefined // Flag to indicate if this is a specific date range
+    day !== undefined
   )
 
   const subtitle = isLoading ? "Loading details..." :
@@ -74,9 +67,9 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
         loading={isLoading}
         error={error}
         empty={!data && !isLoading && !error}
-        loadingMessage="Loading month details..."
-        errorMessage="Failed to load month details"
-        emptyMessage="No data available for this month"
+        loadingMessage="Loading period details..."
+        errorMessage="Failed to load period details"
+        emptyMessage="No data available for this period"
         minHeight={400}
       >
         <div className="space-y-6">
@@ -130,7 +123,7 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
         {/* Top Properties */}
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">
-            <h3 className="font-semibold">Top Properties This Month</h3>
+            <h3 className="font-semibold">Top Properties This {granularity === 'daily' ? 'Day' : granularity === 'weekly' ? 'Week' : 'Month'}</h3>
           </div>
           <div className="divide-y">
             {data?.topProperties?.slice(0, 5).map((property: any) => (

@@ -17,7 +17,7 @@ interface TaxCenterProps {
   data: any
   loading: boolean
   onPropertyClick?: (propertyId: string) => void
-  onMonthClick?: (month: string) => void
+  onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
 }
 
@@ -25,7 +25,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   data,
   loading,
   onPropertyClick,
-  onMonthClick,
+  onPeriodClick,
   comparisonMode = 'none'
 }) => {
   const { showTips } = useTips()
@@ -61,6 +61,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       ? ((totalTax - previousTaxes) / previousTaxes) * 100
       : 0
     
+    const previousOwnerRemitted = previousTaxes * (ownerRemitted / Math.max(totalTax, 1))
+    const ownerRemittedGrowth = previousOwnerRemitted > 0
+      ? ((ownerRemitted - previousOwnerRemitted) / previousOwnerRemitted) * 100
+      : 0
+    
     return {
       totalTax,
       ownerRemitted,
@@ -72,8 +77,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       granularity,
       comparison: {
         previousTaxes,
+        previousOwnerRemitted,
         previousEffectiveRate,
         taxGrowth,
+        ownerRemittedGrowth,
         periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
                      comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
       }
@@ -131,10 +138,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           value={taxData.ownerRemitted}
           format="currency"
           color="blue"
-          subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
-            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousTaxes * (taxData.ownerRemitted / Math.max(taxData.totalTax, 1)))}`
+          subValue={comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0
+            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousOwnerRemitted)}`
             : "Your responsibility"}
           tooltip="Tax amount you need to pay directly"
+          trend={comparisonMode !== 'none' && taxData.comparison.ownerRemittedGrowth !== 0 ? {
+            value: taxData.comparison.ownerRemittedGrowth,
+            isPositive: taxData.comparison.ownerRemittedGrowth > 0
+          } : undefined}
         />
         <MetricCard
           icon={CheckCircle}
@@ -160,7 +171,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       <TaxTrendChart
         data={taxData.byMonth}
         title={`${taxData.granularity} Tax Trend`}
-        onMonthClick={onMonthClick}
+        onPeriodClick={onPeriodClick}
       />
       
       {/* Tax Remittance and Property Details Side by Side */}

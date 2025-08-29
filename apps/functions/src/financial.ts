@@ -1168,7 +1168,7 @@ export async function financial(
   // Type assertion after validation
   const tenantId = auth.tenantId!
 
-  const { from, to, tagIds = [] } = validated?.query || {}
+  const { from, to, tags: tagIds = [] } = validated?.query || {}
 
   // Handle comparison dates like overview.ts does
   let comparisonFrom: string | undefined

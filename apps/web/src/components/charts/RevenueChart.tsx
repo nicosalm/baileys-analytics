@@ -18,7 +18,7 @@ interface RevenueChartProps {
   showProfit?: boolean
   showComparison?: boolean
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
-  onMonthClick?: (month: string) => void
+  onPeriodClick?: (period: string) => void
 }
 
 export const RevenueChart: React.FC<RevenueChartProps> = ({
@@ -29,7 +29,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   showProfit = false,
   showComparison = false,
   comparisonMode = 'none',
-  onMonthClick
+  onPeriodClick
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -48,7 +48,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
         <LineChart
           data={formattedData}
           onClick={(e: any) => {
-            if (e && e.activeLabel && onMonthClick) {
+            if (e && e.activeLabel && onPeriodClick) {
               // Find the original data point using the formatted label
               const dataPoint = formattedData.find(d => d.month === e.activeLabel)
               if (dataPoint) {
@@ -56,10 +56,10 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
                 const index = formattedData.indexOf(dataPoint)
                 const originalDate = data[index]?.month
                 if (originalDate) {
-                  onMonthClick(originalDate)
+                  onPeriodClick(originalDate)
                 } else {
                   // Fallback to the formatted label
-                  onMonthClick(e.activeLabel)
+                  onPeriodClick(e.activeLabel)
                 }
               }
             }
@@ -91,7 +91,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
             strokeWidth={3}
             dot={{ fill: METRIC_COLORS.revenue, r: 5 }}
             activeDot={{ r: 7 }}
-            cursor={onMonthClick ? 'pointer' : undefined}
+            cursor={onPeriodClick ? 'pointer' : undefined}
             name="Gross Revenue"
           />
           {showProfit && (
@@ -102,7 +102,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
               strokeWidth={3}
               dot={{ fill: METRIC_COLORS.profit, r: 5 }}
               activeDot={{ r: 7 }}
-              cursor={onMonthClick ? 'pointer' : undefined}
+              cursor={onPeriodClick ? 'pointer' : undefined}
               name="Net Profit"
             />
           )}

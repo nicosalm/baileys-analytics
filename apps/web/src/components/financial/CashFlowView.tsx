@@ -9,20 +9,20 @@ import {
   Info, ArrowUpRight, ArrowDownRight
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
-import { chartFormatters, tooltipFormatters } from '@/utils/chart-helpers'
+import { chartFormatters, tooltipFormatters, detectGranularity } from '@/utils/chart-helpers'
 import { METRIC_COLORS } from '@/lib/theme'
 
 interface CashFlowViewProps {
   data: any
   loading: boolean
-  onMonthClick?: (month: string) => void
+  onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
 }
 
 export const CashFlowView: React.FC<CashFlowViewProps> = ({
   data,
   loading,
-  onMonthClick,
+  onPeriodClick,
   comparisonMode = 'none'
 }) => {
   const { showTips } = useTips()
@@ -71,6 +71,18 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       ? ((netCashFlow - previousNetFlow) / Math.abs(previousNetFlow)) * 100
       : 0
     
+    const previousAvgMonthlyFlow = previousPeriod?.monthlyTrend?.length > 0
+      ? previousPeriod.monthlyTrend.reduce((sum: number, m: any) => {
+          const monthRevenue = m.revenue || m.amount || 0
+          const monthOutflow = monthRevenue * actualOutflowRate
+          return sum + (monthRevenue - monthOutflow)
+        }, 0) / previousPeriod.monthlyTrend.length
+      : 0
+    
+    const avgMonthlyFlowGrowth = previousAvgMonthlyFlow !== 0
+      ? ((avgMonthlyFlow - previousAvgMonthlyFlow) / Math.abs(previousAvgMonthlyFlow)) * 100
+      : 0
+    
     return {
       totalInflow,
       totalOutflow,
@@ -84,9 +96,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         previousInflow,
         previousOutflow,
         previousNetFlow,
+        previousAvgMonthlyFlow,
         inflowGrowth,
         outflowGrowth,
         netFlowGrowth,
+        avgMonthlyFlowGrowth,
         periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
                      comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
       }
@@ -171,18 +185,24 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.avgMonthlyFlow}
           format="currency"
           color="blue"
-          subValue={`Per month | ${cashFlowData.avgMonthlyFlow > 0 ? 'Profitable' : 'Loss'}`}
+          subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousAvgMonthlyFlow !== 0
+            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousAvgMonthlyFlow)} | ${cashFlowData.avgMonthlyFlow > 0 ? 'Profitable' : 'Loss'}`
+            : `Per month | ${cashFlowData.avgMonthlyFlow > 0 ? 'Profitable' : 'Loss'}`}
+          trend={comparisonMode !== 'none' && cashFlowData.comparison.avgMonthlyFlowGrowth !== 0 ? {
+            value: cashFlowData.comparison.avgMonthlyFlowGrowth,
+            isPositive: cashFlowData.comparison.avgMonthlyFlowGrowth > 0
+          } : undefined}
         />
       </div>
       
       {/* Cash Flow Chart */}
-      <ChartWrapper title="Monthly Cash Flow" height={320}>
+      <ChartWrapper title={`${detectGranularity(cashFlowData.monthlyData || [], 'month')} Cash Flow`} height={320}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={cashFlowData.monthlyData}
             onClick={(e: any) => {
-              if (e && e.activeLabel && onMonthClick) {
-                onMonthClick(e.activeLabel)
+              if (e && e.activeLabel && onPeriodClick) {
+                onPeriodClick(e.activeLabel)
               }
             }}
           >

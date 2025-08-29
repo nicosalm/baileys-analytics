@@ -13,14 +13,14 @@ interface TaxTrendChartProps {
   }>
   title?: string
   height?: number
-  onMonthClick?: (month: string) => void
+  onPeriodClick?: (period: string) => void
 }
 
 export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
   data,
   title = 'Monthly Tax Trend',
   height = 320,
-  onMonthClick
+  onPeriodClick
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -41,7 +41,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
         <LineChart
           data={formattedData}
           onClick={(e: any) => {
-            if (e && e.activeLabel && onMonthClick) {
+            if (e && e.activeLabel && onPeriodClick) {
               // Find the original data point using the formatted label
               const dataPoint = formattedData.find(d => d.month === e.activeLabel)
               if (dataPoint) {
@@ -49,10 +49,10 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
                 const index = formattedData.indexOf(dataPoint)
                 const originalDate = data[index]?.month
                 if (originalDate) {
-                  onMonthClick(originalDate)
+                  onPeriodClick(originalDate)
                 } else {
                   // Fallback to the formatted label
-                  onMonthClick(e.activeLabel)
+                  onPeriodClick(e.activeLabel)
                 }
               }
             }
@@ -68,7 +68,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
             stroke={METRIC_COLORS.tax}
             strokeWidth={2}
             dot={{ fill: METRIC_COLORS.tax }}
-            cursor={onMonthClick ? 'pointer' : undefined}
+            cursor={onPeriodClick ? 'pointer' : undefined}
             name="Total Tax"
           />
           {data[0]?.ownerRemitted !== undefined && (

@@ -214,7 +214,7 @@ export function useGuestDetail(guestId?: string) {
   )
 }
 
-export function useMonthDetail(monthOrFrom?: string, yearOrTo?: string, tagIds?: string[], isDateRange: boolean = false) {
+export function usePeriodDetail(monthOrFrom?: string, yearOrTo?: string, tagIds?: string[], isDateRange: boolean = false) {
   const params = new URLSearchParams()
   
   if (isDateRange) {
@@ -230,9 +230,9 @@ export function useMonthDetail(monthOrFrom?: string, yearOrTo?: string, tagIds?:
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
   
   return useSWR<any>(
-    monthOrFrom && yearOrTo ? [`/month-detail`, yearOrTo, monthOrFrom, tagIds, isDateRange] : null,
+    monthOrFrom && yearOrTo ? [`/period-detail`, yearOrTo, monthOrFrom, tagIds, isDateRange] : null,
     async () => {
-      const url = `/month-detail?${params}`
+      const url = `/period-detail?${params}`
       const result = await api.request(url)
       if (!result.success) throw new Error(result.error)
       return result.data

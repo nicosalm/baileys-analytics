@@ -21,7 +21,7 @@ interface QuickInsightsProps {
   data: any
   loading: boolean
   onPropertyClick?: (propertyId: string) => void
-  onMonthClick?: (month: string) => void
+  onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
 }
 
@@ -29,7 +29,7 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({
   data,
   loading,
   onPropertyClick,
-  onMonthClick
+  onPeriodClick
 }) => {
   const insights = useMemo(() => {
     if (!data || !data.metrics) return []
@@ -124,7 +124,7 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({
           description: `${bestMonth.month} was your best month with ${formatCurrency(bestMonth.revenue)} in revenue.`,
           action: {
             label: 'View Details',
-            onClick: () => onMonthClick?.(bestMonth.month)
+            onClick: () => onPeriodClick?.(bestMonth.month)
           }
         })
       }
@@ -137,7 +137,7 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({
           description: `${worstMonth.month} had low performance. Consider seasonal promotions or rate adjustments.`,
           action: {
             label: 'Analyze',
-            onClick: () => onMonthClick?.(worstMonth.month)
+            onClick: () => onPeriodClick?.(worstMonth.month)
           }
         })
       }
@@ -168,7 +168,7 @@ export const QuickInsights: React.FC<QuickInsightsProps> = ({
     }
     
     return insights
-  }, [data, onPropertyClick, onMonthClick])
+  }, [data, onPropertyClick, onPeriodClick])
   
   if (loading) {
     return (

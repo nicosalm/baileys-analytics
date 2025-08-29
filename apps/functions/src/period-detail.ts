@@ -3,11 +3,9 @@ import { requireAuth, handleOptions } from './middleware/auth';
 import { formatDateISO } from './utils/dates';
 import { getActiveSeasons, buildBookingFilters } from './services/seasonService';
 import { createSuccessResponse, createErrorResponse, requireTenant } from './utils/httpResponses';
-import { parseNumericField, parseIntField } from './utils/dataTransformers';
-import { getBookingSummary, getPropertyBookingSummary, getBookingsInDateRange, transformSummaryToAPI, transformPropertySummaryToAPI, transformBookingToAPI } from './services/bookingService';
 import { query } from './services/database';
 
-export async function getMonthDetail(
+export async function getPeriodDetail(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -28,7 +26,6 @@ export async function getMonthDetail(
   }
 
   try {
-    // Support both month/year format and from/to date range format
     const from = request.query.get('from');
     const to = request.query.get('to');
     const year = request.query.get('year');
@@ -38,11 +35,9 @@ export async function getMonthDetail(
     let endDate: string;
     
     if (from && to) {
-      // Date range format (for daily/weekly views)
       startDate = from;
       endDate = to;
     } else if (year && month) {
-      // Legacy month/year format
       startDate = `${year}-${month.padStart(2, '0')}-01`;
       endDate = formatDateISO(new Date(parseInt(year), parseInt(month), 0));
     } else {
@@ -85,7 +80,6 @@ export async function getMonthDetail(
       FROM booked_nights bn, total_possible tp
     `;
 
-    // Get bookings that ARRIVE in the period (not just overlap)
     const periodBookingsQuery = `
       SELECT
         COALESCE(SUM(b.total_amount), 0) as total_revenue,
@@ -99,12 +93,51 @@ export async function getMonthDetail(
         ${bookingFilters || ''}
     `;
 
+    const propertyRevenueQuery = `
+      SELECT
+        p.id as property_id,
+        p.name as property_name,
+        COALESCE(SUM(b.total_amount), 0) as revenue,
+        COUNT(DISTINCT b.id) as bookings
+      FROM properties p
+      LEFT JOIN bookings b ON p.id = b.property_id
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status != 'canceled'
+        ${bookingFilters || ''}
+      WHERE p.tenant_id = $1 AND p.active = true
+      GROUP BY p.id, p.name
+      HAVING COUNT(DISTINCT b.id) > 0
+      ORDER BY revenue DESC
+    `;
+
+    const bookingsListQuery = `
+      SELECT
+        b.id,
+        b.property_id,
+        p.name as property_name,
+        b.guest_name,
+        b.guest_email,
+        b.arrival,
+        b.departure,
+        b.total_amount,
+        b.status
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE b.tenant_id = $1
+        AND b.arrival >= $2::date
+        AND b.arrival <= $3::date
+        AND b.status != 'canceled'
+        ${bookingFilters || ''}
+      ORDER BY b.arrival
+    `;
+
     // Get all data in parallel
     const [occupancyResult, periodBookingsResult, byPropertyResult, bookingsResult] = await Promise.all([
       query(occupancyQuery, [auth.tenantId!, startDate, endDate]),
       query(periodBookingsQuery, [auth.tenantId!, startDate, endDate]),
-      getPropertyBookingSummary(auth.tenantId!, startDate, endDate, bookingFilters || ''),
-      getBookingsInDateRange(auth.tenantId!, startDate, endDate, bookingFilters || '')
+      query(propertyRevenueQuery, [auth.tenantId!, startDate, endDate]),
+      query(bookingsListQuery, [auth.tenantId!, startDate, endDate])
     ]);
 
     if (!periodBookingsResult.success || !occupancyResult.success) {
@@ -113,10 +146,24 @@ export async function getMonthDetail(
 
     const periodData = periodBookingsResult.data[0];
     const occupancyData = occupancyResult.data[0];
-    const propertiesData = byPropertyResult.success ? transformPropertySummaryToAPI(byPropertyResult.data) : [];
-    const bookingsData = bookingsResult.success ? bookingsResult.data.map(transformBookingToAPI) : [];
+    const propertiesData = byPropertyResult.success ? byPropertyResult.data.map((p: any) => ({
+      propertyId: p.property_id,
+      propertyName: p.property_name,
+      revenue: parseFloat(p.revenue || '0'),
+      bookings: parseInt(p.bookings || '0')
+    })) : [];
+    const bookingsData = bookingsResult.success ? bookingsResult.data.map((b: any) => ({
+      id: b.id,
+      propertyId: b.property_id,
+      propertyName: b.property_name,
+      guestName: b.guest_name,
+      guestEmail: b.guest_email,
+      arrival: b.arrival,
+      departure: b.departure,
+      totalAmount: parseFloat(b.total_amount || '0'),
+      status: b.status
+    })) : [];
 
-    // Parse the numeric values
     const totalRevenue = parseFloat(periodData?.total_revenue || '0');
     const totalBookings = parseInt(periodData?.total_bookings || '0');
     const avgNightlyRate = parseFloat(periodData?.avg_nightly_rate || '0');
@@ -133,12 +180,12 @@ export async function getMonthDetail(
         totalRevenue,
         totalBookings,
         avgNightlyRate,
-        totalTax: 0, // Could calculate if needed
-        netRevenue: totalRevenue // Simplified for now
+        totalTax: 0,
+        netRevenue: totalRevenue
       },
       topProperties: propertiesData.map(p => ({
         ...p,
-        occupancyRate: 0 // Would need per-property calculation
+        occupancyRate: 0
       })),
       byProperty: propertiesData,
       bookings: bookingsData
@@ -150,9 +197,9 @@ export async function getMonthDetail(
   }
 }
 
-app.http('month-detail', {
+app.http('period-detail', {
   methods: ['GET', 'OPTIONS'],
-  route: 'month-detail',
+  route: 'period-detail',
   authLevel: 'anonymous',
-  handler: getMonthDetail
+  handler: getPeriodDetail
 });
