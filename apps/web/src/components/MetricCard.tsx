@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowUpRight, ArrowDownRight, Info, Loader2 } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, Minus, Info, Loader2 } from 'lucide-react'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
 import { cn } from '@baileys/utils'
 
@@ -179,9 +179,12 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <div className={cn(
             "flex items-center font-medium",
             currentSize.sub,
+            trend.value === 0 ? 'text-gray-500' :
             trendDirection ? 'text-green-600' : 'text-red-600'
           )}>
-            {trendDirection ? (
+            {trend.value === 0 ? (
+              <Minus className="w-4 h-4" />
+            ) : trendDirection ? (
               <ArrowUpRight className="w-4 h-4" />
             ) : (
               <ArrowDownRight className="w-4 h-4" />
