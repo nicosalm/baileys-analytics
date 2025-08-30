@@ -3,7 +3,7 @@ import { z } from 'zod'
 // Environment variable schemas
 const envSchema = z.object({
   // Required
-  DATABASE_URL: z.string().url().optional().default('postgresql://localhost:5432/baileys'),
+  DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32).optional().default('development-secret-change-in-production'),
   
   // Optional

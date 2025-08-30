@@ -61,7 +61,7 @@ export async function fetchBookings(
 
     const response = await axios.get(`${OWNERREZ_API.BASE_URL}/bookings`, {
       auth: {
-        username: 'martina@***REMOVED***',
+        username: 'test@example.com',
         password: token
       },
       headers: {

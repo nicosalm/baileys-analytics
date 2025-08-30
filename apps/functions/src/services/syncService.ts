@@ -103,7 +103,7 @@ export const buildAuthHeaders = (token: string) => {
   return isPAT
     ? {
         headers: { 'Accept': 'application/json' },
-        auth: { username: 'martina@***REMOVED***', password: token }
+        auth: { username: 'test@example.com', password: token }
       }
     : {
         headers: {

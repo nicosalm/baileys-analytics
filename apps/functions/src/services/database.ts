@@ -2,7 +2,7 @@ import { Pool, QueryResultRow } from 'pg';
 import { dbConfig } from '../config/env';
 
 const pool = new Pool({
-  connectionString: dbConfig.connectionString || 'postgresql://postgres:localdev123@127.0.0.1:5432/baileys_analytics',
+  connectionString: dbConfig.connectionString,
   max: dbConfig.max,
   idleTimeoutMillis: dbConfig.idleTimeoutMillis,
   connectionTimeoutMillis: dbConfig.connectionTimeoutMillis,

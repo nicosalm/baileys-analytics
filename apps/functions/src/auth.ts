@@ -335,7 +335,7 @@ export async function createTestUser(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   try {
-    const email = 'martina@***REMOVED***'
+    const email = 'test@example.com'
     const password = 'password123'
 
     const tenantResult = await query<{ id: string }>(

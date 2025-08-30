@@ -52,7 +52,7 @@ const getOwnerRezData = async (
   const authConfig = !token.startsWith('ey')
     ? {
         headers: { 'Accept': 'application/json' },
-        auth: { username: 'martina@***REMOVED***', password: token }
+        auth: { username: 'test@example.com', password: token }
       }
     : {
         headers: {
