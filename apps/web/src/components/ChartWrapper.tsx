@@ -2,32 +2,22 @@ import React from 'react'
 import { cn } from '@baileys/utils'
 import { Loader2, AlertCircle, BarChart3, Info } from 'lucide-react'
 import { ResponsiveContainer } from 'recharts'
+import { ChartErrorBoundary } from './ChartErrorBoundary'
 
 export interface ChartWrapperProps {
-  // Core props
   title: string
   subtitle?: string
-  
-  // Content
   children: React.ReactNode
-  
-  // State
   loading?: boolean
   error?: string | null
   noData?: boolean
   noDataMessage?: string
-  
-  // Styling
   height?: number | string
   className?: string
   icon?: React.ComponentType<{ className?: string }>
-  
-  // Actions
   actions?: React.ReactNode
   tooltip?: string
   info?: string
-  
-  // Container
   responsive?: boolean
   padding?: 'sm' | 'md' | 'lg'
 }
@@ -164,22 +154,23 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
       )}
 
       {/* Chart container */}
-      {responsive ? (
-        <div style={{ height: heightValue }}>
-          <ResponsiveContainer width="100%" height="100%">
-            {children as React.ReactElement}
-          </ResponsiveContainer>
-        </div>
-      ) : (
-        <div style={{ height: heightValue }}>
-          {children}
-        </div>
-      )}
+      <ChartErrorBoundary chartName={title} height={typeof height === 'number' ? height : 300}>
+        {responsive ? (
+          <div style={{ height: heightValue }}>
+            <ResponsiveContainer width="100%" height="100%">
+              {children as React.ReactElement}
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div style={{ height: heightValue }}>
+            {children}
+          </div>
+        )}
+      </ChartErrorBoundary>
     </div>
   )
 }
 
-// Specialized chart wrapper for mini/inline charts
 export const MiniChartWrapper: React.FC<{
   children: React.ReactNode
   height?: number
@@ -203,10 +194,12 @@ export const MiniChartWrapper: React.FC<{
   }
 
   return (
-    <div style={{ height: `${height}px` }} className={className}>
-      <ResponsiveContainer width="100%" height="100%">
-        {children as React.ReactElement}
-      </ResponsiveContainer>
-    </div>
+    <ChartErrorBoundary height={height}>
+      <div style={{ height: `${height}px` }} className={className}>
+        <ResponsiveContainer width="100%" height="100%">
+          {children as React.ReactElement}
+        </ResponsiveContainer>
+      </div>
+    </ChartErrorBoundary>
   )
 }

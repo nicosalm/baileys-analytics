@@ -9,6 +9,7 @@ import { ModalProvider } from '@/contexts/modal'
 import { ModalManager } from '@/components/ModalManager'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { LoadingState } from '@/components/LoadingState'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Lazy load pages
 const Landing = lazy(() => import('@/pages/Landing').then(m => ({ default: m.Landing })))
@@ -23,12 +24,13 @@ const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.N
 
 export const App = () => {
   return (
-    <SWRConfig value={swrConfig}>
-      <BrowserRouter>
-        <AuthProvider>
-          <ToastProvider>
-          <Suspense fallback={<LoadingState fullScreen />}>
-            <Routes>
+    <ErrorBoundary level="page">
+      <SWRConfig value={swrConfig}>
+        <BrowserRouter>
+          <AuthProvider>
+            <ToastProvider>
+            <Suspense fallback={<LoadingState fullScreen />}>
+              <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Waitlist />} />
@@ -66,5 +68,6 @@ export const App = () => {
         </AuthProvider>
       </BrowserRouter>
     </SWRConfig>
+    </ErrorBoundary>
   )
 }

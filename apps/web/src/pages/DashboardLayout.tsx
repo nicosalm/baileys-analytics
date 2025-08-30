@@ -13,6 +13,7 @@ import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Tab config with overview as first tab
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -27,22 +28,36 @@ const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentT
 const DashboardContent = () => {
   const { activeTab } = useDashboard()
 
-  switch (activeTab) {
-    case 'overview':
-      return <OverviewDashboard />
-    case 'financial':
-      return <FinancialDashboard />
-    case 'properties':
-      return <PropertiesDashboard />
-    case 'occupancy':
-      return <OccupancyDashboard />
-    case 'guests':
-      return <GuestsDashboard />
-    case 'reports':
-      return <ReportsModule />
-    default:
-      return <OverviewDashboard />
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return <OverviewDashboard />
+      case 'financial':
+        return <FinancialDashboard />
+      case 'properties':
+        return <PropertiesDashboard />
+      case 'occupancy':
+        return <OccupancyDashboard />
+      case 'guests':
+        return <GuestsDashboard />
+      case 'reports':
+        return <ReportsModule />
+      default:
+        return <OverviewDashboard />
+    }
   }
+
+  return (
+    <ErrorBoundary 
+      level="section" 
+      resetKeys={[activeTab]}
+      onError={(error, errorInfo) => {
+        console.error(`Dashboard error in ${activeTab} tab:`, error, errorInfo)
+      }}
+    >
+      {renderContent()}
+    </ErrorBoundary>
+  )
 }
 
 const DashboardTabs = () => {

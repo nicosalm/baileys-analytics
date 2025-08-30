@@ -49,7 +49,7 @@ const buildQueryParams = (params: Omit<QueryParams, 'comparisonFrom' | 'comparis
     : [params.tenantId, from, to]
 }
 
-const fetchPropertyMetrics = async (params: Omit<QueryParams, 'comparisonFrom' | 'comparisonTo'>, fromDate?: string, toDate?: string): Promise<DbResult<readonly {
+export const fetchPropertyMetrics = async (params: Omit<QueryParams, 'comparisonFrom' | 'comparisonTo'>, fromDate?: string, toDate?: string): Promise<DbResult<readonly {
   property_id: string
   property_name: string
   total_revenue: string
@@ -141,7 +141,7 @@ const fetchPropertyMetrics = async (params: Omit<QueryParams, 'comparisonFrom' |
   )
 }
 
-const calculatePropertyMetrics = (row: {
+export const calculatePropertyMetrics = (row: {
   property_id: string
   property_name: string
   total_revenue: string
@@ -167,7 +167,7 @@ const calculatePropertyMetrics = (row: {
   }
 }
 
-const transformMetrics = (
+export const transformMetrics = (
   data: readonly {
     property_id: string
     property_name: string

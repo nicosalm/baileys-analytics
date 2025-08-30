@@ -3,6 +3,45 @@ import { api } from '@/lib/api'
 import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
 import type { Season, SeasonFormData } from '@/types/season'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
+import { measurePerformance } from '@/utils/performance'
+
+// New batch endpoint hook for dashboards
+export function useDashboardBatch(
+  view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests',
+  from?: string,
+  to?: string,
+  tagIds?: string[],
+  comparisonFrom?: string,
+  comparisonTo?: string
+) {
+  const validFrom = from && isValidDateString(from) ? from : undefined
+  const validTo = to && isValidDateString(to) ? to : undefined
+  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
+  const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
+  
+  const key = validFrom || validTo ? ['/dashboard-batch', view, validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
+  
+  return useSWR<any>(key, async () => {
+    const params = new URLSearchParams()
+    params.append('view', view)
+    if (validFrom) params.append('from', validFrom)
+    if (validTo) params.append('to', validTo)
+    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
+    if (validCompTo) params.append('comparisonTo', validCompTo)
+    
+    const endpoint = `/dashboard-batch?${params}`
+    const result = await measurePerformance(
+      () => api.request(endpoint),
+      `dashboard-batch-${view}`,
+      (res: any) => res.success && res.data?._cached === true
+    )
+    
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  })
+}
 
 export function useFinancial(
   from?: string, 

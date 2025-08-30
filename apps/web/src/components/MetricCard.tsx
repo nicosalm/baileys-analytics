@@ -102,6 +102,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   // Format the value based on format prop
   const formatValue = (val: number | string): string => {
+    // Safety check for undefined/null values
+    if (val === undefined || val === null) {
+      return format === 'currency' ? '$0' : '0'
+    }
+    
     if (typeof val === 'string') return val
     
     switch (format) {
@@ -114,7 +119,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       case 'number':
         return val.toLocaleString()
       default:
-        return val.toString()
+        return val?.toString() || '0'
     }
   }
 

@@ -1,6 +1,6 @@
 import { FileText, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
 import { formatCurrency, formatPercentage, format, parseDate } from '@baileys/utils'
-import { useFinancial } from '@/hooks/use-api'
+import { useDashboardBatch } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 
 interface TaxRemittanceWidgetProps {
@@ -13,8 +13,8 @@ export const TaxRemittanceWidget = ({
   periodStart, 
   periodEnd 
 }: TaxRemittanceWidgetProps) => {
-  // Use financial data to get calculated tax information
-  const { data: financialData, error, isLoading } = useFinancial(periodStart, periodEnd)
+  // Use batch endpoint to get calculated tax information
+  const { data: financialData, error, isLoading } = useDashboardBatch('financial', periodStart, periodEnd, [])
   
   // Extract tax data from financial response
   const taxData = financialData?.tax

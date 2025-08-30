@@ -1,11 +1,11 @@
-import { useEffect } from 'react'
-import { PropertyMetrics } from '@/types/dashboard'
-import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy, differenceInDays } from '@baileys/utils'
+import { useMemo } from 'react'
+import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy } from '@baileys/utils'
+import { useTagIds, useErrorToast, getTimePeriodLabel } from '@/hooks/use-dashboard-utils'
+import { PropertyMetrics, ChartDataPoint, RadarChartData } from '@/types/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, Legend } from 'recharts'
 import { Calendar, DollarSign, Home, Info, BarChart3, Target, Percent, TrendingUp, TrendingDown } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
-import { usePropertyMetrics } from '@/hooks/use-api'
-import { useToast } from '@/contexts/toast'
+import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
@@ -96,30 +96,77 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
 
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
-  const { addToast } = useToast()
   const { showTips } = useTips()
   
-  const { data, error, isLoading } = usePropertyMetrics(
+  const tagIds = useTagIds()
+  
+  const { data, error, isLoading } = useDashboardBatch(
+    'properties',
     filters.dateRange.from,
     filters.dateRange.to,
-    filters.selectedTags.map(t => t.id),
+    tagIds,
     comparisonRange?.from,
     comparisonRange?.to
   )
 
-  // Handle both API response formats
-  // Note: Backend doesn't support comparison for property-metrics yet, so previousProperties will be null
-  const properties = Array.isArray(data) ? data : (data?.current || data)
-  const previousProperties = data?.previous || null
-
-  // Handle error state
-  useEffect(() => {
-    if (error) {
-      addToast('error', 'Failed to load property metrics')
+  let properties = []
+  let previousProperties = null
+  
+  if (Array.isArray(data)) {
+    properties = data
+  } else if (data) {
+    if (data.properties && Array.isArray(data.properties)) {
+      properties = data.properties
+    } else if (data.current && Array.isArray(data.current)) {
+      properties = data.current
+      previousProperties = data.previous || null
     }
-  }, [error?.message, addToast])
+  }
 
-  if (isLoading || !properties || properties.length === 0) {
+  useErrorToast(error, 'Failed to load property metrics')
+
+  const validProperties = Array.isArray(properties) 
+    ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
+    : [] as PropertyMetrics[]
+    
+  const chartData = useMemo<ChartDataPoint[]>(() => validProperties.map((p: PropertyMetrics) => ({
+    name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
+    fullName: p.propertyName, // Keep full name for tooltip
+    revenue: p.revenue || 0,
+    occupancy: Math.round((p.occupancyRate || 0) * 100), // Round to integer for cleaner display
+    bookings: p.bookings || 0,
+    date: p.date || null // Include date if available for period detection
+  })), [validProperties])
+
+  const timePeriod = getTimePeriodLabel(filters.dateRange.from, filters.dateRange.to)
+
+  const { maxRevenue, maxAvgRate, maxBookings } = useMemo(() => ({
+    maxRevenue: maxBy(validProperties, (p: PropertyMetrics) => p.revenue)?.revenue || 1,
+    maxAvgRate: maxBy(validProperties, (p: PropertyMetrics) => p.avgNightlyRate)?.avgNightlyRate || 1,
+    maxBookings: maxBy(validProperties, (p: PropertyMetrics) => p.bookings)?.bookings || 1
+  }), [validProperties])
+
+  const radarData = useMemo<RadarChartData[]>(() => validProperties.map((p: PropertyMetrics) => ({
+    property: p.propertyName.length > 15 ? p.propertyName.substring(0, 15) + '...' : p.propertyName,
+    revenue: (p.revenue / maxRevenue) * 100,
+    occupancy: p.occupancyRate * 100,
+    avgRate: (p.avgNightlyRate / maxAvgRate) * 100,
+    bookings: (p.bookings / maxBookings) * 100
+  })), [validProperties, maxRevenue, maxAvgRate, maxBookings])
+
+  const { totalRevenue, totalBookings, avgOccupancy } = useMemo(() => ({
+    totalRevenue: sumBy(validProperties, (p: PropertyMetrics) => p.revenue),
+    totalBookings: sumBy(validProperties, (p: PropertyMetrics) => p.bookings),
+    avgOccupancy: calculateAverage(validProperties.map((p: PropertyMetrics) => p.occupancyRate))
+  }), [validProperties])
+  
+  const { prevTotalRevenue, prevTotalBookings, prevAvgOccupancy } = useMemo(() => ({
+    prevTotalRevenue: sumBy(previousProperties || [], (p: PropertyMetrics) => p.revenue),
+    prevTotalBookings: sumBy(previousProperties || [], (p: PropertyMetrics) => p.bookings),
+    prevAvgOccupancy: calculateAverage((previousProperties || []).map((p: PropertyMetrics) => p.occupancyRate))
+  }), [previousProperties])
+  
+  if (isLoading || validProperties.length === 0) {
     return (
       <div className="space-y-6">
         <div>
@@ -130,7 +177,7 @@ export const PropertiesDashboard = () => {
         </div>
         <StateWrapper
           loading={isLoading}
-          empty={!properties || properties.length === 0}
+          empty={validProperties.length === 0}
           loadingMessage="Loading property data..."
           emptyMessage="No Properties Found"
           emptySubMessage="Properties will appear here once they're synced from your booking platform."
@@ -143,48 +190,6 @@ export const PropertiesDashboard = () => {
       </div>
     )
   }
-
-  const chartData = (properties || []).map((p: any) => ({
-    name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
-    fullName: p.propertyName, // Keep full name for tooltip
-    revenue: p.revenue,
-    occupancy: Math.round(p.occupancyRate * 100), // Round to integer for cleaner display
-    bookings: p.bookings,
-    date: p.date || null // Include date if available for period detection
-  }))
-
-  // Determine time period based on date range
-  const getTimePeriod = () => {
-    if (!filters.dateRange.from || !filters.dateRange.to) return ''
-    const daysDiff = differenceInDays(
-      new Date(filters.dateRange.to),
-      new Date(filters.dateRange.from)
-    )
-    
-    if (daysDiff <= 7) return ' (Daily)'
-    if (daysDiff <= 35) return ' (Weekly)'
-    return ' (Monthly)'
-  }
-
-  const maxRevenue = maxBy(properties || [], (p: any) => p.revenue)?.revenue || 1
-  const maxAvgRate = maxBy(properties || [], (p: any) => p.avgNightlyRate)?.avgNightlyRate || 1
-  const maxBookings = maxBy(properties || [], (p: any) => p.bookings)?.bookings || 1
-
-  const radarData = (properties || []).map((p: any) => ({
-    property: p.propertyName.length > 15 ? p.propertyName.substring(0, 15) + '...' : p.propertyName,
-    revenue: (p.revenue / maxRevenue) * 100,
-    occupancy: p.occupancyRate * 100,
-    avgRate: (p.avgNightlyRate / maxAvgRate) * 100,
-    bookings: (p.bookings / maxBookings) * 100
-  }))
-
-  const totalRevenue = sumBy(properties || [], (p: any) => p.revenue)
-  const totalBookings = sumBy(properties || [], (p: any) => p.bookings)
-  const avgOccupancy = calculateAverage((properties || []).map((p: any) => p.occupancyRate))
-  
-  const prevTotalRevenue = sumBy(previousProperties || [], (p: any) => p.revenue)
-  const prevTotalBookings = sumBy(previousProperties || [], (p: any) => p.bookings)
-  const prevAvgOccupancy = calculateAverage((previousProperties || []).map((p: any) => p.occupancyRate))
 
   return (
     <div className="space-y-6">
@@ -276,8 +281,8 @@ export const PropertiesDashboard = () => {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        {(properties || []).map((property: any) => {
-          const previousProperty = previousProperties?.find((p: any) => p.propertyId === property.propertyId)
+        {validProperties.map((property: PropertyMetrics) => {
+          const previousProperty = previousProperties?.find((p: PropertyMetrics) => p.propertyId === property.propertyId)
           return (
             <PropertyCard 
               key={property.propertyId} 
@@ -291,7 +296,7 @@ export const PropertiesDashboard = () => {
 
       <div className="grid md:grid-cols-2 gap-6">
         <ChartWrapper
-          title={comparisonMode !== 'none' ? `Revenue Comparison${getTimePeriod()}` : `Money vs Fullness${getTimePeriod()}`}
+          title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Money vs Fullness${timePeriod}`}
           subtitle={comparisonMode !== 'none' 
             ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
             : "Blue bars show revenue, green bars show how full each property is"
@@ -300,8 +305,8 @@ export const PropertiesDashboard = () => {
           height={320}
         >
           {comparisonMode !== 'none' && previousProperties ? (
-            <LineChart data={chartData.map((item: any) => {
-              const prevProp = previousProperties.find((p: any) => 
+            <LineChart data={chartData.map((item: ChartDataPoint) => {
+              const prevProp = previousProperties.find((p: PropertyMetrics) => 
                 p.propertyName === item.fullName || 
                 (p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName) === item.name
               )
@@ -318,9 +323,9 @@ export const PropertiesDashboard = () => {
                 textAnchor="end"
                 height={60}
               />
-              <YAxis tickFormatter={(value: any) => formatCompactCurrency(value)} />
+              <YAxis tickFormatter={(value: number) => formatCompactCurrency(value)} />
               <Tooltip
-                formatter={(value: any) => formatCurrency(Number(value))}
+                formatter={(value: number) => formatCurrency(value)}
                 contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
                 labelFormatter={(label: any, payload: any) => {
                   if (payload && payload.length > 0) {
@@ -359,16 +364,16 @@ export const PropertiesDashboard = () => {
               />
               <YAxis
                 yAxisId="left"
-                tickFormatter={(value: any) => formatCompactCurrency(value)}
+                tickFormatter={(value: number) => formatCompactCurrency(value)}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
                 domain={[0, 100]}
-                tickFormatter={(value: any) => `${value}%`}
+                tickFormatter={(value: number) => `${value}%`}
               />
               <Tooltip
-                formatter={(value: any, name: string) => {
+                formatter={(value: number, name: string) => {
                   if (name === 'Money Earned') return formatCurrency(value)
                   if (name === 'Nights Booked %') return `${value}% of nights`
                   return value

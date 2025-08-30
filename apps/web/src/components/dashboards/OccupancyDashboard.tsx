@@ -1,10 +1,9 @@
-import { useEffect } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { Calendar, Home, AlertCircle, Info, Percent, BarChart3, TrendingUp, TrendingDown } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
-import { useOccupancy } from '@/hooks/use-api'
-import { useToast } from '@/contexts/toast'
+import { useDashboardBatch } from '@/hooks/use-api'
+import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
@@ -13,15 +12,16 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { formatPercentage, minBy } from '@baileys/utils'
 import { METRIC_COLORS } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
+import { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
 
 export const OccupancyDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
-  const { addToast } = useToast()
   const { openModal } = useModal()
   const { showTips } = useTips()
+  const tagIds = useTagIds()
   
-  const tagIds = filters.selectedTags.map(t => t.id)
-  const { data, error, isLoading } = useOccupancy(
+  const { data, error, isLoading } = useDashboardBatch(
+    'occupancy',
     filters.dateRange.from,
     filters.dateRange.to,
     tagIds,
@@ -29,15 +29,10 @@ export const OccupancyDashboard = () => {
     comparisonRange?.to
   )
 
-  // Handle both API response formats
   const currentData = data?.current || data
   const previousData = data?.previous || null
 
-  useEffect(() => {
-    if (error) {
-      addToast('error', `Failed to load occupancy data: ${error.message}`)
-    }
-  }, [error?.message, addToast])
+  useErrorToast(error, 'Failed to load occupancy data')
 
   if (isLoading || !currentData) {
     return (
@@ -54,12 +49,9 @@ export const OccupancyDashboard = () => {
     )
   }
 
-  // The data field is named byMonth but can contain daily, weekly, or monthly data
-  // Detect actual data granularity from the time intervals
   const timeSeriesData = currentData.byMonth || []
   const dataGranularity = detectGranularity(timeSeriesData, 'month')
   
-  // Get appropriate chart title based on granularity
   const getChartTitle = () => {
     switch (dataGranularity) {
       case 'Daily':
@@ -72,31 +64,23 @@ export const OccupancyDashboard = () => {
     }
   }
 
-  // Process time series data based on detected granularity
-  const chartData = timeSeriesData.map((dataPoint: any, index: number) => {
-    // For comparison data, try to match by index position when dates don't align
-    // This handles cases where current is daily/weekly but previous is monthly
-    const prevDataPoint = previousData?.byMonth?.find((pd: any) => pd.month === dataPoint.month) ||
+  const chartData = timeSeriesData.map((dataPoint: OccupancyTrendData, index: number) => {
+    const prevDataPoint = previousData?.byMonth?.find((pd: OccupancyTrendData) => pd.month === dataPoint.month) ||
                          (previousData?.byMonth?.[index])
     
-    // Format label based on granularity
     let label: string
     if (dataGranularity === 'Daily') {
-      // For daily data, show "Jun 22" format
       const [year, month, day] = dataPoint.month.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day || '1'))
       label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     } else if (dataGranularity === 'Weekly') {
-      // For weekly data, show shorter format "Jun 22"
       const [year, month, day] = dataPoint.month.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day || '1'))
       label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     } else {
-      // For monthly data, show month abbreviation
       const [year, month] = dataPoint.month.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1)
-      // Show year only if multiple years in data
-      const hasMultipleYears = timeSeriesData.some((d: any) => {
+      const hasMultipleYears = timeSeriesData.some((d: OccupancyTrendData) => {
         const [y] = d.month.split('-')
         return y !== year
       })
@@ -116,12 +100,11 @@ export const OccupancyDashboard = () => {
     }
   })
 
-  const lowestPeriod = minBy(timeSeriesData, (d: any) => d.rate) || { month: '', rate: 1 }
+  const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1 }
 
   const formatPeriodDisplay = (dateStr: string): string => {
     if (!dateStr) return 'N/A'
     
-    // Handle different date formats based on granularity
     if (dataGranularity === 'Daily' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = dateStr.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
@@ -134,17 +117,15 @@ export const OccupancyDashboard = () => {
       return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
     }
     
-    // Monthly format
     const [year, month] = dateStr.split('-')
     const date = new Date(parseInt(year), parseInt(month) - 1)
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
   }
 
-  const handlePeriodClick = (data: any) => {
+  const handlePeriodClick = (data: {activeLabel?: string}) => {
     if (data && data.activeLabel) {
-      const clickedData = chartData.find((d: any) => d.month === data.activeLabel)
+      const clickedData = chartData.find((d: {month: string; fullMonth: string}) => d.month === data.activeLabel)
       if (clickedData) {
-        // Use the already detected granularity
         let granularity: 'daily' | 'weekly' | 'monthly' = 'monthly'
         
         switch (dataGranularity) {
@@ -281,7 +262,7 @@ export const OccupancyDashboard = () => {
               }
             />
             <YAxis
-              tickFormatter={(value: any) => `${value}%`}
+              tickFormatter={(value: number) => `${value}%`}
               domain={[0, 100]}
             />
             <Tooltip
@@ -331,10 +312,10 @@ export const OccupancyDashboard = () => {
           <div className="space-y-3">
             {currentData.byProperty.length > 0 ? (
               currentData.byProperty
-                .sort((a: any, b: any) => b.rate - a.rate)
-                .map((property: any) => {
+                .sort((a: OccupancyByProperty, b: OccupancyByProperty) => b.rate - a.rate)
+                .map((property: OccupancyByProperty) => {
                   const occupancyPercent = property.rate * 100
-                  const prevProperty = previousData?.byProperty?.find((p: any) => p.propertyId === property.propertyId)
+                  const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
                   const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
                   const occupancyColor = occupancyPercent >= 70 ? 'bg-gradient-to-r from-green-500 to-green-600' :
                                          occupancyPercent >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :

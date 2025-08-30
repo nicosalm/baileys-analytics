@@ -1,8 +1,8 @@
-import { useState, useEffect, ReactNode, FC } from 'react'
-import { useFinancial } from '@/hooks/use-api'
+import { useState, ReactNode, FC } from 'react'
+import { useDashboardBatch } from '@/hooks/use-api'
+import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
-import { useToast } from '@/contexts/toast'
 import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
 
 import { PLView } from '@/components/financial/PLView'
@@ -30,13 +30,14 @@ const TabButton: FC<TabButtonProps> = ({ active, onClick, children }) => (
 )
 
 const FinancialDashboard = () => {
-  const { addToast } = useToast()
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { openModal } = useModal()
   const [activeTab, setActiveTab] = useState('pl')
   
-  const tagIds = filters.selectedTags.map(t => t.id)
-  const { data, error, isLoading } = useFinancial(
+  const tagIds = useTagIds()
+  
+  const { data, error, isLoading } = useDashboardBatch(
+    'financial',
     filters.dateRange.from,
     filters.dateRange.to,
     tagIds,
@@ -44,8 +45,6 @@ const FinancialDashboard = () => {
     comparisonRange?.to
   )
   
-  
-  // Process data for each tab from the unified response
   const financialData = data ? {
     metrics: data.pl.metrics,
     platforms: data.pl.platforms,
@@ -65,14 +64,14 @@ const FinancialDashboard = () => {
     byMonth: data.revenue.byMonth,
     byProperty: [], // Properties data not available in revenue endpoint
     lastYearData: data.revenue.lastYearData,
-    previousPeriod: data.pl.previousPeriod
+    previousPeriod: data.revenue.previousPeriod || data.pl.previousPeriod
   } : null
 
   const cashFlowData = data ? {
     metrics: data.pl.metrics,
     byMonth: data.revenue.byMonth,
     platforms: data.pl.platforms,
-    previousPeriod: data.pl.previousPeriod,
+    previousPeriod: data.cashflow?.previousPeriod || data.pl.previousPeriod,
     fees: data.revenue.fees,
     taxes: data.revenue.taxes,
     gross: data.revenue.gross,
@@ -86,21 +85,14 @@ const FinancialDashboard = () => {
       byMonth: data.tax.byMonth
     },
     metrics: data.pl.metrics,
-    previousPeriod: data.pl.previousPeriod
+    previousPeriod: data.tax?.previousPeriod || data.pl.previousPeriod
   } : null
 
-  useEffect(() => {
-    if (error) {
-      addToast('error', `Failed to load financial data: ${error.message}`)
-    }
-  }, [error?.message, addToast])
+  useErrorToast(error, 'Failed to load financial data')
 
   const handlePeriodClick = (dateStr: string) => {
-    // Detect the granularity based on the current data
-    // This ensures we match what the chart is displaying
     let chartData: any[] = []
     
-    // Get the appropriate data based on active tab
     switch (activeTab) {
       case 'pl':
         chartData = financialData?.monthlyTrend || []
@@ -118,7 +110,6 @@ const FinancialDashboard = () => {
     
     const detectedGranularity = detectGranularity(chartData, 'month')
     
-    // Handle different date formats based on detected granularity
     let year: string = new Date().getFullYear().toString()
     let month: string = (new Date().getMonth() + 1).toString().padStart(2, '0')
     let day: string | undefined

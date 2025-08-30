@@ -283,6 +283,20 @@ CREATE INDEX idx_sync_progress_status ON sync_progress(status);
 CREATE INDEX idx_platform_fee_entries_month ON platform_fee_entries(month, tenant_id);
 CREATE INDEX idx_property_tax_configs_active ON property_tax_configs(property_id, is_active, effective_from DESC) WHERE is_active = true;
 
+CREATE INDEX idx_bookings_tenant_arrival_status ON bookings(tenant_id, arrival, status) WHERE status != 'canceled';
+CREATE INDEX idx_bookings_tenant_departure_status ON bookings(tenant_id, departure, status) WHERE status != 'canceled';
+CREATE INDEX idx_bookings_updated_at ON bookings(tenant_id, updated_at DESC);
+CREATE INDEX idx_properties_updated_at ON properties(tenant_id, updated_at DESC);
+CREATE INDEX idx_bookings_guest_analytics ON bookings(tenant_id, guest_name, guest_email, arrival) WHERE status != 'canceled';
+CREATE INDEX idx_bookings_guest_name_lower ON bookings(tenant_id, LOWER(guest_name)) WHERE guest_name IS NOT NULL;
+CREATE INDEX idx_booking_charges_tenant_date ON booking_charges(booking_id, type, amount);
+CREATE INDEX idx_bookings_financial ON bookings(tenant_id, arrival, total_amount, status) WHERE status != 'canceled';
+CREATE INDEX idx_bookings_occupancy ON bookings(tenant_id, property_id, arrival, departure) WHERE status != 'canceled';
+CREATE INDEX idx_booking_tags_covering ON booking_tags(booking_id, tag_id);
+CREATE INDEX idx_property_tags_covering ON property_tags(property_id, tag_id);
+CREATE INDEX idx_platform_fee_entries_date_range ON platform_fee_entries(tenant_id, month DESC, platform);
+CREATE INDEX idx_expenses_date_range ON expenses(tenant_id, expense_date DESC, amount);
+
 ALTER TABLE platform_fee_entries ADD CONSTRAINT positive_fees CHECK (guest_service_fee >= 0 AND host_service_fee >= 0 AND platform_tax_remitted >= 0);
 ALTER TABLE platform_fee_entries ADD CONSTRAINT valid_month_format CHECK (month ~ '^\d{4}-\d{2}$');
 ALTER TABLE property_tax_configs ADD CONSTRAINT valid_jurisdictions CHECK (jurisdictions IS NOT NULL AND jsonb_typeof(jurisdictions) = 'array');

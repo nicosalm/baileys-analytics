@@ -1,6 +1,6 @@
-import { useEffect } from 'react'
-import { useOverview } from '@/hooks/use-api'
+import { useDashboardBatch } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
+import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import {
   AlertCircle, CheckCircle, TrendingUp,
@@ -11,7 +11,6 @@ import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { METRIC_COLORS, getPlatformColor } from '@/lib/theme'
 
@@ -47,12 +46,13 @@ const AlertCard = ({ alert }: { alert: any }) => {
 
 
 export const OverviewDashboard = () => {
-  const { addToast } = useToast()
   const { filters, setActiveTab, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
+  const tagIds = useTagIds()
   
-  const tagIds = filters.selectedTags.map(t => t.id)
-  const { data, error, isLoading } = useOverview(
+  // Use the batch endpoint
+  const { data, error, isLoading } = useDashboardBatch(
+    'overview',
     filters.dateRange.from,
     filters.dateRange.to,
     tagIds,
@@ -60,11 +60,7 @@ export const OverviewDashboard = () => {
     comparisonRange?.to
   )
 
-  useEffect(() => {
-    if (error) {
-      addToast('error', `Overview error: ${error.message || 'Failed to load overview data'}`)
-    }
-  }, [error?.message, addToast])
+  useErrorToast(error, 'Failed to load overview data')
 
   if (isLoading || error || !data) {
     return (
@@ -144,11 +140,11 @@ export const OverviewDashboard = () => {
           label="Money Earned"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
-          subValue={comparisonMode !== 'none' 
+          subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(metrics.revenue.previous)} | After fees: ${formatCompactCurrency(metrics.revenue.net)}`
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`
           }
-          trend={comparisonMode !== 'none' ? {
+          trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
             value: metrics.revenue.growth,
             isPositive: metrics.revenue.growth > 0
           } : undefined}
@@ -159,13 +155,13 @@ export const OverviewDashboard = () => {
           icon={Calendar}
           label="Reservations Made"
           value={metrics.bookings.current}
-          subValue={comparisonMode !== 'none'
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.bookings.previous || 0} | ${actualUpcoming} upcoming`
+          subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.bookings.previous} | ${actualUpcoming} upcoming`
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
           }
-          trend={comparisonMode !== 'none' ? {
-            value: ((metrics.bookings.current - (metrics.bookings.previous || 0)) / (metrics.bookings.previous || 1)) * 100,
-            isPositive: metrics.bookings.current > (metrics.bookings.previous || 0)
+          trend={comparisonMode !== 'none' && metrics.bookings.previous !== undefined ? {
+            value: ((metrics.bookings.current - metrics.bookings.previous) / (metrics.bookings.previous || 1)) * 100,
+            isPositive: metrics.bookings.current > metrics.bookings.previous
           } : undefined}
           color="blue"
           onClick={() => setActiveTab('properties')}
@@ -175,8 +171,8 @@ export const OverviewDashboard = () => {
           label="How Full You Are"
           value={Number(metrics.occupancy.current || 0) * 100}
           format="percent"
-          subValue={comparisonMode !== 'none'
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(Number(metrics.occupancy.previous || 0) * 100, 0)} | ${metrics.properties.total} properties`
+          subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(Number(metrics.occupancy.previous) * 100, 0)} | ${metrics.properties.total} properties`
             : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} average`
           }
           trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
@@ -190,8 +186,8 @@ export const OverviewDashboard = () => {
           icon={Users}
           label="Guest Count"
           value={metrics.guests.total}
-          subValue={comparisonMode !== 'none'
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.guests.previous || 0} | ${metrics.guests.newThisMonth} new`
+          subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.guests.previous} | ${metrics.guests.newThisMonth} new`
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`
           }
           trend={comparisonMode !== 'none' && metrics.guests.growth !== undefined ? {

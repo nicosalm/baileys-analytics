@@ -165,7 +165,7 @@ type MonthlyTaxData = {
   platformRemitted?: number
 }
 
-async function getPLData(
+export async function getPLData(
   tenantId: string,
   fromDate: string,
   toDate: string,
@@ -559,7 +559,7 @@ async function getPLData(
   return { success: true, data: plData }
 }
 
-async function getRevenueData(
+export async function getRevenueData(
   tenantId: string,
   fromDate: string,
   toDate: string,
@@ -795,7 +795,7 @@ async function getRevenueData(
   return { success: true, data: revenueData }
 }
 
-async function getCashflowData(
+export async function getCashflowData(
   tenantId: string,
   fromDate: string,
   toDate: string,
@@ -862,7 +862,7 @@ async function getCashflowData(
   }
 }
 
-async function getTaxData(
+export async function getTaxData(
   tenantId: string,
   fromDate: string,
   toDate: string,

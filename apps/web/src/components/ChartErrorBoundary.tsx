@@ -1,0 +1,43 @@
+import { FC, ReactNode } from 'react'
+import { ErrorBoundary } from './ErrorBoundary'
+import { AlertTriangle } from 'lucide-react'
+
+interface ChartErrorBoundaryProps {
+  children: ReactNode
+  chartName?: string
+  height?: number
+}
+
+const ChartErrorFallback: FC<{ chartName?: string; height?: number }> = ({ chartName, height = 320 }) => (
+  <div 
+    className="flex flex-col items-center justify-center bg-gray-50 rounded-lg border border-gray-200"
+    style={{ height: `${height}px` }}
+  >
+    <AlertTriangle className="w-8 h-8 text-gray-400 mb-2" />
+    <p className="text-sm text-gray-600">
+      {chartName ? `Unable to load ${chartName}` : 'Unable to load chart'}
+    </p>
+    <p className="text-xs text-gray-500 mt-1">
+      Please try refreshing the page
+    </p>
+  </div>
+)
+
+export const ChartErrorBoundary: FC<ChartErrorBoundaryProps> = ({ 
+  children, 
+  chartName,
+  height = 320 
+}) => {
+  return (
+    <ErrorBoundary
+      level="component"
+      isolate
+      fallback={<ChartErrorFallback chartName={chartName} height={height} />}
+      onError={(error) => {
+        console.error(`Chart error${chartName ? ` in ${chartName}` : ''}:`, error)
+      }}
+    >
+      {children}
+    </ErrorBoundary>
+  )
+}

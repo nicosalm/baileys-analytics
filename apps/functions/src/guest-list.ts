@@ -71,6 +71,293 @@ type PaginatedResponse = {
   };
 };
 
+// Export the core logic for reuse in batch endpoint
+export async function fetchGuestData(
+  tenantId: string,
+  startDate?: string,
+  endDate?: string,
+  tagIds?: string[],
+  comparisonFrom?: string,
+  comparisonTo?: string
+) {
+  // Get active seasons for filtering
+  const seasons = await getActiveSeasons(tenantId);
+  const bookingFilters = buildBookingFilters(seasons, 'b');
+  
+  // Build query parameters
+  const queryParams: any[] = [tenantId];
+  let paramIndex = 2;
+  let dateFilter = '';
+  let tagFilter = '';
+  
+  if (startDate && endDate) {
+    queryParams.push(startDate, endDate);
+    dateFilter = `AND b.arrival >= $${paramIndex}::date AND b.arrival <= $${paramIndex + 1}::date`;
+    paramIndex += 2;
+  }
+  
+  if (tagIds && tagIds.length > 0) {
+    queryParams.push(tagIds);
+    tagFilter = `AND bt.tag_id = ANY($${paramIndex}::uuid[])`;
+    paramIndex++;
+  }
+  
+  // Get guest metrics (reusing most of the existing logic)
+  const metricsQuery = `
+    WITH guest_bookings AS (
+      SELECT
+        LOWER(TRIM(b.guest_name)) as normalized_name,
+        COALESCE(LOWER(TRIM(b.guest_email)), '') as normalized_email,
+        COUNT(DISTINCT b.id) as booking_count,
+        SUM(b.total_amount) as total_spent,
+        AVG(b.departure::date - b.arrival::date) as avg_stay_length,
+        AVG(b.total_amount / NULLIF(b.departure::date - b.arrival::date, 0)) as avg_nightly_rate
+      FROM bookings b
+      ${tagIds?.length ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      WHERE b.tenant_id = $1
+        ${dateFilter}
+        ${tagFilter}
+        AND b.status != 'canceled'
+        ${bookingFilters}
+      GROUP BY LOWER(TRIM(b.guest_name)), COALESCE(LOWER(TRIM(b.guest_email)), '')
+    ),
+    guest_summary AS (
+      SELECT
+        COUNT(DISTINCT (gb.normalized_name, gb.normalized_email)) as total_guests,
+        COUNT(DISTINCT CASE 
+          WHEN gb.booking_count > 1 
+          THEN (gb.normalized_name, gb.normalized_email) 
+        END) as repeat_guests,
+        AVG(gb.avg_stay_length) as avg_stay_length,
+        AVG(gb.total_spent) as avg_spend,
+        SUM(gb.total_spent) as total_revenue
+      FROM guest_bookings gb
+    )
+    SELECT * FROM guest_summary`;
+  
+  // Get top spenders
+  const topSpendersQuery = `
+    WITH guest_period_data AS (
+      SELECT
+        b.guest_name,
+        b.guest_email,
+        COUNT(DISTINCT b.id) as period_bookings,
+        SUM(b.total_amount) as period_spent,
+        SUM(b.total_amount) as total_spent,
+        COUNT(DISTINCT b.id) as booking_count,
+        AVG(b.total_amount / NULLIF(b.departure::date - b.arrival::date, 0)) as avg_nightly_rate
+      FROM bookings b
+      ${tagIds?.length ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      WHERE b.tenant_id = $1
+        ${dateFilter}
+        ${tagFilter}
+        AND b.status != 'canceled'
+        ${bookingFilters}
+      GROUP BY b.guest_name, b.guest_email
+      ORDER BY period_spent DESC
+      LIMIT 10
+    )
+    SELECT * FROM guest_period_data`;
+
+  // Get guests by source
+  const guestsBySourceQuery = `
+    SELECT
+      ${normalizePlatformSQL('b.platform')} as source,
+      COUNT(DISTINCT (b.guest_name, COALESCE(b.guest_email, ''))) as count,
+      SUM(b.total_amount) as revenue
+    FROM bookings b
+    ${tagIds?.length ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+    WHERE b.tenant_id = $1
+      ${dateFilter}
+      ${tagFilter}
+      AND b.status != 'canceled'
+      ${bookingFilters}
+    GROUP BY ${normalizePlatformSQL('b.platform')}
+    ORDER BY count DESC`;
+
+  // Get tag distribution - always fetch tags, optionally filter by tagIds
+  const tagDistributionQuery = `
+    SELECT
+      t.id as tag_id,
+      t.name as tag_name,
+      t.color as tag_color,
+      COUNT(DISTINCT (b.guest_name, COALESCE(b.guest_email, ''))) as count
+    FROM bookings b
+    INNER JOIN booking_tags bt ON b.id = bt.booking_id
+    INNER JOIN tags t ON bt.tag_id = t.id
+    WHERE b.tenant_id = $1
+      ${dateFilter}
+      ${tagIds?.length ? `AND bt.tag_id = ANY($${paramIndex}::uuid[])` : ''}
+      AND b.status != 'canceled'
+      ${bookingFilters}
+    GROUP BY t.id, t.name, t.color
+    ORDER BY count DESC`;
+  
+  // Get guest list (limited to 100 for batch endpoint)
+  const guestListQuery = `
+    WITH guest_period_data AS (
+      SELECT
+        b.guest_name,
+        b.guest_email,
+        COUNT(DISTINCT b.id) as period_bookings,
+        SUM(b.total_amount) as period_spent
+      FROM bookings b
+      ${tagIds?.length ? 'INNER JOIN booking_tags bt ON b.id = bt.booking_id' : ''}
+      WHERE b.tenant_id = $1
+        ${dateFilter}
+        ${tagFilter}
+        AND b.status != 'canceled'
+        ${bookingFilters}
+      GROUP BY b.guest_name, b.guest_email
+    ),
+    guest_all_time_data AS (
+      SELECT
+        b.guest_name,
+        b.guest_email,
+        MIN(b.arrival) as first_visit,
+        MAX(b.arrival) as last_visit,
+        COUNT(DISTINCT b.id) as booking_count,
+        SUM(b.total_amount) as total_spent,
+        SUM(b.total_amount) / NULLIF(SUM(b.departure::date - b.arrival::date), 0) as avg_nightly_rate,
+        STRING_AGG(DISTINCT p.name, ', ') as properties
+      FROM bookings b
+      JOIN properties p ON b.property_id = p.id
+      WHERE b.tenant_id = $1
+        AND b.status != 'canceled'
+        ${bookingFilters}
+        AND EXISTS (
+          SELECT 1 FROM guest_period_data gpd 
+          WHERE b.guest_name = gpd.guest_name 
+          AND COALESCE(b.guest_email, '') = COALESCE(gpd.guest_email, '')
+        )
+      GROUP BY b.guest_name, b.guest_email
+    )
+    SELECT 
+      gat.guest_name,
+      gat.guest_email,
+      gat.first_visit,
+      gat.last_visit,
+      gat.booking_count,
+      gat.total_spent,
+      gat.avg_nightly_rate,
+      gat.properties,
+      COALESCE(gpd.period_bookings, 0) as period_bookings,
+      COALESCE(gpd.period_spent, 0) as period_spent
+    FROM guest_all_time_data gat
+    JOIN guest_period_data gpd ON gat.guest_name = gpd.guest_name
+      AND COALESCE(gat.guest_email, '') = COALESCE(gpd.guest_email, '')
+    ORDER BY gpd.period_spent DESC
+    LIMIT 100`;
+
+  const [metricsResult, topSpendersResult, guestsBySourceResult, tagDistributionResult, guestListResult] = await Promise.all([
+    query(metricsQuery, queryParams),
+    query(topSpendersQuery, queryParams),
+    query(guestsBySourceQuery, queryParams),
+    query(tagDistributionQuery, queryParams),
+    query(guestListQuery, queryParams)
+  ]);
+  
+  // Fetch tags for the guests in the list
+  let guestTagsMap = new Map<string, Array<any>>();
+  if (guestListResult && guestListResult.success && guestListResult.data.length > 0) {
+    const guestTagsQuery = `
+      SELECT DISTINCT
+        b.guest_name,
+        b.guest_email,
+        t.id as tag_id,
+        t.name as tag_name,
+        t.color as tag_color
+      FROM bookings b
+      JOIN booking_tags bt ON b.id = bt.booking_id
+      JOIN tags t ON bt.tag_id = t.id
+      WHERE b.tenant_id = $1
+        AND b.status != 'canceled'
+        ${bookingFilters}
+        AND (b.guest_name, COALESCE(b.guest_email, '')) IN (
+          ${guestListResult.data.map((_, i) => `($${2 + i * 2}, $${3 + i * 2})`).join(', ')}
+        )
+      ORDER BY b.guest_name, b.guest_email, t.name`;
+    
+    const guestTagsParams = [tenantId];
+    guestListResult.data.forEach((g: any) => {
+      guestTagsParams.push(g.guest_name, g.guest_email || '');
+    });
+    
+    const guestTagsResult = await query(guestTagsQuery, guestTagsParams);
+    
+    if (guestTagsResult.success) {
+      for (const row of guestTagsResult.data) {
+        const key = createGuestId(row.guest_name, row.guest_email);
+        if (!guestTagsMap.has(key)) {
+          guestTagsMap.set(key, []);
+        }
+        guestTagsMap.get(key)!.push({
+          id: row.tag_id,
+          name: row.tag_name,
+          color: row.tag_color || undefined
+        });
+      }
+    }
+  }
+  
+  if (!metricsResult.success) {
+    throw new Error('Failed to fetch guest metrics');
+  }
+  
+  const metrics = metricsResult.data[0] || {};
+  const totalGuests = parseIntField(metrics.total_guests);
+  const repeatGuests = parseIntField(metrics.repeat_guests);
+  
+  return {
+    metrics: {
+      totalGuests,
+      repeatGuests,
+      repeatRate: safeDivide(repeatGuests, totalGuests),
+      avgStayLength: parseNumericField(metrics.avg_stay_length),
+      avgSpend: parseNumericField(metrics.avg_spend),
+      totalRevenue: parseNumericField(metrics.total_revenue),
+      topSpenders: topSpendersResult.success ? topSpendersResult.data.map((s: any) => ({
+        id: createGuestId(s.guest_name, s.guest_email),
+        name: s.guest_name,
+        email: s.guest_email || undefined,
+        totalSpent: parseNumericField(s.total_spent),
+        bookingCount: parseIntField(s.booking_count),
+        avgNightlyRate: parseNumericField(s.avg_nightly_rate),
+        periodSpent: parseNumericField(s.period_spent),
+        periodBookings: parseIntField(s.period_bookings)
+      })) : [],
+      guestsBySource: guestsBySourceResult.success ? guestsBySourceResult.data.map((s: any) => ({
+        source: s.source,
+        count: parseIntField(s.count),
+        revenue: parseNumericField(s.revenue)
+      })) : [],
+      tagDistribution: tagDistributionResult && tagDistributionResult.success ? tagDistributionResult.data.map((t: any) => ({
+        id: t.tag_id,
+        name: t.tag_name,
+        color: t.tag_color || undefined,
+        count: parseIntField(t.count)
+      })) : []
+    },
+    guests: guestListResult && guestListResult.success ? guestListResult.data.map((g: any) => {
+      const guestId = createGuestId(g.guest_name, g.guest_email);
+      return {
+        id: guestId,
+        name: g.guest_name,
+        email: g.guest_email || undefined,
+        firstVisit: g.first_visit,
+        lastVisit: g.last_visit,
+        bookingCount: parseIntField(g.booking_count),
+        totalSpent: parseNumericField(g.total_spent),
+        avgNightlyRate: parseNumericField(g.avg_nightly_rate),
+        properties: g.properties ? g.properties.split(', ') : [],
+        tags: guestTagsMap.get(guestId) || [],
+        periodBookings: parseIntField(g.period_bookings),
+        periodSpent: parseNumericField(g.period_spent)
+      };
+    }) : []
+  };
+}
+
 export async function getGuests(
   request: HttpRequest,
   context: InvocationContext

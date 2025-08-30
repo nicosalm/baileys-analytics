@@ -143,7 +143,7 @@ export async function overview(
   }
 }
 
-async function getCurrentPeriodMetrics(tenantId: string, from: string, to: string, tagIds: string[] = [], userId?: string) {
+export async function getCurrentPeriodMetrics(tenantId: string, from: string, to: string, tagIds: string[] = [], userId?: string) {
   const seasons = await getActiveSeasons(tenantId)
   const bookingFilters = buildBookingFilters(seasons, 'b')
   const bookingFiltersHistorical = buildBookingFilters(seasons, 'b_hist')
@@ -377,7 +377,7 @@ async function getCurrentPeriodMetrics(tenantId: string, from: string, to: strin
   }
 }
 
-async function getChartsData(tenantId: string, from: string, to: string, tagIds: string[] = []) {
+export async function getChartsData(tenantId: string, from: string, to: string, tagIds: string[] = []) {
   const seasons = await getActiveSeasons(tenantId)
   const bookingFilters = buildBookingFilters(seasons, 'b')
   const hasTagFilter = tagIds.length > 0
@@ -677,7 +677,7 @@ async function getChartsData(tenantId: string, from: string, to: string, tagIds:
   }
 }
 
-async function getAlerts(tenantId: string, from: string, to: string) {
+export async function getAlerts(tenantId: string, from: string, to: string) {
   const alerts = []
 
   const occupancyCheckQuery = `
@@ -802,7 +802,7 @@ async function getAlerts(tenantId: string, from: string, to: string) {
   return alerts
 }
 
-async function getRecentActivity(tenantId: string) {
+export async function getRecentActivity(tenantId: string) {
   const activityQuery = `
     SELECT
       b.id,

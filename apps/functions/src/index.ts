@@ -1,3 +1,4 @@
+export * from './dashboard-batch'
 export * from './properties-fetch'
 export * from './sync-properties'
 export * from './bookings-fetch'

@@ -1,87 +1,61 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
-import { useGuests } from '@/hooks/use-api'
-import { formatCurrency, formatDateDisplay, formatPercentage, differenceInDays } from '@baileys/utils'
+import { useState, useMemo, useCallback } from 'react'
+import { useDashboardBatch } from '@/hooks/use-api'
+import { useTagIds, useErrorToast, getTimePeriodLabel } from '@/hooks/use-dashboard-utils'
+import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
-import { useToast } from '@/contexts/toast'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
 import { CHART_COLORS, METRIC_COLORS, getPlatformColor } from '@/lib/theme'
+import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
     BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, CartesianGrid, Tooltip
 } from 'recharts'
 
-type GuestListItem = {
-    id: string
-    name: string
-    email?: string
-    firstVisit: string
-    lastVisit: string
-    bookingCount: number
-    totalSpent: number
-    avgNightlyRate: number
-    properties: string[]
-    tags: Array<{
-        id: string
-        name: string
-        color?: string
-    }>
-    // New fields for period-specific data
-    periodBookings?: number
-    periodSpent?: number
-}
-
 
 export const GuestsDashboard = () => {
-    const { addToast } = useToast()
     const { openModal } = useModal()
     const { filters, comparisonRange, comparisonMode } = useDashboard()
     const { showTips } = useTips()
     
-    const { data: rawData, error, isLoading } = useGuests(
+    const tagIds = useTagIds()
+    
+    const { data: rawData, error, isLoading } = useDashboardBatch(
+        'guests',
         filters.dateRange.from,
         filters.dateRange.to,
-        filters.selectedTags.map(t => t.id),
+        tagIds,
         comparisonRange?.from,
         comparisonRange?.to
     )
     
-    // Handle both API response formats
     const data = rawData?.current || rawData
     const previousData = rawData?.previous || null
     
-    // Determine time period based on date range
-    const getTimePeriod = () => {
-        if (!filters.dateRange.from || !filters.dateRange.to) return ''
-        const daysDiff = differenceInDays(
-            new Date(filters.dateRange.to),
-            new Date(filters.dateRange.from)
-        )
-        
-        if (daysDiff <= 7) return ' (Daily)'
-        if (daysDiff <= 35) return ' (Weekly)'
-        return ' (Monthly)'
-    }
+    const timePeriod = getTimePeriodLabel(filters.dateRange.from, filters.dateRange.to)
     
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
     const [viewMode, setViewMode] = useState<'all' | 'repeat' | 'new' | 'top'>('all')
 
-    // Handle error state
-    useEffect(() => {
-        if (error) {
-            addToast('error', 'Failed to load guests data')
-        }
-    }, [error?.message, addToast])
+    useErrorToast(error, 'Failed to load guests data')
 
-    // Calculate top performers for the selected period
     const topPerformers = useMemo(() => {
+        if (data?.metrics?.topSpenders && data.metrics.topSpenders.length > 0) {
+            return {
+                spenders: data.metrics.topSpenders.slice(0, 5),
+                frequent: data.metrics.topSpenders
+                    .sort((a: GuestListItem, b: GuestListItem) => (b.periodBookings || b.bookingCount) - (a.periodBookings || a.bookingCount))
+                    .slice(0, 5)
+            }
+        }
+        
         if (!data?.guests) return { spenders: [], frequent: [] }
         
         const sorted = [...data.guests]
@@ -105,7 +79,6 @@ export const GuestsDashboard = () => {
                 filtered = filtered.filter(g => (g.periodBookings || g.bookingCount) > 1)
                 break
             case 'new':
-                // Guests whose first visit is within the selected date range
                 filtered = filtered.filter(g => {
                     const firstVisit = new Date(g.firstVisit)
                     const rangeStart = new Date(filters.dateRange.from)
@@ -113,7 +86,6 @@ export const GuestsDashboard = () => {
                 })
                 break
             case 'top':
-                // Top 20% by spending in this period
                 const threshold = filtered
                     .map(g => g.periodSpent || g.totalSpent)
                     .sort((a, b) => b - a)[Math.floor(filtered.length * 0.2)]
@@ -141,8 +113,8 @@ export const GuestsDashboard = () => {
     }, [filteredGuests, sortBy, sortOrder])
 
     const handleGuestClick = useCallback((guest: GuestListItem) => {
-        const isTopSpender = topPerformers.spenders.some(g => g.id === guest.id)
-        const isFrequent = topPerformers.frequent.some(g => g.id === guest.id)
+        const isTopSpender = topPerformers.spenders.some((g: GuestListItem) => g.id === guest.id)
+        const isFrequent = topPerformers.frequent.some((g: GuestListItem) => g.id === guest.id)
         const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
         
         openModal({
@@ -246,6 +218,48 @@ export const GuestsDashboard = () => {
         }
     ], [data, topPerformers, filters.dateRange.from])
 
+    const sourceChartData = useMemo(() => 
+        (data?.metrics?.guestsBySource || []).map((source: GuestSourceData, index: number) => ({
+            ...source,
+            color: getPlatformColor(source.source, index)
+        })), [data?.metrics?.guestsBySource])
+
+    const tagDistribution = useMemo(() => {
+        if (data?.metrics?.tagDistribution && data.metrics.tagDistribution.length > 0) {
+            return data.metrics.tagDistribution
+        }
+
+        if (!data?.guests || data.guests.length === 0) {
+            return []
+        }
+
+        const tagCounts = new Map<string, { name: string; color?: string; count: number }>()
+
+        data.guests.forEach((guest: GuestListItem) => {
+            guest.tags?.forEach((tag) => {
+                const existing = tagCounts.get(tag.id) || {
+                    name: tag.name,
+                    color: tag.color,
+                    count: 0
+                }
+                existing.count++
+                tagCounts.set(tag.id, existing)
+            })
+        })
+
+        return Array.from(tagCounts.values())
+            .sort((a, b) => b.count - a.count)
+    }, [data?.metrics?.tagDistribution, data?.guests])
+
+    const tagChartData = useMemo(() => 
+        tagDistribution
+            ?.slice(0, 10)
+            .map((tag: GuestTagDistribution, index: number) => ({
+                name: tag.name || 'Unknown',
+                value: tag.count || 0,
+                color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
+            })) || [], [tagDistribution])
+
     if (isLoading || !data) {
         return (
             <StateWrapper
@@ -260,44 +274,6 @@ export const GuestsDashboard = () => {
             </StateWrapper>
         )
     }
-
-    const sourceChartData = data.metrics.guestsBySource.map((source: any, index: any) => ({
-        ...source,
-        color: getPlatformColor(source.source, index)
-    }))
-
-    // Calculate tag distribution
-    const calculateTagDistribution = () => {
-        if (data.metrics.tagDistribution && data.metrics.tagDistribution.length > 0) {
-            return data.metrics.tagDistribution
-        }
-
-        const tagCounts = new Map<string, { name: string; color?: string; count: number }>()
-
-        data.guests.forEach((guest: any) => {
-            guest.tags?.forEach((tag: any) => {
-                const existing = tagCounts.get(tag.id) || {
-                    name: tag.name,
-                    color: tag.color,
-                    count: 0
-                }
-                existing.count++
-                tagCounts.set(tag.id, existing)
-            })
-        })
-
-        return Array.from(tagCounts.values())
-            .sort((a, b) => b.count - a.count)
-    }
-
-    const tagDistribution = calculateTagDistribution()
-    const tagChartData = tagDistribution
-        ?.slice(0, 10)
-        .map((tag: any, index: any) => ({
-            name: tag.name || 'Unknown',
-            value: tag.count || 0,
-            color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
-        })) || []
 
     return (
         <div className="space-y-6">
@@ -397,7 +373,7 @@ export const GuestsDashboard = () => {
                         <DollarSign className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="space-y-3">
-                        {topPerformers.spenders.slice(0, 5).map((guest: any, index: any) => (
+                        {topPerformers.spenders.slice(0, 5).map((guest: GuestListItem, index: number) => (
                             <div
                                 key={guest.id}
                                 className="flex justify-between items-center p-3 border rounded-sm hover:bg-gray-50 cursor-pointer transition-colors"
@@ -431,7 +407,7 @@ export const GuestsDashboard = () => {
                         <Star className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="space-y-3">
-                        {topPerformers.frequent.slice(0, 5).map((guest: any, index: any) => (
+                        {topPerformers.frequent.slice(0, 5).map((guest: GuestListItem, index: number) => (
                             <div
                                 key={guest.id}
                                 className="flex justify-between items-center p-3 border rounded-sm hover:bg-gray-50 cursor-pointer transition-colors"
@@ -463,7 +439,7 @@ export const GuestsDashboard = () => {
             {/* Charts Section */}
             <div className="grid md:grid-cols-2 gap-6">
                 <ChartWrapper
-                    title={`Guest Sources${getTimePeriod()}`}
+                    title={`Guest Sources${timePeriod}`}
                     subtitle={comparisonMode !== 'none' ? `Current period distribution` : undefined}
                     height={320}
                     noData={sourceChartData.length === 0}
@@ -474,8 +450,9 @@ export const GuestsDashboard = () => {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={(entry: any) => {
-                                const total = sourceChartData.reduce((sum: number, item: any) => sum + item.count, 0)
+                            label={(props) => {
+                                const entry = props as any // Recharts PieLabelProps type mismatch
+                                const total = sourceChartData.reduce((sum: number, item: GuestSourceData) => sum + (item.count || 0), 0)
                                 const percent = ((entry.count / total) * 100).toFixed(0)
                                 return `${entry.source} ${percent}%`
                             }}
@@ -483,7 +460,7 @@ export const GuestsDashboard = () => {
                             fill="#8884d8"
                             dataKey="count"
                         >
-                            {sourceChartData.map((entry: any, index: any) => (
+                            {sourceChartData.map((entry: GuestSourceData & {color: string}, index: number) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                         </Pie>
@@ -492,7 +469,7 @@ export const GuestsDashboard = () => {
                 </ChartWrapper>
 
                 <ChartWrapper
-                    title={`Guest Tags Distribution${getTimePeriod()}`}
+                    title={`Guest Tags Distribution${timePeriod}`}
                     subtitle="Most common guest characteristics"
                     height={320}
                     noData={!tagChartData || tagChartData.length === 0}
@@ -513,10 +490,10 @@ export const GuestsDashboard = () => {
                         />
                         <YAxis tick={{ fontSize: 12 }} />
                         <Tooltip
-                            formatter={(value: any) => [`${value} guests`, 'Count']}
+                            formatter={(value: number) => [`${value} guests`, 'Count']}
                         />
                         <Bar dataKey="value" fill={METRIC_COLORS.revenue}>
-                            {tagChartData.map((entry: any, index: any) => (
+                            {tagChartData.map((entry: {name: string; value: number; color?: string}, index: number) => (
                                 <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
                             ))}
                         </Bar>
