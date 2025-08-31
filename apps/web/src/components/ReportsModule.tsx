@@ -114,12 +114,12 @@ const QUICK_REPORTS = [
   {
     id: 'occupancy-trends',
     name: 'Occupancy Trends',
-    description: 'Historical and forecasted occupancy',
+    description: 'Historical occupancy patterns',
     icon: BarChart3,
     category: 'analytics',
     config: {
-      modules: ['occupancy', 'availability', 'seasonal_trends'],
-      dateRange: 'last90days',
+      modules: ['occupancy', 'trends'],
+      dateRange: 'lastYear',
       format: 'pdf'
     }
   },
@@ -130,8 +130,8 @@ const QUICK_REPORTS = [
     icon: Users,
     category: 'analytics',
     config: {
-      modules: ['guests', 'repeat_rate', 'demographics'],
-      dateRange: 'lastYear',
+      modules: ['guests', 'repeat_rate'],
+      dateRange: 'last90days',
       format: 'pdf'
     }
   }
@@ -140,22 +140,20 @@ const QUICK_REPORTS = [
 const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
   const { addToast } = useToast()
   const [isGenerating, setIsGenerating] = useState(false)
-  
+
   const category = REPORT_CATEGORIES[report.category as keyof typeof REPORT_CATEGORIES]
   const Icon = report.icon
-  
+
   const handleQuickGenerate = async () => {
     setIsGenerating(true)
     try {
-      // Get auth token
       const tokenData = localStorage.getItem('baileys_tokens')
       if (!tokenData) {
         throw new Error('Not authenticated')
       }
       const { access: token } = JSON.parse(tokenData)
-      
-      // Generate and download PDF directly
-      const response = await fetch('http://localhost:7071/api/reports/quick-generate', {
+
+      const response = await fetch('/api/reports/quick-generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -163,24 +161,23 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
         },
         body: JSON.stringify(report.config)
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to generate report')
       }
-      
-      // Get the PDF blob
+
       const blob = await response.blob()
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob)
+      const url = URL.createObjectURL(blob)
+
       const link = document.createElement('a')
       link.href = url
-      link.download = `${report.name}-${new Date().toISOString().split('T')[0]}.pdf`
+      link.download = `${report.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-      
+
+      URL.revokeObjectURL(url)
+
       addToast('success', 'Report downloaded successfully')
     } catch (error) {
       addToast('error', error instanceof Error ? error.message : 'Failed to generate report')
@@ -188,7 +185,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
       setIsGenerating(false)
     }
   }
-  
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all p-5">
       <div className="flex items-start justify-between mb-4">
@@ -212,7 +209,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
           </div>
         </div>
       </div>
-      
+
       <button
         onClick={handleQuickGenerate}
         disabled={isGenerating}
@@ -325,7 +322,7 @@ export default function ReportsModule() {
                   Professional PDF Reports
                 </h3>
                 <p className="text-sm text-gray-600 max-w-2xl">
-                  Generate PDF reports with visualizations and insights. 
+                  Generate PDF reports.
                   Get actionable intelligence for your vacation rental business.
                 </p>
               </div>

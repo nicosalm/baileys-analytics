@@ -216,55 +216,56 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
         )}
 
         {activeTab === 'bookings' && (
-          <div className="space-y-4">
-            <div className="bg-white rounded-lg border overflow-hidden">
-              <div className="max-h-96 overflow-y-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Guest</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
+          <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="p-4 border-b">
+              <h3 className="font-semibold">Recent Bookings</h3>
+            </div>
+            <div className="max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="text-left p-4 text-sm font-medium text-gray-700">Guest</th>
+                    <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
+                    <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
+                    <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
+                    <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recentBookings?.map((booking: any) => (
+                    <tr
+                      key={booking.id}
+                      className="border-t hover:bg-gray-50 cursor-pointer"
+                      onClick={() => openModal({ 
+                        type: 'guest', 
+                        guestId: booking.guestId, 
+                        guestName: booking.guestName 
+                      })}
+                    >
+                      <td className="p-4">
+                        <div>
+                          <div className="font-medium text-blue-600 hover:underline">{booking.guestName}</div>
+                          {booking.guestEmail && (
+                            <div className="text-sm text-gray-500">{booking.guestEmail}</div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-sm">
+                        {new Date(booking.arrival).toLocaleDateString()}
+                      </td>
+                      <td className="p-4 text-sm">
+                        {new Date(booking.departure).toLocaleDateString()}
+                      </td>
+                      <td className="p-4 text-sm font-medium text-green-600">
+                        {formatCurrency(booking.totalAmount)}
+                      </td>
+                      <td className="p-4">
+                        <StatusBadge status={booking.status} />
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentBookings?.map((booking: any) => (
-                      <tr
-                        key={booking.id}
-                        className="border-t hover:bg-gray-50 cursor-pointer"
-                        onClick={() => openModal({ 
-                          type: 'guest', 
-                          guestId: booking.guestId, 
-                          guestName: booking.guestName 
-                        })}
-                      >
-                        <td className="p-4">
-                          <div>
-                            <div className="font-medium">{booking.guestName}</div>
-                            {booking.guestEmail && (
-                              <div className="text-sm text-gray-500">{booking.guestEmail}</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm">
-                          {new Date(booking.arrival).toLocaleDateString()}
-                        </td>
-                        <td className="p-4 text-sm">
-                          {new Date(booking.departure).toLocaleDateString()}
-                        </td>
-                        <td className="p-4 text-sm font-medium">
-                          {formatCurrency(booking.totalAmount)}
-                        </td>
-                        <td className="p-4">
-                          <StatusBadge status={booking.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

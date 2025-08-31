@@ -1,0 +1,63 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'apps/workers/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/workers
+        
+      - name: Build
+        run: pnpm build
+        working-directory: apps/workers
+        
+      - name: Deploy to Staging
+        if: github.ref == 'refs/heads/staging'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: apps/workers
+          command: deploy --env staging
+          
+      - name: Deploy to Production
+        if: github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: apps/workers
+          command: deploy --env production
+          secrets: |
+            SUPABASE_SERVICE_KEY
+            JWT_SECRET
+            DATABASE_URL
+            OWNERREZ_PAT
+            OWNERREZ_CLIENT_ID
+            OWNERREZ_CLIENT_SECRET
+        env:
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OWNERREZ_PAT: ${{ secrets.OWNERREZ_PAT }}
+          OWNERREZ_CLIENT_ID: ${{ secrets.OWNERREZ_CLIENT_ID }}
+          OWNERREZ_CLIENT_SECRET: ${{ secrets.OWNERREZ_CLIENT_SECRET }}

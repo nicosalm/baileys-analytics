@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy } from '@baileys/utils'
-import { useTagIds, useErrorToast, getTimePeriodLabel } from '@/hooks/use-dashboard-utils'
+import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics, ChartDataPoint, RadarChartData } from '@/types/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, Legend } from 'recharts'
 import { Calendar, DollarSign, Home, Info, BarChart3, Target, Percent, TrendingUp, TrendingDown } from 'lucide-react'
@@ -70,7 +70,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
           )}
         </div>
         <div>
-          <div className="text-sm text-gray-600">How Full</div>
+          <div className="text-sm text-gray-600">Occupancy</div>
           <div className="flex items-center gap-2">
             <div className={`text-xl font-semibold ${getOccupancyColor(property.occupancyRate * 100)}`}>
               {formatPercentage(property.occupancyRate * 100, 0)}
@@ -115,12 +115,8 @@ export const PropertiesDashboard = () => {
   if (Array.isArray(data)) {
     properties = data
   } else if (data) {
-    if (data.properties && Array.isArray(data.properties)) {
-      properties = data.properties
-    } else if (data.current && Array.isArray(data.current)) {
-      properties = data.current
-      previousProperties = data.previous || null
-    }
+    properties = data.properties || []
+    previousProperties = data.previousProperties || null
   }
 
   useErrorToast(error, 'Failed to load property metrics')
@@ -138,7 +134,7 @@ export const PropertiesDashboard = () => {
     date: p.date || null // Include date if available for period detection
   })), [validProperties])
 
-  const timePeriod = getTimePeriodLabel(filters.dateRange.from, filters.dateRange.to)
+  const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
 
   const { maxRevenue, maxAvgRate, maxBookings } = useMemo(() => ({
     maxRevenue: maxBy(validProperties, (p: PropertyMetrics) => p.revenue)?.revenue || 1,
@@ -227,7 +223,6 @@ export const PropertiesDashboard = () => {
             value: (((properties || []).length - previousProperties.length) / (previousProperties.length || 1)) * 100,
             isPositive: (properties || []).length >= previousProperties.length
           } : undefined}
-          tooltip="Number of properties you manage"
           color="blue"
         />
         <MetricCard
@@ -243,7 +238,6 @@ export const PropertiesDashboard = () => {
             value: ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100,
             isPositive: totalRevenue > prevTotalRevenue
           } : undefined}
-          tooltip="Combined revenue from all properties"
           color="green"
         />
         <MetricCard
@@ -259,7 +253,6 @@ export const PropertiesDashboard = () => {
             value: ((avgOccupancy - prevAvgOccupancy) / prevAvgOccupancy) * 100,
             isPositive: avgOccupancy > prevAvgOccupancy
           } : undefined}
-          tooltip="Average percentage of nights booked"
           color={avgOccupancy > 0.7 ? "green" : avgOccupancy > 0.5 ? "yellow" : "red"}
         />
         <MetricCard
@@ -275,7 +268,6 @@ export const PropertiesDashboard = () => {
             value: ((totalBookings - prevTotalBookings) / prevTotalBookings) * 100,
             isPositive: totalBookings > prevTotalBookings
           } : undefined}
-          tooltip="Total number of reservations"
           color="purple"
         />
       </div>

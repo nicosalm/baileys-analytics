@@ -98,9 +98,9 @@ export function calculateGrowth(current: number, previous?: number): number | un
 }
 
 /**
- * Determines time period label based on date range
+ * Determines time period granularity based on date range
  */
-export function getTimePeriodLabel(from?: string, to?: string): string {
+export function getTimePeriodGranularity(from?: string, to?: string): string {
   if (!from || !to) return ''
   
   const startDate = new Date(from)

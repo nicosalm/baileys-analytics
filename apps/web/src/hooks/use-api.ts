@@ -50,7 +50,6 @@ export function useFinancial(
   comparisonFrom?: string,
   comparisonTo?: string
 ) {
-  // Validate inputs
   const validFrom = from && isValidDateString(from) ? from : undefined
   const validTo = to && isValidDateString(to) ? to : undefined
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
@@ -58,7 +57,20 @@ export function useFinancial(
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
   
   const key = validFrom || validTo || validTagIds ? ['/financial', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
-  return useSWR<any>(key)
+  return useSWR<any>(key, async () => {
+    if (!key) return null
+    const params = new URLSearchParams()
+    if (validFrom) params.append('from', validFrom)
+    if (validTo) params.append('to', validTo)
+    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
+    if (validCompTo) params.append('comparisonTo', validCompTo)
+    
+    const endpoint = params.toString() ? `/financial?${params}` : '/financial'
+    const result = await api.request(endpoint)
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  })
 }
 
 export function useOccupancy(
@@ -68,7 +80,6 @@ export function useOccupancy(
   comparisonFrom?: string,
   comparisonTo?: string
 ) {
-  // Validate inputs
   const validFrom = from && isValidDateString(from) ? from : undefined
   const validTo = to && isValidDateString(to) ? to : undefined
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
@@ -76,7 +87,20 @@ export function useOccupancy(
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
   
   const key = validFrom || validTo || validTagIds ? ['/occupancy', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
-  return useSWR<any>(key)
+  return useSWR<any>(key, async () => {
+    if (!key) return null
+    const params = new URLSearchParams()
+    if (validFrom) params.append('from', validFrom)
+    if (validTo) params.append('to', validTo)
+    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
+    if (validCompTo) params.append('comparisonTo', validCompTo)
+    
+    const endpoint = params.toString() ? `/occupancy?${params}` : '/occupancy'
+    const result = await api.request(endpoint)
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  })
 }
 
 export function usePropertyMetrics(
@@ -103,7 +127,7 @@ export function usePropertyMetrics(
     if (validCompFrom) params.append('comparisonFrom', validCompFrom)
     if (validCompTo) params.append('comparisonTo', validCompTo)
     
-    const endpoint = params.toString() ? `/property-metrics?${params}` : '/property-metrics'
+    const endpoint = params.toString() ? `/properties/metrics?${params}` : '/properties/metrics'
     const result = await api.request(endpoint)
     if (!result.success) throw new Error(result.error)
     return result.data
@@ -244,9 +268,9 @@ export function usePropertyDetail(propertyId?: string, from?: string, to?: strin
 
 export function useGuestDetail(guestId?: string) {
   return useSWR<any>(
-    guestId ? `/guest/${guestId}/detail` : null,
+    guestId ? `/guests/${guestId}/detail` : null,
     async () => {
-      const result = await api.request(`/guest/${encodeURIComponent(guestId!)}/detail`)
+      const result = await api.request(`/guests/${encodeURIComponent(guestId!)}/detail`)
       if (!result.success) throw new Error(result.error)
       return result.data
     }
@@ -335,7 +359,7 @@ export function useOverview(
 
 // Report Template hooks
 export function useReportTemplates() {
-  return useSWR<ReportTemplate[]>('/report-templates', async () => {
+  return useSWR<ReportTemplate[]>('/reports/templates', async () => {
     const result = await api.getReportTemplates()
     if (!result.success) {
       // Return empty array if no templates exist yet
@@ -350,7 +374,7 @@ export function useReportTemplates() {
 
 export function useReportTemplate(id?: string) {
   return useSWR<ReportTemplate>(
-    id ? `/report-templates/${id}` : null,
+    id ? `/reports/templates/${id}` : null,
     async () => {
       const result = await api.getReportTemplate(id!)
       if (!result.success) throw new Error(result.error)
@@ -371,7 +395,7 @@ export async function createReportTemplate(template: CreateReportTemplate) {
   }
   
   await globalMutate(
-    '/report-templates',
+    '/reports/templates',
     async (currentData: ReportTemplate[] | undefined) => {
       const apiResult = await api.createReportTemplate(template)
       if (!apiResult.success) {
@@ -402,7 +426,7 @@ export async function updateReportTemplate(id: string, template: ReportTemplate)
   
   // Update the list cache
   await globalMutate(
-    '/report-templates',
+    '/reports/templates',
     async (currentData: ReportTemplate[] | undefined) => {
       const apiResult = await api.updateReportTemplate(id, template)
       if (!apiResult.success) {
@@ -422,7 +446,7 @@ export async function updateReportTemplate(id: string, template: ReportTemplate)
   
   // Also update the individual template cache
   await globalMutate(
-    `/report-templates/${id}`,
+    `/reports/templates/${id}`,
     optimisticTemplate,
     { revalidate: false }
   )
@@ -432,7 +456,7 @@ export async function updateReportTemplate(id: string, template: ReportTemplate)
 
 export async function deleteReportTemplate(id: string) {
   await globalMutate(
-    '/report-templates',
+    '/reports/templates',
     async (currentData: ReportTemplate[] | undefined) => {
       const apiResult = await api.deleteReportTemplate(id)
       if (!apiResult.success) {
@@ -531,7 +555,7 @@ export function useSeasons() {
   return useSWR<Season[]>('/seasons', async () => {
     const result = await api.getSeasons()
     if (!result.success) throw new Error(result.error)
-    return result.data?.seasons || []
+    return result.data || []
   })
 }
 

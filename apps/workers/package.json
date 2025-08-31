@@ -1,0 +1,30 @@
+{
+	"name": "workers",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"build": "tsc --noEmit",
+		"deploy": "wrangler deploy",
+		"deploy:staging": "wrangler deploy --env staging",
+		"deploy:production": "wrangler deploy --env production",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest",
+		"cf-typegen": "wrangler types",
+		"secrets:list": "wrangler secret list",
+		"tail": "wrangler tail"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"@types/bcryptjs": "^3.0.0",
+		"typescript": "^5.5.2",
+		"vitest": "~3.2.0",
+		"wrangler": "^4.33.1"
+	},
+	"dependencies": {
+		"@supabase/supabase-js": "^2.56.1",
+		"hono": "^4.9.5",
+		"jspdf": "^3.0.1",
+		"jspdf-autotable": "^5.0.2"
+	}
+}

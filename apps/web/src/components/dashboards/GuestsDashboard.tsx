@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
-import { useTagIds, useErrorToast, getTimePeriodLabel } from '@/hooks/use-dashboard-utils'
+import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, Star } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
@@ -38,7 +38,7 @@ export const GuestsDashboard = () => {
     const data = rawData?.current || rawData
     const previousData = rawData?.previous || null
     
-    const timePeriod = getTimePeriodLabel(filters.dateRange.from, filters.dateRange.to)
+    const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
     
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -309,10 +309,11 @@ export const GuestsDashboard = () => {
                         : "In selected period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
-                        value: ((data.metrics.totalGuests - previousData.metrics.totalGuests) / (previousData.metrics.totalGuests || 1)) * 100,
+                        value: previousData.metrics.totalGuests > 0 
+                            ? ((data.metrics.totalGuests - previousData.metrics.totalGuests) / previousData.metrics.totalGuests) * 100
+                            : data.metrics.totalGuests > 0 ? 100 : 0,
                         isPositive: data.metrics.totalGuests > previousData.metrics.totalGuests
                     } : undefined}
-                    tooltip="Guests with bookings in the selected date range"
                     color="blue"
                 />
                 <MetricCard
@@ -324,10 +325,11 @@ export const GuestsDashboard = () => {
                         ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(previousData.metrics.repeatRate * 100, 0)} | ${data.metrics.repeatGuests} returning`
                         : `${data.metrics.repeatGuests} returning guests`
                     }
-                    tooltip="Percentage of guests with multiple bookings"
                     color="green"
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
-                        value: ((data.metrics.repeatRate - previousData.metrics.repeatRate) / (previousData.metrics.repeatRate || 0.01)) * 100,
+                        value: previousData.metrics.repeatRate > 0 
+                            ? ((data.metrics.repeatRate - previousData.metrics.repeatRate) / previousData.metrics.repeatRate) * 100
+                            : data.metrics.repeatRate > 0 ? 100 : 0,
                         isPositive: data.metrics.repeatRate > previousData.metrics.repeatRate
                     } : undefined}
                 />
@@ -341,10 +343,11 @@ export const GuestsDashboard = () => {
                         : "Per booking"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
-                        value: ((data.metrics.avgStayLength - previousData.metrics.avgStayLength) / (previousData.metrics.avgStayLength || 1)) * 100,
+                        value: previousData.metrics.avgStayLength > 0 
+                            ? ((data.metrics.avgStayLength - previousData.metrics.avgStayLength) / previousData.metrics.avgStayLength) * 100
+                            : data.metrics.avgStayLength > 0 ? 100 : 0,
                         isPositive: data.metrics.avgStayLength > previousData.metrics.avgStayLength
                     } : undefined}
-                    tooltip="Average length of stay per reservation"
                     color="purple"
                 />
                 <MetricCard

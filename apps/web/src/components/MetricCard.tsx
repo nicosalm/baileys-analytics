@@ -168,7 +168,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         className
       )}
       onClick={onClick}
-      title={tooltip}
     >
       {/* Header with icon and trend */}
       <div className="flex items-center justify-between mb-4">
@@ -202,10 +201,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             )}
           </div>
         )}
-
-        {tooltip && !trend && (
-          <Info className="w-4 h-4 text-gray-400" />
-        )}
       </div>
 
       {/* Main value */}
@@ -213,9 +208,20 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         {formatValue(value)}
       </div>
 
-      {/* Label */}
-      <div className={cn("text-gray-600 mt-1", currentSize.label)}>
+      {/* Label with tooltip */}
+      <div className={cn("text-gray-600 mt-1 flex items-center gap-1", currentSize.label)}>
         {label}
+        {tooltip && (
+          <div className="relative group inline-flex">
+            <Info className="w-3 h-3 text-gray-400 cursor-help" />
+            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50">
+              <div className="bg-gray-900 text-white text-xs rounded-lg px-2 py-1 whitespace-nowrap">
+                {tooltip}
+                <div className="absolute top-full left-2 w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-gray-900"></div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Subtitle or subValue */}

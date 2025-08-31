@@ -209,13 +209,6 @@ export const SeasonManagementPanel: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; season: Season | null }>({ show: false, season: null })
 
   const handleCreateSeason = async (data: SeasonFormData) => {
-    // Check if there's already an active season
-    const activeSeasons = seasons.filter(s => s.isActive)
-    if (activeSeasons.length > 0) {
-      addToast('error', 'Only one season can be active. Please deactivate the current season first.')
-      return
-    }
-    
     const result = await createSeason(data)
     if (result.success) {
       addToast('success', 'Season created successfully')

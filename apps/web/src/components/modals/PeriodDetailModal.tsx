@@ -153,7 +153,7 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
         {/* Bookings List */}
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">
-            <h3 className="font-semibold">All Bookings in {displayName}</h3>
+            <h3 className="font-semibold">Active Bookings on {displayName}</h3>
           </div>
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full">

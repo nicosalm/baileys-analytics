@@ -169,11 +169,11 @@ export const OverviewDashboard = () => {
         <MetricCard
           icon={Home}
           label="How Full You Are"
-          value={Number(metrics.occupancy.current || 0) * 100}
+          value={Number(metrics.occupancy.current || 0)}
           format="percent"
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(Number(metrics.occupancy.previous) * 100, 0)} | ${metrics.properties.total} properties`
-            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0) * 100, 0)} average`
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(Number(metrics.occupancy.previous), 0)} | ${metrics.properties.total} properties`
+            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 0)} average`
           }
           trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
             value: metrics.occupancy.growth,
@@ -199,7 +199,6 @@ export const OverviewDashboard = () => {
         />
       </div>
 
-      {/* Secondary Metrics - Key Supporting KPIs */}
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={TrendingUp}
@@ -239,9 +238,7 @@ export const OverviewDashboard = () => {
         />
       </div>
 
-      {/* 2x2 Grid of Overview Charts */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Revenue Trend */}
         <ChartWrapper
           title={`Revenue Trend${
             charts.revenueLastWeek.length > 0 
@@ -281,7 +278,6 @@ export const OverviewDashboard = () => {
           </AreaChart>
         </ChartWrapper>
 
-        {/* Top Properties Performance */}
         <ChartWrapper
           title="Top Properties"
           icon={Home}
@@ -311,7 +307,6 @@ export const OverviewDashboard = () => {
           </BarChart>
         </ChartWrapper>
 
-        {/* Booking Sources Distribution */}
         <ChartWrapper
           title="Booking Sources"
           icon={BarChart3}
@@ -343,7 +338,6 @@ export const OverviewDashboard = () => {
           </PieChart>
         </ChartWrapper>
 
-        {/* Occupancy Trend */}
         <ChartWrapper
           title={`How Full You've Been${charts.occupancyTrend.length > 0 && charts.occupancyTrend[0].month?.includes('/') ? ' (Daily)' : ' (Monthly)'}`}
           icon={Calendar}
@@ -373,9 +367,7 @@ export const OverviewDashboard = () => {
         </ChartWrapper>
       </div>
 
-      {/* Alerts and Activity Panels */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Alerts & Notifications Panel */}
         <div className="bg-white p-6 rounded-lg shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Things to Know</h3>

@@ -152,10 +152,10 @@ export const PLView: React.FC<PLViewProps> = ({
           value={revenue.gross}
           format="currency"
           color="blue"
-          subValue={comparisonMode !== 'none' && comparison.previousRevenue > 0
+          subValue={comparisonMode !== 'none' && comparison.previousRevenue !== undefined
             ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousRevenue)} | Net: ${formatCurrency(revenue.net)}`
             : `Net: ${formatCurrency(revenue.net)} | Fees: ${formatCurrency(revenue.platformFees)}`}
-          trend={comparisonMode !== 'none' && comparison.revenueGrowth !== 0 ? {
+          trend={comparisonMode !== 'none' && comparison.previousRevenue !== undefined ? {
             value: comparison.revenueGrowth,
             isPositive: comparison.revenueGrowth > 0
           } : undefined}

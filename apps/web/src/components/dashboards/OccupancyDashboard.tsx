@@ -188,10 +188,11 @@ export const OccupancyDashboard = () => {
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
           }
           trend={comparisonMode !== 'none' && previousData?.overall !== undefined ? {
-            value: ((currentData.overall - previousData.overall) / previousData.overall) * 100,
+            value: previousData.overall > 0 
+              ? ((currentData.overall - previousData.overall) / previousData.overall) * 100
+              : currentData.overall > 0 ? 100 : 0,
             isPositive: currentData.overall > previousData.overall
           } : undefined}
-          tooltip="Percentage of nights that were booked"
           color={currentData.overall > 0.7 ? "green" : currentData.overall > 0.5 ? "yellow" : "red"}
         />
         <MetricCard
@@ -203,11 +204,12 @@ export const OccupancyDashboard = () => {
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.bookedNights.toLocaleString()} nights`
             : "In selected period"
           }
-          trend={comparisonMode !== 'none' && previousData?.bookedNights ? {
-            value: ((currentData.bookedNights - previousData.bookedNights) / previousData.bookedNights) * 100,
+          trend={comparisonMode !== 'none' && previousData?.bookedNights !== undefined ? {
+            value: previousData.bookedNights > 0 
+              ? ((currentData.bookedNights - previousData.bookedNights) / previousData.bookedNights) * 100
+              : currentData.bookedNights > 0 ? 100 : 0,
             isPositive: currentData.bookedNights > previousData.bookedNights
           } : undefined}
-          tooltip="Total nights with guests"
           color="blue"
         />
         <MetricCard
@@ -219,11 +221,12 @@ export const OccupancyDashboard = () => {
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.availableNights.toLocaleString()}`
             : "Across all properties"
           }
-          trend={comparisonMode !== 'none' && previousData?.availableNights ? {
-            value: ((currentData.availableNights - previousData.availableNights) / previousData.availableNights) * 100,
+          trend={comparisonMode !== 'none' && previousData?.availableNights !== undefined ? {
+            value: previousData.availableNights > 0 
+              ? ((currentData.availableNights - previousData.availableNights) / previousData.availableNights) * 100
+              : currentData.availableNights > 0 ? 100 : 0,
             isPositive: currentData.availableNights > previousData.availableNights
           } : undefined}
-          tooltip="Total nights properties could be booked"
           color="purple"
         />
         <MetricCard

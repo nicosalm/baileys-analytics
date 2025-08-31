@@ -1,0 +1,37 @@
+name = "baileys-analytics-api"
+main = "src/index.ts"
+compatibility_date = "2025-08-30"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "cache_namespace_id_placeholder"
+
+[triggers]
+crons = ["0 2 * * *", "0 */6 * * *", "0 0 1 * *"]
+
+[vars]
+FRONTEND_URL = "http://localhost:5173"
+
+[env.production]
+name = "baileys-analytics-api-prod"
+
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "PROD_KV_NAMESPACE_ID"
+
+[env.production.vars]
+FRONTEND_URL = "https://dashboard.baileys.com"
+
+[env.staging]
+name = "baileys-analytics-api-staging"
+
+[[env.staging.kv_namespaces]]
+binding = "CACHE"
+id = "STAGING_KV_NAMESPACE_ID"
+
+[env.staging.vars]
+FRONTEND_URL = "https://staging.dashboard.baileys.com"

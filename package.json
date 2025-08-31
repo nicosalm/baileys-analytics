@@ -4,8 +4,12 @@
   "private": true,
   "description": "Multi-tenant vacation rental analytics platform",
   "scripts": {
-    "dev": "echo 'Run pnpm dev in specific workspace'",
-    "build": "echo 'Run pnpm build in specific workspace'",
+    "dev": "./run-dev.sh",
+    "dev:backend": "cd apps/workers && pnpm dev",
+    "dev:frontend": "cd apps/web && pnpm dev",
+    "build": "pnpm -r build",
+    "build:backend": "cd apps/workers && pnpm build",
+    "build:frontend": "cd apps/web && pnpm build",
     "test": "echo 'No tests yet'"
   },
   "devDependencies": {

@@ -18,10 +18,8 @@ export const Waitlist = () => {
     setLoading(true)
     
     try {
-      // Use environment variable for API URL
-      const apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:7071/api'
-      
-      const response = await fetch(`${apiUrl}/waitlist`, {
+      // Use the Cloudflare Workers endpoint
+      const response = await fetch('/api/waitlist', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
