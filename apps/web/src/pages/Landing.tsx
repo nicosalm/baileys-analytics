@@ -45,6 +45,7 @@ const AnimatedCounter = ({ end, duration = 2000, prefix = '', suffix = '', decim
 export const Landing = () => {
   const { state } = useAuth()
   const isAuthenticated = state.status === 'authenticated'
+  const [yearlyBilling, setYearlyBilling] = useState(true) // Default to yearly for better value perception
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -99,7 +100,7 @@ export const Landing = () => {
           </h1>
           
           <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
-            Stop guessing. Start knowing. Real-time analytics that transform your property data into actionable insights.
+            Stop guessing. Start knowing. Analytics that transform your OwnerRez data into actionable insights.
           </p>
           
           {!isAuthenticated && (
@@ -137,10 +138,40 @@ export const Landing = () => {
                 <Users className="w-10 h-10 text-purple-500" />
               </div>
               <div className="text-3xl font-bold text-gray-900">
-                <AnimatedCounter end={4.7} decimals={1} suffix="" />
-                <span className="text-2xl">★</span>
+                <AnimatedCounter end={247} suffix="" />
               </div>
-              <p className="text-sm text-gray-600 mt-2">Avg Guest Rating</p>
+              <p className="text-sm text-gray-600 mt-2">Happy Guests</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* $1 Trial Highlight */}
+      <section className="py-16 px-6 bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="max-w-4xl mx-auto text-center text-white">
+          <div className="inline-flex items-center justify-center px-6 py-3 bg-white/20 backdrop-blur rounded-full mb-6">
+            <span className="text-5xl font-bold mr-3">$1</span>
+            <div className="text-left">
+              <div className="text-sm opacity-90">First Month</div>
+              <div className="font-semibold">Full Access Trial</div>
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold mb-4">No Risk. No Commitment. Just $1.</h3>
+          <p className="text-lg opacity-90 mb-6">
+            Get complete access to all features for 30 days. Cancel anytime with one click.
+          </p>
+          <div className="flex justify-center gap-8 text-sm">
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 mr-2" />
+              <span>Instant setup</span>
+            </div>
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 mr-2" />
+              <span>All features included</span>
+            </div>
+            <div className="flex items-center">
+              <CheckCircle className="w-5 h-5 mr-2" />
+              <span>Cancel anytime</span>
             </div>
           </div>
         </div>
@@ -243,8 +274,8 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <Users className="w-12 h-12 text-purple-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Guest Insights</h3>
-              <p className="text-gray-600 mb-4">Know your best guests & repeat visitors</p>
+              <h3 className="text-xl font-bold mb-2">Guest Analytics</h3>
+              <p className="text-gray-600 mb-4">Track guest history & booking patterns</p>
               <div className="flex items-center text-purple-600 font-medium group-hover:translate-x-2 transition-transform">
                 Boost retention <ChevronRight className="w-4 h-4 ml-1" />
               </div>
@@ -265,10 +296,10 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-teal-100 to-teal-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <LineChart className="w-12 h-12 text-teal-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Seasonal Intelligence</h3>
-              <p className="text-gray-600 mb-4">Predict peaks & optimize pricing</p>
+              <h3 className="text-xl font-bold mb-2">Occupancy Trends</h3>
+              <p className="text-gray-600 mb-4">Visualize booking patterns & gaps</p>
               <div className="flex items-center text-teal-600 font-medium group-hover:translate-x-2 transition-transform">
-                Price smarter <ChevronRight className="w-4 h-4 ml-1" />
+                Fill more nights <ChevronRight className="w-4 h-4 ml-1" />
               </div>
             </div>
             
@@ -299,7 +330,7 @@ export const Landing = () => {
               <div className="text-5xl font-bold mb-2">
                 <AnimatedCounter end={100} suffix="%" />
               </div>
-              <p className="text-lg opacity-90">Real-Time Sync</p>
+              <p className="text-lg opacity-90">OwnerRez Sync</p>
             </div>
             <div>
               <div className="text-5xl font-bold mb-2">
@@ -311,13 +342,13 @@ export const Landing = () => {
               <div className="text-5xl font-bold mb-2">
                 <AnimatedCounter end={10} suffix="+" />
               </div>
-              <p className="text-lg opacity-90">Report Types</p>
+              <p className="text-lg opacity-90">Dashboard Views</p>
             </div>
             <div>
               <div className="text-5xl font-bold mb-2">
-                <AnimatedCounter end={14} />
+                <AnimatedCounter end={5} />
               </div>
-              <p className="text-lg opacity-90">Day Free Trial</p>
+              <p className="text-lg opacity-90">Min Setup Time</p>
             </div>
           </div>
         </div>
@@ -326,17 +357,49 @@ export const Landing = () => {
       {/* Tiered Pricing */}
       <section className="py-24 px-6 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-4xl font-bold mb-4">Choose Your Plan</h2>
-          <p className="text-xl text-gray-600 mb-12">Start free, scale as you grow</p>
+          <h2 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
+          <p className="text-xl text-gray-600 mb-4">Start for just $1. No hidden fees, cancel anytime.</p>
+          
+          {/* Pricing Toggle */}
+          <div className="flex justify-center items-center gap-4 mb-12">
+            <span className={`font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>Monthly</span>
+            <button
+              onClick={() => setYearlyBilling(!yearlyBilling)}
+              className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${yearlyBilling ? 'translate-x-6' : 'translate-x-1'}`} />
+            </button>
+            <span className={`font-medium ${yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
+              Yearly
+              <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Save 20%
+              </span>
+            </span>
+          </div>
+          
+          {/* $1 Trial Badge */}
+          <div className="max-w-md mx-auto mb-8">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-4 shadow-lg">
+              <div className="flex items-center justify-center gap-3">
+                <div className="text-3xl font-bold">$1</div>
+                <div className="text-left">
+                  <div className="font-semibold">First Month Trial</div>
+                  <div className="text-sm opacity-90">Full access. Cancel anytime.</div>
+                </div>
+              </div>
+            </div>
+          </div>
           
           <div className="grid md:grid-cols-3 gap-8">
             {/* Starter */}
             <div className="relative bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
               <h3 className="text-lg font-semibold mb-4">Starter</h3>
               <div className="text-4xl font-bold mb-2">
-                $20<span className="text-lg text-gray-500 font-normal">/mo</span>
+                ${yearlyBilling ? '16' : '19'}<span className="text-lg text-gray-500 font-normal">/mo</span>
               </div>
-              <p className="text-gray-600 mb-6">Up to 5 properties</p>
+              <p className="text-gray-600 mb-2">1-3 properties</p>
+              {yearlyBilling && <p className="text-sm text-green-600 mb-4">$192/year (save $36)</p>}
+              {!yearlyBilling && <p className="text-sm text-gray-400 mb-4">$228 billed monthly</p>}
               <div className="space-y-3 mb-8 text-left">
                 <div className="flex items-start">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -348,7 +411,7 @@ export const Landing = () => {
                 </div>
                 <div className="flex items-start">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Basic reports & CSV export</span>
+                  <span className="text-sm">Monthly & yearly views</span>
                 </div>
                 <div className="flex items-start">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -356,7 +419,7 @@ export const Landing = () => {
                 </div>
               </div>
               <Link to="/signup" className="block w-full py-3 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors font-medium">
-                Join Waitlist
+                Start $1 Trial
               </Link>
             </div>
             
@@ -370,9 +433,11 @@ export const Landing = () => {
                 </div>
                 <h3 className="text-lg font-semibold mb-4">Professional</h3>
                 <div className="text-4xl font-bold mb-2">
-                  $50<span className="text-lg text-gray-500 font-normal">/mo</span>
+                  ${yearlyBilling ? '39' : '49'}<span className="text-lg text-gray-500 font-normal">/mo</span>
                 </div>
-                <p className="text-gray-600 mb-6">Up to 20 properties</p>
+                <p className="text-gray-600 mb-2">4-15 properties</p>
+                {yearlyBilling && <p className="text-sm text-green-600 mb-4">$468/year (save $120)</p>}
+                {!yearlyBilling && <p className="text-sm text-gray-400 mb-4">$588 billed monthly</p>}
                 <div className="space-y-3 mb-8 text-left">
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -380,15 +445,15 @@ export const Landing = () => {
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Tax automation & reporting</span>
+                    <span className="text-sm">Advanced tax tracking & reports</span>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Guest analytics & insights</span>
+                    <span className="text-sm">Guest history & analytics</span>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Seasonal trend analysis</span>
+                    <span className="text-sm">Occupancy gap detection</span>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -396,22 +461,24 @@ export const Landing = () => {
                   </div>
                 </div>
                 <Link to="/signup" className={`block w-full py-3 ${BRAND.buttonGradient} text-white rounded-full hover:shadow-lg transition-all transform hover:scale-105 font-medium`}>
-                  Join Waitlist
+                  Start $1 Trial
                 </Link>
               </div>
             </div>
             
-            {/* Enterprise */}
+            {/* Scale */}
             <div className="relative bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Enterprise</h3>
+              <h3 className="text-lg font-semibold mb-4">Scale</h3>
               <div className="text-4xl font-bold mb-2">
-                Custom
+                ${yearlyBilling ? '79' : '99'}<span className="text-lg text-gray-500 font-normal">+/mo</span>
               </div>
-              <p className="text-gray-600 mb-6">Unlimited properties</p>
+              <p className="text-gray-600 mb-2">16+ properties</p>
+              {yearlyBilling && <p className="text-sm text-green-600 mb-4">Starting at $948/year</p>}
+              {!yearlyBilling && <p className="text-sm text-gray-400 mb-4">Custom pricing available</p>}
               <div className="space-y-3 mb-8 text-left">
                 <div className="flex items-start">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm font-medium">Everything in Professional</span>
+                  <span className="text-sm font-medium">Everything in Pro</span>
                 </div>
                 <div className="flex items-start">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -419,7 +486,7 @@ export const Landing = () => {
                 </div>
                 <div className="flex items-start">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Advanced API access</span>
+                  <span className="text-sm">White-label options</span>
                 </div>
                 <div className="flex items-start">
                   <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -430,13 +497,16 @@ export const Landing = () => {
                   <span className="text-sm">SLA & phone support</span>
                 </div>
               </div>
-              <button className="block w-full py-3 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors font-medium">
-                Contact Sales
-              </button>
+              <Link to="/signup" className="block w-full py-3 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors font-medium text-center">
+                Start $1 Trial
+              </Link>
             </div>
           </div>
           
-          <p className="text-sm text-gray-500 mt-8">All plans will include 14-day free trial at launch. Join the waitlist for early access.</p>
+          <div className="text-center mt-8 space-y-2">
+            <p className="text-sm text-gray-500">{yearlyBilling ? 'Prices shown are billed annually' : 'Save 20% with annual billing'}</p>
+            <p className="text-sm text-gray-500">All plans start with $1 first month. Cancel anytime.</p>
+          </div>
         </div>
       </section>
 
@@ -449,7 +519,7 @@ export const Landing = () => {
           </div>
           <div className="flex items-center">
             <Clock className="w-5 h-5 mr-2" />
-            <span>99.9% uptime</span>
+            <span>Real-time updates</span>
           </div>
           <div className="flex items-center">
             <Zap className="w-5 h-5 mr-2" />
