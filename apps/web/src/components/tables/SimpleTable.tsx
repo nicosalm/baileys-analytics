@@ -100,7 +100,7 @@ export function SimpleTable<T extends Record<string, any>>({
   return (
     <div className="space-y-4">
       {enableSearch && (
-        <div className="flex items-center bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -108,13 +108,13 @@ export function SimpleTable<T extends Record<string, any>>({
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
         </div>
       )}
 
-      <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -157,7 +157,7 @@ export function SimpleTable<T extends Record<string, any>>({
                 return (
                   <tr
                     key={rowId}
-                    className={`hover:bg-gray-50 transition-colors ${
+                    className={`hover:bg-gray-50 transition-all ${
                       onRowClick ? 'cursor-pointer' : ''
                     } ${customClassName}`}
                     onClick={() => onRowClick?.(item, index)}

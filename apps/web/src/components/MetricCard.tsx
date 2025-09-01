@@ -4,41 +4,26 @@ import { formatCurrency, formatCompactCurrency, formatPercentage } from '@bailey
 import { cn } from '@baileys/utils'
 
 export interface MetricCardProps {
-  // Core props
   icon: React.ComponentType<{ className?: string }>
   label: string
   value: number | string
-  
-  // Formatting
   format?: 'currency' | 'percent' | 'number' | 'compact' | 'custom'
-  
-  // Additional information
   subValue?: string
   subtitle?: string
   tooltip?: string
-  
-  // Trend indicator
   trend?: {
     value: number
     isPositive?: boolean
     period?: string
   }
-  
-  // Target/Goal
   target?: {
     value: number
     label?: string
   }
-  
-  // Styling
   color?: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'yellow' | 'gray'
   size?: 'sm' | 'md' | 'lg'
-  
-  // State
   loading?: boolean
   error?: string
-  
-  // Interaction
   onClick?: () => void
   className?: string
 }
@@ -138,7 +123,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   if (loading) {
     return (
       <div className={cn(
-        "bg-white rounded-lg shadow-sm flex items-center justify-center",
+        "bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center",
         currentSize.padding,
         className
       )}>
@@ -150,7 +135,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   if (error) {
     return (
       <div className={cn(
-        "bg-white rounded-lg shadow-sm",
+        "bg-white rounded-lg shadow-sm border border-gray-200",
         currentSize.padding,
         className
       )}>
@@ -162,8 +147,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div 
       className={cn(
-        "bg-white rounded-lg shadow-sm transition-all",
-        onClick && "cursor-pointer hover:shadow-md",
+        "bg-white rounded-lg shadow-sm border border-gray-200 transition-all",
+        onClick && "cursor-pointer hover:shadow-md hover:border-blue-200",
         currentSize.padding,
         className
       )}

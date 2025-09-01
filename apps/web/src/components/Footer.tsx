@@ -17,7 +17,7 @@ export const Footer = () => {
           <nav className="flex items-center gap-6 text-sm">
             <a 
               href="mailto:support@baileysanalytics.com" 
-              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+              className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Support
             </a>
@@ -25,19 +25,19 @@ export const Footer = () => {
               href="https://status.baileysanalytics.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+              className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Status
             </a>
             <Link 
               to="/terms" 
-              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+              className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Terms
             </Link>
             <Link 
               to="/privacy" 
-              className="text-gray-600 hover:text-gray-900 transition-colors font-medium"
+              className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Privacy
             </Link>

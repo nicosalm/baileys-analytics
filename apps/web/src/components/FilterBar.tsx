@@ -31,7 +31,7 @@ export const FilterBar: React.FC = () => {
   const hasActiveFilters = filters.selectedTags.length > 0
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-30">
+    <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-6 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 flex-1">

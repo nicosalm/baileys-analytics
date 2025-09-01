@@ -72,17 +72,21 @@ const ToastContainer = ({ toasts, removeToast }: { toasts: Toast[], removeToast:
       {toasts.map(toast => (
         <div
           key={toast.id}
-          className={`p-4 rounded-xl shadow-lg max-w-sm flex items-center gap-3 ${
-            toast.type === 'success' ? 'bg-green-600 text-white' :
-            toast.type === 'error' ? 'bg-red-600 text-white' :
-            'bg-blue-600 text-white'
+          className={`bg-white rounded-lg shadow-xl border max-w-sm flex items-center gap-3 p-4 ${
+            toast.type === 'success' ? 'border-green-200' :
+            toast.type === 'error' ? 'border-red-200' :
+            'border-blue-200'
           }`}
         >
-          <span className="flex-shrink-0">{icons[toast.type]}</span>
-          <span className="flex-1 text-sm font-medium">{toast.message}</span>
+          <span className={`flex-shrink-0 ${
+            toast.type === 'success' ? 'text-green-600' :
+            toast.type === 'error' ? 'text-red-600' :
+            'text-blue-600'
+          }`}>{icons[toast.type]}</span>
+          <span className="flex-1 text-sm font-medium text-gray-900">{toast.message}</span>
           <button
             onClick={() => removeToast(toast.id)}
-            className="ml-2 p-1 text-white/80 hover:text-white hover:bg-white/10 rounded-lg"
+            className="ml-2 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
           >
             <X className="w-4 h-4" />
           </button>

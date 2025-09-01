@@ -4,33 +4,20 @@ import { Loader2, AlertCircle, Database, RefreshCw } from 'lucide-react'
 import { LoadingState } from './LoadingState'
 
 export interface StateWrapperProps {
-  // State flags
   loading?: boolean
   error?: string | Error | null
   empty?: boolean
-  
-  // Messages
   loadingMessage?: string
   errorMessage?: string
   emptyMessage?: string
   emptySubMessage?: string
-  
-  // Icons
   emptyIcon?: React.ReactNode
-  
-  // Actions
   onRetry?: () => void
   retryLabel?: string
-  
-  // Content
   children: React.ReactNode
-  
-  // Styling
   className?: string
   minHeight?: number | string
   centered?: boolean
-  
-  // Loading style
   loadingStyle?: 'spinner' | 'skeleton' | 'component'
   skeletonRows?: number
 }
@@ -60,7 +47,6 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
     className
   )
 
-  // Handle loading state
   if (loading) {
     if (loadingStyle === 'spinner') {
       return (
@@ -86,7 +72,6 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
       )
     }
     
-    // Default to LoadingState component
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
         <LoadingState message={loadingMessage} />
@@ -94,7 +79,6 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
     )
   }
 
-  // Handle error state
   if (error) {
     const errorMsg = errorMessage || 
       (error instanceof Error ? error.message : String(error))
@@ -107,7 +91,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
         {onRetry && (
           <button
             onClick={onRetry}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             {retryLabel}
@@ -117,7 +101,6 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
     )
   }
 
-  // Handle empty state
   if (empty) {
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
@@ -129,7 +112,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
         {onRetry && (
           <button
             onClick={onRetry}
-            className="mt-4 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-4 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             {retryLabel}
@@ -139,7 +122,6 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
     )
   }
 
-  // Render children when no special state
   return <>{children}</>
 }
 

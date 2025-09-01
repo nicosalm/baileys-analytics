@@ -277,14 +277,31 @@ export const GuestsDashboard = () => {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold">Guest Analytics</h2>
-                <p className="text-gray-600 text-sm mt-1">
-                    Understand your guests and their booking patterns
-                </p>
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Guest Analytics</h2>
+                        <p className="text-gray-600 text-sm mt-1">
+                            Understand your guests and their booking patterns
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="text-right">
+                            <div className="text-xs text-gray-500">Active Guests</div>
+                            <div className="text-lg font-bold text-blue-600">
+                                {data.metrics.totalGuests.toLocaleString()}
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="text-xs text-gray-500">Repeat Rate</div>
+                            <div className="text-lg font-bold text-gray-900">
+                                {formatPercentage(data.metrics.repeatRate * 100, 0)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            {/* Info Banner */}
             {showTips && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <div className="flex items-start">
@@ -297,7 +314,6 @@ export const GuestsDashboard = () => {
                 </div>
             )}
 
-            {/* Key Metrics */}
             <div className="grid md:grid-cols-4 gap-4">
                 <MetricCard
                     icon={Users}
@@ -368,7 +384,6 @@ export const GuestsDashboard = () => {
                 />
             </div>
 
-            {/* Top Performers Section */}
             <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
                     <div className="flex items-center justify-between mb-4">
@@ -439,7 +454,6 @@ export const GuestsDashboard = () => {
                 </div>
             </div>
 
-            {/* Charts Section */}
             <div className="grid md:grid-cols-2 gap-6">
                 <ChartWrapper
                     title={`Guest Sources${timePeriod}`}
@@ -504,7 +518,6 @@ export const GuestsDashboard = () => {
                 </ChartWrapper>
             </div>
 
-            {/* Guest Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-4 border-b">
                     <div className="flex justify-between items-center">

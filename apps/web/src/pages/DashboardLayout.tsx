@@ -6,8 +6,8 @@ import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
 import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
-import FinancialDashboard from '@/components/dashboards/FinancialDashboard'
-import ReportsModule from '@/components/ReportsModule'
+import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
+import { ReportsModule } from '@/components/ReportsModule'
 import { FilterBar } from '@/components/FilterBar'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
@@ -15,7 +15,6 @@ import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
-// Tab config with overview as first tab
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'financial', label: 'Financials', icon: DollarSign },
@@ -128,7 +127,7 @@ export const DashboardLayout = () => {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-900">Baileys Analytics</h1>
-              <button onClick={handleLogout} className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-colors px-3 py-1.5 rounded-md hover:bg-gray-100">
+              <button onClick={handleLogout} className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-all px-3 py-1.5 rounded-md hover:bg-gray-100">
                 <LogOut className="w-4 h-4 mr-1.5" />
                 Logout
               </button>
@@ -147,7 +146,7 @@ export const DashboardLayout = () => {
               </p>
               <button
                 onClick={handleConnect}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
               >
                 Connect OwnerRez Account
               </button>

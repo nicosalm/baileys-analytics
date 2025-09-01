@@ -43,34 +43,26 @@ type PeriodOption = {
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-// Helper to get current date in season
 const getCurrentSeasonDates = (season: Season, year: number = getYear(new Date())) => {
   const today = new Date()
   
-  // Calculate season dates for the given year
   let startDate: Date
   let endDate: Date
   
   if (season.startMonth <= season.endMonth) {
-    // Season doesn't cross year boundary
     startDate = new Date(year, season.startMonth - 1, season.startDay)
     endDate = new Date(year, season.endMonth - 1, season.endDay)
   } else {
-    // Season crosses year boundary (e.g., Dec to Feb)
-    // Determine which year pair we're in
     const currentMonth = getMonth(today) + 1
     if (currentMonth >= season.startMonth) {
-      // We're in the start of a season that crosses into next year
       startDate = new Date(year, season.startMonth - 1, season.startDay)
       endDate = new Date(year + 1, season.endMonth - 1, season.endDay)
     } else {
-      // We're in the end of a season that started last year
       startDate = new Date(year - 1, season.startMonth - 1, season.startDay)
       endDate = new Date(year, season.endMonth - 1, season.endDay)
     }
   }
   
-  // If end date is in future, cap at today
   const cappedEndDate = endDate > today ? today : endDate
   
   return {
@@ -79,13 +71,11 @@ const getCurrentSeasonDates = (season: Season, year: number = getYear(new Date()
   }
 }
 
-// Helper to get previous season dates
 const getPreviousSeasonDates = (season: Season) => {
   const currentYear = getYear(new Date())
   return getCurrentSeasonDates(season, currentYear - 1)
 }
 
-// Helper to check if today is within the season
 const isCurrentlyInSeason = (season: Season): boolean => {
   const today = new Date()
   const currentMonth = getMonth(today) + 1
@@ -106,7 +96,6 @@ const isCurrentlyInSeason = (season: Season): boolean => {
   }
 }
 
-// Helper to check if the season has started this year
 const hasSeasonStartedThisYear = (season: Season): boolean => {
   const today = new Date()
   const currentYear = getYear(today)
@@ -420,7 +409,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           
           {/* Comparison Dropdown */}
           {comparisonDropdownOpen && (
-            <div className="absolute z-50 mt-2 bg-white border rounded-lg shadow-lg min-w-[200px] right-0">
+            <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[200px] right-0">
               <div className="p-1">
                 <button
                   onClick={() => {
@@ -520,7 +509,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
       
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 bg-white border rounded-lg shadow-lg min-w-[280px]">
+        <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[280px]">
           {/* Season status indicator */}
           {seasonStatus && activeSeasons.length > 0 && (
             <div className={cn(
@@ -615,7 +604,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   onChange(tempCustomRange)
                   setCustomRangeOpen(false)
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
                 disabled={!tempCustomRange.from || !tempCustomRange.to}
               >
                 Apply Range

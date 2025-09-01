@@ -36,7 +36,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
 
   return (
     <div
-      className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all"
       onClick={() => openModal({
         type: 'property',
         propertyId: property.propertyId,
@@ -165,8 +165,8 @@ export const PropertiesDashboard = () => {
   if (isLoading || validProperties.length === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold">Your Properties at a Glance</h2>
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-2xl font-bold text-gray-900">Your Properties at a Glance</h2>
           <p className="text-gray-600 text-sm mt-1">
             See how each property is performing and compare them side by side
           </p>
@@ -189,14 +189,31 @@ export const PropertiesDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Your Properties at a Glance</h2>
-        <p className="text-gray-600 text-sm mt-1">
-          See how each property is performing and compare them side by side
-        </p>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Your Properties at a Glance</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              See how each property is performing and compare them side by side
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs text-gray-500">Total Revenue</div>
+              <div className="text-lg font-bold text-green-600">
+                {formatCompactCurrency(totalRevenue)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-gray-500">Properties</div>
+              <div className="text-lg font-bold text-gray-900">
+                {validProperties.length}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Info Banner */}
       {showTips && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">

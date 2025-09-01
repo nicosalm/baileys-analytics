@@ -29,7 +29,7 @@ const TabButton: FC<TabButtonProps> = ({ active, onClick, children }) => (
   </button>
 )
 
-const FinancialDashboard = () => {
+export const FinancialDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { openModal } = useModal()
   const [activeTab, setActiveTab] = useState('pl')
@@ -213,11 +213,33 @@ const FinancialDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">Financial Center</h2>
-        <p className="text-gray-600 text-sm mt-1">
-          Track your vacation rental income, expenses, and profitability
-        </p>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Financial Center</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Track your vacation rental income, expenses, and profitability
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {financialData?.metrics && (
+              <>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Net Revenue</div>
+                  <div className="text-lg font-bold text-green-600">
+                    ${(financialData.metrics.net || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-gray-500">Gross Revenue</div>
+                  <div className="text-lg font-bold text-gray-900">
+                    ${(financialData.metrics.gross || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -246,5 +268,3 @@ const FinancialDashboard = () => {
     </div>
   )
 }
-
-export default FinancialDashboard

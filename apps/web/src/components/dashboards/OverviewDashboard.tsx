@@ -13,6 +13,7 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { METRIC_COLORS, getPlatformColor } from '@/lib/theme'
+import { useNavigate } from 'react-router-dom'
 
 
 const AlertCard = ({ alert }: { alert: any }) => {
@@ -46,11 +47,18 @@ const AlertCard = ({ alert }: { alert: any }) => {
 
 
 export const OverviewDashboard = () => {
-  const { filters, setActiveTab, comparisonRange, comparisonMode } = useDashboard()
+  const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
   const tagIds = useTagIds()
+  const navigate = useNavigate()
   
-  // Use the batch endpoint
+  const handleMetricCardClick = (tab: string) => {
+    // Preserve query params when navigating
+    const currentParams = new URLSearchParams(window.location.search)
+    const newPath = `/dashboard/${tab}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
+    navigate(newPath)
+  }
+  
   const { data, error, isLoading } = useDashboardBatch(
     'overview',
     filters.dateRange.from,
@@ -114,12 +122,20 @@ export const OverviewDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Your Business at a Glance</h2>
-          <p className="text-gray-600 text-sm mt-1">
-            Everything you need to know about how your properties are doing
-          </p>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Your Business at a Glance</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Everything you need to know about how your properties are doing
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+              <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+              Live Data
+            </span>
+          </div>
         </div>
       </div>
 
@@ -149,7 +165,7 @@ export const OverviewDashboard = () => {
             isPositive: metrics.revenue.growth > 0
           } : undefined}
           color="green"
-          onClick={() => setActiveTab('financial')}
+          onClick={() => handleMetricCardClick('financial')}
         />
         <MetricCard
           icon={Calendar}
@@ -164,7 +180,7 @@ export const OverviewDashboard = () => {
             isPositive: metrics.bookings.current > metrics.bookings.previous
           } : undefined}
           color="blue"
-          onClick={() => setActiveTab('properties')}
+          onClick={() => handleMetricCardClick('properties')}
         />
         <MetricCard
           icon={Home}
@@ -180,7 +196,7 @@ export const OverviewDashboard = () => {
             isPositive: metrics.occupancy.growth > 0
           } : undefined}
           color="purple"
-          onClick={() => setActiveTab('occupancy')}
+          onClick={() => handleMetricCardClick('occupancy')}
         />
         <MetricCard
           icon={Users}
@@ -195,7 +211,7 @@ export const OverviewDashboard = () => {
             isPositive: metrics.guests.growth > 0
           } : undefined}
           color="orange"
-          onClick={() => setActiveTab('guests')}
+          onClick={() => handleMetricCardClick('guests')}
         />
       </div>
 

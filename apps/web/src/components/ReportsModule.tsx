@@ -246,7 +246,7 @@ const ComingSoonOverlay = ({ feature }: { feature: string }) => (
   </div>
 )
 
-export default function ReportsModule() {
+export const ReportsModule = () => {
   const { error } = useReportTemplates()
   const [activeTab, setActiveTab] = useState<'quick' | 'templates' | 'scheduled'>('quick')
 
@@ -263,16 +263,31 @@ export default function ReportsModule() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold">Reports</h2>
-          <p className="text-gray-600 text-sm mt-1">
-            Professional PDF reports that exceed OwnerRez capabilities
-          </p>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Reports Center</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Generate professional PDF reports with detailed analytics
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs text-gray-500">Available Reports</div>
+              <div className="text-lg font-bold text-blue-600">
+                {QUICK_REPORTS.length}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-gray-500">Format</div>
+              <div className="text-lg font-bold text-gray-900">
+                PDF
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Tab Navigation */}
       <div className="border-b">
         <nav className="flex space-x-6">
           <button
@@ -312,27 +327,8 @@ export default function ReportsModule() {
         </nav>
       </div>
 
-      {/* Tab Content */}
       {activeTab === 'quick' && (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Professional PDF Reports
-                </h3>
-                <p className="text-sm text-gray-600 max-w-2xl">
-                  Generate PDF reports.
-                  Get actionable intelligence for your vacation rental business.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-white/80 rounded-full">
-                <FileText className="w-4 h-4 text-blue-600" />
-                <span className="text-sm font-medium text-gray-700">PDF Format</span>
-              </div>
-            </div>
-          </div>
-
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {QUICK_REPORTS.map(report => (
               <QuickReportCard key={report.id} report={report} />

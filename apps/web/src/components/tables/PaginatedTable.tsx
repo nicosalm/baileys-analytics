@@ -205,7 +205,7 @@ export function PaginatedTable<T extends Record<string, any>>({
                 return (
                   <tr
                     key={rowId}
-                    className={`hover:bg-gray-50 transition-colors ${
+                    className={`hover:bg-gray-50 transition-all ${
                       onRowClick ? 'cursor-pointer' : ''
                     } ${customClassName}`}
                     onClick={() => onRowClick?.(item, actualIndex)}

@@ -157,14 +157,31 @@ export const OccupancyDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold">How Busy Are Your Properties?</h2>
-        <p className="text-gray-600 text-sm mt-1">
-          Track when your properties are booked and identify opportunities to fill empty nights
-        </p>
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">How Busy Are Your Properties?</h2>
+            <p className="text-gray-600 text-sm mt-1">
+              Track when your properties are booked and identify opportunities to fill empty nights
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs text-gray-500">Current Occupancy</div>
+              <div className="text-lg font-bold text-blue-600">
+                {formatPercentage(currentData.overall * 100, 0)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-gray-500">Booked Nights</div>
+              <div className="text-lg font-bold text-gray-900">
+                {currentData.bookedNights.toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Info Banner */}
       {showTips && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <div className="flex items-start">
@@ -240,7 +257,6 @@ export const OccupancyDashboard = () => {
         />
       </div>
 
-      {/* Chart and Properties grid */}
       <div className="grid md:grid-cols-2 gap-6">
         <ChartWrapper
           title={getChartTitle()}

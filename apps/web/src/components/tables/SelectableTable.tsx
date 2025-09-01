@@ -196,12 +196,12 @@ export function SelectableTable<T extends Record<string, any>>({
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                   {showBulkMenu && (
-                    <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-10">
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
                       {bulkActions.map((action) => (
                         <button
                           key={action.action}
                           onClick={() => handleBulkAction(action.action)}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-left hover:bg-gray-50 transition-all first:rounded-t-lg last:rounded-b-lg"
                         >
                           {action.icon}
                           <span>{action.label}</span>
@@ -295,7 +295,7 @@ export function SelectableTable<T extends Record<string, any>>({
                 return (
                   <tr
                     key={rowId}
-                    className={`hover:bg-gray-50 transition-colors ${
+                    className={`hover:bg-gray-50 transition-all ${
                       onRowClick ? 'cursor-pointer' : ''
                     } ${isSelected ? 'bg-blue-50' : ''} ${customClassName}`}
                     onClick={() => onRowClick?.(item, actualIndex)}
