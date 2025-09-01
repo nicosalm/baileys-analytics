@@ -3,7 +3,7 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calcula
 import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics, ChartDataPoint, RadarChartData } from '@/types/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, Legend } from 'recharts'
-import { Calendar, DollarSign, Home, Info, BarChart3, Target, Percent, TrendingUp, TrendingDown } from 'lucide-react'
+import { Calendar, DollarSign, Home, Info, Target, Percent, TrendingUp, TrendingDown } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -232,6 +232,7 @@ export const PropertiesDashboard = () => {
           label="Properties You Manage"
           value={(properties || []).length}
           format="number"
+          tooltip="Number of active properties in your portfolio"
           subValue={comparisonMode !== 'none' && previousProperties && previousProperties.length > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousProperties.length} | Active properties`
             : "In selected period"
@@ -247,6 +248,7 @@ export const PropertiesDashboard = () => {
           label="Combined Revenue"
           value={totalRevenue}
           format="currency"
+          tooltip="Total revenue across all properties"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(prevTotalRevenue)} | All properties`
             : "All properties"
@@ -262,6 +264,7 @@ export const PropertiesDashboard = () => {
           label="Average Fullness"
           value={avgOccupancy * 100}
           format="percent"
+          tooltip="Average occupancy rate across all properties"
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(prevAvgOccupancy * 100, 0)} | Across all`
             : "Across all properties"
@@ -277,6 +280,7 @@ export const PropertiesDashboard = () => {
           label="Total Reservations"
           value={totalBookings}
           format="number"
+          tooltip="Total number of bookings across all properties"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${prevTotalBookings} | All bookings`
             : "In selected period"
@@ -308,9 +312,9 @@ export const PropertiesDashboard = () => {
           title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Money vs Fullness${timePeriod}`}
           subtitle={comparisonMode !== 'none' 
             ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
-            : "Blue bars show revenue, green bars show how full each property is"
+            : undefined
           }
-          icon={BarChart3}
+          icon={TrendingUp}
           height={320}
         >
           {comparisonMode !== 'none' && previousProperties ? (
@@ -336,12 +340,6 @@ export const PropertiesDashboard = () => {
               <Tooltip
                 formatter={(value: number) => formatCurrency(value)}
                 contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                labelFormatter={(label: any, payload: any) => {
-                  if (payload && payload.length > 0) {
-                    return payload[0].payload.fullName
-                  }
-                  return label
-                }}
               />
               <Legend />
               <Line 

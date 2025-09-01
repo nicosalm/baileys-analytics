@@ -3,9 +3,9 @@ import { useTips } from '@/hooks/use-tips'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import {
-  AlertCircle, CheckCircle, TrendingUp,
+  AlertCircle, CheckCircle, TrendingUp, TrendingDown,
   DollarSign, Users, Home, Calendar, Clock,
-  BarChart3, Activity, AlertTriangle, Info
+  BarChart3, AlertTriangle, Info, Percent
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
@@ -156,6 +156,7 @@ export const OverviewDashboard = () => {
           label="Money Earned"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
+          tooltip="Total revenue from all bookings"
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(metrics.revenue.previous)} | After fees: ${formatCompactCurrency(metrics.revenue.net)}`
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`
@@ -171,6 +172,7 @@ export const OverviewDashboard = () => {
           icon={Calendar}
           label="Reservations Made"
           value={metrics.bookings.current}
+          tooltip="Total number of confirmed bookings"
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.bookings.previous} | ${actualUpcoming} upcoming`
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
@@ -183,10 +185,11 @@ export const OverviewDashboard = () => {
           onClick={() => handleMetricCardClick('properties')}
         />
         <MetricCard
-          icon={Home}
+          icon={Percent}
           label="How Full You Are"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
+          tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(Number(metrics.occupancy.previous), 0)} | ${metrics.properties.total} properties`
             : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 0)} average`
@@ -202,6 +205,7 @@ export const OverviewDashboard = () => {
           icon={Users}
           label="Guest Count"
           value={metrics.guests.total}
+          tooltip="Unique guests who have stayed"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.guests.previous} | ${metrics.guests.newThisMonth} new`
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`
@@ -217,36 +221,40 @@ export const OverviewDashboard = () => {
 
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
-          icon={TrendingUp}
+          icon={DollarSign}
           label="Avg Booking Value"
           value={Number(metrics.revenue.avgBookingValue) || 0}
           format="currency"
           subValue="Per reservation"
           size="sm"
           color="gray"
+          tooltip="Average revenue per booking"
         />
         <MetricCard
-          icon={Activity}
+          icon={Calendar}
           label="Avg Stay Length"
           value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
           format="custom"
           subValue="Per guest"
           size="sm"
           color="gray"
+          tooltip="Average length of stay"
         />
         <MetricCard
-          icon={Users}
+          icon={TrendingUp}
           label="Repeat Guests"
           value={Number(metrics.guests.repeatRate || 0) * 100}
           format="percent"
           subValue={metrics.guests.total > 0 ? 'Return rate' : 'No data yet'}
           size="sm"
           color="gray"
+          tooltip="Percentage of returning guests"
         />
         <MetricCard
-          icon={AlertCircle}
+          icon={TrendingDown}
           label="Cancellation Rate"
           value={Number(metrics.bookings.cancellationRate || 0)}
+          tooltip="Percentage of bookings canceled"
           format="percent"
           subValue="This period"
           size="sm"

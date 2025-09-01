@@ -2,10 +2,10 @@ import { useState, FormEvent } from 'react'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
-import { useTips } from '@/hooks/use-tips'
+// import { useTips } from '@/hooks/use-tips'
 import { api } from '@/lib/api'
 import useSWR, { mutate } from 'swr'
-import { Calculator, Info, DollarSign, AlertCircle } from 'lucide-react'
+import { Calculator, DollarSign } from 'lucide-react'
 import { formatCurrency, format } from '@baileys/utils'
 
 interface PlatformFeeEntryModalProps {
@@ -23,14 +23,14 @@ export const PlatformFeeEntryModal = ({
 }: PlatformFeeEntryModalProps) => {
   const { closeModal } = useModal()
   const { addToast } = useToast()
-  const { showTips } = useTips()
+  // const { showTips } = useTips()
   
   const { data: platformsResponse } = useSWR(
     propertyId ? `/tax/platforms?propertyId=${propertyId}` : null,
     async () => {
       const result = await api.getPropertyPlatforms(propertyId)
       if (!result.success) throw new Error(result.error)
-      return result.data?.data || result.data || []
+      return (result as any).data?.data || (result as any).data || []
     }
   )
   
@@ -97,12 +97,12 @@ export const PlatformFeeEntryModal = ({
           </label>
           <select
             value={formData.platform}
-            onChange={(e) => setFormData(prev => ({ ...prev, platform: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, platform: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           >
             <option value="">Select a platform</option>
-            {platforms.map(platform => (
+            {platforms.map((platform: any) => (
               <option key={platform} value={platform}>{platform}</option>
             ))}
           </select>
@@ -122,7 +122,7 @@ export const PlatformFeeEntryModal = ({
               value={(formData.month || format(new Date(), 'yyyy-MM')).split('-')[1]}
               onChange={(e) => {
                 const year = (formData.month || format(new Date(), 'yyyy-MM')).split('-')[0]
-                setFormData(prev => ({ ...prev, month: `${year}-${e.target.value}` }))
+                setFormData((prev: any) => ({ ...prev, month: `${year}-${e.target.value}` }))
               }}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -144,7 +144,7 @@ export const PlatformFeeEntryModal = ({
               value={(formData.month || format(new Date(), 'yyyy-MM')).split('-')[0]}
               onChange={(e) => {
                 const month = (formData.month || format(new Date(), 'yyyy-MM')).split('-')[1]
-                setFormData(prev => ({ ...prev, month: `${e.target.value}-${month}` }))
+                setFormData((prev: any) => ({ ...prev, month: `${e.target.value}-${month}` }))
               }}
               className="w-24 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -167,7 +167,7 @@ export const PlatformFeeEntryModal = ({
               min="0"
               step="0.01"
               value={formData.feeAmount || ''}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e) => setFormData((prev: any) => ({ 
                 ...prev, 
                 feeAmount: parseFloat(e.target.value) || 0 
               }))}
@@ -196,7 +196,7 @@ export const PlatformFeeEntryModal = ({
                 min="0"
                 step="0.01"
                 value={formData.platformTaxRemitted || ''}
-                onChange={(e) => setFormData(prev => ({ 
+                onChange={(e) => setFormData((prev: any) => ({ 
                   ...prev, 
                   platformTaxRemitted: parseFloat(e.target.value) || 0 
                 }))}
@@ -239,7 +239,7 @@ export const PlatformFeeEntryModal = ({
           </label>
           <textarea
             value={formData.notes || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={3}
             placeholder="Add any relevant notes about these fees..."

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useModal } from '@/contexts/modal'
-import { useToast } from '@/contexts/toast'
+// import { useToast } from '@/contexts/toast'
 import { useTaxManagement } from '@/hooks/useTaxManagement'
 import { StateWrapper } from '@/components/StateWrapper'
 import { 
@@ -11,13 +11,12 @@ import {
 
 export const TaxManagementPanel = () => {
   const { openModal } = useModal()
-  const { addToast } = useToast()
+  // const { addToast } = useToast()
   const {
     properties,
     configsByProperty,
     statistics,
-    deleteConfig,
-    toggleConfigActive,
+    // deleteConfig,
     isLoading
   } = useTaxManagement()
   
@@ -58,14 +57,14 @@ export const TaxManagementPanel = () => {
     })
   }
   
-  const handleDeleteConfig = async (configId: string) => {
-    const result = await deleteConfig(configId)
-    if (result.success) {
-      addToast('success', 'Tax configuration deleted')
-    } else {
-      addToast('error', result.error || 'Failed to delete configuration')
-    }
-  }
+  // const handleDeleteConfig = async (configId: string) => {
+  //   const result = await deleteConfig(configId)
+  //   if (result.success) {
+  //     addToast('success', 'Tax configuration deleted')
+  //   } else {
+  //     addToast('error', result.error || 'Failed to delete configuration')
+  //   }
+  // }
   
   const handleManageFees = (propertyId: string, propertyName: string) => {
     openModal({

@@ -578,17 +578,20 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 			const comparisonFrom = c.req.query('comparisonFrom');
 			const comparisonTo = c.req.query('comparisonTo');
 
+			const { detectBookingGaps } = await import('./services/occupancy');
 			const currentData = await getOccupancyData(supabase, tenantId, from, to, tags);
+			// detect booking gaps for the next 60 days
+			const bookingGaps = await detectBookingGaps(supabase, tenantId, 60);
 
 			if (comparisonFrom && comparisonTo) {
 				const previousData = await getOccupancyData(supabase, tenantId, comparisonFrom, comparisonTo, tags);
 				data = {
-					current: currentData,
+					current: { ...currentData, gaps: bookingGaps },
 					previous: previousData,
 					view: 'occupancy'
 				};
 			} else {
-				data = currentData;
+				data = { ...currentData, gaps: bookingGaps };
 			}
 			break;
 		}

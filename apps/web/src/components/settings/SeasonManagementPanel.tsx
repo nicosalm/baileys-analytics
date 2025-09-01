@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonActive } from '@/hooks/use-api'
-import { Plus, Edit2, Trash2, Calendar, Check, X, AlertCircle, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Edit2, Calendar, Check, X } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import { ConfirmModal } from '@/components/ConfirmModal'
@@ -149,7 +149,7 @@ const SeasonRow: React.FC<{
   onEdit: (season: Season) => void
   onDelete: (season: Season) => void
   onToggleActive: (season: Season) => void
-}> = ({ season, onEdit, onDelete, onToggleActive }) => {
+}> = ({ season, onEdit, onToggleActive }) => {
   const formatSeasonDate = (month: number, day: number) => {
     return `${months[month - 1]} ${day}`
   }

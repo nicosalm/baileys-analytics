@@ -535,3 +535,122 @@ export async function getDailyOccupancyData(
 ): Promise<DailyOccupancy[]> {
   return fetchDailyOccupancy(supabase, tenantId, from, to, tagIds);
 }
+
+export interface BookingGap {
+  propertyId: string;
+  propertyName: string;
+  gapStart: string;
+  gapEnd: string;
+  gapDays: number;
+  daysUntilGap: number;
+  estimatedRevenueLoss: number;
+  severity: 'critical' | 'warning' | 'info';
+}
+
+export async function detectBookingGaps(
+  supabase: SupabaseClient,
+  tenantId: string,
+  maxDaysAhead: number = 60
+): Promise<BookingGap[]> {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + maxDaysAhead);
+  
+  // fetch properties
+  const { data: properties } = await supabase
+    .from('properties')
+    .select('id, name, base_rate')
+    .eq('tenant_id', tenantId)
+    .eq('active', true);
+  
+  if (!properties || properties.length === 0) {
+    return [];
+  }
+  
+  // fetch bookings for the period
+  const { data: bookings } = await supabase
+    .from('bookings')
+    .select('property_id, arrival, departure')
+    .eq('tenant_id', tenantId)
+    .gte('arrival', today.toISOString())
+    .lte('arrival', endDate.toISOString())
+    .neq('status', 'canceled')
+    .order('property_id', { ascending: true })
+    .order('arrival', { ascending: true });
+  
+  const gaps: BookingGap[] = [];
+  
+  for (const property of properties) {
+    const propertyBookings = bookings?.filter(b => b.property_id === property.id) || [];
+    
+    // check for gaps between bookings
+    let lastDeparture = new Date(today);
+    
+    for (const booking of propertyBookings) {
+      const arrivalDate = new Date(booking.arrival);
+      const departureDate = new Date(booking.departure);
+      
+      // if there's a gap between last departure and this arrival
+      const gapStart = new Date(lastDeparture);
+      gapStart.setDate(gapStart.getDate() + 1); // day after last departure
+      
+      if (gapStart < arrivalDate) {
+        const gapDays = Math.floor((arrivalDate.getTime() - gapStart.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // only report gaps of 2+ days
+        if (gapDays >= 2) {
+          const daysUntilGap = Math.floor((gapStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          const estimatedRevenueLoss = gapDays * (property.base_rate || 150); // use base rate or default
+          
+          let severity: BookingGap['severity'] = 'info';
+          if (daysUntilGap <= 7 && gapDays >= 3) severity = 'critical';
+          else if (daysUntilGap <= 14 || gapDays >= 5) severity = 'warning';
+          
+          gaps.push({
+            propertyId: property.id,
+            propertyName: property.name,
+            gapStart: gapStart.toISOString().split('T')[0],
+            gapEnd: new Date(arrivalDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            gapDays,
+            daysUntilGap,
+            estimatedRevenueLoss,
+            severity
+          });
+        }
+      }
+      
+      lastDeparture = departureDate;
+    }
+    
+    // check for gap after last booking
+    const finalGapStart = new Date(lastDeparture);
+    finalGapStart.setDate(finalGapStart.getDate() + 1);
+    
+    if (finalGapStart < endDate) {
+      const gapDays = Math.floor((endDate.getTime() - finalGapStart.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (gapDays >= 3) { // longer threshold for end gaps
+        const daysUntilGap = Math.floor((finalGapStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const estimatedRevenueLoss = Math.min(gapDays, 14) * (property.base_rate || 150); // cap at 14 days
+        
+        let severity: BookingGap['severity'] = 'info';
+        if (daysUntilGap <= 0) severity = 'critical'; // current gap
+        else if (daysUntilGap <= 7) severity = 'warning';
+        
+        gaps.push({
+          propertyId: property.id,
+          propertyName: property.name,
+          gapStart: finalGapStart.toISOString().split('T')[0],
+          gapEnd: new Date(endDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          gapDays: Math.min(gapDays, 14), // cap display at 14 days
+          daysUntilGap,
+          estimatedRevenueLoss,
+          severity
+        });
+      }
+    }
+  }
+  
+  return gaps.sort((a, b) => a.daysUntilGap - b.daysUntilGap);
+}

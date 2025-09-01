@@ -151,9 +151,21 @@ export interface OccupancyTrendData {
   availableNights: number
 }
 
+export interface BookingGap {
+  propertyId: string
+  propertyName: string
+  gapStart: string
+  gapEnd: string
+  gapDays: number
+  daysUntilGap: number
+  estimatedRevenueLoss: number
+  severity: 'critical' | 'warning' | 'info'
+}
+
 export interface OccupancyData extends OccupancyMetrics {
   byMonth: OccupancyTrendData[]
   byProperty: OccupancyByProperty[]
+  gaps?: BookingGap[]
 }
 
 // Properties Dashboard Types

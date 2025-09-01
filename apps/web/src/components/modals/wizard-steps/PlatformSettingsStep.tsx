@@ -1,8 +1,8 @@
-import { Calendar, Info, Building2, AlertCircle } from 'lucide-react'
+import { Calendar, Building2, AlertCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
-import { useTips } from '@/hooks/use-tips'
+// import { useTips } from '@/hooks/use-tips'
 
 interface PlatformSettingsStepProps {
   propertyId: string
@@ -17,14 +17,14 @@ export const PlatformSettingsStep = ({
   effectiveFrom,
   onUpdate 
 }: PlatformSettingsStepProps) => {
-  const { showTips } = useTips()
+  // const { showTips } = useTips()
   
-  const { data: platformsResponse, isLoading, error } = useSWR(
+  const { data: platformsResponse, isLoading } = useSWR(
     propertyId ? `/tax/platforms?propertyId=${propertyId}` : null,
     async () => {
       const result = await api.getPropertyPlatforms(propertyId)
       if (!result.success) throw new Error(result.error)
-      return result.data?.data || result.data || []
+      return (result as any).data?.data || (result as any).data || []
     }
   )
   

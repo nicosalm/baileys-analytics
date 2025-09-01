@@ -32,7 +32,7 @@ occupancy.get('/', cache({ ttl: 3600 }), async (c) => {
 	const endDate = to || new Date().toISOString().split('T')[0];
 	const tagIds = tags ? tags.split(',').filter(Boolean) : [];
 	
-	const { getOccupancyData } = await import('../services/occupancy');
+	const { getOccupancyData, detectBookingGaps } = await import('../services/occupancy');
 	
 	const currentData = await getOccupancyData(
 		supabase,
@@ -40,6 +40,13 @@ occupancy.get('/', cache({ ttl: 3600 }), async (c) => {
 		startDate,
 		endDate,
 		tagIds
+	);
+	
+	// detect booking gaps for the next 60 days
+	const bookingGaps = await detectBookingGaps(
+		supabase,
+		tenant.id,
+		60
 	);
 	
 	if (comparisonFrom && comparisonTo) {
@@ -52,12 +59,12 @@ occupancy.get('/', cache({ ttl: 3600 }), async (c) => {
 		);
 		
 		return c.json({
-			current: currentData,
+			current: { ...currentData, gaps: bookingGaps },
 			previous: previousData
 		});
 	}
 	
-	return c.json(currentData);
+	return c.json({ ...currentData, gaps: bookingGaps });
 });
 
 occupancy.get('/daily', cache({ ttl: 3600 }), async (c) => {

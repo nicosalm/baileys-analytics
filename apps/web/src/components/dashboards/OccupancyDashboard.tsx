@@ -1,6 +1,7 @@
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
+import { BookingGapAlert } from '@/components/BookingGapAlert'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
-import { Calendar, Home, AlertCircle, Info, Percent, BarChart3, TrendingUp, TrendingDown } from 'lucide-react'
+import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
@@ -13,12 +14,14 @@ import { formatPercentage, minBy } from '@baileys/utils'
 import { METRIC_COLORS } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 import { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
+import { useState } from 'react'
 
 export const OccupancyDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { openModal } = useModal()
   const { showTips } = useTips()
   const tagIds = useTagIds()
+  const [gapAlertDismissed, setGapAlertDismissed] = useState(false)
   
   const { data, error, isLoading } = useDashboardBatch(
     'occupancy',
@@ -31,6 +34,12 @@ export const OccupancyDashboard = () => {
 
   const currentData = data?.current || data
   const previousData = data?.previous || null
+  const bookingGaps = currentData?.gaps || []
+  
+  // only show gaps that are not dismissed and have critical or warning severity
+  const visibleGaps = bookingGaps.filter((gap: any) => 
+    gap.severity === 'critical' || gap.severity === 'warning'
+  )
 
   useErrorToast(error, 'Failed to load occupancy data')
 
@@ -157,6 +166,7 @@ export const OccupancyDashboard = () => {
 
   return (
     <div className="space-y-6">
+      
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -200,6 +210,7 @@ export const OccupancyDashboard = () => {
           label="How Full You Were"
           value={currentData.overall * 100}
           format="percent"
+          tooltip="Percentage of available nights that were booked"
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(previousData.overall * 100, 0)} | ${currentData.bookedNights.toLocaleString()} nights`
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
@@ -217,6 +228,7 @@ export const OccupancyDashboard = () => {
           label="Nights With Guests"
           value={currentData.bookedNights}
           format="number"
+          tooltip="Total nights with bookings across all properties"
           subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.bookedNights.toLocaleString()} nights`
             : "In selected period"
@@ -234,6 +246,7 @@ export const OccupancyDashboard = () => {
           label="Total Bookable Nights"
           value={currentData.availableNights}
           format="number"
+          tooltip="Maximum nights available for booking"
           subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.availableNights.toLocaleString()}`
             : "Across all properties"
@@ -247,82 +260,76 @@ export const OccupancyDashboard = () => {
           color="purple"
         />
         <MetricCard
-          icon={AlertCircle}
+          icon={TrendingDown}
           label={`Lowest ${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'}`}
           value={formatPeriodDisplay(lowestPeriod.month)}
           format="custom"
           subValue={`Only ${formatPercentage(lowestPeriod.rate * 100, 0)} booked`}
-          tooltip={`${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'} with lowest occupancy`}
-          color="orange"
+          tooltip={`${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'} with lowest occupancy rate in the selected period`}
+          color="yellow"
         />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <ChartWrapper
-          title={getChartTitle()}
-          subtitle={comparisonMode !== 'none' && previousData 
-            ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
-            : undefined
-          }
-          icon={BarChart3}
-          height={320}
-        >
-          <LineChart data={chartData} onClick={handlePeriodClick}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="month"
-              angle={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? -45 : 0}
-              textAnchor={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 'end' : 'middle'}
-              height={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 60 : undefined}
-              interval={
-                dataGranularity === 'Daily' && chartData.length > 30 ? Math.ceil(chartData.length / 15) : 
-                dataGranularity === 'Weekly' && chartData.length > 12 ? 1 : 
-                0
-              }
-            />
-            <YAxis
-              tickFormatter={(value: number) => `${value}%`}
-              domain={[0, 100]}
-            />
-            <Tooltip
-              formatter={(value: number, name: string) => [
-                `${value.toFixed(1)}% booked`, 
-                name === 'rate' ? 'Current' : comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'
-              ]}
-              labelFormatter={(label: any, payload: any) => {
-                const data = payload?.[0]?.payload
-                const prefix = dataGranularity === 'Weekly' ? 'Week of ' : ''
-                if (data?.bookedNights && data?.availableNights) {
-                  return `${prefix}${label}: ${data.bookedNights} nights booked out of ${data.availableNights}`
-                }
-                return `${prefix}${label}`
-              }}
-              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-            />
-            {comparisonMode !== 'none' && previousData && <Legend />}
+
+      <ChartWrapper
+        title={getChartTitle()}
+        subtitle={comparisonMode !== 'none' && previousData 
+          ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+          : undefined
+        }
+        icon={TrendingUp}
+        height={320}
+      >
+        <LineChart data={chartData} onClick={handlePeriodClick}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis 
+            dataKey="month"
+            angle={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? -45 : 0}
+            textAnchor={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 'end' : 'middle'}
+            height={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 60 : undefined}
+            interval={
+              dataGranularity === 'Daily' && chartData.length > 30 ? Math.ceil(chartData.length / 15) : 
+              dataGranularity === 'Weekly' && chartData.length > 12 ? 1 : 
+              0
+            }
+          />
+          <YAxis
+            tickFormatter={(value: number) => `${value}%`}
+            domain={[0, 100]}
+          />
+          <Tooltip
+            formatter={(value: number, name: string) => [
+              `${value.toFixed(1)}%`, 
+              name === 'rate' ? 'Current' : comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'
+            ]}
+            labelFormatter={(label: any) => label}
+            contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+          />
+          {comparisonMode !== 'none' && previousData && <Legend />}
+          <Line
+            type="monotone"
+            dataKey="rate"
+            stroke={METRIC_COLORS.occupancy}
+            strokeWidth={3}
+            dot={{ fill: METRIC_COLORS.occupancy, r: 6, cursor: 'pointer' }}
+            activeDot={{ r: 8 }}
+            name="Current Period"
+          />
+          {comparisonMode !== 'none' && previousData && (
             <Line
               type="monotone"
-              dataKey="rate"
-              stroke={METRIC_COLORS.occupancy}
-              strokeWidth={3}
-              dot={{ fill: METRIC_COLORS.occupancy, r: 6, cursor: 'pointer' }}
-              activeDot={{ r: 8 }}
-              name="Current Period"
+              dataKey="previousRate"
+              stroke="#94a3b8"
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              dot={{ fill: '#94a3b8', r: 4 }}
+              name={comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'}
             />
-            {comparisonMode !== 'none' && previousData && (
-              <Line
-                type="monotone"
-                dataKey="previousRate"
-                stroke="#94a3b8"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ fill: '#94a3b8', r: 4 }}
-                name={comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'}
-              />
-            )}
-          </LineChart>
-        </ChartWrapper>
+          )}
+        </LineChart>
+      </ChartWrapper>
 
+      <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Home className="w-5 h-5 mr-2" />
@@ -406,6 +413,34 @@ export const OccupancyDashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Booking Gaps Alert - Always Visible */}
+        {!gapAlertDismissed && (
+          visibleGaps.length > 0 ? (
+            <BookingGapAlert 
+              gaps={visibleGaps}
+              onDismiss={() => setGapAlertDismissed(true)}
+              maxGapsToShow={3}
+            />
+          ) : (
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-gray-600" />
+                  <h3 className="text-lg font-bold">Booking Gaps</h3>
+                </div>
+                <span className="text-xs text-gray-500">Next 60 days</span>
+              </div>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="bg-green-50 rounded-full p-4 mb-4">
+                  <Calendar className="w-8 h-8 text-green-600" />
+                </div>
+                <p className="text-gray-700 font-medium mb-2">No gaps detected!</p>
+                <p className="text-sm text-gray-500">All properties are well-booked for the next 60 days</p>
+              </div>
+            </div>
+          )
+        )}
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm">
