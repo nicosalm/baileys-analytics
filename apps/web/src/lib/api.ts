@@ -206,7 +206,7 @@ class ApiClient {
             const validTagIds = filterValidUUIDs(tagIds)
             if (validTagIds.length > 0) params.append('tags', validTagIds.join(','))
         }
-        return this.request(`/property-metrics?${params}`)
+        return this.request(`/properties/metrics?${params}`)
     }
 
     async getOccupancy(

@@ -63,7 +63,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       : 0
     
     // Find best/worst performing properties using propertyData
-    const properties = Array.isArray(propertyData) ? propertyData : (propertyData?.properties || [])
+    const properties = Array.isArray(propertyData) ? propertyData : (propertyData?.metrics || propertyData?.properties || [])
     const sortedProperties = [...properties]
       .sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
     

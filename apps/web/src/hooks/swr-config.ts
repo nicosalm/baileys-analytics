@@ -32,7 +32,7 @@ async function fetcherWithParams(path: string, params: any[]) {
     case '/occupancy':
       result = await api.getOccupancy(...params)
       break
-    case '/property-metrics':
+    case '/properties/metrics':
       result = await api.getPropertyMetrics(...params)
       break
     case '/guests':

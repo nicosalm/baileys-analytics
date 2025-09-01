@@ -117,7 +117,7 @@ export function usePropertyMetrics(
   const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
   
-  const key = validFrom || validTo || validTagIds ? ['/property-metrics', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
+  const key = validFrom || validTo || validTagIds ? ['/properties/metrics', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
   return useSWR<any>(key, async () => {
     if (!key) return null
     const params = new URLSearchParams()

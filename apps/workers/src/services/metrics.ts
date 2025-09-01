@@ -30,7 +30,7 @@ export class MetricsService {
 					.from('bookings')
 					.select('arrival')
 					.eq('property_id', property.id)
-					.neq('booking_status', 'canceled')
+					.neq('status', 'canceled')
 					.order('arrival', { ascending: true })
 					.limit(1)
 					.single();
@@ -62,7 +62,7 @@ export class MetricsService {
 					.eq('tenant_id', tenantId)
 					.gte('arrival', fromDate)
 					.lte('arrival', toDate)
-					.neq('booking_status', 'canceled');
+					.neq('status', 'canceled');
 
 				if (tagIds?.length) {
 					const { data: taggedBookings } = await this.supabase
