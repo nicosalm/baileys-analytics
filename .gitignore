@@ -37,7 +37,8 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
-# Azure Functions
+# Azure Functions (deprecated - migrated to CF Workers)
+apps/functions/
 local.settings.json
 .python_packages/
 .funcignore
