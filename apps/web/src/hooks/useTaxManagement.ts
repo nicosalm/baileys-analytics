@@ -84,15 +84,28 @@ export function useTaxManagement() {
   
   const statistics = useMemo<TaxStatistics>(() => {
     const configuredPropertyIds = new Set(Object.keys(configsByProperty))
-    const allJurisdictions = configs.flatMap((c: any) => c.jurisdictions || [])
-    const totalRate = allJurisdictions.reduce((sum: number, j: any) => sum + (j.rate || 0), 0)
+    
+    // calculate average tax rate per property (sum of jurisdictions per property)
+    const activeConfigs = configs.filter((c: any) => c.isActive || c.is_active)
+    const propertyTaxRates = activeConfigs.map((config: any) => {
+      const jurisdictions = config.jurisdictions || []
+      return jurisdictions.reduce((sum: number, j: any) => sum + (j.rate || 0), 0)
+    })
+    
+    const averageTaxRate = propertyTaxRates.length > 0 
+      ? propertyTaxRates.reduce((sum: number, rate: number) => sum + rate, 0) / propertyTaxRates.length
+      : 0
+    
+    // count unique jurisdictions from active configs only
+    const activeJurisdictions = activeConfigs.flatMap((c: any) => c.jurisdictions || [])
+    const uniqueJurisdictionNames = new Set(activeJurisdictions.map((j: any) => j.name))
     
     return {
       totalProperties: properties.length,
       configuredProperties: configuredPropertyIds.size,
       unconfiguredProperties: properties.length - configuredPropertyIds.size,
-      averageTaxRate: allJurisdictions.length > 0 ? totalRate / allJurisdictions.length : 0,
-      totalJurisdictions: new Set(allJurisdictions.map((j: any) => j.name)).size
+      averageTaxRate,
+      totalJurisdictions: uniqueJurisdictionNames.size
     }
   }, [properties, configs, configsByProperty])
   

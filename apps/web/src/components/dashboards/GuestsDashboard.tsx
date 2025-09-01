@@ -583,7 +583,7 @@ export const GuestsDashboard = () => {
                     onSort={handleSort}
                     onRowClick={handleGuestClick}
                     getRowId={(guest) => guest.id}
-                    pageSize={50}
+                    pageSize={20}
                     enableSearch={true}
                     searchKeys={['name', 'email']}
                     enableRefresh={true}

@@ -8,7 +8,7 @@ import { LoadingState } from '@/components/LoadingState'
 import { 
   RefreshCw, Calendar, AlertCircle, Calculator, Check,
   Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, 
-  LogOut, User, Home
+  LogOut, User, Home, Lock, MessageSquare
 } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
@@ -97,7 +97,9 @@ const AccountTab = ({
   onHistoricalSync,
   onGuestDetailsSync,
   syncState,
-  onDeleteAccount 
+  onDeleteAccount,
+  onResetPassword,
+  onFeedback
 }: {
   email: string
   createdAt: string
@@ -109,6 +111,8 @@ const AccountTab = ({
   onGuestDetailsSync: () => void
   syncState: SyncState
   onDeleteAccount: () => void
+  onResetPassword: () => void
+  onFeedback: () => void
 }) => {
   const { showTips, toggleTips } = useTips()
   const { addToast } = useToast()
@@ -205,6 +209,15 @@ const AccountTab = ({
               </button>
             </div>
 
+            <div className="pt-4 border-t">
+              <button
+                onClick={onResetPassword}
+                className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-center gap-2 border border-gray-200"
+              >
+                <Lock className="w-4 h-4" />
+                Reset Password
+              </button>
+            </div>
           </div>
 
           <div className="mt-6 pt-6 border-t">
@@ -311,6 +324,37 @@ const AccountTab = ({
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gray-50 rounded-lg">
+              <MessageSquare className="w-5 h-5 text-gray-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900">Feedback & Support</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            We'd love to hear from you! Share your feedback, report issues, or suggest new features.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={onFeedback}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Send Feedback
+            </button>
+            <a
+              href="https://docs.baileysanalytics.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-center gap-2 border border-gray-200"
+            >
+              Documentation
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -425,6 +469,14 @@ export const Settings = () => {
     navigate('/')
   }
 
+  const handleResetPassword = () => {
+    navigate('/forgot-password')
+  }
+
+  const handleFeedback = () => {
+    window.location.href = 'mailto:support@baileysanalytics.com?subject=Feedback for Baileys Analytics'
+  }
+
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== 'DELETE') {
       addToast('error', 'Please type DELETE to confirm')
@@ -537,6 +589,8 @@ export const Settings = () => {
             onGuestDetailsSync={() => handleSync('guest-details')}
             syncState={syncState}
             onDeleteAccount={() => setShowDeleteConfirm(true)}
+            onResetPassword={handleResetPassword}
+            onFeedback={handleFeedback}
           />
         ) : activeTab === 'tax' ? (
           <Suspense fallback={

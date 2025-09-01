@@ -4,6 +4,7 @@
 	"private": true,
 	"scripts": {
 		"build": "tsc --noEmit",
+		"clean": "rm -rf dist *.tsbuildinfo",
 		"deploy": "wrangler deploy",
 		"deploy:staging": "wrangler deploy --env staging",
 		"deploy:production": "wrangler deploy --env production",

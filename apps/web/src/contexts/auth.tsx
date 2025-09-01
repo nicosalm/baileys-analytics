@@ -1,16 +1,18 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { api, User, AuthResponse } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
+import { api } from '@/lib/api'
 
 type AuthState =
   | { status: 'loading' }
   | { status: 'unauthenticated' }
-  | { status: 'authenticated'; user: User; tokens: { access: string; refresh: string } }
+  | { status: 'authenticated'; user: any; tokens: { access: string; refresh: string } }
 
 type AuthContextValue = {
   state: AuthState
   login: (email: string, password: string) => Promise<boolean>
   signup: (email: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
+  resetPassword: (email: string) => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -21,98 +23,125 @@ export const useAuth = () => {
   return context
 }
 
-const TOKEN_KEY = 'baileys_tokens'
-
-const loadTokens = (): { access: string; refresh: string } | null => {
-  const stored = localStorage.getItem(TOKEN_KEY)
-  if (!stored) return null
-  try {
-    return JSON.parse(stored)
-  } catch {
-    return null
-  }
-}
-
-const saveTokens = (access: string, refresh: string) => {
-  localStorage.setItem(TOKEN_KEY, JSON.stringify({ access, refresh }))
-}
-
-const clearTokens = () => {
-  localStorage.removeItem(TOKEN_KEY)
-}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
 
-  const handleAuthResponse = async (response: AuthResponse) => {
-    const { accessToken, refreshToken } = response
-    saveTokens(accessToken, refreshToken)
-    api.setAccessToken(accessToken)
-
-    const userResult = await api.me()
-    if (userResult.success) {
-      setState({
-        status: 'authenticated',
-        user: userResult.data,
-        tokens: { access: accessToken, refresh: refreshToken }
-      })
-      return true
-    }
-
-    return false
-  }
-
   const login = async (email: string, password: string): Promise<boolean> => {
-    const result = await api.login(email, password)
-    if (result.success) {
-      return handleAuthResponse(result.data)
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        console.error('Login failed:', data.error || 'Invalid credentials')
+        return false
+      }
+      
+      if (data.accessToken && data.refreshToken) {
+        localStorage.setItem('baileys_tokens', JSON.stringify({
+          access: data.accessToken,
+          refresh: data.refreshToken
+        }))
+        api.setAccessToken(data.accessToken)
+        setState({
+          status: 'authenticated',
+          user: { id: data.userId, email: data.email, tenantId: data.tenantId },
+          tokens: { access: data.accessToken, refresh: data.refreshToken }
+        })
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Login error:', error)
+      return false
     }
-    return false
   }
 
   const signup = async (email: string, password: string): Promise<boolean> => {
-    const result = await api.signup(email, password)
-    if (result.success) {
-      return handleAuthResponse(result.data)
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      })
+      
+      if (!response.ok) {
+        return false
+      }
+      
+      const data = await response.json()
+      
+      if (data.accessToken && data.refreshToken) {
+        localStorage.setItem('baileys_tokens', JSON.stringify({
+          access: data.accessToken,
+          refresh: data.refreshToken
+        }))
+        api.setAccessToken(data.accessToken)
+        setState({
+          status: 'authenticated',
+          user: { id: data.userId, email: data.email },
+          tokens: { access: data.accessToken, refresh: data.refreshToken }
+        })
+        return true
+      }
+      return false
+    } catch {
+      return false
     }
-    return false
   }
 
   const logout = async () => {
-    if (state.status === 'authenticated') {
-      await api.logout()
-    }
-    clearTokens()
+    localStorage.removeItem('baileys_tokens')
     api.setAccessToken(null)
     setState({ status: 'unauthenticated' })
   }
 
+  const resetPassword = async (email: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      })
+      return !error
+    } catch {
+      return false
+    }
+  }
+
   useEffect(() => {
     const initAuth = async () => {
-      const tokens = loadTokens()
-      if (!tokens) {
+      const stored = localStorage.getItem('baileys_tokens')
+      if (!stored) {
         setState({ status: 'unauthenticated' })
         return
       }
-
-      api.setAccessToken(tokens.access)
-      const userResult = await api.me()
-
-      if (userResult.success) {
-        setState({
-          status: 'authenticated',
-          user: userResult.data,
-          tokens
+      
+      try {
+        const tokens = JSON.parse(stored)
+        api.setAccessToken(tokens.access)
+        
+        // Verify token is still valid
+        const response = await fetch('/api/auth/me', {
+          headers: { 'Authorization': `Bearer ${tokens.access}` }
         })
-      } else if (userResult.status === 401) {
-        const refreshResult = await api.refresh(tokens.refresh)
-        if (refreshResult.success) {
-          await handleAuthResponse(refreshResult.data)
+        
+        if (response.ok) {
+          const user = await response.json()
+          setState({
+            status: 'authenticated',
+            user,
+            tokens
+          })
         } else {
-          clearTokens()
+          localStorage.removeItem('baileys_tokens')
           setState({ status: 'unauthenticated' })
         }
-      } else {
+      } catch {
+        localStorage.removeItem('baileys_tokens')
         setState({ status: 'unauthenticated' })
       }
     }
@@ -120,22 +149,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth()
   }, [])
 
-  // Auto-refresh token before expiry
-  useEffect(() => {
-    if (state.status === 'authenticated') {
-      const timer = setTimeout(async () => {
-        const refreshResult = await api.refresh(state.tokens.refresh)
-        if (refreshResult.success) {
-          await handleAuthResponse(refreshResult.data)
-        }
-      }, 14 * 60 * 1000) // 14 minutes (token expires at 15)
-
-      return () => clearTimeout(timer)
-    }
-  }, [state])
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, logout }}>
+    <AuthContext.Provider value={{ state, login, signup, logout, resetPassword }}>
       {children}
     </AuthContext.Provider>
   )

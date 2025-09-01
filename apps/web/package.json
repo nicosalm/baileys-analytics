@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@baileys/utils": "workspace:*",
+    "@supabase/supabase-js": "^2.56.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.539.0",
     "react": "^19.1.1",

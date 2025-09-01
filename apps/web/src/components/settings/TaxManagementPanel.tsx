@@ -43,11 +43,10 @@ export const TaxManagementPanel = () => {
     })
   }, [properties, configsByProperty])
   
-  const handleCreateConfig = (propertyId: string, propertyName: string) => {
+  const handleCreateConfig = (propertyId: string, _propertyName: string) => {
     openModal({
       type: 'tax-config-wizard',
-      defaultPropertyId: propertyId,
-      defaultPropertyName: propertyName
+      defaultPropertyId: propertyId
     })
   }
   

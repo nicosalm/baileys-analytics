@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 import { aggregateDailyToWeekly, transformDailyToPeriodFormat } from '@/utils/occupancy-helpers'
 
@@ -10,29 +9,6 @@ type ApiResult<T> =
 
 export type DbResult<T> = ApiResult<T>
 
-const tokenSchema = z.object({
-    accessToken: z.string(),
-    refreshToken: z.string(),
-})
-
-const userSchema = z.object({
-    id: z.string(),
-    email: z.string(),
-    tenantId: z.string().nullable(),
-    companyName: z.string().nullable(),
-    hasOwnerRezConnection: z.boolean(),
-    createdAt: z.string(),
-})
-
-const authResponseSchema = z.object({
-    userId: z.string(),
-    email: z.string(),
-    tenantId: z.string().nullable().optional(),
-}).merge(tokenSchema)
-
-export type User = z.infer<typeof userSchema>
-export type AuthResponse = z.infer<typeof authResponseSchema>
-export type TokenPair = z.infer<typeof tokenSchema>
 
 class ApiClient {
     private accessToken: string | null = null
@@ -81,74 +57,6 @@ class ApiClient {
         }
     }
 
-    async signup(email: string, password: string): Promise<ApiResult<AuthResponse>> {
-        const result = await this.request<AuthResponse>('/auth/signup', {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-        })
-
-        if (result.success) {
-            const parsed = authResponseSchema.safeParse(result.data)
-            if (!parsed.success) {
-                return { success: false, error: 'Invalid response format' }
-            }
-            return { success: true, data: parsed.data }
-        }
-
-        return result
-    }
-
-    async login(email: string, password: string): Promise<ApiResult<AuthResponse>> {
-        const result = await this.request<AuthResponse>('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-        })
-
-        if (result.success) {
-            const parsed = authResponseSchema.safeParse(result.data)
-            if (!parsed.success) {
-                return { success: false, error: 'Invalid response format' }
-            }
-            return { success: true, data: parsed.data }
-        }
-
-        return result
-    }
-
-    async me(): Promise<ApiResult<User>> {
-        const result = await this.request<User>('/auth/me')
-
-        if (result.success) {
-            const parsed = userSchema.safeParse(result.data)
-            if (!parsed.success) {
-                return { success: false, error: 'Invalid response format' }
-            }
-            return { success: true, data: parsed.data }
-        }
-
-        return result
-    }
-
-    async refresh(refreshToken: string): Promise<ApiResult<AuthResponse>> {
-        const result = await this.request<AuthResponse>('/auth/refresh', {
-            method: 'POST',
-            body: JSON.stringify({ refreshToken }),
-        })
-
-        if (result.success) {
-            const parsed = authResponseSchema.safeParse(result.data)
-            if (!parsed.success) {
-                return { success: false, error: 'Invalid response format' }
-            }
-            return { success: true, data: parsed.data }
-        }
-
-        return result
-    }
-
-    async logout(): Promise<ApiResult<void>> {
-        return this.request('/auth/logout', { method: 'POST' })
-    }
 
     async initiateOAuth(): Promise<ApiResult<{ authUrl: string }>> {
         return this.request('/oauth/initiate')
