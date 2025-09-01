@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useDailyOccupancy } from '@/hooks/use-api'
 import { cn, formatDateDisplay } from '@baileys/utils'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, AlertCircle } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { useModal } from '@/contexts/modal'
 
@@ -102,8 +102,20 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
 
   // ✅ Return only after all hooks are called
   if (loading) return <LoadingState message="Loading heatmap..." />
-  if (error) return <div className="text-center py-8 text-red-500">Error loading heatmap: {error.message}</div>
-  if (!monthsData.length) return <div className="text-center py-8 text-gray-500">No data found</div>
+  if (error) return (
+    <div className="text-center py-8">
+      <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-2" />
+      <p className="text-red-500">Error loading heatmap</p>
+      <p className="text-sm text-gray-600 mt-1">{error.message}</p>
+    </div>
+  )
+  if (!monthsData.length) return (
+    <div className="text-center py-8">
+      <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+      <p className="text-gray-500">No occupancy data available</p>
+      <p className="text-sm text-gray-400 mt-1">Data will appear once bookings are synced</p>
+    </div>
+  )
 
   return (
     <div className="space-y-4">

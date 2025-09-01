@@ -4,6 +4,7 @@ import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
+import { formatCompactCurrency } from '@baileys/utils'
 
 import { PLView } from '@/components/financial/PLView'
 import { RevenueAnalysis } from '@/components/financial/RevenueAnalysis'
@@ -227,13 +228,13 @@ export const FinancialDashboard = () => {
                 <div className="text-right">
                   <div className="text-xs text-gray-500">Net Revenue</div>
                   <div className="text-lg font-bold text-green-600">
-                    ${(financialData.metrics.net || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    {formatCompactCurrency(financialData.metrics.revenue?.net || 0)}
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-gray-500">Gross Revenue</div>
                   <div className="text-lg font-bold text-gray-900">
-                    ${(financialData.metrics.gross || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    {formatCompactCurrency(financialData.metrics.revenue?.gross || 0)}
                   </div>
                 </div>
               </>

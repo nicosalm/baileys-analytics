@@ -211,16 +211,14 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
               <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
               Top Performing Properties
             </h3>
-{showTips && (
-              <div className="group relative">
-                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
-                <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <p className="font-semibold mb-1">Top Performers</p>
-                  <p className="mb-2">Properties with the highest revenue in the selected period.</p>
-                  <p className="text-gray-300">💡 Tip: Study what makes these properties successful and apply similar strategies to underperforming properties.</p>
-                </div>
+            <div className="group relative">
+              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <p className="font-semibold mb-1">Top Performers</p>
+                <p className="mb-2">Properties with the highest revenue in the selected period.</p>
+                <p className="text-gray-300">💡 Tip: Study what makes these properties successful and apply similar strategies to underperforming properties.</p>
               </div>
-            )}
+            </div>
           </div>
           <SimpleTable
             data={analysis.topProperties}
@@ -258,22 +256,20 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
               <ArrowDown className="w-5 h-5 mr-2 text-yellow-600" />
               Properties Needing Attention
             </h3>
-{showTips && (
-              <div className="group relative">
-                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
-                <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <p className="font-semibold mb-1">Underperforming Properties</p>
-                  <p className="mb-2">Properties with the lowest revenue in the selected period.</p>
-                  <p className="text-gray-300">💡 Actions to consider:</p>
-                  <ul className="text-gray-300 ml-2 mt-1">
-                    <li>• Review pricing strategy</li>
-                    <li>• Improve listing photos/description</li>
-                    <li>• Check guest reviews for issues</li>
-                    <li>• Consider seasonal adjustments</li>
-                  </ul>
-                </div>
+            <div className="group relative">
+              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                <p className="font-semibold mb-1">Underperforming Properties</p>
+                <p className="mb-2">Properties with the lowest revenue in the selected period.</p>
+                <p className="text-gray-300">🚀 Actions to consider:</p>
+                <ul className="text-gray-300 ml-2 mt-1">
+                  <li>• Review pricing strategy</li>
+                  <li>• Improve listing photos/description</li>
+                  <li>• Check guest reviews for issues</li>
+                  <li>• Consider seasonal adjustments</li>
+                </ul>
               </div>
-            )}
+            </div>
           </div>
           <SimpleTable
             data={analysis.bottomProperties}

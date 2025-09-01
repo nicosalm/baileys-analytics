@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info } from 'lucide-react'
+import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, BarChart3 } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { MetricCard } from '@/components/MetricCard'
@@ -301,7 +301,10 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-8">No platform data available</p>
+                <div className="text-center py-8">
+                  <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No platform data available</p>
+                </div>
               )}
             </div>
 
