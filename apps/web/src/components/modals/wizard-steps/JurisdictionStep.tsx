@@ -56,7 +56,7 @@ export const JurisdictionStep = ({
   }
 
   const { data, error, isLoading, mutate } = useSWR<TaxDetectionData>(
-    propertyId ? `/tax-auto-detect?propertyId=${propertyId}` : null,
+    propertyId ? `/tax/auto-detect?propertyId=${propertyId}` : null,
     fetcher
   )
   

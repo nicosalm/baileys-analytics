@@ -508,10 +508,25 @@ export class PDFGenerator {
     doc.text('TAX SUMMARY', 20, yPos)
     yPos += 8
     
+    const effectiveRate = data.effectiveRate || (data.totalRevenue > 0 ? (data.actualTax / data.totalRevenue) * 100 : 0)
+    
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(80, 80, 80)
+    doc.text(
+      `${this.formatCurrency(data.actualTax || data.estimatedTax || 0)} Total Tax  •  ${this.formatPercentage(effectiveRate / 100)} Effective Rate  •  ${data.bookingCount || 0} Bookings`,
+      20,
+      yPos
+    )
+    doc.setTextColor(0, 0, 0)
+    yPos += 8
+    
     const taxData = [
       ['Total Revenue', this.formatCurrency(data.totalRevenue || 0)],
-      ['Taxable Revenue', this.formatCurrency(data.taxableRevenue || 0)],
-      ['Estimated Tax', this.formatCurrency(data.estimatedTax || 0)]
+      ['Total Tax Collected', this.formatCurrency(data.actualTax || data.estimatedTax || 0)],
+      ['Owner Remitted', this.formatCurrency(data.ownerRemitted || 0)],
+      ['Platform Remitted', this.formatCurrency(data.platformRemitted || 0)],
+      ['Effective Tax Rate', this.formatPercentage((data.effectiveRate || 0) / 100)]
     ]
     
     autoTable(doc, {
@@ -525,7 +540,36 @@ export class PDFGenerator {
       }
     })
     
-    return (doc as any).lastAutoTable.finalY + 5
+    yPos = (doc as any).lastAutoTable.finalY + 8
+    
+    if (data.byJurisdiction && data.byJurisdiction.length > 0) {
+      const jurisdictionHeaders = ['Jurisdiction', 'Type', 'Total Tax', 'Owner', 'Platform']
+      const jurisdictionRows = data.byJurisdiction.map((j: any) => [
+        j.name,
+        j.type,
+        this.formatCurrency(j.totalAmount || 0),
+        this.formatCurrency(j.ownerRemitted || 0),
+        this.formatCurrency(j.platformRemitted || 0)
+      ])
+      
+      autoTable(doc, {
+        startY: yPos,
+        head: [jurisdictionHeaders],
+        body: jurisdictionRows,
+        theme: 'plain',
+        styles: { fontSize: 8, cellPadding: 2 },
+        columnStyles: {
+          1: { halign: 'center' },
+          2: { halign: 'right' },
+          3: { halign: 'right' },
+          4: { halign: 'right' }
+        }
+      })
+      
+      yPos = (doc as any).lastAutoTable.finalY + 5
+    }
+    
+    return yPos
   }
   
   private addChannelPerformance(doc: jsPDF, data: any, yPos: number): number {

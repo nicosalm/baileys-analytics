@@ -1,4 +1,4 @@
-import { Calendar, Info, Building2 } from 'lucide-react'
+import { Calendar, Info, Building2, AlertCircle } from 'lucide-react'
 import useSWR from 'swr'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
@@ -18,16 +18,17 @@ export const PlatformSettingsStep = ({
   onUpdate 
 }: PlatformSettingsStepProps) => {
   const { showTips } = useTips()
-  const { data: platformsResponse, isLoading } = useSWR(
-    propertyId ? `/property-platforms?propertyId=${propertyId}` : null,
-    async (url: string) => {
-      const result = await api.request(url)
+  
+  const { data: platformsResponse, isLoading, error } = useSWR(
+    propertyId ? `/tax/platforms?propertyId=${propertyId}` : null,
+    async () => {
+      const result = await api.getPropertyPlatforms(propertyId)
       if (!result.success) throw new Error(result.error)
-      return result.data as { data: string[] }
+      return result.data?.data || result.data || []
     }
   )
-
-  const platforms = (platformsResponse?.data || []) as string[]
+  
+  const platforms = platformsResponse || []
   
   const handlePlatformChange = (platform: string, remitsTax: boolean) => {
     const platformKey = platform.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -41,27 +42,27 @@ export const PlatformSettingsStep = ({
   
   return (
     <div className="space-y-6">
-      {showTips && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
-              <strong>Platform Tax Remittance:</strong> Indicate which booking platforms collect and remit taxes directly to the government. 
-              This helps calculate your actual tax liability by excluding taxes already paid by platforms.
-            </div>
-          </div>
-        </div>
-      )}
       
       <div>
         <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
           <Building2 className="w-4 h-4 mr-2" />
-          Which platforms remit taxes on their fees?
+          Platform Tax Remittance Settings
         </h3>
+        <p className="text-xs text-gray-600 mb-3">
+          Configure which platforms automatically remit taxes on their service fees for this property.
+        </p>
         {isLoading ? (
           <LoadingState message="Loading platforms..." size="sm" />
         ) : platforms.length === 0 ? (
-          <div className="text-sm text-gray-500">No booking platforms found for this property</div>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex items-start">
+              <AlertCircle className="w-4 h-4 text-amber-600 mr-2 mt-0.5" />
+              <div className="text-sm text-amber-800">
+                <strong>No platforms found</strong>
+                <p className="text-xs mt-1">Import bookings for this property first</p>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="space-y-3">
             {platforms.map((platform: string) => {
@@ -94,22 +95,11 @@ export const PlatformSettingsStep = ({
                         </span>
                       )}
                     </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Check with {platform} about their tax remittance policy in your jurisdiction
-                    </p>
                   </div>
                 </label>
               </div>
             )
           })}
-          </div>
-        )}
-        {showTips && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-xs text-amber-800">
-              <strong>Important:</strong> Platform tax remittance varies by jurisdiction. Verify with each platform 
-              and your local tax authority. Platforms typically only remit taxes on their service fees, not on the base rental amount.
-            </p>
           </div>
         )}
       </div>

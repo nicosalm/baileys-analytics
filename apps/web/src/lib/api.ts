@@ -448,7 +448,7 @@ class ApiClient {
     }
 
     async calculateTax(data: any): Promise<ApiResult<any>> {
-        return this.request('/tax-calculate', {
+        return this.request('/tax/calculate', {
             method: 'POST',
             body: JSON.stringify(data)
         })
@@ -463,33 +463,33 @@ class ApiClient {
     }
 
     async getPropertyTaxStatus(): Promise<ApiResult<any>> {
-        return this.request('/property-tax-status')
+        return this.request('/tax/status')
     }
 
     async getPropertyTaxConfigs(): Promise<ApiResult<any>> {
-        return this.request('/property-tax-configs')
+        return this.request('/tax/configs')
     }
 
     async getTaxJurisdictions(): Promise<ApiResult<any>> {
-        return this.request('/tax-jurisdictions')
+        return this.request('/tax/jurisdictions')
     }
 
     async savePropertyTaxConfig(data: any): Promise<ApiResult<any>> {
-        return this.request('/property-tax-configs', {
+        return this.request('/tax/configs', {
             method: 'POST',
             body: JSON.stringify(data)
         })
     }
 
     async updatePropertyTaxConfig(id: string, data: any): Promise<ApiResult<any>> {
-        return this.request(`/property-tax-configs/${id}`, {
+        return this.request(`/tax/configs/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         })
     }
 
     async deletePropertyTaxConfig(configId: string): Promise<ApiResult<any>> {
-        return this.request(`/property-tax-configs/${configId}`, {
+        return this.request(`/tax/configs/${configId}`, {
             method: 'DELETE'
         })
     }
@@ -523,6 +523,10 @@ class ApiClient {
             method: 'PATCH',
             body: JSON.stringify({ isActive })
         })
+    }
+    
+    async getPropertyPlatforms(propertyId: string): Promise<ApiResult<string[]>> {
+        return this.request(`/tax/platforms?propertyId=${propertyId}`)
     }
 
 }

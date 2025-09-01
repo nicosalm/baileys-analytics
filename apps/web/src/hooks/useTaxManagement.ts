@@ -61,12 +61,13 @@ export function useTaxManagement() {
   
   const configsByProperty = useMemo(() => {
     return configs.reduce((acc: Record<string, PropertyTaxConfig[]>, config: any) => {
-      const propertyId = config.propertyId
+      const propertyId = config.propertyId || config.property_id
+      if (!propertyId) return acc
       if (!acc[propertyId]) acc[propertyId] = []
       const property = properties.find((p: any) => p.id === propertyId)
       acc[propertyId].push({
         id: config.id,
-        propertyId: config.propertyId,
+        propertyId: propertyId,
         propertyName: property?.name || 'Unknown Property',
         configName: config.configName || config.config_name,
         jurisdictions: config.jurisdictions || [],

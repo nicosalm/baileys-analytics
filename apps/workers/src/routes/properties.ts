@@ -74,7 +74,7 @@ properties.get('/', async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 	
-	return c.json(properties);
+	return c.json({ properties: properties || [] });
 });
 
 properties.get('/:id', async (c) => {

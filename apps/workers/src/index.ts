@@ -27,7 +27,6 @@ import { seasonalAnalysis } from './routes/seasonal-analysis';
 import { seasons } from './routes/seasons';
 import { tags } from './routes/tags';
 import { tax } from './routes/tax';
-import { taxConfig } from './routes/tax-config';
 import { platformFees } from './routes/platform-fees';
 // reports and tools
 import { reports } from './routes/reports';
@@ -639,7 +638,8 @@ app.route('/api/seasonal-analysis', seasonalAnalysis);
 app.route('/api/seasons', seasons);
 app.route('/api/tags', tags);
 app.route('/api/tax', tax);
-app.route('/api/tax-config', taxConfig);
+
+
 app.route('/api/platform-fees', platformFees);
 // reports and tools
 app.route('/api/reports', reports);

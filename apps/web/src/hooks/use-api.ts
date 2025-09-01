@@ -531,7 +531,7 @@ export function useCalculatedTax(from?: string, to?: string, propertyId?: string
 
 // Property Tax Status hooks
 export function usePropertyTaxStatus() {
-  return useSWR('/property-tax-status', async () => {
+  return useSWR('/tax/status', async () => {
     const result = await api.getPropertyTaxStatus()
     if (!result.success) throw new Error(result.error)
     return result.data?.data || result.data || []
@@ -540,10 +540,9 @@ export function usePropertyTaxStatus() {
 
 // Property Tax Configs hook
 export function usePropertyTaxConfigs() {
-  return useSWR('/property-tax-configs', async () => {
+  return useSWR('/tax/configs', async () => {
     const result = await api.getPropertyTaxConfigs()
     if (!result.success) throw new Error(result.error)
-    // Handle both formats - the API returns { status: 'success', data: [...] }
     if (result.data?.status === 'success' && result.data?.data) {
       return result.data.data
     }
@@ -597,16 +596,16 @@ export async function savePropertyTaxConfig(data: any): Promise<void> {
     throw new Error(result.error)
   }
   // Invalidate cache
-  await globalMutate('/property-tax-status')
-  await globalMutate('/property-tax-configs')
+  await globalMutate('/tax/status')
+  await globalMutate('/tax/configs')
 }
 
 // Tax Jurisdictions hook
 export function useTaxJurisdictions(propertyId?: string) {
   return useSWR(
-    propertyId ? `/tax-jurisdiction-auto-detect?propertyId=${propertyId}` : null,
+    propertyId ? `/tax/auto-detect?propertyId=${propertyId}` : null,
     async () => {
-      const result = await api.request(`/tax-jurisdiction-auto-detect?propertyId=${propertyId}`)
+      const result = await api.request(`/tax/auto-detect?propertyId=${propertyId}`)
       if (!result.success) throw new Error(result.error)
       return result.data
     }

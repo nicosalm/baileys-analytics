@@ -23,10 +23,11 @@ export type WizardData = TaxConfig & {
 
 interface TaxConfigWizardStepperProps {
   defaultPropertyId?: string
+  defaultPropertyName?: string
   existingConfig?: any
 }
 
-const STEPS = [
+const ALL_STEPS = [
   { id: 'property', label: 'Select Property', icon: Building2 },
   { id: 'jurisdictions', label: 'Tax Jurisdictions', icon: MapPin },
   { id: 'platforms', label: 'Platform Settings', icon: Globe },
@@ -35,18 +36,23 @@ const STEPS = [
 
 export const TaxConfigWizardStepper = ({ 
   defaultPropertyId,
+  defaultPropertyName,
   existingConfig 
 }: TaxConfigWizardStepperProps) => {
   const { closeModal } = useModal()
   const { addToast } = useToast()
   const { data: propertiesData } = useProperties()
   
+  const STEPS = defaultPropertyId 
+    ? ALL_STEPS.filter(step => step.id !== 'property')
+    : ALL_STEPS
+  
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   
   const [wizardData, setWizardData] = useState<WizardData>({
     propertyId: existingConfig?.propertyId || defaultPropertyId || '',
-    propertyName: '',
+    propertyName: existingConfig?.propertyName || defaultPropertyName || '',
     propertyAddress: '',
     configName: existingConfig?.configName || '',
     jurisdictions: existingConfig?.jurisdictions || [],
@@ -73,15 +79,16 @@ export const TaxConfigWizardStepper = ({
   }, [wizardData.propertyId, properties])
   
   const canProceed = () => {
-    switch (currentStep) {
-      case 0: // Property selection
+    const currentStepId = STEPS[currentStep]?.id
+    switch (currentStepId) {
+      case 'property':
         return !!wizardData.propertyId
-      case 1: // Jurisdictions
+      case 'jurisdictions':
         return wizardData.jurisdictions.length > 0 && 
                wizardData.jurisdictions.every(j => j.name && j.rate > 0)
-      case 2: // Platform settings
-        return true // Platform settings are optional
-      case 3: // Review
+      case 'platforms':
+        return true
+      case 'review':
         return true
       default:
         return false
@@ -132,15 +139,8 @@ export const TaxConfigWizardStepper = ({
       if (result.success) {
         addToast('success', existingConfig ? 'Tax configuration updated' : 'Tax configuration saved')
         
-        await globalMutate('/property-tax-status', undefined, { revalidate: true })
-        await globalMutate('/property-tax-configs', undefined, { revalidate: true })
-        await globalMutate(
-          key => typeof key === 'string' && (key.includes('property-tax') || key.includes('tax')),
-          undefined,
-          { revalidate: true }
-        )
-        
-        // Invalidate financial data cache to reflect new tax configuration
+        await globalMutate('/tax/status', undefined, { revalidate: true })
+        await globalMutate('/tax/configs', undefined, { revalidate: true })
         await globalMutate(
           (key: any) => Array.isArray(key) && key[0] === '/financial',
           undefined,
@@ -169,7 +169,13 @@ export const TaxConfigWizardStepper = ({
       isOpen={true}
       onClose={closeModal}
       title="Tax Configuration Setup"
-      subtitle={existingConfig ? `Editing: ${existingConfig.configName}` : "Let's set up tax collection for your property"}
+      subtitle={
+        existingConfig 
+          ? `Editing: ${existingConfig.configName}`
+          : defaultPropertyName 
+            ? `Setting up tax collection for ${defaultPropertyName}`
+            : "Let's set up tax collection for your property"
+      }
       size="xl"
     >
       <div className="flex flex-col h-full">
@@ -226,7 +232,7 @@ export const TaxConfigWizardStepper = ({
         
         {/* Step Content */}
         <div className="flex-1 overflow-y-auto mb-6">
-          {currentStep === 0 && (
+          {STEPS[currentStep]?.id === 'property' && (
             <PropertySelectionStep
               properties={properties}
               selectedPropertyId={wizardData.propertyId}
@@ -235,7 +241,7 @@ export const TaxConfigWizardStepper = ({
             />
           )}
           
-          {currentStep === 1 && (
+          {STEPS[currentStep]?.id === 'jurisdictions' && (
             <JurisdictionStep
               propertyId={wizardData.propertyId}
               propertyName={wizardData.propertyName}
@@ -246,7 +252,7 @@ export const TaxConfigWizardStepper = ({
             />
           )}
           
-          {currentStep === 2 && (
+          {STEPS[currentStep]?.id === 'platforms' && (
             <PlatformSettingsStep
               propertyId={wizardData.propertyId}
               platformSettings={wizardData.platformSettings}
@@ -255,7 +261,7 @@ export const TaxConfigWizardStepper = ({
             />
           )}
           
-          {currentStep === 3 && (
+          {STEPS[currentStep]?.id === 'review' && (
             <ReviewStep
               wizardData={wizardData}
               totalRate={totalRate}

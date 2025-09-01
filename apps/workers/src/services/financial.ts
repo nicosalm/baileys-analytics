@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSeasons } from './seasons';
+import { TaxCalculator } from './tax-calculator';
 
 interface FinancialMetrics {
   revenue: {
@@ -453,6 +454,7 @@ export async function getTaxData(
   to: string,
   tagIds: string[] = []
 ): Promise<TaxData> {
+  const taxCalculator = new TaxCalculator(supabase);
   const hasTagFilter = tagIds.length > 0;
   const { useDaily, useWeekly } = determineGranularity(from, to);
 

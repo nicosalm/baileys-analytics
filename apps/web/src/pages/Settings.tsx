@@ -15,12 +15,10 @@ import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
 import { ConfirmModal } from '@/components/ConfirmModal'
 
-// Lazy load the tax management panel
 const TaxManagementPanel = lazy(() => 
   import('@/components/settings/TaxManagementPanel').then(m => ({ default: m.TaxManagementPanel }))
 )
 
-// Lazy load the season management panel
 const SeasonManagementPanel = lazy(() => 
   import('@/components/settings/SeasonManagementPanel').then(m => ({ default: m.SeasonManagementPanel }))
 )
@@ -123,12 +121,43 @@ const AccountTab = ({
   const isSyncing = syncState.type === 'syncing'
   
   return (
-    <div className="grid gap-6">
-      {/* Top row - Account info and Preferences */}
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Account & Sync</h2>
+            <p className="text-gray-600">
+              Manage your account settings and sync data from OwnerRez
+            </p>
+          </div>
+          {isConnected && syncStatus && (
+            <div className="flex gap-3">
+              <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+                <div className="text-2xl font-bold text-blue-600">
+                  {syncStatus.propertyCount}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Properties</div>
+              </div>
+              <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+                <div className="text-2xl font-bold text-blue-600">
+                  {syncStatus.bookingCount}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Bookings</div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Account Information */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+        <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <User className="w-5 h-5 text-gray-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Account Information</h3>
+            </div>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Email</span>
@@ -145,19 +174,22 @@ const AccountTab = ({
               <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
             </div>
           </div>
+          </div>
         </div>
 
-        {/* Preferences */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Preferences</h3>
+        <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
+          <div className="p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <Lightbulb className="w-5 h-5 text-gray-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
+            </div>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Lightbulb className="w-4 h-4 text-gray-500" />
-                <div>
-                  <span className="text-sm font-medium text-gray-700">Tips & Hints</span>
-                  <p className="text-xs text-gray-500">Show helpful tips throughout the dashboard</p>
-                </div>
+              <div>
+                <span className="text-sm font-medium text-gray-700">Tips & Hints</span>
+                <p className="text-xs text-gray-500 mt-0.5">Show helpful tips throughout the dashboard</p>
               </div>
               <button
                 onClick={handleToggleTips}
@@ -172,9 +204,9 @@ const AccountTab = ({
                 />
               </button>
             </div>
+
           </div>
 
-          {/* Danger Zone */}
           <div className="mt-6 pt-6 border-t">
             <button
               onClick={onDeleteAccount}
@@ -184,22 +216,26 @@ const AccountTab = ({
               Delete Account
             </button>
           </div>
+          </div>
         </div>
       </div>
 
-      {/* OwnerRez Connection */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b bg-gray-50/50 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">OwnerRez Connection</h3>
+      <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <Building2 className="w-5 h-5 text-gray-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">OwnerRez Connection</h3>
+            </div>
           {isConnected && (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
               <Check className="w-3 h-3" />
               Connected
             </span>
           )}
-        </div>
-        
-        <div className="p-6">
+          </div>
           {!isConnected ? (
             <div className="text-center py-8">
               <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -212,7 +248,6 @@ const AccountTab = ({
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Sync Status */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
@@ -236,7 +271,6 @@ const AccountTab = ({
                 </div>
               </div>
 
-              {/* Sync Actions */}
               <div className="flex flex-wrap gap-2">
                 <SyncButton
                   label="Sync Recent"
@@ -300,7 +334,6 @@ export const Settings = () => {
   
   const { data: syncStatus } = useSyncStatus()
   
-  // Handle URL parameter for tab selection
   useEffect(() => {
     const tab = searchParams.get('tab') as SettingsTab | null
     if (tab && tabConfig.some(t => t.id === tab)) {
@@ -308,7 +341,6 @@ export const Settings = () => {
     }
   }, [searchParams])
 
-  // Update URL when tab changes
   const handleTabChange = (tab: SettingsTab) => {
     setActiveTab(tab)
     setSearchParams({ tab })
@@ -429,7 +461,6 @@ export const Settings = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
-      {/* Header - matches dashboard exactly */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
@@ -469,7 +500,6 @@ export const Settings = () => {
         </div>
       </header>
 
-      {/* Tab Navigation - horizontal like dashboard */}
       <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto">
           <nav className="flex gap-1 px-6" aria-label="Tabs">
@@ -494,7 +524,6 @@ export const Settings = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
         {activeTab === 'account' ? (
           <AccountTab

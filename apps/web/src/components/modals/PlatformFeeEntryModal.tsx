@@ -4,25 +4,16 @@ import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
 import { useTips } from '@/hooks/use-tips'
 import { api } from '@/lib/api'
-import { mutate } from 'swr'
-import { Calculator, Info, DollarSign } from 'lucide-react'
+import useSWR, { mutate } from 'swr'
+import { Calculator, Info, DollarSign, AlertCircle } from 'lucide-react'
 import { formatCurrency, format } from '@baileys/utils'
-import { platformFeeSchema as PlatformFeeSchema, type PlatformFee as PlatformFeeData } from '@/schemas/taxConfig'
 
 interface PlatformFeeEntryModalProps {
   propertyId: string
   propertyName: string
   month?: string
-  existingData?: Partial<PlatformFeeData>
+  existingData?: any
 }
-
-const PLATFORMS = [
-  { value: 'airbnb', label: 'Airbnb', remitsTax: true },
-  { value: 'vrbo', label: 'VRBO', remitsTax: false },
-  { value: 'booking.com', label: 'Booking.com', remitsTax: false },
-  { value: 'direct', label: 'Direct Booking', remitsTax: false },
-  { value: 'other', label: 'Other', remitsTax: false }
-]
 
 export const PlatformFeeEntryModal = ({ 
   propertyId, 
@@ -34,30 +25,28 @@ export const PlatformFeeEntryModal = ({
   const { addToast } = useToast()
   const { showTips } = useTips()
   
+  const { data: platformsResponse } = useSWR(
+    propertyId ? `/tax/platforms?propertyId=${propertyId}` : null,
+    async () => {
+      const result = await api.getPropertyPlatforms(propertyId)
+      if (!result.success) throw new Error(result.error)
+      return result.data?.data || result.data || []
+    }
+  )
+  
+  const platforms = platformsResponse || []
+  
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<Partial<PlatformFeeData>>({
+  const [formData, setFormData] = useState<any>({
     propertyId,
-    platform: existingData?.platform || 'airbnb',
+    platform: existingData?.platform || 'Airbnb',
     month: existingData?.month || initialMonth || format(new Date(), 'yyyy-MM'),
-    guestServiceFee: existingData?.guestServiceFee || 0,
-    hostServiceFee: existingData?.hostServiceFee || 0,
-    platformRemitsTax: existingData?.platformRemitsTax ?? PLATFORMS[0].remitsTax,
+    feeAmount: existingData?.feeAmount || 0,
     platformTaxRemitted: existingData?.platformTaxRemitted || 0,
     notes: existingData?.notes || ''
   })
 
-  const selectedPlatform = PLATFORMS.find(p => p.value === formData.platform)
-  const totalFees = (formData.guestServiceFee || 0) + (formData.hostServiceFee || 0)
-
-  const handlePlatformChange = (platform: string) => {
-    const platformConfig = PLATFORMS.find(p => p.value === platform)
-    setFormData(prev => ({
-      ...prev,
-      platform: platform as any,
-      platformRemitsTax: platformConfig?.remitsTax || false,
-      platformTaxRemitted: platformConfig?.remitsTax ? 0 : 0
-    }))
-  }
+  const totalFees = formData.feeAmount || 0
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -65,35 +54,17 @@ export const PlatformFeeEntryModal = ({
     try {
       setIsSubmitting(true)
       
-      const validation = PlatformFeeSchema.safeParse(formData)
-      if (!validation.success) {
+      if (!formData.platform || !formData.month) {
         addToast('error', 'Please fill in all required fields')
         return
       }
 
-      const result = await api.savePlatformFee(validation.data)
+      const result = await api.savePlatformFee(formData)
       
       if (result.success) {
-        // Invalidate platform fees cache
         await mutate(
-          (key: any) => {
-            if (Array.isArray(key)) {
-              return key[0] === '/platform-fees' && key[1] === propertyId
-            }
-            return false
-          },
-          undefined,
-          { revalidate: true }
-        )
-        
-        // Invalidate financial data cache to reflect new platform fees
-        await mutate(
-          (key: any) => {
-            if (Array.isArray(key)) {
-              return key[0] === '/financial'
-            }
-            return false
-          },
+          (key: any) => Array.isArray(key) && 
+            (key[0] === '/platform-fees' || key[0] === '/financial'),
           undefined,
           { revalidate: true }
         )
@@ -119,37 +90,29 @@ export const PlatformFeeEntryModal = ({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Info Banner */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
-              <strong>Platform Fee Tracking:</strong> Enter the service fees charged by booking platforms. 
-              These fees are taxable in many jurisdictions. Some platforms like Airbnb remit taxes on their 
-              fees directly, while others require you to remit the tax.
-            </div>
-          </div>
-        </div>
 
-        {/* Platform Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Booking Platform
           </label>
           <select
             value={formData.platform}
-            onChange={(e) => handlePlatformChange(e.target.value)}
+            onChange={(e) => setFormData(prev => ({ ...prev, platform: e.target.value }))}
             className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
           >
-            {PLATFORMS.map(platform => (
-              <option key={platform.value} value={platform.value}>
-                {platform.label}
-              </option>
+            <option value="">Select a platform</option>
+            {platforms.map(platform => (
+              <option key={platform} value={platform}>{platform}</option>
             ))}
           </select>
+          {platforms.length === 0 && (
+            <p className="text-xs text-amber-600 mt-1">
+              No platforms found. Import bookings for this property first.
+            </p>
+          )}
         </div>
 
-        {/* Month Selection */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Month
@@ -193,129 +156,83 @@ export const PlatformFeeEntryModal = ({
           </div>
         </div>
 
-        {/* Fee Inputs */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Guest Service Fee
-            </label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.guestServiceFee || ''}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  guestServiceFee: parseFloat(e.target.value) || 0 
-                }))}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Paid by guests</p>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Platform Service Fee
+          </label>
+          <div className="relative">
+            <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={formData.feeAmount || ''}
+              onChange={(e) => setFormData(prev => ({ 
+                ...prev, 
+                feeAmount: parseFloat(e.target.value) || 0 
+              }))}
+              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="0.00"
+              required
+            />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Host Service Fee
-            </label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.hostServiceFee || ''}
-                onChange={(e) => setFormData(prev => ({ 
-                  ...prev, 
-                  hostServiceFee: parseFloat(e.target.value) || 0 
-                }))}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Deducted from payout</p>
-          </div>
+          <p className="text-xs text-gray-500 mt-1">From your monthly platform statement</p>
         </div>
 
-        {/* Tax Remittance */}
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="flex items-center mb-3">
             <Calculator className="w-4 h-4 text-gray-600 mr-2" />
-            <span className="font-medium text-gray-700">Tax Remittance</span>
+            <span className="font-medium text-gray-700">Tax Already Remitted by Platform</span>
           </div>
           
-          <div className="space-y-3">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.platformRemitsTax}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  platformRemitsTax: e.target.checked,
-                  platformTaxRemitted: e.target.checked ? prev.platformTaxRemitted || 0 : 0
-                }))}
-                className="mr-2"
-              />
-              <span className="text-sm">
-                {selectedPlatform?.label} remits taxes on their fees
-              </span>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tax Amount Platform Remitted
             </label>
-
-            {formData.platformRemitsTax && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tax Amount Platform Remits
-                </label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.platformTaxRemitted || ''}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      platformTaxRemitted: parseFloat(e.target.value) || 0 
-                    }))}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-            )}
+            <div className="relative">
+              <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.platformTaxRemitted || ''}
+                onChange={(e) => setFormData(prev => ({ 
+                  ...prev, 
+                  platformTaxRemitted: parseFloat(e.target.value) || 0 
+                }))}
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Only enter an amount if the platform remitted taxes on these fees directly to the government
+            </p>
           </div>
         </div>
 
-        {/* Fee Summary */}
         {totalFees > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h4 className="font-medium text-blue-900 mb-2">Fee Summary</h4>
             <div className="space-y-1 text-sm text-blue-800">
               <div className="flex justify-between">
-                <span>Guest Service Fee:</span>
-                <span className="font-medium">{formatCurrency(formData.guestServiceFee || 0)}</span>
+                <span>Platform Fees:</span>
+                <span className="font-medium">{formatCurrency(totalFees)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>Host Service Fee:</span>
-                <span className="font-medium">{formatCurrency(formData.hostServiceFee || 0)}</span>
-              </div>
-              <div className="flex justify-between pt-2 border-t border-blue-300">
-                <span className="font-medium">Total Platform Fees:</span>
-                <span className="font-bold">{formatCurrency(totalFees)}</span>
-              </div>
-              {formData.platformRemitsTax && showTips && (
+              {formData.platformTaxRemitted > 0 && (
+                <div className="flex justify-between">
+                  <span>Platform Tax Remitted:</span>
+                  <span className="font-medium">{formatCurrency(formData.platformTaxRemitted)}</span>
+                </div>
+              )}
+              {formData.platformTaxRemitted > 0 && (
                 <p className="text-xs text-blue-700 mt-2">
-                  ℹ️ Platform remits taxes on their fees directly
+                  This tax amount will be excluded from your tax liability calculations
                 </p>
               )}
             </div>
           </div>
         )}
 
-        {/* Notes */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Notes (Optional)
@@ -329,7 +246,6 @@ export const PlatformFeeEntryModal = ({
           />
         </div>
 
-        {/* Actions */}
         <div className="flex justify-end space-x-3 pt-4 border-t">
           <button
             type="button"

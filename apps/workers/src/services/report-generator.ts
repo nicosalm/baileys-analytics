@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { TaxCalculator } from './tax-calculator';
 
 export class ReportGenerator {
 	constructor(private supabase: SupabaseClient) {}
@@ -454,25 +455,28 @@ export class ReportGenerator {
 	}
 	
 	private async generateTaxSection(tenantId: string, module: string, dates: any) {
-		const { data: bookings } = await this.supabase
-			.from('bookings')
-			.select('*')
-			.eq('tenant_id', tenantId)
-			.gte('arrival', dates.from)
-			.lte('arrival', dates.to)
-			.neq('status', 'canceled');
-		
-		const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-		const estimatedTax = totalRevenue * 0.08;
+		const taxCalculator = new TaxCalculator(this.supabase);
+		const taxData = await taxCalculator.calculatePeriodTaxes(
+			tenantId,
+			dates.from,
+			dates.to
+		);
 		
 		return {
 			module,
 			title: 'Tax Report',
 			data: {
-				totalRevenue,
-				taxableRevenue: totalRevenue,
-				estimatedTax,
-				bookingCount: bookings?.length || 0
+				totalRevenue: taxData.summary.totalRevenue,
+				taxableRevenue: taxData.summary.totalRevenue,
+				estimatedTax: taxData.summary.totalTax,
+				actualTax: taxData.summary.totalTax,
+				ownerRemitted: taxData.summary.ownerRemittedTax,
+				platformRemitted: taxData.summary.platformRemittedTax,
+				effectiveRate: taxData.summary.effectiveRate,
+				bookingCount: taxData.summary.bookingCount,
+				byProperty: taxData.byProperty,
+				byMonth: taxData.byMonth,
+				byJurisdiction: taxData.byJurisdiction
 			}
 		};
 	}

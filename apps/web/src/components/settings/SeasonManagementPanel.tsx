@@ -155,47 +155,60 @@ const SeasonRow: React.FC<{
   }
 
   return (
-    <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
-      <div className="flex-1">
-        <div className="flex items-center gap-3">
-          <h4 className="font-medium text-gray-900">{season.name}</h4>
-          {!season.isActive && (
-            <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
-              Inactive
-            </span>
-          )}
+    <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gray-50 rounded-lg">
+              <Calendar className="w-5 h-5 text-gray-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900">{season.name}</h4>
+              <div className="flex items-center gap-4 mt-1">
+                {season.isActive ? (
+                  <span className="text-sm text-green-600 flex items-center gap-1">
+                    <Check className="w-3 h-3" />
+                    Active Season
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-500">
+                    Inactive
+                  </span>
+                )}
+                <span className="text-sm text-gray-500">
+                  {formatSeasonDate(season.startMonth, season.startDay)} - {formatSeasonDate(season.endMonth, season.endDay)}
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {season.isActive ? (
+              <button
+                onClick={() => onToggleActive(season)}
+                className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1"
+              >
+                <X className="w-4 h-4" />
+                Deactivate
+              </button>
+            ) : (
+              <button
+                onClick={() => onToggleActive(season)}
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"
+              >
+                <Check className="w-4 h-4" />
+                Activate
+              </button>
+            )}
+            <button
+              onClick={() => onEdit(season)}
+              className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1"
+            >
+              <Edit2 className="w-4 h-4" />
+              Edit
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
-          <Calendar className="w-4 h-4" />
-          <span>{formatSeasonDate(season.startMonth, season.startDay)} - {formatSeasonDate(season.endMonth, season.endDay)}</span>
-          <span className="text-xs text-gray-500 ml-2">(repeats annually)</span>
-        </div>
-      </div>
-      
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => onToggleActive(season)}
-          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
-          title={season.isActive ? 'Deactivate season' : 'Activate season'}
-        >
-          {season.isActive ? (
-            <ToggleRight className="w-5 h-5 text-green-600" />
-          ) : (
-            <ToggleLeft className="w-5 h-5" />
-          )}
-        </button>
-        <button
-          onClick={() => onEdit(season)}
-          className="p-2 text-gray-600 hover:text-blue-600 hover:bg-gray-50 rounded-lg transition-colors"
-        >
-          <Edit2 className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => onDelete(season)}
-          className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-50 rounded-lg transition-colors"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
       </div>
     </div>
   )
@@ -207,6 +220,9 @@ export const SeasonManagementPanel: React.FC = () => {
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; season: Season | null }>({ show: false, season: null })
+  
+  const activeSeasons = seasons.filter(s => s.isActive).length
+  const inactiveSeasons = seasons.filter(s => !s.isActive).length
 
   const handleCreateSeason = async (data: SeasonFormData) => {
     const result = await createSeason(data)
@@ -249,7 +265,6 @@ export const SeasonManagementPanel: React.FC = () => {
   }
 
   const handleToggleActive = async (season: Season) => {
-    // If activating, check if there's already an active season
     if (!season.isActive) {
       const activeSeasons = seasons.filter(s => s.isActive && s.id !== season.id)
       if (activeSeasons.length > 0) {
@@ -284,33 +299,42 @@ export const SeasonManagementPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div className="text-sm text-gray-600">
-          <p>Define your operational season to filter out off-season blocks and focus on actual booking periods.</p>
-          <p className="text-xs text-gray-500 mt-1">Note: Only one season can be active at a time.</p>
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Season Management</h2>
+            <p className="text-gray-600">
+              Define operational seasons to filter analytics by actual booking periods
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+              <div className="text-2xl font-bold text-blue-600">
+                {activeSeasons}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Active</div>
+            </div>
+            <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+              <div className="text-2xl font-bold text-gray-400">
+                {inactiveSeasons}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">Inactive</div>
+            </div>
+          </div>
         </div>
-        {!isAddingNew && !editingSeasonId && seasons.filter(s => s.isActive).length === 0 && (
+      </div>
+
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-gray-900">Configured Seasons</h3>
+        {!isAddingNew && !editingSeasonId && (
           <button
             onClick={() => setIsAddingNew(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"
           >
             <Plus className="w-4 h-4" />
             Add Season
           </button>
         )}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
-          <div>
-            <h4 className="font-medium text-blue-900">About Blocked Bookings</h4>
-            <p className="text-sm text-blue-800 mt-1">
-              Bookings tagged as "Blocked" in OwnerRez will be automatically excluded from all analytics and metrics.
-              This ensures that property blocks don't affect your occupancy rates or revenue calculations.
-            </p>
-          </div>
-        </div>
       </div>
 
       {isAddingNew && (

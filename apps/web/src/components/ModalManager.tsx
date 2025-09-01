@@ -96,6 +96,7 @@ export const ModalManager = () => {
         return (
           <TaxConfigWizardStepper
             defaultPropertyId={activeModal.defaultPropertyId}
+            defaultPropertyName={activeModal.defaultPropertyName}
             existingConfig={activeModal.existingConfig}
           />
         )
