@@ -1,0 +1,255 @@
+import React from 'react'
+import { PieChart, Pie, Cell } from 'recharts'
+
+interface GaugeChartProps {
+  value: number
+  min?: number
+  max?: number
+  segments?: {
+    threshold: number
+    color: string
+    label?: string
+  }[]
+  width?: number
+  height?: number
+  label?: string
+  format?: (value: number) => string
+  showMinMax?: boolean
+}
+
+const RADIAN = Math.PI / 180
+
+export const GaugeChart: React.FC<GaugeChartProps> = ({
+  value,
+  min = 0,
+  max = 100,
+  segments = [
+    { threshold: 33, color: '#EF4444', label: 'Low' },
+    { threshold: 66, color: '#F59E0B', label: 'Medium' },
+    { threshold: 100, color: '#10B981', label: 'High' }
+  ],
+  width = 260,
+  height = 140,
+  label,
+  format = (v) => `${v.toFixed(0)}`,
+  showMinMax = true
+}) => {
+  
+  // Create color data from segments with descriptions
+  const colorData = segments.map((segment, index) => {
+    const prevThreshold = index > 0 ? segments[index - 1].threshold : 0
+    const prevValue = index > 0 ? segments[index - 1].threshold * (max - min) / 100 + min : min
+    const currentValue = segment.threshold * (max - min) / 100 + min
+    
+    // Generate description based on the label
+    let description = ''
+    if (segment.label === 'Low' || segment.label === 'Below') {
+      description = `Performance below expectations (${format(prevValue)} - ${format(currentValue)})`
+    } else if (segment.label === 'Medium' || segment.label === 'Target') {
+      description = `On track with targets (${format(prevValue)} - ${format(currentValue)})`
+    } else if (segment.label === 'High' || segment.label === 'Above') {
+      description = `Exceeding expectations (${format(prevValue)} - ${format(currentValue)})`
+    } else {
+      description = `${segment.label} range (${format(prevValue)} - ${format(currentValue)})`
+    }
+    
+    return {
+      value: segment.threshold - prevThreshold,
+      color: segment.color,
+      label: segment.label,
+      description,
+      range: `${format(prevValue)} - ${format(currentValue)}`
+    }
+  })
+
+  // Normalize value to 0-100 scale based on min/max
+  const normalizedValue = ((value - min) / (max - min)) * 100
+  const clampedValue = Math.min(Math.max(normalizedValue, 0), 100)
+
+  // Calculate which sector is active (the one the needle points to)
+  const activeSectorIndex = colorData.findIndex((_, index, arr) => {
+    const curMax = [...arr]
+      .slice(0, index + 1)
+      .reduce((a, b) => ({ value: a.value + b.value }), { value: 0 })
+      .value
+    const curMin = index > 0 
+      ? [...arr].slice(0, index).reduce((a, b) => ({ value: a.value + b.value }), { value: 0 }).value
+      : 0
+    return (clampedValue > curMin) && (clampedValue <= curMax)
+  })
+
+  const cx = width / 2
+  const cy = height - 20
+  
+  const pieProps = {
+    startAngle: 180,
+    endAngle: 0,
+    cx,
+    cy
+  }
+
+  const innerRadius = (width / 2) * 0.4
+  const outerRadius = (width / 2) * 0.55
+
+  // Calculate needle angle
+  // In Recharts semicircle: startAngle=180 (left) to endAngle=0 (right)
+  // So for our gauge: 180 degrees = 0% (far left), 90 degrees = 50% (top), 0 degrees = 100% (far right)
+  // We need to map: value 0% -> angle 180°, value 100% -> angle 0°
+  const needleAngle = 180 - (clampedValue / 100 * 180)
+  const radianAngle = needleAngle * RADIAN
+  
+  // Calculate needle endpoints using proper trigonometry
+  // Note: In SVG/Recharts, angles are measured clockwise from 3 o'clock position
+  // We need to adjust for the semicircle starting at 9 o'clock (180°)
+  const needleX = cx + (outerRadius - 5) * Math.cos(-radianAngle)  // Needle ends just inside the outer edge
+  const needleY = cy + (outerRadius - 5) * Math.sin(-radianAngle)
+
+  // Get the current performance label
+  const currentPerformance = activeSectorIndex >= 0 ? colorData[activeSectorIndex]?.label : ''
+
+
+  return (
+    <div className="relative" style={{ width, height: height + 40 }}>
+      <PieChart width={width} height={height + 20}>
+        {/* Base colored segments */}
+        <Pie
+          data={colorData}
+          dataKey="value"
+          {...pieProps}
+          innerRadius={innerRadius}
+          outerRadius={outerRadius}
+          fill="#8884d8"
+          stroke="none"
+          isAnimationActive={false}
+        >
+          {colorData.map((entry, index) => (
+            <Cell 
+              key={`cell-${index}`} 
+              fill={entry.color} 
+              stroke="none"
+              opacity={index === activeSectorIndex ? 0.9 : 0.7}
+            />
+          ))}
+        </Pie>
+        
+        {/* Active segment overlay - always visible, non-interactive */}
+        {activeSectorIndex >= 0 && (
+          <Pie
+            data={[{ value: 1 }]}  // Simple data just for rendering
+            dataKey="value"
+            {...pieProps}
+            startAngle={180 - colorData.slice(0, activeSectorIndex + 1).reduce((a, b) => a + b.value, 0) * 1.8}
+            endAngle={180 - colorData.slice(0, activeSectorIndex).reduce((a, b) => a + b.value, 0) * 1.8}
+            innerRadius={innerRadius - 3}
+            outerRadius={outerRadius + 6}
+            fill="transparent"
+            stroke="none"
+            isAnimationActive={false}
+            style={{ pointerEvents: 'none' }}  // Make non-interactive
+          >
+            <Cell 
+              fill={colorData[activeSectorIndex].color}
+              stroke="none"
+            />
+          </Pie>
+        )}
+      </PieChart>
+      
+      {/* Needle rendered as SVG overlay */}
+      <svg 
+        width={width} 
+        height={height + 20}
+        style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0,
+          pointerEvents: 'none'
+        }}
+      >
+        {/* Needle shadow */}
+        <line
+          x1={cx}
+          y1={cy}
+          x2={needleX}
+          y2={needleY}
+          stroke="rgba(0,0,0,0.08)"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
+        {/* Main needle */}
+        <line
+          x1={cx}
+          y1={cy}
+          x2={needleX}
+          y2={needleY}
+          stroke="#6B7280"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          opacity="0.8"
+        />
+        {/* Needle highlight */}
+        <line
+          x1={cx}
+          y1={cy}
+          x2={needleX}
+          y2={needleY}
+          stroke="#9CA3AF"
+          strokeWidth="1"
+          strokeLinecap="round"
+          opacity="0.6"
+        />
+        
+        {/* Center pin - smaller and semi-transparent */}
+        <circle cx={cx} cy={cy} r={4} fill="#6B7280" fillOpacity={0.5} />
+        <circle cx={cx} cy={cy} r={2.5} fill="#9CA3AF" fillOpacity={0.6} />
+      </svg>
+      
+      {/* Value display */}
+      <div 
+        className="absolute flex flex-col items-center justify-center"
+        style={{
+          left: cx - 50,
+          top: cy - 20,
+          width: 100,
+          height: 40
+        }}
+      >
+        <span className="text-xl font-bold text-gray-900">{format(value)}</span>
+        {currentPerformance && (
+          <span className="text-xs text-gray-600 font-medium mt-0.5">{currentPerformance}</span>
+        )}
+      </div>
+      
+      {/* Min/Max labels */}
+      {showMinMax && (
+        <>
+          <div 
+            className="absolute text-xs text-gray-500 font-medium" 
+            style={{ 
+              left: 15,
+              bottom: 20
+            }}
+          >
+            {format(min)}
+          </div>
+          <div 
+            className="absolute text-xs text-gray-500 font-medium" 
+            style={{ 
+              right: 15,
+              bottom: 20
+            }}
+          >
+            {format(max)}
+          </div>
+        </>
+      )}
+      
+      {/* Optional label */}
+      {label && (
+        <div className="text-xs text-gray-600 text-center font-medium">
+          {label}
+        </div>
+      )}
+    </div>
+  )
+}

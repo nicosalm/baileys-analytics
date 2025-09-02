@@ -11,11 +11,11 @@ import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
-import { CHART_COLORS, METRIC_COLORS, getPlatformColor } from '@/lib/theme'
+import { CHART_COLORS, getPlatformColor } from '@/lib/theme'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
-    BarChart, Bar, PieChart, Pie, Cell,
-    XAxis, YAxis, CartesianGrid, Tooltip
+    PieChart, Pie, Cell, Tooltip,
+    Treemap, ResponsiveContainer
 } from 'recharts'
 
 
@@ -23,9 +23,9 @@ export const GuestsDashboard = () => {
     const { openModal } = useModal()
     const { filters, comparisonRange, comparisonMode } = useDashboard()
     const { showTips } = useTips()
-    
+
     const tagIds = useTagIds()
-    
+
     const { data: rawData, error, isLoading } = useDashboardBatch(
         'guests',
         filters.dateRange.from,
@@ -34,12 +34,12 @@ export const GuestsDashboard = () => {
         comparisonRange?.from,
         comparisonRange?.to
     )
-    
+
     const data = rawData?.current || rawData
     const previousData = rawData?.previous || null
-    
+
     const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
-    
+
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
     const [viewMode, setViewMode] = useState<'all' | 'repeat' | 'new' | 'top'>('all')
@@ -55,9 +55,9 @@ export const GuestsDashboard = () => {
                     .slice(0, 5)
             }
         }
-        
+
         if (!data?.guests) return { spenders: [], frequent: [] }
-        
+
         const sorted = [...data.guests]
         const spenders = sorted
             .sort((a, b) => (b.periodSpent || b.totalSpent) - (a.periodSpent || a.totalSpent))
@@ -65,7 +65,7 @@ export const GuestsDashboard = () => {
         const frequent = sorted
             .sort((a, b) => (b.periodBookings || b.bookingCount) - (a.periodBookings || a.bookingCount))
             .slice(0, 5)
-            
+
         return { spenders, frequent }
     }, [data])
 
@@ -116,7 +116,7 @@ export const GuestsDashboard = () => {
         const isTopSpender = topPerformers.spenders.some((g: GuestListItem) => g.id === guest.id)
         const isFrequent = topPerformers.frequent.some((g: GuestListItem) => g.id === guest.id)
         const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
-        
+
         openModal({
             type: 'guest',
             guestId: guest.id,
@@ -218,7 +218,7 @@ export const GuestsDashboard = () => {
         }
     ], [data, topPerformers, filters.dateRange.from])
 
-    const sourceChartData = useMemo(() => 
+    const sourceChartData = useMemo(() =>
         (data?.metrics?.guestsBySource || []).map((source: GuestSourceData, index: number) => ({
             ...source,
             color: getPlatformColor(source.source, index)
@@ -251,12 +251,13 @@ export const GuestsDashboard = () => {
             .sort((a, b) => b.count - a.count)
     }, [data?.metrics?.tagDistribution, data?.guests])
 
-    const tagChartData = useMemo(() => 
+    const tagChartData = useMemo(() =>
         tagDistribution
-            ?.slice(0, 10)
+            ?.slice(0, 15) // Show more tags in treemap
             .map((tag: GuestTagDistribution, index: number) => ({
                 name: tag.name || 'Unknown',
-                value: tag.count || 0,
+                size: tag.count || 0, // Treemap uses 'size' instead of 'value'
+                value: tag.count || 0, // Keep for tooltip
                 color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
             })) || [], [tagDistribution])
 
@@ -307,7 +308,7 @@ export const GuestsDashboard = () => {
                     <div className="flex items-start">
                         <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
                         <div className="text-sm text-blue-800">
-                            <strong>Guest Analysis:</strong> Metrics show guests who had bookings in the selected period. 
+                            <strong>Guest Analysis:</strong> Metrics show guests who had bookings in the selected period.
                             Guest totals and spending reflect their activity during this timeframe only.
                         </div>
                     </div>
@@ -325,7 +326,7 @@ export const GuestsDashboard = () => {
                         : "In selected period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
-                        value: previousData.metrics.totalGuests > 0 
+                        value: previousData.metrics.totalGuests > 0
                             ? ((data.metrics.totalGuests - previousData.metrics.totalGuests) / previousData.metrics.totalGuests) * 100
                             : data.metrics.totalGuests > 0 ? 100 : 0,
                         isPositive: data.metrics.totalGuests > previousData.metrics.totalGuests
@@ -343,7 +344,7 @@ export const GuestsDashboard = () => {
                     }
                     color="green"
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
-                        value: previousData.metrics.repeatRate > 0 
+                        value: previousData.metrics.repeatRate > 0
                             ? ((data.metrics.repeatRate - previousData.metrics.repeatRate) / previousData.metrics.repeatRate) * 100
                             : data.metrics.repeatRate > 0 ? 100 : 0,
                         isPositive: data.metrics.repeatRate > previousData.metrics.repeatRate
@@ -359,7 +360,7 @@ export const GuestsDashboard = () => {
                         : "Per booking"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
-                        value: previousData.metrics.avgStayLength > 0 
+                        value: previousData.metrics.avgStayLength > 0
                             ? ((data.metrics.avgStayLength - previousData.metrics.avgStayLength) / previousData.metrics.avgStayLength) * 100
                             : data.metrics.avgStayLength > 0 ? 100 : 0,
                         isPositive: data.metrics.avgStayLength > previousData.metrics.avgStayLength
@@ -487,34 +488,63 @@ export const GuestsDashboard = () => {
 
                 <ChartWrapper
                     title={`Guest Tags Distribution${timePeriod}`}
-                    subtitle="Most common guest characteristics"
                     height={320}
                     noData={!tagChartData || tagChartData.length === 0}
                     noDataMessage="No tag data available"
                 >
-                    <BarChart
-                        data={tagChartData.slice(0, 8)}
-                        margin={{ top: 20, right: 20, left: 20, bottom: 60 }}
-                    >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                            dataKey="name"
-                            angle={-45}
-                            textAnchor="end"
-                            height={100}
-                            interval={0}
-                            tick={{ fontSize: 10 }}
-                        />
-                        <YAxis tick={{ fontSize: 12 }} />
-                        <Tooltip
-                            formatter={(value: number) => [`${value} guests`, 'Count']}
-                        />
-                        <Bar dataKey="value" fill={METRIC_COLORS.revenue}>
-                            {tagChartData.map((entry: {name: string; value: number; color?: string}, index: number) => (
-                                <Cell key={`cell-${index}`} fill={entry.color || METRIC_COLORS.revenue} />
-                            ))}
-                        </Bar>
-                    </BarChart>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <Treemap
+                            data={tagChartData}
+                            dataKey="size"
+                            aspectRatio={4 / 3}
+                            stroke="#fff"
+                            fill="#8884d8"
+                            isAnimationActive={false}
+                            content={({ x, y, width, height, index, name, color }: any) => (
+                                <g>
+                                    <rect
+                                        x={x}
+                                        y={y}
+                                        width={width}
+                                        height={height}
+                                        fill={color || CHART_COLORS[index % CHART_COLORS.length]}
+                                        stroke="#fff"
+                                        strokeWidth={2}
+                                    />
+                                    {width > 50 && height > 30 && (
+                                        <text
+                                            x={x + width / 2}
+                                            y={y + height / 2}
+                                            textAnchor="middle"
+                                            fill="white"
+                                            fontSize={12}
+                                            dominantBaseline="middle"
+                                        >
+                                            {name}
+                                        </text>
+                                    )}
+                                </g>
+                            )}
+                        >
+                            <Tooltip
+                                content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                        const data = payload[0].payload
+                                        return (
+                                            <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200">
+                                                <p className="font-semibold text-sm">{data.name}</p>
+                                                <p className="text-xs text-gray-600">{data.value} guests</p>
+                                                <p className="text-xs text-gray-500">
+                                                    {((data.value / tagDistribution.reduce((sum: number, t: any) => sum + t.count, 0)) * 100).toFixed(1)}% of tagged guests
+                                                </p>
+                                            </div>
+                                        )
+                                    }
+                                    return null
+                                }}
+                            />
+                        </Treemap>
+                    </ResponsiveContainer>
                 </ChartWrapper>
             </div>
 

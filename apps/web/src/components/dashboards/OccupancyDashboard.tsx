@@ -334,8 +334,11 @@ export const OccupancyDashboard = () => {
           <h3 className="text-lg font-bold mb-4 flex items-center">
             <Home className="w-5 h-5 mr-2" />
             Property Performance
+            {currentData.byProperty.length > 10 && (
+              <span className="ml-auto text-xs text-gray-500">Showing all {currentData.byProperty.length} properties</span>
+            )}
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
             {currentData.byProperty.length > 0 ? (
               currentData.byProperty
                 .sort((a: OccupancyByProperty, b: OccupancyByProperty) => b.rate - a.rate)

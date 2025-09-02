@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, BarChart3 } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, CompassIcon } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
@@ -47,8 +47,8 @@ const DashboardContent = () => {
   }
 
   return (
-    <ErrorBoundary 
-      level="section" 
+    <ErrorBoundary
+      level="section"
       resetKeys={[activeTab]}
       onError={(error, errorInfo) => {
         console.error(`Dashboard error in ${activeTab} tab:`, error, errorInfo)
@@ -63,7 +63,7 @@ const DashboardTabs = () => {
   const { activeTab } = useDashboard()
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const handleTabClick = (tabId: DashboardTab) => {
     // Preserve query params when navigating
     const currentParams = new URLSearchParams(location.search)
@@ -167,7 +167,7 @@ export const DashboardLayout = () => {
                 <div className="flex items-center">
                   <div className="flex items-center">
                     <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                      <BarChart3 className="w-6 h-6 text-white" />
+                      <CompassIcon className="w-6 h-6 text-white" />
                     </div>
                     <div className="ml-3">
                       <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
@@ -206,7 +206,7 @@ export const DashboardLayout = () => {
           <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
             <DashboardContent />
           </main>
-          
+
           <Footer />
         </div>
     </DashboardProvider>

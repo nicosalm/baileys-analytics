@@ -9,7 +9,7 @@ import {
   FileText, DollarSign, CheckCircle, Home,
   Info, AlertTriangle, Building
 } from 'lucide-react'
-import { formatCurrency, formatTaxRate } from '@/utils/formatters'
+import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
 import { detectGranularity } from '@/utils/chart-helpers'
 
@@ -124,8 +124,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
-            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousTaxes)} | ${formatTaxRate(taxData.effectiveTaxRate / 100)} rate`
-            : `${formatTaxRate(taxData.effectiveTaxRate / 100)} rate`}
+            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousTaxes)} | ${formatPercentage(taxData.effectiveTaxRate, 2)} rate`
+            : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
           tooltip="Total tax liability including platform fees"
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
             value: taxData.comparison.taxGrowth,
@@ -219,7 +219,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
               {
                 key: 'taxRate',
                 header: 'Tax Rate',
-                render: (row: any) => formatTaxRate(row.taxRate)
+                render: (row: any) => formatPercentage(row.taxRate, 2)
               },
               {
                 key: 'status',
@@ -246,7 +246,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           <div className="flex items-start">
             <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
             <div className="text-sm text-yellow-800">
-              <strong>High Tax Rate:</strong> Your effective tax rate is {formatTaxRate(taxData.effectiveTaxRate / 100)}. 
+              <strong>High Tax Rate:</strong> Your effective tax rate is {formatPercentage(taxData.effectiveTaxRate, 2)}. 
               Consider reviewing your tax settings and jurisdictions to ensure accuracy.
             </div>
           </div>

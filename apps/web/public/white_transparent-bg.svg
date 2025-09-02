@@ -1,0 +1,41 @@
+<!-- All-White Animated Compass SVG (Transparent BG) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+     fill="none" stroke="#ffffff" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round"
+     width="24" height="24">
+
+  <style>
+    .compass-rotate {
+      animation: rotateCompass 20s linear infinite;
+      transform-origin: center;
+    }
+
+    svg:hover .needle {
+      animation: wobbleNeedle 0.6s ease-in-out infinite alternate;
+      transform-origin: center;
+    }
+
+    @keyframes rotateCompass {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes wobbleNeedle {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(4deg); }
+    }
+  </style>
+
+  <g class="compass-rotate">
+    <!-- Outline circle -->
+    <circle cx="12" cy="12" r="10" />
+
+    <!-- Outlined compass needle -->
+    <polygon
+      class="needle"
+      points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"
+      fill="none"
+    />
+  </g>
+</svg>
+

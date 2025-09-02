@@ -21,6 +21,10 @@ export const formatCompactNumber = (value: number): string => {
   return value.toString()
 }
 
+export const formatNumber = (value: number): string => {
+  return new Intl.NumberFormat('en-US').format(value)
+}
+
 export const formatDateRange = (from: Date | string, to: Date | string): string => {
   const fromDate = typeof from === 'string' ? new Date(from) : from
   const toDate = typeof to === 'string' ? new Date(to) : to

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+     fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     width="24" height="24">
+
+  <style>
+    .compass-rotate {
+      animation: rotateCompass 20s linear infinite;
+      transform-origin: center;
+    }
+
+    svg:hover .needle {
+      animation: wobbleNeedle 0.6s ease-in-out infinite alternate;
+      transform-origin: center;
+    }
+
+    @keyframes rotateCompass {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes wobbleNeedle {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(4deg); }
+    }
+  </style>
+
+  <defs>
+    <!-- Gradient stroke for the outer circle -->
+    <linearGradient id="circleStrokeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6"/> <!-- Blue -->
+      <stop offset="100%" stop-color="#9333EA"/> <!-- Purple -->
+    </linearGradient>
+
+    <!-- Gradient stroke for the compass needle -->
+    <linearGradient id="needleStrokeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0EA5E9"/> <!-- Cyan -->
+      <stop offset="100%" stop-color="#F43F5E"/> <!-- Rose -->
+    </linearGradient>
+  </defs>
+
+  <g class="compass-rotate">
+    <!-- Outlined circle with gradient stroke -->
+    <circle
+      cx="12" cy="12" r="10"
+      stroke="url(#circleStrokeGradient)"
+    />
+
+    <!-- Outlined needle with its own gradient stroke -->
+    <polygon
+      class="needle"
+      points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"
+      fill="none"
+      stroke="url(#needleStrokeGradient)"
+    />
+  </g>
+</svg>
+

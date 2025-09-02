@@ -8,6 +8,7 @@ import {
   BarChart3, AlertTriangle, Info, Percent
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
+import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
@@ -151,27 +152,46 @@ export const OverviewDashboard = () => {
         </div>
       )}
       <div className="grid md:grid-cols-4 gap-4">
-        <MetricCard
+        <MetricCardWithGauge
           icon={DollarSign}
           label="Money Earned"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
           tooltip="Total revenue from all bookings"
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(metrics.revenue.previous)} | After fees: ${formatCompactCurrency(metrics.revenue.net)}`
-            : `After fees: ${formatCompactCurrency(metrics.revenue.net)} | Per booking: ${formatCurrency(metrics.revenue.avgBookingValue)}`
+            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(metrics.revenue.previous)}`
+            : `After fees: ${formatCompactCurrency(metrics.revenue.net)}`
           }
           trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
             value: metrics.revenue.growth,
             isPositive: metrics.revenue.growth > 0
           } : undefined}
           color="green"
+          gauge={{
+            enabled: true,
+            min: 0,
+            max: comparisonMode !== 'none' && metrics.revenue.previous ? 
+              Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5 : 
+              metrics.revenue.current * 2,
+            segments: comparisonMode !== 'none' && metrics.revenue.previous ? [
+              { threshold: metrics.revenue.previous * 0.8 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
+              { threshold: metrics.revenue.previous * 1.0 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
+              { threshold: 100, color: '#10B981', label: 'Above' }
+            ] : [
+              { threshold: 30, color: '#EF4444', label: 'Low' },
+              { threshold: 60, color: '#F59E0B', label: 'Medium' },
+              { threshold: 100, color: '#10B981', label: 'High' }
+            ],
+            target: metrics.revenue.previous
+          }}
+          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('financial')}
         />
-        <MetricCard
+        <MetricCardWithGauge
           icon={Calendar}
           label="Reservations Made"
           value={metrics.bookings.current}
+          format="number"
           tooltip="Total number of confirmed bookings"
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.bookings.previous} | ${actualUpcoming} upcoming`
@@ -182,9 +202,27 @@ export const OverviewDashboard = () => {
             isPositive: metrics.bookings.current > metrics.bookings.previous
           } : undefined}
           color="blue"
+          gauge={{
+            enabled: true,
+            min: 0,
+            max: comparisonMode !== 'none' && metrics.bookings.previous ? 
+              Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5 : 
+              metrics.bookings.current * 2,
+            segments: comparisonMode !== 'none' && metrics.bookings.previous ? [
+              { threshold: metrics.bookings.previous * 0.8 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
+              { threshold: metrics.bookings.previous * 1.0 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
+              { threshold: 100, color: '#10B981', label: 'Above' }
+            ] : [
+              { threshold: 30, color: '#EF4444', label: 'Low' },
+              { threshold: 60, color: '#F59E0B', label: 'Medium' },
+              { threshold: 100, color: '#10B981', label: 'High' }
+            ],
+            target: metrics.bookings.previous
+          }}
+          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('properties')}
         />
-        <MetricCard
+        <MetricCardWithGauge
           icon={Percent}
           label="How Full You Are"
           value={Number(metrics.occupancy.current || 0)}
@@ -199,12 +237,25 @@ export const OverviewDashboard = () => {
             isPositive: metrics.occupancy.growth > 0
           } : undefined}
           color="purple"
+          gauge={{
+            enabled: true,
+            min: 0,
+            max: 100,
+            segments: [
+              { threshold: 50, color: '#EF4444', label: 'Low' },
+              { threshold: 75, color: '#F59E0B', label: 'Good' },
+              { threshold: 100, color: '#10B981', label: 'Excellent' }
+            ],
+            target: metrics.occupancy.previous
+          }}
+          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('occupancy')}
         />
-        <MetricCard
+        <MetricCardWithGauge
           icon={Users}
           label="Guest Count"
           value={metrics.guests.total}
+          format="number"
           tooltip="Unique guests who have stayed"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.guests.previous} | ${metrics.guests.newThisMonth} new`
@@ -215,6 +266,24 @@ export const OverviewDashboard = () => {
             isPositive: metrics.guests.growth > 0
           } : undefined}
           color="orange"
+          gauge={{
+            enabled: true,
+            min: 0,
+            max: comparisonMode !== 'none' && metrics.guests.previous ? 
+              Math.max(metrics.guests.total, metrics.guests.previous) * 1.5 : 
+              metrics.guests.total * 2,
+            segments: comparisonMode !== 'none' && metrics.guests.previous ? [
+              { threshold: metrics.guests.previous * 0.8 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
+              { threshold: metrics.guests.previous * 1.0 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
+              { threshold: 100, color: '#10B981', label: 'Above' }
+            ] : [
+              { threshold: 30, color: '#EF4444', label: 'Low' },
+              { threshold: 60, color: '#F59E0B', label: 'Medium' },
+              { threshold: 100, color: '#10B981', label: 'High' }
+            ],
+            target: metrics.guests.previous
+          }}
+          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('guests')}
         />
       </div>
@@ -303,7 +372,7 @@ export const OverviewDashboard = () => {
         </ChartWrapper>
 
         <ChartWrapper
-          title="Top Properties"
+          title="Top 5 Properties"
           icon={Home}
           height={240}
           noData={charts.topProperties.length === 0}

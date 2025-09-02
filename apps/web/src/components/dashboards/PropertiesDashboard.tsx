@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
-import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage, maxBy } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
 import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
-import { PropertyMetrics, ChartDataPoint, RadarChartData } from '@/types/api'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, LineChart, Line, Legend } from 'recharts'
+import { PropertyMetrics, ChartDataPoint } from '@/types/api'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Calendar, DollarSign, Home, Info, Target, Percent, TrendingUp, TrendingDown } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
@@ -136,19 +136,23 @@ export const PropertiesDashboard = () => {
 
   const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
 
-  const { maxRevenue, maxAvgRate, maxBookings } = useMemo(() => ({
-    maxRevenue: maxBy(validProperties, (p: PropertyMetrics) => p.revenue)?.revenue || 1,
-    maxAvgRate: maxBy(validProperties, (p: PropertyMetrics) => p.avgNightlyRate)?.avgNightlyRate || 1,
-    maxBookings: maxBy(validProperties, (p: PropertyMetrics) => p.bookings)?.bookings || 1
-  }), [validProperties])
 
-  const radarData = useMemo<RadarChartData[]>(() => validProperties.map((p: PropertyMetrics) => ({
-    property: p.propertyName.length > 15 ? p.propertyName.substring(0, 15) + '...' : p.propertyName,
-    revenue: (p.revenue / maxRevenue) * 100,
-    occupancy: p.occupancyRate * 100,
-    avgRate: (p.avgNightlyRate / maxAvgRate) * 100,
-    bookings: (p.bookings / maxBookings) * 100
-  })), [validProperties, maxRevenue, maxAvgRate, maxBookings])
+  const performanceData = useMemo(() => {
+    // Sort by revenue, but if all revenues are 0, sort by occupancy
+    const hasRevenue = validProperties.some(p => p.revenue > 0)
+    return validProperties
+      .sort((a: PropertyMetrics, b: PropertyMetrics) => 
+        hasRevenue ? b.revenue - a.revenue : b.occupancyRate - a.occupancyRate
+      )
+      .map((p: PropertyMetrics) => ({
+        name: p.propertyName.length > 25 ? p.propertyName.substring(0, 25) + '...' : p.propertyName,
+        fullName: p.propertyName,
+        revenue: p.revenue || 0,
+        occupancy: (p.occupancyRate || 0) * 100,
+        avgRate: p.avgNightlyRate || 0,
+        bookings: p.bookings || 0
+      }))
+  }, [validProperties])
 
   const { totalRevenue, totalBookings, avgOccupancy } = useMemo(() => ({
     totalRevenue: sumBy(validProperties, (p: PropertyMetrics) => p.revenue),
@@ -293,7 +297,11 @@ export const PropertiesDashboard = () => {
         />
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className={`grid gap-6 ${
+        validProperties.length > 12 ? 'md:grid-cols-4' : 
+        validProperties.length > 6 ? 'md:grid-cols-3' : 
+        'md:grid-cols-2'
+      }`}>
         {validProperties.map((property: PropertyMetrics) => {
           const previousProperty = previousProperties?.find((p: PropertyMetrics) => p.propertyId === property.propertyId)
           return (
@@ -307,18 +315,18 @@ export const PropertiesDashboard = () => {
         })}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="space-y-6">
         <ChartWrapper
           title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Money vs Fullness${timePeriod}`}
           subtitle={comparisonMode !== 'none' 
             ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
-            : undefined
+            : validProperties.length > 10 ? `Showing all ${validProperties.length} properties` : undefined
           }
           icon={TrendingUp}
-          height={320}
+          height={validProperties.length > 15 ? 480 : validProperties.length > 10 ? 400 : 320}
         >
           {comparisonMode !== 'none' && previousProperties ? (
-            <LineChart data={chartData.map((item: ChartDataPoint) => {
+            <BarChart data={chartData.map((item: ChartDataPoint) => {
               const prevProp = previousProperties.find((p: PropertyMetrics) => 
                 p.propertyName === item.fullName || 
                 (p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName) === item.name
@@ -328,46 +336,52 @@ export const PropertiesDashboard = () => {
                 previousRevenue: prevProp?.revenue || 0,
                 previousOccupancy: Math.round((prevProp?.occupancyRate || 0) * 100)
               }
-            })}>
+            })}
+              margin={{ top: 20, right: 30, left: 50, bottom: 55 }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="name"
                 angle={-45}
                 textAnchor="end"
-                height={60}
+                interval={0}
+                tick={{ fontSize: validProperties.length > 15 ? 9 : 10 }}
+                height={45}
               />
               <YAxis tickFormatter={(value: number) => formatCompactCurrency(value)} />
               <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
+                formatter={(value: number, name: string) => {
+                  if (name.includes('Revenue')) return formatCurrency(value)
+                  return value
+                }}
                 contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
+              <Bar 
                 dataKey="revenue" 
-                stroke={METRIC_COLORS.revenue} 
-                name="Current Period"
-                strokeWidth={2}
-                dot={{ fill: METRIC_COLORS.revenue }}
+                fill={METRIC_COLORS.revenue} 
+                name="Current Revenue"
+                radius={[4, 4, 0, 0]}
               />
-              <Line 
-                type="monotone" 
+              <Bar 
                 dataKey="previousRevenue" 
-                stroke="#94a3b8" 
-                name={comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'}
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ fill: '#94a3b8' }}
+                fill="#94a3b8" 
+                name={comparisonMode === 'previous-year' ? 'Last Year Revenue' : 'Previous Period Revenue'}
+                radius={[4, 4, 0, 0]}
               />
-            </LineChart>
+            </BarChart>
           ) : (
-            <BarChart data={chartData}>
+            <BarChart data={chartData}
+              margin={{ top: 20, right: 30, left: 50, bottom: 55 }}
+            >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="name"
                 angle={-45}
                 textAnchor="end"
-                height={60}
+                interval={0}
+                tick={{ fontSize: validProperties.length > 15 ? 9 : 10 }}
+                height={45}
               />
               <YAxis
                 yAxisId="left"
@@ -400,20 +414,45 @@ export const PropertiesDashboard = () => {
         </ChartWrapper>
 
         <ChartWrapper
-          title="Property Comparison"
-          subtitle="Compare all metrics at once - bigger shapes mean better performance"
+          title="Properties Performance Ranking"
+          subtitle={`All ${validProperties.length} properties - Total: ${formatCompactCurrency(totalRevenue)}`}
           icon={Target}
-          height={320}
+          height={validProperties.length > 15 ? 500 : validProperties.length > 10 ? 400 : 320}
         >
-          <RadarChart data={radarData}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="property" />
-            <PolarRadiusAxis angle={90} domain={[0, 100]} />
-            <Radar name="Money Earned" dataKey="revenue" stroke={METRIC_COLORS.revenue} fill={METRIC_COLORS.revenue} fillOpacity={0.3} />
-            <Radar name="Nights Booked" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} fill={METRIC_COLORS.occupancy} fillOpacity={0.3} />
-            <Radar name="Nightly Rate" dataKey="avgRate" stroke={METRIC_COLORS.bookings} fill={METRIC_COLORS.bookings} fillOpacity={0.3} />
-            <Tooltip formatter={(value: number) => `${value.toFixed(0)}%`} />
-          </RadarChart>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={performanceData}
+              margin={{ top: 20, right: 30, left: 50, bottom: 55 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name"
+                angle={-45}
+                textAnchor="end"
+                interval={0}
+                tick={{ fontSize: validProperties.length > 15 ? 9 : 10 }}
+                height={45}
+              />
+              <YAxis 
+                tickFormatter={(value) => formatCompactCurrency(value)}
+              />
+              <Tooltip
+                formatter={(value: number) => formatCurrency(value)}
+                contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                labelFormatter={(label: any, payload: any) => {
+                  if (payload && payload.length > 0) {
+                    return payload[0].payload.fullName || label
+                  }
+                  return label
+                }}
+              />
+              <Bar 
+                dataKey="revenue" 
+                fill={METRIC_COLORS.revenue}
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </ChartWrapper>
       </div>
     </div>
