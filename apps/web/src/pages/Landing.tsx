@@ -100,7 +100,7 @@ export const Landing = () => {
           </h1>
           
           <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
-            Stop guessing. Start knowing. Analytics that transform your OwnerRez data into actionable insights.
+            Stop guessing. Start knowing. Advanced analytics dashboard that transforms your OwnerRez data into actionable insights.
           </p>
           
           {!isAuthenticated && (
@@ -239,12 +239,90 @@ export const Landing = () => {
         </div>
       </section>
 
+      {/* What We Do / Don't Do Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Focus on What Matters: Analytics</h2>
+            <p className="text-lg text-gray-600">We supercharge your OwnerRez data with powerful insights</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* What Baileys Does */}
+            <div>
+              <h3 className="text-xl font-semibold mb-6 text-green-600 flex items-center">
+                <CheckCircle className="w-6 h-6 mr-2" />
+                What Baileys Does
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2" />
+                  <span>Analyze revenue, expenses & profitability across all properties</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2" />
+                  <span>Track occupancy trends & identify booking gaps</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2" />
+                  <span>Calculate taxes by jurisdiction automatically</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2" />
+                  <span>Compare property & channel performance</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-3 mt-2" />
+                  <span>Generate professional reports & insights</span>
+                </li>
+              </ul>
+            </div>
+            
+            {/* What OwnerRez Handles */}
+            <div>
+              <h3 className="text-xl font-semibold mb-6 text-blue-600 flex items-center">
+                <Home className="w-6 h-6 mr-2" />
+                What OwnerRez Handles
+              </h3>
+              <ul className="space-y-3">
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2" />
+                  <span>Booking management & calendar sync</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2" />
+                  <span>Guest communications & check-in</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2" />
+                  <span>Channel distribution (Airbnb, VRBO)</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2" />
+                  <span>Payment processing & security deposits</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-3 mt-2" />
+                  <span>Housekeeping & maintenance scheduling</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-12 p-6 bg-blue-50 rounded-xl text-center">
+            <p className="text-gray-700">
+              <span className="font-semibold">Perfect Partnership:</span> OwnerRez handles operations, Baileys delivers the insights you need to grow.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Visual Feature Grid */}
       <section className="py-24 bg-gradient-to-b from-white to-blue-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">Everything You Need</h2>
-            <p className="text-xl text-gray-600">Powerful features, beautifully simple</p>
+            <h2 className="text-4xl font-bold mb-4">Analytics That Drive Decisions</h2>
+            <p className="text-xl text-gray-600">Deep insights from your OwnerRez data, beautifully visualized</p>
           </div>
           
           <div className="grid md:grid-cols-3 gap-8">
@@ -252,8 +330,8 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <BarChart3 className="w-12 h-12 text-blue-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Financial Intelligence</h3>
-              <p className="text-gray-600 mb-4">Complete P&L, cash flow, and expense tracking</p>
+              <h3 className="text-xl font-bold mb-2">Financial Analytics</h3>
+              <p className="text-gray-600 mb-4">Visualize P&L, revenue trends, and cash flow patterns</p>
               <div className="flex items-center text-blue-600 font-medium group-hover:translate-x-2 transition-transform">
                 Explore metrics <ChevronRight className="w-4 h-4 ml-1" />
               </div>
@@ -263,8 +341,8 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-100 to-green-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <DollarSign className="w-12 h-12 text-green-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Tax Automation</h3>
-              <p className="text-gray-600 mb-4">Never stress about tax season again</p>
+              <h3 className="text-xl font-bold mb-2">Tax Calculations</h3>
+              <p className="text-gray-600 mb-4">Automated tax breakdowns & jurisdiction reports</p>
               <div className="flex items-center text-green-600 font-medium group-hover:translate-x-2 transition-transform">
                 Save hours <ChevronRight className="w-4 h-4 ml-1" />
               </div>
@@ -274,8 +352,8 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <Users className="w-12 h-12 text-purple-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Guest Analytics</h3>
-              <p className="text-gray-600 mb-4">Track guest history & booking patterns</p>
+              <h3 className="text-xl font-bold mb-2">Guest Insights</h3>
+              <p className="text-gray-600 mb-4">Analyze guest patterns, repeat rates & spending</p>
               <div className="flex items-center text-purple-600 font-medium group-hover:translate-x-2 transition-transform">
                 Boost retention <ChevronRight className="w-4 h-4 ml-1" />
               </div>
@@ -285,8 +363,8 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <Home className="w-12 h-12 text-orange-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Property Analytics</h3>
-              <p className="text-gray-600 mb-4">Compare & optimize each property</p>
+              <h3 className="text-xl font-bold mb-2">Property Performance</h3>
+              <p className="text-gray-600 mb-4">Compare metrics & identify top performers</p>
               <div className="flex items-center text-orange-600 font-medium group-hover:translate-x-2 transition-transform">
                 Maximize ROI <ChevronRight className="w-4 h-4 ml-1" />
               </div>
@@ -296,8 +374,8 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-teal-100 to-teal-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <LineChart className="w-12 h-12 text-teal-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Occupancy Trends</h3>
-              <p className="text-gray-600 mb-4">Visualize booking patterns & gaps</p>
+              <h3 className="text-xl font-bold mb-2">Occupancy Analytics</h3>
+              <p className="text-gray-600 mb-4">Spot trends, gaps & seasonal patterns</p>
               <div className="flex items-center text-teal-600 font-medium group-hover:translate-x-2 transition-transform">
                 Fill more nights <ChevronRight className="w-4 h-4 ml-1" />
               </div>
@@ -307,8 +385,8 @@ export const Landing = () => {
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-100 to-pink-200 rounded-full -mr-16 -mt-16 opacity-50" />
               <PieChart className="w-12 h-12 text-pink-600 mb-4" />
-              <h3 className="text-xl font-bold mb-2">Platform Analysis</h3>
-              <p className="text-gray-600 mb-4">Airbnb vs VRBO vs Direct bookings</p>
+              <h3 className="text-xl font-bold mb-2">Channel Performance</h3>
+              <p className="text-gray-600 mb-4">Compare Airbnb, VRBO & direct revenue</p>
               <div className="flex items-center text-pink-600 font-medium group-hover:translate-x-2 transition-transform">
                 Optimize channels <ChevronRight className="w-4 h-4 ml-1" />
               </div>
@@ -321,8 +399,8 @@ export const Landing = () => {
       <section className="py-24 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Built for Modern Property Managers</h2>
-            <p className="text-xl opacity-90">Everything you need, nothing you don't</p>
+            <h2 className="text-4xl font-bold mb-4">Built for Data-Driven Property Managers</h2>
+            <p className="text-xl opacity-90">Analytics that OwnerRez doesn't provide</p>
           </div>
           
           <div className="grid md:grid-cols-4 gap-8 text-center">
@@ -533,7 +611,7 @@ export const Landing = () => {
         <div className="max-w-4xl mx-auto px-6">
           <h2 className="text-4xl font-bold mb-4">Ready to See the Full Picture?</h2>
           <p className="text-xl mb-8 opacity-90">
-            Stop guessing. Start knowing. Transform your data today.
+            Turn your OwnerRez data into actionable insights. Start with just $1.
           </p>
           {!isAuthenticated && (
             <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-white text-blue-600 rounded-full text-lg font-bold hover:shadow-xl transition-all transform hover:scale-105">

@@ -2,8 +2,8 @@ import { useMemo } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
 import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics, ChartDataPoint } from '@/types/api'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { Calendar, DollarSign, Home, Info, Target, Percent, TrendingUp, TrendingDown, ScatterChart } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { Calendar, DollarSign, Home, Info, Percent, TrendingUp, TrendingDown, ScatterChart } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -127,13 +127,6 @@ export const PropertiesDashboard = () => {
     ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
     : [] as PropertyMetrics[]
   
-  console.log('PropertiesDashboard data:', {
-    dataExists: !!data,
-    propertiesLength: properties?.length,
-    validPropertiesLength: validProperties.length,
-    dateRange: filters.dateRange,
-    sampleProperty: validProperties[0]
-  })
     
   const chartData = useMemo<ChartDataPoint[]>(() => validProperties.map((p: PropertyMetrics) => ({
     name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
@@ -145,24 +138,6 @@ export const PropertiesDashboard = () => {
   })), [validProperties])
 
   const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
-
-
-  const performanceData = useMemo(() => {
-    // Sort by revenue, but if all revenues are 0, sort by occupancy
-    const hasRevenue = validProperties.some(p => p.revenue > 0)
-    return validProperties
-      .sort((a: PropertyMetrics, b: PropertyMetrics) => 
-        hasRevenue ? b.revenue - a.revenue : b.occupancyRate - a.occupancyRate
-      )
-      .map((p: PropertyMetrics) => ({
-        name: p.propertyName.length > 25 ? p.propertyName.substring(0, 25) + '...' : p.propertyName,
-        fullName: p.propertyName,
-        revenue: p.revenue || 0,
-        occupancy: (p.occupancyRate || 0) * 100,
-        avgRate: p.avgNightlyRate || 0,
-        bookings: p.bookings || 0
-      }))
-  }, [validProperties])
 
   const { totalRevenue, totalBookings, avgOccupancy } = useMemo(() => ({
     totalRevenue: sumBy(validProperties, (p: PropertyMetrics) => p.revenue),
@@ -445,47 +420,6 @@ export const PropertiesDashboard = () => {
           )}
         </ChartWrapper>
 
-        <ChartWrapper
-          title="Properties Performance Ranking"
-          subtitle={`All ${validProperties.length} properties - Total: ${formatCompactCurrency(totalRevenue)}`}
-          icon={Target}
-          height={validProperties.length > 15 ? 500 : validProperties.length > 10 ? 400 : 320}
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={performanceData}
-              margin={{ top: 20, right: 30, left: 50, bottom: 55 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="name"
-                angle={-45}
-                textAnchor="end"
-                interval={0}
-                tick={{ fontSize: validProperties.length > 15 ? 9 : 10 }}
-                height={45}
-              />
-              <YAxis 
-                tickFormatter={(value) => formatCompactCurrency(value)}
-              />
-              <Tooltip
-                formatter={(value: number) => formatCurrency(value)}
-                contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                labelFormatter={(label: any, payload: any) => {
-                  if (payload && payload.length > 0) {
-                    return payload[0].payload.fullName || label
-                  }
-                  return label
-                }}
-              />
-              <Bar 
-                dataKey="revenue" 
-                fill={METRIC_COLORS.revenue}
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartWrapper>
       </div>
     </div>
   )
