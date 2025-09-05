@@ -3,7 +3,7 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calcula
 import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics, ChartDataPoint } from '@/types/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { Calendar, DollarSign, Home, Info, Target, Percent, TrendingUp, TrendingDown } from 'lucide-react'
+import { Calendar, DollarSign, Home, Info, Target, Percent, TrendingUp, TrendingDown, ScatterChart } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -12,6 +12,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
+import { PropertyPerformanceScatter, PerformanceQuadrantLegend } from '@/components/charts/PropertyPerformanceScatter'
 
 interface PropertyCardProps {
   property: PropertyMetrics
@@ -97,6 +98,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
+  const { openModal } = useModal()
   
   const tagIds = useTagIds()
   
@@ -124,6 +126,14 @@ export const PropertiesDashboard = () => {
   const validProperties = Array.isArray(properties) 
     ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
     : [] as PropertyMetrics[]
+  
+  console.log('PropertiesDashboard data:', {
+    dataExists: !!data,
+    propertiesLength: properties?.length,
+    validPropertiesLength: validProperties.length,
+    dateRange: filters.dateRange,
+    sampleProperty: validProperties[0]
+  })
     
   const chartData = useMemo<ChartDataPoint[]>(() => validProperties.map((p: PropertyMetrics) => ({
     name: p.propertyName.length > 20 ? p.propertyName.substring(0, 20) + '...' : p.propertyName,
@@ -316,6 +326,28 @@ export const PropertiesDashboard = () => {
       </div>
 
       <div className="space-y-6">
+        {/* Property Performance Scatter Plot */}
+        <ChartWrapper
+          title="Property Performance Analysis"
+          subtitle={`Comparing occupancy rates with revenue generation for ${validProperties.length} properties`}
+          icon={ScatterChart}
+          height={420}
+        >
+          <div className="h-full flex flex-col">
+            <div className="flex-1">
+              <PropertyPerformanceScatter
+                properties={validProperties}
+                onPropertyClick={(property) => openModal({
+                  type: 'property',
+                  propertyId: property.propertyId,
+                  propertyName: property.propertyName
+                })}
+              />
+            </div>
+            <PerformanceQuadrantLegend />
+          </div>
+        </ChartWrapper>
+
         <ChartWrapper
           title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Money vs Fullness${timePeriod}`}
           subtitle={comparisonMode !== 'none' 

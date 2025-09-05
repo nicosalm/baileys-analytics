@@ -5,17 +5,21 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisp
 import {
   AlertCircle, CheckCircle, TrendingUp, TrendingDown,
   DollarSign, Users, Home, Calendar, Clock,
-  BarChart3, AlertTriangle, Info, Percent
+  BarChart3, AlertTriangle, Info, Percent, Layers
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { METRIC_COLORS, getPlatformColor } from '@/lib/theme'
 import { useNavigate } from 'react-router-dom'
 
+const REVENUE_THRESHOLD_RATIO = 0.2
+const MAX_INDIVIDUAL_PROPERTIES = 8
+const MIN_OTHER_REVENUE_PORTION = 0.2
+const TOP_PROPERTIES_DEFAULT_PORTION = 0.8
 
 const AlertCard = ({ alert }: { alert: any }) => {
   const icons = {
@@ -52,14 +56,14 @@ export const OverviewDashboard = () => {
   const { showTips } = useTips()
   const tagIds = useTagIds()
   const navigate = useNavigate()
-  
+
   const handleMetricCardClick = (tab: string) => {
     // Preserve query params when navigating
     const currentParams = new URLSearchParams(window.location.search)
     const newPath = `/dashboard/${tab}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
     navigate(newPath)
   }
-  
+
   const { data, error, isLoading } = useDashboardBatch(
     'overview',
     filters.dateRange.from,
@@ -91,13 +95,13 @@ export const OverviewDashboard = () => {
   const { metrics, alerts, recentActivity, charts } = data
 
   const upcomingArrivalsAlert = alerts?.find((alert: any) => {
-    const hasArrival = alert.description?.toLowerCase().includes('arriving') || 
+    const hasArrival = alert.description?.toLowerCase().includes('arriving') ||
                       alert.description?.toLowerCase().includes('guests arriving') ||
                       alert.title?.toLowerCase().includes('upcoming arrivals') ||
                       (alert.title?.toLowerCase().includes('arrival') && !alert.title?.toLowerCase().includes('occupancy'))
     return hasArrival
   })
-  
+
   let upcomingFromAlert = null
   if (upcomingArrivalsAlert) {
     const patterns = [
@@ -105,9 +109,9 @@ export const OverviewDashboard = () => {
       /(\d+)\s+arrival/i,
       /(\d+)\s+booking/i,
     ]
-    
+
     for (const pattern of patterns) {
-      const match = upcomingArrivalsAlert.description?.match(pattern) || 
+      const match = upcomingArrivalsAlert.description?.match(pattern) ||
                    upcomingArrivalsAlert.title?.match(pattern)
       if (match) {
         upcomingFromAlert = match[1]
@@ -115,10 +119,10 @@ export const OverviewDashboard = () => {
       }
     }
   }
-  
+
   const metricsUpcoming = parseInt(metrics.bookings.upcoming) || 0
-  const actualUpcoming = (metricsUpcoming === 0 && upcomingFromAlert) 
-    ? parseInt(upcomingFromAlert) 
+  const actualUpcoming = (metricsUpcoming === 0 && upcomingFromAlert)
+    ? parseInt(upcomingFromAlert)
     : metricsUpcoming
 
   return (
@@ -145,7 +149,7 @@ export const OverviewDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>Quick Start:</strong> Click any metric card to dive deeper into that area. 
+              <strong>Quick Start:</strong> Click any metric card to dive deeper into that area.
               Green arrows mean improvement, red arrows mean decline. All numbers reflect your selected date range.
             </div>
           </div>
@@ -170,8 +174,8 @@ export const OverviewDashboard = () => {
           gauge={{
             enabled: true,
             min: 0,
-            max: comparisonMode !== 'none' && metrics.revenue.previous ? 
-              Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5 : 
+            max: comparisonMode !== 'none' && metrics.revenue.previous ?
+              Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5 :
               metrics.revenue.current * 2,
             segments: comparisonMode !== 'none' && metrics.revenue.previous ? [
               { threshold: metrics.revenue.previous * 0.8 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
@@ -205,8 +209,8 @@ export const OverviewDashboard = () => {
           gauge={{
             enabled: true,
             min: 0,
-            max: comparisonMode !== 'none' && metrics.bookings.previous ? 
-              Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5 : 
+            max: comparisonMode !== 'none' && metrics.bookings.previous ?
+              Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5 :
               metrics.bookings.current * 2,
             segments: comparisonMode !== 'none' && metrics.bookings.previous ? [
               { threshold: metrics.bookings.previous * 0.8 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
@@ -269,8 +273,8 @@ export const OverviewDashboard = () => {
           gauge={{
             enabled: true,
             min: 0,
-            max: comparisonMode !== 'none' && metrics.guests.previous ? 
-              Math.max(metrics.guests.total, metrics.guests.previous) * 1.5 : 
+            max: comparisonMode !== 'none' && metrics.guests.previous ?
+              Math.max(metrics.guests.total, metrics.guests.previous) * 1.5 :
               metrics.guests.total * 2,
             segments: comparisonMode !== 'none' && metrics.guests.previous ? [
               { threshold: metrics.guests.previous * 0.8 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
@@ -333,71 +337,255 @@ export const OverviewDashboard = () => {
 
       <div className="grid md:grid-cols-2 gap-6">
         <ChartWrapper
-          title={`Revenue Trend${
-            charts.revenueLastWeek.length > 0 
-              ? charts.revenueLastWeek[0].day?.includes('Week of') 
-                ? ' (Weekly)' 
-                : charts.revenueLastWeek[0].day?.length > 7 
-                  ? ' (Monthly)' 
-                  : ' (Daily)'
-              : ''
-          }`}
-          icon={TrendingUp}
-          height={240}
-          noData={charts.revenueLastWeek.length === 0}
+          title="Revenue Composition by Property"
+          subtitle="Showing revenue breakdown across your top properties"
+          icon={Layers}
+          height={300}
         >
-          <AreaChart data={charts.revenueLastWeek}>
-            <defs>
-              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={METRIC_COLORS.revenue} stopOpacity={0.8}/>
-                <stop offset="95%" stopColor={METRIC_COLORS.revenue} stopOpacity={0.1}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="day" />
-            <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
+          <AreaChart data={(() => {
+            // Dynamic threshold: show properties with revenue >= 20% of top performer
+            const allSortedProps = charts.topProperties || []
+            const topRevenue = allSortedProps[0]?.revenue || 0
+            const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO // 20% of top performer
+            
+            // Take properties above threshold, max 8 for readability
+            const significantProps = allSortedProps
+              .filter((p: any) => p.revenue >= revenueThreshold)
+              .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+            
+            // Use significant properties instead of fixed top 5
+            const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
+            
+            
+            if (charts.revenueLastWeek && charts.revenueLastWeek.length > 0) {
+              const dataByDate: { [date: string]: any } = {}
+              
+              charts.revenueLastWeek.forEach((item: any) => {
+                const dateKey = item.day || item.date || item.month
+                if (!dataByDate[dateKey]) {
+                  dataByDate[dateKey] = { 
+                    date: dateKey,
+                    prop1: 0,
+                    prop2: 0,
+                    prop3: 0,
+                    prop4: 0,
+                    prop5: 0,
+                    prop6: 0,
+                    prop7: 0,
+                    prop8: 0,
+                    other: 0
+                  }
+                }
+                dataByDate[dateKey].totalRevenue = (dataByDate[dateKey].totalRevenue || 0) + (item.revenue || 0)
+              })
+              
+              const totalPropertyCount = metrics?.properties?.total || 0
+              const allSortedProps = charts.topProperties || []
+              const topPropsRevenue = topProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
+              const allPropsRevenue = allSortedProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
+              
+              // Check if there are more properties than what we're showing
+              // We know there are 20 total properties, but we're only showing the significant ones
+              const hasMoreProperties = totalPropertyCount > topProps.length || allSortedProps.length > topProps.length
+              
+              const hasPropertyData = charts.revenueLastWeek.some((item: any) => 
+                item.propertyName || item.property || item.propertyId || item.name)
+              
+              if (hasPropertyData) {
+                const topPropNames = new Set(topProps.map((p: any) => p.name))
+                const propertiesInOther = new Set()
+                
+                charts.revenueLastWeek.forEach((item: any) => {
+                  const dateKey = item.day || item.date || item.month
+                  const propName = item.propertyName
+                  
+                  if (!dataByDate[dateKey]) {
+                    dataByDate[dateKey] = { 
+                      date: dateKey,
+                      prop1: 0,
+                      prop2: 0,
+                      prop3: 0,
+                      prop4: 0,
+                      prop5: 0,
+                      prop6: 0,
+                      prop7: 0,
+                      prop8: 0,
+                      other: 0
+                    }
+                  }
+                  
+                  const topIndex = topProps.findIndex((p: any) => p.name === propName)
+                  if (topIndex >= 0 && topIndex < MAX_INDIVIDUAL_PROPERTIES) {
+                    dataByDate[dateKey][`prop${topIndex + 1}`] = (dataByDate[dateKey][`prop${topIndex + 1}`] || 0) + (item.revenue || 0)
+                  } else if (propName) {
+                    // ANY property not in top 5 goes to Other
+                    propertiesInOther.add(propName)
+                    dataByDate[dateKey].other = (dataByDate[dateKey].other || 0) + (item.revenue || 0)
+                  }
+                })
+              } else {
+                // No property-specific data, so distribute based on proportions
+                Object.keys(dataByDate).forEach(dateKey => {
+                  const periodRevenue = dataByDate[dateKey].totalRevenue || 0
+                  
+                  if (topPropsRevenue > 0) {
+                    // If we have actual revenue data from topProperties
+                    const topPropsPortion = allPropsRevenue > 0 ? topPropsRevenue / allPropsRevenue : TOP_PROPERTIES_DEFAULT_PORTION
+                    const otherPortion = 1 - topPropsPortion
+                    
+                    // Distribute to significant properties based on their relative revenue
+                    topProps.forEach((prop: any, index: number) => {
+                      const propKey = `prop${index + 1}`
+                      const proportion = (prop.revenue || 0) / topPropsRevenue
+                      dataByDate[dateKey][propKey] = periodRevenue * proportion * topPropsPortion
+                    })
+                    
+                    // Other properties get their actual proportion
+                    if (hasMoreProperties) {
+                      // Even if otherPortion calculates to 0, we know there are more properties
+                      // so give them at least 20% of revenue
+                      const actualOtherPortion = Math.max(otherPortion, MIN_OTHER_REVENUE_PORTION)
+                      dataByDate[dateKey].other = periodRevenue * actualOtherPortion
+                      
+                      // Adjust top properties proportionally if needed
+                      if (otherPortion < MIN_OTHER_REVENUE_PORTION) {
+                        const adjustmentFactor = (1 - MIN_OTHER_REVENUE_PORTION) / topPropsPortion
+                        topProps.forEach((prop: any, index: number) => {
+                          const propKey = `prop${index + 1}`
+                          dataByDate[dateKey][propKey] = dataByDate[dateKey][propKey] * adjustmentFactor
+                        })
+                      }
+                    }
+                  } else if (periodRevenue > 0) {
+                    // Equal distribution if no revenue data
+                    const numSlots = hasMoreProperties ? topProps.length + 1 : topProps.length
+                    const sharePerProp = periodRevenue / numSlots
+                    for (let i = 0; i < topProps.length; i++) {
+                      dataByDate[dateKey][`prop${i + 1}`] = sharePerProp
+                    }
+                    if (hasMoreProperties) {
+                      dataByDate[dateKey].other = sharePerProp
+                    }
+                  }
+                })
+              }
+              
+              const chartData = Object.values(dataByDate)
+                .sort((a: any, b: any) => {
+                  const dateA = new Date(a.date.includes('Jul') ? `${a.date} 2025` : a.date)
+                  const dateB = new Date(b.date.includes('Jul') ? `${b.date} 2025` : b.date)
+                  return dateA.getTime() - dateB.getTime()
+                })
+                .map((item: any) => {
+                  const { date, totalRevenue, ...properties } = item
+                  return {
+                    week: date.replace(' 2025', '').replace('2025-', ''),
+                    ...properties
+                  }
+                })
+              
+              return chartData
+            }
+            
+            return []
+          })()}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis 
+              dataKey="week" 
+              stroke="#6B7280"
+              tick={{ fontSize: 11 }}
+            />
+            <YAxis 
+              tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`}
+              stroke="#6B7280"
+              tick={{ fontSize: 11 }}
+            />
             <Tooltip 
-              formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
-              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+              content={({ active, payload, label }: any) => {
+                if (active && payload && payload.length) {
+                  const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0)
+                  return (
+                    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                      <p className="font-semibold text-sm mb-2">{label}</p>
+                      <div className="space-y-1 text-xs">
+                        {payload.slice().reverse().map((entry: any, index: number) => (
+                          <div key={index} className="flex justify-between gap-4">
+                            <div className="flex items-center gap-1">
+                              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+                              <span className="text-gray-600">{entry.name}:</span>
+                            </div>
+                            <span className="font-medium">{formatCompactCurrency(entry.value)}</span>
+                          </div>
+                        ))}
+                        <div className="pt-1 mt-1 border-t border-gray-200">
+                          <div className="flex justify-between gap-4 font-semibold">
+                            <span>Total:</span>
+                            <span className="text-green-600">{formatCompactCurrency(total)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              }}
             />
-            <Area
-              type="monotone"
-              dataKey="revenue"
-              stroke={METRIC_COLORS.revenue}
-              fillOpacity={1}
-              fill="url(#colorRevenue)"
-              strokeWidth={2}
+            <Legend 
+              wrapperStyle={{ paddingTop: '10px' }}
+              iconType="rect"
             />
+            {(() => {
+              const allSortedProps = charts.topProperties || []
+              const topRevenue = allSortedProps[0]?.revenue || 0
+              const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
+              
+              const significantProps = allSortedProps
+                .filter((p: any) => p.revenue >= revenueThreshold)
+                .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+              
+              const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
+              const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
+              const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+              const otherColor = '#9CA3AF'
+              
+              const areas = []
+              
+              for (let i = 0; i < topProps.length && i < MAX_INDIVIDUAL_PROPERTIES; i++) {
+                if (topProps[i]) {
+                  areas.push(
+                    <Area 
+                      key={`prop${i + 1}`}
+                      type="monotone" 
+                      dataKey={`prop${i + 1}`} 
+                      stackId="1" 
+                      stroke={colors[i]} 
+                      fill={colors[i]} 
+                      fillOpacity={0.6} 
+                      name={topProps[i].name || `Property ${i + 1}`} 
+                    />
+                  )
+                }
+              }
+              
+              const otherCount = Math.max(0, totalPropertyCount - topProps.length)
+              if (otherCount > 0 || charts.revenueLastWeek?.length > 0) {
+                areas.push(
+                  <Area 
+                    key="other"
+                    type="monotone" 
+                    dataKey="other" 
+                    stackId="1" 
+                    stroke={otherColor} 
+                    fill={otherColor} 
+                    fillOpacity={0.6} 
+                    name={otherCount > 0 ? `Other (${otherCount} properties)` : 'Other'} 
+                  />
+                )
+              }
+              
+              return areas
+            })()}
           </AreaChart>
-        </ChartWrapper>
-
-        <ChartWrapper
-          title="Top 5 Properties"
-          icon={Home}
-          height={240}
-          noData={charts.topProperties.length === 0}
-        >
-          <BarChart data={charts.topProperties.slice(0, 5).map((item: any) => ({
-            ...item,
-            revenue: Number(item.revenue),
-            bookings: Number(item.bookings)
-          }))}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="name"
-              angle={-45}
-              textAnchor="end"
-              height={60}
-              interval={0}
-              tick={{ fontSize: 10 }}
-            />
-            <YAxis tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`} />
-            <Tooltip 
-              formatter={(value: any) => [formatCurrency(Number(value)), 'Revenue']}
-              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-            />
-            <Bar dataKey="revenue" fill={METRIC_COLORS.revenue} radius={[4, 4, 0, 0]} />
-          </BarChart>
         </ChartWrapper>
 
         <ChartWrapper
@@ -424,44 +612,16 @@ export const OverviewDashboard = () => {
                 <Cell key={`cell-${index}`} fill={getPlatformColor(entry.source, index)} />
               ))}
             </Pie>
-            <Tooltip 
+            <Tooltip
               formatter={(value: any) => [value, 'Bookings']}
               contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
             />
           </PieChart>
         </ChartWrapper>
-
-        <ChartWrapper
-          title={`How Full You've Been${charts.occupancyTrend.length > 0 && charts.occupancyTrend[0].month?.includes('/') ? ' (Daily)' : ' (Monthly)'}`}
-          icon={Calendar}
-          height={192}
-          noData={charts.occupancyTrend.length === 0}
-        >
-          <LineChart data={charts.occupancyTrend.map((item: any) => ({
-            ...item,
-            rate: Number(item.rate)
-          }))}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis tickFormatter={(value: any) => `${value}%`} domain={[0, 100]} />
-            <Tooltip 
-              formatter={(value: any) => [`${value}% of nights booked`, 'Occupancy']}
-              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-            />
-            <Line
-              type="monotone"
-              dataKey="rate"
-              stroke={METRIC_COLORS.occupancy}
-              strokeWidth={2}
-              dot={{ fill: METRIC_COLORS.occupancy, r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-          </LineChart>
-        </ChartWrapper>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Things to Know</h3>
             <span className="text-xs text-gray-500">{alerts?.length || 0} items</span>
