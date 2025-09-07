@@ -148,9 +148,10 @@ export const PLView: React.FC<PLViewProps> = ({
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={DollarSign}
-          label="Gross Revenue"
+          label="Total Revenue"
           value={revenue.gross}
           format="currency"
+          tooltip="Total revenue from all bookings in selected period"
           color="blue"
           subValue={comparisonMode !== 'none' && comparison.previousRevenue !== undefined
             ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousRevenue)} | Net: ${formatCurrency(revenue.net)}`
@@ -165,6 +166,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Net Profit"
           value={revenue.net}
           format="currency"
+          tooltip="Revenue after all fees and taxes"
           color="green"
           subValue={comparisonMode !== 'none' && comparison.previousProfit > 0
             ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousProfit)}`

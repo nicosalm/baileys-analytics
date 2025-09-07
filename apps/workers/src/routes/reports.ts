@@ -1,4 +1,7 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { createReportTemplateSchema, updateReportTemplateSchema } from '@baileys/schemas';
+
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { ReportGenerator } from '../services/report-generator';
@@ -41,6 +44,10 @@ reports.post('/generate/:templateId', async (c) => {
 	const user = c.get('user');
 	const templateId = c.req.param('templateId');
 	const parameters = await c.req.json().catch(() => ({}));
+	
+	if (!templateId) {
+		return c.json({ error: 'Template ID is required' }, 400);
+	}
 	
 	const { data: tenant } = await supabase
 		.from('tenants')
@@ -127,6 +134,13 @@ reports.post('/templates', async (c) => {
 	const user = c.get('user');
 	const body = await c.req.json();
 	
+	const validation = createReportTemplateSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.issues.map((e: any) => e.message).join(', ')
+		}, 400);
+	}
+	
 	const { data: tenant } = await supabase
 		.from('tenants')
 		.select('id')
@@ -193,6 +207,13 @@ reports.put('/templates/:id', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const user = c.get('user');
 	const body = await c.req.json();
+	
+	const validation = updateReportTemplateSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.issues.map((e: any) => e.message).join(', ')
+		}, 400);
+	}
 	
 	const { data: tenant } = await supabase
 		.from('tenants')

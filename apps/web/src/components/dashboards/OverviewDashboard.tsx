@@ -4,7 +4,7 @@ import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import {
   AlertCircle, CheckCircle, TrendingUp, TrendingDown,
-  DollarSign, Users, Home, Calendar, Clock,
+  DollarSign, Users, Calendar, Clock,
   BarChart3, AlertTriangle, Info, Percent, Layers
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
@@ -13,7 +13,8 @@ import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
-import { METRIC_COLORS, getPlatformColor } from '@/lib/theme'
+import { useModal } from '@/contexts/modal'
+import { getPlatformColor } from '@/lib/theme'
 import { useNavigate } from 'react-router-dom'
 
 const REVENUE_THRESHOLD_RATIO = 0.2
@@ -54,6 +55,7 @@ const AlertCard = ({ alert }: { alert: any }) => {
 export const OverviewDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
+  const { openModal } = useModal()
   const tagIds = useTagIds()
   const navigate = useNavigate()
 
@@ -158,10 +160,10 @@ export const OverviewDashboard = () => {
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCardWithGauge
           icon={DollarSign}
-          label="Money Earned"
+          label="Total Revenue"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
-          tooltip="Total revenue from all bookings"
+          tooltip="Total revenue from all bookings in selected period"
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(metrics.revenue.previous)}`
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)}`
@@ -193,7 +195,7 @@ export const OverviewDashboard = () => {
         />
         <MetricCardWithGauge
           icon={Calendar}
-          label="Reservations Made"
+          label="Total Bookings"
           value={metrics.bookings.current}
           format="number"
           tooltip="Total number of confirmed bookings"
@@ -228,7 +230,7 @@ export const OverviewDashboard = () => {
         />
         <MetricCardWithGauge
           icon={Percent}
-          label="How Full You Are"
+          label="Occupancy Rate"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
           tooltip="Percentage of available nights booked"
@@ -257,10 +259,10 @@ export const OverviewDashboard = () => {
         />
         <MetricCardWithGauge
           icon={Users}
-          label="Guest Count"
+          label="Total Guests"
           value={metrics.guests.total}
           format="number"
-          tooltip="Unique guests who have stayed"
+          tooltip="Total unique guests who have stayed"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${metrics.guests.previous} | ${metrics.guests.newThisMonth} new`
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`
@@ -295,7 +297,7 @@ export const OverviewDashboard = () => {
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={DollarSign}
-          label="Avg Booking Value"
+          label="Average Booking Value"
           value={Number(metrics.revenue.avgBookingValue) || 0}
           format="currency"
           subValue="Per reservation"
@@ -305,13 +307,13 @@ export const OverviewDashboard = () => {
         />
         <MetricCard
           icon={Calendar}
-          label="Avg Stay Length"
+          label="Average Stay Length"
           value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
           format="custom"
           subValue="Per guest"
           size="sm"
           color="gray"
-          tooltip="Average length of stay"
+          tooltip="Average length of stay per booking"
         />
         <MetricCard
           icon={TrendingUp}
@@ -392,7 +394,6 @@ export const OverviewDashboard = () => {
                 item.propertyName || item.property || item.propertyId || item.name)
               
               if (hasPropertyData) {
-                const topPropNames = new Set(topProps.map((p: any) => p.name))
                 const propertiesInOther = new Set()
                 
                 charts.revenueLastWeek.forEach((item: any) => {
@@ -450,7 +451,7 @@ export const OverviewDashboard = () => {
                       // Adjust top properties proportionally if needed
                       if (otherPortion < MIN_OTHER_REVENUE_PORTION) {
                         const adjustmentFactor = (1 - MIN_OTHER_REVENUE_PORTION) / topPropsPortion
-                        topProps.forEach((prop: any, index: number) => {
+                        topProps.forEach((_: any, index: number) => {
                           const propKey = `prop${index + 1}`
                           dataByDate[dateKey][propKey] = dataByDate[dateKey][propKey] * adjustmentFactor
                         })
@@ -649,7 +650,18 @@ export const OverviewDashboard = () => {
           <div className="space-y-3 max-h-80 overflow-y-auto">
             {recentActivity && recentActivity.length > 0 ? (
               recentActivity.map((activity: any) => (
-                <div key={activity.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                <div 
+                  key={activity.id} 
+                  className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
+                  onClick={() => {
+                    if (activity.bookingId) {
+                      openModal({
+                        type: 'booking',
+                        bookingId: activity.bookingId
+                      })
+                    }
+                  }}
+                >
                   <div className="flex-1">
                     <p className="text-sm font-medium">{activity.description}</p>
                     <p className="text-xs text-gray-500">

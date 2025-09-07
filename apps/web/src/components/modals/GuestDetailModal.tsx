@@ -172,14 +172,14 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
           <div className="bg-white p-4 rounded-lg border">
             <div className="flex items-center text-sm text-gray-600 mb-1">
               <Home className="w-4 h-4 mr-1" />
-              Avg Stay
+              Average Stay
             </div>
             <div className="text-2xl font-bold">{avgStayLength.toFixed(1)} nights</div>
           </div>
           <div className="bg-white p-4 rounded-lg border">
             <div className="flex items-center text-sm text-gray-600 mb-1">
               <TrendingUp className="w-4 h-4 mr-1" />
-              Avg Per Stay
+              Average Per Stay
             </div>
             <div className="text-2xl font-bold">
               {formatCurrency(bookingHistory.length > 0 ? totalSpent / bookingHistory.length : 0)}

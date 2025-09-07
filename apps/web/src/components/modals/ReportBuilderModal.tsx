@@ -12,13 +12,14 @@ interface ReportBuilderModalProps {
 }
 
 const moduleOptions = [
-  { value: 'pl', label: 'Money In & Out', description: 'What you earned and spent' },
-  { value: 'revenue', label: 'Money Earned', description: 'Where your revenue comes from' },
-  { value: 'tax', label: 'Tax Summary', description: 'What you owe in taxes' },
-  { value: 'occupancy', label: 'How Full You Are', description: 'When properties are booked' },
-  { value: 'properties', label: 'Property Performance', description: 'How each property is doing' },
-  { value: 'guests', label: 'Guest Analytics', description: 'Who stays with you' },
-  { value: 'seasonal', label: 'Seasonal Trends', description: 'Your busy and slow times' }
+  { value: 'pl', label: 'Profit & Loss', description: 'Revenue and expenses breakdown' },
+  { value: 'revenue', label: 'Revenue Analysis', description: 'Revenue sources and trends' },
+  { value: 'tax', label: 'Tax Summary', description: 'Tax obligations and details' },
+  { value: 'occupancy', label: 'Occupancy Report', description: 'Booking patterns and availability' },
+  { value: 'properties', label: 'Property Performance', description: 'Individual property metrics' },
+  { value: 'guests', label: 'Guest Analytics', description: 'Guest demographics and behavior' },
+  { value: 'seasonal', label: 'Seasonal Trends', description: 'Seasonal booking patterns' },
+  { value: 'channels', label: 'Channel Performance', description: 'Platform and booking channel analysis' }
 ]
 
 const dateRangeOptions = [

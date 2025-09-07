@@ -92,28 +92,28 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
                 <DollarSign className="w-4 h-4 mr-1" />
-                Revenue
+                Total Revenue
               </div>
               <div className="text-2xl font-bold">{formatCurrency(data?.metrics?.revenue || 0)}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
                 <Calendar className="w-4 h-4 mr-1" />
-                Bookings
+                Total Bookings
               </div>
               <div className="text-2xl font-bold">{data?.metrics?.bookings || 0}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
                 <Home className="w-4 h-4 mr-1" />
-                Occupancy
+                Occupancy Rate
               </div>
               <div className="text-2xl font-bold">{formatPercentage((data?.metrics?.occupancyRate || 0) * 100, 0)}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
                 <TrendingUp className="w-4 h-4 mr-1" />
-                Avg Rate
+                Average Rate
               </div>
               <div className="text-2xl font-bold">{formatCurrency(data?.metrics?.avgNightlyRate || 0)}</div>
             </div>

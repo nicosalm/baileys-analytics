@@ -109,7 +109,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
         <div className="grid md:grid-cols-4 gap-4">
           <MetricCard
             icon={DollarSign}
-            label="Total Earned"
+            label="Total Revenue"
             value={data.metrics.totalRevenue}
             format="currency"
             subValue="This period"
@@ -119,7 +119,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
           />
           <MetricCard
             icon={Calendar}
-            label="Bookings"
+            label="Total Bookings"
             value={data.metrics.totalBookings}
             format="number"
             subValue={`${(data.metrics.avgStayLength || 0).toFixed(1)} nights avg`}
@@ -129,7 +129,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
           />
           <MetricCard
             icon={Home}
-            label="How Full"
+            label="Occupancy Rate"
             value={data.metrics.occupancyRate * 100}
             format="percent"
             subValue={`${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`}
@@ -139,7 +139,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
           />
           <MetricCard
             icon={TrendingUp}
-            label="Nightly Rate"
+            label="Average Nightly Rate"
             value={data.metrics.avgNightlyRate}
             format="currency"
             subValue="Average"

@@ -10,6 +10,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@baileys/schemas": "workspace:*",
     "@baileys/utils": "workspace:*",
     "@supabase/supabase-js": "^2.56.1",
     "date-fns": "^4.1.0",

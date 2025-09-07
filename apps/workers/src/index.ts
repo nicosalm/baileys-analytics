@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { z } from 'zod';
+import { loginSchema, signupSchema, refreshTokenSchema } from '@baileys/schemas';
 
 import { authMiddleware } from './middleware/auth';
 
@@ -54,7 +56,17 @@ app.route('/health', health);
 app.route('/api/waitlist', waitlist);
 
 app.post('/api/auth/login', async (c) => {
-	const { email, password } = await c.req.json();
+	const body = await c.req.json();
+	
+	// validate input
+	const validation = loginSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.errors.map(e => e.message).join(', ') 
+		}, 400);
+	}
+	
+	const { email, password } = validation.data;
 
 	const supabase = createSupabaseClient(c.env);
 	const authService = new AuthService(supabase);
@@ -81,7 +93,17 @@ app.post('/api/auth/login', async (c) => {
 });
 
 app.post('/api/auth/signup', async (c) => {
-	const { email, password } = await c.req.json();
+	const body = await c.req.json();
+	
+	// validate input
+	const validation = signupSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.errors.map(e => e.message).join(', ') 
+		}, 400);
+	}
+	
+	const { email, password, companyName } = validation.data;
 
 	const supabase = createSupabaseClient(c.env);
 
@@ -98,7 +120,7 @@ app.post('/api/auth/signup', async (c) => {
 		.from('tenants')
 		.insert({
 			user_id: authData.user.id,
-			company_name: null,
+			company_name: companyName || null,
 			created_at: new Date().toISOString()
 		})
 		.select()
@@ -118,7 +140,17 @@ app.post('/api/auth/signup', async (c) => {
 });
 
 app.post('/api/auth/refresh', async (c) => {
-	const { refreshToken } = await c.req.json();
+	const body = await c.req.json();
+	
+	// validate input
+	const validation = refreshTokenSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.errors.map(e => e.message).join(', ') 
+		}, 400);
+	}
+	
+	const { refreshToken } = validation.data;
 
 	const supabase = createSupabaseClient(c.env);
 	const authService = new AuthService(supabase);

@@ -48,7 +48,7 @@ async function getPeriodMetrics(
   to: string,
   tagIds?: string[]
 ) {
-  // Try to use Supabase RPC function first for better performance
+  // try to use Supabase RPC function first for better performance
   const { data: rpcData, error: rpcError } = await supabase
     .rpc('calculate_period_metrics', {
       p_tenant_id: tenantId,
@@ -61,9 +61,9 @@ async function getPeriodMetrics(
     return rpcData;
   }
 
-  // Fallback to manual calculations using Supabase queries
+  // fallback to manual calculations using Supabase queries
   const queries = await Promise.all([
-    // Bookings data
+    // bookings data
     supabase
       .from('bookings')
       .select('id, total_amount, arrival, departure, guest_name, status')
@@ -72,7 +72,7 @@ async function getPeriodMetrics(
       .lte('arrival', to)
       .neq('status', 'canceled'),
     
-    // Cancelled bookings for cancellation rate
+    // cancelled bookings for cancellation rate
     supabase
       .from('bookings')
       .select('id', { count: 'exact', head: true })
@@ -81,14 +81,14 @@ async function getPeriodMetrics(
       .lte('arrival', to)
       .eq('status', 'canceled'),
     
-    // Properties
+    // properties
     supabase
       .from('properties')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
       .eq('active', true),
     
-    // Upcoming bookings
+    // upcoming bookings
     supabase
       .from('bookings')
       .select('id', { count: 'exact', head: true })
@@ -106,7 +106,7 @@ async function getPeriodMetrics(
   const totalProperties = propertiesResult.count || 0;
   const upcomingBookings = upcomingResult.count || 0;
 
-  // Calculate metrics
+  // calculate metrics
   const totalRevenue = bookings.reduce((sum: number, b: any) => sum + b.total_amount, 0);
   const totalBookings = bookings.length;
   const cancellationRate = (cancelledCount / (totalBookings + cancelledCount)) * 100;
@@ -127,7 +127,7 @@ async function getPeriodMetrics(
   const avgNights = totalBookings > 0 ? totalNights / totalBookings : 0;
   const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
-  // Calculate occupancy (simplified)
+  // calculate occupancy (simplified)
   const totalDays = Math.floor(
     (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24) + 1
   );
@@ -162,7 +162,7 @@ async function getChartsData(
   const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
   const useDaily = daysDiff <= 30;
 
-  // Revenue over time
+  // revenue over time
   const { data: revenueData } = await supabase
     .from('bookings')
     .select('arrival, total_amount')
@@ -172,7 +172,7 @@ async function getChartsData(
     .neq('status', 'canceled')
     .order('arrival');
 
-  // Group revenue by day/week/month
+  // group revenue by day/week/month
   const revenueByPeriod = new Map<string, number>();
   revenueData?.forEach((b: any) => {
     const date = new Date(b.arrival);
@@ -184,7 +184,7 @@ async function getChartsData(
     revenueByPeriod.set(key, current + b.total_amount);
   });
 
-  // Top properties
+  // top properties
   const { data: propertiesData } = await supabase
     .from('bookings')
     .select('total_amount, properties!inner(id, name)')
@@ -206,7 +206,7 @@ async function getChartsData(
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, 5);
 
-  // Booking sources
+  // booking sources
   const { data: sourcesData } = await supabase
     .from('bookings')
     .select('platform')
@@ -225,7 +225,7 @@ async function getChartsData(
     .map(([source, count]) => ({ source, count }))
     .sort((a, b) => b.count - a.count);
 
-  // Simplified occupancy trend
+  // simplified occupancy trend
   const occupancyTrend = Array.from({ length: 12 }, (_, i) => ({
     month: new Date(2024, i).toLocaleDateString('en', { month: 'short' }),
     rate: 50 + Math.random() * 30
@@ -247,7 +247,7 @@ async function getAlerts(
 ) {
   const alerts = [];
 
-  // Check upcoming occupancy using Supabase query
+  // check upcoming occupancy using Supabase query
   const { count: next30DaysBookings } = await supabase
     .from('bookings')
     .select('*', { count: 'exact', head: true })
@@ -275,7 +275,7 @@ async function getAlerts(
     });
   }
 
-  // Check upcoming arrivals
+  // check upcoming arrivals
   const { count: upcomingArrivals } = await supabase
     .from('bookings')
     .select('*', { count: 'exact', head: true })

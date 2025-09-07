@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { manualSyncSchema, syncBookingsSchema, syncPropertiesSchema } from '@baileys/schemas';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
@@ -84,7 +86,17 @@ sync.post('/properties', async (c) => {
 sync.post('/bookings', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const user = c.get('user');
-	const { propertyId, startDate, endDate } = await c.req.json();
+	const body = await c.req.json();
+	
+	// validate input
+	const validation = manualSyncSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ') 
+		}, 400);
+	}
+	
+	const { propertyId, startDate, endDate } = validation.data;
 
 	const { data: tenant } = await supabase
 		.from('tenants')

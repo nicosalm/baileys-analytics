@@ -207,10 +207,10 @@ export const OccupancyDashboard = () => {
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={Percent}
-          label="How Full You Were"
+          label="Occupancy Rate"
           value={currentData.overall * 100}
           format="percent"
-          tooltip="Percentage of available nights that were booked"
+          tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(previousData.overall * 100, 0)} | ${currentData.bookedNights.toLocaleString()} nights`
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
@@ -225,10 +225,10 @@ export const OccupancyDashboard = () => {
         />
         <MetricCard
           icon={Calendar}
-          label="Nights With Guests"
+          label="Booked Nights"
           value={currentData.bookedNights}
           format="number"
-          tooltip="Total nights with bookings across all properties"
+          tooltip="Total nights booked across all properties"
           subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.bookedNights.toLocaleString()} nights`
             : "In selected period"
@@ -243,10 +243,10 @@ export const OccupancyDashboard = () => {
         />
         <MetricCard
           icon={Home}
-          label="Total Bookable Nights"
+          label="Available Nights"
           value={currentData.availableNights}
           format="number"
-          tooltip="Maximum nights available for booking"
+          tooltip="Total nights available for booking"
           subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.availableNights.toLocaleString()}`
             : "Across all properties"
@@ -331,13 +331,15 @@ export const OccupancyDashboard = () => {
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-bold mb-4 flex items-center">
-            <Home className="w-5 h-5 mr-2" />
-            Property Performance
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold flex items-center">
+              <Home className="w-5 h-5 mr-2" />
+              Property Performance
+            </h3>
             {currentData.byProperty.length > 10 && (
-              <span className="ml-auto text-xs text-gray-500">Showing all {currentData.byProperty.length} properties</span>
+              <span className="text-xs text-gray-500">Showing all {currentData.byProperty.length} properties</span>
             )}
-          </h3>
+          </div>
           <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
             {currentData.byProperty.length > 0 ? (
               currentData.byProperty
@@ -399,18 +401,18 @@ export const OccupancyDashboard = () => {
           </div>
           {currentData.byProperty.length > 0 && (
             <div className="mt-4 pt-4 border-t">
-              <div className="flex justify-center gap-4 text-xs">
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-green-500 rounded-sm mr-1"></div>
-                  <span className="text-gray-600">Excellent (70%+)</span>
+              <div className="flex flex-wrap gap-2 justify-center text-xs">
+                <div className="flex items-center gap-1.5 bg-green-50 px-2 py-1 rounded">
+                  <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
+                  <span className="text-gray-700 text-[11px] font-medium">Excellent (70%+)</span>
                 </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-yellow-500 rounded-sm mr-1"></div>
-                  <span className="text-gray-600">Good (50-70%)</span>
+                <div className="flex items-center gap-1.5 bg-yellow-50 px-2 py-1 rounded">
+                  <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
+                  <span className="text-gray-700 text-[11px] font-medium">Good (50-70%)</span>
                 </div>
-                <div className="flex items-center">
-                  <div className="w-3 h-3 bg-red-500 rounded-sm mr-1"></div>
-                  <span className="text-gray-600">Low (&lt;50%)</span>
+                <div className="flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded">
+                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
+                  <span className="text-gray-700 text-[11px] font-medium">Low (&lt;50%)</span>
                 </div>
               </div>
             </div>

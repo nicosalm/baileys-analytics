@@ -41,7 +41,7 @@ export function buildSeasonFilter(seasons: Season[], tableAlias?: string): strin
 				 (EXTRACT(MONTH FROM ${table}arrival)::int = ${season.end_month} AND EXTRACT(DAY FROM ${table}arrival)::int <= ${season.end_day}))
 			)`;
 		} else {
-			// Season crosses year boundary (e.g., Dec to Feb)
+			// season crosses year boundary (e.g., Dec to Feb)
 			return `(
 				(EXTRACT(MONTH FROM ${table}arrival)::int > ${season.start_month} OR 
 				 (EXTRACT(MONTH FROM ${table}arrival)::int = ${season.start_month} AND EXTRACT(DAY FROM ${table}arrival)::int >= ${season.start_day}))

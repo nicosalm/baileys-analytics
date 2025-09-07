@@ -185,7 +185,7 @@ export const GuestsDashboard = () => {
         },
         {
             key: 'avgNightlyRate',
-            header: 'Avg/Night',
+            header: 'Average/Night',
             sortable: true,
             width: 120,
             render: (guest: GuestListItem) => formatCurrency(guest.avgNightlyRate)
@@ -288,7 +288,7 @@ export const GuestsDashboard = () => {
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="text-right">
-                            <div className="text-xs text-gray-500">Active Guests</div>
+                            <div className="text-xs text-gray-500">Total Guests</div>
                             <div className="text-lg font-bold text-blue-600">
                                 {data.metrics.totalGuests.toLocaleString()}
                             </div>
@@ -318,9 +318,10 @@ export const GuestsDashboard = () => {
             <div className="grid md:grid-cols-4 gap-4">
                 <MetricCard
                     icon={Users}
-                    label="Active Guests"
+                    label="Total Guests"
                     value={data.metrics.totalGuests}
                     format="number"
+                    tooltip="Total unique guests who have stayed"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.metrics.totalGuests} | In period`
                         : "In selected period"
@@ -338,6 +339,7 @@ export const GuestsDashboard = () => {
                     label="Repeat Rate"
                     value={data.metrics.repeatRate * 100}
                     format="percent"
+                    tooltip="Percentage of returning guests"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(previousData.metrics.repeatRate * 100, 0)} | ${data.metrics.repeatGuests} returning`
                         : `${data.metrics.repeatGuests} returning guests`
@@ -352,9 +354,10 @@ export const GuestsDashboard = () => {
                 />
                 <MetricCard
                     icon={Calendar}
-                    label="Avg Stay"
+                    label="Average Stay"
                     value={`${data.metrics.avgStayLength.toFixed(1)} nights`}
                     format="custom"
+                    tooltip="Average length of stay per booking"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.metrics.avgStayLength.toFixed(1)} nights`
                         : "Per booking"
@@ -369,7 +372,7 @@ export const GuestsDashboard = () => {
                 />
                 <MetricCard
                     icon={DollarSign}
-                    label="Avg Guest Value"
+                    label="Average Guest Value"
                     value={data.metrics.avgSpend}
                     format="currency"
                     subValue={comparisonMode !== 'none' && previousData?.metrics

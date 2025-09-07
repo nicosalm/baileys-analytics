@@ -645,7 +645,7 @@ export class PDFGenerator {
     return (doc as any).lastAutoTable.finalY + 5
   }
   
-  // Helper methods
+  // helper methods
   private showTotals = true
   
   private calculateTotals(headers: string[], rows: any[][]): string[] {

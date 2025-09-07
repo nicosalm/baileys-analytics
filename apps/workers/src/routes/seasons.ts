@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+
 import { authMiddleware } from '../middleware/auth';
 import { clearCache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
@@ -46,18 +48,34 @@ seasons.post('/', clearCache('GET:'), async (c) => {
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
 	
+	const seasonSchema = z.object({
+		name: z.string().min(1),
+		startMonth: z.number().int().min(1).max(12),
+		startDay: z.number().int().min(1).max(31),
+		endMonth: z.number().int().min(1).max(12),
+		endDay: z.number().int().min(1).max(31),
+		isActive: z.boolean().optional()
+	});
+	
+	const validation = seasonSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.issues.map((e: any) => e.message).join(', ')
+		}, 400);
+	}
+	
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
-	// Check if there are any active seasons
+	// check if there are any active seasons
 	const { data: activeSeasons } = await supabase
 		.from('season_configurations')
 		.select('id')
 		.eq('tenant_id', tenantId)
 		.eq('is_active', true);
 	
-	// Auto-activate if no active seasons exist
+	// auto-activate if no active seasons exist
 	const shouldActivate = !activeSeasons || activeSeasons.length === 0;
 	
 	const dbData = {
@@ -101,6 +119,22 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
+	
+	const seasonSchema = z.object({
+		name: z.string().min(1),
+		startMonth: z.number().int().min(1).max(12),
+		startDay: z.number().int().min(1).max(31),
+		endMonth: z.number().int().min(1).max(12),
+		endDay: z.number().int().min(1).max(31),
+		isActive: z.boolean()
+	});
+	
+	const validation = seasonSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.issues.map((e: any) => e.message).join(', ')
+		}, 400);
+	}
 	
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
@@ -148,6 +182,17 @@ seasons.patch('/:id', clearCache('GET:'), async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
+	
+	const patchSchema = z.object({
+		isActive: z.boolean()
+	}).partial();
+	
+	const validation = patchSchema.safeParse(body);
+	if (!validation.success) {
+		return c.json({ 
+			error: validation.error.issues.map((e: any) => e.message).join(', ')
+		}, 400);
+	}
 	
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);

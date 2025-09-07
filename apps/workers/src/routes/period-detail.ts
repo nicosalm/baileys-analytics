@@ -83,7 +83,7 @@ periodDetail.get('/', async (c) => {
     const propertyMap = new Map<string, string>();
     properties.forEach(p => propertyMap.set(p.id, p.name));
 
-    // Calculate metrics
+    // calculate metrics
     const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
     const totalBookings = bookings.length;
     

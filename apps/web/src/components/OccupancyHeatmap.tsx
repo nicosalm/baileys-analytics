@@ -146,7 +146,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
         <div className="flex justify-around text-xs">
           <div className="text-center">
             <div className="font-semibold text-lg">{monthStats.avgOccupancy}%</div>
-            <div className="text-gray-500">Avg</div>
+            <div className="text-gray-500">Average</div>
           </div>
           <div className="text-center">
             <div className="font-semibold text-lg">{monthStats.totalBooked}</div>

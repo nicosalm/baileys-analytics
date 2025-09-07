@@ -50,7 +50,7 @@ export const TaxOverviewTab: React.FC<TaxOverviewTabProps> = ({
         />
         <MetricCard
           icon={Calculator}
-          label="Avg Tax Rate"
+          label="Average Tax Rate"
           value={formatPercentage(statistics.averageTaxRate, 2)}
           format="custom"
           color="blue"

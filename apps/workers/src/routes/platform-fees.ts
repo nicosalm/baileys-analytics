@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { platformFeeEntrySchema, platformFeeFormSchema } from '@baileys/schemas';
 import { createSupabaseClient } from '../services/supabase';
 import { authMiddleware } from '../middleware/auth';
 
@@ -26,7 +28,7 @@ platformFees.get('/', async (c) => {
 
   try {
     if (propertyId && month) {
-      // Get platform fee entries for specific property and month
+      // get platform fee entries for specific property and month
       const { data: entries, error: entriesError } = await supabase
         .from('platform_fee_entries')
         .select('*')
@@ -36,7 +38,7 @@ platformFees.get('/', async (c) => {
       
       if (entriesError) throw entriesError;
       
-      // Get bookings for the month to calculate suggested fees
+      // get bookings for the month to calculate suggested fees
       const monthStart = `${month}-01`;
       const monthEnd = new Date(new Date(monthStart).getFullYear(), new Date(monthStart).getMonth() + 1, 0)
         .toISOString().split('T')[0];
@@ -52,7 +54,7 @@ platformFees.get('/', async (c) => {
       
       if (bookingsError) throw bookingsError;
       
-      // Group bookings by platform
+      // group bookings by platform
       const platformSummary = new Map();
       bookings?.forEach(booking => {
         const platform = booking.platform || 'Direct';
@@ -68,7 +70,7 @@ platformFees.get('/', async (c) => {
         summary.totalRevenue += booking.total_amount || 0;
       });
       
-      // Combine with existing entries
+      // combine with existing entries
       const result = Array.from(platformSummary.values()).map(summary => {
         const existingEntry = entries?.find(e => e.platform === summary.platform);
         return {
@@ -88,7 +90,7 @@ platformFees.get('/', async (c) => {
         data: result 
       });
     } else {
-      // Get general platform fee configurations
+      // get general platform fee configurations
       const { data, error } = await supabase
         .from('platform_fee_configs')
         .select('*')
@@ -123,11 +125,24 @@ platformFees.post('/', async (c) => {
   const tenantId = tenant.id;
   const body = await c.req.json();
 
-  // Check if this is a platform fee entry or configuration
+  // check if this is a platform fee entry or configuration
   if (body.propertyId && body.month && body.platform) {
-    // This is a platform fee entry
+    // validate platform fee entry
+    const validation = platformFeeEntrySchema.safeParse({
+      ...body,
+      tenantId
+    });
+    
+    if (!validation.success) {
+      return c.json({ 
+        error: validation.error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ') 
+      }, 400);
+    }
+    
+    const validatedData = validation.data;
+    // this is a platform fee entry
     try {
-      // Check if entry already exists
+      // check if entry already exists
       const { data: existing } = await supabase
         .from('platform_fee_entries')
         .select('id')
@@ -139,7 +154,7 @@ platformFees.post('/', async (c) => {
       
       let result;
       if (existing) {
-        // Update existing entry
+        // update existing entry
         const { data, error } = await supabase
           .from('platform_fee_entries')
           .update({
@@ -155,7 +170,7 @@ platformFees.post('/', async (c) => {
         if (error) throw error;
         result = data;
       } else {
-        // Create new entry
+        // create new entry
         const { data, error } = await supabase
           .from('platform_fee_entries')
           .insert({
@@ -176,14 +191,14 @@ platformFees.post('/', async (c) => {
         result = data;
       }
       
-      return c.json({ status: 'success', data: result }, 201);
+      return c.json(result, 201);
     } catch (error) {
       return c.json({ 
         error: error instanceof Error ? error.message : 'Failed to save platform fee entry' 
       }, 500);
     }
   } else {
-    // This is a platform fee configuration
+    // this is a platform fee configuration
     const { platform, feeType, feeValue, active = true } = body;
 
     try {

@@ -1,16 +1,13 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { Booking, PropertyTaxJurisdiction } from '@baileys/schemas';
 
 interface TaxConfig {
   property_id: string;
-  jurisdictions: Array<{
-    name: string;
-    type: 'state' | 'county' | 'city' | 'district' | 'other';
-    rate: number;
-  }>;
+  jurisdictions: PropertyTaxJurisdiction[];
   platform_settings?: {
     airbnb?: { remitsTax: boolean };
     vrbo?: { remitsTax: boolean };
-    [key: string]: any;
+    [key: string]: { remitsTax: boolean } | undefined;
   };
 }
 
@@ -24,7 +21,7 @@ export class TaxCalculator {
   constructor(private supabase: SupabaseClient) {}
 
   async calculateBookingTax(
-    booking: any,
+    booking: { total_amount?: number; platform?: string; booking_charges?: Array<{ type: string; amount: number }> } & Record<string, any>,
     taxConfig: TaxConfig | null,
     platformRemittance: PlatformRemittanceConfig | null
   ) {
@@ -81,8 +78,8 @@ export class TaxCalculator {
 
   private isPlatformRemitting(
     platform: string,
-    jurisdiction: any,
-    platformSettings: any,
+    jurisdiction: PropertyTaxJurisdiction,
+    platformSettings: TaxConfig['platform_settings'],
     platformRemittance: PlatformRemittanceConfig | null
   ): boolean {
     if (!platformRemittance) return false;

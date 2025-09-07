@@ -181,7 +181,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         />
         <MetricCard
           icon={TrendingUp}
-          label="Avg Monthly Flow"
+          label="Average Monthly Flow"
           value={cashFlowData.avgMonthlyFlow}
           format="currency"
           color="blue"

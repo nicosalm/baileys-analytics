@@ -47,7 +47,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
       <h3 className="text-lg font-bold mb-4">{property.propertyName}</h3>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <div className="text-sm text-gray-600">Money Earned</div>
+          <div className="text-sm text-gray-600">Revenue</div>
           <div className="flex items-center gap-2">
             <div className="text-xl font-semibold">{formatCurrency(property.revenue)}</div>
             {getGrowthIndicator(property.revenue, previousProperty?.revenue)}
@@ -59,7 +59,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
           )}
         </div>
         <div>
-          <div className="text-sm text-gray-600">Reservations</div>
+          <div className="text-sm text-gray-600">Bookings</div>
           <div className="flex items-center gap-2">
             <div className="text-xl font-semibold">{property.bookings}</div>
             {getGrowthIndicator(property.bookings, previousProperty?.bookings)}
@@ -218,10 +218,10 @@ export const PropertiesDashboard = () => {
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard
           icon={Home}
-          label="Properties You Manage"
+          label="Property Count"
           value={(properties || []).length}
           format="number"
-          tooltip="Number of active properties in your portfolio"
+          tooltip="Total number of properties in portfolio"
           subValue={comparisonMode !== 'none' && previousProperties && previousProperties.length > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousProperties.length} | Active properties`
             : "In selected period"
@@ -234,10 +234,10 @@ export const PropertiesDashboard = () => {
         />
         <MetricCard
           icon={DollarSign}
-          label="Combined Revenue"
+          label="Total Revenue"
           value={totalRevenue}
           format="currency"
-          tooltip="Total revenue across all properties"
+          tooltip="Total revenue from all bookings in selected period"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(prevTotalRevenue)} | All properties`
             : "All properties"
@@ -250,10 +250,10 @@ export const PropertiesDashboard = () => {
         />
         <MetricCard
           icon={Percent}
-          label="Average Fullness"
+          label="Occupancy Rate"
           value={avgOccupancy * 100}
           format="percent"
-          tooltip="Average occupancy rate across all properties"
+          tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(prevAvgOccupancy * 100, 0)} | Across all`
             : "Across all properties"
@@ -266,10 +266,10 @@ export const PropertiesDashboard = () => {
         />
         <MetricCard
           icon={Calendar}
-          label="Total Reservations"
+          label="Total Bookings"
           value={totalBookings}
           format="number"
-          tooltip="Total number of bookings across all properties"
+          tooltip="Total number of confirmed bookings"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0
             ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${prevTotalBookings} | All bookings`
             : "In selected period"
@@ -324,7 +324,7 @@ export const PropertiesDashboard = () => {
         </ChartWrapper>
 
         <ChartWrapper
-          title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Money vs Fullness${timePeriod}`}
+          title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Revenue vs Occupancy${timePeriod}`}
           subtitle={comparisonMode !== 'none' 
             ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
             : validProperties.length > 10 ? `Showing all ${validProperties.length} properties` : undefined
@@ -402,8 +402,8 @@ export const PropertiesDashboard = () => {
               />
               <Tooltip
                 formatter={(value: number, name: string) => {
-                  if (name === 'Money Earned') return formatCurrency(value)
-                  if (name === 'Nights Booked %') return `${value}% of nights`
+                  if (name === 'Revenue') return formatCurrency(value)
+                  if (name === 'Occupancy Rate') return `${value}%`
                   return value
                 }}
                 contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
@@ -414,8 +414,8 @@ export const PropertiesDashboard = () => {
                   return label
                 }}
               />
-              <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Money Earned" />
-              <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Nights Booked %" />
+              <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
+              <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Occupancy Rate" />
             </BarChart>
           )}
         </ChartWrapper>

@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { TaxCalculator } from '../services/tax-calculator';
@@ -41,7 +43,7 @@ tax.get('/status', async (c) => {
 		})
 	);
 	
-	return c.json({ status: 'success', data: propertyStatuses });
+	return c.json(propertyStatuses);
 });
 
 tax.get('/configs', async (c) => {
@@ -65,13 +67,28 @@ tax.get('/configs', async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 	
-	return c.json({ status: 'success', data: data || [] });
+	return c.json(data || []);
 });
 
 tax.post('/configs', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
+	
+	if (body.jurisdictions) {
+		const jurisdictionSchema = z.array(z.object({
+			name: z.string().min(1),
+			rate: z.number().min(0).max(100),
+			description: z.string().optional(),
+			ownerrezPattern: z.string().optional()
+		}));
+		const jurisdictionValidation = jurisdictionSchema.safeParse(body.jurisdictions);
+		if (!jurisdictionValidation.success) {
+			return c.json({ 
+				error: 'Invalid jurisdictions: ' + jurisdictionValidation.error.issues.map((e: any) => e.message).join(', ')
+			}, 400);
+		}
+	}
 	
 	const { data: existing } = await supabase
 		.from('property_tax_configs')
@@ -114,7 +131,7 @@ tax.post('/configs', async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 	
-	return c.json({ status: 'success', data }, 201);
+	return c.json(data, 201);
 });
 
 tax.put('/configs/:id', async (c) => {
@@ -122,6 +139,21 @@ tax.put('/configs/:id', async (c) => {
 	const tenantId = c.get('tenantId');
 	const configId = c.req.param('id');
 	const body = await c.req.json();
+	
+	if (body.jurisdictions) {
+		const jurisdictionSchema = z.array(z.object({
+			name: z.string().min(1),
+			rate: z.number().min(0).max(100),
+			description: z.string().optional(),
+			ownerrezPattern: z.string().optional()
+		}));
+		const jurisdictionValidation = jurisdictionSchema.safeParse(body.jurisdictions);
+		if (!jurisdictionValidation.success) {
+			return c.json({ 
+				error: 'Invalid jurisdictions: ' + jurisdictionValidation.error.issues.map((e: any) => e.message).join(', ')
+			}, 400);
+		}
+	}
 	
 	const { data, error } = await supabase
 		.from('property_tax_configs')
@@ -146,7 +178,7 @@ tax.put('/configs/:id', async (c) => {
 		return c.json({ error: 'Configuration not found' }, 404);
 	}
 	
-	return c.json({ status: 'success', data });
+	return c.json(data);
 });
 
 tax.delete('/configs/:id', async (c) => {
@@ -164,7 +196,7 @@ tax.delete('/configs/:id', async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 	
-	return c.json({ status: 'success' });
+	return c.json({ success: true });
 });
 
 tax.get('/jurisdictions', async (c) => {
@@ -201,7 +233,6 @@ tax.get('/platforms', async (c) => {
 	if (error) {
 		console.error('Error fetching platforms:', error);
 		return c.json({ 
-			status: 'error',
 			error: error.message
 		}, 500);
 	}
@@ -215,10 +246,7 @@ tax.get('/platforms', async (c) => {
 	
 	const platforms = Array.from(platformSet).sort();
 	
-	return c.json({
-		status: 'success',
-		data: platforms
-	});
+	return c.json(platforms);
 });
 
 tax.get('/auto-detect', async (c) => {
@@ -257,11 +285,8 @@ tax.get('/auto-detect', async (c) => {
 	
 	if (!taxCharges || taxCharges.length === 0) {
 		return c.json({
-			status: 'success',
-			data: {
-				jurisdictions: [],
-				message: 'No tax data found. Import more bookings to enable auto-detection.'
-			}
+			jurisdictions: [],
+			message: 'No tax data found. Import more bookings to enable auto-detection.'
 		});
 	}
 	
@@ -301,17 +326,14 @@ tax.get('/auto-detect', async (c) => {
 	const totalRate = jurisdictions.reduce((sum, j) => sum + j.rate, 0);
 	
 	return c.json({
-		status: 'success',
-		data: {
-			jurisdictions,
-			summary: {
-				totalRate,
-				jurisdictionCount: jurisdictions.length,
-				hasExistingConfig: false,
-				detectionConfidence: jurisdictions.length > 0 ? 'high' : 'low'
-			},
-			recommendations: generateRecommendations(jurisdictions, totalRate)
-		}
+		jurisdictions,
+		summary: {
+			totalRate,
+			jurisdictionCount: jurisdictions.length,
+			hasExistingConfig: false,
+			detectionConfidence: jurisdictions.length > 0 ? 'high' : 'low'
+		},
+		recommendations: generateRecommendations(jurisdictions, totalRate)
 	});
 });
 
@@ -340,6 +362,11 @@ tax.post('/calculate', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
+	
+	if (!body.propertyId) {
+		return c.json({ error: 'Property ID is required' }, 400);
+	}
+	
 	const { bookingId, propertyId, amount } = body;
 	
 	const calculator = new TaxCalculator(supabase);

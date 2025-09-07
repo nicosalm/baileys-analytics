@@ -1,5 +1,8 @@
 import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import { createTagSchema, updateTagSchema } from '@baileys/schemas';
+
 import { authMiddleware } from '../middleware/auth';
 
 const tags = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
@@ -18,7 +21,6 @@ tags.get('/', async (c) => {
   const tenantId = c.get('tenantId');
 
   try {
-    // Using Supabase's ability to join and aggregate in a single query
     const { data, error } = await supabase
       .from('tags')
       .select(`
@@ -32,7 +34,6 @@ tags.get('/', async (c) => {
       .order('name');
 
     if (error) {
-      // Fallback to manual query if the above doesn't work
       const { data: tagsData, error: tagsError } = await supabase
         .from('tags')
         .select('id, name, color')
@@ -43,7 +44,6 @@ tags.get('/', async (c) => {
         throw tagsError;
       }
 
-      // Get usage counts separately
       const tagIds = tagsData?.map(t => t.id) || [];
       
       const [propertyTagsResult, bookingTagsResult] = await Promise.all([
@@ -61,7 +61,6 @@ tags.get('/', async (c) => {
       const propertyUsage = new Map<string, number>();
       const bookingUsage = new Map<string, number>();
 
-      // Count usage per tag
       if (propertyTagsResult.data) {
         propertyTagsResult.data.forEach(pt => {
           propertyUsage.set(pt.tag_id, (propertyUsage.get(pt.tag_id) || 0) + 1);
@@ -84,7 +83,6 @@ tags.get('/', async (c) => {
       return c.json(tags);
     }
 
-    // If the joined query worked, format the response
     const tags: Tag[] = (data || []).map(row => ({
       id: row.id,
       name: row.name,
@@ -104,12 +102,15 @@ tags.post('/', async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
   const tenantId = c.get('tenantId');
   const body = await c.req.json();
-
-  const { name, color } = body;
-
-  if (!name) {
-    return c.json({ error: 'Tag name is required' }, 400);
+  
+  const validation = createTagSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json({ 
+      error: validation.error.issues.map((e: any) => e.message).join(', ')
+    }, 400);
   }
+
+  const { name, color } = validation.data;
 
   try {
     const { data, error } = await supabase
@@ -144,8 +145,15 @@ tags.put('/:id', async (c) => {
   const tenantId = c.get('tenantId');
   const tagId = c.req.param('id');
   const body = await c.req.json();
+  
+  const validation = updateTagSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json({ 
+      error: validation.error.issues.map((e: any) => e.message).join(', ')
+    }, 400);
+  }
 
-  const { name, color } = body;
+  const { name, color } = validation.data;
 
   try {
     const { data, error } = await supabase
@@ -182,7 +190,6 @@ tags.delete('/:id', async (c) => {
   const tagId = c.req.param('id');
 
   try {
-    // Supabase handles cascade deletes if configured in the database
     const { error } = await supabase
       .from('tags')
       .delete()

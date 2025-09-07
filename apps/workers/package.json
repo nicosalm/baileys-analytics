@@ -20,9 +20,10 @@
 		"@types/bcryptjs": "^3.0.0",
 		"typescript": "^5.5.2",
 		"vitest": "~3.2.0",
-		"wrangler": "^4.33.1"
+		"wrangler": "^4.34.0"
 	},
 	"dependencies": {
+		"@baileys/schemas": "workspace:*",
 		"@supabase/supabase-js": "^2.56.1",
 		"hono": "^4.9.5",
 		"jspdf": "^3.0.1",

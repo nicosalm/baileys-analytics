@@ -1,5 +1,7 @@
 import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
 import { authMiddleware } from '../middleware/auth';
 
 const scheduler = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
@@ -10,7 +12,7 @@ interface ScheduledTask {
   id: string;
   tenantId: string;
   taskType: 'sync_properties' | 'sync_bookings' | 'sync_guests' | 'generate_report';
-  schedule: string; // cron expression
+  schedule: string;
   enabled: boolean;
   lastRun?: string;
   nextRun?: string;
@@ -22,7 +24,6 @@ scheduler.get('/', async (c) => {
   const tenantId = c.get('tenantId');
 
   try {
-    // Using Supabase to store scheduled tasks
     const { data, error } = await supabase
       .from('scheduled_tasks')
       .select('*')
@@ -30,13 +31,12 @@ scheduler.get('/', async (c) => {
       .order('created_at');
 
     if (error) {
-      // Table might not exist, return default schedules
       return c.json([
         {
           id: 'default-sync-properties',
           tenantId,
           taskType: 'sync_properties',
-          schedule: '0 2 * * *', // Daily at 2 AM
+          schedule: '0 2 * * *',
           enabled: true,
           lastRun: null,
           nextRun: getNextRunTime('0 2 * * *')
@@ -45,7 +45,7 @@ scheduler.get('/', async (c) => {
           id: 'default-sync-bookings',
           tenantId,
           taskType: 'sync_bookings',
-          schedule: '0 */6 * * *', // Every 6 hours
+          schedule: '0 */6 * * *',
           enabled: true,
           lastRun: null,
           nextRun: getNextRunTime('0 */6 * * *')
@@ -65,19 +65,40 @@ scheduler.post('/', async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
   const tenantId = c.get('tenantId');
   const body = await c.req.json();
-
-  const { taskType, schedule, enabled = true, metadata } = body;
-
-  if (!taskType || !schedule) {
-    return c.json({ error: 'taskType and schedule are required' }, 400);
+  
+  const jobSchema = z.object({
+    jobType: z.enum([
+      'sync_properties',
+      'sync_bookings',
+      'sync_guests',
+      'generate_report'
+    ]),
+    schedule: z.string(),
+    enabled: z.boolean().default(true),
+    metadata: z.record(z.string(), z.any()).optional()
+  });
+  
+  const validation = jobSchema.safeParse({
+    jobType: body.taskType,
+    schedule: body.schedule,
+    enabled: body.enabled,
+    metadata: body.metadata
+  });
+  
+  if (!validation.success) {
+    return c.json({ 
+      error: validation.error.issues.map((e: any) => e.message).join(', ')
+    }, 400);
   }
+
+  const { jobType, schedule, enabled, metadata } = validation.data;
 
   try {
     const { data, error } = await supabase
       .from('scheduled_tasks')
       .insert({
         tenant_id: tenantId,
-        task_type: taskType,
+        task_type: jobType,
         schedule,
         enabled,
         metadata,
@@ -103,8 +124,21 @@ scheduler.put('/:id', async (c) => {
   const tenantId = c.get('tenantId');
   const taskId = c.req.param('id');
   const body = await c.req.json();
+  
+  const updateSchema = z.object({
+    schedule: z.string().optional(),
+    enabled: z.boolean().optional(),
+    metadata: z.record(z.string(), z.any()).optional()
+  }).partial();
+  
+  const validation = updateSchema.safeParse(body);
+  if (!validation.success) {
+    return c.json({ 
+      error: validation.error.issues.map((e: any) => e.message).join(', ')
+    }, 400);
+  }
 
-  const { schedule, enabled, metadata } = body;
+  const { schedule, enabled, metadata } = validation.data;
 
   try {
     const updateData: any = { updated_at: new Date().toISOString() };
@@ -164,14 +198,12 @@ scheduler.delete('/:id', async (c) => {
   }
 });
 
-// Trigger a scheduled task manually
 scheduler.post('/:id/run', async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
   const tenantId = c.get('tenantId');
   const taskId = c.req.param('id');
 
   try {
-    // Get the task details
     const { data: task, error: taskError } = await supabase
       .from('scheduled_tasks')
       .select('*')
@@ -183,12 +215,10 @@ scheduler.post('/:id/run', async (c) => {
       return c.json({ error: 'Task not found' }, 404);
     }
 
-    // Execute the task based on type
     let result: any = { success: true };
     
     switch (task.task_type) {
       case 'sync_properties':
-        // Trigger property sync using Supabase function
         const { data: syncResult, error: syncError } = await supabase
           .rpc('sync_properties_from_ownerrez', { p_tenant_id: tenantId });
         
@@ -200,7 +230,6 @@ scheduler.post('/:id/run', async (c) => {
         break;
         
       case 'sync_bookings':
-        // Trigger booking sync
         const { data: bookingSync, error: bookingError } = await supabase
           .rpc('sync_bookings_from_ownerrez', { p_tenant_id: tenantId });
         
@@ -212,7 +241,6 @@ scheduler.post('/:id/run', async (c) => {
         break;
         
       case 'sync_guests':
-        // Trigger guest sync
         const { data: guestSync, error: guestError } = await supabase
           .rpc('sync_guests_from_ownerrez', { p_tenant_id: tenantId });
         
@@ -224,7 +252,6 @@ scheduler.post('/:id/run', async (c) => {
         break;
         
       case 'generate_report':
-        // Trigger report generation
         const reportType = task.metadata?.reportType || 'monthly';
         result = { 
           success: true, 
@@ -236,7 +263,6 @@ scheduler.post('/:id/run', async (c) => {
         result = { success: false, error: 'Unknown task type' };
     }
 
-    // Update last run time
     await supabase
       .from('scheduled_tasks')
       .update({ 
@@ -253,22 +279,16 @@ scheduler.post('/:id/run', async (c) => {
   }
 });
 
-// Helper function to calculate next run time from cron expression
 function getNextRunTime(cronExpression: string): string {
-  // Simplified implementation - in production, use a cron library
   const now = new Date();
   const parts = cronExpression.split(' ');
   
-  // Basic parsing for common patterns
   if (parts[1] === '*/6') {
-    // Every 6 hours
     now.setHours(now.getHours() + 6);
   } else if (parts[1] === '2' && parts[0] === '0') {
-    // Daily at 2 AM
     now.setDate(now.getDate() + 1);
     now.setHours(2, 0, 0, 0);
   } else {
-    // Default to 1 hour from now
     now.setHours(now.getHours() + 1);
   }
   
