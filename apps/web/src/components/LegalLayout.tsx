@@ -50,7 +50,7 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
         <div className="grid md:grid-cols-4 gap-8">
           {/* Sidebar Navigation */}
           <aside className="md:col-span-1">
-            <nav className="sticky top-28 space-y-1">
+            <nav className="space-y-1">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                 Legal Documents
               </h3>
