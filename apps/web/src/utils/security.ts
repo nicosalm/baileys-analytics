@@ -1,70 +1,75 @@
-// supabase auth handles rate limiting automatically:
-// - sign in: 30 requests per hour
-// - password recovery: 5 requests per hour
-// - sign up: 30 requests per hour
-// - token refresh: 30 requests per 5 minutes
-// reference: https://supabase.com/docs/guides/platform/going-into-prod#rate-limiting
+/**
+ * Security utilities and configuration
+ * 
+ * Note: Most security features are handled by Supabase Auth:
+ * - Rate limiting (automatic)
+ * - Session management (automatic refresh)
+ * - Token expiry (configurable in dashboard)
+ * - CSRF protection (via SameSite cookies)
+ */
 
-// supabase default token expiry times
+// Supabase auth rate limits (for reference):
+// - Sign in: 30 requests per hour
+// - Password recovery: 5 requests per hour
+// - Sign up: 30 requests per hour
+// - Token refresh: 30 requests per 5 minutes
+// Reference: https://supabase.com/docs/guides/platform/going-into-prod#rate-limiting
+
+// Supabase default token expiry times (for reference)
 export const TOKEN_EXPIRY = {
-  passwordReset: 60 * 60 * 1000, // 1 hour (supabase default)
-  emailVerification: 24 * 60 * 60 * 1000, // 24 hours (supabase default)
-  session: 7 * 24 * 60 * 60 * 1000, // 7 days (configurable in supabase dashboard)
+  passwordReset: 60 * 60 * 1000, // 1 hour (Supabase default)
+  emailVerification: 24 * 60 * 60 * 1000, // 24 hours (Supabase default)
+  session: 7 * 24 * 60 * 60 * 1000, // 7 days (configurable in Supabase dashboard)
 }
 
+/**
+ * Basic input sanitization for user-generated content
+ * Note: React automatically escapes JSX content, so this is mainly for
+ * data that might be used in dynamic contexts or stored in database
+ */
 export const sanitizeInput = (input: string): string => {
   return input
     .trim()
-    .replace(/[<>]/g, '') // basic XSS prevention
-    .slice(0, 1000) // prevent excessive input
+    .replace(/[<>]/g, '') // Basic XSS prevention
+    .slice(0, 1000) // Prevent excessive input
 }
 
+/**
+ * Check if running in secure context (HTTPS or localhost)
+ * Useful for features that require secure context like clipboard API
+ */
 export const isSecureContext = (): boolean => {
   return window.location.protocol === 'https:' || window.location.hostname === 'localhost'
 }
 
-// TODO: implement CSP headers on server
-export const getCSPHeaders = () => ({
-  'Content-Security-Policy': [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // TODO: remove unsafe-inline in production
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
-    "font-src 'self'",
-    "connect-src 'self' https://ojpmtekljijcurgzrses.supabase.co",
-  ].join('; ')
-})
+/**
+ * Content Security Policy headers for production
+ * These should be implemented at the server/CDN level (e.g., Cloudflare)
+ * rather than in client-side code
+ * 
+ * Example Cloudflare Worker implementation:
+ * ```
+ * response.headers.set('Content-Security-Policy', [
+ *   "default-src 'self'",
+ *   "script-src 'self'",
+ *   "style-src 'self' 'unsafe-inline'", // Required for Tailwind
+ *   "img-src 'self' data: https:",
+ *   "font-src 'self'",
+ *   "connect-src 'self' https://ojpmtekljijcurgzrses.supabase.co",
+ * ].join('; '))
+ * ```
+ */
 
-// session timeout warning
-export const setupSessionTimeout = (onTimeout: () => void, timeoutMs = TOKEN_EXPIRY.session) => {
-  let timer: NodeJS.Timeout
-  let warningTimer: NodeJS.Timeout
-  
-  const resetTimers = () => {
-    clearTimeout(timer)
-    clearTimeout(warningTimer)
-    
-    // TODO: show warning 5 minutes before timeout
-    warningTimer = setTimeout(() => {
-      console.warn('Session will expire in 5 minutes')
-    }, timeoutMs - 5 * 60 * 1000)
-    
-    timer = setTimeout(onTimeout, timeoutMs)
-  }
-  
-  // reset on user activity
-  const events = ['mousedown', 'keydown', 'scroll', 'touchstart']
-  events.forEach(event => {
-    document.addEventListener(event, resetTimers, { passive: true })
-  })
-  
-  resetTimers()
-  
-  return () => {
-    clearTimeout(timer)
-    clearTimeout(warningTimer)
-    events.forEach(event => {
-      document.removeEventListener(event, resetTimers)
-    })
-  }
-}
+/**
+ * Session security notes:
+ * 
+ * Session timeout and refresh are handled automatically by Supabase:
+ * - Auto token refresh before expiry
+ * - Configurable session duration in Supabase dashboard
+ * - Secure session storage (httpOnly cookies when possible)
+ * 
+ * For custom session timeout warnings, you can:
+ * 1. Listen to Supabase auth state changes
+ * 2. Track user activity and warn before token expiry
+ * 3. Use supabase.auth.refreshSession() to extend sessions
+ */

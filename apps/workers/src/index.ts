@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { loginSchema, signupSchema, refreshTokenSchema } from '@baileys/schemas';
 
 import { authMiddleware } from './middleware/auth';
+import { rateLimit, strictRateLimit } from './middleware/rate-limit';
+import { timeout } from './middleware/timeout';
 
 // services
 import { createSupabaseClient } from './services/supabase';
@@ -46,11 +48,33 @@ import { waitlist } from './routes/waitlist';
 const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
 app.use('/*', cors({
-	origin: (origin) => origin || '*',
+	origin: (origin, c) => {
+		const allowedOrigins = [c.env.FRONTEND_URL];
+		// in development, also allow localhost origins
+		if (c.env.FRONTEND_URL.includes('localhost')) {
+			allowedOrigins.push('http://localhost:5173', 'http://localhost:5174');
+		}
+		return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+	},
 	allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 	allowHeaders: ['Content-Type', 'Authorization'],
 	credentials: true,
 }));
+
+// global rate limiting - 1000 requests per minute per ip
+app.use('/api/*', rateLimit({ max: 1000, windowMs: 60000 }));
+
+// global timeout - 30 seconds for all requests
+app.use('/api/*', timeout({ ms: 30000 }));
+
+// request size limit - 10mb
+app.use('/api/*', async (c, next) => {
+	const contentLength = c.req.header('content-length');
+	if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+		return c.json({ error: 'Request body too large (max 10MB)' }, 413);
+	}
+	await next();
+});
 
 app.route('/health', health);
 app.route('/api/waitlist', waitlist);
@@ -485,9 +509,12 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 
 	const cacheKey = `dashboard:${user.id}:${view}:${from}:${to}:${tags?.join(',')}`;
 
-	const cached = await c.env.CACHE.get(cacheKey, 'json');
-	if (cached) {
-		return c.json({ ...cached, _cached: true });
+	// try to get from cache if available
+	if (c.env.CACHE) {
+		const cached = await c.env.CACHE.get(cacheKey, 'json');
+		if (cached) {
+			return c.json({ ...cached, _cached: true });
+		}
 	}
 
 	const supabase = createSupabaseClient(c.env);
@@ -651,9 +678,12 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 			data = { error: 'Invalid view' };
 	}
 
-	await c.env.CACHE.put(cacheKey, JSON.stringify(data), {
-		expirationTtl: 300
-	});
+	// cache the result if kv is available
+	if (c.env.CACHE) {
+		await c.env.CACHE.put(cacheKey, JSON.stringify(data), {
+			expirationTtl: 300
+		});
+	}
 
 	return c.json(data);
 });

@@ -9,6 +9,7 @@ import {
 import { useToast } from '@/contexts/toast'
 import { useReportTemplates } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
+import { authenticatedFetch } from '@/lib/api'
 
 const REPORT_CATEGORIES = {
   operational: {
@@ -147,18 +148,9 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
   const handleQuickGenerate = async () => {
     setIsGenerating(true)
     try {
-      const tokenData = localStorage.getItem('baileys_tokens')
-      if (!tokenData) {
-        throw new Error('Not authenticated')
-      }
-      const { access: token } = JSON.parse(tokenData)
-
-      const response = await fetch('/api/reports/quick-generate', {
+      // Use authenticatedFetch which includes the Supabase auth token
+      const response = await authenticatedFetch('/reports/quick-generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
         body: JSON.stringify(report.config)
       })
 

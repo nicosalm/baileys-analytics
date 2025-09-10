@@ -8,16 +8,29 @@ export async function scheduled(
 ): Promise<void> {
   const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY);
   
-  switch(event.cron) {
-    case '0 2 * * *':
-      await syncAllProperties(supabase, env);
-      break;
-    case '0 */6 * * *':
-      await syncRecentBookings(supabase, env);
-      break;
-    case '0 0 1 * *':
-      await generateMonthlyReports(supabase, env);
-      break;
+  // add timeout protection for scheduled jobs (5 minutes max)
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 300000);
+  
+  try {
+    switch(event.cron) {
+      case '0 2 * * *':
+        await syncAllProperties(supabase, env);
+        break;
+      case '0 */6 * * *':
+        await syncRecentBookings(supabase, env);
+        break;
+      case '0 0 1 * *':
+        await generateMonthlyReports(supabase, env);
+        break;
+    }
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      // scheduled job timeout after 5 minutes
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

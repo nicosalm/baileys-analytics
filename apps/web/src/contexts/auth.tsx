@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { api } from '@/lib/api'
+import { Session } from '@supabase/supabase-js'
+import { AppUser } from '@/types/auth'
 
 type AuthState =
   | { status: 'loading' }
   | { status: 'unauthenticated' }
-  | { status: 'authenticated'; user: any; tokens: { access: string; refresh: string } }
+  | { status: 'authenticated'; user: AppUser; session: Session }
 
 type AuthContextValue = {
   state: AuthState
@@ -13,6 +15,7 @@ type AuthContextValue = {
   signup: (email: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<boolean>
+  updatePassword: (newPassword: string) => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -29,29 +32,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
       
-      const data = await response.json()
-      
-      if (!response.ok) {
-        console.error('Login failed:', data.error || 'Invalid credentials')
+      if (error) {
+        console.error('Login failed:', error.message)
         return false
       }
       
-      if (data.accessToken && data.refreshToken) {
-        localStorage.setItem('baileys_tokens', JSON.stringify({
-          access: data.accessToken,
-          refresh: data.refreshToken
-        }))
-        api.setAccessToken(data.accessToken)
+      if (data.user && data.session) {
+        // Update API client with the access token
+        api.setAccessToken(data.session.access_token)
+        
+        // Extend user with app-specific properties from metadata
+        const appUser: AppUser = {
+          ...data.user,
+          companyName: data.user.user_metadata?.company_name,
+          hasOwnerRezConnection: data.user.user_metadata?.has_ownerrez_connection || false,
+          tenantId: data.user.user_metadata?.tenant_id
+        }
+        
         setState({
           status: 'authenticated',
-          user: { id: data.userId, email: data.email, tenantId: data.tenantId },
-          tokens: { access: data.accessToken, refresh: data.refreshToken }
+          user: appUser,
+          session: data.session
         })
         return true
       }
@@ -64,41 +70,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        }
       })
       
-      if (!response.ok) {
+      if (error) {
+        console.error('Signup failed:', error.message)
         return false
       }
       
-      const data = await response.json()
+      // Check if email confirmation is required
+      if (data.user && !data.session) {
+        // User needs to confirm email
+        console.log('Please check your email for confirmation link')
+        return true
+      }
       
-      if (data.accessToken && data.refreshToken) {
-        localStorage.setItem('baileys_tokens', JSON.stringify({
-          access: data.accessToken,
-          refresh: data.refreshToken
-        }))
-        api.setAccessToken(data.accessToken)
+      if (data.user && data.session) {
+        // Email confirmation is disabled, user is logged in
+        api.setAccessToken(data.session.access_token)
+        
+        // Extend user with app-specific properties
+        const appUser: AppUser = {
+          ...data.user,
+          companyName: data.user.user_metadata?.company_name,
+          hasOwnerRezConnection: data.user.user_metadata?.has_ownerrez_connection || false,
+          tenantId: data.user.user_metadata?.tenant_id
+        }
+        
         setState({
           status: 'authenticated',
-          user: { id: data.userId, email: data.email },
-          tokens: { access: data.accessToken, refresh: data.refreshToken }
+          user: appUser,
+          session: data.session
         })
         return true
       }
       return false
-    } catch {
+    } catch (error) {
+      console.error('Signup error:', error)
       return false
     }
   }
 
   const logout = async () => {
-    localStorage.removeItem('baileys_tokens')
-    api.setAccessToken(null)
-    setState({ status: 'unauthenticated' })
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Logout error:', error.message)
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      api.setAccessToken(null)
+      setState({ status: 'unauthenticated' })
+    }
   }
 
   const resetPassword = async (email: string): Promise<boolean> => {
@@ -112,46 +141,82 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const updatePassword = async (newPassword: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+      return !error
+    } catch {
+      return false
+    }
+  }
+
   useEffect(() => {
+    // Check for existing session
     const initAuth = async () => {
-      const stored = localStorage.getItem('baileys_tokens')
-      if (!stored) {
-        setState({ status: 'unauthenticated' })
-        return
-      }
-      
       try {
-        const tokens = JSON.parse(stored)
-        api.setAccessToken(tokens.access)
+        const { data: { session } } = await supabase.auth.getSession()
         
-        // Verify token is still valid
-        const response = await fetch('/api/auth/me', {
-          headers: { 'Authorization': `Bearer ${tokens.access}` }
-        })
-        
-        if (response.ok) {
-          const user = await response.json()
+        if (session) {
+          api.setAccessToken(session.access_token)
+          
+          // Extend user with app-specific properties
+          const appUser: AppUser = {
+            ...session.user,
+            companyName: session.user.user_metadata?.company_name,
+            hasOwnerRezConnection: session.user.user_metadata?.has_ownerrez_connection || false,
+            tenantId: session.user.user_metadata?.tenant_id
+          }
+          
           setState({
             status: 'authenticated',
-            user,
-            tokens
+            user: appUser,
+            session
           })
         } else {
-          localStorage.removeItem('baileys_tokens')
           setState({ status: 'unauthenticated' })
         }
-      } catch {
-        localStorage.removeItem('baileys_tokens')
+      } catch (error) {
+        console.error('Auth initialization error:', error)
         setState({ status: 'unauthenticated' })
       }
     }
 
     initAuth()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session) {
+        api.setAccessToken(session.access_token)
+        
+        // Extend user with app-specific properties
+        const appUser: AppUser = {
+          ...session.user,
+          companyName: session.user.user_metadata?.company_name,
+          hasOwnerRezConnection: session.user.user_metadata?.has_ownerrez_connection || false,
+          tenantId: session.user.user_metadata?.tenant_id
+        }
+        
+        setState({
+          status: 'authenticated',
+          user: appUser,
+          session
+        })
+      } else {
+        api.setAccessToken(null)
+        setState({ status: 'unauthenticated' })
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, logout, resetPassword }}>
+    <AuthContext.Provider value={{ state, login, signup, logout, resetPassword, updatePassword }}>
       {children}
     </AuthContext.Provider>
   )

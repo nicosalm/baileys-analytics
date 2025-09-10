@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/auth'
 import { useState, useEffect, lazy, Suspense, ComponentType } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
+import { authenticatedFetch } from '@/lib/api'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
 import { 
@@ -486,12 +487,9 @@ export const Settings = () => {
     setIsDeleting(true)
     
     try {
-      const response = await fetch('/api/account/delete', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Content-Type': 'application/json'
-        }
+      // Use authenticatedFetch which includes the Supabase auth token
+      const response = await authenticatedFetch('/account/delete', {
+        method: 'DELETE'
       })
 
       if (response.ok) {
@@ -579,10 +577,10 @@ export const Settings = () => {
       <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
         {activeTab === 'account' ? (
           <AccountTab
-            email={user.email}
-            createdAt={user.createdAt}
+            email={user.email || ''}
+            createdAt={user.created_at}
             companyName={user.companyName}
-            isConnected={user.hasOwnerRezConnection}
+            isConnected={user.hasOwnerRezConnection || false}
             syncStatus={syncStatus}
             onRecentSync={() => handleSync('recent')}
             onHistoricalSync={() => handleSync('historical')}

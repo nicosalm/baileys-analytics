@@ -2,12 +2,14 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { manualSyncSchema, syncBookingsSchema, syncPropertiesSchema } from '@baileys/schemas';
 import { authMiddleware } from '../middleware/auth';
+import { strictRateLimit } from '../middleware/rate-limit';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
 
 const sync = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
 sync.use('/*', authMiddleware);
+sync.use('/*', strictRateLimit()); // only 10 sync operations per 5 minutes
 
 sync.post('/properties', async (c) => {
 	const supabase = createSupabaseClient(c.env);

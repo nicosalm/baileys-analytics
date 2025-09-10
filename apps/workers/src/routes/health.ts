@@ -19,13 +19,17 @@ health.get('/', async (c) => {
 		checks.database = 'unhealthy';
 	}
 	
-	try {
-		const testKey = 'health-check';
-		await c.env.CACHE.put(testKey, 'test', { expirationTtl: 10 });
-		const value = await c.env.CACHE.get(testKey);
-		checks.cache = value === 'test' ? 'healthy' : 'unhealthy';
-	} catch {
-		checks.cache = 'unhealthy';
+	if (c.env.CACHE) {
+		try {
+			const testKey = 'health-check';
+			await c.env.CACHE.put(testKey, 'test', { expirationTtl: 10 });
+			const value = await c.env.CACHE.get(testKey);
+			checks.cache = value === 'test' ? 'healthy' : 'unhealthy';
+		} catch {
+			checks.cache = 'unhealthy';
+		}
+	} else {
+		checks.cache = 'not configured';
 	}
 	
 	const allHealthy = Object.values(checks)

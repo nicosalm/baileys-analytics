@@ -1,13 +1,36 @@
+import { OWNERREZ_API } from '../constants';
+
 export class OwnerRezService {
-	private baseUrl = 'https://api.ownerreservations.com/v2';
+	private baseUrl = OWNERREZ_API.BASE_URL;
 	private clientId: string;
 	private clientSecret: string;
 	private username: string;
+	private timeout: number = 10000; // 10 second timeout for external apis
 
 	constructor(clientId: string, clientSecret: string, username: string) {
 		this.clientId = clientId;
 		this.clientSecret = clientSecret;
 		this.username = username;
+	}
+
+	private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+		
+		try {
+			const response = await fetch(url, {
+				...options,
+				signal: controller.signal
+			});
+			return response;
+		} catch (error) {
+			if (error instanceof Error && error.name === 'AbortError') {
+				throw new Error(`Request timeout after ${this.timeout}ms`);
+			}
+			throw error;
+		} finally {
+			clearTimeout(timeoutId);
+		}
 	}
 
 	private getAuthHeader(): string {
@@ -26,7 +49,7 @@ export class OwnerRezService {
 			headers['Username'] = this.username;
 		}
 
-		const response = await fetch(`${this.baseUrl}/properties`, {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/properties`, {
 			headers
 		});
 
@@ -54,7 +77,7 @@ export class OwnerRezService {
 			headers['Username'] = this.username;
 		}
 
-		const response = await fetch(`${this.baseUrl}/bookings?${params.toString()}`, {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/bookings?${params.toString()}`, {
 			headers
 		});
 
@@ -77,7 +100,7 @@ export class OwnerRezService {
 			headers['Username'] = this.username;
 		}
 
-		const response = await fetch(`${this.baseUrl}/bookings/${bookingId}`, {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/bookings/${bookingId}`, {
 			headers
 		});
 
@@ -99,7 +122,7 @@ export class OwnerRezService {
 			headers['Username'] = this.username;
 		}
 
-		const response = await fetch(`${this.baseUrl}/guests`, {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests`, {
 			method: 'POST',
 			headers,
 			body: JSON.stringify({ booking_ids: bookingIds })
@@ -126,7 +149,7 @@ export class OwnerRezService {
 			headers['Username'] = this.username;
 		}
 
-		const response = await fetch(`${this.baseUrl}/guests?${params.toString()}`, {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests?${params.toString()}`, {
 			headers
 		});
 

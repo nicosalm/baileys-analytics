@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
@@ -9,7 +9,6 @@ import { BRAND } from '@/constants'
 import { validatePassword } from '@/utils/password'
 
 export const Signup = () => {
-  const navigate = useNavigate()
   const { signup } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
@@ -18,6 +17,7 @@ export const Signup = () => {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [signupSuccess, setSignupSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -38,11 +38,46 @@ export const Signup = () => {
     setLoading(false)
 
     if (success) {
-      addToast('success', 'Account created successfully!')
-      navigate('/dashboard')
+      // Show confirmation message instead of auto-navigating since email confirmation is required
+      setSignupSuccess(true)
     } else {
       addToast('error', 'Failed to create account. Email may already be in use.')
     }
+  }
+
+  // Show success message if signup was successful
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="max-w-md w-full px-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
+              <p className="text-gray-600 mb-4">
+                We've sent a confirmation link to:
+              </p>
+              <p className="font-medium text-gray-900 mb-6">{email}</p>
+              <p className="text-sm text-gray-500 mb-6">
+                Please click the link in the email to confirm your account and get started.
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Didn't receive the email? Check your spam folder or wait a few minutes.
+              </p>
+              <Link
+                to="/login"
+                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                Back to login
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -16,7 +16,7 @@ export function cache(options: CacheOptions = {}) {
 		
 		const cacheKey = key ? key(c) : `${c.req.method}:${c.req.url}`;
 		
-		if (c.req.method === 'GET') {
+		if (c.req.method === 'GET' && c.env.CACHE) {
 			const cached = await c.env.CACHE.get(cacheKey);
 			if (cached) {
 				const data = JSON.parse(cached);
@@ -26,7 +26,7 @@ export function cache(options: CacheOptions = {}) {
 		
 		await next();
 		
-		if (c.req.method === 'GET' && c.res.status === 200) {
+		if (c.req.method === 'GET' && c.res.status === 200 && c.env.CACHE) {
 			const response = c.res.clone();
 			const body = await response.json();
 			
@@ -43,9 +43,9 @@ export function clearCache(pattern: string) {
 	return async function clearCacheMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
 		await next();
 		
-		if (c.res.status >= 200 && c.res.status < 300) {
+		if (c.res.status >= 200 && c.res.status < 300 && c.env.CACHE) {
 			const keys = await c.env.CACHE.list({ prefix: pattern });
-			await Promise.all(keys.keys.map(key => c.env.CACHE.delete(key.name)));
+			await Promise.all(keys.keys.map(key => c.env.CACHE!.delete(key.name)));
 		}
 	};
 }

@@ -6,9 +6,10 @@ compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
-[[kv_namespaces]]
-binding = "CACHE"
-id = "cache_namespace_id_placeholder"
+# uncomment after creating kv namespace with: wrangler kv namespace create CACHE
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "cache_namespace_id_placeholder"
 
 [triggers]
 crons = ["0 2 * * *", "0 */6 * * *", "0 0 1 * *"]

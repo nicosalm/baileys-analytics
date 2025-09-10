@@ -39,6 +39,21 @@ class ApiClient {
             })
 
             if (!response.ok) {
+                // Handle 401 Unauthorized - session expired or invalid
+                if (response.status === 401) {
+                    // Clear the token and redirect to login
+                    this.accessToken = null
+                    // Only redirect if we're not already on the login page
+                    if (!window.location.pathname.includes('/login')) {
+                        window.location.href = '/login'
+                    }
+                    return {
+                        success: false,
+                        error: 'Session expired. Please log in again.',
+                        status: 401,
+                    }
+                }
+                
                 const error = await response.json().catch(() => ({ error: 'Request failed' }))
                 return {
                     success: false,

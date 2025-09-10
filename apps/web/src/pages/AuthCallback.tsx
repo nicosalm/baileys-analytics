@@ -37,9 +37,19 @@ export const AuthCallback = () => {
 
         switch (type) {
           case 'signup':
-            setStatus('success')
-            setMessage('Email confirmed successfully! Redirecting to login...')
-            setTimeout(() => navigate('/login'), 2000)
+          case 'invite':
+            // For signup/invite confirmations, establish session first
+            const { data: { session: signupSession }, error: signupError } = await supabase.auth.getSession()
+            
+            if (signupError || !signupSession) {
+              setStatus('success')
+              setMessage('Email confirmed successfully! Please log in.')
+              setTimeout(() => navigate('/login'), 2000)
+            } else {
+              setStatus('success')
+              setMessage('Email confirmed! Logging you in...')
+              setTimeout(() => navigate('/dashboard/overview'), 2000)
+            }
             break
             
           case 'recovery':
