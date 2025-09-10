@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Lock, ArrowLeft, BarChart3, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { Lock, ArrowLeft, Compass, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { LoadingButton } from '@/components/LoadingButton'
 import { PasswordRequirements } from '@/components/PasswordRequirements'
 import { BRAND } from '@/constants'
@@ -163,7 +163,7 @@ export const ResetPassword = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="flex items-center mb-6">
             <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-              <BarChart3 className="w-6 h-6 text-white" />
+              <Compass className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-2xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
           </div>

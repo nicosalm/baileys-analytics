@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
-import { ArrowLeft, Mail, Lock, BarChart3, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Mail, Lock, Compass, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
 
 export const Login = () => {
@@ -49,7 +49,7 @@ export const Login = () => {
           {/* Logo */}
           <div className="flex items-center mb-8">
             <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-              <BarChart3 className="w-6 h-6 text-white" />
+              <Compass className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-2xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
           </div>

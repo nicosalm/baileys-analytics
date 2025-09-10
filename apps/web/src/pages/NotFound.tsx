@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
-import { BarChart3, ArrowLeft } from 'lucide-react'
+import { Compass, ArrowLeft } from 'lucide-react'
 import { BRAND } from '@/constants'
 
 export const NotFound = () => {
@@ -16,7 +16,7 @@ export const NotFound = () => {
           <div className="flex justify-between items-center">
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
               <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                <BarChart3 className="w-6 h-6 text-white" />
+                <Compass className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
             </Link>

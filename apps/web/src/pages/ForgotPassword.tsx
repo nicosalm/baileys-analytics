@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Mail, ArrowLeft, BarChart3 } from 'lucide-react'
+import { Mail, ArrowLeft, Compass } from 'lucide-react'
 import { LoadingButton } from '@/components/LoadingButton'
 import { BRAND } from '@/constants'
 
@@ -90,7 +90,7 @@ export const ForgotPassword = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="flex items-center mb-6">
             <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-              <BarChart3 className="w-6 h-6 text-white" />
+              <Compass className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-2xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
           </div>

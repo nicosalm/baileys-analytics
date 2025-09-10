@@ -9,7 +9,7 @@ import { LoadingState } from '@/components/LoadingState'
 import { 
   RefreshCw, Calendar, AlertCircle, Calculator, Check,
   Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, 
-  LogOut, User, Home, Lock, MessageSquare
+  LogOut, User, Home, Lock, MessageSquare, Compass
 } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
@@ -517,7 +517,7 @@ export const Settings = () => {
             <div className="flex items-center">
               <Link to="/dashboard/overview" className="flex items-center hover:opacity-80 transition-opacity">
                 <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                  <BarChart3 className="w-6 h-6 text-white" />
+                  <Compass className="w-6 h-6 text-white" />
                 </div>
                 <div className="ml-3">
                   <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
