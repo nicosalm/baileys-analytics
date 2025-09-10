@@ -16,6 +16,7 @@ type AuthContextValue = {
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<boolean>
   updatePassword: (newPassword: string) => Promise<boolean>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -152,38 +153,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  useEffect(() => {
-    // Check for existing session
-    const initAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
+  const refreshUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session) {
+        api.setAccessToken(session.access_token)
         
-        if (session) {
-          api.setAccessToken(session.access_token)
-          
-          // Extend user with app-specific properties
-          const appUser: AppUser = {
-            ...session.user,
-            companyName: session.user.user_metadata?.company_name,
-            hasOwnerRezConnection: session.user.user_metadata?.has_ownerrez_connection || false,
-            tenantId: session.user.user_metadata?.tenant_id
-          }
-          
-          setState({
-            status: 'authenticated',
-            user: appUser,
-            session
-          })
-        } else {
-          setState({ status: 'unauthenticated' })
+        // Extend user with app-specific properties
+        const appUser: AppUser = {
+          ...session.user,
+          companyName: session.user.user_metadata?.company_name,
+          hasOwnerRezConnection: session.user.user_metadata?.has_ownerrez_connection || false,
+          tenantId: session.user.user_metadata?.tenant_id
         }
-      } catch (error) {
-        console.error('Auth initialization error:', error)
+        
+        setState({
+          status: 'authenticated',
+          user: appUser,
+          session
+        })
+      } else {
         setState({ status: 'unauthenticated' })
       }
+    } catch (error) {
+      console.error('Auth initialization error:', error)
+      setState({ status: 'unauthenticated' })
     }
+  }
 
-    initAuth()
+  useEffect(() => {
+    // Check for existing session
+    refreshUser()
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -216,7 +217,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, logout, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ state, login, signup, logout, resetPassword, updatePassword, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

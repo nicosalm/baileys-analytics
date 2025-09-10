@@ -15,7 +15,7 @@ enabled = true
 crons = ["0 2 * * *", "0 */6 * * *", "0 0 1 * *"]
 
 [vars]
-FRONTEND_URL = "http://localhost:5173"
+FRONTEND_URL = "https://grub-live-enormously.ngrok-free.app"
 
 [env.production]
 name = "baileys-analytics-api-prod"

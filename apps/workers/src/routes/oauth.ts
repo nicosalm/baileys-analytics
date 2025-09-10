@@ -9,7 +9,7 @@ oauth.get('/initiate', authMiddleware, async (c) => {
   
   const params = new URLSearchParams({
     client_id: c.env.OWNERREZ_CLIENT_ID,
-    redirect_uri: `${c.env.FRONTEND_URL}/oauth/callback`,
+    redirect_uri: `${c.env.FRONTEND_URL}/auth/callback`,
     response_type: 'code',
     scope: 'properties bookings',
     state: tenantId
@@ -20,116 +20,92 @@ oauth.get('/initiate', authMiddleware, async (c) => {
   return c.json({ authUrl });
 });
 
-oauth.post('/callback', authMiddleware, async (c) => {
+oauth.post('/callback', async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-  const tenantId = c.get('tenantId');
   const { code, state } = await c.req.json();
 
-  if (state !== tenantId) {
+  // state contains the tenant id
+  const tenantId = state;
+  
+  if (!tenantId) {
     return c.json({ error: 'Invalid state parameter' }, 400);
   }
 
   try {
-    const tokenResponse = await fetch('https://app.ownerrez.com/oauth/token', {
+    // exchange authorization code for access token
+    const authString = `${c.env.OWNERREZ_CLIENT_ID}:${c.env.OWNERREZ_CLIENT_SECRET}`;
+    const authHeader = `Basic ${btoa(authString)}`;
+    
+    const bodyParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: `${c.env.FRONTEND_URL}/auth/callback`
+    });
+    
+    const tokenResponse = await fetch('https://api.ownerrez.com/oauth/access_token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${btoa(`${c.env.OWNERREZ_CLIENT_ID}:${c.env.OWNERREZ_CLIENT_SECRET}`)}`
+        'Accept': 'application/json',
+        'Authorization': authHeader
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: `${c.env.FRONTEND_URL}/oauth/callback`
-      })
+      body: bodyParams.toString()
     });
-
+    
     if (!tokenResponse.ok) {
-      throw new Error('Failed to exchange code for token');
+      const errorText = await tokenResponse.text();
+      throw new Error(`Failed to exchange code for token: ${tokenResponse.status} ${tokenResponse.statusText}`);
     }
 
     const tokenData = await tokenResponse.json() as any;
 
+    // ownerrez tokens don't expire, set far future date
     const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
+    expiresAt.setFullYear(expiresAt.getFullYear() + 10);
 
     const { error } = await supabase
       .from('oauth_tokens')
       .upsert({
         tenant_id: tenantId,
+        provider: 'ownerrez',
         access_token: tokenData.access_token,
-        refresh_token: tokenData.refresh_token,
+        token_type: tokenData.token_type || 'bearer',
+        scope: tokenData.scope || 'all',
+        user_id: tokenData.user_id?.toString() || null,
         expires_at: expiresAt.toISOString(),
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'tenant_id'
+        onConflict: 'tenant_id,provider'
       });
 
     if (error) {
       throw error;
     }
 
+    // update user metadata to indicate ownerrez connection
+    const { data: tenantData } = await supabase
+      .from('tenants')
+      .select('user_id')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantData?.user_id) {
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        tenantData.user_id,
+        {
+          user_metadata: { has_ownerrez_connection: true }
+        }
+      );
+
+      if (updateError) {
+        throw new Error('Failed to update user metadata');
+      }
+    }
+
     return c.json({ success: true });
   } catch (error) {
     return c.json({ 
       error: error instanceof Error ? error.message : 'OAuth callback failed' 
-    }, 500);
-  }
-});
-
-oauth.post('/refresh', authMiddleware, async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-  const tenantId = c.get('tenantId');
-
-  try {
-    const { data: tokenData, error: fetchError } = await supabase
-      .from('oauth_tokens')
-      .select('refresh_token')
-      .eq('tenant_id', tenantId)
-      .single();
-
-    if (fetchError || !tokenData?.refresh_token) {
-      return c.json({ error: 'No refresh token found' }, 404);
-    }
-
-    const tokenResponse = await fetch('https://app.ownerrez.com/oauth/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${btoa(`${c.env.OWNERREZ_CLIENT_ID}:${c.env.OWNERREZ_CLIENT_SECRET}`)}`
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: tokenData.refresh_token
-      })
-    });
-
-    if (!tokenResponse.ok) {
-      throw new Error('Failed to refresh token');
-    }
-
-    const newTokenData = await tokenResponse.json() as any;
-
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + newTokenData.expires_in);
-
-    const { error: updateError } = await supabase
-      .from('oauth_tokens')
-      .update({
-        access_token: newTokenData.access_token,
-        refresh_token: newTokenData.refresh_token || tokenData.refresh_token,
-        expires_at: expiresAt.toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('tenant_id', tenantId);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    return c.json({ success: true });
-  } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'OAuth refresh failed' 
     }, 500);
   }
 });

@@ -16,6 +16,38 @@ export const AuthCallback = () => {
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const searchParams = new URLSearchParams(window.location.search)
         
+        // check for oauth callback (ownerrez)
+        const code = searchParams.get('code')
+        const state = searchParams.get('state')
+        
+        if (code && state) {
+          try {
+            const { api } = await import('@/lib/api')
+            const result = await api.oauth.callback(code, state)
+            if (result.success) {
+              setStatus('success')
+              setMessage('Successfully connected to OwnerRez!')
+              
+              // refresh session to get updated metadata
+              const { data: { session } } = await supabase.auth.refreshSession()
+              if (session) {
+                window.location.href = '/dashboard/overview'
+              } else {
+                setTimeout(() => navigate('/dashboard/overview'), 2000)
+              }
+            } else {
+              setStatus('error')
+              setMessage(result.error || 'Failed to connect to OwnerRez')
+              setTimeout(() => navigate('/dashboard/settings'), 3000)
+            }
+          } catch (err) {
+            setStatus('error')
+            setMessage('Failed to complete OAuth connection')
+            setTimeout(() => navigate('/dashboard/settings'), 3000)
+          }
+          return
+        }
+
         const error = searchParams.get('error') || hashParams.get('error')
         const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
         

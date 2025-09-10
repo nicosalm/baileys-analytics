@@ -33,6 +33,14 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    host: true,
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'grub-live-enormously.ngrok-free.app',
+      '.ngrok-free.app',
+      '.ngrok.io'
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8788',

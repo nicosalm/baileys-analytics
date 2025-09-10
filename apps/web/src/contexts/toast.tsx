@@ -13,6 +13,7 @@ type ToastContextValue = {
   toasts: Toast[]
   addToast: (type: ToastType, message: string) => void
   removeToast: (id: string) => void
+  showToast: (message: string, type?: ToastType) => void
 }
 
 const ToastContext = createContext<ToastContextValue | null>(null)
@@ -50,8 +51,12 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     setToasts(prev => prev.filter(t => t.id !== id))
   }
 
+  const showToast = (message: string, type: ToastType = 'info') => {
+    addToast(type, message)
+  }
+
   return (
-    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
+    <ToastContext.Provider value={{ toasts, addToast, removeToast, showToast }}>
       {children}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </ToastContext.Provider>

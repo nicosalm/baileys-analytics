@@ -73,8 +73,21 @@ class ApiClient {
     }
 
 
+    // oauth methods
+    oauth = {
+        initiate: (): Promise<ApiResult<{ authUrl: string }>> => {
+            return this.request('/oauth/initiate')
+        },
+        callback: (code: string, state: string): Promise<ApiResult<any>> => {
+            return this.request('/oauth/callback', {
+                method: 'POST',
+                body: JSON.stringify({ code, state })
+            })
+        }
+    }
+    
     async initiateOAuth(): Promise<ApiResult<{ authUrl: string }>> {
-        return this.request('/oauth/initiate')
+        return this.oauth.initiate()
     }
 
     async getFinancial(
