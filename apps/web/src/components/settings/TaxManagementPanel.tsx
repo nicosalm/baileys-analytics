@@ -78,22 +78,22 @@ export const TaxManagementPanel = () => {
   return (
     <div className="space-y-6">
       
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Tax & Fee Configuration</h2>
-            <p className="text-gray-600">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Tax & Fee Configuration</h2>
+            <p className="text-gray-600 text-sm">
               Manage tax jurisdictions and platform fees for accurate financial reporting
             </p>
           </div>
           <div className="flex gap-3">
-            <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+            <div className="bg-gray-50 rounded-lg px-4 py-3">
               <div className="text-2xl font-bold text-blue-600">
                 {statistics.configuredProperties}
               </div>
               <div className="text-xs text-gray-500 mt-1">Configured</div>
             </div>
-            <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+            <div className="bg-gray-50 rounded-lg px-4 py-3">
               <div className="text-2xl font-bold text-gray-400">
                 {statistics.unconfiguredProperties}
               </div>
@@ -168,31 +168,29 @@ export const TaxManagementPanel = () => {
           {propertyWithConfig.map((property: any) => (
             <div
               key={property.id}
-              className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all"
+              className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all"
             >
               <div className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gray-50 rounded-lg">
-                      <Building2 className="w-5 h-5 text-gray-600" />
-                    </div>
+                    <Building2 className="w-5 h-5 text-gray-500" />
                     <div>
-                      <h4 className="font-semibold text-gray-900">{property.name}</h4>
+                      <h4 className="text-sm font-medium text-gray-900">{property.name}</h4>
                       <div className="flex items-center gap-4 mt-1">
                         {property.hasConfig ? (
                           <>
-                            <span className="text-sm text-green-600 flex items-center gap-1">
+                            <span className="text-xs text-green-600 flex items-center gap-1">
                               <Check className="w-3 h-3" />
                               Tax Configured
                             </span>
                             {property.totalRate > 0 && (
-                              <span className="text-sm text-gray-500">
+                              <span className="text-xs text-gray-500">
                                 Total Rate: {property.totalRate.toFixed(2)}%
                               </span>
                             )}
                           </>
                         ) : (
-                          <span className="text-sm text-amber-600 flex items-center gap-1">
+                          <span className="text-xs text-amber-600 flex items-center gap-1">
                             <AlertCircle className="w-3 h-3" />
                             No Tax Configuration
                           </span>

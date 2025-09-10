@@ -110,4 +110,48 @@ oauth.post('/callback', async (c) => {
   }
 });
 
+oauth.post('/disconnect', authMiddleware, async (c) => {
+  const tenantId = c.get('tenantId');
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  
+  try {
+    // delete the oauth token
+    const { error: deleteError } = await supabase
+      .from('oauth_tokens')
+      .delete()
+      .eq('tenant_id', tenantId)
+      .eq('provider', 'ownerrez');
+    
+    if (deleteError) {
+      throw deleteError;
+    }
+    
+    // update user metadata to indicate no ownerrez connection
+    const { data: tenantData } = await supabase
+      .from('tenants')
+      .select('user_id')
+      .eq('id', tenantId)
+      .single();
+    
+    if (tenantData?.user_id) {
+      const { error: updateError } = await supabase.auth.admin.updateUserById(
+        tenantData.user_id,
+        {
+          user_metadata: { has_ownerrez_connection: false }
+        }
+      );
+      
+      if (updateError) {
+        console.error('Failed to update user metadata:', updateError);
+      }
+    }
+    
+    return c.json({ success: true });
+  } catch (error) {
+    return c.json({ 
+      error: error instanceof Error ? error.message : 'Failed to disconnect OwnerRez' 
+    }, 500);
+  }
+});
+
 export { oauth };

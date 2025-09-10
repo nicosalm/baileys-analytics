@@ -78,6 +78,9 @@ class ApiClient {
         initiate: (): Promise<ApiResult<{ authUrl: string }>> => {
             return this.request('/oauth/initiate')
         },
+        disconnect: (): Promise<ApiResult<{ success: boolean }>> => {
+            return this.request('/oauth/disconnect', { method: 'POST' })
+        },
         callback: (code: string, state: string): Promise<ApiResult<any>> => {
             return this.request('/oauth/callback', {
                 method: 'POST',
@@ -88,6 +91,10 @@ class ApiClient {
     
     async initiateOAuth(): Promise<ApiResult<{ authUrl: string }>> {
         return this.oauth.initiate()
+    }
+    
+    async disconnectOwnerRez(): Promise<ApiResult<{ success: boolean }>> {
+        return this.oauth.disconnect()
     }
 
     async getFinancial(

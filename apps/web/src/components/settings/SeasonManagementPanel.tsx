@@ -155,27 +155,25 @@ const SeasonRow: React.FC<{
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all">
       <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gray-50 rounded-lg">
-              <Calendar className="w-5 h-5 text-gray-600" />
-            </div>
+            <Calendar className="w-5 h-5 text-gray-500" />
             <div>
-              <h4 className="font-semibold text-gray-900">{season.name}</h4>
+              <h4 className="text-sm font-medium text-gray-900">{season.name}</h4>
               <div className="flex items-center gap-4 mt-1">
                 {season.isActive ? (
-                  <span className="text-sm text-green-600 flex items-center gap-1">
+                  <span className="text-xs text-green-600 flex items-center gap-1">
                     <Check className="w-3 h-3" />
                     Active Season
                   </span>
                 ) : (
-                  <span className="text-sm text-gray-500">
+                  <span className="text-xs text-gray-500">
                     Inactive
                   </span>
                 )}
-                <span className="text-sm text-gray-500">
+                <span className="text-xs text-gray-500">
                   {formatSeasonDate(season.startMonth, season.startDay)} - {formatSeasonDate(season.endMonth, season.endDay)}
                 </span>
               </div>
@@ -299,22 +297,22 @@ export const SeasonManagementPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Season Management</h2>
-            <p className="text-gray-600">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Season Management</h2>
+            <p className="text-gray-600 text-sm">
               Define operational seasons to filter analytics by actual booking periods
             </p>
           </div>
           <div className="flex gap-3">
-            <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+            <div className="bg-gray-50 rounded-lg px-4 py-3">
               <div className="text-2xl font-bold text-blue-600">
                 {activeSeasons}
               </div>
               <div className="text-xs text-gray-500 mt-1">Active</div>
             </div>
-            <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
+            <div className="bg-gray-50 rounded-lg px-4 py-3">
               <div className="text-2xl font-bold text-gray-400">
                 {inactiveSeasons}
               </div>
@@ -346,7 +344,7 @@ export const SeasonManagementPanel: React.FC = () => {
 
       <div className="space-y-3">
         {seasons.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="text-center py-8 bg-gray-50 rounded-lg shadow-sm border border-gray-200">
             <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-3" />
             <p className="text-gray-600">No seasons defined yet</p>
             <p className="text-sm text-gray-500 mt-1">

@@ -1,15 +1,16 @@
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState, useEffect, lazy, Suspense, ComponentType } from 'react'
+import { useState, lazy, Suspense, ComponentType } from 'react'
 import { useToast } from '@/contexts/toast'
-import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
-import { authenticatedFetch } from '@/lib/api'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
 import { 
-  RefreshCw, Calendar, AlertCircle, Calculator, Check,
-  Building2, Loader2, UserCheck, Lightbulb, Trash2, BarChart3, 
-  LogOut, User, Home, Lock, MessageSquare, Compass
+  Calendar, Calculator, 
+  Trash2, 
+  LogOut, Settings as SettingsIcon, Compass,
+  Palette, CreditCard, Link2,
+  Lock, MessageSquare, ChevronRight, ArrowLeft
 } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
@@ -24,28 +25,36 @@ const SeasonManagementPanel = lazy(() =>
   import('@/components/settings/SeasonManagementPanel').then(m => ({ default: m.SeasonManagementPanel }))
 )
 
-type SyncStatus = {
-  lastPropertySync: string | null
-  lastBookingSync: string | null
-  propertyCount: number
-  bookingCount: number
-}
+const IntegrationsTab = lazy(() => 
+  import('@/components/settings/IntegrationsTab').then(m => ({ default: m.IntegrationsTab }))
+)
 
-type SyncState =
-  | { type: 'idle' }
-  | { type: 'syncing'; mode: 'recent' | 'historical' | 'guest-details' }
-  | { type: 'complete' }
+const BillingTab = lazy(() => 
+  import('@/components/settings/BillingTab').then(m => ({ default: m.BillingTab }))
+)
 
-type SettingsTab = 'account' | 'tax' | 'seasons'
-
-const formatDate = (dateString: string | null): string =>
-  dateString ? formatDateDisplay(new Date(dateString)) : 'Never'
+type SettingsTab = 'general' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { 
-    id: 'account', 
-    label: 'Account & Sync', 
-    icon: User
+    id: 'general', 
+    label: 'General', 
+    icon: SettingsIcon
+  },
+  { 
+    id: 'preferences',
+    label: 'Preferences',
+    icon: Palette
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: Link2
+  },
+  {
+    id: 'billing',
+    label: 'Billing',
+    icon: CreditCard
   },
   { 
     id: 'tax', 
@@ -59,302 +68,171 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
   }
 ]
 
-const SyncButton = ({
-  label,
-  icon: Icon,
-  onClick,
-  disabled,
-  loading,
-  variant = 'primary'
-}: {
-  label: string
-  icon: ComponentType<{ className?: string }>
-  onClick: () => void
-  disabled: boolean
-  loading: boolean
-  variant?: 'primary' | 'secondary'
-}) => (
-  <button
-    onClick={onClick}
-    disabled={disabled}
-    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-      variant === 'primary' 
-        ? 'bg-blue-600 text-white hover:bg-blue-700' 
-        : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-    }`}
-  >
-    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon className="w-4 h-4" />}
-    {label}
-  </button>
-)
-
-const AccountTab = ({ 
+const GeneralTab = ({ 
   email, 
   createdAt, 
-  companyName, 
-  isConnected,
-  syncStatus,
-  onRecentSync,
-  onHistoricalSync,
-  onGuestDetailsSync,
-  syncState,
-  onDeleteAccount,
+  companyName,
   onResetPassword,
-  onFeedback
+  onDeleteAccount
 }: {
   email: string
   createdAt: string
   companyName?: string | null
-  isConnected: boolean
-  syncStatus: SyncStatus | null
-  onRecentSync: () => void
-  onHistoricalSync: () => void
-  onGuestDetailsSync: () => void
-  syncState: SyncState
-  onDeleteAccount: () => void
   onResetPassword: () => void
-  onFeedback: () => void
+  onDeleteAccount: () => void
 }) => {
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">Email</span>
+            <span className="text-sm font-medium text-gray-900">{email}</span>
+          </div>
+          {companyName && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Company</span>
+              <span className="text-sm font-medium text-gray-900">{companyName}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-gray-600">Member Since</span>
+            <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
+        <div className="space-y-3">
+          <button
+            onClick={onResetPassword}
+            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200"
+          >
+            <div className="flex items-center gap-2">
+              <Lock className="w-4 h-4" />
+              <span>Change Password</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Danger Zone</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Permanently delete your account and all associated data. This action cannot be undone.
+        </p>
+        <button
+          onClick={onDeleteAccount}
+          className="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all flex items-center gap-2 border border-red-200"
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete Account
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const PreferencesTab = () => {
   const { showTips, toggleTips } = useTips()
   const { addToast } = useToast()
+  const [notifications, setNotifications] = useState(true)
+  const [language, setLanguage] = useState('en')
+  const [theme, setTheme] = useState('light')
   
   const handleToggleTips = () => {
     toggleTips()
-    addToast('success', showTips ? 'Tips & hints disabled' : 'Tips & hints enabled')
+    addToast('success', showTips ? 'Tips disabled' : 'Tips enabled')
   }
-
-  const isSyncing = syncState.type === 'syncing'
   
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Account & Sync</h2>
-            <p className="text-gray-600">
-              Manage your account settings and sync data from OwnerRez
-            </p>
-          </div>
-          {isConnected && syncStatus && (
-            <div className="flex gap-3">
-              <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
-                <div className="text-2xl font-bold text-blue-600">
-                  {syncStatus.propertyCount}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Properties</div>
-              </div>
-              <div className="bg-white rounded-lg px-4 py-3 shadow-sm">
-                <div className="text-2xl font-bold text-blue-600">
-                  {syncStatus.bookingCount}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Bookings</div>
-              </div>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Display Preferences</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="text-sm font-medium text-gray-700">Tips & Hints</span>
+              <p className="text-xs text-gray-500 mt-0.5">Show helpful tips throughout the dashboard</p>
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
-          <div className="p-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-gray-50 rounded-lg">
-                <User className="w-5 h-5 text-gray-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Account Information</h3>
-            </div>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Email</span>
-              <span className="text-sm font-medium text-gray-900">{email}</span>
-            </div>
-            {companyName && (
-              <div className="flex justify-between items-center pt-3 border-t">
-                <span className="text-sm text-gray-600">Company</span>
-                <span className="text-sm font-medium text-gray-900">{companyName}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center pt-3 border-t">
-              <span className="text-sm text-gray-600">Member Since</span>
-              <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
-            </div>
-          </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
-          <div className="p-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-gray-50 rounded-lg">
-                <Lightbulb className="w-5 h-5 text-gray-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Preferences</h3>
-            </div>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <span className="text-sm font-medium text-gray-700">Tips & Hints</span>
-                <p className="text-xs text-gray-500 mt-0.5">Show helpful tips throughout the dashboard</p>
-              </div>
-              <button
-                onClick={handleToggleTips}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  showTips ? 'bg-blue-600' : 'bg-gray-300'
+            <button
+              onClick={handleToggleTips}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                showTips ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                  showTips ? 'translate-x-6' : 'translate-x-1'
                 }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                    showTips ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-
-            <div className="pt-4 border-t">
-              <button
-                onClick={onResetPassword}
-                className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-center gap-2 border border-gray-200"
-              >
-                <Lock className="w-4 h-4" />
-                Reset Password
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t">
-            <button
-              onClick={onDeleteAccount}
-              className="w-full px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all flex items-center justify-center gap-2 border border-red-200"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Account
+              />
             </button>
           </div>
+          
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div>
+              <span className="text-sm font-medium text-gray-700">Theme</span>
+              <p className="text-xs text-gray-500 mt-0.5">Choose your preferred color theme</p>
+            </div>
+            <select
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              disabled
+            >
+              <option value="light">Light</option>
+              <option value="dark">Dark (Coming Soon)</option>
+              <option value="auto">Auto (Coming Soon)</option>
+            </select>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-gray-50 rounded-lg">
-                <Building2 className="w-5 h-5 text-gray-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">OwnerRez Connection</h3>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="text-sm font-medium text-gray-700">Email Notifications</span>
+              <p className="text-xs text-gray-500 mt-0.5">Receive updates about your account and syncs</p>
             </div>
-          {isConnected && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-              <Check className="w-3 h-3" />
-              Connected
-            </span>
-          )}
+            <button
+              onClick={() => setNotifications(!notifications)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                notifications ? 'bg-blue-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                  notifications ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
           </div>
-          {!isConnected ? (
-            <div className="text-center py-8">
-              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <AlertCircle className="w-6 h-6 text-gray-400" />
-              </div>
-              <p className="text-gray-600 mb-4">No property management system connected</p>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium">
-                Connect OwnerRez
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
-                    <Building2 className="w-3 h-3" />
-                    Properties
-                  </div>
-                  <div className="text-2xl font-semibold text-gray-900">{syncStatus?.propertyCount || 0}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Last: {formatDate(syncStatus?.lastPropertySync || null)}
-                  </div>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-1 text-xs text-gray-600 mb-1">
-                    <Calendar className="w-3 h-3" />
-                    Bookings
-                  </div>
-                  <div className="text-2xl font-semibold text-gray-900">{syncStatus?.bookingCount || 0}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Last: {formatDate(syncStatus?.lastBookingSync || null)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <SyncButton
-                  label="Sync Recent"
-                  icon={RefreshCw}
-                  onClick={onRecentSync}
-                  disabled={isSyncing}
-                  loading={isSyncing && syncState.mode === 'recent'}
-                  variant="primary"
-                />
-                <SyncButton
-                  label="Historical (4 Years)"
-                  icon={Calendar}
-                  onClick={onHistoricalSync}
-                  disabled={isSyncing}
-                  loading={isSyncing && syncState.mode === 'historical'}
-                  variant="secondary"
-                />
-                <SyncButton
-                  label="Guest Contacts"
-                  icon={UserCheck}
-                  onClick={onGuestDetailsSync}
-                  disabled={isSyncing}
-                  loading={isSyncing && syncState.mode === 'guest-details'}
-                  variant="secondary"
-                />
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-blue-700 space-y-0.5">
-                    <p>• Recent: Updates last 30 days</p>
-                    <p>• Historical: All bookings from past 4 years</p>
-                    <p>• Guest: Contact details from OwnerRez</p>
-                    <p>• Auto-syncs every 12 hours</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 hover:border-blue-200 transition-all">
-        <div className="p-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-gray-50 rounded-lg">
-              <MessageSquare className="w-5 h-5 text-gray-600" />
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Language & Region</h3>
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <span className="text-sm font-medium text-gray-700">Language</span>
+              <p className="text-xs text-gray-500 mt-0.5">Choose your preferred language</p>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">Feedback & Support</h3>
-          </div>
-          <p className="text-sm text-gray-600 mb-4">
-            We'd love to hear from you! Share your feedback, report issues, or suggest new features.
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={onFeedback}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+              disabled
             >
-              <MessageSquare className="w-4 h-4" />
-              Send Feedback
-            </button>
-            <a
-              href="https://docs.baileysanalytics.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-center gap-2 border border-gray-200"
-            >
-              Documentation
-            </a>
+              <option value="en">English</option>
+              <option value="es">Spanish (Coming Soon)</option>
+              <option value="fr">French (Coming Soon)</option>
+            </select>
           </div>
         </div>
       </div>
@@ -365,150 +243,44 @@ const AccountTab = ({
 export const Settings = () => {
   const { state, logout } = useAuth()
   const { addToast } = useToast()
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
-  const [activeTab, setActiveTab] = useState<SettingsTab>('account')
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean
-    type?: 'historical' | 'guest-details'
-  }>({ isOpen: false })
+  const [, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+  const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false)
   
-  const { data: syncStatus } = useSyncStatus()
+  if (state.status === 'loading') {
+    return <LoadingState />
+  }
   
-  useEffect(() => {
-    const tab = searchParams.get('tab') as SettingsTab | null
-    if (tab && tabConfig.some(t => t.id === tab)) {
-      setActiveTab(tab)
-    }
-  }, [searchParams])
-
+  if (state.status !== 'authenticated') {
+    return null
+  }
+  
+  const { user } = state
+  
   const handleTabChange = (tab: SettingsTab) => {
     setActiveTab(tab)
     setSearchParams({ tab })
   }
-
-  if (state.status !== 'authenticated') return null
-
-  const { user } = state
-
-  const handleSync = async (type: 'recent' | 'historical' | 'guest-details') => {
-    if (type === 'historical' || type === 'guest-details') {
-      setConfirmModal({ isOpen: true, type })
-      return
-    }
-
-    await performSync(type)
-  }
-
-  const performSync = async (type: 'recent' | 'historical' | 'guest-details') => {
-    setSyncState({ type: 'syncing', mode: type })
-
-    const result = type === 'historical'
-      ? await historicalSync()
-      : type === 'guest-details'
-      ? await syncGuestDetails()
-      : await manualSync()
-
-    if (result.success) {
-      let message: string
-
-      if (type === 'guest-details') {
-        const guestsUpdated = result.data?.guestsUpdated || 0
-        const errors = result.data?.errors || 0
-        const totalProcessed = result.data?.totalProcessed || 0
-        
-        if (errors > 0) {
-          message = `Guest sync completed: ${guestsUpdated} contacts updated, ${errors} errors out of ${totalProcessed} processed`
-        } else if (guestsUpdated === 0) {
-          message = 'No guests needed contact information updates'
-        } else {
-          message = `Guest sync completed: ${guestsUpdated} contacts updated successfully`
-        }
-      } else if (type === 'historical') {
-        const bookingsFound = result.data.bookingsFound || result.data.totalBookingsFetched
-        const bookingsSynced = result.data.bookingsSynced
-
-        if (bookingsFound && bookingsFound !== bookingsSynced) {
-          message = `Historical sync completed: ${bookingsSynced} bookings saved out of ${bookingsFound} fetched`
-        } else {
-          message = `Historical sync completed: ${bookingsSynced} bookings synced`
-        }
-      } else {
-        if (result.data.bookings) {
-          const bookingInfo = result.data.bookings
-          if (bookingInfo.status === 'success') {
-            const totalFetched = bookingInfo.totalFetched || bookingInfo.synced
-            if (totalFetched !== bookingInfo.synced) {
-              message = `Sync completed: ${result.data.properties?.synced || 0} properties, ${bookingInfo.synced} bookings saved out of ${totalFetched} fetched`
-            } else {
-              message = `Sync completed: ${result.data.properties?.synced || 0} properties, ${bookingInfo.synced} bookings`
-            }
-          } else {
-            message = 'Sync completed with errors'
-          }
-        } else {
-          message = 'Sync completed successfully'
-        }
-      }
-
-      addToast('success', message)
+  
+  const handleResetPassword = async () => {
+    const { resetPassword } = await import('@/contexts/auth').then(m => ({ resetPassword: m.useAuth().resetPassword }))
+    const result = await resetPassword(user.email!)
+    if (result) {
+      addToast('success', 'Password reset email sent')
     } else {
-      const typeLabel = type === 'historical' ? 'Historical' : type === 'guest-details' ? 'Guest details' : 'Recent'
-      addToast('error', `${typeLabel} sync failed`)
+      addToast('error', 'Failed to send password reset email')
     }
-
-    setSyncState({ type: 'complete' })
-    setTimeout(() => setSyncState({ type: 'idle' }), 1000)
   }
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/')
-  }
-
-  const handleResetPassword = () => {
-    navigate('/forgot-password')
-  }
-
-  const handleFeedback = () => {
-    window.location.href = 'mailto:support@baileysanalytics.com?subject=Feedback for Baileys Analytics'
-  }
-
+  
   const handleDeleteAccount = async () => {
-    if (deleteConfirmText !== 'DELETE') {
-      addToast('error', 'Please type DELETE to confirm')
-      return
-    }
-
-    setIsDeleting(true)
-    
-    try {
-      // Use authenticatedFetch which includes the Supabase auth token
-      const response = await authenticatedFetch('/account/delete', {
-        method: 'DELETE'
-      })
-
-      if (response.ok) {
-        addToast('success', 'Account deleted successfully')
-        await logout()
-        window.location.href = '/'
-      } else {
-        const error = await response.json().catch(() => ({ error: 'Failed to delete account' }))
-        addToast('error', error.error || 'Failed to delete account')
-      }
-    } catch (error) {
-      addToast('error', 'Network error while deleting account')
-    } finally {
-      setIsDeleting(false)
-      setShowDeleteConfirm(false)
-      setDeleteConfirmText('')
-    }
+    addToast('info', 'Account deletion is not available during beta')
+    setDeleteAccountModalOpen(false)
   }
-
+  
+  const handleSendFeedback = () => {
+    window.open('https://github.com/baileys-analytics/feedback/issues', '_blank')
+  }
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
@@ -527,191 +299,96 @@ export const Settings = () => {
                 </div>
               </Link>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500 hidden sm:inline">{user.email}</span>
-              <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
-                <Link
-                  to="/dashboard/overview"
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
-                  title="Dashboard"
-                >
-                  <Home className="w-5 h-5" />
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/dashboard/overview"
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <button
+                onClick={async () => {
+                  await logout()
+                  window.location.href = '/'
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto">
-          <nav className="flex gap-1 px-6" aria-label="Tabs">
-            {tabConfig.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => handleTabChange(id)}
-                className={`
-                  py-3 px-4 border-b-2 font-medium text-sm flex items-center transition-all
-                  ${activeTab === id
-                    ? 'border-blue-600 text-blue-600 bg-blue-50/30'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
-                  }
-                `}
-                aria-current={activeTab === id ? 'page' : undefined}
-              >
-                <Icon className="w-4 h-4 mr-2" />
-                {label}
-              </button>
-            ))}
-          </nav>
+      <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
+          <p className="text-gray-600 text-sm">Manage your account settings and preferences</p>
         </div>
-      </div>
 
-      <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
-        {activeTab === 'account' ? (
-          <AccountTab
-            email={user.email || ''}
-            createdAt={user.created_at}
-            companyName={user.companyName}
-            isConnected={user.hasOwnerRezConnection || false}
-            syncStatus={syncStatus}
-            onRecentSync={() => handleSync('recent')}
-            onHistoricalSync={() => handleSync('historical')}
-            onGuestDetailsSync={() => handleSync('guest-details')}
-            syncState={syncState}
-            onDeleteAccount={() => setShowDeleteConfirm(true)}
-            onResetPassword={handleResetPassword}
-            onFeedback={handleFeedback}
-          />
-        ) : activeTab === 'tax' ? (
-          <Suspense fallback={
-            <div className="bg-white p-8 rounded-xl border border-gray-200">
-              <div className="flex justify-center py-12">
-                <LoadingState />
-              </div>
+        <div className="flex gap-6">
+          <div className="w-64 flex-shrink-0">
+            <nav className="space-y-1 bg-white/50 backdrop-blur-sm rounded-lg p-2 border border-gray-200">
+              {tabConfig.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => handleTabChange(id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                    activeTab === id
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
+            </nav>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <button
+                onClick={handleSendFeedback}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-all"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Send Feedback
+              </button>
             </div>
-          }>
-            <TaxManagementPanel />
-          </Suspense>
-        ) : (
-          <Suspense fallback={
-            <div className="bg-white p-8 rounded-xl border border-gray-200">
-              <div className="flex justify-center py-12">
-                <LoadingState />
-              </div>
-            </div>
-          }>
-            <SeasonManagementPanel />
-          </Suspense>
-        )}
+          </div>
+
+          <div className="flex-1">
+            <Suspense fallback={<LoadingState />}>
+              {activeTab === 'general' && (
+                <GeneralTab
+                  email={user.email!}
+                  createdAt={user.created_at || new Date().toISOString()}
+                  companyName={user.companyName}
+                  onResetPassword={handleResetPassword}
+                  onDeleteAccount={() => setDeleteAccountModalOpen(true)}
+                />
+              )}
+              {activeTab === 'preferences' && <PreferencesTab />}
+              {activeTab === 'integrations' && <IntegrationsTab />}
+              {activeTab === 'billing' && <BillingTab />}
+              {activeTab === 'tax' && <TaxManagementPanel />}
+              {activeTab === 'seasons' && <SeasonManagementPanel />}
+            </Suspense>
+          </div>
+        </div>
       </main>
 
-      <ConfirmModal
-        isOpen={confirmModal.isOpen}
-        onClose={() => setConfirmModal({ isOpen: false })}
-        onConfirm={async () => {
-          const type = confirmModal.type
-          if (!type) return
-          await performSync(type)
-        }}
-        title={confirmModal.type === 'historical' ? 'Sync Historical Data' : 'Sync Guest Details'}
-        message={
-          confirmModal.type === 'historical'
-            ? 'This will fetch all bookings from the past 4 years. This operation may take several minutes.'
-            : 'This will fetch contact details (email/phone) for all guests. This operation may take a few minutes.'
-        }
-        confirmText="Start Sync"
-        variant="warning"
-      />
-      
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" onClick={() => {
-            setShowDeleteConfirm(false)
-            setDeleteConfirmText('')
-          }} />
-          <div className="flex min-h-screen items-center justify-center p-4">
-          <div className="relative bg-white rounded-lg shadow-2xl ring-1 ring-gray-200 max-w-md w-full p-6">
-            <div className="flex items-start mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">Delete Account</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  This will permanently delete your account and all associated data including:
-                </p>
-                <ul className="text-sm text-gray-600 mt-2 space-y-1 list-disc list-inside">
-                  <li>All property and booking data</li>
-                  <li>Tax configurations and reports</li>
-                  <li>Historical analytics data</li>
-                  <li>Account settings and preferences</li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-              <p className="text-sm text-red-800">
-                <strong>Warning:</strong> This action cannot be undone. Your data will be permanently deleted within 30 days.
-              </p>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Type <span className="font-bold">DELETE</span> to confirm
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                placeholder="Type DELETE here"
-                disabled={isDeleting}
-              />
-            </div>
-            
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false)
-                  setDeleteConfirmText('')
-                }}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-all"
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteAccount}
-                disabled={deleteConfirmText !== 'DELETE' || isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete Account
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-          </div>
-        </div>
-      )}
-      
       <Footer />
+      
+      <ConfirmModal
+        isOpen={deleteAccountModalOpen}
+        onClose={() => setDeleteAccountModalOpen(false)}
+        onConfirm={handleDeleteAccount}
+        title="Delete Account?"
+        message="This will permanently delete your account and all associated data. This action cannot be undone."
+        confirmText="Delete Account"
+        variant="danger"
+      />
     </div>
   )
 }
