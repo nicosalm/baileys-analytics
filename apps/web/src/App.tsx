@@ -14,7 +14,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 // Lazy load pages
 const Landing = lazy(() => import('@/pages/Landing').then(m => ({ default: m.Landing })))
 const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })))
-// const Signup = lazy(() => import('@/pages/Signup').then(m => ({ default: m.Signup })))
+const Signup = lazy(() => import('@/pages/Signup').then(m => ({ default: m.Signup })))
 const Waitlist = lazy(() => import('@/pages/Waitlist').then(m => ({ default: m.Waitlist })))
 const DashboardLayout = lazy(() => import('@/pages/DashboardLayout').then(m => ({ default: m.DashboardLayout })))
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })))
@@ -36,7 +36,7 @@ export const App = () => {
               <Routes>
               <Route path="/" element={<Landing />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Waitlist />} />
+              <Route path="/signup" element={<Signup />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

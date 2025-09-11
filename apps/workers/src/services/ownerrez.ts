@@ -34,7 +34,7 @@ export class OwnerRezService {
 	}
 
 	private getAuthHeader(): string {
-		const auth = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
+		const auth = btoa(`${this.clientId}:${this.clientSecret}`);
 		return `Basic ${auth}`;
 	}
 
@@ -42,7 +42,8 @@ export class OwnerRezService {
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
 			'Content-Type': 'application/json',
-			'Accept': 'application/json'
+			'Accept': 'application/json',
+			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
 		if (this.username) {
@@ -70,7 +71,8 @@ export class OwnerRezService {
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
 			'Content-Type': 'application/json',
-			'Accept': 'application/json'
+			'Accept': 'application/json',
+			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
 		if (this.username) {
@@ -93,7 +95,8 @@ export class OwnerRezService {
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
 			'Content-Type': 'application/json',
-			'Accept': 'application/json'
+			'Accept': 'application/json',
+			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
 		if (this.username) {
@@ -115,7 +118,8 @@ export class OwnerRezService {
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
 			'Content-Type': 'application/json',
-			'Accept': 'application/json'
+			'Accept': 'application/json',
+			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
 		if (this.username) {
@@ -142,7 +146,8 @@ export class OwnerRezService {
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
 			'Content-Type': 'application/json',
-			'Accept': 'application/json'
+			'Accept': 'application/json',
+			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
 		if (this.username) {

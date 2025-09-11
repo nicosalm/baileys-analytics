@@ -160,11 +160,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session) {
         api.setAccessToken(session.access_token)
         
+        // check if user has ownerrez connection by checking oauth tokens
+        let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
+        
+        // if metadata doesn't indicate connection, check the database
+        if (!hasOwnerRezConnection) {
+          const { data: tenant } = await supabase
+            .from('tenants')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .single()
+          
+          if (tenant) {
+            const { data: oauthToken } = await supabase
+              .from('oauth_tokens')
+              .select('id')
+              .eq('tenant_id', tenant.id)
+              .eq('provider', 'ownerrez')
+              .single()
+            
+            hasOwnerRezConnection = !!oauthToken
+          }
+        }
+        
         // Extend user with app-specific properties
         const appUser: AppUser = {
           ...session.user,
           companyName: session.user.user_metadata?.company_name,
-          hasOwnerRezConnection: session.user.user_metadata?.has_ownerrez_connection || false,
+          hasOwnerRezConnection,
           tenantId: session.user.user_metadata?.tenant_id
         }
         
@@ -191,11 +214,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session) {
         api.setAccessToken(session.access_token)
         
+        // check if user has ownerrez connection
+        let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
+        
+        // if metadata doesn't indicate connection, check the database
+        if (!hasOwnerRezConnection) {
+          const { data: tenant } = await supabase
+            .from('tenants')
+            .select('id')
+            .eq('user_id', session.user.id)
+            .single()
+          
+          if (tenant) {
+            const { data: oauthToken } = await supabase
+              .from('oauth_tokens')
+              .select('id')
+              .eq('tenant_id', tenant.id)
+              .eq('provider', 'ownerrez')
+              .single()
+            
+            hasOwnerRezConnection = !!oauthToken
+          }
+        }
+        
         // Extend user with app-specific properties
         const appUser: AppUser = {
           ...session.user,
           companyName: session.user.user_metadata?.company_name,
-          hasOwnerRezConnection: session.user.user_metadata?.has_ownerrez_connection || false,
+          hasOwnerRezConnection,
           tenantId: session.user.user_metadata?.tenant_id
         }
         

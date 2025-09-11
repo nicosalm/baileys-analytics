@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
 import { AlertCircle, CheckCircle, Compass } from 'lucide-react'
 import { BRAND } from '@/constants'
 
 export const AuthCallback = () => {
   const navigate = useNavigate()
+  const { refreshUser } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
 
@@ -28,13 +30,13 @@ export const AuthCallback = () => {
               setStatus('success')
               setMessage('Successfully connected to OwnerRez!')
               
-              // refresh session to get updated metadata
-              const { data: { session } } = await supabase.auth.refreshSession()
-              if (session) {
+              // refresh user to get updated metadata
+              await refreshUser()
+              
+              // navigate to dashboard
+              setTimeout(() => {
                 window.location.href = '/dashboard/overview'
-              } else {
-                setTimeout(() => navigate('/dashboard/overview'), 2000)
-              }
+              }, 1500)
             } else {
               setStatus('error')
               setMessage(result.error || 'Failed to connect to OwnerRez')
