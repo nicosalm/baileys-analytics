@@ -5,7 +5,7 @@ export class OwnerRezService {
 	private clientId: string;
 	private clientSecret: string;
 	private username: string;
-	private timeout: number = 10000; // 10 second timeout for external apis
+	private timeout: number = 10000;
 
 	constructor(clientId: string, clientSecret: string, username: string) {
 		this.clientId = clientId;

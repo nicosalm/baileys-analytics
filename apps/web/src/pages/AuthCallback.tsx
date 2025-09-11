@@ -18,7 +18,6 @@ export const AuthCallback = () => {
         const hashParams = new URLSearchParams(window.location.hash.substring(1))
         const searchParams = new URLSearchParams(window.location.search)
         
-        // check for oauth callback (ownerrez)
         const code = searchParams.get('code')
         const state = searchParams.get('state')
         
@@ -30,10 +29,8 @@ export const AuthCallback = () => {
               setStatus('success')
               setMessage('Successfully connected to OwnerRez!')
               
-              // refresh user to get updated metadata
               await refreshUser()
               
-              // navigate to dashboard
               setTimeout(() => {
                 window.location.href = '/dashboard/overview'
               }, 1500)
@@ -72,7 +69,6 @@ export const AuthCallback = () => {
         switch (type) {
           case 'signup':
           case 'invite':
-            // For signup/invite confirmations, establish session first
             const { data: { session: signupSession }, error: signupError } = await supabase.auth.getSession()
             
             if (signupError || !signupSession) {

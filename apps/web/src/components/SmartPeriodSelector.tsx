@@ -409,7 +409,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           
           {/* Comparison Dropdown */}
           {comparisonDropdownOpen && (
-            <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[200px] right-0">
+            <div className="absolute z-40 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[200px] right-0">
               <div className="p-1">
                 <button
                   onClick={() => {
@@ -509,7 +509,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
       
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[280px]">
+        <div className="absolute z-40 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[280px]">
           {/* Season status indicator */}
           {seasonStatus && activeSeasons.length > 0 && (
             <div className={cn(

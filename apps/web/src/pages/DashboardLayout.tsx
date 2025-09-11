@@ -161,7 +161,7 @@ export const DashboardLayout = () => {
   return (
     <DashboardProvider>
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
-          <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+          <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-6 py-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
@@ -189,7 +189,8 @@ export const DashboardLayout = () => {
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                      className="relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                      style={{ isolation: 'isolate' }}
                     >
                       <LogOut className="w-4 h-4" />
                       <span className="hidden sm:inline">Logout</span>

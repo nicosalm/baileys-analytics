@@ -64,7 +64,7 @@ export const FilterBar: React.FC = () => {
               </button>
 
               {showTagDropdown && (
-                <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-xl p-2 min-w-[200px] max-h-[300px] overflow-y-auto z-50">
+                <div className="absolute top-full mt-2 left-0 bg-white border border-gray-200 rounded-lg shadow-xl p-2 min-w-[200px] max-h-[300px] overflow-y-auto z-40">
                   {isTagsLoading ? (
                     <div className="text-center py-4 text-gray-500">Loading tags...</div>
                   ) : availableTags.length === 0 ? (
