@@ -226,27 +226,61 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 	const tenantId = c.get('tenantId');
 
 	if (!tenantId) {
-		return c.json([]);
+		return c.json({
+			propertyCount: 0,
+			bookingCount: 0,
+			guestCount: 0,
+			lastPropertySync: null,
+			lastBookingSync: null
+		});
 	}
 
 	const supabase = createSupabaseClient(c.env);
-	const { data: syncStatus, error } = await supabase
-		.from('sync_status')
-		.select('*')
+	
+	// get counts
+	const [properties, bookings, syncStatuses] = await Promise.all([
+		supabase
+			.from('properties')
+			.select('id', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId),
+		supabase
+			.from('bookings')
+			.select('id', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId),
+		supabase
+			.from('sync_status')
+			.select('*')
+			.eq('tenant_id', tenantId)
+			.order('last_sync', { ascending: false })
+			.limit(10)
+	]);
+
+	// count guests with contact info
+	const { count: guestCount } = await supabase
+		.from('bookings')
+		.select('guest_name', { count: 'exact', head: true })
 		.eq('tenant_id', tenantId)
-		.order('last_sync', { ascending: false });
+		.not('guest_email', 'is', null);
 
-	if (error) {
-		return c.json([]);
-	}
+	const lastPropertySync = syncStatuses.data?.find(s => s.sync_type === 'properties')?.last_sync || null;
+	const lastBookingSync = syncStatuses.data?.find(s => ['recent', 'historical', 'bookings'].includes(s.sync_type))?.last_sync || null;
 
-	return c.json(syncStatus || []);
+	return c.json({
+		propertyCount: properties.count || 0,
+		bookingCount: bookings.count || 0,
+		guestCount: guestCount || 0,
+		lastPropertySync,
+		lastBookingSync,
+		syncHistory: syncStatuses.data || []
+	});
 });
 
 app.post('/api/manual-sync', authMiddleware, async (c) => {
 	const tenantId = c.get('tenantId');
-	const body = await c.req.json().catch(() => ({}));
-	const { type = 'recent', from, to } = body;
+	const url = new URL(c.req.url);
+	const type = url.searchParams.get('type') || 'recent';
+	const from = url.searchParams.get('from') || undefined;
+	const to = url.searchParams.get('to') || undefined;
 
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
@@ -264,12 +298,26 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
+	const { data: ownerrezToken } = await supabase
+		.from('oauth_tokens')
+		.select('access_token')
+		.eq('tenant_id', tenantId)
+		.eq('provider', 'ownerrez')
+		.single();
+
+	if (!ownerrezToken?.access_token) {
+		return c.json({
+			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			requiresAuth: true
+		}, 400);
+	}
+
 	const user = c.get('user');
 	const { OwnerRezService } = await import('./services/ownerrez');
 	const ownerRez = new OwnerRezService(
-		c.env.OWNERREZ_CLIENT_ID,
-		c.env.OWNERREZ_CLIENT_SECRET,
-		tenant.ownerrez_username
+		ownerrezToken.access_token,
+		'',
+		''
 	);
 
 	let { data: properties } = await supabase
@@ -278,20 +326,6 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 		.eq('tenant_id', tenantId);
 
 	if (!properties || properties.length === 0) {
-		const { data: ownerrezToken } = await supabase
-			.from('oauth_tokens')
-			.select('access_token')
-			.eq('tenant_id', tenantId)
-			.eq('provider', 'ownerrez')
-			.single();
-
-		if (!ownerrezToken) {
-			return c.json({
-				error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
-				requiresAuth: true
-			}, 400);
-		}
-
 		try {
 			const ownerRezProperties = await ownerRez.fetchProperties();
 
@@ -322,7 +356,12 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 			properties = updatedProperties;
 
 			if (!properties || properties.length === 0) {
-				return c.json({ error: 'No properties found in OwnerRez' }, 400);
+				return c.json({ 
+					success: true,
+					message: 'No properties found in your OwnerRez account. Please add properties in OwnerRez first.',
+					propertiesSynced: 0,
+					bookingsSynced: 0
+				}, 200);
 			}
 		} catch (error: any) {
 			if (error.message?.includes('Forbidden') || error.message?.includes('Unauthorized')) {
@@ -335,8 +374,16 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 		}
 	}
 
-	const startDate = from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-	const endDate = to || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+	let startDate: string;
+	let endDate: string;
+	
+	if (type === 'historical') {
+		startDate = from || new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+		endDate = to || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+	} else {
+		startDate = from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+		endDate = to || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+	}
 
 	let totalBookings = 0;
 	let errorCount = 0;
@@ -412,12 +459,26 @@ app.post('/api/sync-guest-details', authMiddleware, async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
+	const { data: ownerrezToken } = await supabase
+		.from('oauth_tokens')
+		.select('access_token')
+		.eq('tenant_id', tenantId)
+		.eq('provider', 'ownerrez')
+		.single();
+
+	if (!ownerrezToken?.access_token) {
+		return c.json({
+			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			requiresAuth: true
+		}, 400);
+	}
+
 	const user = c.get('user');
 	const { OwnerRezService } = await import('./services/ownerrez');
 	const ownerRez = new OwnerRezService(
-		c.env.OWNERREZ_CLIENT_ID,
-		c.env.OWNERREZ_CLIENT_SECRET,
-		tenant.ownerrez_username
+		ownerrezToken.access_token,
+		'',
+		''
 	);
 
 	const { data: guestsNeedingInfo } = await supabase

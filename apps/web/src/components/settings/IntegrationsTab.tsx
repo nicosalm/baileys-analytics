@@ -71,10 +71,16 @@ export const IntegrationsTab = () => {
     try {
       const result = await manualSync()
       if (result.success) {
-        addToast('success', 'Recent data synced successfully')
+        if (result.data?.message) {
+          addToast('info', result.data.message)
+        } else if (result.data?.bookingsSynced > 0) {
+          addToast('success', `Synced ${result.data.bookingsSynced} bookings from ${result.data.propertiesProcessed} properties`)
+        } else {
+          addToast('success', 'Sync completed successfully')
+        }
         mutate()
       } else {
-        addToast('error', 'Sync failed')
+        addToast('error', result.error || 'Sync failed')
       }
     } catch (error) {
       addToast('error', 'Sync failed')
@@ -89,10 +95,16 @@ export const IntegrationsTab = () => {
     try {
       const result = await historicalSync()
       if (result.success) {
-        addToast('success', 'Historical data synced successfully')
+        if (result.data?.message) {
+          addToast('info', result.data.message)
+        } else if (result.data?.bookingsSynced > 0) {
+          addToast('success', `Synced ${result.data.bookingsSynced} historical bookings from ${result.data.propertiesProcessed} properties`)
+        } else {
+          addToast('success', 'Historical sync completed successfully')
+        }
         mutate()
       } else {
-        addToast('error', 'Historical sync failed')
+        addToast('error', result.error || 'Historical sync failed')
       }
     } catch (error) {
       addToast('error', 'Historical sync failed')

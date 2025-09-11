@@ -2,15 +2,20 @@ import { OWNERREZ_API } from '../constants';
 
 export class OwnerRezService {
 	private baseUrl = OWNERREZ_API.BASE_URL;
-	private clientId: string;
-	private clientSecret: string;
-	private username: string;
+	private accessToken?: string;
+	private clientId?: string;
+	private clientSecret?: string;
+	private username?: string;
 	private timeout: number = 10000;
 
-	constructor(clientId: string, clientSecret: string, username: string) {
-		this.clientId = clientId;
-		this.clientSecret = clientSecret;
-		this.username = username;
+	constructor(accessTokenOrClientId: string, clientSecret?: string, username?: string) {
+		if (clientSecret) {
+			this.clientId = accessTokenOrClientId;
+			this.clientSecret = clientSecret;
+			this.username = username;
+		} else {
+			this.accessToken = accessTokenOrClientId;
+		}
 	}
 
 	private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
@@ -34,8 +39,13 @@ export class OwnerRezService {
 	}
 
 	private getAuthHeader(): string {
-		const auth = btoa(`${this.clientId}:${this.clientSecret}`);
-		return `Basic ${auth}`;
+		if (this.accessToken) {
+			return `Bearer ${this.accessToken}`;
+		} else if (this.clientId && this.clientSecret) {
+			const auth = btoa(`${this.clientId}:${this.clientSecret}`);
+			return `Basic ${auth}`;
+		}
+		throw new Error('No authentication method available');
 	}
 
 	async fetchProperties(): Promise<any[]> {
@@ -46,7 +56,7 @@ export class OwnerRezService {
 			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
-		if (this.username) {
+		if (this.username && !this.accessToken) {
 			headers['Username'] = this.username;
 		}
 
@@ -75,7 +85,7 @@ export class OwnerRezService {
 			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
-		if (this.username) {
+		if (this.username && !this.accessToken) {
 			headers['Username'] = this.username;
 		}
 
@@ -99,7 +109,7 @@ export class OwnerRezService {
 			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
-		if (this.username) {
+		if (this.username && !this.accessToken) {
 			headers['Username'] = this.username;
 		}
 
@@ -122,7 +132,7 @@ export class OwnerRezService {
 			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
-		if (this.username) {
+		if (this.username && !this.accessToken) {
 			headers['Username'] = this.username;
 		}
 
@@ -150,7 +160,7 @@ export class OwnerRezService {
 			'User-Agent': 'Baileys-Analytics/1.0'
 		};
 
-		if (this.username) {
+		if (this.username && !this.accessToken) {
 			headers['Username'] = this.username;
 		}
 
