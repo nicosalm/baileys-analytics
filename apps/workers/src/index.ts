@@ -39,6 +39,8 @@ import { validation } from './routes/validation';
 // integration routes
 import { sync } from './routes/sync';
 import { oauth } from './routes/oauth';
+import { webhooks } from './routes/webhooks';
+import { initialSync } from './routes/initial-sync';
 // system routes
 import { health } from './routes/health';
 import { scheduled } from './scheduled';
@@ -774,6 +776,8 @@ app.route('/api/validation', validation);
 // integration routes
 app.route('/api/sync', sync);
 app.route('/api/oauth', oauth);
+app.route('/api/webhooks', webhooks);
+app.route('/api/initial-sync', initialSync);
 
 app.notFound((c) => {
 	return c.json({ error: 'Not Found' }, 404);

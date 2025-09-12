@@ -13,6 +13,7 @@ interface Env {
 	OWNERREZ_CLIENT_ID: string;
 	OWNERREZ_CLIENT_SECRET: string;
 	
-	// optional - personal access token fallback
-	OWNERREZ_PAT?: string;
+	// ownerrez webhook authentication
+	OWNERREZ_WEBHOOK_USER: string;
+	OWNERREZ_WEBHOOK_PASSWORD: string;
 }

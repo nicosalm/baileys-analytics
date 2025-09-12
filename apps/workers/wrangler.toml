@@ -11,8 +11,8 @@ enabled = true
 # binding = "CACHE"
 # id = "cache_namespace_id_placeholder"
 
-[triggers]
-crons = ["0 2 * * *", "0 */6 * * *", "0 0 1 * *"]
+# [triggers]
+# crons = []  # No scheduled jobs needed with webhook-based syncing
 
 [vars]
 FRONTEND_URL = "https://grub-live-enormously.ngrok-free.app"

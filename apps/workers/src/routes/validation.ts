@@ -254,11 +254,11 @@ validation.get('/data', async (c) => {
       .eq('tenant_id', tenantId)
       .single();
 
-    const token = tokenData?.access_token || c.env.OWNERREZ_PAT;
-
-    if (!token) {
-      return c.json({ error: 'No OwnerRez token available' }, 403);
+    if (!tokenData?.access_token) {
+      return c.json({ error: 'No OwnerRez connection found' }, 403);
     }
+    
+    const token = tokenData.access_token;
 
     const { data: properties } = await supabase
       .from('properties')
