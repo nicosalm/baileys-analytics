@@ -45,31 +45,34 @@ sync.post('/properties', async (c) => {
 	try {
 		const properties = await ownerRez.fetchProperties();
 
-		for (const property of properties) {
+		// batch upsert all properties at once for better performance
+		const propertyData = properties.map(property => ({
+			tenant_id: tenant.id,
+			ownerrez_id: property.id,
+			name: property.name,
+			address: property.address?.street1 || property.address,
+			city: property.address?.city,
+			state: property.address?.state,
+			postal_code: property.address?.postal_code,
+			bedrooms: property.bedrooms || 0,
+			bathrooms: property.bathrooms || 0,
+			max_guests: property.max_guests || 0,
+			active: property.active !== false,
+			latitude: property.latitude,
+			longitude: property.longitude,
+			updated_at: new Date().toISOString()
+		}));
+
+		if (propertyData.length > 0) {
 			const { error } = await supabase
 				.from('properties')
-				.upsert({
-					tenant_id: tenant.id,
-					ownerrez_id: property.id,
-					name: property.name,
-					address: property.address?.street1 || property.address,
-					city: property.address?.city,
-					state: property.address?.state,
-					postal_code: property.address?.postal_code,
-					bedrooms: property.bedrooms || 0,
-					bathrooms: property.bathrooms || 0,
-					max_guests: property.max_guests || 0,
-					active: property.active !== false,
-					latitude: property.latitude,
-					longitude: property.longitude,
-					updated_at: new Date().toISOString()
-				}, {
+				.upsert(propertyData, {
 					onConflict: 'tenant_id,ownerrez_id',
 					ignoreDuplicates: false
 				});
 			
 			if (error) {
-				console.error('Failed to upsert property:', error);
+				console.error('Failed to upsert properties:', error);
 			}
 		}
 
@@ -163,55 +166,77 @@ sync.post('/bookings', async (c) => {
 
 		const bookings = await ownerRez.fetchBookings(propertyId, startDate, endDate);
 
+		// separate blocks and bookings for batch processing
+		const blocks = [];
+		const bookingData = [];
+
 		for (const booking of bookings) {
 			if (booking.is_block || booking.type === 'block') {
-				await supabase
-					.from('blocks')
-					.upsert({
-						ownerrez_block_id: booking.id,
-						tenant_id: tenant.id,
-						property_id: property.id,
-						arrival: booking.arrival,
-						departure: booking.departure,
-						type: booking.type || 'block',
-						reason: booking.reason,
-						updated_at: new Date().toISOString()
-					})
-					.eq('ownerrez_block_id', booking.id)
-					.eq('tenant_id', tenant.id);
+				blocks.push({
+					ownerrez_block_id: booking.id,
+					tenant_id: tenant.id,
+					property_id: property.id,
+					arrival: booking.arrival,
+					departure: booking.departure,
+					type: booking.type || 'block',
+					reason: booking.reason,
+					updated_at: new Date().toISOString()
+				});
 			} else {
 				const guestName = booking.guest
 					? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 					: booking.guest_name || 'Unknown';
 
-				await supabase
-					.from('bookings')
-					.upsert({
-						tenant_id: tenant.id,
-						property_id: property.id,
-						ownerrez_booking_id: booking.id,
-						guest_name: guestName,
-						guest_email: booking.guest?.email || booking.guest_email,
-						guest_phone: booking.guest?.phone || booking.guest_phone,
-						arrival: booking.arrival,
-						departure: booking.departure,
-						total_amount: booking.total_amount || 0,
-						status: booking.status,
-						platform: booking.source || booking.listing_site || 'Direct',
-						platform_reservation_number: booking.custom_source_id || booking.external_id,
-						adults: booking.adults || 0,
-						children: booking.children || 0,
-						infants: booking.infants || 0,
-						pets: booking.pets || 0,
-						booked_utc: booking.booked_date || booking.created_date,
-						canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
-						updated_at: new Date().toISOString()
-					}, {
-						onConflict: 'tenant_id,ownerrez_booking_id',
-						ignoreDuplicates: false
-					});
+				bookingData.push({
+					tenant_id: tenant.id,
+					property_id: property.id,
+					ownerrez_booking_id: booking.id,
+					guest_name: guestName,
+					guest_email: booking.guest?.email || booking.guest_email,
+					guest_phone: booking.guest?.phone || booking.guest_phone,
+					arrival: booking.arrival,
+					departure: booking.departure,
+					total_amount: booking.total_amount || 0,
+					status: booking.status,
+					platform: booking.source || booking.listing_site || 'Direct',
+					platform_reservation_number: booking.custom_source_id || booking.external_id,
+					adults: booking.adults || 0,
+					children: booking.children || 0,
+					infants: booking.infants || 0,
+					pets: booking.pets || 0,
+					booked_utc: booking.booked_date || booking.created_date,
+					canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+					updated_at: new Date().toISOString()
+				});
 			}
 		}
+
+		// batch upsert blocks and bookings
+		const operations = [];
+		
+		if (blocks.length > 0) {
+			operations.push(
+				supabase
+					.from('blocks')
+					.upsert(blocks, {
+						onConflict: 'ownerrez_block_id,tenant_id',
+						ignoreDuplicates: false
+					})
+			);
+		}
+
+		if (bookingData.length > 0) {
+			operations.push(
+				supabase
+					.from('bookings')
+					.upsert(bookingData, {
+						onConflict: 'tenant_id,ownerrez_booking_id',
+						ignoreDuplicates: false
+					})
+			);
+		}
+
+		await Promise.all(operations);
 
 		await supabase
 			.from('sync_status')

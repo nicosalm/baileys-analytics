@@ -384,65 +384,108 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 	let totalBookings = 0;
 	let errorCount = 0;
 
-	for (const property of properties) {
-		try {
-			const bookings = await ownerRez.fetchBookings(property.ownerrez_id, startDate, endDate);
+	// process properties in parallel batches for better performance
+	const BATCH_SIZE = 3; // process 3 properties at a time
+	const allBlocks = [];
+	const allBookings = [];
+
+	for (let i = 0; i < properties.length; i += BATCH_SIZE) {
+		const batch = properties.slice(i, i + BATCH_SIZE);
+		
+		const batchResults = await Promise.allSettled(
+			batch.map(async (property) => {
+				const bookings = await ownerRez.fetchBookings(property.ownerrez_id, startDate, endDate);
+				return { property, bookings };
+			})
+		);
+
+		for (const result of batchResults) {
+			if (result.status === 'rejected') {
+				errorCount++;
+				continue;
+			}
+
+			const { property, bookings } = result.value;
 
 			for (const booking of bookings) {
 				if (booking.is_block || booking.type === 'block') {
-					await supabase
-						.from('blocks')
-						.upsert({
-							ownerrez_block_id: booking.id,
-							tenant_id: tenantId,
-							property_id: property.id,
-							arrival: booking.arrival,
-							departure: booking.departure,
-							type: booking.type || 'block',
-							reason: booking.reason,
-							updated_at: new Date().toISOString()
-						})
-						.eq('ownerrez_block_id', booking.id)
-						.eq('tenant_id', tenantId);
+					allBlocks.push({
+						ownerrez_block_id: booking.id,
+						tenant_id: tenantId,
+						property_id: property.id,
+						arrival: booking.arrival,
+						departure: booking.departure,
+						type: booking.type || 'block',
+						reason: booking.reason,
+						updated_at: new Date().toISOString()
+					});
 				} else {
 					const guestName = booking.guest
 						? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 						: booking.guest_name || 'Unknown';
 
-					await supabase
-						.from('bookings')
-						.upsert({
-							tenant_id: tenantId,
-							property_id: property.id,
-							ownerrez_booking_id: booking.id,
-							guest_name: guestName,
-							guest_email: booking.guest?.email || booking.guest_email,
-							guest_phone: booking.guest?.phone || booking.guest_phone,
-							arrival: booking.arrival,
-							departure: booking.departure,
-							total_amount: booking.total_amount || 0,
-							status: booking.status,
-							platform: booking.source || booking.listing_site || 'Direct',
-							platform_reservation_number: booking.custom_source_id || booking.external_id,
-							adults: booking.adults || 0,
-							children: booking.children || 0,
-							infants: booking.infants || 0,
-							pets: booking.pets || 0,
-							booked_utc: booking.booked_date || booking.created_date,
-							canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
-							updated_at: new Date().toISOString()
-						}, {
-							onConflict: 'tenant_id,ownerrez_booking_id',
-							ignoreDuplicates: false
-						});
+					allBookings.push({
+						tenant_id: tenantId,
+						property_id: property.id,
+						ownerrez_booking_id: booking.id,
+						guest_name: guestName,
+						guest_email: booking.guest?.email || booking.guest_email,
+						guest_phone: booking.guest?.phone || booking.guest_phone,
+						arrival: booking.arrival,
+						departure: booking.departure,
+						total_amount: booking.total_amount || 0,
+						status: booking.status,
+						platform: booking.source || booking.listing_site || 'Direct',
+						platform_reservation_number: booking.custom_source_id || booking.external_id,
+						adults: booking.adults || 0,
+						children: booking.children || 0,
+						infants: booking.infants || 0,
+						pets: booking.pets || 0,
+						booked_utc: booking.booked_date || booking.created_date,
+						canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+						updated_at: new Date().toISOString()
+					});
 				}
 			}
 
 			totalBookings += bookings.length;
-		} catch (error) {
-			errorCount++;
 		}
 	}
+
+	// batch insert all blocks and bookings
+	const dbOperations = [];
+
+	if (allBlocks.length > 0) {
+		// insert blocks in chunks of 100
+		for (let i = 0; i < allBlocks.length; i += 100) {
+			const chunk = allBlocks.slice(i, i + 100);
+			dbOperations.push(
+				supabase
+					.from('blocks')
+					.upsert(chunk, {
+						onConflict: 'ownerrez_block_id,tenant_id',
+						ignoreDuplicates: false
+					})
+			);
+		}
+	}
+
+	if (allBookings.length > 0) {
+		// insert bookings in chunks of 100
+		for (let i = 0; i < allBookings.length; i += 100) {
+			const chunk = allBookings.slice(i, i + 100);
+			dbOperations.push(
+				supabase
+					.from('bookings')
+					.upsert(chunk, {
+						onConflict: 'tenant_id,ownerrez_booking_id',
+						ignoreDuplicates: false
+					})
+			);
+		}
+	}
+
+	await Promise.all(dbOperations);
 
 	await supabase
 		.from('sync_status')
@@ -456,6 +499,12 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 		})
 		.eq('tenant_id', tenantId)
 		.eq('sync_type', type === 'historical' ? 'historical' : 'recent');
+
+	// invalidate cache after successful sync
+	if (c.env.CACHE) {
+		const { invalidateDashboardCache } = await import('./utils/cache');
+		await invalidateDashboardCache(c.env.CACHE, user.id);
+	}
 
 	return c.json({
 		success: true,

@@ -111,10 +111,20 @@ webhooks.post('/ownerrez', async (c) => {
 		case 'entity_create':
 		case 'entity_update':
 			await handleEntityChange(supabase, tenant.id, payload);
+			// invalidate cache for dashboard updates
+			if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
+				const { invalidateTenantCache } = await import('../utils/cache');
+				await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
+			}
 			break;
 
 		case 'entity_delete':
 			await handleEntityDelete(supabase, tenant.id, payload);
+			// invalidate cache for dashboard updates
+			if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
+				const { invalidateTenantCache } = await import('../utils/cache');
+				await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
+			}
 			break;
 
 		case 'application_authorization_revoked':
