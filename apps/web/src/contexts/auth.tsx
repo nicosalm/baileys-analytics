@@ -88,6 +88,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user: appUser,
           session: data.session
         })
+        
         return true
       }
       return false
@@ -138,6 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user: appUser,
           session: data.session
         })
+        
         return true
       }
       return false
@@ -220,8 +222,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     refreshUser()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // only react to sign out events from onAuthStateChange
+      // sign in is handled by the login function itself to avoid race conditions
+      if (event === 'SIGNED_OUT') {
+        api.setAccessToken(null)
+        setState({ status: 'unauthenticated' })
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        // update token when refreshed
         api.setAccessToken(session.access_token)
         
         let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
@@ -242,9 +250,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user: appUser,
           session
         })
-      } else {
-        api.setAccessToken(null)
-        setState({ status: 'unauthenticated' })
       }
     })
 

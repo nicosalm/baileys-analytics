@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
@@ -8,12 +8,26 @@ import { BRAND } from '@/constants'
 
 export const Login = () => {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, state } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const hasShownSuccessToast = useRef(false)
+  
+  // redirect when authentication state changes
+  useEffect(() => {
+    if (state.status === 'authenticated') {
+      // show success toast only if we just logged in
+      if (loading && !hasShownSuccessToast.current) {
+        addToast('success', 'Welcome back!')
+        hasShownSuccessToast.current = true
+      }
+      setLoading(false)
+      navigate('/dashboard/overview', { replace: true })
+    }
+  }, [state.status, navigate, loading, addToast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,15 +38,14 @@ export const Login = () => {
     }
     
     setLoading(true)
+    hasShownSuccessToast.current = false
     const success = await login(email, password)
-    setLoading(false)
-
-    if (success) {
-      addToast('success', 'Welcome back!')
-      navigate('/dashboard/overview')
-    } else {
+    
+    if (!success) {
+      setLoading(false)
       addToast('error', 'Invalid email or password. Please try again.')
     }
+    // if success, the useEffect above will handle navigation
   }
 
   return (
