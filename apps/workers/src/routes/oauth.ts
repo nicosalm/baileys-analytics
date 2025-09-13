@@ -127,7 +127,7 @@ oauth.post('/callback', async (c) => {
       }
     }
 
-    // trigger initial data sync for new connections
+    // trigger initial property sync only (full sync happens separately to avoid timeout)
     try {
       const { OwnerRezService } = await import('../services/ownerrez');
       const ownerRez = new OwnerRezService(tokenData.access_token);
@@ -135,24 +135,33 @@ oauth.post('/callback', async (c) => {
       const properties = await ownerRez.fetchProperties();
       
       for (const property of properties) {
-        await supabase
+        const { error } = await supabase
           .from('properties')
           .upsert({
-            id: property.id,
             tenant_id: tenantId,
-            ownerrez_property_id: property.id,
+            ownerrez_id: property.id,
             name: property.name,
-            address: property.address,
-            bedrooms: property.bedrooms,
-            bathrooms: property.bathrooms,
-            max_guests: property.max_guests,
+            address: property.address?.street1 || property.address,
+            city: property.address?.city,
+            state: property.address?.state,
+            postal_code: property.address?.postal_code,
+            bedrooms: property.bedrooms || 0,
+            bathrooms: property.bathrooms || 0,
+            max_guests: property.max_guests || 0,
             active: property.active !== false,
-            data: property,
+            latitude: property.latitude,
+            longitude: property.longitude,
             updated_at: new Date().toISOString()
-          })
-          .eq('ownerrez_property_id', property.id)
-          .eq('tenant_id', tenantId);
+          }, {
+            onConflict: 'tenant_id,ownerrez_id',
+            ignoreDuplicates: false
+          });
+        
+        if (error) {
+          console.error('Failed to upsert property:', error);
+        }
       }
+      
       await supabase
         .from('sync_status')
         .upsert({
@@ -165,12 +174,15 @@ oauth.post('/callback', async (c) => {
         .eq('tenant_id', tenantId)
         .eq('sync_type', 'initial_properties');
       
+      // queue full historical sync to run in background
+      // this will be triggered by the frontend after oauth completes
       return c.json({ 
         success: true, 
         initialSync: {
           triggered: true,
           propertiesSynced: properties.length,
-          message: 'Initial property sync complete. Use manual sync to load bookings.'
+          message: 'Properties synced. Full 10-year history sync will run in background.',
+          requiresFullSync: true
         }
       });
     } catch (syncError) {

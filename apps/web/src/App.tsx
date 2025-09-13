@@ -15,7 +15,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 const Landing = lazy(() => import('@/pages/Landing').then(m => ({ default: m.Landing })))
 const Login = lazy(() => import('@/pages/Login').then(m => ({ default: m.Login })))
 const Signup = lazy(() => import('@/pages/Signup').then(m => ({ default: m.Signup })))
-const Waitlist = lazy(() => import('@/pages/Waitlist').then(m => ({ default: m.Waitlist })))
+// const Waitlist = lazy(() => import('@/pages/Waitlist').then(m => ({ default: m.Waitlist })))
 const DashboardLayout = lazy(() => import('@/pages/DashboardLayout').then(m => ({ default: m.DashboardLayout })))
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })))
 const Terms = lazy(() => import('@/pages/Terms').then(m => ({ default: m.Terms })))

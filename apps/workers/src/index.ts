@@ -7,7 +7,6 @@ import { authMiddleware } from './middleware/auth';
 import { rateLimit, strictRateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
 
-// services
 import { createSupabaseClient } from './services/supabase';
 import { AuthService } from './services/auth';
 import { DashboardService } from './services/dashboard';
@@ -16,36 +15,30 @@ import { getPLData, getRevenueData, getCashflowData, getTaxData } from './servic
 import { getPropertiesData } from './services/properties';
 import { getOccupancyData } from './services/occupancy';
 import { getGuestsData } from './services/guests';
-// core data routes
 import { properties } from './routes/properties';
 import { propertyDetail } from './routes/property-detail';
 import { bookings } from './routes/bookings';
 import { guests } from './routes/guests';
-// dashboard routes
 import { overview } from './routes/overview';
 import { financial } from './routes/financial';
 import { occupancy } from './routes/occupancy';
 import { periodDetail } from './routes/period-detail';
 import { seasonalAnalysis } from './routes/seasonal-analysis';
-// configuration routes
 import { seasons } from './routes/seasons';
 import { tags } from './routes/tags';
 import { tax } from './routes/tax';
 import { platformFees } from './routes/platform-fees';
-// reports and tools
 import { reports } from './routes/reports';
 import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
-// integration routes
 import { sync } from './routes/sync';
 import { oauth } from './routes/oauth';
 import { webhooks } from './routes/webhooks';
 import { initialSync } from './routes/initial-sync';
-// system routes
 import { health } from './routes/health';
 import { scheduled } from './scheduled';
-// public routes
 import { waitlist } from './routes/waitlist';
+import { debug } from './routes/debug';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -63,13 +56,13 @@ app.use('/*', cors({
 	credentials: true,
 }));
 
-// global rate limiting - 1000 requests per minute per ip
+// rate limiting: 1000 req/min per ip
 app.use('/api/*', rateLimit({ max: 1000, windowMs: 60000 }));
 
-// global timeout - 30 seconds for all requests
+// timeout: 30s
 app.use('/api/*', timeout({ ms: 30000 }));
 
-// request size limit - 10mb
+// max request size: 10mb
 app.use('/api/*', async (c, next) => {
 	const contentLength = c.req.header('content-length');
 	if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
@@ -316,15 +309,11 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 
 	const user = c.get('user');
 	const { OwnerRezService } = await import('./services/ownerrez');
-	const ownerRez = new OwnerRezService(
-		ownerrezToken.access_token,
-		'',
-		''
-	);
+	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
 
 	let { data: properties } = await supabase
 		.from('properties')
-		.select('ownerrez_property_id')
+		.select('id, ownerrez_id')
 		.eq('tenant_id', tenantId);
 
 	if (!properties || properties.length === 0) {
@@ -335,24 +324,29 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 				await supabase
 					.from('properties')
 					.upsert({
-						id: property.id,
 						tenant_id: tenantId,
-						ownerrez_property_id: property.id,
+						ownerrez_id: property.id,
 						name: property.name,
-						address: property.address,
-						bedrooms: property.bedrooms,
-						bathrooms: property.bathrooms,
-						max_guests: property.max_guests,
-						active: true,
-						data: property,
+						address: property.address?.street1 || property.address,
+						city: property.address?.city,
+						state: property.address?.state,
+						postal_code: property.address?.postal_code,
+						bedrooms: property.bedrooms || 0,
+						bathrooms: property.bathrooms || 0,
+						max_guests: property.max_guests || 0,
+						active: property.active !== false,
+						latitude: property.latitude,
+						longitude: property.longitude,
 						updated_at: new Date().toISOString()
-					})
-					.eq('ownerrez_property_id', property.id);
+					}, {
+						onConflict: 'tenant_id,ownerrez_id',
+						ignoreDuplicates: false
+					});
 			}
 
 			const { data: updatedProperties } = await supabase
 				.from('properties')
-				.select('ownerrez_property_id')
+				.select('id, ownerrez_id')
 				.eq('tenant_id', tenantId);
 
 			properties = updatedProperties;
@@ -392,27 +386,56 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 
 	for (const property of properties) {
 		try {
-			const bookings = await ownerRez.fetchBookings(property.ownerrez_property_id, startDate, endDate);
+			const bookings = await ownerRez.fetchBookings(property.ownerrez_id, startDate, endDate);
 
 			for (const booking of bookings) {
-				await supabase
-					.from('bookings')
-					.upsert({
-						id: booking.id,
-						tenant_id: tenantId,
-						property_id: property.ownerrez_property_id,
-						ownerrez_booking_id: booking.id,
-						guest_name: booking.guest_name,
-						guest_email: booking.guest_email,
-						arrival: booking.arrival,
-						departure: booking.departure,
-						total_amount: booking.total_amount,
-						status: booking.status,
-						platform: booking.source,
-						data: booking,
-						updated_at: new Date().toISOString()
-					})
-					.eq('ownerrez_booking_id', booking.id);
+				if (booking.is_block || booking.type === 'block') {
+					await supabase
+						.from('blocks')
+						.upsert({
+							ownerrez_block_id: booking.id,
+							tenant_id: tenantId,
+							property_id: property.id,
+							arrival: booking.arrival,
+							departure: booking.departure,
+							type: booking.type || 'block',
+							reason: booking.reason,
+							updated_at: new Date().toISOString()
+						})
+						.eq('ownerrez_block_id', booking.id)
+						.eq('tenant_id', tenantId);
+				} else {
+					const guestName = booking.guest
+						? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
+						: booking.guest_name || 'Unknown';
+
+					await supabase
+						.from('bookings')
+						.upsert({
+							tenant_id: tenantId,
+							property_id: property.id,
+							ownerrez_booking_id: booking.id,
+							guest_name: guestName,
+							guest_email: booking.guest?.email || booking.guest_email,
+							guest_phone: booking.guest?.phone || booking.guest_phone,
+							arrival: booking.arrival,
+							departure: booking.departure,
+							total_amount: booking.total_amount || 0,
+							status: booking.status,
+							platform: booking.source || booking.listing_site || 'Direct',
+							platform_reservation_number: booking.custom_source_id || booking.external_id,
+							adults: booking.adults || 0,
+							children: booking.children || 0,
+							infants: booking.infants || 0,
+							pets: booking.pets || 0,
+							booked_utc: booking.booked_date || booking.created_date,
+							canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+							updated_at: new Date().toISOString()
+						}, {
+							onConflict: 'tenant_id,ownerrez_booking_id',
+							ignoreDuplicates: false
+						});
+				}
 			}
 
 			totalBookings += bookings.length;
@@ -477,11 +500,7 @@ app.post('/api/sync-guest-details', authMiddleware, async (c) => {
 
 	const user = c.get('user');
 	const { OwnerRezService } = await import('./services/ownerrez');
-	const ownerRez = new OwnerRezService(
-		ownerrezToken.access_token,
-		'',
-		''
-	);
+	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
 
 	const { data: guestsNeedingInfo } = await supabase
 		.from('bookings')
@@ -751,33 +770,30 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 	return c.json(data);
 });
 
-// core data routes
 app.route('/api/properties', properties);
 app.route('/api/property', propertyDetail);
 app.route('/api/bookings', bookings);
 app.route('/api/guests', guests);
-// dashboard routes
 app.route('/api/overview', overview);
 app.route('/api/financial', financial);
 app.route('/api/occupancy', occupancy);
 app.route('/api/period-detail', periodDetail);
 app.route('/api/seasonal-analysis', seasonalAnalysis);
-// configuration routes
 app.route('/api/seasons', seasons);
 app.route('/api/tags', tags);
 app.route('/api/tax', tax);
 
 
 app.route('/api/platform-fees', platformFees);
-// reports and tools
 app.route('/api/reports', reports);
 app.route('/api/scheduler', scheduler);
 app.route('/api/validation', validation);
-// integration routes
 app.route('/api/sync', sync);
 app.route('/api/oauth', oauth);
 app.route('/api/webhooks', webhooks);
 app.route('/api/initial-sync', initialSync);
+// debug routes (dev only)
+app.route('/api/debug', debug);
 
 app.notFound((c) => {
 	return c.json({ error: 'Not Found' }, 404);

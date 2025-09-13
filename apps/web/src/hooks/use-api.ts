@@ -218,8 +218,8 @@ export async function syncGuestDetails() {
   return result
 }
 
-export async function historicalSync(fromDate?: string, toDate?: string) {
-  const result = await api.historicalSync(fromDate, toDate)
+export async function historicalSync() {
+  const result = await api.historicalSync()
   if (result.success) {
     await globalMutate('/sync-status')
     await globalMutate(() => true, undefined, true)

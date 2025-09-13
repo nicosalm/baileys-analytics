@@ -25,31 +25,52 @@ sync.post('/properties', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const ownerRez = new OwnerRezService(
-		c.env.OWNERREZ_CLIENT_ID,
-		c.env.OWNERREZ_CLIENT_SECRET,
-		tenant.ownerrez_username
-	);
+	// get oauth token for this tenant
+	const { data: ownerrezToken } = await supabase
+		.from('oauth_tokens')
+		.select('access_token')
+		.eq('tenant_id', tenant.id)
+		.eq('provider', 'ownerrez')
+		.single();
+
+	if (!ownerrezToken?.access_token) {
+		return c.json({
+			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			requiresAuth: true
+		}, 400);
+	}
+
+	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
 
 	try {
 		const properties = await ownerRez.fetchProperties();
 
 		for (const property of properties) {
-			await supabase
+			const { error } = await supabase
 				.from('properties')
 				.upsert({
-					id: property.id,
 					tenant_id: tenant.id,
-					ownerrez_property_id: property.id,
+					ownerrez_id: property.id,
 					name: property.name,
-					address: property.address,
-					bedrooms: property.bedrooms,
-					bathrooms: property.bathrooms,
-					max_guests: property.max_guests,
-					data: property,
+					address: property.address?.street1 || property.address,
+					city: property.address?.city,
+					state: property.address?.state,
+					postal_code: property.address?.postal_code,
+					bedrooms: property.bedrooms || 0,
+					bathrooms: property.bathrooms || 0,
+					max_guests: property.max_guests || 0,
+					active: property.active !== false,
+					latitude: property.latitude,
+					longitude: property.longitude,
 					updated_at: new Date().toISOString()
-				})
-				.eq('ownerrez_property_id', property.id);
+				}, {
+					onConflict: 'tenant_id,ownerrez_id',
+					ignoreDuplicates: false
+				});
+			
+			if (error) {
+				console.error('Failed to upsert property:', error);
+			}
 		}
 
 		await supabase
@@ -110,34 +131,86 @@ sync.post('/bookings', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const ownerRez = new OwnerRezService(
-		c.env.OWNERREZ_CLIENT_ID,
-		c.env.OWNERREZ_CLIENT_SECRET,
-		tenant.ownerrez_username
-	);
+	// get oauth token for this tenant
+	const { data: ownerrezToken } = await supabase
+		.from('oauth_tokens')
+		.select('access_token')
+		.eq('tenant_id', tenant.id)
+		.eq('provider', 'ownerrez')
+		.single();
+
+	if (!ownerrezToken?.access_token) {
+		return c.json({
+			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			requiresAuth: true
+		}, 400);
+	}
+
+	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
 
 	try {
+		// first, look up the actual property UUID
+		const { data: property } = await supabase
+			.from('properties')
+			.select('id')
+			.eq('tenant_id', tenant.id)
+			.eq('ownerrez_id', propertyId)
+			.single();
+
+		if (!property) {
+			return c.json({ error: `Property not found for OwnerRez ID ${propertyId}` }, 404);
+		}
+
 		const bookings = await ownerRez.fetchBookings(propertyId, startDate, endDate);
 
 		for (const booking of bookings) {
-			await supabase
-				.from('bookings')
-				.upsert({
-					id: booking.id,
-					tenant_id: tenant.id,
-					property_id: booking.property_id,
-					ownerrez_booking_id: booking.id,
-					guest_name: booking.guest_name,
-					guest_email: booking.guest_email,
-					arrival: booking.arrival,
-					departure: booking.departure,
-					total_amount: booking.total_amount,
-					booking_status: booking.status,
-					booking_source: booking.source,
-					data: booking,
-					updated_at: new Date().toISOString()
-				})
-				.eq('ownerrez_booking_id', booking.id);
+			if (booking.is_block || booking.type === 'block') {
+				await supabase
+					.from('blocks')
+					.upsert({
+						ownerrez_block_id: booking.id,
+						tenant_id: tenant.id,
+						property_id: property.id,
+						arrival: booking.arrival,
+						departure: booking.departure,
+						type: booking.type || 'block',
+						reason: booking.reason,
+						updated_at: new Date().toISOString()
+					})
+					.eq('ownerrez_block_id', booking.id)
+					.eq('tenant_id', tenant.id);
+			} else {
+				const guestName = booking.guest
+					? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
+					: booking.guest_name || 'Unknown';
+
+				await supabase
+					.from('bookings')
+					.upsert({
+						tenant_id: tenant.id,
+						property_id: property.id,
+						ownerrez_booking_id: booking.id,
+						guest_name: guestName,
+						guest_email: booking.guest?.email || booking.guest_email,
+						guest_phone: booking.guest?.phone || booking.guest_phone,
+						arrival: booking.arrival,
+						departure: booking.departure,
+						total_amount: booking.total_amount || 0,
+						status: booking.status,
+						platform: booking.source || booking.listing_site || 'Direct',
+						platform_reservation_number: booking.custom_source_id || booking.external_id,
+						adults: booking.adults || 0,
+						children: booking.children || 0,
+						infants: booking.infants || 0,
+						pets: booking.pets || 0,
+						booked_utc: booking.booked_date || booking.created_date,
+						canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+						updated_at: new Date().toISOString()
+					}, {
+						onConflict: 'tenant_id,ownerrez_booking_id',
+						ignoreDuplicates: false
+					});
+			}
 		}
 
 		await supabase
@@ -173,6 +246,191 @@ sync.post('/bookings', async (c) => {
 	}
 });
 
+// recovery sync for emergencies or webhook failures
+sync.post('/recovery', async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
+	
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('*')
+		.eq('user_id', user.id)
+		.single();
+
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	const { data: lastWebhook } = await supabase
+		.from('webhook_events')
+		.select('created_at')
+		.eq('tenant_id', tenant.id)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.single();
+
+	const hoursSinceLastWebhook = lastWebhook 
+		? (Date.now() - new Date(lastWebhook.created_at).getTime()) / (1000 * 60 * 60)
+		: 999;
+
+	// only allow recovery sync if webhooks seem broken or explicitly forced
+	const isForced = c.req.header('X-Force-Sync') === 'true';
+	
+	if (hoursSinceLastWebhook < 24 && !isForced) {
+		return c.json({ 
+			error: 'Webhooks are working normally. Recovery sync not needed.',
+			lastWebhookHoursAgo: hoursSinceLastWebhook
+		}, 400);
+	}
+
+	const { data: ownerrezToken } = await supabase
+		.from('oauth_tokens')
+		.select('access_token')
+		.eq('tenant_id', tenant.id)
+		.eq('provider', 'ownerrez')
+		.single();
+
+	if (!ownerrezToken?.access_token) {
+		return c.json({ error: 'No OwnerRez connection found' }, 400);
+	}
+
+	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+
+	try {
+		const startDate = new Date();
+		startDate.setDate(startDate.getDate() - 7);
+		const endDate = new Date();
+		endDate.setDate(endDate.getDate() + 90);
+
+		const properties = await ownerRez.fetchProperties();
+		let bookingCount = 0;
+
+		for (const property of properties) {
+			const { data: upsertedProperty } = await supabase
+				.from('properties')
+				.upsert({
+					tenant_id: tenant.id,
+					ownerrez_id: property.id,
+					name: property.name,
+					address: property.address?.street1 || property.address,
+					city: property.address?.city,
+					state: property.address?.state,
+					postal_code: property.address?.postal_code,
+					bedrooms: property.bedrooms || 0,
+					bathrooms: property.bathrooms || 0,
+					max_guests: property.max_guests || 0,
+					active: property.active !== false,
+					latitude: property.latitude,
+					longitude: property.longitude,
+					updated_at: new Date().toISOString()
+				}, {
+					onConflict: 'tenant_id,ownerrez_id',
+					ignoreDuplicates: false
+				})
+				.select('id')
+				.single();
+
+			if (!upsertedProperty) {
+				console.error(`Failed to upsert property ${property.id}`);
+				continue;
+			}
+
+			const bookings = await ownerRez.fetchBookings(
+				property.id,
+				startDate.toISOString().split('T')[0],
+				endDate.toISOString().split('T')[0]
+			);
+
+			for (const booking of bookings) {
+				if (booking.is_block || booking.type === 'block') {
+					await supabase
+						.from('blocks')
+						.upsert({
+							ownerrez_block_id: booking.id,
+							tenant_id: tenant.id,
+							property_id: upsertedProperty.id,
+							arrival: booking.arrival,
+							departure: booking.departure,
+							type: booking.type || 'block',
+							reason: booking.reason,
+							updated_at: new Date().toISOString()
+						})
+						.eq('ownerrez_block_id', booking.id)
+						.eq('tenant_id', tenant.id);
+				} else {
+					const guestName = booking.guest
+						? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
+						: booking.guest_name || 'Unknown';
+
+					await supabase
+						.from('bookings')
+						.upsert({
+							tenant_id: tenant.id,
+							property_id: upsertedProperty.id,
+							ownerrez_booking_id: booking.id,
+							guest_name: guestName,
+							guest_email: booking.guest?.email || booking.guest_email,
+							guest_phone: booking.guest?.phone || booking.guest_phone,
+							arrival: booking.arrival,
+							departure: booking.departure,
+							total_amount: booking.total_amount || 0,
+							status: booking.status,
+							platform: booking.source || booking.listing_site || 'Direct',
+							platform_reservation_number: booking.custom_source_id || booking.external_id,
+							adults: booking.adults || 0,
+							children: booking.children || 0,
+							infants: booking.infants || 0,
+							pets: booking.pets || 0,
+							booked_utc: booking.booked_date || booking.created_date,
+							canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+							updated_at: new Date().toISOString()
+						}, {
+							onConflict: 'tenant_id,ownerrez_booking_id',
+							ignoreDuplicates: false
+						});
+					
+					bookingCount++;
+				}
+			}
+		}
+
+		await supabase
+			.from('sync_status')
+			.insert({
+				tenant_id: tenant.id,
+				sync_type: 'recovery',
+				last_sync: new Date().toISOString(),
+				status: 'success',
+				records_synced: bookingCount,
+				metadata: {
+					reason: isForced ? 'forced' : 'webhook_failure',
+					hours_since_last_webhook: hoursSinceLastWebhook
+				}
+			});
+
+		return c.json({
+			success: true,
+			type: 'recovery',
+			propertiesSynced: properties.length,
+			bookingsSynced: bookingCount,
+			reason: hoursSinceLastWebhook > 24 ? 'webhook_failure_detected' : 'forced_sync'
+		});
+
+	} catch (error: any) {
+		await supabase
+			.from('sync_status')
+			.insert({
+				tenant_id: tenant.id,
+				sync_type: 'recovery',
+				last_sync: new Date().toISOString(),
+				status: 'error',
+				error_message: error.message
+			});
+
+		return c.json({ error: error.message }, 500);
+	}
+});
+
 sync.post('/guest-details', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const user = c.get('user');
@@ -187,11 +445,22 @@ sync.post('/guest-details', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const ownerRez = new OwnerRezService(
-		c.env.OWNERREZ_CLIENT_ID,
-		c.env.OWNERREZ_CLIENT_SECRET,
-		tenant.ownerrez_username
-	);
+	// get oauth token for this tenant
+	const { data: ownerrezToken } = await supabase
+		.from('oauth_tokens')
+		.select('access_token')
+		.eq('tenant_id', tenant.id)
+		.eq('provider', 'ownerrez')
+		.single();
+
+	if (!ownerrezToken?.access_token) {
+		return c.json({
+			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			requiresAuth: true
+		}, 400);
+	}
+
+	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
 
 	const { data: guestsNeedingInfo } = await supabase
 		.from('bookings')
@@ -298,6 +567,54 @@ sync.get('/status', async (c) => {
 	}
 
 	return c.json(syncStatus);
+});
+
+// webhook health check endpoint
+sync.get('/health', async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
+	
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
+
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	// get webhook statistics
+	const oneDayAgo = new Date();
+	oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+	const { data: recentWebhooks, count } = await supabase
+		.from('webhook_events')
+		.select('*', { count: 'exact' })
+		.eq('tenant_id', tenant.id)
+		.gte('created_at', oneDayAgo.toISOString())
+		.order('created_at', { ascending: false })
+		.limit(10);
+
+	const { data: lastWebhook } = await supabase
+		.from('webhook_events')
+		.select('*')
+		.eq('tenant_id', tenant.id)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.single();
+
+	const hoursSinceLastWebhook = lastWebhook
+		? (Date.now() - new Date(lastWebhook.created_at).getTime()) / (1000 * 60 * 60)
+		: 999;
+
+	return c.json({
+		healthy: hoursSinceLastWebhook < 24,
+		lastWebhookHoursAgo: hoursSinceLastWebhook,
+		webhooksLast24Hours: count || 0,
+		lastWebhookEvent: lastWebhook,
+		recentEvents: recentWebhooks || []
+	});
 });
 
 export { sync };

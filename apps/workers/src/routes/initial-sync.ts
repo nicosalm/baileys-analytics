@@ -39,28 +39,35 @@ initialSync.post('/full', async (c) => {
 
   try {
     const properties = await ownerRez.fetchProperties();
-    
+
     for (const property of properties) {
-      await supabase
+      const { error } = await supabase
         .from('properties')
         .upsert({
-          id: property.id,
           tenant_id: tenant.id,
-          ownerrez_property_id: property.id,
+          ownerrez_id: property.id,
           name: property.name,
-          address: property.address,
-          bedrooms: property.bedrooms,
-          bathrooms: property.bathrooms,
-          max_guests: property.max_guests,
+          address: property.address?.street1 || property.address,
+          city: property.address?.city,
+          state: property.address?.state,
+          postal_code: property.address?.postal_code,
+          bedrooms: property.bedrooms || 0,
+          bathrooms: property.bathrooms || 0,
+          max_guests: property.max_guests || 0,
           active: property.active !== false,
-          data: property,
+          latitude: property.latitude,
+          longitude: property.longitude,
           updated_at: new Date().toISOString()
-        })
-        .eq('ownerrez_property_id', property.id)
-        .eq('tenant_id', tenant.id);
+        }, {
+          onConflict: 'tenant_id,ownerrez_id',
+          ignoreDuplicates: false
+        });
+
+      if (error) {
+        console.error('Failed to upsert property in initial sync:', error);
+      }
     }
 
-    // sync bookings: 2 years past + 1 year future
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 2);
     const endDate = new Date();
@@ -68,9 +75,22 @@ initialSync.post('/full', async (c) => {
 
     let totalBookings = 0;
     let totalGuests = new Set();
+    let totalBlocks = 0;
 
     for (const property of properties) {
       try {
+        const { data: dbProperty } = await supabase
+          .from('properties')
+          .select('id')
+          .eq('tenant_id', tenant.id)
+          .eq('ownerrez_id', property.id)
+          .single();
+
+        if (!dbProperty) {
+          console.error(`Property not found in database for OwnerRez ID ${property.id}`);
+          continue;
+        }
+
         const bookings = await ownerRez.fetchBookings(
           property.id,
           startDate.toISOString().split('T')[0],
@@ -80,78 +100,89 @@ initialSync.post('/full', async (c) => {
         for (const booking of bookings) {
           if (booking.is_block || booking.type === 'block') {
             await supabase
-              .from('blocks')
-              .upsert({
-                ownerrez_block_id: booking.id,
-                tenant_id: tenant.id,
-                property_id: booking.property_id,
-                arrival: booking.arrival,
-                departure: booking.departure,
-                type: booking.type || 'block',
-                reason: booking.reason,
-                updated_at: new Date().toISOString()
-              })
-              .eq('ownerrez_block_id', booking.id)
-              .eq('tenant_id', tenant.id);
-            continue;
-          }
-
-          const guestName = booking.guest 
-            ? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
-            : booking.guest_name || 'Unknown';
-
-          if (guestName && guestName !== 'Unknown') {
-            totalGuests.add(guestName.toLowerCase());
-          }
-
-          await supabase
-            .from('bookings')
-            .upsert({
-              id: booking.id,
-              tenant_id: tenant.id,
-              property_id: property.id,
-              ownerrez_booking_id: booking.id,
-              guest_name: guestName,
-              guest_email: booking.guest?.email || booking.guest_email,
-              guest_phone: booking.guest?.phone || booking.guest_phone,
-              arrival: booking.arrival,
-              departure: booking.departure,
-              total_amount: booking.total_amount || 0,
-              status: booking.status,
-              platform: booking.source || 'Direct',
-              data: booking,
-              updated_at: new Date().toISOString()
-            })
-            .eq('ownerrez_booking_id', booking.id)
-            .eq('tenant_id', tenant.id);
-
-          if (booking.charges && booking.charges.length > 0) {
-            const { data: savedBooking } = await supabase
-              .from('bookings')
-              .select('id')
-              .eq('ownerrez_booking_id', booking.id)
-              .eq('tenant_id', tenant.id)
-              .single();
-
-            if (savedBooking) {
-              await supabase
-                .from('booking_charges')
-                .delete()
-                .eq('booking_id', savedBooking.id);
-
-              const charges = booking.charges.map((charge: any, index: number) => ({
-                booking_id: savedBooking.id,
-                type: charge.type,
-                amount: charge.amount,
-                description: charge.description,
-                position: index
-              }));
-
-              if (charges.length > 0) {
-                await supabase.from('booking_charges').insert(charges);
+                  .from('blocks')
+                  .upsert({
+                    ownerrez_block_id: booking.id,
+                    tenant_id: tenant.id,
+                    property_id: dbProperty.id,  // use the correct uuid
+                    arrival: booking.arrival,
+                    departure: booking.departure,
+                    type: booking.type || 'block',
+                    reason: booking.reason,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('ownerrez_block_id', booking.id)
+                  .eq('tenant_id', tenant.id);
+                totalBlocks++;
+                continue;
               }
-            }
-          }
+
+              const guestName = booking.guest
+                ? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
+                : booking.guest_name || 'Unknown';
+
+              if (guestName && guestName !== 'Unknown') {
+                totalGuests.add(guestName.toLowerCase());
+              }
+
+              const { error } = await supabase
+                .from('bookings')
+                .upsert({
+                  tenant_id: tenant.id,
+                  property_id: dbProperty.id,  // use the correct uuid
+                  ownerrez_booking_id: booking.id,
+                  guest_name: guestName,
+                  guest_email: booking.guest?.email || booking.guest_email,
+                  guest_phone: booking.guest?.phone || booking.guest_phone,
+                  arrival: booking.arrival,
+                  departure: booking.departure,
+                  total_amount: booking.total_amount || 0,
+                  status: booking.status,
+                  platform: booking.source || booking.listing_site || 'Direct',
+                  platform_reservation_number: booking.custom_source_id || booking.external_id,
+                  adults: booking.adults || 0,
+                  children: booking.children || 0,
+                  infants: booking.infants || 0,
+                  pets: booking.pets || 0,
+                  booked_utc: booking.booked_date || booking.created_date,
+                  canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'tenant_id,ownerrez_booking_id',
+                  ignoreDuplicates: false
+                });
+
+              if (error) {
+                console.error('Failed to upsert booking:', error);
+              }
+
+              if (booking.charges && booking.charges.length > 0) {
+                const { data: savedBooking } = await supabase
+                  .from('bookings')
+                  .select('id')
+                  .eq('ownerrez_booking_id', booking.id)
+                  .eq('tenant_id', tenant.id)
+                  .single();
+
+                if (savedBooking) {
+                  await supabase
+                    .from('booking_charges')
+                    .delete()
+                    .eq('booking_id', savedBooking.id);
+
+                  const charges = booking.charges.map((charge: any, index: number) => ({
+                    booking_id: savedBooking.id,
+                    type: charge.type,
+                    amount: charge.amount,
+                    description: charge.description,
+                    position: index
+                  }));
+
+                  if (charges.length > 0) {
+                    await supabase.from('booking_charges').insert(charges);
+                  }
+                }
+              }
 
           totalBookings++;
         }
@@ -171,7 +202,9 @@ initialSync.post('/full', async (c) => {
         metadata: {
           properties: properties.length,
           bookings: totalBookings,
-          unique_guests: totalGuests.size
+          blocks: totalBlocks,
+          unique_guests: totalGuests.size,
+          date_range: '2 years back, 1 year forward'
         }
       })
       .eq('tenant_id', tenant.id)
@@ -182,8 +215,9 @@ initialSync.post('/full', async (c) => {
       summary: {
         propertiesSynced: properties.length,
         bookingsSynced: totalBookings,
+        blocksSynced: totalBlocks,
         uniqueGuests: totalGuests.size,
-        message: 'Full sync complete. Webhooks will handle future updates automatically.'
+        message: 'Sync complete. Webhooks will handle future updates automatically.'
       }
     });
 

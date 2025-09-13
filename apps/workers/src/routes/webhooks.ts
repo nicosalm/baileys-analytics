@@ -30,11 +30,9 @@ type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
 
 const webhooks = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
-// Test endpoint to check webhook status
 webhooks.get('/status', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	
-	// Get recent webhook events
 	const { data: recentEvents, error } = await supabase
 		.from('webhook_events')
 		.select('*')
@@ -88,7 +86,6 @@ webhooks.post('/ownerrez', async (c) => {
 		.single();
 
 	if (!tenant) {
-		// important: tenant mapping failed
 		console.error(`[Webhook] No tenant found for OwnerRez user ID: ${payload.user_id}`);
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
@@ -167,23 +164,31 @@ async function handleEntityChange(
 }
 
 async function handlePropertyUpdate(supabase: any, tenantId: string, property: any) {
-	await supabase
+	const { error } = await supabase
 		.from('properties')
 		.upsert({
-			id: property.id,
 			tenant_id: tenantId,
-			ownerrez_property_id: property.id,
+			ownerrez_id: property.id,
 			name: property.name,
-			address: property.address,
-			bedrooms: property.bedrooms,
-			bathrooms: property.bathrooms,
-			max_guests: property.max_guests,
+			address: property.address?.street1 || property.address,
+			city: property.address?.city,
+			state: property.address?.state,
+			postal_code: property.address?.postal_code,
+			bedrooms: property.bedrooms || 0,
+			bathrooms: property.bathrooms || 0,
+			max_guests: property.max_guests || 0,
 			active: property.active !== false,
-			data: property,
+			latitude: property.latitude,
+			longitude: property.longitude,
 			updated_at: new Date().toISOString()
-		})
-		.eq('ownerrez_property_id', property.id)
-		.eq('tenant_id', tenantId);
+		}, {
+			onConflict: 'tenant_id,ownerrez_id',
+			ignoreDuplicates: false
+		});
+	
+	if (error) {
+		console.error('Failed to update property via webhook:', error);
+	}
 
 	await supabase
 		.from('sync_status')
@@ -204,6 +209,7 @@ async function handleBookingUpdate(
 	booking: any,
 	categories?: string[]
 ) {
+	// handle blocks separately from regular bookings
 	if (booking.is_block || booking.type === 'block') {
 		const { data: existingBlock } = await supabase
 			.from('blocks')
@@ -222,12 +228,24 @@ async function handleBookingUpdate(
 			return;
 		}
 
+		const { data: blockProperty } = await supabase
+			.from('properties')
+			.select('id')
+			.eq('tenant_id', tenantId)
+			.eq('ownerrez_id', booking.property_id)
+			.single();
+
+		if (!blockProperty) {
+			console.error(`Property not found for OwnerRez ID ${booking.property_id} (block)`);
+			return;
+		}
+
 		await supabase
 			.from('blocks')
 			.upsert({
 				ownerrez_block_id: booking.id,
 				tenant_id: tenantId,
-				property_id: booking.property_id,
+				property_id: blockProperty.id,
 				arrival: booking.arrival,
 				departure: booking.departure,
 				type: booking.type || 'block',
@@ -237,14 +255,25 @@ async function handleBookingUpdate(
 			.eq('ownerrez_block_id', booking.id)
 			.eq('tenant_id', tenantId);
 	} else {
+		const { data: property } = await supabase
+			.from('properties')
+			.select('id')
+			.eq('tenant_id', tenantId)
+			.eq('ownerrez_id', booking.property_id)
+			.single();
+
+		if (!property) {
+			console.error(`Property not found for OwnerRez ID ${booking.property_id}`);
+			return;
+		}
+
 		const guestName = booking.guest 
 			? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 			: booking.guest_name || 'Unknown';
 
 		const bookingData = {
-			id: booking.id,
 			tenant_id: tenantId,
-			property_id: booking.property_id,
+			property_id: property.id,
 			ownerrez_booking_id: booking.id,
 			guest_name: guestName,
 			guest_email: booking.guest?.email || booking.guest_email,
@@ -253,8 +282,14 @@ async function handleBookingUpdate(
 			departure: booking.departure,
 			total_amount: booking.total_amount || 0,
 			status: booking.status,
-			platform: booking.source || 'Direct',
-			data: booking,
+			platform: booking.source || booking.listing_site || 'Direct',
+			platform_reservation_number: booking.custom_source_id || booking.external_id,
+			adults: booking.adults || 0,
+			children: booking.children || 0,
+			infants: booking.infants || 0,
+			pets: booking.pets || 0,
+			booked_utc: booking.booked_date || booking.created_date,
+			canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
 			updated_at: new Date().toISOString()
 		};
 
@@ -262,11 +297,16 @@ async function handleBookingUpdate(
 			bookingData.status = 'canceled';
 		}
 
-		await supabase
+		const { error } = await supabase
 			.from('bookings')
-			.upsert(bookingData)
-			.eq('ownerrez_booking_id', booking.id)
-			.eq('tenant_id', tenantId);
+			.upsert(bookingData, {
+				onConflict: 'tenant_id,ownerrez_booking_id',
+				ignoreDuplicates: false
+			});
+		
+		if (error) {
+			console.error('Failed to update booking via webhook:', error);
+		}
 
 		if (categories?.includes('charge') && booking.charges) {
 			const { data: existingBooking } = await supabase

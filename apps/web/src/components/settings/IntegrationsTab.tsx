@@ -148,7 +148,7 @@ export const IntegrationsTab = () => {
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-1">OwnerRez</h2>
                 <p className="text-gray-600">
-                  Connect your OwnerRez account to sync properties, bookings, and guest data
+                  Connect your OwnerRez account to sync properties, bookings, and guest data with real-time webhook updates
                 </p>
               </div>
             </div>
@@ -230,16 +230,20 @@ export const IntegrationsTab = () => {
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Webhook className="w-4 h-4 text-green-600" />
-                    <h3 className="text-sm font-semibold text-gray-900">Webhook Status</h3>
+                    <h3 className="text-sm font-semibold text-gray-900">Sync Status</h3>
                   </div>
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-sm text-green-800">
-                      <span className="font-medium">Real-time updates enabled</span> - Your data automatically syncs when changes occur in OwnerRez
+                      <span className="font-medium">✓ Real-time webhooks active</span> - Your data automatically syncs when changes occur in OwnerRez.
+                      Initial connection synced 10 years of historical data.
                     </p>
                   </div>
                 </div>
                 
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Manual Sync Options</h3>
+                {/* only show manual sync in development */}
+                {import.meta.env.DEV && (
+                  <>
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Recovery Options (Dev Only)</h3>
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleRecentSync}
@@ -251,7 +255,7 @@ export const IntegrationsTab = () => {
                     ) : (
                       <RefreshCw className="w-4 h-4" />
                     )}
-                    Sync Recent (7 days)
+                    Recovery Sync (7 days)
                   </button>
                   
                   <button
@@ -264,7 +268,7 @@ export const IntegrationsTab = () => {
                     ) : (
                       <Clock className="w-4 h-4" />
                     )}
-                    Sync Historical (2 years)
+                    Full Re-sync (10 years)
                   </button>
                   
                   <button
@@ -280,13 +284,15 @@ export const IntegrationsTab = () => {
                     Sync Guest Details
                   </button>
                 </div>
+                  </>
+                )}
                 
                 {syncState.type === 'syncing' && (
                   <div className="mt-4 p-3 bg-blue-50 text-blue-700 rounded-lg flex items-center gap-2">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <span className="text-sm">
                       {syncState.mode === 'recent' && 'Syncing recent bookings...'}
-                      {syncState.mode === 'historical' && 'Syncing historical data (this may take a while)...'}
+                      {syncState.mode === 'historical' && 'Re-syncing 10 years of historical data (this may take several minutes)...'}
                       {syncState.mode === 'guest-details' && 'Updating guest contact information...'}
                     </span>
                   </div>
@@ -313,7 +319,7 @@ export const IntegrationsTab = () => {
                     </p>
                     <p className="text-sm text-amber-700">
                       Connect your OwnerRez account to start syncing property and booking data. 
-                      You'll be redirected to OwnerRez to authorize the connection.
+                      Initial connection will sync 10 years of historical data and enable real-time webhook updates.
                     </p>
                   </div>
                 </div>

@@ -31,6 +31,14 @@ export const AuthCallback = () => {
               
               await refreshUser()
               
+              // trigger full historical sync if needed
+              if (result.data?.initialSync?.requiresFullSync) {
+                // fire and forget - don't wait for it to complete
+                api.request('/initial-sync/full', { method: 'POST' }).catch(() => {
+                  console.log('Full sync will run in background')
+                })
+              }
+              
               setTimeout(() => {
                 window.location.href = '/dashboard/overview'
               }, 1500)

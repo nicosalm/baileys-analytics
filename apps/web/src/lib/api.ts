@@ -118,19 +118,21 @@ class ApiClient {
 
 
     async manualSync(): Promise<ApiResult<any>> {
-        return this.request('/manual-sync', { method: 'POST' })
+        // use recovery sync for emergency use only
+        return this.request('/sync/recovery', { 
+            method: 'POST',
+            headers: {
+                'X-Force-Sync': 'true'
+            }
+        })
     }
 
     async syncGuestDetails(): Promise<ApiResult<any>> {
-        return this.request('/sync-guest-details', { method: 'POST' })
+        return this.request('/sync/guest-details', { method: 'POST' })
     }
 
-    async historicalSync(fromDate?: string, toDate?: string): Promise<ApiResult<any>> {
-        const params = new URLSearchParams({ type: 'historical' })
-        if (fromDate) params.append('from', fromDate)
-        if (toDate) params.append('to', toDate)
-
-        return this.request(`/manual-sync?${params}`, { method: 'POST' })
+    async historicalSync(): Promise<ApiResult<any>> {
+        return this.request('/initial-sync/full', { method: 'POST' })
     }
 
     async getSyncStatus(): Promise<ApiResult<any>> {

@@ -74,9 +74,21 @@ export class OwnerRezService {
 
 	async fetchBookings(propertyId?: string, startDate?: string, endDate?: string): Promise<any[]> {
 		const params = new URLSearchParams();
-		if (propertyId) params.append('property_id', propertyId);
-		if (startDate) params.append('arrival_start', startDate);
-		if (endDate) params.append('arrival_end', endDate);
+		
+		// ownerrez v2 api requires either property_ids or since_utc
+		if (propertyId) {
+			params.append('property_ids', propertyId);
+		} else {
+			const sinceDate = startDate || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+			params.append('since_utc', sinceDate);
+		}
+		
+		if (startDate) params.append('from', startDate);
+		if (endDate) params.append('to', endDate);
+		
+		params.append('include_guest', 'true');
+		params.append('include_charges', 'true');
+		params.append('include_fields', 'true');
 
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
