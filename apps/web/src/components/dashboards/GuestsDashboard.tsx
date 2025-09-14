@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
-import { Users, UserCheck, Calendar, DollarSign, Info, Star } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, Info, Star, TrendingUp, BarChart3 } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
@@ -145,19 +145,34 @@ export const GuestsDashboard = () => {
             sortable: true,
             width: 250,
             render: (guest: GuestListItem) => {
+                const isRepeat = (guest.periodBookings || guest.bookingCount) > 1
+                const isTop = topPerformers.spenders.some(g => g.id === guest.id)
+                const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
+                
                 return (
                     <div>
-                        <div className="font-medium">{guest.name}</div>
-                        {guest.email && <div className="text-sm text-gray-500">{guest.email}</div>}
+                        <div className="flex items-center gap-2">
+                            <span className="font-medium">{guest.name}</span>
+                            {isTop && (
+                                <span className="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded-md font-medium">VIP</span>
+                            )}
+                            {isRepeat && (
+                                <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded-md font-medium">Repeat</span>
+                            )}
+                            {isNew && (
+                                <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-md font-medium">New</span>
+                            )}
+                        </div>
+                        {guest.email && <div className="text-sm text-gray-500 truncate">{guest.email}</div>}
                     </div>
                 )
             }
         },
         {
             key: 'periodBookings',
-            header: 'Bookings (Period)',
+            header: 'Bookings',
             sortable: true,
-            width: 140,
+            width: 120,
             render: (guest: GuestListItem) => (
                 <div>
                     <span className="font-medium">{guest.periodBookings || 0}</span>
@@ -169,19 +184,38 @@ export const GuestsDashboard = () => {
         },
         {
             key: 'periodSpent',
-            header: 'Spent (Period)',
+            header: 'Revenue',
             sortable: true,
             width: 150,
-            render: (guest: GuestListItem) => (
-                <div>
-                    <span className="font-medium text-green-600">
-                        {formatCurrency(guest.periodSpent || 0)}
-                    </span>
-                    <div className="text-xs text-gray-500">
-                        Total: {formatCurrency(guest.totalSpent)}
+            render: (guest: GuestListItem) => {
+                const maxSpent = Math.max(...data.guests.map((g: GuestListItem) => g.periodSpent || 0))
+                const spentPercentage = ((guest.periodSpent || 0) / maxSpent) * 100
+                
+                return (
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                                <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div 
+                                        className={`h-1.5 rounded-full ${
+                                            spentPercentage > 66 ? 'bg-green-500' :
+                                            spentPercentage > 33 ? 'bg-yellow-500' : 
+                                            'bg-gray-400'
+                                        }`}
+                                        style={{ width: `${spentPercentage}%` }}
+                                    />
+                                </div>
+                            </div>
+                            <span className="font-medium text-green-600 text-sm">
+                                {formatCurrency(guest.periodSpent || 0)}
+                            </span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                            Lifetime: {formatCurrency(guest.totalSpent)}
+                        </div>
                     </div>
-                </div>
-            )
+                )
+            }
         },
         {
             key: 'avgNightlyRate',
@@ -207,11 +241,11 @@ export const GuestsDashboard = () => {
         {
             key: 'tags',
             header: 'Tags',
-            width: 350,
+            width: 200,
             render: (guest: GuestListItem) => (
                 <CollapsibleTags
                     tags={guest.tags}
-                    maxVisible={2}
+                    maxVisible={1}
                     size="sm"
                 />
             )
@@ -268,6 +302,8 @@ export const GuestsDashboard = () => {
                 empty={!data && !isLoading}
                 loadingMessage="Loading guest analytics..."
                 emptyMessage="No guest data available"
+                emptySubMessage="Guest data will appear once bookings are synced"
+                emptyIcon={<Users className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
                 minHeight={400}
                 className="py-12"
             >
@@ -388,94 +424,25 @@ export const GuestsDashboard = () => {
                 />
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold">Top Spenders This Period</h3>
-                        <DollarSign className="w-5 h-5 text-green-600" />
-                    </div>
-                    <div className="space-y-3">
-                        {topPerformers.spenders.slice(0, 5).map((guest: GuestListItem, index: number) => (
-                            <div
-                                key={guest.id}
-                                className="flex justify-between items-center p-3 border rounded-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                                onClick={() => handleGuestClick(guest)}
-                            >
-                                <div className="flex items-center">
-                                    <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-sm font-bold mr-3">
-                                        {index + 1}
-                                    </div>
-                                    <div>
-                                        <div className="font-medium">{guest.name}</div>
-                                        <div className="text-sm text-gray-500">
-                                            {guest.periodBookings || 0} bookings this period
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="font-medium text-green-600">
-                                        {formatCurrency(guest.periodSpent || 0)}
-                                    </div>
-                                    <div className="text-xs text-gray-500">this period</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-bold">Most Frequent This Period</h3>
-                        <Star className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="space-y-3">
-                        {topPerformers.frequent.slice(0, 5).map((guest: GuestListItem, index: number) => (
-                            <div
-                                key={guest.id}
-                                className="flex justify-between items-center p-3 border rounded-sm hover:bg-gray-50 cursor-pointer transition-colors"
-                                onClick={() => handleGuestClick(guest)}
-                            >
-                                <div className="flex items-center">
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-bold mr-3">
-                                        {index + 1}
-                                    </div>
-                                    <div>
-                                        <div className="font-medium">{guest.name}</div>
-                                        <div className="text-sm text-gray-500">
-                                            {formatCurrency(guest.avgNightlyRate)}/night avg
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="font-medium text-blue-600">
-                                        {guest.periodBookings || 0} bookings
-                                    </div>
-                                    <div className="text-xs text-gray-500">this period</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid lg:grid-cols-2 gap-6">
                 <ChartWrapper
-                    title={`Guest Sources${timePeriod}`}
-                    subtitle={comparisonMode !== 'none' ? `Current period distribution` : undefined}
-                    height={320}
+                    title="Guest Sources"
+                    subtitle="Where your guests come from"
+                    icon={BarChart3}
+                    height={280}
                     noData={sourceChartData.length === 0}
                 >
-                    <PieChart>
+                    <PieChart width={360} height={240}>
                         <Pie
                             data={sourceChartData}
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={(props) => {
-                                const entry = props as any // Recharts PieLabelProps type mismatch
+                            label={(entry: any) => {
                                 const total = sourceChartData.reduce((sum: number, item: GuestSourceData) => sum + (item.count || 0), 0)
                                 const percent = ((entry.count / total) * 100).toFixed(0)
-                                return `${entry.source} ${percent}%`
+                                const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
+                                return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
                             }}
                             outerRadius={80}
                             fill="#8884d8"
@@ -485,113 +452,96 @@ export const GuestsDashboard = () => {
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                         </Pie>
-                        <Tooltip formatter={(value) => `${value} guests`} />
+                        <Tooltip 
+                            formatter={(value) => [`${value} guests`, 'Count']}
+                            contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                        />
                     </PieChart>
                 </ChartWrapper>
 
                 <ChartWrapper
-                    title={`Guest Tags Distribution${timePeriod}`}
+                    title="Guest Tags"
+                    subtitle="Most common guest categories"
+                    icon={BarChart3}
                     height={320}
                     noData={!tagChartData || tagChartData.length === 0}
                     noDataMessage="No tag data available"
                 >
-                    <ResponsiveContainer width="100%" height="100%">
-                        <Treemap
-                            data={tagChartData}
-                            dataKey="size"
-                            aspectRatio={4 / 3}
-                            stroke="#fff"
-                            fill="#8884d8"
-                            isAnimationActive={false}
-                            content={({ x, y, width, height, index, name, color }: any) => (
-                                <g>
-                                    <rect
-                                        x={x}
-                                        y={y}
-                                        width={width}
-                                        height={height}
-                                        fill={color || CHART_COLORS[index % CHART_COLORS.length]}
-                                        stroke="#fff"
-                                        strokeWidth={2}
-                                    />
-                                    {width > 50 && height > 30 && (
-                                        <text
-                                            x={x + width / 2}
-                                            y={y + height / 2}
-                                            textAnchor="middle"
-                                            fill="white"
-                                            fontSize={12}
-                                            dominantBaseline="middle"
-                                        >
-                                            {name}
-                                        </text>
-                                    )}
-                                </g>
-                            )}
-                        >
-                            <Tooltip
-                                content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                        const data = payload[0].payload
-                                        return (
-                                            <div className="bg-white px-3 py-2 rounded-lg shadow-lg border border-gray-200">
-                                                <p className="font-semibold text-sm">{data.name}</p>
-                                                <p className="text-xs text-gray-600">{data.value} guests</p>
-                                                <p className="text-xs text-gray-500">
-                                                    {((data.value / tagDistribution.reduce((sum: number, t: any) => sum + t.count, 0)) * 100).toFixed(1)}% of tagged guests
-                                                </p>
+                    <div className="space-y-3">
+                        {tagChartData.slice(0, 8).map((tag: any, index: number) => {
+                            const maxCount = Math.max(...tagChartData.map((t: any) => t.value))
+                            const percentage = (tag.value / maxCount) * 100
+                            const totalTags = tagDistribution.reduce((sum: number, t: any) => sum + t.count, 0)
+                            const overallPercent = ((tag.value / totalTags) * 100).toFixed(0)
+                            
+                            return (
+                                <div key={tag.name} className="flex items-center gap-3">
+                                    <div className="flex-1">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm font-medium text-gray-700">{tag.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-medium text-gray-900">{tag.value} guests</span>
+                                                <span className="text-xs text-gray-500">({overallPercent}%)</span>
                                             </div>
-                                        )
-                                    }
-                                    return null
-                                }}
-                            />
-                        </Treemap>
-                    </ResponsiveContainer>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                            <div 
+                                                className="h-2 rounded-full transition-all"
+                                                style={{ 
+                                                    width: `${percentage}%`,
+                                                    backgroundColor: tag.color || CHART_COLORS[index % CHART_COLORS.length]
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
                 </ChartWrapper>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-4 border-b">
+                <div className="p-4 border-b border-gray-200">
                     <div className="flex justify-between items-center">
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
                             <button
                                 onClick={() => setViewMode('all')}
-                                className={`px-3 py-1 rounded-sm text-sm ${
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                     viewMode === 'all'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-200 hover:bg-gray-300'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             >
                                 All
                             </button>
                             <button
                                 onClick={() => setViewMode('repeat')}
-                                className={`px-3 py-1 rounded-sm text-sm ${
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                     viewMode === 'repeat'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-200 hover:bg-gray-300'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             >
                                 Repeat
                             </button>
                             <button
                                 onClick={() => setViewMode('new')}
-                                className={`px-3 py-1 rounded-sm text-sm ${
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                     viewMode === 'new'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-200 hover:bg-gray-300'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             >
                                 New
                             </button>
                             <button
                                 onClick={() => setViewMode('top')}
-                                className={`px-3 py-1 rounded-sm text-sm ${
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                                     viewMode === 'top'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-200 hover:bg-gray-300'
+                                        ? 'bg-white text-gray-900 shadow-sm'
+                                        : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             >
                                 Top 20%
@@ -599,7 +549,7 @@ export const GuestsDashboard = () => {
                         </div>
                     </div>
                     {viewMode !== 'all' && (
-                        <div className="mt-2 text-xs text-gray-600">
+                        <div className="mt-2 text-xs text-gray-500">
                             {viewMode === 'repeat' && 'Showing guests with multiple bookings in this period'}
                             {viewMode === 'new' && 'Showing first-time guests in this period'}
                             {viewMode === 'top' && 'Showing top 20% of guests by spending in this period'}

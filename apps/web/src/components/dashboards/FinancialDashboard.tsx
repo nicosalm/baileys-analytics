@@ -20,10 +20,10 @@ interface TabButtonProps {
 const TabButton: FC<TabButtonProps> = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-6 py-3 font-medium text-sm ${
+    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
       active
-        ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
-        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+        ? 'bg-white text-gray-900 shadow-sm'
+        : 'text-gray-600 hover:text-gray-900'
     }`}
   >
     {children}
@@ -244,19 +244,22 @@ export const FinancialDashboard = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="flex overflow-x-auto border-b">
-          <TabButton active={activeTab === 'pl'} onClick={() => setActiveTab('pl')}>
-            P&L View
-          </TabButton>
-          <TabButton active={activeTab === 'revenue_analysis'} onClick={() => setActiveTab('revenue_analysis')}>
-            Revenue Analysis
-          </TabButton>
-          <TabButton active={activeTab === 'cashflow'} onClick={() => setActiveTab('cashflow')}>
-            Cash Flow
-          </TabButton>
-          <TabButton active={activeTab === 'tax_center'} onClick={() => setActiveTab('tax_center')}>
-            Tax Center
-          </TabButton>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Financial Analysis</h3>
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+            <TabButton active={activeTab === 'pl'} onClick={() => setActiveTab('pl')}>
+              P&L View
+            </TabButton>
+            <TabButton active={activeTab === 'revenue_analysis'} onClick={() => setActiveTab('revenue_analysis')}>
+              Revenue
+            </TabButton>
+            <TabButton active={activeTab === 'cashflow'} onClick={() => setActiveTab('cashflow')}>
+              Cash Flow
+            </TabButton>
+            <TabButton active={activeTab === 'tax_center'} onClick={() => setActiveTab('tax_center')}>
+              Tax Center
+            </TabButton>
+          </div>
         </div>
 
         <div className="p-6">

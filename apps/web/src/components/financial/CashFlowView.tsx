@@ -114,6 +114,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         empty={!cashFlowData && !loading}
         loadingMessage="Loading cash flow data..."
         emptyMessage="No cash flow data available"
+        emptySubMessage="Select a date range to view cash flow"
         minHeight={300}
       >
         <div />
@@ -196,7 +197,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       </div>
       
       {/* Cash Flow Chart */}
-      <ChartWrapper title={`${detectGranularity(cashFlowData.monthlyData || [], 'month')} Cash Flow`} height={320}>
+      <ChartWrapper title={`${detectGranularity(cashFlowData.monthlyData || [], 'month')} Cash Flow`} height={360}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={cashFlowData.monthlyData}

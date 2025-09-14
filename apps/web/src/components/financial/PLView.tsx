@@ -123,6 +123,7 @@ export const PLView: React.FC<PLViewProps> = ({
         empty={!data && !loading}
         loadingMessage="Loading profit & loss data..."
         emptyMessage="No financial data available"
+        emptySubMessage="Select a date range to view your P&L"
         minHeight={300}
       >
         <div />
@@ -214,11 +215,11 @@ export const PLView: React.FC<PLViewProps> = ({
         showComparison={comparison.hasComparison}
         comparisonMode={comparisonMode}
         onPeriodClick={onPeriodClick}
-        height={320}
+        height={360}
       />
       
       {/* Platform Distribution (2/3) and Cost Breakdown (1/3) */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6">
           <div className="md:col-span-2">
             <PlatformDistributionChart
               data={platforms}

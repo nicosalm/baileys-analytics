@@ -115,6 +115,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
         empty={!analysis && !loading}
         loadingMessage="Analyzing revenue data..."
         emptyMessage="No revenue data available"
+        emptySubMessage="Select a date range to analyze revenue"
         minHeight={300}
       >
         <div />
@@ -193,17 +194,18 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
         onPeriodClick={onPeriodClick}
         showComparison={analysis.hasComparison}
         comparisonMode={comparisonMode}
+        height={360}
       />
       
       {/* Property Performance Tables */}
       {analysis.topProperties.length === 0 && analysis.bottomProperties.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
-          <Info className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600">No property data available for the selected period.</p>
-          <p className="text-sm text-gray-500 mt-1">Select a different date range or check your property sync status.</p>
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500">
+          <Info className="w-12 h-12 mx-auto mb-2 opacity-50" />
+          <p className="text-sm font-medium">No property data available for the selected period</p>
+          <p className="text-xs text-gray-400 mt-1">Select a different date range or check your property sync status</p>
         </div>
       ) : (
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
         {/* Top Performers */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-start justify-between mb-3">

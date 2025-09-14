@@ -284,7 +284,12 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => `${entry.platform} (${entry.bookings})`}
+                        label={(entry: any) => {
+                          const total = platformData.reduce((sum: number, p: any) => sum + p.revenue, 0)
+                          const percent = ((entry.revenue / total) * 100).toFixed(0)
+                          const name = entry.platform.length > 18 ? entry.platform.substring(0, 18) + '...' : entry.platform
+                          return `${name} (${percent}%)`
+                        }}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="revenue"

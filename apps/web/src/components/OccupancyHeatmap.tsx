@@ -104,16 +104,16 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   if (loading) return <LoadingState message="Loading heatmap..." />
   if (error) return (
     <div className="text-center py-8">
-      <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-2" />
-      <p className="text-red-500">Error loading heatmap</p>
-      <p className="text-sm text-gray-600 mt-1">{error.message}</p>
+      <AlertCircle className="w-12 h-12 text-red-500 opacity-50 mx-auto mb-2" />
+      <p className="text-sm font-medium text-gray-500">Error loading heatmap</p>
+      <p className="text-xs text-gray-400 mt-1">{error.message}</p>
     </div>
   )
   if (!monthsData.length) return (
-    <div className="text-center py-8">
-      <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-      <p className="text-gray-500">No occupancy data available</p>
-      <p className="text-sm text-gray-400 mt-1">Data will appear once bookings are synced</p>
+    <div className="text-center py-8 text-gray-500">
+      <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+      <p className="text-sm font-medium">No occupancy data available</p>
+      <p className="text-xs text-gray-400 mt-1">Data will appear once bookings are synced</p>
     </div>
   )
 

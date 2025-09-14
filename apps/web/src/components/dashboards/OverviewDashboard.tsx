@@ -337,7 +337,7 @@ export const OverviewDashboard = () => {
         />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
         <ChartWrapper
           title="Revenue Composition by Property"
           subtitle="Showing revenue breakdown across your top properties"
@@ -592,10 +592,10 @@ export const OverviewDashboard = () => {
         <ChartWrapper
           title="Booking Sources"
           icon={BarChart3}
-          height={240}
+          height={280}
           noData={charts.bookingsBySource.length === 0}
         >
-          <PieChart>
+          <PieChart width={360} height={240}>
             <Pie
               data={charts.bookingsBySource.map((item: any) => ({
                 ...item,
@@ -604,7 +604,11 @@ export const OverviewDashboard = () => {
               cx="50%"
               cy="50%"
               labelLine={false}
-              label={(entry: any) => `${entry.source} ${formatPercentage((entry.percent || 0) * 100, 0)}`}
+              label={(entry: any) => {
+                const percent = ((entry.percent || 0) * 100).toFixed(0)
+                const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
+                return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
+              }}
               outerRadius={80}
               fill="#8884d8"
               dataKey="count"
@@ -621,7 +625,7 @@ export const OverviewDashboard = () => {
         </ChartWrapper>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Things to Know</h3>
@@ -634,9 +638,9 @@ export const OverviewDashboard = () => {
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-500" />
-                <p>Everything looks good!</p>
-                <p className="text-xs mt-1">No issues to report</p>
+                <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">Everything looks good!</p>
+                <p className="text-xs mt-1 text-gray-400">No issues to report</p>
               </div>
             )}
           </div>
@@ -647,7 +651,7 @@ export const OverviewDashboard = () => {
             <h3 className="text-lg font-bold">What's New</h3>
             <span className="text-xs text-gray-500">Recent bookings</span>
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto">
+          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
             {recentActivity && recentActivity.length > 0 ? (
               recentActivity.map((activity: any) => (
                 <div 
@@ -662,14 +666,14 @@ export const OverviewDashboard = () => {
                     }
                   }}
                 >
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.description}</p>
+                  <div className="flex-1 min-w-0 mr-2">
+                    <p className="text-sm font-medium truncate">{activity.description}</p>
                     <p className="text-xs text-gray-500">
                       {formatDateDisplay(new Date(activity.timestamp))}
                     </p>
                   </div>
                   {activity.value && (
-                    <div className="text-sm font-medium text-green-600">
+                    <div className="text-sm font-medium text-green-600 flex-shrink-0">
                       {formatCurrency(activity.value)}
                     </div>
                   )}
@@ -677,9 +681,9 @@ export const OverviewDashboard = () => {
               ))
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <Clock className="w-8 h-8 mx-auto mb-2" />
-                <p>No recent activity</p>
-                <p className="text-xs mt-1">Check back later</p>
+                <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">No recent activity</p>
+                <p className="text-xs mt-1 text-gray-400">Check back later for updates</p>
               </div>
             )}
           </div>

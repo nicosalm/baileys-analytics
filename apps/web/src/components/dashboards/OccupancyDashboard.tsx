@@ -50,6 +50,8 @@ export const OccupancyDashboard = () => {
         empty={!currentData && !isLoading}
         loadingMessage="Loading occupancy data..."
         emptyMessage="No occupancy data available"
+        emptySubMessage="Occupancy data will appear once bookings are synced"
+        emptyIcon={<Percent className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
         minHeight={400}
         className="py-12"
       >
@@ -278,7 +280,7 @@ export const OccupancyDashboard = () => {
           : undefined
         }
         icon={TrendingUp}
-        height={320}
+        height={360}
       >
         <LineChart data={chartData} onClick={handlePeriodClick}>
           <CartesianGrid strokeDasharray="3 3" />
@@ -329,33 +331,35 @@ export const OccupancyDashboard = () => {
         </LineChart>
       </ChartWrapper>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold flex items-center">
-              <Home className="w-5 h-5 mr-2" />
-              Property Performance
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-base font-bold flex items-center">
+              <Home className="w-4 h-4 mr-2 text-gray-600" />
+              Property Occupancy
             </h3>
-            {currentData.byProperty.length > 10 && (
-              <span className="text-xs text-gray-500">Showing all {currentData.byProperty.length} properties</span>
+            {currentData.byProperty.length > 5 && (
+              <span className="text-xs text-gray-500">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
             )}
           </div>
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+          <div className="space-y-2.5 max-h-[400px] overflow-y-auto">
             {currentData.byProperty.length > 0 ? (
               currentData.byProperty
                 .sort((a: OccupancyByProperty, b: OccupancyByProperty) => b.rate - a.rate)
+                .slice(0, 10)
                 .map((property: OccupancyByProperty) => {
                   const occupancyPercent = property.rate * 100
                   const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
                   const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
-                  const occupancyColor = occupancyPercent >= 70 ? 'bg-gradient-to-r from-green-500 to-green-600' :
-                                         occupancyPercent >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600' :
-                                         'bg-gradient-to-r from-red-500 to-red-600'
+                  const occupancyColor = occupancyPercent >= 70 ? 'bg-green-500' :
+                                         occupancyPercent >= 50 ? 'bg-yellow-500' :
+                                         'bg-red-500'
 
                   return (
-                    <div key={property.propertyId} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium text-sm truncate max-w-[200px]" title={property.propertyName}>
+                    <div key={property.propertyId} className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                         onClick={() => openModal({ type: 'property', propertyId: property.propertyId, propertyName: property.propertyName })}>
+                      <div className="flex justify-between items-center mb-1.5">
+                        <span className="font-medium text-sm truncate max-w-[180px]" title={property.propertyName}>
                           {property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}
                         </span>
                         <div className="flex items-center gap-2">
@@ -374,18 +378,16 @@ export const OccupancyDashboard = () => {
                           )}
                         </div>
                       </div>
-                      <div className="relative">
-                        <div className="w-full bg-gray-100 rounded-full h-5 overflow-hidden">
+                      <div className="space-y-1">
+                        <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                           <div
-                            className={`${occupancyColor} h-5 rounded-full flex items-center justify-end pr-2 transition-all duration-500`}
-                            style={{ width: `${Math.max(occupancyPercent, 5)}%` }}
-                          >
-                            {occupancyPercent >= 25 && (
-                              <span className="text-xs text-white font-medium">
-                                {property.bookedNights}/{property.availableNights}
-                              </span>
-                            )}
-                          </div>
+                            className={`${occupancyColor} h-2 rounded-full transition-all duration-500`}
+                            style={{ width: `${Math.max(occupancyPercent, 2)}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-xs text-gray-500">
+                          <span>{property.bookedNights}/{property.availableNights} nights</span>
+                          <span className="text-gray-600">{formatPercentage(occupancyPercent, 0)}</span>
                         </div>
                       </div>
                     </div>
@@ -393,26 +395,26 @@ export const OccupancyDashboard = () => {
                 })
             ) : (
               <div className="text-center text-gray-500 py-8">
-                <Home className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No property data available</p>
-                <p className="text-xs text-gray-400 mt-2">Data will appear once bookings are synced</p>
+                <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">No property data available</p>
+                <p className="text-xs text-gray-400 mt-1">Data will appear once bookings are synced</p>
               </div>
             )}
           </div>
           {currentData.byProperty.length > 0 && (
-            <div className="mt-4 pt-4 border-t">
-              <div className="flex flex-wrap gap-2 justify-center text-xs">
-                <div className="flex items-center gap-1.5 bg-green-50 px-2 py-1 rounded">
-                  <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-                  <span className="text-gray-700 text-[11px] font-medium">Excellent (70%+)</span>
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex flex-wrap gap-3 justify-center">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
+                  <span className="text-xs text-gray-600">70%+</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-yellow-50 px-2 py-1 rounded">
-                  <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
-                  <span className="text-gray-700 text-[11px] font-medium">Good (50-70%)</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-sm"></div>
+                  <span className="text-xs text-gray-600">50-70%</span>
                 </div>
-                <div className="flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded">
-                  <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
-                  <span className="text-gray-700 text-[11px] font-medium">Low (&lt;50%)</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 bg-red-500 rounded-sm"></div>
+                  <span className="text-xs text-gray-600">&lt;50%</span>
                 </div>
               </div>
             </div>
@@ -428,34 +430,34 @@ export const OccupancyDashboard = () => {
               maxGapsToShow={3}
             />
           ) : (
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-gray-600" />
-                  <h3 className="text-lg font-bold">Booking Gaps</h3>
-                </div>
+            <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold flex items-center">
+                  <Calendar className="w-4 h-4 mr-2 text-gray-600" />
+                  Booking Gaps
+                </h3>
                 <span className="text-xs text-gray-500">Next 60 days</span>
               </div>
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="bg-green-50 rounded-full p-4 mb-4">
-                  <Calendar className="w-8 h-8 text-green-600" />
-                </div>
-                <p className="text-gray-700 font-medium mb-2">No gaps detected!</p>
-                <p className="text-sm text-gray-500">All properties are well-booked for the next 60 days</p>
+              <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
+                <Calendar className="w-12 h-12 mb-2 opacity-50" />
+                <p className="text-sm font-medium">No gaps detected</p>
+                <p className="text-xs text-gray-400 mt-1">All properties are well-booked</p>
               </div>
             </div>
           )
         )}
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h3 className="text-lg font-bold mb-4 flex items-center">
-          <Calendar className="w-5 h-5 mr-2" />
-          Daily Occupancy Calendar
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Click any day to see details
-        </p>
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="mb-4">
+          <h3 className="text-lg font-bold flex items-center">
+            <Calendar className="w-5 h-5 mr-2 text-gray-600" />
+            Daily Occupancy Calendar
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Click any day to see booking details
+          </p>
+        </div>
         <OccupancyHeatmap
           dateRange={filters.dateRange}
           tagIds={filters.selectedTags.map(t => t.id)}

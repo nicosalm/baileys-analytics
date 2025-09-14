@@ -1,5 +1,5 @@
 import React from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { getPlatformColor } from '@/lib/theme'
 import { formatCurrency } from '@baileys/utils'
@@ -34,11 +34,6 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
     value: item.revenue
   }))
   
-  const renderCustomLabel = (entry: any) => {
-    const percent = ((entry.value / data.reduce((sum, item) => sum + item.revenue, 0)) * 100).toFixed(0)
-    return `${entry.name} ${percent}%`
-  }
-  
   return (
     <ChartWrapper title={title} height={height}>
       <ResponsiveContainer width="100%" height="100%">
@@ -48,7 +43,11 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={renderCustomLabel}
+            label={(entry: any) => {
+              const percent = ((entry.value / data.reduce((sum, item) => sum + item.revenue, 0)) * 100).toFixed(0)
+              const name = entry.name.length > 18 ? entry.name.substring(0, 18) + '...' : entry.name
+              return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
+            }}
             outerRadius={80}
             fill="#8884d8"
             dataKey="value"

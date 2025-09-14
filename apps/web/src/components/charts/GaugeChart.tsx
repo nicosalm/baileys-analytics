@@ -63,7 +63,10 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
   })
 
   // Normalize value to 0-100 scale based on min/max
-  const normalizedValue = ((value - min) / (max - min)) * 100
+  // Handle edge cases where value is 0, NaN, or max equals min
+  const safeValue = isNaN(value) ? min : value
+  const safeDivisor = (max - min) || 1 // Prevent division by zero
+  const normalizedValue = ((safeValue - min) / safeDivisor) * 100
   const clampedValue = Math.min(Math.max(normalizedValue, 0), 100)
 
   // Calculate which sector is active (the one the needle points to)
@@ -101,8 +104,10 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
   // Calculate needle endpoints using proper trigonometry
   // Note: In SVG/Recharts, angles are measured clockwise from 3 o'clock position
   // We need to adjust for the semicircle starting at 9 o'clock (180°)
-  const needleX = cx + (outerRadius - 5) * Math.cos(-radianAngle)  // Needle ends just inside the outer edge
-  const needleY = cy + (outerRadius - 5) * Math.sin(-radianAngle)
+  // Ensure needle length stays within bounds even at 0 value
+  const needleLength = Math.min(outerRadius - 5, outerRadius * 0.9) // Keep needle within gauge bounds
+  const needleX = cx + needleLength * Math.cos(-radianAngle)
+  const needleY = cy + needleLength * Math.sin(-radianAngle)
 
   // Get the current performance label
   const currentPerformance = activeSectorIndex >= 0 ? colorData[activeSectorIndex]?.label : ''

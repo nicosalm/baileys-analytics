@@ -104,10 +104,10 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   if (empty) {
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
-        {emptyIcon || <Database className="w-12 h-12 text-gray-400 mb-4" />}
-        <p className="text-gray-900 font-medium mb-1">{emptyMessage}</p>
+        {emptyIcon || <Database className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+        <p className="text-sm font-medium text-gray-500">{emptyMessage}</p>
         {emptySubMessage && (
-          <p className="text-sm text-gray-600">{emptySubMessage}</p>
+          <p className="text-xs text-gray-400 mt-1">{emptySubMessage}</p>
         )}
         {onRetry && (
           <button

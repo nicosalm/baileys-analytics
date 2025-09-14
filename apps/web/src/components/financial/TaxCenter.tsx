@@ -94,6 +94,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         empty={!taxData && !loading}
         loadingMessage="Loading tax data..."
         emptyMessage="No tax data available"
+        emptySubMessage="Select a date range to view tax information"
         minHeight={300}
       >
         <div />
@@ -175,7 +176,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       />
       
       {/* Tax Remittance and Property Details Side by Side */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6">
         {/* Tax Remittance Widget */}
         <TaxRemittanceWidget
           periodStart={filters.dateRange.from}
