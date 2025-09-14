@@ -483,7 +483,7 @@ async function fetchDailyOccupancy(
         const arrivalDate = new Date(booking.arrival);
         const departureDate = new Date(booking.departure);
         
-        if (currentDate >= arrivalDate && currentDate < departureDate) {
+        if (currentDate >= arrivalDate && currentDate <= departureDate) {
           bookedProperties.add(booking.property_id);
         }
       }

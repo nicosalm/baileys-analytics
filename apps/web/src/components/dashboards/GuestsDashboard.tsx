@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
-import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
+import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
-import { Users, UserCheck, Calendar, DollarSign, Info, Star, TrendingUp, BarChart3 } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3 } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
@@ -14,8 +14,7 @@ import { useTips } from '@/hooks/use-tips'
 import { CHART_COLORS, getPlatformColor } from '@/lib/theme'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
-    PieChart, Pie, Cell, Tooltip,
-    Treemap, ResponsiveContainer
+    PieChart, Pie, Cell, Tooltip
 } from 'recharts'
 
 
@@ -37,8 +36,6 @@ export const GuestsDashboard = () => {
 
     const data = rawData?.current || rawData
     const previousData = rawData?.previous || null
-
-    const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
 
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -146,7 +143,7 @@ export const GuestsDashboard = () => {
             width: 250,
             render: (guest: GuestListItem) => {
                 const isRepeat = (guest.periodBookings || guest.bookingCount) > 1
-                const isTop = topPerformers.spenders.some(g => g.id === guest.id)
+                const isTop = topPerformers.spenders.some((g: GuestListItem) => g.id === guest.id)
                 const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
                 
                 return (

@@ -107,18 +107,6 @@ export function PaginatedTable<T extends Record<string, any>>({
     return <LoadingState message="Loading data..." />
   }
 
-  if (!loading && paginatedData.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <BarChart3 className="w-12 h-12 text-gray-300 mb-4" />
-        <div className="text-lg font-medium">{emptyMessage}</div>
-        {enableSearch && searchTerm && (
-          <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>
-        )}
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4">
       {(enableSearch || enableExport || enableRefresh) && (
@@ -161,144 +149,156 @@ export function PaginatedTable<T extends Record<string, any>>({
         </div>
       )}
 
-      <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                {showRowNumbers && (
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
-                    #
-                  </th>
-                )}
-                {columns.map((column) => (
-                  <th
-                    key={String(column.key)}
-                    className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                      column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
-                    }`}
-                    style={{ width: column.width }}
-                    onClick={() => column.sortable && handleSort(String(column.key))}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>{column.header}</span>
-                      {column.sortable && sortBy === column.key && (
-                        <span className="ml-2">
-                          {sortOrder === 'asc' ? (
-                            <ChevronUp className="w-4 h-4" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
-                          )}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedData.map((item, index) => {
-                const actualIndex = (currentPage - 1) * pageSize + index
-                const rowId = getRowId ? getRowId(item) : actualIndex.toString()
-                const customClassName = rowClassName ? rowClassName(item, actualIndex) : ''
-
-                return (
-                  <tr
-                    key={rowId}
-                    className={`hover:bg-gray-50 transition-all ${
-                      onRowClick ? 'cursor-pointer' : ''
-                    } ${customClassName}`}
-                    onClick={() => onRowClick?.(item, actualIndex)}
-                  >
+      {!loading && paginatedData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 text-gray-500 border rounded-lg bg-white">
+          <BarChart3 className="w-12 h-12 text-gray-300 mb-4" />
+          <div className="text-lg font-medium">{emptyMessage}</div>
+          {enableSearch && searchTerm && (
+            <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
                     {showRowNumbers && (
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {actualIndex + 1}
-                      </td>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                        #
+                      </th>
                     )}
                     {columns.map((column) => (
-                      <td
-                        key={`${rowId}-${String(column.key)}`}
-                        className="px-4 py-3 text-sm text-gray-900"
+                      <th
+                        key={String(column.key)}
+                        className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                          column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
+                        }`}
                         style={{ width: column.width }}
+                        onClick={() => column.sortable && handleSort(String(column.key))}
                       >
-                        {getCellValue(item, column)}
-                      </td>
+                        <div className="flex items-center justify-between">
+                          <span>{column.header}</span>
+                          {column.sortable && sortBy === column.key && (
+                            <span className="ml-2">
+                              {sortOrder === 'asc' ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </span>
+                          )}
+                        </div>
+                      </th>
                     ))}
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedData.map((item, index) => {
+                    const actualIndex = (currentPage - 1) * pageSize + index
+                    const rowId = getRowId ? getRowId(item) : actualIndex.toString()
+                    const customClassName = rowClassName ? rowClassName(item, actualIndex) : ''
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-600">
-            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} results
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronsLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center space-x-1">
-              {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                let pageNum: number
-                if (totalPages <= 5) {
-                  pageNum = i + 1
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i
-                } else {
-                  pageNum = currentPage - 2 + i
-                }
-
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-1 rounded ${
-                      currentPage === pageNum
-                        ? 'bg-blue-600 text-white'
-                        : 'hover:bg-gray-100'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                )
-              })}
+                    return (
+                      <tr
+                        key={rowId}
+                        className={`hover:bg-gray-50 transition-all ${
+                          onRowClick ? 'cursor-pointer' : ''
+                        } ${customClassName}`}
+                        onClick={() => onRowClick?.(item, actualIndex)}
+                      >
+                        {showRowNumbers && (
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            {actualIndex + 1}
+                          </td>
+                        )}
+                        {columns.map((column) => (
+                          <td
+                            key={`${rowId}-${String(column.key)}`}
+                            className="px-4 py-3 text-sm text-gray-900"
+                            style={{ width: column.width }}
+                          >
+                            {getCellValue(item, column)}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronsRight className="w-4 h-4" />
-            </button>
           </div>
-        </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
+              <div className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} results
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronsLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center space-x-1">
+                  {[...Array(Math.min(5, totalPages))].map((_, i) => {
+                    let pageNum: number
+                    if (totalPages <= 5) {
+                      pageNum = i + 1
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i
+                    } else {
+                      pageNum = currentPage - 2 + i
+                    }
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1 rounded ${
+                          currentPage === pageNum
+                            ? 'bg-blue-600 text-white'
+                            : 'hover:bg-gray-100'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronsRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
