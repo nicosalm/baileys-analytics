@@ -21,33 +21,53 @@ export const AuthCallback = () => {
         const code = searchParams.get('code')
         const state = searchParams.get('state')
         
-        if (code && state) {
+        // Check if this is an OwnerRez OAuth callback (has both code and state)
+        // OwnerRez callbacks have UUID state tokens
+        if (code && state && state.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
           try {
+            // first ensure we have a session
+            const { data: { session } } = await supabase.auth.getSession()
+            
             const { api } = await import('@/lib/api')
+            
+            // if we have a session, set the token before making the oauth callback
+            if (session) {
+              api.setAccessToken(session.access_token)
+            }
+            
             const result = await api.oauth.callback(code, state)
             if (result.success) {
               setStatus('success')
               setMessage('Successfully connected to OwnerRez!')
               
+              // refresh user to get updated connection status
               await refreshUser()
               
-              // trigger full historical sync if needed
-              if (result.data?.initialSync?.requiresFullSync) {
-                // fire and forget - don't wait for it to complete
-                api.request('/initial-sync/full', { method: 'POST' }).catch(() => {
-                  console.log('Full sync will run in background')
-                })
-              }
+              // wait a moment to ensure auth context updates
+              await new Promise(resolve => setTimeout(resolve, 500))
               
-              setTimeout(() => {
-                window.location.href = '/dashboard/overview'
-              }, 1500)
+              // ensure we have a session after oauth
+              const { data: { session: currentSession } } = await supabase.auth.getSession()
+              
+              if (currentSession) {
+                // we have a session, redirect to dashboard
+                setTimeout(() => {
+                  window.location.href = '/dashboard/overview'
+                }, 1500)
+              } else {
+                // no session, redirect to login with success message
+                setMessage('OwnerRez connected! Please log in to continue.')
+                setTimeout(() => {
+                  navigate('/login?oauth=success')
+                }, 2000)
+              }
             } else {
               setStatus('error')
               setMessage(result.error || 'Failed to connect to OwnerRez')
               setTimeout(() => navigate('/dashboard/settings'), 3000)
             }
           } catch (err) {
+            console.error('OAuth callback error:', err)
             setStatus('error')
             setMessage('Failed to complete OAuth connection')
             setTimeout(() => navigate('/dashboard/settings'), 3000)
@@ -59,9 +79,26 @@ export const AuthCallback = () => {
         const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
         
         if (error) {
-          setStatus('error')
-          setMessage(errorDescription || 'Authentication failed')
-          setTimeout(() => navigate('/login'), 3000)
+          // Handle flow_state_not_found specifically - this often happens after OAuth
+          if (error === 'flow_state_not_found') {
+            // Check if user is already authenticated
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+              // User is authenticated, redirect to dashboard
+              setStatus('success')
+              setMessage('Already authenticated, redirecting...')
+              setTimeout(() => navigate('/dashboard/overview'), 1000)
+            } else {
+              // User needs to log in
+              setStatus('error')
+              setMessage('Session expired. Please log in again.')
+              setTimeout(() => navigate('/login'), 2000)
+            }
+          } else {
+            setStatus('error')
+            setMessage(errorDescription || 'Authentication failed')
+            setTimeout(() => navigate('/login'), 3000)
+          }
           return
         }
 

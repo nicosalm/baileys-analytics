@@ -34,7 +34,7 @@ import { validation } from './routes/validation';
 import { sync } from './routes/sync';
 import { oauth } from './routes/oauth';
 import { webhooks } from './routes/webhooks';
-import { initialSync } from './routes/initial-sync';
+import { initialSyncChunked } from './routes/initial-sync-chunked';
 import { health } from './routes/health';
 import { scheduled } from './scheduled';
 import { waitlist } from './routes/waitlist';
@@ -840,7 +840,7 @@ app.route('/api/validation', validation);
 app.route('/api/sync', sync);
 app.route('/api/oauth', oauth);
 app.route('/api/webhooks', webhooks);
-app.route('/api/initial-sync', initialSync);
+app.route('/api/initial-sync-chunked', initialSyncChunked);
 // debug routes (dev only)
 app.route('/api/debug', debug);
 

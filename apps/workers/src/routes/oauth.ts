@@ -6,13 +6,40 @@ const oauth = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string
 
 oauth.get('/initiate', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
+  const user = c.get('user');
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  
+  // create a secure state token with expiration
+  const stateData = {
+    tenantId,
+    userId: user.id,
+    timestamp: Date.now(),
+    nonce: crypto.randomUUID()
+  };
+  
+  // store state in database for validation
+  const stateToken = crypto.randomUUID();
+  const { error: stateError } = await supabase
+    .from('oauth_states')
+    .insert({
+      id: stateToken,
+      tenant_id: tenantId,
+      user_id: user.id,
+      created_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 minutes
+    });
+    
+  if (stateError) {
+    console.error('Failed to create OAuth state:', stateError);
+    return c.json({ error: 'Failed to initiate OAuth flow' }, 500);
+  }
   
   const params = new URLSearchParams({
     client_id: c.env.OWNERREZ_CLIENT_ID,
     redirect_uri: `${c.env.FRONTEND_URL}/auth/callback`,
     response_type: 'code',
     scope: 'properties bookings',
-    state: tenantId
+    state: stateToken
   });
 
   const authUrl = `https://app.ownerrez.com/oauth/authorize?${params}`;
@@ -24,10 +51,73 @@ oauth.post('/callback', async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
   const { code, state } = await c.req.json();
 
-  const tenantId = state;
+  if (!state || !code) {
+    return c.json({ error: 'Missing required parameters' }, 400);
+  }
   
-  if (!tenantId) {
-    return c.json({ error: 'Invalid state parameter' }, 400);
+  // validate state token from database
+  const { data: oauthState, error: stateError } = await supabase
+    .from('oauth_states')
+    .select('tenant_id, user_id, expires_at')
+    .eq('id', state)
+    .single();
+    
+  if (stateError || !oauthState) {
+    return c.json({ error: 'Invalid or expired state token' }, 400);
+  }
+  
+  // check expiration
+  if (new Date(oauthState.expires_at) < new Date()) {
+    // clean up expired token
+    await supabase.from('oauth_states').delete().eq('id', state);
+    return c.json({ error: 'State token expired' }, 400);
+  }
+  
+  // clean up used state token
+  await supabase.from('oauth_states').delete().eq('id', state);
+  
+  const tenantId = oauthState.tenant_id;
+  
+  // validate tenant exists with retry for race condition
+  let tenant = null;
+  let retries = 3;
+  
+  while (retries > 0 && !tenant) {
+    const { data } = await supabase
+      .from('tenants')
+      .select('id, user_id')
+      .eq('id', tenantId)
+      .single();
+      
+    if (data) {
+      tenant = data;
+    } else if (retries > 1) {
+      // wait a bit for trigger to complete
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      retries--;
+    } else {
+      // last retry - try to create tenant if it doesn't exist
+      const { data } = await supabase.auth.admin.getUserById(oauthState.user_id);
+      if (data?.user) {
+        const { data: createdTenant } = await supabase
+          .from('tenants')
+          .insert({
+            id: tenantId,
+            user_id: oauthState.user_id,
+            email: data.user.email || '',
+            company_name: 'My Company',
+            ownerrez_connected: false
+          })
+          .select()
+          .single();
+        tenant = createdTenant;
+      }
+      retries--;
+    }
+  }
+    
+  if (!tenant) {
+    return c.json({ error: 'Tenant not found' }, 400);
   }
 
   try {
@@ -127,74 +217,23 @@ oauth.post('/callback', async (c) => {
       }
     }
 
-    // trigger initial property sync only (full sync happens separately to avoid timeout)
-    try {
-      const { OwnerRezService } = await import('../services/ownerrez');
-      const ownerRez = new OwnerRezService(tokenData.access_token);
-      
-      const properties = await ownerRez.fetchProperties();
-      
-      for (const property of properties) {
-        const { error } = await supabase
-          .from('properties')
-          .upsert({
-            tenant_id: tenantId,
-            ownerrez_id: property.id,
-            name: property.name,
-            address: property.address?.street1 || property.address,
-            city: property.address?.city,
-            state: property.address?.state,
-            postal_code: property.address?.postal_code,
-            bedrooms: property.bedrooms || 0,
-            bathrooms: property.bathrooms || 0,
-            max_guests: property.max_guests || 0,
-            active: property.active !== false,
-            latitude: property.latitude,
-            longitude: property.longitude,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'tenant_id,ownerrez_id',
-            ignoreDuplicates: false
-          });
-        
-        if (error) {
-          console.error('Failed to upsert property:', error);
-        }
-      }
-      
-      await supabase
-        .from('sync_status')
-        .upsert({
-          tenant_id: tenantId,
-          sync_type: 'initial_properties',
-          last_sync: new Date().toISOString(),
-          status: 'success',
-          records_synced: properties.length
-        })
-        .eq('tenant_id', tenantId)
-        .eq('sync_type', 'initial_properties');
-      
-      // queue full historical sync to run in background
-      // this will be triggered by the frontend after oauth completes
-      return c.json({ 
-        success: true, 
-        initialSync: {
-          triggered: true,
-          propertiesSynced: properties.length,
-          message: 'Properties synced. Full 10-year history sync will run in background.',
-          requiresFullSync: true
-        }
+    // Mark that initial sync is needed
+    await supabase
+      .from('sync_status')
+      .upsert({
+        tenant_id: tenantId,
+        sync_type: 'initial_sync_needed',
+        last_sync: new Date().toISOString(),
+        status: 'pending',
+        records_synced: 0
+      }, {
+        onConflict: 'tenant_id,sync_type'
       });
-    } catch (syncError) {
-      // don't fail oauth if initial sync fails
-      return c.json({ 
-        success: true, 
-        initialSync: {
-          triggered: false,
-          error: 'Initial sync failed. Please use manual sync.'
-        }
-      });
-    }
+    
+    return c.json({ 
+      success: true,
+      message: 'OwnerRez connected successfully'
+    });
   } catch (error) {
     return c.json({ 
       error: error instanceof Error ? error.message : 'OAuth callback failed' 

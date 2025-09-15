@@ -23,10 +23,26 @@ export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { us
 		.from('tenants')
 		.select('id')
 		.eq('user_id', user.id)
-		.single();
+		.maybeSingle();
 	
 	if (tenant) {
 		c.set('tenantId', tenant.id);
+	} else {
+		// create tenant if it doesn't exist
+		const { data: newTenant } = await supabase
+			.from('tenants')
+			.insert({
+				user_id: user.id,
+				email: user.email || '',
+				company_name: 'My Company',
+				ownerrez_connected: false
+			})
+			.select('id')
+			.single();
+			
+		if (newTenant) {
+			c.set('tenantId', newTenant.id);
+		}
 	}
 
 	await next();

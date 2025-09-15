@@ -14,6 +14,8 @@ import { api } from '@/lib/api'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { InitialSyncModal } from '@/components/InitialSyncModal'
+import { useState, useEffect } from 'react'
 
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -103,6 +105,28 @@ const DashboardTabs = () => {
 export const DashboardLayout = () => {
   const { state, logout } = useAuth()
   const navigate = useNavigate()
+  const [showInitialSync, setShowInitialSync] = useState(false)
+  const [syncChecked, setSyncChecked] = useState(false)
+
+  useEffect(() => {
+    // Check if initial sync is needed when user has OwnerRez connection
+    const checkSyncStatus = async () => {
+      if (state.status === 'authenticated' && state.user.hasOwnerRezConnection && !syncChecked) {
+        setSyncChecked(true)
+        try {
+          const result = await api.request<{ needed: boolean; completed: boolean }>(
+            '/initial-sync-chunked/status'
+          )
+          if (result.success && result.data.needed && !result.data.completed) {
+            setShowInitialSync(true)
+          }
+        } catch (error) {
+          console.error('Failed to check sync status:', error)
+        }
+      }
+    }
+    checkSyncStatus()
+  }, [state, syncChecked])
 
   if (state.status !== 'authenticated') return null
 
@@ -159,8 +183,10 @@ export const DashboardLayout = () => {
   }
 
   return (
-    <DashboardProvider>
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
+    <>
+      {showInitialSync && <InitialSyncModal onComplete={() => setShowInitialSync(false)} />}
+      <DashboardProvider>
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
           <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-6 py-4">
               <div className="flex justify-between items-center">
@@ -210,6 +236,7 @@ export const DashboardLayout = () => {
 
           <Footer />
         </div>
-    </DashboardProvider>
+      </DashboardProvider>
+    </>
   )
 }

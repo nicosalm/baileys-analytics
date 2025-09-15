@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
@@ -8,6 +8,7 @@ import { BRAND } from '@/constants'
 
 export const Login = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { login, state } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
@@ -15,6 +16,15 @@ export const Login = () => {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const hasShownSuccessToast = useRef(false)
+  const hasShownOAuthSuccess = useRef(false)
+  
+  // check for oauth success message
+  useEffect(() => {
+    if (searchParams.get('oauth') === 'success' && !hasShownOAuthSuccess.current) {
+      addToast('success', 'OwnerRez connected successfully! Please log in to continue.')
+      hasShownOAuthSuccess.current = true
+    }
+  }, [searchParams, addToast])
   
   // redirect when authentication state changes
   useEffect(() => {

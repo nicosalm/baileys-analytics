@@ -1,25 +1,22 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
-import { useSyncStatus, manualSync, historicalSync, syncGuestDetails } from '@/hooks/use-api'
+import { useSyncStatus } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
+import { InitialSyncModal } from '@/components/InitialSyncModal'
 import { 
   RefreshCw, AlertCircle, Check, Link2, Link2Off,
-  Building2, Loader2, UserCheck, Clock, Database, Users, Calendar, Webhook
+  Building2, Clock, Database, Users, Calendar, Webhook
 } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { ConfirmModal } from '@/components/ConfirmModal'
 
-type SyncState =
-  | { type: 'idle' }
-  | { type: 'syncing'; mode: 'recent' | 'historical' | 'guest-details' }
-  | { type: 'complete' }
 
 export const IntegrationsTab = () => {
   const { state, refreshUser } = useAuth()
   const { addToast } = useToast()
-  const [syncState, setSyncState] = useState<SyncState>({ type: 'idle' })
+  const [showInitialSync, setShowInitialSync] = useState(false)
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   
@@ -66,69 +63,19 @@ export const IntegrationsTab = () => {
     }
   }
   
-  const handleRecentSync = async () => {
-    setSyncState({ type: 'syncing', mode: 'recent' })
+  const handleManualSync = async () => {
+    // Reset the sync status to trigger a fresh sync
     try {
-      const result = await manualSync()
+      const result = await api.request('/initial-sync-chunked/reset', {
+        method: 'POST'
+      })
       if (result.success) {
-        if (result.data?.message) {
-          addToast('info', result.data.message)
-        } else if (result.data?.bookingsSynced > 0) {
-          addToast('success', `Synced ${result.data.bookingsSynced} bookings from ${result.data.propertiesProcessed} properties`)
-        } else {
-          addToast('success', 'Sync completed successfully')
-        }
-        mutate()
+        setShowInitialSync(true)
       } else {
-        addToast('error', result.error || 'Sync failed')
+        addToast('error', 'Failed to initiate sync')
       }
     } catch (error) {
-      addToast('error', 'Sync failed')
-    } finally {
-      setSyncState({ type: 'complete' })
-      setTimeout(() => setSyncState({ type: 'idle' }), 2000)
-    }
-  }
-  
-  const handleHistoricalSync = async () => {
-    setSyncState({ type: 'syncing', mode: 'historical' })
-    try {
-      const result = await historicalSync()
-      if (result.success) {
-        if (result.data?.message) {
-          addToast('info', result.data.message)
-        } else if (result.data?.bookingsSynced > 0) {
-          addToast('success', `Synced ${result.data.bookingsSynced} historical bookings from ${result.data.propertiesProcessed} properties`)
-        } else {
-          addToast('success', 'Historical sync completed successfully')
-        }
-        mutate()
-      } else {
-        addToast('error', result.error || 'Historical sync failed')
-      }
-    } catch (error) {
-      addToast('error', 'Historical sync failed')
-    } finally {
-      setSyncState({ type: 'complete' })
-      setTimeout(() => setSyncState({ type: 'idle' }), 2000)
-    }
-  }
-  
-  const handleGuestDetailsSync = async () => {
-    setSyncState({ type: 'syncing', mode: 'guest-details' })
-    try {
-      const result = await syncGuestDetails()
-      if (result.success) {
-        addToast('success', `Updated ${result.data.guestsUpdated} guest records`)
-        mutate()
-      } else {
-        addToast('error', 'Guest details sync failed')
-      }
-    } catch (error) {
-      addToast('error', 'Guest details sync failed')
-    } finally {
-      setSyncState({ type: 'complete' })
-      setTimeout(() => setSyncState({ type: 'idle' }), 2000)
+      addToast('error', 'Failed to initiate sync')
     }
   }
   
@@ -235,75 +182,24 @@ export const IntegrationsTab = () => {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-sm text-green-800">
                       <span className="font-medium">✓ Real-time webhooks active</span> - Your data automatically syncs when changes occur in OwnerRez.
-                      Initial connection synced 10 years of historical data.
+                      Initial connection synced 3 years of historical data.
                     </p>
                   </div>
                 </div>
                 
-                {/* only show manual sync in development */}
-                {import.meta.env.DEV && (
-                  <>
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Recovery Options (Dev Only)</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Manual Sync</h3>
                 <div className="flex flex-wrap gap-3">
                   <button
-                    onClick={handleRecentSync}
-                    disabled={syncState.type === 'syncing'}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleManualSync}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
                   >
-                    {syncState.type === 'syncing' && syncState.mode === 'recent' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4" />
-                    )}
-                    Recovery Sync (7 days)
+                    <RefreshCw className="w-4 h-4" />
+                    Re-sync All Data (3 years)
                   </button>
-                  
-                  <button
-                    onClick={handleHistoricalSync}
-                    disabled={syncState.type === 'syncing'}
-                    className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {syncState.type === 'syncing' && syncState.mode === 'historical' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Clock className="w-4 h-4" />
-                    )}
-                    Full Re-sync (10 years)
-                  </button>
-                  
-                  <button
-                    onClick={handleGuestDetailsSync}
-                    disabled={syncState.type === 'syncing'}
-                    className="flex items-center gap-2 px-4 py-2 bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {syncState.type === 'syncing' && syncState.mode === 'guest-details' ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <UserCheck className="w-4 h-4" />
-                    )}
-                    Sync Guest Details
-                  </button>
+                  <p className="text-xs text-gray-500 w-full mt-2">
+                    This will re-run the initial sync process, refreshing all properties and bookings from the last 3 years.
+                  </p>
                 </div>
-                  </>
-                )}
-                
-                {syncState.type === 'syncing' && (
-                  <div className="mt-4 p-3 bg-blue-50 text-blue-700 rounded-lg flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">
-                      {syncState.mode === 'recent' && 'Syncing recent bookings...'}
-                      {syncState.mode === 'historical' && 'Re-syncing 10 years of historical data (this may take several minutes)...'}
-                      {syncState.mode === 'guest-details' && 'Updating guest contact information...'}
-                    </span>
-                  </div>
-                )}
-                
-                {syncState.type === 'complete' && (
-                  <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg flex items-center gap-2">
-                    <Check className="w-4 h-4" />
-                    <span className="text-sm">Sync completed successfully</span>
-                  </div>
-                )}
               </div>
             </>
           )}
@@ -319,7 +215,7 @@ export const IntegrationsTab = () => {
                     </p>
                     <p className="text-sm text-amber-700">
                       Connect your OwnerRez account to start syncing property and booking data. 
-                      Initial connection will sync 10 years of historical data and enable real-time webhook updates.
+                      Initial connection will sync 3 years of historical data and enable real-time webhook updates.
                     </p>
                   </div>
                 </div>
@@ -356,6 +252,15 @@ export const IntegrationsTab = () => {
         variant="danger"
         isLoading={isDisconnecting}
       />
+      {showInitialSync && (
+        <InitialSyncModal 
+          onComplete={() => {
+            setShowInitialSync(false)
+            mutate()
+            addToast('success', 'Data sync completed successfully')
+          }}
+        />
+      )}
     </div>
   )
 }

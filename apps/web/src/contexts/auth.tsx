@@ -33,25 +33,75 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkOwnerRezConnection = async (userId: string): Promise<boolean> => {
     try {
-      const { data: tenant } = await supabase
+      const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
         .select('id')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
       
-      if (tenant) {
+      if (!tenantError && tenant) {
         const { data: oauthToken } = await supabase
           .from('oauth_tokens')
           .select('id')
           .eq('tenant_id', tenant.id)
           .eq('provider', 'ownerrez')
-          .single()
+          .maybeSingle()
         
         return !!oauthToken
       }
       return false
     } catch {
       return false
+    }
+  }
+
+  const ensureTenantExists = async (userId: string, email: string | undefined): Promise<string | null> => {
+    if (!email) return null
+    
+    try {
+      // check if tenant exists
+      const { data: existingTenant } = await supabase
+        .from('tenants')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+        
+      if (existingTenant) {
+        return existingTenant.id
+      }
+      
+      // create tenant if it doesn't exist
+      const { data: newTenant, error: insertError } = await supabase
+        .from('tenants')
+        .insert({
+          user_id: userId,
+          email: email,
+          company_name: 'My Company',
+          ownerrez_connected: false
+        })
+        .select('id')
+        .single()
+        
+      if (insertError) {
+        // maybe it was created by another process, try to fetch again
+        const { data: retryTenant } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle()
+          
+        if (retryTenant) {
+          return retryTenant.id
+        }
+        
+        console.error('Failed to create tenant:', insertError)
+        return null
+      }
+      
+      return newTenant?.id || null
+    } catch (err) {
+      console.error('Error ensuring tenant exists:', err)
+      return null
     }
   }
 
@@ -70,11 +120,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.user && data.session) {
         api.setAccessToken(data.session.access_token)
         
+        // ensure tenant exists for this user
+        await ensureTenantExists(data.user.id, data.user.email)
+        
         let hasOwnerRezConnection = data.user.user_metadata?.has_ownerrez_connection || false
         
         if (!hasOwnerRezConnection) {
           hasOwnerRezConnection = await checkOwnerRezConnection(data.user.id)
         }
+        
         
         const appUser: AppUser = {
           ...data.user,
@@ -100,6 +154,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (email: string, password: string): Promise<boolean> => {
     try {
+      // sign out any existing user first to prevent session mixup
+      const { data: { session: existingSession } } = await supabase.auth.getSession()
+      if (existingSession) {
+        await supabase.auth.signOut()
+        api.setAccessToken(null)
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -121,6 +182,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (data.user && data.session) {
         api.setAccessToken(data.session.access_token)
         
+        // ensure tenant exists for new user
+        const tenantId = await ensureTenantExists(data.user.id, data.user.email)
+        
         let hasOwnerRezConnection = data.user.user_metadata?.has_ownerrez_connection || false
         
         if (!hasOwnerRezConnection) {
@@ -131,7 +195,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...data.user,
           companyName: data.user.user_metadata?.company_name,
           hasOwnerRezConnection,
-          tenantId: data.user.user_metadata?.tenant_id
+          tenantId: tenantId || data.user.user_metadata?.tenant_id
         }
         
         setState({
@@ -187,10 +251,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshUser = async () => {
     try {
+      // always clear token first to prevent using stale tokens
+      api.setAccessToken(null)
+      
       const { data: { session } } = await supabase.auth.getSession()
       
       if (session) {
         api.setAccessToken(session.access_token)
+        
+        // ensure tenant exists
+        const tenantId = await ensureTenantExists(session.user.id, session.user.email)
         
         let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
         
@@ -202,7 +272,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...session.user,
           companyName: session.user.user_metadata?.company_name,
           hasOwnerRezConnection,
-          tenantId: session.user.user_metadata?.tenant_id
+          tenantId: tenantId || session.user.user_metadata?.tenant_id
         }
         
         setState({
@@ -223,14 +293,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     refreshUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // only react to sign out events from onAuthStateChange
-      // sign in is handled by the login function itself to avoid race conditions
+      console.log('Auth state change:', event, session?.user?.email)
+      
       if (event === 'SIGNED_OUT') {
         api.setAccessToken(null)
         setState({ status: 'unauthenticated' })
+      } else if (event === 'SIGNED_IN' && session) {
+        // handle new sign in (including after signup)
+        api.setAccessToken(session.access_token)
+        
+        // ensure tenant exists
+        const tenantId = await ensureTenantExists(session.user.id, session.user.email)
+        
+        let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
+        
+        if (!hasOwnerRezConnection) {
+          hasOwnerRezConnection = await checkOwnerRezConnection(session.user.id)
+        }
+        
+        const appUser: AppUser = {
+          ...session.user,
+          companyName: session.user.user_metadata?.company_name,
+          hasOwnerRezConnection,
+          tenantId: tenantId || session.user.user_metadata?.tenant_id
+        }
+        
+        setState({
+          status: 'authenticated',
+          user: appUser,
+          session
+        })
       } else if (event === 'TOKEN_REFRESHED' && session) {
         // update token when refreshed
         api.setAccessToken(session.access_token)
+        
+        // ensure tenant exists
+        await ensureTenantExists(session.user.id, session.user.email)
         
         let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
         
