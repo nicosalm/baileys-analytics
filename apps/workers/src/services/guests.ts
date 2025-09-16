@@ -172,6 +172,16 @@ export async function getGuestsData(
       (new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24)
     );
     
+    // Debug logging
+    if (booking.guest_name === 'Katie Schreiber') {
+      console.log('[DEBUG] Katie Schreiber booking:', {
+        name: booking.guest_name,
+        email: booking.guest_email,
+        phone: booking.guest_phone,
+        guestId
+      });
+    }
+    
     if (!guestPeriodMap.has(guestId)) {
       guestPeriodMap.set(guestId, {
         name: booking.guest_name,
@@ -326,6 +336,15 @@ export async function getGuestsData(
     const allTimeData = guestAllTimeMap.get(guestId);
     const guestTags = guestTagsMap.get(guestId) || new Set();
     
+    // Debug logging for specific guest
+    if (periodData.name === 'Katie Schreiber') {
+      console.log('[DEBUG] Creating guest list item for Katie:', {
+        name: periodData.name,
+        email: periodData.email,
+        phone: periodData.phone
+      });
+    }
+    
     guestsList.push({
       id: guestId,
       name: periodData.name,
@@ -392,6 +411,19 @@ export async function getGuestsData(
       };
     })
     .sort((a, b) => b.count - a.count);
+  
+  // Debug log sample of final data
+  const sampleGuest = guestsList.find(g => g.name === 'Katie Schreiber');
+  if (sampleGuest) {
+    console.log('[DEBUG] Final Katie Schreiber data:', {
+      name: sampleGuest.name,
+      email: sampleGuest.email,
+      phone: sampleGuest.phone
+    });
+  }
+  
+  console.log('[DEBUG] Total guests with email:', guestsList.filter(g => g.email).length);
+  console.log('[DEBUG] Total guests with phone:', guestsList.filter(g => g.phone).length);
   
   return {
     metrics: {

@@ -63,7 +63,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       
       if (!propertiesResult.success) {
         console.error('Properties sync failed:', propertiesResult)
-        const errorMessage = propertiesResult.data?.error || propertiesResult.error || 'Failed to sync properties'
+        const errorMessage = propertiesResult.error || 'Failed to sync properties'
         
         // check if it's an authentication error
         if (errorMessage.toLowerCase().includes('unauthorized') || errorMessage.toLowerCase().includes('expired')) {

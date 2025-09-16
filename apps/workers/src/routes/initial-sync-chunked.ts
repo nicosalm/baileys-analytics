@@ -502,6 +502,67 @@ initialSyncChunked.post('/guests', async (c) => {
       guestsCount++;
     }
 
+    // After syncing all guests, update bookings with guest email/phone
+    console.log('Updating bookings with guest contact information...');
+    
+    // Get all bookings that might need updating
+    const { data: bookings } = await supabase
+      .from('bookings')
+      .select('id, guest_name, guest_email, guest_phone')
+      .eq('tenant_id', tenantId)
+      .is('guest_email', null)
+      .not('guest_name', 'is', null);
+
+    if (bookings && bookings.length > 0) {
+      console.log(`Found ${bookings.length} bookings to potentially update with guest info`);
+      
+      for (const booking of bookings) {
+        // Try to find the guest by name
+        const { data: matchingGuests } = await supabase
+          .from('guests')
+          .select('email, phone')
+          .eq('tenant_id', tenantId)
+          .eq('full_name', booking.guest_name)
+          .limit(1);
+        
+        if (matchingGuests && matchingGuests.length > 0 && matchingGuests[0].email) {
+          await supabase
+            .from('bookings')
+            .update({
+              guest_email: matchingGuests[0].email,
+              guest_phone: matchingGuests[0].phone
+            })
+            .eq('id', booking.id);
+        }
+      }
+    }
+
+    // Also update bookings that have guest_email but no guest_phone
+    const { data: bookingsWithEmail } = await supabase
+      .from('bookings')
+      .select('id, guest_name, guest_email')
+      .eq('tenant_id', tenantId)
+      .not('guest_email', 'is', null)
+      .is('guest_phone', null);
+
+    if (bookingsWithEmail && bookingsWithEmail.length > 0) {
+      for (const booking of bookingsWithEmail) {
+        const { data: matchingGuests } = await supabase
+          .from('guests')
+          .select('phone')
+          .eq('tenant_id', tenantId)
+          .eq('email', booking.guest_email)
+          .limit(1);
+        
+        if (matchingGuests && matchingGuests.length > 0 && matchingGuests[0].phone) {
+          await supabase
+            .from('bookings')
+            .update({ guest_phone: matchingGuests[0].phone })
+            .eq('id', booking.id);
+        }
+      }
+    }
+
     return c.json({
       success: true,
       guestsCount

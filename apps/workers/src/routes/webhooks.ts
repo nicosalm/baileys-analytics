@@ -324,13 +324,47 @@ async function handleBookingUpdate(
 			? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 			: booking.guest_name || 'Unknown';
 
+		// Try to get email/phone from guests table if not in booking
+		let guestEmail = booking.guest?.email || booking.guest_email;
+		let guestPhone = booking.guest?.phone || booking.guest_phone;
+		
+		if (!guestEmail || !guestPhone) {
+			// Try to find guest by ownerrez_guest_id if available
+			if (booking.guest?.id) {
+				const { data: existingGuest } = await supabase
+					.from('guests')
+					.select('email, phone')
+					.eq('tenant_id', tenantId)
+					.eq('ownerrez_guest_id', booking.guest.id)
+					.single();
+				
+				if (existingGuest) {
+					guestEmail = guestEmail || existingGuest.email;
+					guestPhone = guestPhone || existingGuest.phone;
+				}
+			} else if (guestName && guestName !== 'Unknown') {
+				// Try to find guest by name
+				const { data: existingGuest } = await supabase
+					.from('guests')
+					.select('email, phone')
+					.eq('tenant_id', tenantId)
+					.eq('full_name', guestName)
+					.single();
+				
+				if (existingGuest) {
+					guestEmail = guestEmail || existingGuest.email;
+					guestPhone = guestPhone || existingGuest.phone;
+				}
+			}
+		}
+
 		const bookingData = {
 			tenant_id: tenantId,
 			property_id: property.id,
 			ownerrez_booking_id: booking.id,
 			guest_name: guestName,
-			guest_email: booking.guest?.email || booking.guest_email,
-			guest_phone: booking.guest?.phone || booking.guest_phone,
+			guest_email: guestEmail,
+			guest_phone: guestPhone,
 			arrival: booking.arrival,
 			departure: booking.departure,
 			total_amount: booking.total_amount || 0,

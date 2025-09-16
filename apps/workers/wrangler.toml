@@ -22,10 +22,10 @@ name = "baileys-analytics-api-prod"
 
 [[env.production.kv_namespaces]]
 binding = "CACHE"
-id = "PROD_KV_NAMESPACE_ID"
+id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
-FRONTEND_URL = "https://dashboard.baileys.com"
+FRONTEND_URL = "https://baileys-dashboard.pages.dev"
 
 [env.staging]
 name = "baileys-analytics-api-staging"
