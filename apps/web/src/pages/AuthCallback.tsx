@@ -39,7 +39,6 @@ export const AuthCallback = () => {
             if (result.success) {
               setStatus('success')
               setMessage('Successfully connected to OwnerRez!')
-              console.log('OAuth callback successful, preparing to redirect with sync')
               
               // Store that we need to sync after login
               localStorage.setItem('pendingInitialSync', 'true')
@@ -55,7 +54,6 @@ export const AuthCallback = () => {
               
               if (currentSession) {
                 // we have a session, redirect to dashboard with sync trigger
-                console.log('Has session, redirecting to dashboard with sync=initial')
                 setTimeout(() => {
                   navigate('/dashboard/overview?sync=initial')
                 }, 1500)
@@ -94,7 +92,6 @@ export const AuthCallback = () => {
               if (code) {
                 setStatus('success')
                 setMessage('Connection successful, preparing sync...')
-                console.log('flow_state_not_found but has code, triggering sync')
                 setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1000)
               } else {
                 setStatus('success')

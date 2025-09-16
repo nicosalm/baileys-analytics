@@ -117,10 +117,7 @@ export const DashboardLayout = () => {
     const syncParam = searchParams.get('sync')
     const pendingSync = localStorage.getItem('pendingInitialSync')
     
-    console.log('DashboardLayout mounted, sync param:', syncParam, 'pendingSync:', pendingSync, 'hasOwnerRez:', user.hasOwnerRezConnection)
-    
     if (syncParam === 'initial') {
-      console.log('Setting showInitialSync to true from URL param')
       setShowInitialSync(true)
       // Remove the query parameter to clean up the URL after a short delay
       setTimeout(() => {
@@ -130,7 +127,6 @@ export const DashboardLayout = () => {
       }, 100)
     } else if (pendingSync === 'true' && user.hasOwnerRezConnection) {
       // Handle case where we lost the sync param but still need to sync
-      console.log('Found pending initial sync in localStorage, triggering sync modal')
       localStorage.removeItem('pendingInitialSync')
       setShowInitialSync(true)
     }

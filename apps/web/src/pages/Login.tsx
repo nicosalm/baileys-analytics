@@ -41,13 +41,12 @@ export const Login = () => {
       setLoading(false)
       
       // Check if we need to trigger initial sync after OAuth
+      // Check if we need to trigger initial sync after OAuth
       if (localStorage.getItem('pendingInitialSync') === 'true') {
         // Don't remove from localStorage yet, let Dashboard handle it
-        console.log('Pending initial sync detected, redirecting to dashboard')
-        navigate('/dashboard/overview', { replace: true })
-      } else {
-        navigate('/dashboard/overview', { replace: true })
+        // The dashboard will check localStorage and trigger sync
       }
+      navigate('/dashboard/overview', { replace: true })
     }
   }, [state.status, navigate, loading, addToast])
 
