@@ -194,6 +194,7 @@ export interface GuestListItem {
   id: string
   name: string
   email?: string
+  phone?: string
   firstVisit: string
   lastVisit: string
   bookingCount: number

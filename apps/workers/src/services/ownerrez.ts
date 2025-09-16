@@ -3,6 +3,7 @@ import { OWNERREZ_API } from '../constants';
 export class OwnerRezService {
 	private baseUrl = OWNERREZ_API.BASE_URL;
 	private accessToken?: string;
+	private refreshToken?: string;
 	private clientId?: string;
 	private clientSecret?: string;
 	private username?: string;
@@ -49,6 +50,10 @@ export class OwnerRezService {
 	}
 
 	async fetchProperties(): Promise<any[]> {
+		const params = new URLSearchParams();
+		params.append('include_tags', 'true');
+		params.append('include_fields', 'true');
+
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
 			'Content-Type': 'application/json',
@@ -60,7 +65,7 @@ export class OwnerRezService {
 			headers['Username'] = this.username;
 		}
 
-		const response = await this.fetchWithTimeout(`${this.baseUrl}/properties`, {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/properties?${params.toString()}`, {
 			headers
 		});
 
@@ -68,7 +73,13 @@ export class OwnerRezService {
 			throw new Error(`Failed to fetch properties: ${response.statusText}`);
 		}
 
-		const data = await response.json() as any;
+		let data: any;
+		try {
+			data = await response.json();
+		} catch (e) {
+			console.error('Failed to parse response as JSON:', e);
+			throw new Error('Failed to parse OwnerRez response');
+		}
 		return data.items || [];
 	}
 
@@ -89,6 +100,7 @@ export class OwnerRezService {
 		params.append('include_guest', 'true');
 		params.append('include_charges', 'true');
 		params.append('include_fields', 'true');
+		params.append('include_tags', 'true');
 
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
@@ -137,6 +149,10 @@ export class OwnerRezService {
 	}
 
 	async fetchGuests(bookingIds: string[]): Promise<any[]> {
+		const params = new URLSearchParams();
+		params.append('include_tags', 'true');
+		params.append('include_fields', 'true');
+
 		const headers: Record<string, string> = {
 			'Authorization': this.getAuthHeader(),
 			'Content-Type': 'application/json',
@@ -148,10 +164,47 @@ export class OwnerRezService {
 			headers['Username'] = this.username;
 		}
 
-		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests`, {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests?${params.toString()}`, {
 			method: 'POST',
 			headers,
 			body: JSON.stringify({ booking_ids: bookingIds })
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch guests: ${response.statusText}`);
+		}
+
+		const data = await response.json() as any;
+		return data.items || [];
+	}
+
+	async fetchAllGuests(createdSinceUtc?: string): Promise<any[]> {
+		const params = new URLSearchParams();
+		params.append('include_tags', 'true');
+		params.append('include_fields', 'true');
+		
+		// default to 3 years ago if not specified
+		if (createdSinceUtc) {
+			params.append('created_since_utc', createdSinceUtc);
+		} else {
+			const threeYearsAgo = new Date();
+			threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+			params.append('created_since_utc', threeYearsAgo.toISOString());
+		}
+
+		const headers: Record<string, string> = {
+			'Authorization': this.getAuthHeader(),
+			'Content-Type': 'application/json',
+			'Accept': 'application/json',
+			'User-Agent': 'Baileys-Analytics/1.0'
+		};
+
+		if (this.username && !this.accessToken) {
+			headers['Username'] = this.username;
+		}
+
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests?${params.toString()}`, {
+			headers
 		});
 
 		if (!response.ok) {

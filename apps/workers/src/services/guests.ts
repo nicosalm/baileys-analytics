@@ -15,6 +15,7 @@ export interface GuestListItem {
   id: string;
   name: string;
   email?: string;
+  phone?: string;
   firstVisit: string;
   lastVisit: string;
   bookingCount: number;
@@ -145,6 +146,7 @@ export async function getGuestsData(
   const guestPeriodMap = new Map<string, {
     name: string;
     email?: string;
+    phone?: string;
     bookings: any[];
     totalSpent: number;
     totalNights: number;
@@ -153,6 +155,7 @@ export async function getGuestsData(
   const guestAllTimeMap = new Map<string, {
     name: string;
     email?: string;
+    phone?: string;
     bookings: any[];
     totalSpent: number;
     totalNights: number;
@@ -173,6 +176,7 @@ export async function getGuestsData(
       guestPeriodMap.set(guestId, {
         name: booking.guest_name,
         email: booking.guest_email,
+        phone: booking.guest_phone,
         bookings: [],
         totalSpent: 0,
         totalNights: 0
@@ -201,6 +205,7 @@ export async function getGuestsData(
         guestAllTimeMap.set(guestId, {
           name: booking.guest_name,
           email: booking.guest_email,
+          phone: booking.guest_phone,
           bookings: [],
           totalSpent: 0,
           totalNights: 0,
@@ -260,6 +265,23 @@ export async function getGuestsData(
     .select('booking_id, tag_id')
     .in('booking_id', bookingIds);
   
+  const uniqueGuestEmails = new Set<string>();
+  const uniqueGuestNames = new Set<string>();
+  for (const booking of filteredPeriodBookings) {
+    if (booking.guest_name) uniqueGuestNames.add(booking.guest_name);
+    if (booking.guest_email) uniqueGuestEmails.add(booking.guest_email);
+  }
+  
+  let guestRecords: any[] = [];
+  if (uniqueGuestNames.size > 0 || uniqueGuestEmails.size > 0) {
+    const { data: guests } = await supabase
+      .from('guests')
+      .select('id, full_name, email, guest_tags(tag_id)')
+      .eq('tenant_id', tenantId)
+      .or(`full_name.in.(${Array.from(uniqueGuestNames).join(',')}),email.in.(${Array.from(uniqueGuestEmails).join(',')})`);
+    guestRecords = guests || [];
+  }
+  
   const { data: tags } = await supabase
     .from('tags')
     .select('*')
@@ -273,6 +295,7 @@ export async function getGuestsData(
   }
   
   const guestTagsMap = new Map<string, Set<string>>();
+  
   if (bookingTags) {
     for (const bt of bookingTags) {
       const booking = filteredPeriodBookings.find(b => b.id === bt.booking_id);
@@ -286,6 +309,18 @@ export async function getGuestsData(
     }
   }
   
+  for (const guest of guestRecords) {
+    if (guest.guest_tags && guest.full_name) {
+      const guestId = createGuestId(guest.full_name, guest.email);
+      if (!guestTagsMap.has(guestId)) {
+        guestTagsMap.set(guestId, new Set());
+      }
+      for (const gt of guest.guest_tags) {
+        guestTagsMap.get(guestId)!.add(gt.tag_id);
+      }
+    }
+  }
+  
   const guestsList: GuestListItem[] = [];
   for (const [guestId, periodData] of guestPeriodMap) {
     const allTimeData = guestAllTimeMap.get(guestId);
@@ -295,6 +330,7 @@ export async function getGuestsData(
       id: guestId,
       name: periodData.name,
       email: periodData.email,
+      phone: periodData.phone,
       firstVisit: allTimeData?.firstVisit || periodData.bookings[0].arrival,
       lastVisit: allTimeData?.lastVisit || periodData.bookings[periodData.bookings.length - 1].arrival,
       bookingCount: allTimeData?.bookings.length || periodData.bookings.length,

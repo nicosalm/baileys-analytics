@@ -168,8 +168,15 @@ oauth.post('/callback', async (c) => {
       }
     }
 
+    // calculate proper expiration time based on expires_in from token response
     const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 10);
+    if (tokenData.expires_in) {
+      // expires_in is typically in seconds
+      expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
+    } else {
+      // default to 1 hour if no expiration provided
+      expiresAt.setHours(expiresAt.getHours() + 1);
+    }
 
     const { error: tokenError } = await supabase
       .from('oauth_tokens')
@@ -177,6 +184,7 @@ oauth.post('/callback', async (c) => {
         tenant_id: tenantId,
         provider: 'ownerrez',
         access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token || null,
         token_type: tokenData.token_type || 'bearer',
         scope: tokenData.scope || 'all',
         user_id: ownerrezUserId?.toString() || null,

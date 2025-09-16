@@ -464,8 +464,8 @@ export const GuestsDashboard = () => {
                     noData={!tagChartData || tagChartData.length === 0}
                     noDataMessage="No tag data available"
                 >
-                    <div className="space-y-3">
-                        {tagChartData.slice(0, 8).map((tag: any, index: number) => {
+                    <div className="space-y-3 overflow-y-auto max-h-[280px] pr-2">
+                        {tagChartData.map((tag: any, index: number) => {
                             const maxCount = Math.max(...tagChartData.map((t: any) => t.value))
                             const percentage = (tag.value / maxCount) * 100
                             const totalTags = tagDistribution.reduce((sum: number, t: any) => sum + t.count, 0)

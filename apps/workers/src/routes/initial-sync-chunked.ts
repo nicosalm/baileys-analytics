@@ -7,12 +7,11 @@ const initialSyncChunked = new Hono<{ Bindings: Env; Variables: { user: any; ten
 
 initialSyncChunked.use('/*', authMiddleware);
 
-// Check if initial sync is needed
+// check if initial sync is needed
 initialSyncChunked.get('/status', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
-  // First check if sync has been completed
   const { data: completedSync } = await supabase
     .from('sync_status')
     .select('status, last_sync, metadata')
@@ -28,7 +27,6 @@ initialSyncChunked.get('/status', async (c) => {
     });
   }
 
-  // Check if sync is marked as needed (from manual reset)
   const { data: needsSync } = await supabase
     .from('sync_status')
     .select('status')
@@ -43,7 +41,6 @@ initialSyncChunked.get('/status', async (c) => {
     });
   }
 
-  // Check if OwnerRez is connected but no sync status exists
   const { data: ownerrezToken } = await supabase
     .from('oauth_tokens')
     .select('access_token')
@@ -51,27 +48,42 @@ initialSyncChunked.get('/status', async (c) => {
     .eq('provider', 'ownerrez')
     .single();
 
-  // Only need sync if connected and never synced before
+  // only need sync if connected and never synced before
   return c.json({
     needed: !!ownerrezToken && !completedSync,
     completed: false
   });
 });
 
-// Sync properties (step 1)
+// sync properties (step 1)
 initialSyncChunked.post('/properties', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
-  const { data: ownerrezToken } = await supabase
+  const { data: ownerrezToken, error: tokenError } = await supabase
     .from('oauth_tokens')
-    .select('access_token')
+    .select('access_token, expires_at')
     .eq('tenant_id', tenantId)
     .eq('provider', 'ownerrez')
     .single();
 
+  if (tokenError) {
+    console.error('Error fetching OwnerRez token:', tokenError);
+    return c.json({ error: 'Failed to fetch OwnerRez token' }, 500);
+  }
+
   if (!ownerrezToken?.access_token) {
     return c.json({ error: 'No OwnerRez connection found' }, 400);
+  }
+
+  // check if token expired
+  if (ownerrezToken.expires_at) {
+    const expiresAt = new Date(ownerrezToken.expires_at);
+    const now = new Date();
+    if (expiresAt < now) {
+      console.error('OwnerRez token expired at:', expiresAt.toISOString());
+      return c.json({ error: 'OwnerRez token expired. Please reconnect in Settings.' }, 401);
+    }
   }
 
   const ownerRez = new OwnerRezService(ownerrezToken.access_token);
@@ -80,7 +92,7 @@ initialSyncChunked.post('/properties', async (c) => {
     const properties = await ownerRez.fetchProperties();
     
     for (const property of properties) {
-      await supabase
+      const { data: upsertedProperty, error: propertyError } = await supabase
         .from('properties')
         .upsert({
           tenant_id: tenantId,
@@ -97,7 +109,66 @@ initialSyncChunked.post('/properties', async (c) => {
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'tenant_id,ownerrez_id'
-        });
+        })
+        .select()
+        .single();
+
+      if (propertyError) {
+        console.error(`Failed to upsert property ${property.id}:`, propertyError);
+        continue; // skip to next property
+      }
+
+      if (property.tags && Array.isArray(property.tags) && upsertedProperty) {
+        try {
+          for (const tag of property.tags) {
+            // tags come as strings from OwnerRez API
+            const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+            
+            const { data: existingTags } = await supabase
+              .from('tags')
+              .select('id')
+              .eq('tenant_id', tenantId)
+              .eq('name', tagName);
+
+            let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
+            
+            if (!tagId) {
+              const { data: newTag, error: tagError } = await supabase
+                .from('tags')
+                .insert({
+                  tenant_id: tenantId,
+                  name: tagName,
+                  color: typeof tag === 'object' ? (tag.color || null) : null
+                })
+                .select()
+                .single();
+              
+              if (tagError) {
+                console.error(`Failed to create tag ${tag.name || tag}:`, tagError);
+                continue;
+              }
+              tagId = newTag?.id;
+            }
+
+            if (tagId) {
+              const { error: linkError } = await supabase
+                .from('property_tags')
+                .upsert({
+                  property_id: upsertedProperty.id,
+                  tag_id: tagId
+                }, {
+                  onConflict: 'property_id,tag_id'
+                });
+              
+              if (linkError) {
+                console.error(`Failed to link property to tag:`, linkError);
+              }
+            }
+          }
+        } catch (tagError) {
+          console.error(`Failed to sync tags for property ${property.id}:`, tagError);
+        }
+      }
     }
 
     return c.json({
@@ -107,11 +178,12 @@ initialSyncChunked.post('/properties', async (c) => {
     });
   } catch (error) {
     console.error('Failed to sync properties:', error);
-    return c.json({ error: 'Failed to sync properties' }, 500);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to sync properties';
+    return c.json({ error: errorMessage }, 500);
   }
 });
 
-// Sync bookings for a specific property (step 2 - called multiple times)
+// sync bookings for a specific property (step 2 - called multiple times)
 initialSyncChunked.post('/bookings/:propertyId', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
@@ -128,7 +200,6 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
     return c.json({ error: 'No OwnerRez connection found' }, 400);
   }
 
-  // Get the database property ID
   const { data: property } = await supabase
     .from('properties')
     .select('id')
@@ -143,7 +214,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
   const ownerRez = new OwnerRezService(ownerrezToken.access_token);
   
   try {
-    // Sync 3 years of historical data plus 1 year future
+    // sync 3 years of historical data plus 1 year future
     const startDate = new Date();
     startDate.setFullYear(startDate.getFullYear() - 3);
     const endDate = new Date();
@@ -158,7 +229,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
     let bookingsCount = 0;
     let blocksCount = 0;
 
-    // Process in batches to avoid memory issues
+    // process in batches to avoid memory issues
     const BATCH_SIZE = 50;
     for (let i = 0; i < bookings.length; i += BATCH_SIZE) {
       const batch = bookings.slice(i, i + BATCH_SIZE);
@@ -185,7 +256,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
             ? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
             : booking.guest_name || 'Unknown';
 
-          await supabase
+          const { data: upsertedBooking } = await supabase
             .from('bookings')
             .upsert({
               tenant_id: tenantId,
@@ -204,7 +275,126 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
               updated_at: new Date().toISOString()
             }, {
               onConflict: 'tenant_id,ownerrez_booking_id'
-            });
+            })
+            .select()
+            .single();
+
+          if (booking.tags && Array.isArray(booking.tags) && upsertedBooking) {
+            for (const tag of booking.tags) {
+              // tags come as strings from OwnerRez API
+              const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+              
+              // first ensure tag exists
+              const { data: existingTags } = await supabase
+                .from('tags')
+                .select('id')
+                .eq('tenant_id', tenantId)
+                .eq('name', tagName);
+
+              let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
+              
+              if (!tagId) {
+                // create tag if it doesn't exist
+                const { data: newTag, error: tagError } = await supabase
+                  .from('tags')
+                  .insert({
+                    tenant_id: tenantId,
+                    name: tagName,
+                    color: typeof tag === 'object' ? (tag.color || null) : null
+                  })
+                  .select()
+                  .single();
+                
+                if (tagError) {
+                  console.error(`Failed to create tag "${tagName}":`, tagError);
+                } else {
+                  tagId = newTag?.id;
+                }
+              }
+
+              if (tagId) {
+                await supabase
+                  .from('booking_tags')
+                  .upsert({
+                    booking_id: upsertedBooking.id,
+                    tag_id: tagId
+                  }, {
+                    onConflict: 'booking_id,tag_id'
+                  });
+              }
+            }
+          }
+
+          if (booking.guest?.tags && Array.isArray(booking.guest.tags)) {
+            const { data: existingGuest } = await supabase
+              .from('guests')
+              .select('id')
+              .eq('tenant_id', tenantId)
+              .eq('full_name', guestName)
+              .single();
+
+            let guestId = existingGuest?.id;
+
+            if (!guestId) {
+              const { data: newGuest } = await supabase
+                .from('guests')
+                .insert({
+                  tenant_id: tenantId,
+                  ownerrez_guest_id: booking.guest?.id,
+                  full_name: guestName,
+                  first_name: booking.guest?.first_name,
+                  last_name: booking.guest?.last_name,
+                  email: booking.guest?.email || booking.guest_email,
+                  phone: booking.guest?.phone || booking.guest_phone,
+                  updated_at: new Date().toISOString()
+                })
+                .select()
+                .single();
+              guestId = newGuest?.id;
+            }
+
+            // sync guest tags
+            if (guestId) {
+              for (const tag of booking.guest.tags) {
+                // first ensure tag exists
+                const { data: existingTag } = await supabase
+                  .from('tags')
+                  .select('id')
+                  .eq('tenant_id', tenantId)
+                  .eq('name', tag.name || tag)
+                  .single();
+
+                let tagId = existingTag?.id;
+                
+                if (!tagId) {
+                  // create tag if it doesn't exist
+                  const { data: newTag } = await supabase
+                    .from('tags')
+                    .insert({
+                      tenant_id: tenantId,
+                      name: tag.name || tag,
+                      color: tag.color || null
+                    })
+                    .select()
+                    .single();
+                  tagId = newTag?.id;
+                }
+
+                // link guest to tag
+                if (tagId) {
+                  await supabase
+                    .from('guest_tags')
+                    .upsert({
+                      guest_id: guestId,
+                      tag_id: tagId
+                    }, {
+                      onConflict: 'guest_id,tag_id'
+                    });
+                }
+              }
+            }
+          }
+
           bookingsCount++;
         }
       }
@@ -221,11 +411,112 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
   }
 });
 
-// Mark sync as complete
+// sync all guests (step 3)
+initialSyncChunked.post('/guests', async (c) => {
+  const supabase = createSupabaseClient(c.env);
+  const tenantId = c.get('tenantId');
+
+  const { data: ownerrezToken } = await supabase
+    .from('oauth_tokens')
+    .select('access_token')
+    .eq('tenant_id', tenantId)
+    .eq('provider', 'ownerrez')
+    .single();
+
+  if (!ownerrezToken?.access_token) {
+    return c.json({ error: 'No OwnerRez connection found' }, 400);
+  }
+
+  const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+  
+  try {
+    const guests = await ownerRez.fetchAllGuests();
+    let guestsCount = 0;
+
+    for (const guest of guests) {
+      const fullName = `${guest.first_name || ''} ${guest.last_name || ''}`.trim();
+      const email = guest.email_addresses?.find((e: any) => e.is_default)?.address ||
+                   guest.email_addresses?.[0]?.address;
+      const phone = guest.phones?.find((p: any) => p.is_default)?.number ||
+                   guest.phones?.[0]?.number;
+
+      const { data: upsertedGuest } = await supabase
+        .from('guests')
+        .upsert({
+          ownerrez_guest_id: guest.id,
+          tenant_id: tenantId,
+          first_name: guest.first_name,
+          last_name: guest.last_name,
+          full_name: fullName,
+          email: email,
+          phone: phone,
+          data: guest,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'tenant_id,ownerrez_guest_id'
+        })
+        .select()
+        .single();
+
+      if (guest.tags && Array.isArray(guest.tags) && upsertedGuest) {
+        await supabase
+          .from('guest_tags')
+          .delete()
+          .eq('guest_id', upsertedGuest.id);
+
+        for (const tag of guest.tags) {
+          // tags come as strings from OwnerRez API
+          const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+          
+          const { data: existingTags } = await supabase
+            .from('tags')
+            .select('id')
+            .eq('tenant_id', tenantId)
+            .eq('name', tagName);
+
+          let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
+          
+          if (!tagId) {
+            const { data: newTag } = await supabase
+              .from('tags')
+              .insert({
+                tenant_id: tenantId,
+                name: tagName,
+                color: typeof tag === 'object' ? (tag.color || null) : null
+              })
+              .select()
+              .single();
+            tagId = newTag?.id;
+          }
+
+          if (tagId) {
+            await supabase
+              .from('guest_tags')
+              .insert({
+                guest_id: upsertedGuest.id,
+                tag_id: tagId
+              });
+          }
+        }
+      }
+      guestsCount++;
+    }
+
+    return c.json({
+      success: true,
+      guestsCount
+    });
+  } catch (error) {
+    console.error('Failed to sync guests:', error);
+    return c.json({ error: 'Failed to sync guests' }, 500);
+  }
+});
+
+// mark sync as complete
 initialSyncChunked.post('/complete', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
-  const { totalProperties, totalBookings, totalBlocks } = await c.req.json();
+  const { totalProperties, totalBookings, totalBlocks, totalGuests } = await c.req.json();
 
   await supabase
     .from('sync_status')
@@ -239,6 +530,7 @@ initialSyncChunked.post('/complete', async (c) => {
         properties: totalProperties,
         bookings: totalBookings,
         blocks: totalBlocks,
+        guests: totalGuests || 0,
         completedAt: new Date().toISOString()
       }
     }, {
@@ -248,19 +540,19 @@ initialSyncChunked.post('/complete', async (c) => {
   return c.json({ success: true });
 });
 
-// Reset sync status to allow manual re-sync
+// reset sync status to allow manual re-sync
 initialSyncChunked.post('/reset', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
-  // Delete the completed sync status to allow re-sync
+  // delete the completed sync status to allow re-sync
   await supabase
     .from('sync_status')
     .delete()
     .eq('tenant_id', tenantId)
     .eq('sync_type', 'initial_sync_completed');
 
-  // Mark that initial sync is needed again
+  // mark that initial sync is needed again
   await supabase
     .from('sync_status')
     .upsert({

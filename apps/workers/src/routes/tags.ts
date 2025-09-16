@@ -28,7 +28,8 @@ tags.get('/', async (c) => {
         name,
         color,
         property_tags(count),
-        booking_tags(count)
+        booking_tags(count),
+        guest_tags(count)
       `)
       .eq('tenant_id', tenantId)
       .order('name');
@@ -46,7 +47,7 @@ tags.get('/', async (c) => {
 
       const tagIds = tagsData?.map(t => t.id) || [];
       
-      const [propertyTagsResult, bookingTagsResult] = await Promise.all([
+      const [propertyTagsResult, bookingTagsResult, guestTagsResult] = await Promise.all([
         supabase
           .from('property_tags')
           .select('tag_id', { count: 'exact' })
@@ -55,11 +56,17 @@ tags.get('/', async (c) => {
         supabase
           .from('booking_tags')
           .select('tag_id', { count: 'exact' })
+          .in('tag_id', tagIds),
+        
+        supabase
+          .from('guest_tags')
+          .select('tag_id', { count: 'exact' })
           .in('tag_id', tagIds)
       ]);
 
       const propertyUsage = new Map<string, number>();
       const bookingUsage = new Map<string, number>();
+      const guestUsage = new Map<string, number>();
 
       if (propertyTagsResult.data) {
         propertyTagsResult.data.forEach(pt => {
@@ -73,11 +80,17 @@ tags.get('/', async (c) => {
         });
       }
 
+      if (guestTagsResult.data) {
+        guestTagsResult.data.forEach(gt => {
+          guestUsage.set(gt.tag_id, (guestUsage.get(gt.tag_id) || 0) + 1);
+        });
+      }
+
       const tags: Tag[] = (tagsData || []).map(tag => ({
         id: tag.id,
         name: tag.name,
         color: tag.color || undefined,
-        usageCount: (propertyUsage.get(tag.id) || 0) + (bookingUsage.get(tag.id) || 0)
+        usageCount: (propertyUsage.get(tag.id) || 0) + (bookingUsage.get(tag.id) || 0) + (guestUsage.get(tag.id) || 0)
       }));
 
       return c.json(tags);
@@ -87,7 +100,7 @@ tags.get('/', async (c) => {
       id: row.id,
       name: row.name,
       color: row.color || undefined,
-      usageCount: (row.property_tags?.[0]?.count || 0) + (row.booking_tags?.[0]?.count || 0)
+      usageCount: (row.property_tags?.[0]?.count || 0) + (row.booking_tags?.[0]?.count || 0) + (row.guest_tags?.[0]?.count || 0)
     }));
 
     return c.json(tags);

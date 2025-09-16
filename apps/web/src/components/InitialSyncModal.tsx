@@ -6,12 +6,13 @@ import { CheckCircle, Home, Calendar, Users } from 'lucide-react'
 import { BRAND } from '@/constants'
 
 interface SyncProgress {
-  step: 'checking' | 'properties' | 'bookings' | 'complete'
+  step: 'checking' | 'properties' | 'bookings' | 'guests' | 'complete'
   currentProperty?: number
   totalProperties?: number
   propertiesLoaded?: number
   bookingsLoaded?: number
   blocksLoaded?: number
+  guestsLoaded?: number
 }
 
 interface InitialSyncModalProps {
@@ -61,7 +62,14 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       }>('/initial-sync-chunked/properties', { method: 'POST' })
       
       if (!propertiesResult.success) {
-        throw new Error('Failed to sync properties')
+        console.error('Properties sync failed:', propertiesResult)
+        const errorMessage = propertiesResult.data?.error || propertiesResult.error || 'Failed to sync properties'
+        
+        // check if it's an authentication error
+        if (errorMessage.toLowerCase().includes('unauthorized') || errorMessage.toLowerCase().includes('expired')) {
+          throw new Error('OwnerRez authentication failed. Please reconnect to OwnerRez in Settings.')
+        }
+        throw new Error(errorMessage)
       }
       
       const properties = propertiesResult.data.properties || []
@@ -106,13 +114,36 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         }
       }
       
-      // Step 4: Mark as complete
+      // Step 4: Sync guests
+      setProgress({ 
+        step: 'guests',
+        currentProperty: totalProperties,
+        totalProperties,
+        propertiesLoaded: totalProperties,
+        bookingsLoaded: totalBookings,
+        blocksLoaded: totalBlocks
+      })
+      
+      const guestsResult = await api.request<{
+        success: boolean;
+        guestsCount: number;
+      }>('/initial-sync-chunked/guests', { method: 'POST' })
+      
+      const totalGuests = guestsResult.success ? guestsResult.data.guestsCount : 0
+      
+      setProgress(prev => ({
+        ...prev,
+        guestsLoaded: totalGuests
+      }))
+      
+      // Step 5: Mark as complete
       await api.request('/initial-sync-chunked/complete', {
         method: 'POST',
         body: JSON.stringify({
           totalProperties,
           totalBookings,
-          totalBlocks
+          totalBlocks,
+          totalGuests
         })
       })
       
@@ -139,11 +170,12 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
   const getProgressPercentage = () => {
     if (progress.step === 'checking') return 10
-    if (progress.step === 'properties') return 30
+    if (progress.step === 'properties') return 25
     if (progress.step === 'bookings' && progress.totalProperties) {
-      const propertyProgress = ((progress.currentProperty || 0) / progress.totalProperties) * 60
-      return 30 + propertyProgress
+      const propertyProgress = ((progress.currentProperty || 0) / progress.totalProperties) * 45
+      return 25 + propertyProgress
     }
+    if (progress.step === 'guests') return 85
     if (progress.step === 'complete') return 100
     return 0
   }
@@ -159,6 +191,8 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           return `Syncing bookings (${progress.currentProperty} of ${progress.totalProperties} properties)...`
         }
         return 'Syncing bookings...'
+      case 'guests':
+        return 'Syncing guest information and tags...'
       case 'complete':
         return 'Sync complete!'
       default:
@@ -217,8 +251,11 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           </div>
           
           {/* Stats */}
-          {(progress.propertiesLoaded || progress.bookingsLoaded) && (
-            <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t">
+          {(progress.propertiesLoaded !== undefined || 
+            progress.bookingsLoaded !== undefined || 
+            progress.blocksLoaded !== undefined || 
+            progress.guestsLoaded !== undefined) && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
               {progress.propertiesLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
@@ -246,12 +283,24 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
               {progress.blocksLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
-                    <Users className="w-5 h-5 text-purple-600" />
+                    <Calendar className="w-5 h-5 text-purple-600" />
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
                     {progress.blocksLoaded}
                   </div>
                   <div className="text-xs text-gray-500">Blocks</div>
+                </div>
+              )}
+              
+              {progress.guestsLoaded !== undefined && (
+                <div className="text-center">
+                  <div className="flex justify-center mb-2">
+                    <Users className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {progress.guestsLoaded}
+                  </div>
+                  <div className="text-xs text-gray-500">Guests</div>
                 </div>
               )}
             </div>

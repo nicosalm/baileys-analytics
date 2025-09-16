@@ -174,7 +174,7 @@ async function handleEntityChange(
 }
 
 async function handlePropertyUpdate(supabase: any, tenantId: string, property: any) {
-	const { error } = await supabase
+	const { data: upsertedProperty, error } = await supabase
 		.from('properties')
 		.upsert({
 			tenant_id: tenantId,
@@ -194,10 +194,54 @@ async function handlePropertyUpdate(supabase: any, tenantId: string, property: a
 		}, {
 			onConflict: 'tenant_id,ownerrez_id',
 			ignoreDuplicates: false
-		});
+		})
+		.select()
+		.single();
 	
 	if (error) {
 		console.error('Failed to update property via webhook:', error);
+		return;
+	}
+
+	if (property.tags && Array.isArray(property.tags) && upsertedProperty) {
+		await supabase
+			.from('property_tags')
+			.delete()
+			.eq('property_id', upsertedProperty.id);
+
+		for (const tag of property.tags) {
+			const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+			
+			const { data: existingTags } = await supabase
+				.from('tags')
+				.select('id')
+				.eq('tenant_id', tenantId)
+				.eq('name', tagName);
+
+			let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
+			
+			if (!tagId) {
+				const { data: newTag } = await supabase
+					.from('tags')
+					.insert({
+						tenant_id: tenantId,
+						name: tagName,
+						color: typeof tag === 'object' ? (tag.color || null) : null
+					})
+					.select()
+					.single();
+				tagId = newTag?.id;
+			}
+
+			if (tagId) {
+				await supabase
+					.from('property_tags')
+					.insert({
+						property_id: upsertedProperty.id,
+						tag_id: tagId
+					});
+			}
+		}
 	}
 
 	await supabase
@@ -219,7 +263,6 @@ async function handleBookingUpdate(
 	booking: any,
 	categories?: string[]
 ) {
-	// handle blocks separately from regular bookings
 	if (booking.is_block || booking.type === 'block') {
 		const { data: existingBlock } = await supabase
 			.from('blocks')
@@ -307,15 +350,62 @@ async function handleBookingUpdate(
 			bookingData.status = 'canceled';
 		}
 
-		const { error } = await supabase
+		const { data: upsertedBooking, error } = await supabase
 			.from('bookings')
 			.upsert(bookingData, {
 				onConflict: 'tenant_id,ownerrez_booking_id',
 				ignoreDuplicates: false
-			});
+			})
+			.select()
+			.single();
 		
 		if (error) {
 			console.error('Failed to update booking via webhook:', error);
+			return;
+		}
+
+		if (booking.tags && Array.isArray(booking.tags) && upsertedBooking) {
+			await supabase
+				.from('booking_tags')
+				.delete()
+				.eq('booking_id', upsertedBooking.id);
+
+			for (const tag of booking.tags) {
+				const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+				
+				// ensure tag exists
+				const { data: existingTag } = await supabase
+					.from('tags')
+					.select('id')
+					.eq('tenant_id', tenantId)
+					.eq('name', tagName)
+					.single();
+
+				let tagId = existingTag?.id;
+				
+				if (!tagId) {
+					// create tag if it doesn't exist
+					const { data: newTag } = await supabase
+						.from('tags')
+						.insert({
+							tenant_id: tenantId,
+							name: tagName,
+							color: typeof tag === 'object' ? (tag.color || null) : null
+						})
+						.select()
+						.single();
+					tagId = newTag?.id;
+				}
+
+				if (tagId) {
+					await supabase
+						.from('booking_tags')
+						.insert({
+							booking_id: upsertedBooking.id,
+							tag_id: tagId
+						});
+				}
+			}
 		}
 
 		if (categories?.includes('charge') && booking.charges) {
@@ -381,7 +471,7 @@ async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 			.eq('guest_name', fullName);
 	}
 
-	await supabase
+	const { data: upsertedGuest } = await supabase
 		.from('guests')
 		.upsert({
 			ownerrez_guest_id: guest.id,
@@ -395,7 +485,50 @@ async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 			updated_at: new Date().toISOString()
 		})
 		.eq('ownerrez_guest_id', guest.id)
-		.eq('tenant_id', tenantId);
+		.eq('tenant_id', tenantId)
+		.select()
+		.single();
+
+	if (guest.tags && Array.isArray(guest.tags) && upsertedGuest) {
+		await supabase
+			.from('guest_tags')
+			.delete()
+			.eq('guest_id', upsertedGuest.id);
+
+		for (const tag of guest.tags) {
+			const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+			
+			const { data: existingTags } = await supabase
+				.from('tags')
+				.select('id')
+				.eq('tenant_id', tenantId)
+				.eq('name', tagName);
+
+			let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
+			
+			if (!tagId) {
+				const { data: newTag } = await supabase
+					.from('tags')
+					.insert({
+						tenant_id: tenantId,
+						name: tagName,
+						color: typeof tag === 'object' ? (tag.color || null) : null
+					})
+					.select()
+					.single();
+				tagId = newTag?.id;
+			}
+
+			if (tagId) {
+				await supabase
+					.from('guest_tags')
+					.insert({
+						guest_id: upsertedGuest.id,
+						tag_id: tagId
+					});
+			}
+		}
+	}
 }
 
 async function handleInquiryUpdate(supabase: any, tenantId: string, inquiry: any) {
