@@ -4,7 +4,7 @@ import { useToast } from '@/contexts/toast'
 import { useSyncStatus } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
-import { InitialSyncModal } from '@/components/InitialSyncModal'
+import { useNavigate } from 'react-router-dom'
 import { 
   RefreshCw, AlertCircle, Check, Link2, Link2Off,
   Building2, Clock, Database, Users, Calendar, Webhook
@@ -16,7 +16,7 @@ import { ConfirmModal } from '@/components/ConfirmModal'
 export const IntegrationsTab = () => {
   const { state, refreshUser } = useAuth()
   const { addToast } = useToast()
-  const [showInitialSync, setShowInitialSync] = useState(false)
+  const navigate = useNavigate()
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
   
@@ -70,7 +70,8 @@ export const IntegrationsTab = () => {
         method: 'POST'
       })
       if (result.success) {
-        setShowInitialSync(true)
+        // Navigate to dashboard with sync parameter
+        navigate('/dashboard/overview?sync=initial')
       } else {
         addToast('error', 'Failed to initiate sync')
       }
@@ -252,15 +253,6 @@ export const IntegrationsTab = () => {
         variant="danger"
         isLoading={isDisconnecting}
       />
-      {showInitialSync && (
-        <InitialSyncModal 
-          onComplete={() => {
-            setShowInitialSync(false)
-            mutate()
-            addToast('success', 'Data sync completed successfully')
-          }}
-        />
-      )}
     </div>
   )
 }

@@ -21,10 +21,14 @@ export const Login = () => {
   // check for oauth success message
   useEffect(() => {
     if (searchParams.get('oauth') === 'success' && !hasShownOAuthSuccess.current) {
-      addToast('success', 'OwnerRez connected successfully! Please log in to continue.')
+      addToast('success', 'OwnerRez connected successfully!')
       hasShownOAuthSuccess.current = true
+      // If user is authenticated, they just connected OwnerRez, trigger sync
+      if (state.status === 'authenticated') {
+        navigate('/dashboard/overview?sync=initial', { replace: true })
+      }
     }
-  }, [searchParams, addToast])
+  }, [searchParams, addToast, state.status, navigate])
   
   // redirect when authentication state changes
   useEffect(() => {
@@ -35,7 +39,15 @@ export const Login = () => {
         hasShownSuccessToast.current = true
       }
       setLoading(false)
-      navigate('/dashboard/overview', { replace: true })
+      
+      // Check if we need to trigger initial sync after OAuth
+      if (localStorage.getItem('pendingInitialSync') === 'true') {
+        // Don't remove from localStorage yet, let Dashboard handle it
+        console.log('Pending initial sync detected, redirecting to dashboard')
+        navigate('/dashboard/overview', { replace: true })
+      } else {
+        navigate('/dashboard/overview', { replace: true })
+      }
     }
   }, [state.status, navigate, loading, addToast])
 

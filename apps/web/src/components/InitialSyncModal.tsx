@@ -31,10 +31,13 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
     try {
       // Step 1: Check if sync is needed
       setProgress({ step: 'checking' })
+      console.log('InitialSyncModal: Checking sync status...')
       
       const statusResult = await api.request<{ needed: boolean; completed: boolean }>(
         '/initial-sync-chunked/status'
       )
+      
+      console.log('InitialSyncModal: Status result:', statusResult)
       
       if (!statusResult.success) {
         throw new Error('Failed to check sync status')
@@ -42,6 +45,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       
       if (!statusResult.data.needed || statusResult.data.completed) {
         // Sync not needed or already completed
+        console.log('InitialSyncModal: Sync not needed or already completed, skipping')
         setProgress({ step: 'complete' })
         setTimeout(() => {
           if (onComplete) {

@@ -39,6 +39,10 @@ export const AuthCallback = () => {
             if (result.success) {
               setStatus('success')
               setMessage('Successfully connected to OwnerRez!')
+              console.log('OAuth callback successful, preparing to redirect with sync')
+              
+              // Store that we need to sync after login
+              localStorage.setItem('pendingInitialSync', 'true')
               
               // refresh user to get updated connection status
               await refreshUser()
@@ -50,9 +54,10 @@ export const AuthCallback = () => {
               const { data: { session: currentSession } } = await supabase.auth.getSession()
               
               if (currentSession) {
-                // we have a session, redirect to dashboard
+                // we have a session, redirect to dashboard with sync trigger
+                console.log('Has session, redirecting to dashboard with sync=initial')
                 setTimeout(() => {
-                  window.location.href = '/dashboard/overview'
+                  navigate('/dashboard/overview?sync=initial')
                 }, 1500)
               } else {
                 // no session, redirect to login with success message
@@ -84,10 +89,18 @@ export const AuthCallback = () => {
             // Check if user is already authenticated
             const { data: { session } } = await supabase.auth.getSession()
             if (session) {
-              // User is authenticated, redirect to dashboard
-              setStatus('success')
-              setMessage('Already authenticated, redirecting...')
-              setTimeout(() => navigate('/dashboard/overview'), 1000)
+              // User is authenticated, likely just connected OwnerRez
+              // Check if we just came from OAuth by looking for code parameter
+              if (code) {
+                setStatus('success')
+                setMessage('Connection successful, preparing sync...')
+                console.log('flow_state_not_found but has code, triggering sync')
+                setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1000)
+              } else {
+                setStatus('success')
+                setMessage('Already authenticated, redirecting...')
+                setTimeout(() => navigate('/dashboard/overview'), 1000)
+              }
             } else {
               // User needs to log in
               setStatus('error')

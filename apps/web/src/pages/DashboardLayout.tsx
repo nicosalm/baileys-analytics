@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
-import { useNavigate, Link, useLocation } from 'react-router-dom'
+import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
 import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Compass } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
@@ -105,32 +105,36 @@ const DashboardTabs = () => {
 export const DashboardLayout = () => {
   const { state, logout } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [showInitialSync, setShowInitialSync] = useState(false)
-  const [syncChecked, setSyncChecked] = useState(false)
-
-  useEffect(() => {
-    // Check if initial sync is needed when user has OwnerRez connection
-    const checkSyncStatus = async () => {
-      if (state.status === 'authenticated' && state.user.hasOwnerRezConnection && !syncChecked) {
-        setSyncChecked(true)
-        try {
-          const result = await api.request<{ needed: boolean; completed: boolean }>(
-            '/initial-sync-chunked/status'
-          )
-          if (result.success && result.data.needed && !result.data.completed) {
-            setShowInitialSync(true)
-          }
-        } catch (error) {
-          console.error('Failed to check sync status:', error)
-        }
-      }
-    }
-    checkSyncStatus()
-  }, [state, syncChecked])
 
   if (state.status !== 'authenticated') return null
 
   const { user } = state
+
+  useEffect(() => {
+    // Check if we should show initial sync (from OAuth callback or manual trigger)
+    const syncParam = searchParams.get('sync')
+    const pendingSync = localStorage.getItem('pendingInitialSync')
+    
+    console.log('DashboardLayout mounted, sync param:', syncParam, 'pendingSync:', pendingSync, 'hasOwnerRez:', user.hasOwnerRezConnection)
+    
+    if (syncParam === 'initial') {
+      console.log('Setting showInitialSync to true from URL param')
+      setShowInitialSync(true)
+      // Remove the query parameter to clean up the URL after a short delay
+      setTimeout(() => {
+        const newParams = new URLSearchParams(searchParams)
+        newParams.delete('sync')
+        setSearchParams(newParams, { replace: true })
+      }, 100)
+    } else if (pendingSync === 'true' && user.hasOwnerRezConnection) {
+      // Handle case where we lost the sync param but still need to sync
+      console.log('Found pending initial sync in localStorage, triggering sync modal')
+      localStorage.removeItem('pendingInitialSync')
+      setShowInitialSync(true)
+    }
+  }, [searchParams, setSearchParams, user?.hasOwnerRezConnection])
 
   const handleLogout = async () => {
     await logout()
@@ -184,7 +188,13 @@ export const DashboardLayout = () => {
 
   return (
     <>
-      {showInitialSync && <InitialSyncModal onComplete={() => setShowInitialSync(false)} />}
+      {showInitialSync && (
+        <InitialSyncModal 
+          onComplete={() => {
+            setShowInitialSync(false)
+          }}
+        />
+      )}
       <DashboardProvider>
         <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
           <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
