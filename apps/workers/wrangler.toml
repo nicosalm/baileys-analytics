@@ -15,17 +15,18 @@ enabled = true
 # crons = []  # No scheduled jobs needed with webhook-based syncing
 
 [vars]
-FRONTEND_URL = "https://grub-live-enormously.ngrok-free.app"
+FRONTEND_URL = "http://localhost:5173"
+
 
 [env.production]
-name = "baileys-analytics-api-prod"
+name = "baileys-analytics-api-production"
 
 [[env.production.kv_namespaces]]
 binding = "CACHE"
 id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
-FRONTEND_URL = "https://baileysanalytics.com"
+FRONTEND_URL = "https://baileys-dashboard.pages.dev"
 
 [env.staging]
 name = "baileys-analytics-api-staging"
