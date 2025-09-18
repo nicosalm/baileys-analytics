@@ -34,7 +34,19 @@ cd apps/web
 
 # Build the project for production
 echo "📦 Building the project for production..."
-pnpm build
+echo "⚠️  Make sure you have .env.production file with correct values!"
+if [ -f .env.production ]; then
+    # Load env vars from .env.production
+    source .env.production
+    export VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY
+    pnpm build
+else
+    echo "❌ Error: .env.production file not found!"
+    echo "Create apps/web/.env.production with:"
+    echo "  VITE_SUPABASE_URL=https://ojpmtekljijcurgzrses.supabase.co"
+    echo "  VITE_SUPABASE_ANON_KEY=your-key-here"
+    exit 1
+fi
 
 # Deploy using Wrangler Pages
 echo "☁️  Deploying to Cloudflare Pages..."
