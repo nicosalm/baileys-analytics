@@ -13,6 +13,8 @@ build/
 .env
 .env.local
 .env.*.local
+.env.production
+.dev.vars
 
 # IDE
 .vscode/*
@@ -37,15 +39,6 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
-# Azure Functions (deprecated - migrated to CF Workers)
-apps/functions/
-local.settings.json
-.python_packages/
-.funcignore
-bin/
-obj/
-*.azurefunctions
-
 # Claude AI
 .claude/
 
@@ -55,6 +48,3 @@ obj/
 *.bak
 *.backup
 *.old
-diff.txt
-PACKAGES.txt
-setup-local-dev.sh.backup
