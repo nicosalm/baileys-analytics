@@ -138,9 +138,30 @@ export const AuthCallback = () => {
             break
             
           case 'recovery':
-            setStatus('success')
-            setMessage('Email verified! You can now reset your password.')
-            setTimeout(() => navigate('/reset-password'), 2000)
+            // for PKCE flow, exchange the code for a session first
+            const recoveryCode = searchParams.get('code')
+            if (recoveryCode) {
+              try {
+                const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(recoveryCode)
+                if (!exchangeError) {
+                  setStatus('success')
+                  setMessage('Email verified! You can now reset your password.')
+                  setTimeout(() => navigate('/reset-password'), 2000)
+                } else {
+                  setStatus('error')
+                  setMessage('Failed to verify recovery link')
+                  setTimeout(() => navigate('/forgot-password'), 3000)
+                }
+              } catch {
+                setStatus('error')
+                setMessage('Recovery link expired or invalid')
+                setTimeout(() => navigate('/forgot-password'), 3000)
+              }
+            } else {
+              setStatus('success')
+              setMessage('Email verified! You can now reset your password.')
+              setTimeout(() => navigate('/reset-password'), 2000)
+            }
             break
             
           case 'email_change':

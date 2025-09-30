@@ -19,19 +19,22 @@ export const ResetPassword = () => {
   const [tokenValid, setTokenValid] = useState<boolean | null>(null)
   const [checkingToken, setCheckingToken] = useState(true)
 
-  // check if we have a valid recovery token
+  // check if we have a valid recovery session
   useEffect(() => {
-    const checkToken = async () => {
+    const checkRecoverySession = async () => {
       try {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const token = hashParams.get('access_token')
-        const type = hashParams.get('type')
+        // with PKCE flow, check for existing session
+        const { data: { session } } = await supabase.auth.getSession()
         
-        if (!token || type !== 'recovery') {
+        // check if we're in password recovery mode
+        // the auth callback should have already exchanged the code for a session
+        if (session) {
+          // we have a valid session, allow password reset
+          setTokenValid(true)
+        } else {
+          // no session, the link may have expired or been invalid
           setTokenValid(false)
           setError('Invalid or expired reset link. Please request a new one.')
-        } else {
-          setTokenValid(true)
         }
       } catch {
         setTokenValid(false)
@@ -41,7 +44,7 @@ export const ResetPassword = () => {
       }
     }
     
-    checkToken()
+    checkRecoverySession()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {

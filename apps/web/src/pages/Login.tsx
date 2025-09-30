@@ -33,22 +33,19 @@ export const Login = () => {
   // redirect when authentication state changes
   useEffect(() => {
     if (state.status === 'authenticated') {
-      // show success toast only if we just logged in
-      if (loading && !hasShownSuccessToast.current) {
-        addToast('success', 'Welcome back!')
-        hasShownSuccessToast.current = true
-      }
-      setLoading(false)
-      
-      // Check if we need to trigger initial sync after OAuth
-      // Check if we need to trigger initial sync after OAuth
-      if (localStorage.getItem('pendingInitialSync') === 'true') {
-        // Don't remove from localStorage yet, let Dashboard handle it
-        // The dashboard will check localStorage and trigger sync
-      }
+      // navigate to dashboard immediately
       navigate('/dashboard/overview', { replace: true })
     }
-  }, [state.status, navigate, loading, addToast])
+  }, [state.status, navigate])
+  
+  // handle success toast separately
+  useEffect(() => {
+    if (state.status === 'authenticated' && loading && !hasShownSuccessToast.current) {
+      addToast('success', 'Welcome back!')
+      hasShownSuccessToast.current = true
+      setLoading(false)
+    }
+  }, [state.status, loading, addToast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
