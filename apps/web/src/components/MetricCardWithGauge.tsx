@@ -50,8 +50,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
   tooltip,
   trend,
   gauge,
-  onClick,
-  comparisonMode = 'none'
+  onClick
 }) => {
   const numericValue = typeof value === 'number' ? value : parseFloat(value.toString().replace(/[^0-9.-]/g, ''))
   
@@ -88,7 +87,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
             value={numericValue}
             min={gauge.min}
             max={gauge.max}
-            format={format}
+            format={format === 'custom' ? 'number' : format}
             width={180}
             height={120}
           />

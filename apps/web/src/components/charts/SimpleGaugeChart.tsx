@@ -1,5 +1,5 @@
 import React from 'react'
-import { PieChart, Pie, Cell, Label } from 'recharts'
+import { PieChart, Pie, Cell } from 'recharts'
 import { formatCompactCurrency } from '@baileys/utils'
 
 interface SimpleGaugeChartProps {
