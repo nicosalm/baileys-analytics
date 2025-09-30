@@ -115,4 +115,4 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
       )}
     </div>
   )
-}
+} 
