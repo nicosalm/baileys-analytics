@@ -92,9 +92,9 @@ export const Waitlist = () => {
               Baileys Analytics provides comprehensive vacation rental analytics and reporting 
               by integrating with your OwnerRez account. Track revenue, taxes, occupancy, and guest data.
             </p>
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-sm text-amber-800">
-                <strong>🚀 Launching October 2025</strong> - Early access members get 15% off for life!
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>🚀 Limited Early Access</strong> - Be first to try our $1 trial when we launch!
               </p>
             </div>
           </div>
@@ -194,7 +194,7 @@ export const Waitlist = () => {
               </Link>
             </p>
             <p className="text-xs text-gray-500">
-              Full registration will open when we launch in October 2025
+              We'll notify you as soon as early access opens
             </p>
           </div>
         </div>
@@ -219,8 +219,8 @@ export const Waitlist = () => {
             <div className="flex items-start">
               <CheckCircle className="w-6 h-6 text-green-400 mr-3 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold">15% Off Forever</p>
-                <p className="text-sm opacity-90">Lock in lifetime savings as an early supporter</p>
+                <p className="font-semibold">Exclusive $1 Trial Access</p>
+                <p className="text-sm opacity-90">Get first access to our 30-day $1 trial offer</p>
               </div>
             </div>
             

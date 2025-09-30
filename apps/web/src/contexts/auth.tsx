@@ -118,31 +118,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data.user && data.session) {
-        api.setAccessToken(data.session.access_token)
-        
-        // ensure tenant exists for this user
-        await ensureTenantExists(data.user.id, data.user.email)
-        
-        let hasOwnerRezConnection = data.user.user_metadata?.has_ownerrez_connection || false
-        
-        if (!hasOwnerRezConnection) {
-          hasOwnerRezConnection = await checkOwnerRezConnection(data.user.id)
-        }
-        
-        
-        const appUser: AppUser = {
-          ...data.user,
-          companyName: data.user.user_metadata?.company_name,
-          hasOwnerRezConnection,
-          tenantId: data.user.user_metadata?.tenant_id
-        }
-        
-        setState({
-          status: 'authenticated',
-          user: appUser,
-          session: data.session
-        })
-        
+        // the onAuthStateChange listener will handle setting the state
+        // we just return success here
         return true
       }
       return false
@@ -180,30 +157,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data.user && data.session) {
-        api.setAccessToken(data.session.access_token)
-        
-        // ensure tenant exists for new user
-        const tenantId = await ensureTenantExists(data.user.id, data.user.email)
-        
-        let hasOwnerRezConnection = data.user.user_metadata?.has_ownerrez_connection || false
-        
-        if (!hasOwnerRezConnection) {
-          hasOwnerRezConnection = await checkOwnerRezConnection(data.user.id)
-        }
-        
-        const appUser: AppUser = {
-          ...data.user,
-          companyName: data.user.user_metadata?.company_name,
-          hasOwnerRezConnection,
-          tenantId: tenantId || data.user.user_metadata?.tenant_id
-        }
-        
-        setState({
-          status: 'authenticated',
-          user: appUser,
-          session: data.session
-        })
-        
+        // the onAuthStateChange listener will handle setting the state
+        // we just return success here
         return true
       }
       return false
@@ -251,10 +206,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshUser = async () => {
     try {
-      // always clear token first to prevent using stale tokens
-      api.setAccessToken(null)
+      // refresh the session to get latest data
+      const { data: { session }, error } = await supabase.auth.refreshSession()
       
-      const { data: { session } } = await supabase.auth.getSession()
+      if (error) {
+        console.error('Session refresh error:', error)
+        // if refresh fails, try to get existing session
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        
+        if (existingSession) {
+          api.setAccessToken(existingSession.access_token)
+          
+          // ensure tenant exists
+          const tenantId = await ensureTenantExists(existingSession.user.id, existingSession.user.email)
+          
+          let hasOwnerRezConnection = existingSession.user.user_metadata?.has_ownerrez_connection || false
+          
+          if (!hasOwnerRezConnection) {
+            hasOwnerRezConnection = await checkOwnerRezConnection(existingSession.user.id)
+          }
+          
+          const appUser: AppUser = {
+            ...existingSession.user,
+            companyName: existingSession.user.user_metadata?.company_name,
+            hasOwnerRezConnection,
+            tenantId: tenantId || existingSession.user.user_metadata?.tenant_id
+          }
+          
+          setState({
+            status: 'authenticated',
+            user: appUser,
+            session: existingSession
+          })
+        } else {
+          api.setAccessToken(null)
+          setState({ status: 'unauthenticated' })
+        }
+        return
+      }
       
       if (session) {
         api.setAccessToken(session.access_token)
@@ -281,15 +270,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           session
         })
       } else {
+        api.setAccessToken(null)
         setState({ status: 'unauthenticated' })
       }
     } catch (error) {
-      console.error('Auth initialization error:', error)
+      console.error('Auth refresh error:', error)
+      api.setAccessToken(null)
       setState({ status: 'unauthenticated' })
     }
   }
 
   useEffect(() => {
+    // initialize auth by checking for existing session
     refreshUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -299,7 +291,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         api.setAccessToken(null)
         setState({ status: 'unauthenticated' })
       } else if (event === 'SIGNED_IN' && session) {
-        // handle new sign in (including after signup)
+        // handle new sign in
         api.setAccessToken(session.access_token)
         
         // ensure tenant exists
@@ -323,31 +315,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user: appUser,
           session
         })
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        // update token when refreshed
+      } else if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session) {
+        // handle token refresh or user update - just update the token
         api.setAccessToken(session.access_token)
         
-        // ensure tenant exists
-        await ensureTenantExists(session.user.id, session.user.email)
-        
-        let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
-        
-        if (!hasOwnerRezConnection) {
-          hasOwnerRezConnection = await checkOwnerRezConnection(session.user.id)
-        }
-        
-        const appUser: AppUser = {
-          ...session.user,
-          companyName: session.user.user_metadata?.company_name,
-          hasOwnerRezConnection,
-          tenantId: session.user.user_metadata?.tenant_id
-        }
-        
-        setState({
-          status: 'authenticated',
-          user: appUser,
-          session
+        // for token refresh, we don't need to re-check everything
+        // just update the session
+        setState(prevState => {
+          if (prevState.status === 'authenticated') {
+            return {
+              ...prevState,
+              session
+            }
+          }
+          return prevState
         })
+      } else if (event === 'PASSWORD_RECOVERY') {
+        // password recovery mode - user can update their password
+        console.log('Password recovery mode activated')
+      } else if (event === 'INITIAL_SESSION' && session) {
+        // initial session detected but not from a sign in
+        // this can happen when the page loads with an existing session
+        // we don't need to do anything as refreshUser() handles this
+        console.log('Initial session detected')
       }
     })
 

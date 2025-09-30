@@ -101,8 +101,13 @@ export const Signup = () => {
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Start your free trial</h2>
-            <p className="text-gray-600">14 days free. No credit card required.</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Start your $1 trial</h2>
+            <p className="text-gray-600">30 days full access for just $1. Cancel anytime.</p>
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800 font-medium">
+                💳 First month only $1 • Then from $19/mo • Cancel anytime
+              </p>
+            </div>
           </div>
 
           {/* Signup form */}
@@ -207,7 +212,7 @@ export const Signup = () => {
               loadingText="Creating account..."
               className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:shadow-lg transition-all transform hover:scale-[1.02]`}
             >
-              Start free trial
+              Start $1 Trial
             </LoadingButton>
           </form>
 
@@ -253,8 +258,8 @@ export const Signup = () => {
             <div className="flex items-start">
               <CheckCircle className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-semibold mb-1">Scale with confidence</h4>
-                <p className="opacity-90 text-sm">From 1 to 100+ properties, we grow with you</p>
+                <h4 className="font-semibold mb-1">No risk, full access</h4>
+                <p className="opacity-90 text-sm">Complete platform access for 30 days, just $1</p>
               </div>
             </div>
           </div>

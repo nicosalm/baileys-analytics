@@ -16,7 +16,7 @@ Click **"Create Webhook"** and configure:
 
 **Webhook URL:**
 ```
-https://grub-live-enormously.ngrok-free.app/api/webhooks/ownerrez
+https://baileys-analytics-api-production.nicosalm.workers.dev/api/webhooks/ownerrez
 ```
 
 **Authentication Type:** Basic Auth
@@ -70,10 +70,10 @@ If webhooks aren't working:
 
 1. **Check the webhook URL is accessible:**
    ```bash
-   curl -X POST https://grub-live-enormously.ngrok-free.app/api/webhooks/ownerrez \
+   curl -X POST https://baileys-analytics-api-production.nicosalm.workers.dev/api/webhooks/ownerrez \
      -u "***REMOVED***" \
      -H "Content-Type: application/json" \
-     -d '{"action":"webhook_test","user_id":123}'
+     -d '{"action":"webhook_test","user_id":347380287}'
    ```
 
 2. **Check webhook events in the database:**
@@ -90,3 +90,41 @@ If webhooks aren't working:
 
 4. **Force a recovery sync if needed:**
    Use the Recovery Sync button in Settings → Integrations with the "Force Sync" option.
+
+## Deployment Configuration
+
+### Setting Up Webhook Authentication (For Developers)
+
+The webhook endpoint requires Basic Authentication. The credentials must be set as Cloudflare Worker secrets:
+
+1. **Set the webhook username:**
+   ```bash
+   echo 'baileysanalytics' | wrangler secret put OWNERREZ_WEBHOOK_USER --name baileys-analytics-api-production
+   ```
+
+2. **Set the webhook password:**
+   ```bash
+   printf '***REMOVED***' | wrangler secret put OWNERREZ_WEBHOOK_PASSWORD --name baileys-analytics-api-production
+   ```
+
+3. **Verify secrets are set:**
+   ```bash
+   wrangler secret list --name baileys-analytics-api-production
+   ```
+
+4. **Deploy the worker:**
+   ```bash
+   pnpm run deploy:production
+   ```
+
+**Important:** After adding or updating secrets, you must redeploy the worker for changes to take effect.
+
+### Environment Variables Required
+
+The following environment variables must be configured in production:
+- `OWNERREZ_WEBHOOK_USER` - Webhook authentication username (set as secret)
+- `OWNERREZ_WEBHOOK_PASSWORD` - Webhook authentication password (set as secret)
+- `OWNERREZ_CLIENT_ID` - OwnerRez OAuth client ID
+- `OWNERREZ_CLIENT_SECRET` - OwnerRez OAuth client secret
+- `SUPABASE_URL` - Supabase project URL
+- `SUPABASE_SERVICE_KEY` - Supabase service role key
