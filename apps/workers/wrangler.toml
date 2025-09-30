@@ -27,6 +27,8 @@ id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
 FRONTEND_URL = "https://baileys-dashboard.pages.dev"
+# Webhook credentials are stored as secrets via wrangler secret put
+# See setup-webhooks.md for deployment instructions
 
 [env.staging]
 name = "baileys-analytics-api-staging"

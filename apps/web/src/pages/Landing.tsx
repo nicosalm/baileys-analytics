@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
-import { 
-  TrendingUp, BarChart3, PieChart, LineChart, 
+import {
+  TrendingUp, BarChart3, PieChart, LineChart,
   DollarSign, Users, Home,
   ArrowRight, CheckCircle, Sparkles,
   Zap, Shield, Clock, ChevronRight, Compass
@@ -11,34 +11,34 @@ import { useState, useEffect } from 'react'
 import { BRAND } from '@/constants'
 
 // Animated counter component
-const AnimatedCounter = ({ end, duration = 2000, prefix = '', suffix = '', decimals = 0 }: { 
-  end: number; 
-  duration?: number; 
-  prefix?: string; 
+const AnimatedCounter = ({ end, duration = 2000, prefix = '', suffix = '', decimals = 0 }: {
+  end: number;
+  duration?: number;
+  prefix?: string;
   suffix?: string;
   decimals?: number;
 }) => {
   const [count, setCount] = useState(0)
-  
+
   useEffect(() => {
     let startTime: number
     let animationFrame: number
-    
+
     const animate = (timestamp: number) => {
       if (!startTime) startTime = timestamp
       const progress = Math.min((timestamp - startTime) / duration, 1)
-      
+
       setCount(progress * end)
-      
+
       if (progress < 1) {
         animationFrame = requestAnimationFrame(animate)
       }
     }
-    
+
     animationFrame = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(animationFrame)
   }, [end, duration])
-  
+
   return <span>{prefix}{count.toFixed(decimals)}{suffix}</span>
 }
 
@@ -81,28 +81,28 @@ export const Landing = () => {
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 opacity-70" />
-        
+
         {/* Floating shapes for visual interest */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
         <div className="absolute top-40 right-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
         <div className="absolute -bottom-8 left-20 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
-        
+
         <div className="relative max-w-7xl mx-auto px-6 py-32 text-center">
           <div className="mb-8 inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
             <Sparkles className="w-4 h-4 mr-2" />
             Seamlessly connects with OwnerRez
           </div>
-          
+
           <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-gray-900 via-blue-800 to-blue-600 bg-clip-text text-transparent">
             Pull Back the Curtain
             <br />
             <span className="text-5xl md:text-6xl">on Your Rental Revenue</span>
           </h1>
-          
+
           <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
             Stop guessing. Start knowing. Advanced analytics dashboard that transforms your OwnerRez data into actionable insights.
           </p>
-          
+
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/signup" className={`group px-8 py-4 ${BRAND.buttonGradient} text-white rounded-full text-lg font-medium hover:shadow-xl transition-all transform hover:scale-105 flex items-center`}>
@@ -112,7 +112,7 @@ export const Landing = () => {
               <span className="text-gray-500">Be first to know when we launch</span>
             </div>
           )}
-          
+
           {/* Example metrics that could be yours */}
           <div className="mt-20 grid grid-cols-3 gap-8 max-w-3xl mx-auto">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20 text-center">
@@ -183,7 +183,7 @@ export const Landing = () => {
           <h2 className="text-4xl font-bold mb-4">Before & After Baileys</h2>
           <p className="text-xl text-gray-600">See the difference clarity makes</p>
         </div>
-        
+
         <div className="grid md:grid-cols-2 gap-12">
           {/* Before */}
           <div className="relative">
@@ -210,7 +210,7 @@ export const Landing = () => {
               </div>
             </div>
           </div>
-          
+
           {/* After */}
           <div className="relative">
             <div className="absolute -inset-4 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur opacity-25" />
@@ -219,7 +219,7 @@ export const Landing = () => {
               <div className="space-y-4">
                 <div className="flex items-center text-gray-700">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
-                  <span className="font-medium">All data in one beautiful dashboard</span>
+                  <span className="font-medium">All data in one functional dashboard</span>
                 </div>
                 <div className="flex items-center text-gray-700">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-3" />
@@ -246,7 +246,7 @@ export const Landing = () => {
             <h2 className="text-3xl font-bold mb-4">Focus on What Matters: Analytics</h2>
             <p className="text-lg text-gray-600">We supercharge your OwnerRez data with powerful insights</p>
           </div>
-          
+
           <div className="grid md:grid-cols-2 gap-12">
             {/* What Baileys Does */}
             <div>
@@ -277,7 +277,7 @@ export const Landing = () => {
                 </li>
               </ul>
             </div>
-            
+
             {/* What OwnerRez Handles */}
             <div>
               <h3 className="text-xl font-semibold mb-6 text-blue-600 flex items-center">
@@ -308,7 +308,7 @@ export const Landing = () => {
               </ul>
             </div>
           </div>
-          
+
           <div className="mt-12 p-6 bg-blue-50 rounded-xl text-center">
             <p className="text-gray-700">
               <span className="font-semibold">Perfect Partnership:</span> OwnerRez handles operations, Baileys delivers the insights you need to grow.
@@ -324,7 +324,7 @@ export const Landing = () => {
             <h2 className="text-4xl font-bold mb-4">Analytics That Drive Decisions</h2>
             <p className="text-xl text-gray-600">Deep insights from your OwnerRez data, beautifully visualized</p>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             {/* Financial Dashboard */}
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
@@ -336,7 +336,7 @@ export const Landing = () => {
                 Explore metrics <ChevronRight className="w-4 h-4 ml-1" />
               </div>
             </div>
-            
+
             {/* Tax Center */}
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-100 to-green-200 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -347,7 +347,7 @@ export const Landing = () => {
                 Save hours <ChevronRight className="w-4 h-4 ml-1" />
               </div>
             </div>
-            
+
             {/* Guest Analytics */}
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -358,7 +358,7 @@ export const Landing = () => {
                 Boost retention <ChevronRight className="w-4 h-4 ml-1" />
               </div>
             </div>
-            
+
             {/* Property Performance */}
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -369,7 +369,7 @@ export const Landing = () => {
                 Maximize ROI <ChevronRight className="w-4 h-4 ml-1" />
               </div>
             </div>
-            
+
             {/* Seasonal Trends */}
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-teal-100 to-teal-200 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -380,7 +380,7 @@ export const Landing = () => {
                 Fill more nights <ChevronRight className="w-4 h-4 ml-1" />
               </div>
             </div>
-            
+
             {/* Platform Breakdown */}
             <div className="group relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-100 to-pink-200 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -402,7 +402,7 @@ export const Landing = () => {
             <h2 className="text-4xl font-bold mb-4">Built for Data-Driven Property Managers</h2>
             <p className="text-xl opacity-90">Analytics that OwnerRez doesn't provide</p>
           </div>
-          
+
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-5xl font-bold mb-2">
@@ -437,7 +437,7 @@ export const Landing = () => {
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
           <p className="text-xl text-gray-600 mb-4">Start for just $1. No hidden fees, cancel anytime.</p>
-          
+
           {/* Pricing Toggle */}
           <div className="flex justify-center items-center gap-4 mb-12">
             <span className={`font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>Monthly</span>
@@ -454,7 +454,7 @@ export const Landing = () => {
               </span>
             </span>
           </div>
-          
+
           {/* $1 Trial Badge */}
           <div className="max-w-md mx-auto mb-8">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-4 shadow-lg">
@@ -467,7 +467,7 @@ export const Landing = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="grid md:grid-cols-3 gap-8">
             {/* Starter */}
             <div className="relative bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
@@ -500,7 +500,7 @@ export const Landing = () => {
                 Start $1 Trial
               </Link>
             </div>
-            
+
             {/* Professional */}
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur opacity-25" />
@@ -543,7 +543,7 @@ export const Landing = () => {
                 </Link>
               </div>
             </div>
-            
+
             {/* Scale */}
             <div className="relative bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
               <h3 className="text-lg font-semibold mb-4">Scale</h3>
@@ -580,7 +580,7 @@ export const Landing = () => {
               </Link>
             </div>
           </div>
-          
+
           <div className="text-center mt-8 space-y-2">
             <p className="text-sm text-gray-500">{yearlyBilling ? 'Prices shown are billed annually' : 'Save 20% with annual billing'}</p>
             <p className="text-sm text-gray-500">All plans start with $1 first month. Cancel anytime.</p>
@@ -623,7 +623,7 @@ export const Landing = () => {
       </section>
 
       <Footer />
-      
+
       <style>{`
         @keyframes blob {
           0% { transform: translate(0px, 0px) scale(1); }
