@@ -32,6 +32,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
   const refreshPromiseRef = useRef<Promise<void> | null>(null)
   const isInitializedRef = useRef(false)
+  const retryCountRef = useRef<Map<string, number>>(new Map())
+
+  // utility for retry with exponential backoff
+  const retryWithBackoff = async <T,>(
+    fn: () => Promise<T>,
+    operationName: string,
+    maxRetries = 3
+  ): Promise<T | null> => {
+    const currentRetries = retryCountRef.current.get(operationName) || 0
+
+    for (let i = currentRetries; i < maxRetries; i++) {
+      try {
+        retryCountRef.current.set(operationName, i)
+        const result = await fn()
+        retryCountRef.current.delete(operationName)
+        return result
+      } catch (error) {
+        console.warn(`Attempt ${i + 1} failed for ${operationName}:`, error)
+        if (i === maxRetries - 1) {
+          retryCountRef.current.delete(operationName)
+          throw error
+        }
+        // exponential backoff: 1s, 2s, 4s
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000))
+      }
+    }
+    return null
+  }
+
+  // check if session is expired
+  const isSessionExpired = (session: Session | null): boolean => {
+    if (!session) return true
+    if (!session.expires_at) return false
+
+    // add a 30-second buffer before the actual expiry
+    const expiryTime = new Date(session.expires_at * 1000)
+    const bufferTime = new Date(expiryTime.getTime() - 30000)
+    return bufferTime < new Date()
+  }
 
   const checkOwnerRezConnection = async (userId: string): Promise<boolean> => {
     try {
@@ -114,10 +153,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return
     }
 
+    // check if session is about to expire or already expired
+    if (isSessionExpired(session)) {
+      console.log('Session expired or about to expire, refreshing...')
+      // trigger a refresh instead of processing stale session
+      const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
+      if (!refreshedSession) {
+        api.setAccessToken(null)
+        setState({ status: 'unauthenticated' })
+        return
+      }
+      session = refreshedSession
+    }
+
     api.setAccessToken(session.access_token)
 
-    // ensure tenant exists
-    const tenantId = await ensureTenantExists(session.user.id, session.user.email)
+    // ensure tenant exists with retry logic
+    const tenantId = await retryWithBackoff(
+      () => ensureTenantExists(session.user.id, session.user.email),
+      'ensureTenantExists',
+      2
+    )
 
     let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
 
@@ -137,7 +193,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user: appUser,
       session
     })
-  }, [])
+  }, []) // keep deps empty to avoid recreation, internal functions are stable
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {

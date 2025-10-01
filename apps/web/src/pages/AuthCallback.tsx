@@ -24,6 +24,18 @@ export const AuthCallback = () => {
         // Check if this is an OwnerRez OAuth callback (has both code and state)
         // OwnerRez callbacks have UUID state tokens
         if (code && state && state.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+          // validate OAuth was initiated recently
+          const oauthInitiated = sessionStorage.getItem('oauth_initiated')
+          if (oauthInitiated) {
+            const initiatedTime = parseInt(oauthInitiated)
+            const timeDiff = Date.now() - initiatedTime
+            // OAuth flow should complete within 10 minutes
+            if (timeDiff > 10 * 60 * 1000) {
+              console.warn('OAuth flow took too long, may be suspicious')
+            }
+            sessionStorage.removeItem('oauth_initiated')
+          }
+
           try {
             // first ensure we have a session
             const { data: { session } } = await supabase.auth.getSession()

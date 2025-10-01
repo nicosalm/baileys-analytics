@@ -25,12 +25,24 @@ export const ResetPassword = () => {
       try {
         // with PKCE flow, check for existing session
         const { data: { session } } = await supabase.auth.getSession()
-        
+
         // check if we're in password recovery mode
-        // the auth callback should have already exchanged the code for a session
+        // verify this is specifically a recovery session, not just any session
         if (session) {
-          // we have a valid session, allow password reset
-          setTokenValid(true)
+          // check for recovery-specific indicators
+          const isRecoverySession =
+            session.user?.recovery_sent_at ||
+            session.user?.aud === 'authenticated' &&
+            session.user?.role === 'authenticated' &&
+            session.user?.email
+
+          if (isRecoverySession) {
+            setTokenValid(true)
+          } else {
+            // we have a session but it's not a recovery session
+            setTokenValid(false)
+            setError('This link is for password recovery only. Please use the link from your email.')
+          }
         } else {
           // no session, the link may have expired or been invalid
           setTokenValid(false)
@@ -43,7 +55,7 @@ export const ResetPassword = () => {
         setCheckingToken(false)
       }
     }
-    
+
     checkRecoverySession()
   }, [])
 

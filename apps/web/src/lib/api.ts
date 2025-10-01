@@ -41,10 +41,27 @@ class ApiClient {
             if (!response.ok) {
                 // Handle 401 Unauthorized - session expired or invalid
                 if (response.status === 401) {
-                    // Clear the token and redirect to login
+                    // Clear the token and any stale auth data
                     this.accessToken = null
+
+                    // Clear localStorage auth data to ensure clean state
+                    try {
+                        const keysToRemove: string[] = []
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i)
+                            if (key && (key.includes('baileys-auth') || key.includes('supabase'))) {
+                                keysToRemove.push(key)
+                            }
+                        }
+                        keysToRemove.forEach(key => localStorage.removeItem(key))
+                    } catch (e) {
+                        console.warn('Failed to clear auth storage:', e)
+                    }
+
                     // Only redirect if we're not already on the login page
-                    if (!window.location.pathname.includes('/login')) {
+                    if (!window.location.pathname.includes('/login') &&
+                        !window.location.pathname.includes('/signup') &&
+                        !window.location.pathname.includes('/forgot-password')) {
                         window.location.href = '/login'
                     }
                     return {
