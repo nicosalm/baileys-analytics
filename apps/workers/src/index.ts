@@ -45,10 +45,18 @@ const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string }
 app.use('/*', cors({
 	origin: (origin, c) => {
 		const allowedOrigins = [c.env.FRONTEND_URL];
+
+		// Add production domains
+		if (c.env.FRONTEND_URL.includes('baileys-dashboard.pages.dev')) {
+			// Also allow the custom domain
+			allowedOrigins.push('https://baileysanalytics.com', 'https://www.baileysanalytics.com');
+		}
+
 		// in development, also allow localhost origins
 		if (c.env.FRONTEND_URL.includes('localhost')) {
 			allowedOrigins.push('http://localhost:5173', 'http://localhost:5174');
 		}
+
 		return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
 	},
 	allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
