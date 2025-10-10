@@ -8,6 +8,7 @@ import { DashboardProvider } from '@/contexts/dashboard'
 import { ModalProvider } from '@/contexts/modal'
 import { ModalManager } from '@/components/ModalManager'
 import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { SubscriptionGate } from '@/components/SubscriptionGate'
 import { LoadingState } from '@/components/LoadingState'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 
@@ -48,12 +49,14 @@ export const App = () => {
                 <Route
                   path="/dashboard/:tab"
                   element={
-                    <DashboardProvider>
-                      <ModalProvider>
-                        <DashboardLayout />
-                        <ModalManager />
-                      </ModalProvider>
-                    </DashboardProvider>
+                    <SubscriptionGate>
+                      <DashboardProvider>
+                        <ModalProvider>
+                          <DashboardLayout />
+                          <ModalManager />
+                        </ModalProvider>
+                      </DashboardProvider>
+                    </SubscriptionGate>
                   }
                 />
                 <Route

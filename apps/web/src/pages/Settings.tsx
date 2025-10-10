@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState, lazy, Suspense, ComponentType } from 'react'
+import { useState, useEffect, lazy, Suspense, ComponentType } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
@@ -243,20 +243,41 @@ const PreferencesTab = () => {
 export const Settings = () => {
   const { state, logout } = useAuth()
   const { addToast } = useToast()
-  const [, setSearchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const tab = searchParams.get('tab')
+    return (tab as SettingsTab) || 'general'
+  })
   const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false)
-  
+
+  // Handle checkout success/cancel from Stripe
+  useEffect(() => {
+    const checkout = searchParams.get('checkout')
+    if (checkout === 'success') {
+      addToast('success', 'Subscription activated successfully! Welcome to Baileys Analytics.')
+      // Remove checkout param from URL
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('checkout')
+      setSearchParams(newParams, { replace: true })
+    } else if (checkout === 'cancel') {
+      addToast('info', 'Checkout canceled. You can complete your subscription anytime.')
+      // Remove checkout param from URL
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('checkout')
+      setSearchParams(newParams, { replace: true })
+    }
+  }, [])
+
   if (state.status === 'loading') {
     return <LoadingState />
   }
-  
+
   if (state.status !== 'authenticated') {
     return null
   }
-  
+
   const { user } = state
-  
+
   const handleTabChange = (tab: SettingsTab) => {
     setActiveTab(tab)
     setSearchParams({ tab })

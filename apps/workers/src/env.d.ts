@@ -8,12 +8,25 @@ interface Env {
 	SUPABASE_URL: string;
 	SUPABASE_SERVICE_KEY: string;
 	SUPABASE_ANON_KEY: string;
-	
+
 	// ownerrez oauth credentials
 	OWNERREZ_CLIENT_ID: string;
 	OWNERREZ_CLIENT_SECRET: string;
-	
+
 	// ownerrez webhook authentication
 	OWNERREZ_WEBHOOK_USER: string;
 	OWNERREZ_WEBHOOK_PASSWORD: string;
+
+	// stripe configuration
+	STRIPE_SECRET_KEY: string;
+	STRIPE_PUBLISHABLE_KEY: string;
+	STRIPE_WEBHOOK_SECRET: string;
+
+	// stripe price ids
+	STRIPE_PRICE_STARTER_MONTHLY: string;
+	STRIPE_PRICE_STARTER_YEARLY: string;
+	STRIPE_PRICE_PROFESSIONAL_MONTHLY: string;
+	STRIPE_PRICE_PROFESSIONAL_YEARLY: string;
+	STRIPE_PRICE_SCALE_MONTHLY: string;
+	STRIPE_PRICE_SCALE_YEARLY: string;
 }

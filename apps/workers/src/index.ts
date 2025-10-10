@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { loginSchema, signupSchema, refreshTokenSchema } from '@baileys/schemas';
 
 import { authMiddleware } from './middleware/auth';
+import { subscriptionMiddleware, planLimitsMiddleware } from './middleware/subscription';
 import { rateLimit, strictRateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
 
@@ -39,6 +40,7 @@ import { health } from './routes/health';
 import { scheduled } from './scheduled';
 import { waitlist } from './routes/waitlist';
 import { debug } from './routes/debug';
+import { billing } from './routes/billing';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -827,6 +829,40 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 	return c.json(data);
 });
 
+// apply subscription middleware to dashboard routes
+const dashboardPaths = [
+	'/api/properties',
+	'/api/property',
+	'/api/bookings',
+	'/api/guests',
+	'/api/overview',
+	'/api/financial',
+	'/api/occupancy',
+	'/api/period-detail',
+	'/api/seasonal-analysis',
+	'/api/reports',
+	'/api/platform-fees',
+	'/api/tax',
+	'/api/dashboard-batch',
+	'/api/manual-sync',
+	'/api/sync-guest-details',
+	'/api/seasons',
+	'/api/tags'
+];
+
+// apply subscription check to dashboard routes
+app.use(dashboardPaths.map(path => `${path}/*`), subscriptionMiddleware);
+app.use(dashboardPaths, subscriptionMiddleware);
+
+// apply plan limits to certain routes (properties, reports, and high-usage endpoints)
+app.use([
+	'/api/properties/*',
+	'/api/reports/*',
+	'/api/dashboard-batch',
+	'/api/manual-sync',
+	'/api/sync-guest-details'
+], planLimitsMiddleware);
+
 app.route('/api/properties', properties);
 app.route('/api/property', propertyDetail);
 app.route('/api/bookings', bookings);
@@ -839,6 +875,7 @@ app.route('/api/seasonal-analysis', seasonalAnalysis);
 app.route('/api/seasons', seasons);
 app.route('/api/tags', tags);
 app.route('/api/tax', tax);
+app.route('/api/billing', billing);
 
 
 app.route('/api/platform-fees', platformFees);

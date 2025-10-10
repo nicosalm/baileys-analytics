@@ -27,6 +27,7 @@
 		"@supabase/supabase-js": "^2.56.1",
 		"hono": "^4.9.5",
 		"jspdf": "^3.0.1",
-		"jspdf-autotable": "^5.0.2"
+		"jspdf-autotable": "^5.0.2",
+		"stripe": "^19.1.0"
 	}
 }
