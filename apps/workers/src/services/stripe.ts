@@ -8,7 +8,7 @@ export class StripeService {
 
   constructor(env: Env, supabase: SupabaseClient) {
     this.stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-      apiVersion: '2024-11-20.acacia',
+      apiVersion: '2025-09-30.clover',
       httpClient: Stripe.createFetchHttpClient()
     });
     this.supabase = supabase;
@@ -72,12 +72,26 @@ export class StripeService {
 
     if (isFirstMonth) {
       // first month: $1 total using trial + invoice item
-      sessionConfig.line_items = [{
-        price: priceId,
-        quantity: 1
-      }];
+      // Add subscription line item and $1 setup fee separately
+      sessionConfig.line_items = [
+        {
+          price: priceId,
+          quantity: 1
+        },
+        // Add $1 setup fee as a one-time charge
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'First Month Access Fee'
+            },
+            unit_amount: 100 // $1 in cents
+          },
+          quantity: 1
+        }
+      ];
 
-      // add subscription with 30-day trial and $1 setup fee as invoice item
+      // add subscription with 30-day trial
       sessionConfig.subscription_data = {
         metadata: {
           tenant_id: tenantId,
@@ -89,17 +103,7 @@ export class StripeService {
           end_behavior: {
             missing_payment_method: 'cancel'
           }
-        },
-        // Add $1 as an invoice item that will be charged immediately
-        add_invoice_items: [{
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'First Month Access Fee'
-            },
-            unit_amount: 100 // $1 in cents
-          }
-        }]
+        }
       };
 
       // ensure payment method is collected
@@ -172,11 +176,56 @@ export class StripeService {
     let event: Stripe.Event;
 
     try {
-      event = this.stripe.webhooks.constructEvent(
-        payload,
-        signature,
-        this.env.STRIPE_WEBHOOK_SECRET
+      // verify signature manually using Web Crypto API (Cloudflare Workers compatible)
+      const signatureHeader = signature;
+      const signatureParts = signatureHeader.split(',').reduce((acc, part) => {
+        const [key, value] = part.split('=');
+        acc[key] = value;
+        return acc;
+      }, {} as Record<string, string>);
+
+      const timestamp = signatureParts.t;
+      const expectedSignature = signatureParts.v1;
+
+      if (!timestamp || !expectedSignature) {
+        throw new Error('Invalid signature format');
+      }
+
+      // compute expected signature using Web Crypto API
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(this.env.STRIPE_WEBHOOK_SECRET),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
       );
+
+      const signedPayload = `${timestamp}.${payload}`;
+      const signature_bytes = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        encoder.encode(signedPayload)
+      );
+
+      const computedSignature = Array.from(new Uint8Array(signature_bytes))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      // constant-time comparison
+      if (computedSignature !== expectedSignature) {
+        throw new Error('Signature mismatch');
+      }
+
+      // check timestamp is recent (within 5 minutes)
+      const timestampMs = parseInt(timestamp) * 1000;
+      const now = Date.now();
+      if (Math.abs(now - timestampMs) > 300000) {
+        throw new Error('Timestamp too old');
+      }
+
+      // parse the event
+      event = JSON.parse(payload) as Stripe.Event;
     } catch (err) {
       console.error('Webhook signature verification failed:', err);
       throw new Error('Invalid signature');
@@ -287,8 +336,8 @@ export class StripeService {
         stripe_customer_id: subscription.customer as string,
         plan_id: plan?.id,
         status: subscription.status,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        current_period_start: (subscription as any).current_period_start ? new Date((subscription as any).current_period_start * 1000).toISOString() : null,
+        current_period_end: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null,
         trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
         cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
@@ -304,7 +353,7 @@ export class StripeService {
       .update({
         subscription_status: subscription.status,
         trial_ends_at: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        subscription_ends_at: subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null
+        subscription_ends_at: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null
       })
       .eq('id', tenantId);
   }
@@ -351,7 +400,7 @@ export class StripeService {
       .insert({
         tenant_id: customer.tenant_id,
         stripe_invoice_id: invoice.id,
-        stripe_payment_intent_id: invoice.payment_intent as string,
+        stripe_payment_intent_id: (invoice as any).payment_intent as string,
         amount: invoice.amount_paid,
         currency: invoice.currency,
         status: 'paid',
@@ -379,7 +428,7 @@ export class StripeService {
       .insert({
         tenant_id: customer.tenant_id,
         stripe_invoice_id: invoice.id,
-        stripe_payment_intent_id: invoice.payment_intent as string,
+        stripe_payment_intent_id: (invoice as any).payment_intent as string,
         amount: invoice.amount_due,
         currency: invoice.currency,
         status: 'failed',

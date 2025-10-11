@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  CreditCard, Package, CheckCircle, TrendingUp,
+  CreditCard, Package,
   Calendar, Receipt, Download, ExternalLink,
   AlertCircle, Loader
 } from 'lucide-react';

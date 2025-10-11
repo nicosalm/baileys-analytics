@@ -851,17 +851,22 @@ const dashboardPaths = [
 ];
 
 // apply subscription check to dashboard routes
-app.use(dashboardPaths.map(path => `${path}/*`), subscriptionMiddleware);
-app.use(dashboardPaths, subscriptionMiddleware);
+dashboardPaths.forEach(path => {
+	app.use(`${path}/*`, subscriptionMiddleware);
+	app.use(path, subscriptionMiddleware);
+});
 
 // apply plan limits to certain routes (properties, reports, and high-usage endpoints)
-app.use([
+const limitedPaths = [
 	'/api/properties/*',
 	'/api/reports/*',
 	'/api/dashboard-batch',
 	'/api/manual-sync',
 	'/api/sync-guest-details'
-], planLimitsMiddleware);
+];
+limitedPaths.forEach(path => {
+	app.use(path, planLimitsMiddleware);
+});
 
 app.route('/api/properties', properties);
 app.route('/api/property', propertyDetail);

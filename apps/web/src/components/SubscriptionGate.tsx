@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { billingClient } from '@/lib/stripe';
 import { PricingPlans } from './PricingPlans';
 import { LoadingState } from './LoadingState';
 import { AlertCircle } from 'lucide-react';
-import { BRAND } from '@/constants';
 
 interface SubscriptionGateProps {
   children: React.ReactNode;

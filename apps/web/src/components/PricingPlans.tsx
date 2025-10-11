@@ -150,7 +150,6 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
       {/* pricing cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((plan) => {
-          const Icon = plan.icon;
           const isCurrentPlan = currentPlan === plan.id;
 
           return (

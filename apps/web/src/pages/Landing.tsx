@@ -5,7 +5,7 @@ import {
   TrendingUp, BarChart3, PieChart, LineChart,
   DollarSign, Users, Home,
   ArrowRight, CheckCircle, Sparkles,
-  Zap, Shield, Clock, ChevronRight, Compass
+  Zap, Compass
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { BRAND } from '@/constants'

@@ -167,12 +167,12 @@ export const planLimitsMiddleware = async (c: Context<{ Bindings: Env; Variables
     .single();
 
   const apiLimit = plan.features?.api_calls;
-  if (apiLimit && apiLimit !== -1 && usage?.count >= apiLimit) {
+  if (apiLimit && apiLimit !== -1 && usage?.count && usage.count >= apiLimit) {
     return c.json({
       error: 'API call limit reached',
       code: 'API_LIMIT_EXCEEDED',
       limit: apiLimit,
-      current: usage.count,
+      current: usage?.count || 0,
       redirectTo: '/settings?tab=billing'
     }, 429);
   }

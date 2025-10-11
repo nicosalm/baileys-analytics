@@ -5,7 +5,28 @@ import { StripeService } from '../services/stripe';
 
 const billing = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
-// all billing routes require authentication
+// stripe webhook handler (no auth required - uses signature verification)
+billing.post('/webhook', async (c) => {
+  try {
+    const signature = c.req.header('stripe-signature');
+    if (!signature) {
+      return c.json({ error: 'No signature header' }, 400);
+    }
+
+    const payload = await c.req.text();
+    const supabase = createSupabaseClient(c.env);
+    const stripeService = new StripeService(c.env, supabase);
+
+    const result = await stripeService.handleWebhook(signature, payload);
+
+    return c.json(result);
+  } catch (error) {
+    console.error('Webhook error:', error);
+    return c.json({ error: 'Webhook processing failed' }, 400);
+  }
+});
+
+// all other billing routes require authentication
 billing.use('/*', authMiddleware);
 
 // get current subscription
@@ -138,27 +159,6 @@ billing.get('/plans', async (c) => {
   } catch (error) {
     console.error('Error fetching plans:', error);
     return c.json({ error: 'Failed to fetch plans' }, 500);
-  }
-});
-
-// stripe webhook handler
-billing.post('/webhook', async (c) => {
-  try {
-    const signature = c.req.header('stripe-signature');
-    if (!signature) {
-      return c.json({ error: 'No signature header' }, 400);
-    }
-
-    const payload = await c.req.text();
-    const supabase = createSupabaseClient(c.env);
-    const stripeService = new StripeService(c.env, supabase);
-
-    const result = await stripeService.handleWebhook(signature, payload);
-
-    return c.json(result);
-  } catch (error) {
-    console.error('Webhook error:', error);
-    return c.json({ error: 'Webhook processing failed' }, 400);
   }
 });
 
