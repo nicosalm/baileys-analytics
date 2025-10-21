@@ -28,7 +28,7 @@ import { seasonalAnalysis } from './routes/seasonal-analysis';
 import { seasons } from './routes/seasons';
 import { tags } from './routes/tags';
 import { tax } from './routes/tax';
-import { platformFees } from './routes/platform-fees';
+import { platformFees as platformFeesRoute } from './routes/platform-fees';
 import { reports } from './routes/reports';
 import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
@@ -868,10 +868,8 @@ app.route('/api/seasonal-analysis', seasonalAnalysis);
 app.route('/api/seasons', seasons);
 app.route('/api/tags', tags);
 app.route('/api/tax', tax);
+app.route('/api/platform-fees', platformFeesRoute);
 app.route('/api/billing', billing);
-
-
-app.route('/api/platform-fees', platformFees);
 app.route('/api/reports', reports);
 app.route('/api/scheduler', scheduler);
 app.route('/api/validation', validation);

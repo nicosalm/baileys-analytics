@@ -279,11 +279,33 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
             .select()
             .single();
 
+          // Process charges
+          if (booking.charges && Array.isArray(booking.charges) && upsertedBooking) {
+            // Delete existing charges first
+            await supabase
+              .from('booking_charges')
+              .delete()
+              .eq('booking_id', upsertedBooking.id);
+
+            // Insert charges
+            const charges = booking.charges.map((charge: any, index: number) => ({
+              booking_id: upsertedBooking.id,
+              type: charge.type,
+              amount: charge.amount,
+              description: charge.description,
+              position: index
+            }));
+
+            if (charges.length > 0) {
+              await supabase.from('booking_charges').insert(charges);
+            }
+          }
+
           if (booking.tags && Array.isArray(booking.tags) && upsertedBooking) {
             for (const tag of booking.tags) {
               // tags come as strings from OwnerRez API
               const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
-              
+
               // first ensure tag exists
               const { data: existingTags } = await supabase
                 .from('tags')
@@ -292,7 +314,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
                 .eq('name', tagName);
 
               let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
-              
+
               if (!tagId) {
                 // create tag if it doesn't exist
                 const { data: newTag, error: tagError } = await supabase
@@ -304,7 +326,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
                   })
                   .select()
                   .single();
-                
+
                 if (tagError) {
                   console.error(`Failed to create tag "${tagName}":`, tagError);
                 } else {

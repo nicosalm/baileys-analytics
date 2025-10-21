@@ -1,11 +1,10 @@
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
-// import { useTips } from '@/hooks/use-tips'
 import { api } from '@/lib/api'
 import useSWR, { mutate } from 'swr'
-import { Calculator, DollarSign } from 'lucide-react'
+import { Plus, X, DollarSign } from 'lucide-react'
 import { formatCurrency, format } from '@baileys/utils'
 
 interface PlatformFeeEntryModalProps {
@@ -15,16 +14,22 @@ interface PlatformFeeEntryModalProps {
   existingData?: any
 }
 
-export const PlatformFeeEntryModal = ({ 
-  propertyId, 
+interface PlatformRow {
+  platform: string
+  amount: number
+  notes?: string
+}
+
+export const PlatformFeeEntryModal = ({
+  propertyId,
   propertyName,
   month: initialMonth,
-  existingData
 }: PlatformFeeEntryModalProps) => {
   const { closeModal } = useModal()
   const { addToast } = useToast()
-  // const { showTips } = useTips()
-  
+
+  const selectedMonth = initialMonth || format(new Date(), 'yyyy-MM')
+
   const { data: platformsResponse } = useSWR(
     propertyId ? `/tax/platforms?propertyId=${propertyId}` : null,
     async () => {
@@ -33,42 +38,89 @@ export const PlatformFeeEntryModal = ({
       return (result as any).data?.data || (result as any).data || []
     }
   )
-  
-  const platforms = platformsResponse || []
-  
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState<any>({
-    propertyId,
-    platform: existingData?.platform || 'Airbnb',
-    month: existingData?.month || initialMonth || format(new Date(), 'yyyy-MM'),
-    feeAmount: existingData?.feeAmount || 0,
-    platformTaxRemitted: existingData?.platformTaxRemitted || 0,
-    notes: existingData?.notes || ''
-  })
 
-  const totalFees = formData.feeAmount || 0
+  const { data: existingFeesResponse } = useSWR(
+    propertyId && selectedMonth ? `/platform-fees?month=${selectedMonth}` : null,
+    async () => {
+      const result = await api.getPlatformFees(propertyId, selectedMonth)
+      if (!result.success) return []
+      return (result as any).data?.data || (result as any).data || []
+    }
+  )
+
+  const availablePlatforms = platformsResponse || ['Airbnb', 'Vrbo', 'Booking.com', 'Direct']
+  const existingFees = existingFeesResponse || []
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [platformRows, setPlatformRows] = useState<PlatformRow[]>([])
+  const [month, setMonth] = useState(selectedMonth)
+
+  useEffect(() => {
+    if (existingFees.length > 0) {
+      setPlatformRows(
+        existingFees.map((fee: any) => ({
+          platform: fee.platform,
+          amount: parseFloat(fee.amount) || 0,
+          notes: fee.notes || ''
+        }))
+      )
+    } else {
+      setPlatformRows([{ platform: '', amount: 0, notes: '' }])
+    }
+  }, [existingFees])
+
+  const addPlatformRow = () => {
+    setPlatformRows([...platformRows, { platform: '', amount: 0, notes: '' }])
+  }
+
+  const removePlatformRow = (index: number) => {
+    setPlatformRows(platformRows.filter((_, i) => i !== index))
+  }
+
+  const updatePlatformRow = (index: number, field: keyof PlatformRow, value: string | number) => {
+    const newRows = [...platformRows]
+    newRows[index] = { ...newRows[index], [field]: value }
+    setPlatformRows(newRows)
+  }
+
+  const totalFees = platformRows.reduce((sum, row) => sum + (row.amount || 0), 0)
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    
+
     try {
       setIsSubmitting(true)
-      
-      if (!formData.platform || !formData.month) {
-        addToast('error', 'Please fill in all required fields')
+
+      const validRows = platformRows.filter(row => row.platform && row.amount > 0)
+
+      if (validRows.length === 0) {
+        addToast('error', 'Please add at least one platform with a fee amount')
         return
       }
 
-      const result = await api.savePlatformFee(formData)
-      
+      const [year, monthNum] = month.split('-')
+
+      const result = await api.request('/platform-fees/bulk', {
+        method: 'POST',
+        body: JSON.stringify({
+          year: parseInt(year),
+          month: parseInt(monthNum),
+          fees: validRows.map(row => ({
+            platform: row.platform,
+            amount: row.amount,
+            notes: row.notes || undefined
+          }))
+        })
+      })
+
       if (result.success) {
         await mutate(
-          (key: any) => Array.isArray(key) && 
+          (key: any) => Array.isArray(key) &&
             (key[0] === '/platform-fees' || key[0] === '/financial'),
           undefined,
           { revalidate: true }
         )
-        
+
         addToast('success', 'Platform fees saved successfully')
         closeModal()
       } else {
@@ -85,33 +137,11 @@ export const PlatformFeeEntryModal = ({
     <Modal
       isOpen={true}
       onClose={closeModal}
-      title="Enter Platform Fees"
-      subtitle={`${propertyName} - ${formData.month}`}
+      title="Platform Fees"
+      subtitle={`${propertyName} - ${format(new Date(month + '-01'), 'MMMM yyyy')}`}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Booking Platform
-          </label>
-          <select
-            value={formData.platform}
-            onChange={(e) => setFormData((prev: any) => ({ ...prev, platform: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            <option value="">Select a platform</option>
-            {platforms.map((platform: any) => (
-              <option key={platform} value={platform}>{platform}</option>
-            ))}
-          </select>
-          {platforms.length === 0 && (
-            <p className="text-xs text-amber-600 mt-1">
-              No platforms found. Import bookings for this property first.
-            </p>
-          )}
-        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -119,10 +149,10 @@ export const PlatformFeeEntryModal = ({
           </label>
           <div className="flex gap-2">
             <select
-              value={(formData.month || format(new Date(), 'yyyy-MM')).split('-')[1]}
+              value={month.split('-')[1]}
               onChange={(e) => {
-                const year = (formData.month || format(new Date(), 'yyyy-MM')).split('-')[0]
-                setFormData((prev: any) => ({ ...prev, month: `${year}-${e.target.value}` }))
+                const yr = month.split('-')[0]
+                setMonth(`${yr}-${e.target.value}`)
               }}
               className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -141,109 +171,100 @@ export const PlatformFeeEntryModal = ({
               <option value="12">December</option>
             </select>
             <select
-              value={(formData.month || format(new Date(), 'yyyy-MM')).split('-')[0]}
+              value={month.split('-')[0]}
               onChange={(e) => {
-                const month = (formData.month || format(new Date(), 'yyyy-MM')).split('-')[1]
-                setFormData((prev: any) => ({ ...prev, month: `${e.target.value}-${month}` }))
+                const mon = month.split('-')[1]
+                setMonth(`${e.target.value}-${mon}`)
               }}
               className="w-24 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
-              {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(year => (
-                <option key={year} value={year}>{year}</option>
+              {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(yr => (
+                <option key={yr} value={yr}>{yr}</option>
               ))}
             </select>
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Platform Service Fee
+          <label className="block text-sm font-medium text-gray-700 mb-3">
+            Platform Service Fees
           </label>
-          <div className="relative">
-            <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.feeAmount || ''}
-              onChange={(e) => setFormData((prev: any) => ({ 
-                ...prev, 
-                feeAmount: parseFloat(e.target.value) || 0 
-              }))}
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="0.00"
-              required
-            />
-          </div>
-          <p className="text-xs text-gray-500 mt-1">From your monthly platform statement</p>
-        </div>
 
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <div className="flex items-center mb-3">
-            <Calculator className="w-4 h-4 text-gray-600 mr-2" />
-            <span className="font-medium text-gray-700">Tax Already Remitted by Platform</span>
+          <div className="space-y-3">
+            {platformRows.map((row, index) => (
+              <div key={index} className="flex gap-2 items-start">
+                <select
+                  value={row.platform}
+                  onChange={(e) => updatePlatformRow(index, 'platform', e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select platform</option>
+                  {availablePlatforms.map((platform: string) => (
+                    <option key={platform} value={platform}>{platform}</option>
+                  ))}
+                </select>
+
+                <div className="relative w-32">
+                  <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={row.amount || ''}
+                    onChange={(e) => updatePlatformRow(index, 'amount', parseFloat(e.target.value) || 0)}
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+
+                {platformRows.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removePlatformRow(index)}
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors"
+                    title="Remove platform"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tax Amount Platform Remitted
-            </label>
-            <div className="relative">
-              <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.platformTaxRemitted || ''}
-                onChange={(e) => setFormData((prev: any) => ({ 
-                  ...prev, 
-                  platformTaxRemitted: parseFloat(e.target.value) || 0 
-                }))}
-                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Only enter an amount if the platform remitted taxes on these fees directly to the government
-            </p>
-          </div>
+
+          <button
+            type="button"
+            onClick={addPlatformRow}
+            className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+          >
+            <Plus className="w-4 h-4" />
+            Add another platform
+          </button>
         </div>
 
         {totalFees > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-medium text-blue-900 mb-2">Fee Summary</h4>
-            <div className="space-y-1 text-sm text-blue-800">
-              <div className="flex justify-between">
-                <span>Platform Fees:</span>
-                <span className="font-medium">{formatCurrency(totalFees)}</span>
-              </div>
-              {formData.platformTaxRemitted > 0 && (
-                <div className="flex justify-between">
-                  <span>Platform Tax Remitted:</span>
-                  <span className="font-medium">{formatCurrency(formData.platformTaxRemitted)}</span>
-                </div>
-              )}
-              {formData.platformTaxRemitted > 0 && (
-                <p className="text-xs text-blue-700 mt-2">
-                  This tax amount will be excluded from your tax liability calculations
-                </p>
-              )}
+            <div className="flex justify-between items-center">
+              <span className="font-medium text-blue-900">Total Platform Fees:</span>
+              <span className="text-xl font-bold text-blue-900">{formatCurrency(totalFees)}</span>
             </div>
+            <p className="text-xs text-blue-700 mt-2">
+              These fees will be included in your financial calculations
+            </p>
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Notes (Optional)
-          </label>
-          <textarea
-            value={formData.notes || ''}
-            onChange={(e) => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={3}
-            placeholder="Add any relevant notes about these fees..."
-          />
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <p className="text-sm text-gray-600">
+            <strong>Where to find these fees:</strong>
+          </p>
+          <ul className="text-sm text-gray-600 mt-2 space-y-1 ml-4 list-disc">
+            <li>Airbnb: Earnings → Transaction History → "Guest service fee" column</li>
+            <li>Vrbo: Performance → Payouts → "Traveler Service Fee"</li>
+            <li>Booking.com: Extranet → Finance → Check commission details</li>
+          </ul>
         </div>
 
         <div className="flex justify-end space-x-3 pt-4 border-t">
@@ -260,7 +281,7 @@ export const PlatformFeeEntryModal = ({
             className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 disabled:opacity-50"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Saving...' : 'Save Platform Fees'}
+            {isSubmitting ? 'Saving...' : `Save ${platformRows.filter(r => r.platform && r.amount > 0).length} Platform${platformRows.filter(r => r.platform && r.amount > 0).length !== 1 ? 's' : ''}`}
           </button>
         </div>
       </form>

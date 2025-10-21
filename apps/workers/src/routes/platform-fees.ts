@@ -1,398 +1,297 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { platformFeeEntrySchema, platformFeeFormSchema } from '@baileys/schemas';
-import { createSupabaseClient } from '../services/supabase';
 import { authMiddleware } from '../middleware/auth';
+import { createSupabaseClient } from '../services/supabase';
 
 const platformFees = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
-platformFees.use('*', authMiddleware);
+platformFees.use('/*', authMiddleware);
 
-platformFees.get('/', async (c) => {
-  const user = c.get('user');
-  const supabase = createSupabaseClient(c.env);
-  
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-  
-  if (!tenant) {
-    return c.json({ error: 'Tenant not found' }, 404);
-  }
-  
-  const tenantId = tenant.id;
-  const propertyId = c.req.query('property');
-  const month = c.req.query('month');
+const bulkFeeSchema = z.object({
+	year: z.number().int().min(2020).max(2100),
+	month: z.number().int().min(1).max(12),
+	fees: z.array(z.object({
+		platform: z.string().min(1).max(50),
+		amount: z.number().min(0),
+		notes: z.string().optional()
+	}))
+});
 
-  try {
-    if (propertyId && month) {
-      // get platform fee entries for specific property and month
-      const { data: entries, error: entriesError } = await supabase
-        .from('platform_fee_entries')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('property_id', propertyId)
-        .eq('month', month);
-      
-      if (entriesError) throw entriesError;
-      
-      // get bookings for the month to calculate suggested fees
-      const monthStart = `${month}-01`;
-      const monthEnd = new Date(new Date(monthStart).getFullYear(), new Date(monthStart).getMonth() + 1, 0)
-        .toISOString().split('T')[0];
-      
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('platform, total_amount')
-        .eq('tenant_id', tenantId)
-        .eq('property_id', propertyId)
-        .gte('arrival', monthStart)
-        .lte('arrival', monthEnd)
-        .neq('status', 'canceled');
-      
-      if (bookingsError) throw bookingsError;
-      
-      // group bookings by platform
-      const platformSummary = new Map();
-      bookings?.forEach(booking => {
-        const platform = booking.platform || 'Direct';
-        if (!platformSummary.has(platform)) {
-          platformSummary.set(platform, {
-            platform,
-            bookingCount: 0,
-            totalRevenue: 0
-          });
-        }
-        const summary = platformSummary.get(platform);
-        summary.bookingCount++;
-        summary.totalRevenue += booking.total_amount || 0;
-      });
-      
-      // combine with existing entries
-      const result = Array.from(platformSummary.values()).map(summary => {
-        const existingEntry = entries?.find(e => e.platform === summary.platform);
-        return {
-          ...summary,
-          id: existingEntry?.id,
-          propertyId,
-          month,
-          feeAmount: existingEntry?.fee_amount || 0,
-          platformTaxRemitted: existingEntry?.platform_tax_remitted || 0,
-          notes: existingEntry?.notes || '',
-          hasEntry: !!existingEntry
-        };
-      });
-      
-      return c.json({ 
-        status: 'success', 
-        data: result 
-      });
-    } else {
-      // get general platform fee configurations
-      const { data, error } = await supabase
-        .from('platform_fee_configs')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .order('platform');
+const bookingFeeSchema = z.object({
+	booking_id: z.string().uuid(),
+	platform: z.string().min(1).max(50),
+	amount: z.number().min(0),
+	notes: z.string().optional()
+});
 
-      if (error) throw error;
+platformFees.post('/bulk', async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
 
-      return c.json(data || []);
-    }
-  } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to fetch platform fee data' 
-    }, 500);
-  }
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
+
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	const body = await c.req.json();
+	const validation = bulkFeeSchema.safeParse(body);
+
+	if (!validation.success) {
+		return c.json({
+			error: 'Invalid input',
+			details: validation.error.issues
+		}, 400);
+	}
+
+	const { year, month, fees } = validation.data;
+
+	await supabase
+		.from('platform_guest_fees')
+		.delete()
+		.eq('tenant_id', tenant.id)
+		.eq('year', year)
+		.eq('month', month)
+		.is('booking_id', null);
+
+	const entries = fees.map(fee => ({
+		tenant_id: tenant.id,
+		platform: fee.platform,
+		amount: fee.amount,
+		year,
+		month,
+		notes: fee.notes || null,
+		booking_id: null
+	}));
+
+	const { data, error } = await supabase
+		.from('platform_guest_fees')
+		.insert(entries)
+		.select();
+
+	if (error) {
+		console.error('Failed to save platform fees:', error);
+		return c.json({ error: 'Failed to save platform fees' }, 500);
+	}
+
+	return c.json({ success: true, data });
+});
+
+const singleFeeSchema = z.object({
+	propertyId: z.string().optional(),
+	platform: z.string().min(1).max(50),
+	month: z.string().regex(/^\d{4}-\d{2}$/), // "2025-10"
+	feeAmount: z.number().min(0),
+	platformTaxRemitted: z.number().min(0).optional(),
+	notes: z.string().optional()
 });
 
 platformFees.post('/', async (c) => {
-  const user = c.get('user');
-  const supabase = createSupabaseClient(c.env);
-  
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-  
-  if (!tenant) {
-    return c.json({ error: 'Tenant not found' }, 404);
-  }
-  
-  const tenantId = tenant.id;
-  const body = await c.req.json();
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
 
-  // check if this is a platform fee entry or configuration
-  if (body.propertyId && body.month && body.platform) {
-    // validate platform fee entry
-    const validation = platformFeeEntrySchema.safeParse({
-      ...body,
-      tenantId
-    });
-    
-    if (!validation.success) {
-      return c.json({ 
-        error: validation.error.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ') 
-      }, 400);
-    }
-    
-    const validatedData = validation.data;
-    // this is a platform fee entry
-    try {
-      // check if entry already exists
-      const { data: existing } = await supabase
-        .from('platform_fee_entries')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('property_id', body.propertyId)
-        .eq('month', body.month)
-        .eq('platform', body.platform)
-        .single();
-      
-      let result;
-      if (existing) {
-        // update existing entry
-        const { data, error } = await supabase
-          .from('platform_fee_entries')
-          .update({
-            fee_amount: body.feeAmount || 0,
-            platform_tax_remitted: body.platformTaxRemitted || 0,
-            notes: body.notes || '',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existing.id)
-          .select()
-          .single();
-        
-        if (error) throw error;
-        result = data;
-      } else {
-        // create new entry
-        const { data, error } = await supabase
-          .from('platform_fee_entries')
-          .insert({
-            tenant_id: tenantId,
-            property_id: body.propertyId,
-            month: body.month,
-            platform: body.platform,
-            fee_amount: body.feeAmount || 0,
-            platform_tax_remitted: body.platformTaxRemitted || 0,
-            notes: body.notes || '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-        
-        if (error) throw error;
-        result = data;
-      }
-      
-      return c.json(result, 201);
-    } catch (error) {
-      return c.json({ 
-        error: error instanceof Error ? error.message : 'Failed to save platform fee entry' 
-      }, 500);
-    }
-  } else {
-    // this is a platform fee configuration
-    const { platform, feeType, feeValue, active = true } = body;
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
 
-    try {
-      const { data, error } = await supabase
-        .from('platform_fee_configs')
-        .insert({
-          tenant_id: tenantId,
-          platform,
-          fee_type: feeType,
-          fee_value: feeValue,
-          active
-        })
-        .select()
-        .single();
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
 
-      if (error) throw error;
+	const body = await c.req.json();
+	const validation = singleFeeSchema.safeParse(body);
 
-      return c.json(data, 201);
-    } catch (error) {
-      return c.json({ 
-        error: error instanceof Error ? error.message : 'Failed to create platform fee configuration' 
-      }, 500);
-    }
-  }
+	if (!validation.success) {
+		return c.json({
+			error: 'Invalid input',
+			details: validation.error.issues
+		}, 400);
+	}
+
+	const { platform, month, feeAmount, platformTaxRemitted, notes } = validation.data;
+	const [year, monthNum] = month.split('-');
+
+	await supabase
+		.from('platform_guest_fees')
+		.delete()
+		.eq('tenant_id', tenant.id)
+		.eq('platform', platform)
+		.eq('year', parseInt(year))
+		.eq('month', parseInt(monthNum))
+		.is('booking_id', null);
+
+	const { data, error } = await supabase
+		.from('platform_guest_fees')
+		.insert({
+			tenant_id: tenant.id,
+			platform,
+			amount: feeAmount,
+			year: parseInt(year),
+			month: parseInt(monthNum),
+			notes: notes || null,
+			booking_id: null
+		})
+		.select()
+		.single();
+
+	if (error) {
+		console.error('Failed to save platform fee:', error);
+		return c.json({ error: 'Failed to save platform fee' }, 500);
+	}
+
+	return c.json({ success: true, data });
 });
 
-platformFees.put('/:id', async (c) => {
-  const user = c.get('user');
-  const supabase = createSupabaseClient(c.env);
-  
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-  
-  if (!tenant) {
-    return c.json({ error: 'Tenant not found' }, 404);
-  }
-  
-  const tenantId = tenant.id;
-  const feeId = c.req.param('id');
-  const body = await c.req.json();
+platformFees.post('/booking', async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
 
-  try {
-    const { data, error } = await supabase
-      .from('platform_fee_configs')
-      .update({
-        fee_type: body.feeType,
-        fee_value: body.feeValue,
-        active: body.active,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', feeId)
-      .eq('tenant_id', tenantId)
-      .select()
-      .single();
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
 
-    if (error) throw error;
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
 
-    if (!data) {
-      return c.json({ error: 'Configuration not found' }, 404);
-    }
+	const body = await c.req.json();
+	const validation = bookingFeeSchema.safeParse(body);
 
-    return c.json(data);
-  } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to update platform fee configuration' 
-    }, 500);
-  }
+	if (!validation.success) {
+		return c.json({
+			error: 'Invalid input',
+			details: validation.error.issues
+		}, 400);
+	}
+
+	const { booking_id, platform, amount, notes } = validation.data;
+
+	const { data: booking } = await supabase
+		.from('bookings')
+		.select('id')
+		.eq('id', booking_id)
+		.eq('tenant_id', tenant.id)
+		.single();
+
+	if (!booking) {
+		return c.json({ error: 'Booking not found' }, 404);
+	}
+
+	await supabase
+		.from('platform_guest_fees')
+		.delete()
+		.eq('booking_id', booking_id);
+
+	const { data, error } = await supabase
+		.from('platform_guest_fees')
+		.insert({
+			tenant_id: tenant.id,
+			booking_id,
+			platform,
+			amount,
+			notes: notes || null,
+			year: null,
+			month: null
+		})
+		.select()
+		.single();
+
+	if (error) {
+		console.error('Failed to save booking fee:', error);
+		return c.json({ error: 'Failed to save booking fee' }, 500);
+	}
+
+	return c.json({ success: true, data });
+});
+
+platformFees.get('/', async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
+
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
+
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	const yearParam = c.req.query('year');
+	const monthParam = c.req.query('month'); // could be "10" or "2025-10"
+	const bookingId = c.req.query('booking_id');
+	const propertyId = c.req.query('property');
+
+	let query = supabase
+		.from('platform_guest_fees')
+		.select('*')
+		.eq('tenant_id', tenant.id);
+
+	if (bookingId) {
+		query = query.eq('booking_id', bookingId);
+	} else if (monthParam) {
+		// support both "YYYY-MM" format and separate year/month params
+		if (monthParam.includes('-')) {
+			const [year, month] = monthParam.split('-');
+			query = query
+				.eq('year', parseInt(year))
+				.eq('month', parseInt(month))
+				.is('booking_id', null);
+		} else if (yearParam) {
+			query = query
+				.eq('year', parseInt(yearParam))
+				.eq('month', parseInt(monthParam))
+				.is('booking_id', null);
+		}
+	}
+
+	const { data, error } = await query.order('created_at', { ascending: false });
+
+	if (error) {
+		console.error('Failed to fetch platform fees:', error);
+		return c.json({ error: 'Failed to fetch platform fees' }, 500);
+	}
+
+	return c.json({ success: true, data });
 });
 
 platformFees.delete('/:id', async (c) => {
-  const user = c.get('user');
-  const supabase = createSupabaseClient(c.env);
-  
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-  
-  if (!tenant) {
-    return c.json({ error: 'Tenant not found' }, 404);
-  }
-  
-  const tenantId = tenant.id;
-  const feeId = c.req.param('id');
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
 
-  try {
-    const { error } = await supabase
-      .from('platform_fee_configs')
-      .delete()
-      .eq('id', feeId)
-      .eq('tenant_id', tenantId);
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
 
-    if (error) throw error;
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
 
-    return c.json({ success: true });
-  } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to delete platform fee configuration' 
-    }, 500);
-  }
-});
+	const id = c.req.param('id');
 
-platformFees.get('/calculate', async (c) => {
-  const user = c.get('user');
-  const supabase = createSupabaseClient(c.env);
-  
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-  
-  if (!tenant) {
-    return c.json({ error: 'Tenant not found' }, 404);
-  }
-  
-  const tenantId = tenant.id;
-  
-  const from = c.req.query('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-  const to = c.req.query('to') || new Date().toISOString().split('T')[0];
+	const { error } = await supabase
+		.from('platform_guest_fees')
+		.delete()
+		.eq('id', id)
+		.eq('tenant_id', tenant.id);
 
-  try {
-    const [bookingsResult, configsResult] = await Promise.all([
-      supabase
-        .from('bookings')
-        .select('platform, total_amount')
-        .eq('tenant_id', tenantId)
-        .gte('arrival', from)
-        .lte('arrival', to)
-        .neq('status', 'canceled'),
-      
-      supabase
-        .from('platform_fee_configs')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('active', true)
-    ]);
+	if (error) {
+		console.error('Failed to delete platform fee:', error);
+		return c.json({ error: 'Failed to delete platform fee' }, 500);
+	}
 
-    if (bookingsResult.error) throw bookingsResult.error;
-    if (configsResult.error) throw configsResult.error;
-
-    const configs = new Map();
-    (configsResult.data || []).forEach(config => {
-      configs.set(config.platform, config);
-    });
-
-    const feesByPlatform = new Map();
-    
-    (bookingsResult.data || []).forEach(booking => {
-      const platform = booking.platform || 'Direct';
-      const config = configs.get(platform);
-      
-      if (!feesByPlatform.has(platform)) {
-        feesByPlatform.set(platform, {
-          platform,
-          bookings: 0,
-          revenue: 0,
-          fees: 0
-        });
-      }
-      
-      const platformData = feesByPlatform.get(platform);
-      platformData.bookings += 1;
-      platformData.revenue += booking.total_amount;
-      
-      if (config) {
-        const fee = config.fee_type === 'percentage' 
-          ? booking.total_amount * config.fee_value
-          : config.fee_value;
-        platformData.fees += fee;
-      }
-    });
-
-    const results = Array.from(feesByPlatform.values())
-      .sort((a, b) => b.revenue - a.revenue);
-
-    return c.json({
-      period: { from, to },
-      platforms: results,
-      summary: {
-        totalRevenue: results.reduce((sum, p) => sum + p.revenue, 0),
-        totalFees: results.reduce((sum, p) => sum + p.fees, 0),
-        totalBookings: results.reduce((sum, p) => sum + p.bookings, 0)
-      }
-    });
-  } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to calculate platform fees' 
-    }, 500);
-  }
+	return c.json({ success: true });
 });
 
 export { platformFees };

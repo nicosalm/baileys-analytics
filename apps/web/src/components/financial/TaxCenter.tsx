@@ -5,13 +5,15 @@ import { SimpleTable } from '@/components/tables'
 import { TaxTrendChart } from '@/components/charts/TaxTrendChart'
 import { TaxRemittanceWidget } from '@/components/tax/TaxRemittanceWidget'
 import { useTips } from '@/hooks/use-tips'
-import { 
+import {
   FileText, DollarSign, CheckCircle, Home,
-  Info, AlertTriangle, Building
+  Info, AlertTriangle, Building, Download
 } from 'lucide-react'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
 import { detectGranularity } from '@/utils/chart-helpers'
+import { api, authenticatedFetch } from '@/lib/api'
+import { useToast } from '@/contexts/toast'
 
 interface TaxCenterProps {
   data: any
@@ -30,6 +32,34 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
 }) => {
   const { showTips } = useTips()
   const { filters } = useDashboard()
+  const { addToast } = useToast()
+
+  const handleDownloadTaxReport = async () => {
+    try {
+      const response = await authenticatedFetch(`/tax/export?from=${filters.dateRange.from}&to=${filters.dateRange.to}`, {
+        method: 'GET'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to download report')
+      }
+
+      const csvData = await response.text()
+      const blob = new Blob([csvData], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `tax-report-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      addToast('success', 'Tax report downloaded')
+    } catch (error) {
+      console.error('Download error:', error)
+      addToast('error', 'Failed to download tax report')
+    }
+  }
   
   const taxData = useMemo(() => {
     if (!data?.tax) return null
@@ -115,7 +145,18 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           </div>
         </div>
       )}
-      
+
+      {/* Download Report Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleDownloadTaxReport}
+          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Download Tax Report (CSV)
+        </button>
+      </div>
+
       {/* Key Metrics */}
       <div className="grid md:grid-cols-4 gap-4">
         <MetricCard

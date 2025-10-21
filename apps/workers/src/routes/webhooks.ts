@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createSupabaseClient } from '../services/supabase';
+import { OwnerRezService } from '../services/ownerrez';
 
 const webhookPayloadSchema = z.object({
 	id: z.union([z.string(), z.number()]),
@@ -110,7 +111,7 @@ webhooks.post('/ownerrez', async (c) => {
 
 		case 'entity_create':
 		case 'entity_update':
-			await handleEntityChange(supabase, tenant.id, payload);
+			await handleEntityChange(supabase, tenant.id, payload, c.env);
 			// invalidate cache for dashboard updates
 			if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
 				const { invalidateTenantCache } = await import('../utils/cache');
@@ -138,7 +139,8 @@ webhooks.post('/ownerrez', async (c) => {
 async function handleEntityChange(
 	supabase: any,
 	tenantId: string,
-	payload: WebhookPayload
+	payload: WebhookPayload,
+	env: Env
 ) {
 	if (!payload.entity_type || !payload.entity_id || !payload.entity) {
 		return;
@@ -150,7 +152,7 @@ async function handleEntityChange(
 			break;
 
 		case 'booking':
-			await handleBookingUpdate(supabase, tenantId, payload.entity, payload.categories);
+			await handleBookingUpdate(supabase, tenantId, payload.entity, payload.categories, env);
 			break;
 
 		case 'guest':
@@ -261,7 +263,8 @@ async function handleBookingUpdate(
 	supabase: any,
 	tenantId: string,
 	booking: any,
-	categories?: string[]
+	categories?: string[],
+	env?: Env
 ) {
 	if (booking.is_block || booking.type === 'block') {
 		const { data: existingBlock } = await supabase
@@ -368,6 +371,7 @@ async function handleBookingUpdate(
 			arrival: booking.arrival,
 			departure: booking.departure,
 			total_amount: booking.total_amount || 0,
+			host_service_fee: booking.total_host_fees || 0,
 			status: booking.status,
 			platform: booking.source || booking.listing_site || 'Direct',
 			platform_reservation_number: booking.custom_source_id || booking.external_id,
@@ -442,31 +446,56 @@ async function handleBookingUpdate(
 			}
 		}
 
-		if (categories?.includes('charge') && booking.charges) {
-			const { data: existingBooking } = await supabase
-				.from('bookings')
-				.select('id')
-				.eq('ownerrez_booking_id', booking.id)
-				.eq('tenant_id', tenantId)
-				.single();
+		// Always fetch and process charges for every booking
+		if (env) {
+			try {
+				// Get OAuth token for this tenant
+				const { data: ownerrezToken } = await supabase
+					.from('oauth_tokens')
+					.select('access_token')
+					.eq('tenant_id', tenantId)
+					.eq('provider', 'ownerrez')
+					.single();
 
-			if (existingBooking) {
-				await supabase
-					.from('booking_charges')
-					.delete()
-					.eq('booking_id', existingBooking.id);
+				if (ownerrezToken?.access_token) {
+					const ownerRez = new OwnerRezService(ownerrezToken.access_token);
 
-				const charges = booking.charges.map((charge: any, index: number) => ({
-					booking_id: existingBooking.id,
-					type: charge.type,
-					amount: charge.amount,
-					description: charge.description,
-					position: index
-				}));
+					// Fetch full booking details including charges
+					const fullBooking = await ownerRez.fetchBookingDetail(String(booking.id));
 
-				if (charges.length > 0) {
-					await supabase.from('booking_charges').insert(charges);
+					if (fullBooking?.charges) {
+						const { data: existingBooking } = await supabase
+							.from('bookings')
+							.select('id')
+							.eq('ownerrez_booking_id', booking.id)
+							.eq('tenant_id', tenantId)
+							.single();
+
+						if (existingBooking) {
+							// Delete existing charges
+							await supabase
+								.from('booking_charges')
+								.delete()
+								.eq('booking_id', existingBooking.id);
+
+							// Insert new charges
+							const charges = fullBooking.charges.map((charge: any, index: number) => ({
+								booking_id: existingBooking.id,
+								type: charge.type,
+								amount: charge.amount,
+								description: charge.description,
+								position: index
+							}));
+
+							if (charges.length > 0) {
+								await supabase.from('booking_charges').insert(charges);
+							}
+						}
+					}
 				}
+			} catch (error) {
+				console.error('Failed to fetch charges for booking:', error);
+				// Don't fail the entire webhook if charges fetch fails
 			}
 		}
 	}

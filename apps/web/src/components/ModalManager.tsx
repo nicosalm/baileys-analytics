@@ -12,7 +12,6 @@ const ReportHistoryModal = lazy(() => import('./modals/ReportHistoryModal').then
 
 // Tax-related modals (heavier, load on demand)
 const PlatformFeeEntryModal = lazy(() => import('./modals/PlatformFeeEntryModal').then(m => ({ default: m.PlatformFeeEntryModal })))
-const TaxConfigWizardStepper = lazy(() => import('./modals/TaxConfigWizardStepper').then(m => ({ default: m.TaxConfigWizardStepper })))
 
 export const ModalManager = () => {
   const { activeModal } = useModal()
@@ -91,15 +90,7 @@ export const ModalManager = () => {
             existingData={activeModal.existingData}
           />
         )
-    
-      case 'tax-config-wizard':
-        return (
-          <TaxConfigWizardStepper
-            defaultPropertyId={activeModal.defaultPropertyId}
-            existingConfig={activeModal.existingConfig}
-          />
-        )
-    
+
       default:
         return null
     }

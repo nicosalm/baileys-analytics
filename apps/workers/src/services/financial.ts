@@ -9,6 +9,8 @@ interface FinancialMetrics {
     pending: number;
     collected: number;
     platformFees: number;
+    hostFees: number;
+    guestFees: number;
     taxes: number;
   };
   performance: {
@@ -56,7 +58,7 @@ export interface PLData {
   monthlyTrend: MonthlyTrend[];
   weeklyRevenue: WeeklyRevenue[];
   previousPeriod?: {
-    revenue: { gross: number; net: number; taxes: number; platformFees: number };
+    revenue: { gross: number; net: number; taxes: number; platformFees: number; hostFees: number; guestFees: number };
     performance: { netRevenueRate: number };
     monthlyTrend?: MonthlyTrend[];
     weeklyRevenue?: WeeklyRevenue[];
@@ -161,14 +163,21 @@ export async function getPLData(
     }
   }
 
-  const [bookingsResult, platformFeesResult, propertiesResult, upcomingResult] = await Promise.all([
+  // get year/month range for platform_guest_fees query
+  const fromDate = new Date(from);
+  const toDate = new Date(to);
+  const fromYear = fromDate.getFullYear();
+  const fromMonth = fromDate.getMonth() + 1;
+  const toYear = toDate.getFullYear();
+  const toMonth = toDate.getMonth() + 1;
+
+  const [bookingsResult, guestFeesResult, propertiesResult, upcomingResult] = await Promise.all([
     bookingsQuery,
     supabase
-      .from('platform_fee_entries')
+      .from('platform_guest_fees')
       .select('*')
       .eq('tenant_id', tenantId)
-      .gte('month', from.substring(0, 7))
-      .lte('month', to.substring(0, 7)),
+      .or(`and(year.eq.${fromYear},month.gte.${fromMonth}),and(year.eq.${toYear},month.lte.${toMonth}),and(year.gt.${fromYear},year.lt.${toYear})`),
     supabase
       .from('properties')
       .select('*')
@@ -183,15 +192,19 @@ export async function getPLData(
   ]);
 
   const bookings = bookingsResult.data || [];
-  const platformFees = platformFeesResult.data || [];
+  const guestFees = guestFeesResult.data || [];
   const properties = propertiesResult.data || [];
   const upcomingBookings = upcomingResult.data || [];
 
   const grossRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
-  const totalPlatformFees = platformFees.reduce((sum, pf) =>
-    sum + (pf.guest_service_fee || 0) + (pf.host_service_fee || 0), 0
-  );
+  // host fees from bookings (captured from ownerrez)
+  const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
+
+  // guest fees from manual entry
+  const totalGuestFees = guestFees.reduce((sum, gf) => sum + (gf.amount || 0), 0);
+
+  const totalPlatformFees = totalHostFees + totalGuestFees;
 
   const totalTaxes = bookings.reduce((sum, b) => {
     const taxCharges = b.booking_charges?.filter((c: any) => c.type === 'tax') || [];
@@ -259,11 +272,12 @@ export async function getPLData(
     platformBreakdown.set(platform, existing);
   });
 
-  platformFees.forEach(pf => {
-    const platform = pf.platform || 'Unknown';
+  // add guest fees to platform breakdown
+  guestFees.forEach((gf: any) => {
+    const platform = gf.platform || 'Unknown';
     const existing = platformBreakdown.get(platform);
     if (existing) {
-      existing.fees += (pf.guest_service_fee || 0) + (pf.host_service_fee || 0);
+      existing.fees += gf.amount || 0;
     }
   });
 
@@ -284,6 +298,8 @@ export async function getPLData(
         pending: pendingRevenue,
         collected: collectedRevenue,
         platformFees: totalPlatformFees,
+        hostFees: totalHostFees,
+        guestFees: totalGuestFees,
         taxes: totalTaxes
       },
       performance: {

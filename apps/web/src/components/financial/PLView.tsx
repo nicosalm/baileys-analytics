@@ -38,6 +38,8 @@ export const PLView: React.FC<PLViewProps> = ({
     const grossRevenue = metrics.revenue?.gross || 0
     const netRevenue = metrics.revenue?.net || 0
     const platformFees = metrics.revenue?.platformFees || 0
+    const hostFees = metrics.revenue?.hostFees || 0
+    const guestFees = metrics.revenue?.guestFees || 0
     const taxes = metrics.revenue?.taxes || 0
     
     const profitMargin = grossRevenue > 0 
@@ -93,6 +95,8 @@ export const PLView: React.FC<PLViewProps> = ({
         gross: grossRevenue,
         net: netRevenue,
         platformFees,
+        hostFees,
+        guestFees,
         taxes
       },
       profitability: {
@@ -229,12 +233,30 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <h4 className="font-semibold text-gray-900 mb-3">Cost Breakdown</h4>
             <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Platform Fees</span>
-                <div className="text-right">
-                  <p className="font-semibold">{formatCurrency(revenue.platformFees)}</p>
-                  <p className="text-xs text-gray-500">{formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue</p>
+              <div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Platform Fees</span>
+                  <div className="text-right">
+                    <p className="font-semibold">{formatCurrency(revenue.platformFees)}</p>
+                    <p className="text-xs text-gray-500">{formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue</p>
+                  </div>
                 </div>
+                {(revenue.hostFees > 0 || revenue.guestFees > 0) && (
+                  <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-gray-200 pl-3">
+                    {revenue.hostFees > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">Host Service Fees</span>
+                        <span className="text-xs font-medium text-gray-600">{formatCurrency(revenue.hostFees)}</span>
+                      </div>
+                    )}
+                    {revenue.guestFees > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">Guest Service Fees</span>
+                        <span className="text-xs font-medium text-gray-600">{formatCurrency(revenue.guestFees)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Taxes</span>
