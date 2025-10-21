@@ -1,270 +1,236 @@
-# Stripe Billing Integration Setup
+# stripe billing integration setup
 
-This guide covers the complete setup of the Stripe billing integration for the Baileys Analytics platform.
+single-tier pricing: $20/month or $192/year
 
-## Environment Variables
+## environment variables
 
-### Frontend (apps/web)
+### frontend (apps/web)
 
-Add to `.env`:
+add to `.env`:
 ```bash
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your-publishable-key-here
 ```
 
-### Backend (apps/workers)
+### backend (apps/workers)
 
-Add the following secrets using Wrangler CLI:
+add secrets using wrangler cli:
 
 ```bash
-# Stripe API keys
+# stripe api keys
 wrangler secret put STRIPE_SECRET_KEY
-# Enter: sk_test_your-secret-key-here
+# enter: sk_test_your-secret-key-here
 
 wrangler secret put STRIPE_WEBHOOK_SECRET
-# Enter: whsec_your-webhook-secret-here
+# enter: whsec_your-webhook-secret-here
 
-# Stripe Price IDs for each plan and billing cycle
-# Starter Plan
-wrangler secret put STRIPE_PRICE_STARTER_MONTHLY
-# Enter: price_xxx (for $19/month)
+# stripe price ids (2 total)
+wrangler secret put STRIPE_PRICE_MONTHLY
+# enter: price_xxx (for $20/month)
 
-wrangler secret put STRIPE_PRICE_STARTER_YEARLY
-# Enter: price_xxx (for $192/year)
-
-# Professional Plan
-wrangler secret put STRIPE_PRICE_PROFESSIONAL_MONTHLY
-# Enter: price_xxx (for $49/month)
-
-wrangler secret put STRIPE_PRICE_PROFESSIONAL_YEARLY
-# Enter: price_xxx (for $468/year)
-
-# Scale Plan
-wrangler secret put STRIPE_PRICE_SCALE_MONTHLY
-# Enter: price_xxx (for $99/month)
-
-wrangler secret put STRIPE_PRICE_SCALE_YEARLY
-# Enter: price_xxx (for $948/year)
+wrangler secret put STRIPE_PRICE_YEARLY
+# enter: price_xxx (for $192/year)
 ```
 
-For production deployment:
+for production deployment:
 ```bash
 wrangler secret put STRIPE_SECRET_KEY --env production
-# Repeat for all secrets with --env production flag
+# repeat for all secrets with --env production flag
 ```
 
-## Stripe Product Configuration
+## stripe product configuration
 
-### 1. Create Products in Stripe Dashboard
+### 1. create product in stripe dashboard
 
-Create three products with the following configurations:
+create single product:
 
-#### Starter Plan
-- **Name**: Baileys Starter
-- **Description**: Perfect for 1-3 properties
-- **Monthly Price**: $19.00
-- **Yearly Price**: $192.00 (20% discount)
-- **Features**:
-  - Core analytics dashboard
-  - Real-time sync
-  - Monthly & yearly views
-  - Email support
+#### baileys analytics
+- **name**: baileys analytics
+- **description**: complete vacation rental analytics
+- **monthly price**: $20.00
+- **yearly price**: $192.00 (20% discount)
+- **features**:
+  - full analytics dashboard
+  - real-time ownerrez sync
+  - financial & occupancy insights
+  - guest history & analytics
+  - advanced tax tracking
+  - custom reports & exports
+  - season analysis
+  - email support
+  - unlimited properties
 
-#### Professional Plan
-- **Name**: Baileys Professional
-- **Description**: Ideal for 4-15 properties
-- **Monthly Price**: $49.00
-- **Yearly Price**: $468.00 (20% discount)
-- **Features**:
-  - Everything in Starter
-  - Advanced tax tracking & reports
-  - Guest history & analytics
-  - Occupancy gap detection
-  - Priority support
+### 2. configure stripe webhook
 
-#### Scale Plan
-- **Name**: Baileys Scale
-- **Description**: Built for 16+ properties
-- **Monthly Price**: $99.00+
-- **Yearly Price**: $948.00+ (20% discount)
-- **Features**:
-  - Everything in Professional
-  - Custom integrations
-  - White-label options
-  - Dedicated account manager
-  - SLA & phone support
-
-### 2. Configure Stripe Webhook
-
-1. Go to Stripe Dashboard → Developers → Webhooks
-2. Add endpoint:
-   - **Endpoint URL**: `https://your-api.workers.dev/api/billing/webhook`
-   - **Events to listen for**:
+1. go to stripe dashboard → developers → webhooks
+2. add endpoint:
+   - **endpoint url**: `https://your-api.workers.dev/api/billing/webhook`
+   - **events to listen for**:
      - `checkout.session.completed`
      - `customer.subscription.created`
      - `customer.subscription.updated`
      - `customer.subscription.deleted`
      - `invoice.payment_succeeded`
      - `invoice.payment_failed`
-3. Save the webhook signing secret as `STRIPE_WEBHOOK_SECRET`
+3. save the webhook signing secret as `STRIPE_WEBHOOK_SECRET`
 
-### 3. Configure Customer Portal
+### 3. configure customer portal
 
-1. Go to Stripe Dashboard → Settings → Billing → Customer portal
-2. Enable the following features:
-   - Update payment methods
-   - Cancel subscriptions
-   - View invoices
-   - Switch plans
-3. Set cancellation policy:
-   - Immediate cancellation
-   - No proration on downgrades
-4. Save configuration
+1. go to stripe dashboard → settings → billing → customer portal
+2. enable the following features:
+   - update payment methods
+   - cancel subscriptions
+   - view invoices
+   - switch billing cycle (monthly ↔ yearly)
+3. set cancellation policy:
+   - immediate cancellation
+   - access until period end
+4. save configuration
 
-## Database Setup
+## database setup
 
-Run the migration to create billing tables:
+subscription data is tracked in supabase tables:
+- `stripe_customers` - links tenants to stripe customers
+- `subscriptions` - subscription status, billing cycle, periods
+- `billing_history` - payment records
+- `usage_metrics` - usage tracking
+- `webhook_events` - webhook idempotency
 
-```bash
-# Connect to your Supabase database
-psql $DATABASE_URL -f apps/workers/migrations/add_billing_tables.sql
-```
+## first month $1 pricing structure
 
-## First Month $1 Pricing Structure
+new customer offer:
 
-The integration implements a special $1 first month offer for new customers:
+1. **new customer flow**:
+   - user signs up and selects billing cycle (monthly/yearly)
+   - pays $1 immediately (setup fee)
+   - gets 30-day trial period
+   - after 30 days, regular subscription pricing begins
 
-1. **New Customer Flow**:
-   - User signs up and selects a plan
-   - Pays $1 immediately (setup fee)
-   - Gets 30-day trial period at $0/month
-   - After 30 days, regular subscription pricing begins
+2. **implementation details**:
+   - $1 charged as one-time setup fee
+   - subscription starts with 30-day trial
+   - card required and saved for future charges
+   - after trial, regular pricing applies ($20/mo or $192/yr)
 
-2. **Implementation Details**:
-   - The $1 is charged as a one-time setup fee
-   - Subscription starts with a 30-day trial at $0
-   - Card is required and saved for future charges
-   - After trial, regular monthly/yearly pricing applies
+3. **existing customer flow**:
+   - can switch billing cycle through customer portal
+   - no $1 offer (regular pricing applies)
+   - proration handled automatically by stripe
 
-3. **Existing Customer Flow**:
-   - Can switch plans through the customer portal
-   - No $1 offer (regular pricing applies immediately)
-   - Proration handled automatically by Stripe
+## testing
 
-## Testing
+### test cards
 
-### Test Cards
+use these test cards in stripe's test mode:
 
-Use these test cards in Stripe's test mode:
+- **success**: `4242 4242 4242 4242`
+- **declined**: `4000 0000 0000 0002`
+- **authentication required**: `4000 0025 0000 3155`
 
-- **Success**: `4242 4242 4242 4242`
-- **Declined**: `4000 0000 0000 0002`
-- **Authentication Required**: `4000 0025 0000 3155`
+### test scenarios
 
-### Test Scenarios
-
-1. **New User Signup with $1 First Month**:
+1. **new user signup with $1 first month**:
    ```
-   1. Sign up for new account
-   2. Select any plan
-   3. Enter test card
-   4. Verify $1 charge
-   5. Check subscription status in Settings
-   ```
-
-2. **Plan Upgrade/Downgrade**:
-   ```
-   1. Go to Settings → Billing
-   2. Click "Manage Subscription"
-   3. Select new plan
-   4. Verify proration
+   1. sign up for new account
+   2. select billing cycle (monthly or yearly)
+   3. enter test card
+   4. verify $1 charge
+   5. check subscription status in settings
    ```
 
-3. **Subscription Cancellation**:
+2. **billing cycle switch**:
    ```
-   1. Go to Settings → Billing
-   2. Click "Manage Subscription"
-   3. Cancel subscription
-   4. Verify access continues until period end
-   ```
-
-4. **Failed Payment**:
-   ```
-   1. Use declining test card
-   2. Verify error handling
-   3. Check subscription status
+   1. go to settings → billing
+   2. click "manage subscription"
+   3. switch between monthly/yearly
+   4. verify proration
    ```
 
-## Monitoring
+3. **subscription cancellation**:
+   ```
+   1. go to settings → billing
+   2. click "manage subscription"
+   3. cancel subscription
+   4. verify access continues until period end
+   ```
 
-### Key Metrics to Track
+4. **failed payment**:
+   ```
+   1. use declining test card
+   2. verify error handling
+   3. check subscription status
+   ```
 
-1. **Subscription Metrics**:
-   - New subscriptions per day
-   - Churn rate
-   - MRR (Monthly Recurring Revenue)
-   - Plan distribution
+## monitoring
 
-2. **Payment Metrics**:
-   - Success rate
-   - Failed payments
-   - Recovery rate
+### key metrics to track
 
-3. **Usage Metrics** (tracked in `usage_metrics` table):
-   - API calls per tenant
-   - Properties per tenant
-   - Reports generated
+1. **subscription metrics**:
+   - new subscriptions per day
+   - churn rate
+   - mrr (monthly recurring revenue)
+   - monthly vs yearly distribution
 
-### Webhook Monitoring
+2. **payment metrics**:
+   - success rate
+   - failed payments
+   - recovery rate
 
-Monitor webhook events in Stripe Dashboard:
-- Check for failed webhooks
-- Review event logs
-- Set up alerts for failures
+3. **usage metrics** (tracked in `usage_metrics` table):
+   - api calls per tenant
+   - properties per tenant
+   - reports generated
 
-## Troubleshooting
+### webhook monitoring
 
-### Common Issues
+monitor webhook events in stripe dashboard:
+- check for failed webhooks
+- review event logs
+- set up alerts for failures
 
-1. **"No active subscription" error**:
-   - Check if tenant has subscription in database
-   - Verify subscription status is 'active' or 'trialing'
-   - Check if within grace period (1 day for new accounts)
+## troubleshooting
 
-2. **Webhook signature verification failed**:
-   - Verify `STRIPE_WEBHOOK_SECRET` is correct
-   - Check endpoint URL matches exactly
-   - Ensure raw request body is used for verification
+### common issues
 
-3. **Checkout session fails to create**:
-   - Verify all Stripe Price IDs are configured
-   - Check Stripe API key is valid
-   - Review error logs in Cloudflare dashboard
+1. **"no active subscription" error**:
+   - check if tenant has subscription in database
+   - verify subscription status is 'active' or 'trialing'
+   - check if within grace period (1 day for new accounts)
 
-4. **Customer portal not loading**:
-   - Ensure customer has Stripe customer record
-   - Verify portal is configured in Stripe
-   - Check return URL is correct
+2. **webhook signature verification failed**:
+   - verify `STRIPE_WEBHOOK_SECRET` is correct
+   - check endpoint url matches exactly
+   - ensure raw request body is used for verification
 
-## Security Considerations
+3. **checkout session fails to create**:
+   - verify stripe price ids are configured (2 total)
+   - check stripe api key is valid
+   - review error logs in cloudflare dashboard
 
-1. **Never expose secret keys**:
-   - Use environment variables
-   - Never commit keys to git
-   - Rotate keys regularly
+4. **customer portal not loading**:
+   - ensure customer has stripe customer record
+   - verify portal is configured in stripe
+   - check return url is correct
 
-2. **Webhook verification**:
-   - Always verify webhook signatures
-   - Use webhook secrets
-   - Validate event data
+## security considerations
 
-3. **Access control**:
-   - Subscription middleware protects dashboard routes
-   - Billing routes require authentication
-   - Webhook endpoint is public but verified
+1. **never expose secret keys**:
+   - use environment variables
+   - never commit keys to git
+   - rotate keys regularly
 
-## Support
+2. **webhook verification**:
+   - always verify webhook signatures
+   - use webhook secrets
+   - validate event data
 
-For issues or questions:
-- Check Stripe logs in dashboard
-- Review Cloudflare Workers logs
-- Contact support with tenant ID and timestamp
+3. **access control**:
+   - subscription middleware protects dashboard routes
+   - billing routes require authentication
+   - webhook endpoint is public but verified
+
+## support
+
+for issues or questions:
+- check stripe logs in dashboard
+- review cloudflare workers logs
+- contact support with tenant id and timestamp

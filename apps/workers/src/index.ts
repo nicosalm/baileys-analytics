@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { loginSchema, signupSchema, refreshTokenSchema } from '@baileys/schemas';
 
 import { authMiddleware } from './middleware/auth';
-import { subscriptionMiddleware, planLimitsMiddleware } from './middleware/subscription';
+import { subscriptionMiddleware } from './middleware/subscription';
 import { rateLimit, strictRateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
 
@@ -854,18 +854,6 @@ const dashboardPaths = [
 dashboardPaths.forEach(path => {
 	app.use(`${path}/*`, subscriptionMiddleware);
 	app.use(path, subscriptionMiddleware);
-});
-
-// apply plan limits to certain routes (properties, reports, and high-usage endpoints)
-const limitedPaths = [
-	'/api/properties/*',
-	'/api/reports/*',
-	'/api/dashboard-batch',
-	'/api/manual-sync',
-	'/api/sync-guest-details'
-];
-limitedPaths.forEach(path => {
-	app.use(path, planLimitsMiddleware);
 });
 
 app.route('/api/properties', properties);

@@ -272,7 +272,7 @@ export const Landing = () => {
         </div>
       </section>
 
-      
+
       <section className="py-24 bg-gradient-to-b from-white to-blue-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
@@ -333,7 +333,7 @@ export const Landing = () => {
         </div>
       </section>
 
-      
+
       <section className="py-24 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
@@ -357,13 +357,13 @@ export const Landing = () => {
             </div>
             <div>
               <div className="text-5xl font-bold mb-2">
-                <AnimatedCounter end={6} />
+                <AnimatedCounter end={5} />
               </div>
               <p className="text-lg opacity-90">Core Dashboards</p>
             </div>
             <div>
               <div className="text-5xl font-bold mb-2">
-                <AnimatedCounter end={5} />
+                <AnimatedCounter end={3} />
               </div>
               <p className="text-lg opacity-90">Minute Setup</p>
             </div>
@@ -371,13 +371,13 @@ export const Landing = () => {
         </div>
       </section>
 
-      
+
       <section className="py-24 px-6 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-6xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
           <p className="text-xl text-gray-600 mb-4">Start for just $1. No hidden fees, cancel anytime.</p>
 
-          
+
           <div className="flex justify-center items-center gap-4 mb-12">
             <span className={`font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>Monthly</span>
             <button
@@ -394,7 +394,7 @@ export const Landing = () => {
             </span>
           </div>
 
-          
+
           <div className="max-w-md mx-auto mb-8">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-4 shadow-lg">
               <div className="flex items-center justify-center gap-3">
@@ -407,62 +407,37 @@ export const Landing = () => {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            
-            <div className="relative bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Starter</h3>
-              <div className="text-4xl font-bold mb-2">
-                ${yearlyBilling ? '16' : '19'}<span className="text-lg text-gray-500 font-normal">/mo</span>
-              </div>
-              <p className="text-gray-600 mb-2">1-3 properties</p>
-              {yearlyBilling && <p className="text-sm text-green-600 mb-4">$192/year (save $36)</p>}
-              {!yearlyBilling && <p className="text-sm text-gray-400 mb-4">$228 billed monthly</p>}
-              <div className="space-y-3 mb-8 text-left">
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Core analytics dashboard</span>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Real-time sync</span>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Monthly & yearly views</span>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Email support</span>
-                </div>
-              </div>
-              <Link to="/signup" className="block w-full py-3 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors font-medium">
-                Start $1 Trial
-              </Link>
-            </div>
-
-            
+          <div className="max-w-lg mx-auto">
             <div className="relative">
               <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur opacity-25" />
-              <div className="relative bg-white rounded-2xl shadow-xl p-8 border-2 border-blue-500">
-                <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium mb-4">
-                  <Zap className="w-3 h-3 mr-1" />
-                  MOST POPULAR
+              <div className="relative bg-white rounded-2xl shadow-xl p-10 border-2 border-blue-500">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                    <Zap className="w-3 h-3 mr-1" />
+                    SINGLE PLAN
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold mb-4">Professional</h3>
-                <div className="text-4xl font-bold mb-2">
-                  ${yearlyBilling ? '39' : '49'}<span className="text-lg text-gray-500 font-normal">/mo</span>
+                <div className="text-center mb-6">
+                  <h3 className="text-2xl font-semibold mb-4">Baileys Analytics</h3>
+                  <div className="text-5xl font-bold mb-2">
+                    ${yearlyBilling ? '16' : '20'}<span className="text-2xl text-gray-500 font-normal">/mo</span>
+                  </div>
+                  <p className="text-gray-600 mb-2">Complete vacation rental analytics</p>
+                  {yearlyBilling && <p className="text-sm text-green-600 font-medium">$192/year (save $48)</p>}
+                  {!yearlyBilling && <p className="text-sm text-gray-400">$240 billed monthly</p>}
                 </div>
-                <p className="text-gray-600 mb-2">4-15 properties</p>
-                {yearlyBilling && <p className="text-sm text-green-600 mb-4">$468/year (save $120)</p>}
-                {!yearlyBilling && <p className="text-sm text-gray-400 mb-4">$588 billed monthly</p>}
                 <div className="space-y-3 mb-8 text-left">
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm font-medium">Everything in Starter</span>
+                    <span className="text-sm">Full analytics dashboard</span>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Advanced tax tracking & reports</span>
+                    <span className="text-sm">Real-time OwnerRez sync</span>
+                  </div>
+                  <div className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Financial & occupancy insights</span>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
@@ -470,59 +445,31 @@ export const Landing = () => {
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Occupancy gap detection</span>
+                    <span className="text-sm">Advanced tax tracking</span>
                   </div>
                   <div className="flex items-start">
                     <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">Priority support</span>
+                    <span className="text-sm">Custom reports & exports</span>
+                  </div>
+                  <div className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Season analysis</span>
+                  </div>
+                  <div className="flex items-start">
+                    <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                    <span className="text-sm">Email support</span>
                   </div>
                 </div>
-                <Link to="/signup" className={`block w-full py-3 ${BRAND.buttonGradient} text-white rounded-full hover:shadow-lg transition-all transform hover:scale-105 font-medium`}>
+                <Link to="/signup" className={`block w-full py-4 text-lg ${BRAND.buttonGradient} text-white rounded-full hover:shadow-xl transition-all transform hover:scale-105 font-semibold text-center`}>
                   Start $1 Trial
                 </Link>
               </div>
             </div>
-
-            
-            <div className="relative bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
-              <h3 className="text-lg font-semibold mb-4">Scale</h3>
-              <div className="text-4xl font-bold mb-2">
-                ${yearlyBilling ? '79' : '99'}<span className="text-lg text-gray-500 font-normal">+/mo</span>
-              </div>
-              <p className="text-gray-600 mb-2">16+ properties</p>
-              {yearlyBilling && <p className="text-sm text-green-600 mb-4">Starting at $948/year</p>}
-              {!yearlyBilling && <p className="text-sm text-gray-400 mb-4">Custom pricing available</p>}
-              <div className="space-y-3 mb-8 text-left">
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm font-medium">Everything in Pro</span>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Custom integrations</span>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">White-label options</span>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Dedicated account manager</span>
-                </div>
-                <div className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">SLA & phone support</span>
-                </div>
-              </div>
-              <Link to="/signup" className="block w-full py-3 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors font-medium text-center">
-                Start $1 Trial
-              </Link>
-            </div>
           </div>
 
           <div className="text-center mt-8 space-y-2">
-            <p className="text-sm text-gray-500">{yearlyBilling ? 'Prices shown are billed annually' : 'Save 20% with annual billing'}</p>
-            <p className="text-sm text-gray-500">All plans start with $1 first month. Cancel anytime.</p>
+            <p className="text-sm text-gray-500">{yearlyBilling ? 'Billed annually' : 'Save 20% with annual billing'}</p>
+            <p className="text-sm text-gray-500">$1 for your first month, then {yearlyBilling ? '$192/year' : '$20/month'}. Cancel anytime.</p>
           </div>
         </div>
       </section>

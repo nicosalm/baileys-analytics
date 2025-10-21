@@ -113,8 +113,8 @@ export const BillingTab = () => {
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Current Plan</h2>
             <div className="flex items-center gap-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(subscription.status)}`}>
-                {subscription.subscription_plans?.name || 'Custom Plan'}
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                Baileys Analytics
               </span>
               <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(subscription.status)}`}>
                 {subscription.status.replace('_', ' ').toUpperCase()}
@@ -123,9 +123,11 @@ export const BillingTab = () => {
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-gray-900">
-              {formatPrice(subscription.subscription_plans?.price_monthly || 0)}
+              {subscription.billing_cycle === 'yearly' ? '$16' : '$20'}
             </p>
-            <p className="text-gray-500 text-sm">per month</p>
+            <p className="text-gray-500 text-sm">
+              {subscription.billing_cycle === 'yearly' ? 'per month (billed annually)' : 'per month'}
+            </p>
           </div>
         </div>
 
@@ -149,16 +151,10 @@ export const BillingTab = () => {
             </div>
           )}
 
-          {subscription.subscription_plans?.max_properties && (
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600">Property Limit</span>
-              <span className="font-medium text-gray-900">
-                {subscription.subscription_plans.max_properties === -1
-                  ? 'Unlimited'
-                  : subscription.subscription_plans.max_properties}
-              </span>
-            </div>
-          )}
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-600">Properties</span>
+            <span className="font-medium text-gray-900">Unlimited</span>
+          </div>
         </div>
 
         {/* manage subscription button */}
@@ -184,8 +180,8 @@ export const BillingTab = () => {
       {/* show pricing plans if toggled */}
       {showPricingPlans && (
         <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Available Plans</h3>
-          <PricingPlans currentPlan={subscription.subscription_plans?.name?.toLowerCase().replace(' ', '_')} />
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Plan</h3>
+          <PricingPlans currentPlan="standard" />
         </div>
       )}
 
@@ -270,11 +266,7 @@ export const BillingTab = () => {
             <p className="text-2xl font-bold text-gray-900">
               {usageMetrics.find(m => m.metric_type === 'api_calls')?.count || 0}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {subscription.subscription_plans?.features?.api_calls === -1
-                ? 'Unlimited'
-                : `of ${subscription.subscription_plans?.features?.api_calls || 'N/A'}`}
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Unlimited</p>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4">
@@ -285,11 +277,7 @@ export const BillingTab = () => {
             <p className="text-2xl font-bold text-gray-900">
               {usageMetrics.find(m => m.metric_type === 'reports_generated')?.count || 0}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {subscription.subscription_plans?.features?.reports === -1
-                ? 'Unlimited'
-                : `of ${subscription.subscription_plans?.features?.reports || 'N/A'}`}
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Unlimited</p>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-4">
@@ -300,11 +288,7 @@ export const BillingTab = () => {
             <p className="text-2xl font-bold text-gray-900">
               {usageMetrics.find(m => m.metric_type === 'active_properties')?.count || 0}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
-              {subscription.subscription_plans?.max_properties === -1
-                ? 'Unlimited'
-                : `of ${subscription.subscription_plans?.max_properties || 'N/A'}`}
-            </p>
+            <p className="text-xs text-gray-500 mt-1">Unlimited</p>
           </div>
         </div>
       </div>
@@ -320,9 +304,9 @@ export const BillingTab = () => {
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900 mb-1">Can I change plans?</p>
+            <p className="text-sm font-medium text-gray-900 mb-1">Can I switch between monthly and yearly billing?</p>
             <p className="text-sm text-gray-600">
-              Yes, you can upgrade or downgrade your plan anytime. Changes take effect immediately and are prorated.
+              Yes, you can switch billing cycles anytime through the billing portal. Save 20% with annual billing.
             </p>
           </div>
           <div>
@@ -332,9 +316,9 @@ export const BillingTab = () => {
             </p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-900 mb-1">What happens if I exceed my limits?</p>
+            <p className="text-sm font-medium text-gray-900 mb-1">Are there any usage limits?</p>
             <p className="text-sm text-gray-600">
-              We'll notify you when you're approaching limits. You can upgrade your plan to increase limits at any time.
+              No. All features, properties, reports, and API calls are unlimited with your subscription.
             </p>
           </div>
         </div>

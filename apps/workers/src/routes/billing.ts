@@ -55,17 +55,8 @@ billing.post('/create-checkout-session', async (c) => {
 
     const { priceId, isYearly, isFirstMonth } = await c.req.json();
 
-    // map plan to price id
-    let stripePriceId: string;
-    if (priceId === 'starter') {
-      stripePriceId = isYearly ? c.env.STRIPE_PRICE_STARTER_YEARLY : c.env.STRIPE_PRICE_STARTER_MONTHLY;
-    } else if (priceId === 'professional') {
-      stripePriceId = isYearly ? c.env.STRIPE_PRICE_PROFESSIONAL_YEARLY : c.env.STRIPE_PRICE_PROFESSIONAL_MONTHLY;
-    } else if (priceId === 'scale') {
-      stripePriceId = isYearly ? c.env.STRIPE_PRICE_SCALE_YEARLY : c.env.STRIPE_PRICE_SCALE_MONTHLY;
-    } else {
-      return c.json({ error: 'Invalid price ID' }, 400);
-    }
+    // single tier pricing - map to yearly or monthly
+    const stripePriceId = isYearly ? c.env.STRIPE_PRICE_YEARLY : c.env.STRIPE_PRICE_MONTHLY;
 
     const successUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=success`;
     const cancelUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=cancel`;
@@ -139,26 +130,6 @@ billing.get('/usage', async (c) => {
   } catch (error) {
     console.error('Error fetching usage metrics:', error);
     return c.json({ error: 'Failed to fetch usage metrics' }, 500);
-  }
-});
-
-// get available plans
-billing.get('/plans', async (c) => {
-  try {
-    const supabase = createSupabaseClient(c.env);
-
-    const { data: plans, error } = await supabase
-      .from('subscription_plans')
-      .select('*')
-      .eq('is_active', true)
-      .order('price_monthly', { ascending: true });
-
-    if (error) throw error;
-
-    return c.json({ plans: plans || [] });
-  } catch (error) {
-    console.error('Error fetching plans:', error);
-    return c.json({ error: 'Failed to fetch plans' }, 500);
   }
 });
 

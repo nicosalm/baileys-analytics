@@ -155,16 +155,7 @@ export class StripeService {
   async getSubscription(tenantId: string) {
     const { data: subscription } = await this.supabase
       .from('subscriptions')
-      .select(`
-        *,
-        subscription_plans (
-          name,
-          price_monthly,
-          price_yearly,
-          max_properties,
-          features
-        )
-      `)
+      .select('*')
       .eq('tenant_id', tenantId)
       .single();
 
@@ -319,13 +310,10 @@ export class StripeService {
     const tenantId = subscription.metadata?.tenant_id;
     if (!tenantId) return;
 
-    // get the plan details
+    // determine billing cycle from price interval
     const priceId = subscription.items.data[0]?.price.id;
-    const { data: plan } = await this.supabase
-      .from('subscription_plans')
-      .select('id')
-      .eq('stripe_price_id', priceId)
-      .single();
+    const interval = subscription.items.data[0]?.price.recurring?.interval;
+    const billing_cycle = interval === 'year' ? 'yearly' : 'monthly';
 
     // upsert subscription
     await this.supabase
@@ -334,7 +322,7 @@ export class StripeService {
         tenant_id: tenantId,
         stripe_subscription_id: subscription.id,
         stripe_customer_id: subscription.customer as string,
-        plan_id: plan?.id,
+        billing_cycle: billing_cycle,
         status: subscription.status,
         current_period_start: (subscription as any).current_period_start ? new Date((subscription as any).current_period_start * 1000).toISOString() : null,
         current_period_end: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null,

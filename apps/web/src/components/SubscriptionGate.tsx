@@ -58,11 +58,11 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
               <AlertCircle className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Choose Your Plan to Get Started
+              Get Started with Baileys Analytics
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Select the plan that best fits your property portfolio.
-              Just $1 for your first month, then regular pricing.
+              Complete vacation rental analytics for just $20/month.
+              Start with $1 for your first month.
             </p>
           </div>
 
@@ -71,19 +71,19 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
 
           {/* additional info */}
           <div className="mt-12 bg-blue-50 rounded-xl p-6 max-w-2xl mx-auto">
-            <h3 className="font-semibold text-blue-900 mb-2">How it works:</h3>
+            <h3 className="font-semibold text-blue-900 mb-2">how it works:</h3>
             <ol className="space-y-2 text-sm text-blue-800">
-              <li>1. Choose your plan based on your property count</li>
-              <li>2. Pay $1 to access the full dashboard for your first month</li>
-              <li>3. After 30 days, you'll be charged the regular monthly or yearly rate</li>
-              <li>4. Change or cancel your plan anytime from Settings</li>
+              <li>1. subscribe to get full access to all features</li>
+              <li>2. pay just $1 for your first month</li>
+              <li>3. after 30 days, regular pricing applies ($20/month or $192/year)</li>
+              <li>4. cancel anytime from settings</li>
             </ol>
           </div>
 
-          {/* link to settings if they want to check something */}
+          {/* link to settings */}
           <div className="text-center mt-8">
             <a href="/settings?tab=billing" className="text-sm text-gray-600 hover:text-gray-900">
-              Need to update payment details? Go to Settings →
+              need to update payment details? go to settings →
             </a>
           </div>
         </div>

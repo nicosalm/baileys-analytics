@@ -21,7 +21,7 @@ export const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (password !== confirmPassword) {
       addToast('error', 'Passwords do not match')
       return
@@ -103,11 +103,6 @@ export const Signup = () => {
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Start your $1 trial</h2>
             <p className="text-gray-600">30 days full access for just $1. Cancel anytime.</p>
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800 font-medium">
-                💳 First month only $1 • Then from $19/mo • Cancel anytime
-              </p>
-            </div>
           </div>
 
           {/* Signup form */}
@@ -232,13 +227,13 @@ export const Signup = () => {
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
         <div className="absolute top-40 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
         <div className="absolute bottom-20 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
-        
+
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <h3 className="text-4xl font-bold mb-6">Everything You Need to Succeed</h3>
           <p className="text-lg opacity-90 mb-8">
             Get started in minutes with our powerful analytics platform.
           </p>
-          
+
           {/* Feature list */}
           <div className="space-y-6">
             <div className="flex items-start">

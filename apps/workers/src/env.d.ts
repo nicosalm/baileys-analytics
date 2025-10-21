@@ -22,11 +22,7 @@ interface Env {
 	STRIPE_PUBLISHABLE_KEY: string;
 	STRIPE_WEBHOOK_SECRET: string;
 
-	// stripe price ids
-	STRIPE_PRICE_STARTER_MONTHLY: string;
-	STRIPE_PRICE_STARTER_YEARLY: string;
-	STRIPE_PRICE_PROFESSIONAL_MONTHLY: string;
-	STRIPE_PRICE_PROFESSIONAL_YEARLY: string;
-	STRIPE_PRICE_SCALE_MONTHLY: string;
-	STRIPE_PRICE_SCALE_YEARLY: string;
+	// stripe price ids (single tier)
+	STRIPE_PRICE_MONTHLY: string;
+	STRIPE_PRICE_YEARLY: string;
 }

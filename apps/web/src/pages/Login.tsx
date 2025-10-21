@@ -17,7 +17,7 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false)
   const hasShownSuccessToast = useRef(false)
   const hasShownOAuthSuccess = useRef(false)
-  
+
   // check for oauth success message
   useEffect(() => {
     if (searchParams.get('oauth') === 'success' && !hasShownOAuthSuccess.current) {
@@ -29,7 +29,7 @@ export const Login = () => {
       }
     }
   }, [searchParams, addToast, state.status, navigate])
-  
+
   // redirect when authentication state changes
   useEffect(() => {
     if (state.status === 'authenticated') {
@@ -37,7 +37,7 @@ export const Login = () => {
       navigate('/dashboard/overview', { replace: true })
     }
   }, [state.status, navigate])
-  
+
   // handle success toast separately
   useEffect(() => {
     if (state.status === 'authenticated' && loading && !hasShownSuccessToast.current) {
@@ -49,16 +49,16 @@ export const Login = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!email || !password) {
       addToast('error', 'Please enter your email and password')
       return
     }
-    
+
     setLoading(true)
     hasShownSuccessToast.current = false
     const success = await login(email, password)
-    
+
     if (!success) {
       setLoading(false)
       addToast('error', 'Invalid email or password. Please try again.')
@@ -160,7 +160,7 @@ export const Login = () => {
           <p className="mt-8 text-center text-gray-600">
             Don't have an account?{' '}
             <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-700">
-              Start your free trial
+              Start your $1 trial
             </Link>
           </p>
         </div>
@@ -172,13 +172,13 @@ export const Login = () => {
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
         <div className="absolute top-40 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
         <div className="absolute bottom-20 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
-        
+
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <h3 className="text-4xl font-bold mb-6">Pull Back the Curtain on Your Rental Revenue</h3>
           <p className="text-lg opacity-90 mb-8">
             Join property managers who've transformed their data into actionable insights.
           </p>
-          
+
           {/* Feature highlights */}
           <div className="space-y-4">
             <div className="flex items-start">
