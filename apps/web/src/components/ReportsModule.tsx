@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import {
-  Calendar, Clock, FileText,
+  Calendar, FileText,
   Play, TrendingUp, Users,
   AlertCircle, Home, DollarSign,
-  BarChart3, Zap, Building2, PieChart, Lock,
-  Sparkles
+  BarChart3, Building2, PieChart, Zap
 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { useReportTemplates } from '@/hooks/use-api'
@@ -43,11 +42,11 @@ const QUICK_REPORTS = [
   {
     id: 'daily-ops',
     name: 'Daily Operations Digest',
-    description: 'Today\'s arrivals, departures & action items',
+    description: 'Today\'s arrivals and departures',
     icon: Zap,
     category: 'operational',
     config: {
-      modules: ['arrivals', 'departures', 'turnovers', 'alerts'],
+      modules: ['arrivals', 'departures'],
       dateRange: 'today',
       format: 'pdf'
     }
@@ -55,7 +54,7 @@ const QUICK_REPORTS = [
   {
     id: 'property-performance',
     name: 'Property Performance',
-    description: 'Detailed metrics by property with comparisons',
+    description: 'Revenue, occupancy, and booking gaps by property',
     icon: Building2,
     category: 'analytics',
     config: {
@@ -67,7 +66,7 @@ const QUICK_REPORTS = [
   {
     id: 'financial-summary',
     name: 'Financial Summary',
-    description: 'P&L with visual breakdowns and trends',
+    description: 'Revenue, platform fees, and profit analysis',
     icon: TrendingUp,
     category: 'financial',
     config: {
@@ -83,7 +82,7 @@ const QUICK_REPORTS = [
     icon: Calendar,
     category: 'operational',
     config: {
-      modules: ['bookings', 'guests', 'payments'],
+      modules: ['bookings', 'guests'],
       dateRange: 'last30days',
       format: 'pdf'
     }
@@ -127,7 +126,7 @@ const QUICK_REPORTS = [
   {
     id: 'guest-analytics',
     name: 'Guest Analytics',
-    description: 'Guest demographics and repeat visitors',
+    description: 'Repeat visitor rates and top guests by revenue',
     icon: Users,
     category: 'analytics',
     config: {
@@ -138,12 +137,45 @@ const QUICK_REPORTS = [
   }
 ]
 
+const getDateRangeLabel = (dateRange: string): string => {
+  const today = new Date()
+
+  switch (dateRange) {
+    case 'today':
+      return today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    case 'last7days':
+      const last7 = new Date(today)
+      last7.setDate(today.getDate() - 7)
+      return `${last7.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${today.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    case 'last30days':
+      const last30 = new Date(today)
+      last30.setDate(today.getDate() - 30)
+      return `Last 30 Days`
+    case 'lastMonth':
+      const lastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+      return lastMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    case 'last90days':
+      return 'Last 90 Days'
+    case 'lastQuarter':
+      const quarter = Math.floor(today.getMonth() / 3)
+      const quarterStart = new Date(today.getFullYear(), (quarter - 1) * 3, 1)
+      const quarterMonth = quarterStart.toLocaleDateString('en-US', { month: 'short' })
+      const quarterEndMonth = new Date(today.getFullYear(), quarter * 3 - 1, 1).toLocaleDateString('en-US', { month: 'short' })
+      return `Q${quarter} ${today.getFullYear()} (${quarterMonth} - ${quarterEndMonth})`
+    case 'lastYear':
+      return (today.getFullYear() - 1).toString()
+    default:
+      return dateRange
+  }
+}
+
 const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
   const { addToast } = useToast()
   const [isGenerating, setIsGenerating] = useState(false)
 
   const category = REPORT_CATEGORIES[report.category as keyof typeof REPORT_CATEGORIES]
   const Icon = report.icon
+  const dateRangeLabel = getDateRangeLabel(report.config.dateRange)
 
   const handleQuickGenerate = async () => {
     setIsGenerating(true)
@@ -179,8 +211,8 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all p-4">
-      <div className="flex items-start justify-between mb-3">
+    <div className="h-full bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all p-4 flex flex-col">
+      <div className="flex items-start justify-between mb-3 flex-1">
         <div className="flex items-start gap-3 flex-1">
           <div className={`p-2 rounded-lg ${
             category.color === 'blue' ? 'bg-blue-50' :
@@ -198,6 +230,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
           <div className="flex-1">
             <h4 className="text-sm font-semibold text-gray-900">{report.name}</h4>
             <p className="text-xs text-gray-500 mt-0.5">{report.description}</p>
+            <p className="text-xs text-gray-400 mt-1 font-medium">{dateRangeLabel}</p>
           </div>
         </div>
       </div>
@@ -205,7 +238,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
       <button
         onClick={handleQuickGenerate}
         disabled={isGenerating}
-        className="w-full flex items-center justify-center px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50"
+        className="w-full flex items-center justify-center px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 mt-auto"
       >
         {isGenerating ? (
           <LoadingState size="sm" inline message="Generating..." />
@@ -220,27 +253,8 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
   )
 }
 
-const ComingSoonOverlay = ({ feature }: { feature: string }) => (
-  <div className="relative rounded-lg overflow-hidden">
-    <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 to-gray-800/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
-      <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 text-center max-w-sm mx-4">
-        <div className="inline-flex p-3 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full mb-4">
-          <Lock className="w-8 h-8 text-white" />
-        </div>
-        <h3 className="text-2xl font-bold text-white mb-2">Coming Soon</h3>
-        <p className="text-gray-200 mb-4">{feature} will be available in a future update</p>
-        <div className="flex items-center justify-center gap-2 text-sm text-gray-300">
-          <Sparkles className="w-4 h-4" />
-          <span>Stay tuned for updates</span>
-        </div>
-      </div>
-    </div>
-  </div>
-)
-
 export const ReportsModule = () => {
   const { error } = useReportTemplates()
-  const [activeTab, setActiveTab] = useState<'quick' | 'templates' | 'scheduled'>('quick')
 
 
   if (error) {
@@ -280,64 +294,13 @@ export const ReportsModule = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 p-1">
-        <nav className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('quick')}
-            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center justify-center ${
-              activeTab === 'quick'
-                ? 'bg-gray-900 text-white'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-            }`}
-          >
-            <Zap className="w-4 h-4 mr-2" />
-            Quick Reports
-            <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-              activeTab === 'quick' ? 'bg-white/20' : 'bg-gray-100 text-gray-600'
-            }`}>
-              {QUICK_REPORTS.length}
-            </span>
-          </button>
-          <button
-            disabled
-            className="flex-1 px-4 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed flex items-center justify-center opacity-50"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Custom Templates
-            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-400 rounded-full">
-              Soon
-            </span>
-          </button>
-          <button
-            disabled
-            className="flex-1 px-4 py-2 rounded-md text-sm font-medium text-gray-400 cursor-not-allowed flex items-center justify-center opacity-50"
-          >
-            <Clock className="w-4 h-4 mr-2" />
-            Scheduled
-            <span className="ml-2 px-2 py-0.5 text-xs bg-gray-100 text-gray-400 rounded-full">
-              Soon
-            </span>
-          </button>
-        </nav>
-      </div>
-
-      {activeTab === 'quick' && (
-        <div className="space-y-6">
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {QUICK_REPORTS.map(report => (
-              <QuickReportCard key={report.id} report={report} />
-            ))}
-          </div>
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {QUICK_REPORTS.map(report => (
+            <QuickReportCard key={report.id} report={report} />
+          ))}
         </div>
-      )}
-
-      {activeTab === 'templates' && (
-        <ComingSoonOverlay feature="Custom report templates" />
-      )}
-
-      {activeTab === 'scheduled' && (
-        <ComingSoonOverlay feature="Scheduled report automation" />
-      )}
+      </div>
     </div>
   )
 }

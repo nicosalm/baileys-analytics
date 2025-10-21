@@ -102,8 +102,30 @@ async function getCurrentPeriodMetrics(
 	const totalPossibleNights = totalDays * (propertyCount || 1);
 	const occupancyRate = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
 
-	const uniqueGuests = new Set(bookings?.map(b => b.guest_name?.toLowerCase()).filter(Boolean));
+	const uniqueGuests = new Set(bookings?.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
+
+	// Calculate repeat guest rate by checking historical bookings before the current period
+	const { data: historicalBookings } = await supabase
+		.from('bookings')
+		.select('guest_email, guest_name')
+		.eq('tenant_id', tenantId)
+		.lt('arrival', from)
+		.neq('status', 'canceled');
+
+	const historicalGuestIds = new Set(
+		historicalBookings?.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean) || []
+	);
+
+	let repeatGuests = 0;
+	uniqueGuests.forEach(guestId => {
+		if (historicalGuestIds.has(guestId)) {
+			repeatGuests++;
+		}
+	});
+
+	const newGuests = totalGuests - repeatGuests;
+	const repeatGuestRate = totalGuests > 0 ? repeatGuests / totalGuests : 0;
 
 	const totalWithCanceled = totalBookings + (canceledCount || 0);
 	const cancellationRate = totalWithCanceled > 0 ? ((canceledCount || 0) / totalWithCanceled) * 100 : 0;
@@ -119,8 +141,8 @@ async function getCurrentPeriodMetrics(
 		cancellationRate,
 		occupancyRate,
 		totalGuests,
-		newGuests: 0,
-		repeatGuestRate: 0,
+		newGuests,
+		repeatGuestRate,
 		avgBookingValue,
 		avgNights,
 		totalProperties: propertyCount || 0,
@@ -395,7 +417,7 @@ async function getAlerts(
 				id: 'low-occupancy',
 				type: 'warning' as const,
 				title: 'Low Upcoming Occupancy',
-				description: `Next 30 days occupancy is below 50%. Consider promotional pricing.`,
+				description: `Next 30 days occupancy is below 50%.`,
 				timestamp: new Date().toISOString()
 			});
 		}
@@ -424,7 +446,7 @@ async function getAlerts(
 				id: 'high-cancellations',
 				type: 'warning' as const,
 				title: 'High Cancellation Rate',
-				description: `Cancellation rate in selected period is ${Math.round(cancellationRate)}%. Review your cancellation policy.`,
+				description: `Cancellation rate in selected period is ${Math.round(cancellationRate)}%.`,
 				timestamp: new Date().toISOString()
 			});
 		}

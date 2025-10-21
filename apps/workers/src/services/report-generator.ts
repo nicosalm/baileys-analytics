@@ -163,7 +163,8 @@ export class ReportGenerator {
 		for (const module of modules) {
 			try {
 				const sectionData = await this.generateSection(tenantId, module, dates);
-				if (sectionData) {
+				// Only add non-null sections
+				if (sectionData && sectionData.data !== undefined) {
 					reportData.sections.push(sectionData);
 				}
 			} catch (error) {
@@ -230,7 +231,6 @@ export class ReportGenerator {
 		switch (module) {
 			case 'arrivals':
 			case 'departures':
-			case 'turnovers':
 				return this.generateOperationalSection(tenantId, module, dates);
 			case 'bookings':
 				return this.generateBookingsSection(tenantId, dates);
@@ -249,7 +249,6 @@ export class ReportGenerator {
 				return this.generateTaxSection(tenantId, module, dates);
 			case 'guests':
 			case 'repeat_rate':
-			case 'demographics':
 				return this.generateGuestSection(tenantId, module, dates);
 			case 'channels':
 			case 'conversion':
@@ -259,7 +258,8 @@ export class ReportGenerator {
 			case 'seasonal_trends':
 				return this.generateTrendsSection(tenantId, module, dates);
 			default:
-				return { module, data: null };
+				// Unknown module - skip it
+				return null;
 		}
 	}
 	
@@ -322,21 +322,29 @@ export class ReportGenerator {
 			.gte('arrival', dates.from)
 			.lte('departure', dates.to)
 			.neq('status', 'canceled')
+			.order('property_id')
 			.order('arrival');
-		
+
+		// Calculate gap analysis per property
 		let singleNightGaps = 0;
 		let twoNightGaps = 0;
 		let threeNightGaps = 0;
-		
-		if (bookings && bookings.length > 1) {
-			for (let i = 0; i < bookings.length - 1; i++) {
-				const currentDeparture = new Date(bookings[i].departure);
-				const nextArrival = new Date(bookings[i + 1].arrival);
-				const gapDays = Math.floor((nextArrival.getTime() - currentDeparture.getTime()) / (1000 * 60 * 60 * 24));
-				
-				if (gapDays === 1) singleNightGaps++;
-				else if (gapDays === 2) twoNightGaps++;
-				else if (gapDays === 3) threeNightGaps++;
+
+		if (properties && bookings) {
+			for (const property of properties) {
+				const propertyBookings = bookings
+					.filter(b => b.property_id === property.id)
+					.sort((a, b) => new Date(a.arrival).getTime() - new Date(b.arrival).getTime());
+
+				for (let i = 0; i < propertyBookings.length - 1; i++) {
+					const currentDeparture = new Date(propertyBookings[i].departure);
+					const nextArrival = new Date(propertyBookings[i + 1].arrival);
+					const gapDays = Math.floor((nextArrival.getTime() - currentDeparture.getTime()) / (1000 * 60 * 60 * 24));
+
+					if (gapDays === 1) singleNightGaps++;
+					else if (gapDays === 2) twoNightGaps++;
+					else if (gapDays === 3) threeNightGaps++;
+				}
 			}
 		}
 		
@@ -402,14 +410,35 @@ export class ReportGenerator {
 			.gte('arrival', dates.from)
 			.lte('arrival', dates.to)
 			.neq('status', 'canceled');
-		
+
 		const revenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-		const platformFees = revenue * 0.03;
-		const airbnbFees = platformFees * 0.5;
-		const vrboFees = platformFees * 0.3;
-		const bookingFees = platformFees * 0.2;
+
+		// Fetch actual platform fees from the database
+		const { data: platformFeeRecords } = await this.supabase
+			.from('platform_fees')
+			.select('*')
+			.eq('tenant_id', tenantId)
+			.gte('booking_date', dates.from)
+			.lte('booking_date', dates.to);
+
+		// Calculate fees by platform from actual data
+		const platformFees = platformFeeRecords?.reduce((sum, f) => sum + (f.fee_amount || 0), 0) || 0;
+
+		const feesByPlatform = new Map<string, number>();
+		platformFeeRecords?.forEach(f => {
+			const platform = f.platform || 'Unknown';
+			feesByPlatform.set(platform, (feesByPlatform.get(platform) || 0) + (f.fee_amount || 0));
+		});
+
+		const airbnbFees = feesByPlatform.get('Airbnb') || 0;
+		const vrboFees = feesByPlatform.get('VRBO') || feesByPlatform.get('Vrbo') || 0;
+		const bookingFees = feesByPlatform.get('Booking.com') || 0;
+		const otherFees = Array.from(feesByPlatform.entries())
+			.filter(([p]) => !['Airbnb', 'VRBO', 'Vrbo', 'Booking.com'].includes(p))
+			.reduce((sum, [, fee]) => sum + fee, 0);
+
 		const netRevenue = revenue - platformFees;
-		const expenses = platformFees;
+		const expenses = platformFees; // For now, expenses = platform fees (can expand later)
 		const netProfit = netRevenue - expenses;
 		const profitMargin = revenue > 0 ? netProfit / revenue : 0;
 		
@@ -434,8 +463,8 @@ export class ReportGenerator {
 		
 		return {
 			module,
-			title: module === 'pl' ? 'Profit & Loss' : 
-			       module === 'revenue' ? 'Revenue Summary' : 
+			title: module === 'pl' ? 'Profit & Loss' :
+			       module === 'revenue' ? 'Revenue Summary' :
 			       module === 'expenses' ? 'Expense Report' : 'Financial Trends',
 			data: {
 				revenue,
@@ -443,6 +472,7 @@ export class ReportGenerator {
 				airbnbFees,
 				vrboFees,
 				bookingFees,
+				otherFees,
 				netRevenue,
 				expenses,
 				netProfit,
@@ -492,11 +522,13 @@ export class ReportGenerator {
 		
 		const guestMap = new Map();
 		bookings?.forEach(b => {
-			const guestId = b.guest_name?.toLowerCase();
-			if (guestId) {
+			// Use email as primary identifier when available, fall back to guest_name
+			// This prevents treating guests with same names as the same person
+			const guestId = b.guest_email?.toLowerCase() || `name:${b.guest_name?.toLowerCase()}`;
+			if (guestId && (b.guest_email || b.guest_name)) {
 				if (!guestMap.has(guestId)) {
 					guestMap.set(guestId, {
-						name: b.guest_name,
+						name: b.guest_name || b.guest_email,
 						bookings: 0,
 						revenue: 0,
 						nights: 0
@@ -506,7 +538,7 @@ export class ReportGenerator {
 				guest.bookings++;
 				guest.revenue += b.total_amount || 0;
 				const nights = Math.ceil(
-					(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / 
+					(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) /
 					(1000 * 60 * 60 * 24)
 				);
 				guest.nights += nights;

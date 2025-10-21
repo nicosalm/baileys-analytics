@@ -24,25 +24,18 @@ const TOP_PROPERTIES_DEFAULT_PORTION = 0.8
 
 const AlertCard = ({ alert }: { alert: any }) => {
   const icons = {
-    warning: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
-    info: <AlertCircle className="w-5 h-5 text-blue-600" />,
-    success: <CheckCircle className="w-5 h-5 text-green-600" />
-  }
-
-  const bgColors = {
-    warning: 'bg-yellow-50 border-yellow-200',
-    info: 'bg-blue-50 border-blue-200',
-    success: 'bg-green-50 border-green-200'
+    warning: <AlertTriangle className="w-4 h-4 text-yellow-600" />,
+    info: <AlertCircle className="w-4 h-4 text-blue-600" />,
+    success: <CheckCircle className="w-4 h-4 text-green-600" />
   }
 
   return (
-    <div className={`p-4 rounded-lg border ${(bgColors as any)[alert.type]}`}>
-      <div className="flex items-start">
-        <div className="shrink-0 mt-0.5">{(icons as any)[alert.type]}</div>
-        <div className="ml-3 flex-1">
-          <h4 className="text-sm font-medium">{alert.title}</h4>
-          <p className="text-sm text-gray-600 mt-1">{alert.description}</p>
-          <p className="text-xs text-gray-500 mt-2">
+    <div className="flex items-center justify-between py-2 border-b last:border-0">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="shrink-0">{(icons as any)[alert.type]}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate">{alert.title}</p>
+          <p className="text-xs text-gray-500">
             {formatDateDisplay(new Date(alert.timestamp))}
           </p>
         </div>
@@ -654,9 +647,11 @@ export const OverviewDashboard = () => {
           <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
             {recentActivity && recentActivity.length > 0 ? (
               recentActivity.map((activity: any) => (
-                <div 
-                  key={activity.id} 
-                  className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
+                <div
+                  key={activity.id}
+                  className={`flex items-center justify-between py-2 border-b last:border-0 ${
+                    activity.bookingId ? 'hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors' : ''
+                  }`}
                   onClick={() => {
                     if (activity.bookingId) {
                       openModal({

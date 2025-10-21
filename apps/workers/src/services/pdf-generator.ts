@@ -104,7 +104,6 @@ export class PDFGenerator {
     switch (section.module) {
       case 'arrivals':
       case 'departures':
-      case 'turnovers':
         return this.addOperationalList(doc, section, yPosition)
         
       case 'bookings':
@@ -157,36 +156,11 @@ export class PDFGenerator {
       doc.setTextColor(0, 0, 0)
       return yPos + 10
     }
-    
-    if (module === 'turnovers' && items.length > 0) {
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(200, 0, 0)
-      doc.text(`ALERT: ${items.length} properties need same-day turnover`, 20, yPos)
-      doc.setTextColor(0, 0, 0)
-      yPos += 6
-    }
-    
+
     let headers: string[]
     let rows: any[][]
-    
-    if (module === 'turnovers') {
-      headers = ['Property', 'Out → In', 'Gap', 'Action']
-      rows = items.slice(0, 15).map((turnover: any) => {
-        const gap = this.calculateGapHours(turnover.departureTime || turnover.departure, 
-                                          turnover.arrivalTime || turnover.arrival)
-        let action = 'Standard clean'
-        if (gap < 3) action = 'RUSH CLEAN'
-        else if (gap < 5) action = 'Priority clean'
-        
-        return [
-          turnover.propertyName || 'N/A',
-          `${turnover.departingGuest || 'Guest'} → ${turnover.arrivingGuest || 'Guest'}`,
-          `${gap}h`,
-          action
-        ]
-      })
-    } else if (module === 'arrivals') {
+
+    if (module === 'arrivals') {
       headers = ['Property', 'Guest', 'Time', 'Nights', 'Amount', 'Contact']
       rows = items.slice(0, 15).map((booking: any) => {
         const hasContact = booking.guestEmail || booking.guestPhone ? '✓' : '✗'
@@ -215,10 +189,7 @@ export class PDFGenerator {
       body: rows,
       theme: 'plain',
       styles: { fontSize: 8, cellPadding: 2 },
-      columnStyles: module === 'turnovers' ? {
-        2: { halign: 'center' },
-        3: { halign: 'left' }
-      } : module === 'arrivals' ? {
+      columnStyles: module === 'arrivals' ? {
         2: { halign: 'center' },
         3: { halign: 'center' },
         4: { halign: 'right' },
@@ -622,12 +593,23 @@ export class PDFGenerator {
     yPos += 8
     
     const headers = ['Month', 'Revenue', 'Bookings', 'Occupancy']
-    const rows = trends.slice(-12).map((t: any) => [
-      this.formatMonth(t.month),
-      this.formatCurrency(t.revenue || 0),
-      (t.bookings || 0).toString(),
-      `${((t.nights || 0) / 30 * 100).toFixed(0)}%`
-    ])
+    const rows = trends.slice(-12).map((t: any) => {
+      // Use occupancyRate if provided, otherwise calculate using actual days in month
+      let occupancy = 0
+      if (t.occupancyRate !== undefined) {
+        occupancy = t.occupancyRate * 100
+      } else if (t.nights && t.month) {
+        const daysInMonth = this.getDaysInMonth(t.month)
+        occupancy = (t.nights / daysInMonth) * 100
+      }
+
+      return [
+        this.formatMonth(t.month),
+        this.formatCurrency(t.revenue || 0),
+        (t.bookings || 0).toString(),
+        `${occupancy.toFixed(0)}%`
+      ]
+    })
     
     autoTable(doc, {
       startY: yPos,
@@ -651,7 +633,7 @@ export class PDFGenerator {
   private calculateTotals(headers: string[], rows: any[][]): string[] {
     return headers.map((header, colIndex) => {
       if (colIndex === 0) return 'Total'
-      
+
       const columnValues = rows.map(row => row[colIndex])
       const numericValues = columnValues
         .map(v => {
@@ -659,22 +641,30 @@ export class PDFGenerator {
           return parseFloat(str)
         })
         .filter(v => !isNaN(v))
-      
+
       if (numericValues.length === 0) return ''
-      
+
       const sum = numericValues.reduce((a, b) => a + b, 0)
       const headerLower = header.toLowerCase()
-      
+
       if (headerLower.includes('occupancy') || headerLower.includes('%')) {
         return `${(sum / numericValues.length).toFixed(0)}%`
-      } else if (headerLower.includes('bookings') || headerLower.includes('nights')) {
+      } else if (headerLower.includes('bookings') || headerLower.includes('nights') ||
+                 headerLower.includes('count') || headerLower.includes('year')) {
         return Math.round(sum).toString()
       } else if (headerLower.includes('avg') || headerLower === 'adr') {
         return this.formatCurrency(sum / numericValues.length)
-      } else if (headerLower.includes('channel') || headerLower.includes('guest') || headerLower.includes('property')) {
+      } else if (headerLower.includes('channel') || headerLower.includes('guest') ||
+                 headerLower.includes('property')) {
         return ''
-      } else {
+      } else if (headerLower.includes('revenue') || headerLower.includes('amount') ||
+                 headerLower.includes('total') || headerLower.includes('price') ||
+                 headerLower.includes('fee') || headerLower.includes('spend') ||
+                 headerLower.includes('value')) {
         return this.formatCurrency(sum)
+      } else {
+        // For unknown columns, return plain number instead of assuming currency
+        return Math.round(sum).toString()
       }
     })
   }
@@ -720,5 +710,13 @@ export class PDFGenerator {
     const arr = new Date(arrTime)
     const hours = Math.round((arr.getTime() - dep.getTime()) / (1000 * 60 * 60))
     return Math.max(0, hours)
+  }
+
+  private getDaysInMonth(dateStr: string): number {
+    const date = new Date(dateStr)
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    // Get the last day of the month by going to day 0 of next month
+    return new Date(year, month + 1, 0).getDate()
   }
 }
