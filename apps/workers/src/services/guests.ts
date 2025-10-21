@@ -241,7 +241,28 @@ export async function getGuestsData(
   }
   
   const totalGuests = guestPeriodMap.size;
-  const repeatGuests = Array.from(guestPeriodMap.values()).filter(g => g.bookings.length > 1).length;
+
+  // Calculate repeat guests: guests in the period who also have bookings before the period start
+  let repeatGuests = 0;
+  if (hasDateFilter && from) {
+    for (const [guestId, periodData] of guestPeriodMap) {
+      const allTimeData = guestAllTimeMap.get(guestId);
+      if (allTimeData) {
+        // Check if this guest has any bookings before the period start
+        const hasHistoricalBookings = allTimeData.bookings.some(b => b.arrival < from);
+        if (hasHistoricalBookings) {
+          repeatGuests++;
+        }
+      }
+    }
+  } else {
+    // If no date filter, count guests with multiple bookings total
+    repeatGuests = Array.from(guestPeriodMap.values()).filter(g => {
+      const allTimeData = guestAllTimeMap.get(createGuestId(g.name, g.email));
+      return allTimeData && allTimeData.bookings.length > 1;
+    }).length;
+  }
+
   const repeatRate = totalGuests > 0 ? repeatGuests / totalGuests : 0;
   
   let totalRevenue = 0;

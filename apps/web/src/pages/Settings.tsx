@@ -56,9 +56,9 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     label: 'Billing',
     icon: CreditCard
   },
-  { 
-    id: 'tax', 
-    label: 'Tax Configuration', 
+  {
+    id: 'tax',
+    label: 'Platform Fees',
     icon: Calculator
   },
   { 
@@ -120,10 +120,12 @@ const GeneralTab = ({
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Danger Zone</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Permanently delete your account and all associated data. This action cannot be undone.
-        </p>
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Danger Zone</h3>
+          <p className="text-sm text-gray-600">
+            Permanently delete your account and all associated data. This action cannot be undone.
+          </p>
+        </div>
         <button
           onClick={onDeleteAccount}
           className="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all flex items-center gap-2 border border-red-200"
@@ -140,14 +142,12 @@ const PreferencesTab = () => {
   const { showTips, toggleTips } = useTips()
   const { addToast } = useToast()
   const [notifications, setNotifications] = useState(true)
-  const [language, setLanguage] = useState('en')
-  const [theme, setTheme] = useState('light')
-  
+
   const handleToggleTips = () => {
     toggleTips()
     addToast('success', showTips ? 'Tips disabled' : 'Tips enabled')
   }
-  
+
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -170,23 +170,6 @@ const PreferencesTab = () => {
                 }`}
               />
             </button>
-          </div>
-          
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div>
-              <span className="text-sm font-medium text-gray-700">Theme</span>
-              <p className="text-xs text-gray-500 mt-0.5">Choose your preferred color theme</p>
-            </div>
-            <select
-              value={theme}
-              onChange={(e) => setTheme(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              disabled
-            >
-              <option value="light">Light</option>
-              <option value="dark">Dark (Coming Soon)</option>
-              <option value="auto">Auto (Coming Soon)</option>
-            </select>
           </div>
         </div>
       </div>
@@ -211,28 +194,6 @@ const PreferencesTab = () => {
                 }`}
               />
             </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Language & Region</h3>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="text-sm font-medium text-gray-700">Language</span>
-              <p className="text-xs text-gray-500 mt-0.5">Choose your preferred language</p>
-            </div>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              disabled
-            >
-              <option value="en">English</option>
-              <option value="es">Spanish (Coming Soon)</option>
-              <option value="fr">French (Coming Soon)</option>
-            </select>
           </div>
         </div>
       </div>

@@ -191,19 +191,19 @@ export const PerformanceQuadrantLegend: React.FC = () => {
     <div className="flex flex-wrap gap-2 justify-center text-xs mt-3 px-4">
       <div className="flex items-center gap-1.5 bg-green-50 px-2 py-1 rounded">
         <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">High Performers</span>
+        <span className="text-gray-700 text-[11px] font-medium">High Occupancy & Revenue</span>
       </div>
       <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded">
         <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">Premium Pricing</span>
+        <span className="text-gray-700 text-[11px] font-medium">High Revenue, Low Occupancy</span>
       </div>
       <div className="flex items-center gap-1.5 bg-yellow-50 px-2 py-1 rounded">
         <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">Price Opportunity</span>
+        <span className="text-gray-700 text-[11px] font-medium">High Occupancy, Low Revenue</span>
       </div>
       <div className="flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded">
         <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">Needs Attention</span>
+        <span className="text-gray-700 text-[11px] font-medium">Low Occupancy & Revenue</span>
       </div>
       <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded">
         <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>

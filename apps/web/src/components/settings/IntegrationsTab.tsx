@@ -5,11 +5,10 @@ import { useSyncStatus } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import { useNavigate } from 'react-router-dom'
-import { 
+import {
   RefreshCw, AlertCircle, Check, Link2, Link2Off,
-  Building2, Clock, Database, Users, Calendar, Webhook
+  Building2, Webhook
 } from 'lucide-react'
-import { formatDateDisplay } from '@baileys/utils'
 import { ConfirmModal } from '@/components/ConfirmModal'
 
 
@@ -83,10 +82,7 @@ export const IntegrationsTab = () => {
       addToast('error', 'Failed to initiate sync')
     }
   }
-  
-  const formatDate = (dateString: string | null): string =>
-    dateString ? formatDateDisplay(new Date(dateString)) : 'Never'
-  
+
   return (
     <div className="space-y-6">
       {/* ownerrez integration card */}
@@ -98,8 +94,8 @@ export const IntegrationsTab = () => {
                 <Building2 className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-1">OwnerRez</h2>
-                <p className="text-gray-600">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">OwnerRez</h2>
+                <p className="text-gray-600 text-sm">
                   Connect your OwnerRez account to sync properties, bookings, and guest data with real-time webhook updates
                 </p>
               </div>
@@ -133,56 +129,11 @@ export const IntegrationsTab = () => {
 
           {isConnected && syncStatus && (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-gray-600 mb-1">
-                    <Database className="w-4 h-4" />
-                    <span className="text-sm font-medium">Properties</span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{syncStatus.propertyCount}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Last sync: {formatDate(syncStatus.lastPropertySync)}
-                  </p>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-gray-600 mb-1">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-sm font-medium">Bookings</span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{syncStatus.bookingCount}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Last sync: {formatDate(syncStatus.lastBookingSync)}
-                  </p>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-gray-600 mb-1">
-                    <Users className="w-4 h-4" />
-                    <span className="text-sm font-medium">Guests</span>
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{syncStatus.guestCount || 0}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    With contact info
-                  </p>
-                </div>
-                
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center gap-2 text-gray-600 mb-1">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm font-medium">Last Activity</span>
-                  </div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {formatDate(syncStatus.lastBookingSync || syncStatus.lastPropertySync)}
-                  </p>
-                </div>
-              </div>
-
               <div className="border-t border-gray-200 pt-6">
-                <div className="mb-4">
+                <div className="mb-6">
                   <div className="flex items-center gap-2 mb-2">
                     <Webhook className="w-4 h-4 text-green-600" />
-                    <h3 className="text-sm font-semibold text-gray-900">Sync Status</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">Sync Status</h3>
                   </div>
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-sm text-green-800">
@@ -191,8 +142,8 @@ export const IntegrationsTab = () => {
                     </p>
                   </div>
                 </div>
-                
-                <h3 className="text-sm font-semibold text-gray-900 mb-4">Manual Sync</h3>
+
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Manual Sync</h3>
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleManualSync}
@@ -238,7 +189,7 @@ export const IntegrationsTab = () => {
               <Link2 className="w-6 h-6 text-gray-400" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">More Integrations Coming Soon</h3>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">More Integrations Coming Soon</h2>
               <p className="text-gray-600 text-sm">
                 Additional property management platforms and services will be available in future updates
               </p>

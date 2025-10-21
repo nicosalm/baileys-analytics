@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { AlertTriangle, Calendar, X, ChevronDown, TrendingDown } from 'lucide-react'
+import { AlertTriangle, Calendar, TrendingDown } from 'lucide-react'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 
 export interface BookingGap {
@@ -16,20 +15,15 @@ export interface BookingGap {
 interface BookingGapAlertProps {
   gaps: BookingGap[]
   isLoading?: boolean
-  onDismiss?: () => void
   maxGapsToShow?: number
 }
 
-export const BookingGapAlert = ({ 
-  gaps, 
+export const BookingGapAlert = ({
+  gaps,
   isLoading = false,
-  onDismiss,
-  maxGapsToShow = 3 
+  maxGapsToShow = 3
 }: BookingGapAlertProps) => {
-  const [isExpanded, setIsExpanded] = useState(false)
-  const [isDismissed, setIsDismissed] = useState(false)
-
-  if (isDismissed || (!isLoading && gaps.length === 0)) {
+  if (!isLoading && gaps.length === 0) {
     return null
   }
 
@@ -52,7 +46,7 @@ export const BookingGapAlert = ({
       return a.daysUntilGap - b.daysUntilGap
     })
 
-  const displayGaps = sortedGaps.slice(0, isExpanded ? undefined : maxGapsToShow)
+  const displayGaps = sortedGaps
   const totalRevenueLoss = sortedGaps.reduce((sum, gap) => sum + gap.estimatedRevenueLoss, 0)
   const urgentGaps = sortedGaps.filter(g => g.daysUntilGap <= 7).length
   const criticalGaps = sortedGaps.filter(g => g.severity === 'critical').length
@@ -86,24 +80,13 @@ export const BookingGapAlert = ({
     }
   }
 
-  const handleDismiss = () => {
-    setIsDismissed(true)
-    onDismiss?.()
-  }
-
   const alertSeverity = criticalGaps > 0 ? 'critical' : urgentGaps > 0 ? 'warning' : 'info'
   const alertStyles = getSeverityStyles(alertSeverity)
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-gray-600" />
-          <h3 className="text-lg font-bold">Booking Gaps</h3>
-          {criticalGaps > 0 && (
-            <AlertTriangle className={`w-4 h-4 ${alertStyles.icon}`} />
-          )}
-        </div>
+        <h3 className="text-lg font-bold">Booking Gaps</h3>
         <div className="flex items-center gap-3">
           {urgentGaps > 0 && (
             <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${alertStyles.badge}`}>
@@ -111,67 +94,52 @@ export const BookingGapAlert = ({
             </span>
           )}
           <span className="text-xs text-gray-500">
-            {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'} • {formatCurrency(totalRevenueLoss)} potential loss
+            {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}
           </span>
-          <button
-            onClick={handleDismiss}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-            title="Dismiss"
-          >
-            <X className="w-4 h-4 text-gray-400" />
-          </button>
         </div>
       </div>
 
       <div className="space-y-3 max-h-80 overflow-y-auto">
         {displayGaps.map((gap) => {
           const styles = getSeverityStyles(gap.severity)
+          const icon = gap.severity === 'critical' ? (
+            <AlertTriangle className="w-4 h-4" />
+          ) : gap.severity === 'warning' ? (
+            <TrendingDown className="w-4 h-4" />
+          ) : (
+            <Calendar className="w-4 h-4" />
+          )
+
           return (
             <div
               key={`${gap.propertyId}-${gap.gapStart}`}
-              className={`p-4 rounded-lg border ${styles.border} ${styles.bg}`}
+              className="flex items-center justify-between py-2 border-b last:border-0"
             >
-              <div className="flex items-start">
-                <div className={`shrink-0 mt-0.5 ${styles.icon}`}>
-                  {gap.severity === 'critical' ? (
-                    <AlertTriangle className="w-5 h-5" />
-                  ) : gap.severity === 'warning' ? (
-                    <TrendingDown className="w-5 h-5" />
-                  ) : (
-                    <Calendar className="w-5 h-5" />
-                  )}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className={`shrink-0 ${styles.icon}`}>
+                  {icon}
                 </div>
-                <div className="ml-3 flex-1">
-                  <h4 className="text-sm font-medium">
-                    {gap.propertyName} - {gap.gapDays} {gap.gapDays === 1 ? 'night' : 'nights'} gap
-                  </h4>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {formatDateDisplay(new Date(gap.gapStart))} to {formatDateDisplay(new Date(gap.gapEnd))}
-                    {gap.daysUntilGap <= 0 
-                      ? ' (Current gap)' 
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {gap.propertyName} • {gap.gapDays} {gap.gapDays === 1 ? 'night' : 'nights'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {formatDateDisplay(new Date(gap.gapStart))} - {formatDateDisplay(new Date(gap.gapEnd))}
+                    {gap.daysUntilGap <= 0
+                      ? ' (Current)'
                       : gap.daysUntilGap === 1
                       ? ' (Tomorrow)'
-                      : ` (In ${gap.daysUntilGap} days)`
+                      : ` (${gap.daysUntilGap}d)`
                     }
                   </p>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Potential loss: {formatCurrency(gap.estimatedRevenueLoss)}
-                  </p>
                 </div>
+              </div>
+              <div className="text-xs text-gray-500 shrink-0 ml-2">
+                {formatCurrency(gap.estimatedRevenueLoss)}
               </div>
             </div>
           )
         })}
-        
-        {sortedGaps.length > maxGapsToShow && !isExpanded && (
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="mt-3 w-full py-2 text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors flex items-center justify-center gap-1"
-          >
-            Show {sortedGaps.length - maxGapsToShow} more gaps
-            <ChevronDown className="w-4 h-4" />
-          </button>
-        )}
       </div>
     </div>
   )

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  CreditCard, Package,
-  Calendar, Receipt, Download, ExternalLink,
+  CreditCard, Receipt, ExternalLink,
   AlertCircle, Loader
 } from 'lucide-react';
 import { billingClient } from '@/lib/stripe';
@@ -13,9 +12,7 @@ import { formatDateDisplay } from '@baileys/utils';
 export const BillingTab = () => {
   const [subscription, setSubscription] = useState<any>(null);
   const [billingHistory, setBillingHistory] = useState<any[]>([]);
-  const [usageMetrics, setUsageMetrics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPricingPlans, setShowPricingPlans] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const { addToast } = useToast();
 
@@ -26,15 +23,13 @@ export const BillingTab = () => {
   const loadBillingData = async () => {
     setLoading(true);
     try {
-      const [sub, history, usage] = await Promise.all([
+      const [sub, history] = await Promise.all([
         billingClient.getSubscription(),
-        billingClient.getBillingHistory(),
-        billingClient.getUsageMetrics()
+        billingClient.getBillingHistory()
       ]);
 
       setSubscription(sub);
       setBillingHistory(history);
-      setUsageMetrics(usage);
     } catch (error) {
       console.error('Error loading billing data:', error);
       addToast('error', 'Failed to load billing information');
@@ -48,7 +43,8 @@ export const BillingTab = () => {
     try {
       await billingClient.createPortalSession();
     } catch (error) {
-      addToast('error', 'Failed to open billing portal');
+      console.error('Portal session error:', error);
+      addToast('error', error instanceof Error ? error.message : 'Failed to open billing portal');
     } finally {
       setPortalLoading(false);
     }
@@ -158,7 +154,7 @@ export const BillingTab = () => {
         </div>
 
         {/* manage subscription button */}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6">
           <LoadingButton
             onClick={handleManageSubscription}
             loading={portalLoading}
@@ -167,23 +163,8 @@ export const BillingTab = () => {
             <ExternalLink className="w-4 h-4" />
             Manage Subscription
           </LoadingButton>
-
-          <button
-            onClick={() => setShowPricingPlans(!showPricingPlans)}
-            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-all font-medium"
-          >
-            {showPricingPlans ? 'Hide' : 'View'} Plans
-          </button>
         </div>
       </div>
-
-      {/* show pricing plans if toggled */}
-      {showPricingPlans && (
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Plan</h3>
-          <PricingPlans currentPlan="standard" />
-        </div>
-      )}
 
       {/* payment method */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -251,45 +232,6 @@ export const BillingTab = () => {
               <p className="text-gray-500 text-sm">No payment history yet</p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* usage stats */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Usage This Month</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-gray-600 mb-2">
-              <Package className="w-4 h-4" />
-              <span className="text-sm font-medium">API Calls</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {usageMetrics.find(m => m.metric_type === 'api_calls')?.count || 0}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Unlimited</p>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-gray-600 mb-2">
-              <Download className="w-4 h-4" />
-              <span className="text-sm font-medium">Reports Generated</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {usageMetrics.find(m => m.metric_type === 'reports_generated')?.count || 0}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Unlimited</p>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center gap-2 text-gray-600 mb-2">
-              <Calendar className="w-4 h-4" />
-              <span className="text-sm font-medium">Properties</span>
-            </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {usageMetrics.find(m => m.metric_type === 'active_properties')?.count || 0}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Unlimited</p>
-          </div>
         </div>
       </div>
 

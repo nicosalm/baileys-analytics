@@ -377,8 +377,8 @@ async function getAlerts(
 		alerts.push({
 			id: 'upcoming-arrivals',
 			type: 'info' as const,
-			title: 'Upcoming Arrivals',
-			description: `${upcomingCount} guests arriving in the next 7 days`,
+			title: `${upcomingCount} ${upcomingCount === 1 ? 'Guest' : 'Guests'} Arriving Soon`,
+			description: `Check-ins scheduled within the next 7 days`,
 			timestamp: new Date().toISOString()
 		});
 	}
@@ -411,13 +411,13 @@ async function getAlerts(
 		});
 
 		const occupancyRate = (bookedNights / totalPossibleNights) * 100;
-		
+
 		if (occupancyRate < 50) {
 			alerts.push({
 				id: 'low-occupancy',
 				type: 'warning' as const,
-				title: 'Low Upcoming Occupancy',
-				description: `Next 30 days occupancy is below 50%.`,
+				title: `${Math.round(occupancyRate)}% Occupancy Next 30 Days`,
+				description: `${bookedNights} of ${totalPossibleNights} available nights booked across ${propertyCount} ${propertyCount === 1 ? 'property' : 'properties'}`,
 				timestamp: new Date().toISOString()
 			});
 		}
@@ -440,13 +440,13 @@ async function getAlerts(
 
 	if (totalBookings && canceledBookings) {
 		const cancellationRate = (canceledBookings / totalBookings) * 100;
-		
+
 		if (cancellationRate > 10) {
 			alerts.push({
 				id: 'high-cancellations',
 				type: 'warning' as const,
-				title: 'High Cancellation Rate',
-				description: `Cancellation rate in selected period is ${Math.round(cancellationRate)}%.`,
+				title: `${Math.round(cancellationRate)}% Cancellation Rate`,
+				description: `${canceledBookings} of ${totalBookings} bookings canceled in selected period`,
 				timestamp: new Date().toISOString()
 			});
 		}
