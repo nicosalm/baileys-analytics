@@ -157,16 +157,12 @@ export const GuestsDashboard = () => {
             width: 250,
             render: (guest: GuestListItem) => {
                 const isRepeat = (guest.periodBookings || guest.bookingCount) > 1
-                const isTop = topPerformers.spenders.some((g: GuestListItem) => g.id === guest.id)
                 const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
-                
+
                 return (
                     <div>
                         <div className="flex items-center gap-2">
                             <span className="font-medium">{guest.name}</span>
-                            {isTop && (
-                                <span className="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded-md font-medium">VIP</span>
-                            )}
                             {isRepeat && (
                                 <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded-md font-medium">Repeat</span>
                             )}

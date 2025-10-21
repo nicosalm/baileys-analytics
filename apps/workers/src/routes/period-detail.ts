@@ -35,6 +35,8 @@ periodDetail.get('/', async (c) => {
   }
 
   try {
+    // Fetch all bookings that might overlap with the period
+    // We'll filter more precisely in code to match the calendar logic
     let bookingsQuery = supabase
       .from('bookings')
       .select(`
@@ -50,7 +52,7 @@ periodDetail.get('/', async (c) => {
       `)
       .eq('tenant_id', tenantId)
       .lte('arrival', endDate)
-      .gte('departure', startDate)
+      .gt('departure', startDate)  // Changed: departure must be AFTER start (not on checkout day)
       .neq('status', 'canceled');
     
     if (tags && tags.length > 0) {

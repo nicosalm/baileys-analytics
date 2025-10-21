@@ -482,8 +482,9 @@ async function fetchDailyOccupancy(
       for (const booking of bookings) {
         const arrivalDate = new Date(booking.arrival);
         const departureDate = new Date(booking.departure);
-        
-        if (currentDate >= arrivalDate && currentDate <= departureDate) {
+
+        // Departure date is exclusive (checkout day - property becomes available)
+        if (currentDate >= arrivalDate && currentDate < departureDate) {
           bookedProperties.add(booking.property_id);
         }
       }

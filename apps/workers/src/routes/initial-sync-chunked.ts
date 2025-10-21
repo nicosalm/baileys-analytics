@@ -256,6 +256,17 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
             ? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
             : booking.guest_name || 'Unknown';
 
+          // Extract email and phone from OwnerRez guest structure
+          const guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
+                            booking.guest?.email_addresses?.[0]?.address ||
+                            booking.guest?.email ||
+                            booking.guest_email;
+
+          const guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
+                            booking.guest?.phones?.[0]?.number ||
+                            booking.guest?.phone ||
+                            booking.guest_phone;
+
           const { data: upsertedBooking } = await supabase
             .from('bookings')
             .upsert({
@@ -263,8 +274,8 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
               property_id: property.id,
               ownerrez_booking_id: booking.id,
               guest_name: guestName,
-              guest_email: booking.guest?.email || booking.guest_email,
-              guest_phone: booking.guest?.phone || booking.guest_phone,
+              guest_email: guestEmail,
+              guest_phone: guestPhone,
               arrival: booking.arrival,
               departure: booking.departure,
               total_amount: booking.total_amount || 0,
