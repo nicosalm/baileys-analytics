@@ -12,7 +12,7 @@ import {
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
 import { detectGranularity } from '@/utils/chart-helpers'
-import { api, authenticatedFetch } from '@/lib/api'
+import { authenticatedFetch } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
 
 interface TaxCenterProps {

@@ -16,6 +16,7 @@ interface BookingGapAlertProps {
   gaps: BookingGap[]
   isLoading?: boolean
   maxGapsToShow?: number
+  onDismiss?: () => void
 }
 
 export const BookingGapAlert = ({
@@ -46,8 +47,7 @@ export const BookingGapAlert = ({
       return a.daysUntilGap - b.daysUntilGap
     })
 
-  const displayGaps = sortedGaps
-  const totalRevenueLoss = sortedGaps.reduce((sum, gap) => sum + gap.estimatedRevenueLoss, 0)
+  const displayGaps = sortedGaps.slice(0, maxGapsToShow)
   const urgentGaps = sortedGaps.filter(g => g.daysUntilGap <= 7).length
   const criticalGaps = sortedGaps.filter(g => g.severity === 'critical').length
   

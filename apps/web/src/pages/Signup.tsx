@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
 import { PasswordRequirements } from '@/components/PasswordRequirements'
-import { ArrowLeft, Mail, Lock, Compass, CheckCircle, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft, Mail, Lock, Compass, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { validatePassword } from '@/utils/password'
 

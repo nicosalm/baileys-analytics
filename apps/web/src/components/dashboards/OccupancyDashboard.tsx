@@ -348,9 +348,6 @@ export const OccupancyDashboard = () => {
                   const occupancyPercent = property.rate * 100
                   const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
                   const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
-                  const occupancyColor = occupancyPercent >= 70 ? 'bg-green-500' :
-                                         occupancyPercent >= 50 ? 'bg-yellow-500' :
-                                         'bg-red-500'
 
                   return (
                     <div
