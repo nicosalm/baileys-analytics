@@ -5,12 +5,13 @@ import { useState, useEffect, lazy, Suspense, ComponentType } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
-import { 
-  Calendar, Calculator, 
-  Trash2, 
+import {
+  Calendar, Calculator,
+  Trash2,
   LogOut, Settings as SettingsIcon, Compass,
   Palette, CreditCard, Link2,
-  Lock, MessageSquare, ChevronRight, ArrowLeft
+  Lock, MessageSquare, ChevronRight, ArrowLeft,
+  Eye, EyeOff
 } from 'lucide-react'
 import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
@@ -68,17 +69,19 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
   }
 ]
 
-const GeneralTab = ({ 
-  email, 
-  createdAt, 
+const GeneralTab = ({
+  email,
+  createdAt,
   companyName,
-  onResetPassword,
+  onChangePassword,
+  onChangeEmail,
   onDeleteAccount
 }: {
   email: string
   createdAt: string
   companyName?: string | null
-  onResetPassword: () => void
+  onChangePassword: () => void
+  onChangeEmail: () => void
   onDeleteAccount: () => void
 }) => {
   return (
@@ -107,7 +110,17 @@ const GeneralTab = ({
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
         <div className="space-y-3">
           <button
-            onClick={onResetPassword}
+            onClick={onChangeEmail}
+            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200"
+          >
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              <span>Change Email</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          </button>
+          <button
+            onClick={onChangePassword}
             className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200"
           >
             <div className="flex items-center gap-2">
@@ -202,7 +215,7 @@ const PreferencesTab = () => {
 }
 
 export const Settings = () => {
-  const { state, logout } = useAuth()
+  const { state, logout, updateEmail, updatePassword } = useAuth()
   const { addToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
@@ -210,6 +223,31 @@ export const Settings = () => {
     return (tab as SettingsTab) || 'general'
   })
   const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false)
+  const [changeEmailModalOpen, setChangeEmailModalOpen] = useState(false)
+  const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmNewPassword, setConfirmNewPassword] = useState('')
+  const [isChangingEmail, setIsChangingEmail] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Handle Escape key to close modals
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (changePasswordModalOpen && !isChangingPassword) {
+          setChangePasswordModalOpen(false)
+        } else if (changeEmailModalOpen && !isChangingEmail) {
+          setChangeEmailModalOpen(false)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [changePasswordModalOpen, changeEmailModalOpen, isChangingPassword, isChangingEmail])
 
   // Handle checkout success/cancel from Stripe
   useEffect(() => {
@@ -244,16 +282,87 @@ export const Settings = () => {
     setSearchParams({ tab })
   }
   
-  const handleResetPassword = async () => {
-    const { resetPassword } = await import('@/contexts/auth').then(m => ({ resetPassword: m.useAuth().resetPassword }))
-    const result = await resetPassword(user.email!)
-    if (result) {
-      addToast('success', 'Password reset email sent')
-    } else {
-      addToast('error', 'Failed to send password reset email')
+  const handleChangePassword = () => {
+    setChangePasswordModalOpen(true)
+    setNewPassword('')
+    setConfirmNewPassword('')
+    setShowNewPassword(false)
+    setShowConfirmPassword(false)
+  }
+
+  const handleConfirmChangePassword = async () => {
+    // Trim whitespace
+    const trimmedPassword = newPassword.trim()
+    const trimmedConfirm = confirmNewPassword.trim()
+
+    if (!trimmedPassword) {
+      addToast('error', 'Please enter a new password')
+      return
+    }
+
+    if (trimmedPassword !== trimmedConfirm) {
+      addToast('error', 'Passwords do not match')
+      return
+    }
+
+    const { validatePassword } = await import('@/utils/password')
+    const validation = validatePassword(trimmedPassword)
+    if (!validation.isValid) {
+      addToast('error', validation.errors[0])
+      return
+    }
+
+    setIsChangingPassword(true)
+    try {
+      const result = await updatePassword(trimmedPassword)
+      if (result) {
+        addToast('success', 'Password changed successfully')
+        setChangePasswordModalOpen(false)
+        setNewPassword('')
+        setConfirmNewPassword('')
+      } else {
+        addToast('error', 'Failed to change password. Please try again.')
+      }
+    } finally {
+      setIsChangingPassword(false)
     }
   }
-  
+
+  const handleChangeEmail = () => {
+    setNewEmail('') // Clear state first
+    setChangeEmailModalOpen(true)
+  }
+
+  const handleConfirmChangeEmail = async () => {
+    const trimmedEmail = newEmail.trim()
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      addToast('error', 'Please enter a valid email address')
+      return
+    }
+
+    if (trimmedEmail.toLowerCase() === user.email?.toLowerCase()) {
+      addToast('error', 'New email must be different from current email')
+      return
+    }
+
+    setIsChangingEmail(true)
+    try {
+      const result = await updateEmail(trimmedEmail)
+      if (result) {
+        addToast('success', 'Confirmation link sent to your new email. Click the link to complete the change.')
+        setChangeEmailModalOpen(false)
+        setNewEmail('')
+      } else {
+        addToast('error', 'Failed to update email. Please try again.')
+      }
+    } finally {
+      setIsChangingEmail(false)
+    }
+  }
+
   const handleDeleteAccount = async () => {
     addToast('info', 'Account deletion is not available during beta')
     setDeleteAccountModalOpen(false)
@@ -346,7 +455,8 @@ export const Settings = () => {
                   email={user.email!}
                   createdAt={user.created_at || new Date().toISOString()}
                   companyName={user.companyName}
-                  onResetPassword={handleResetPassword}
+                  onChangePassword={handleChangePassword}
+                  onChangeEmail={handleChangeEmail}
                   onDeleteAccount={() => setDeleteAccountModalOpen(true)}
                 />
               )}
@@ -371,6 +481,155 @@ export const Settings = () => {
         confirmText="Delete Account"
         variant="danger"
       />
+
+      {changeEmailModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isChangingEmail) {
+              setChangeEmailModalOpen(false)
+            }
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Change Email Address</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              A confirmation link will be sent to your new email address. Click the link to complete the change.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Email
+                </label>
+                <input
+                  type="email"
+                  value={user.email}
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Email
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !isChangingEmail && handleConfirmChangeEmail()}
+                  placeholder="your.new.email@example.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  autoFocus
+                  disabled={isChangingEmail}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setChangeEmailModalOpen(false)}
+                disabled={isChangingEmail}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmChangeEmail}
+                disabled={isChangingEmail}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isChangingEmail ? 'Sending...' : 'Send Confirmation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {changePasswordModalOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isChangingPassword) {
+              setChangePasswordModalOpen(false)
+            }
+          }}
+        >
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Change Password</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter your new password below. Must be at least 8 characters with uppercase, lowercase, and number.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
+                    placeholder="Enter new password"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    autoFocus
+                    disabled={isChangingPassword}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    disabled={isChangingPassword}
+                    tabIndex={-1}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
+                    placeholder="Confirm new password"
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isChangingPassword}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    disabled={isChangingPassword}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setChangePasswordModalOpen(false)}
+                disabled={isChangingPassword}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmChangePassword}
+                disabled={isChangingPassword}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isChangingPassword ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

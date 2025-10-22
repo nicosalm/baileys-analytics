@@ -12,10 +12,11 @@ type AuthState =
 type AuthContextValue = {
   state: AuthState
   login: (email: string, password: string) => Promise<boolean>
-  signup: (email: string, password: string) => Promise<boolean>
+  signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<boolean>
   updatePassword: (newPassword: string) => Promise<boolean>
+  updateEmail: (newEmail: string) => Promise<boolean>
   refreshUser: () => Promise<void>
 }
 
@@ -219,7 +220,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const signup = async (email: string, password: string): Promise<boolean> => {
+  const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
       // sign out any existing user first to prevent session mixup
       const { data: { session: existingSession } } = await supabase.auth.getSession()
@@ -238,23 +239,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error('Signup failed:', error.message)
-        return false
+        return { success: false, error: error.message }
       }
 
       if (data.user && !data.session) {
         console.log('Please check your email for confirmation link')
-        return true
+        return { success: true }
       }
 
       if (data.user && data.session) {
         // process session immediately
         await processSession(data.session)
-        return true
+        return { success: true }
       }
-      return false
+      return { success: false, error: 'Unknown error occurred' }
     } catch (error) {
       console.error('Signup error:', error)
-      return false
+      const message = error instanceof Error ? error.message : 'Unknown error occurred'
+      return { success: false, error: message }
     }
   }
 
@@ -285,11 +287,67 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePassword = async (newPassword: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Check if session exists first
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        console.error('No active session for password update')
+        return false
+      }
+
+      // Add timeout to prevent indefinite hanging
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Password update timeout')), 15000)
+      )
+
+      const updatePromise = supabase.auth.updateUser({
         password: newPassword
       })
-      return !error
-    } catch {
+
+      const { error } = await Promise.race([updatePromise, timeoutPromise])
+
+      if (error) {
+        console.error('Update password error:', error.message)
+        return false
+      }
+
+      console.log('Password updated successfully')
+      return true
+    } catch (error) {
+      console.error('Update password exception:', error)
+      return false
+    }
+  }
+
+  const updateEmail = async (newEmail: string): Promise<boolean> => {
+    try {
+      // Check if session exists first
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        console.error('No active session for email update')
+        return false
+      }
+
+      // Add timeout to prevent indefinite hanging
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Email update timeout')), 15000)
+      )
+
+      const updatePromise = supabase.auth.updateUser(
+        { email: newEmail },
+        { emailRedirectTo: `${window.location.origin}/auth/callback` }
+      )
+
+      const { error } = await Promise.race([updatePromise, timeoutPromise])
+
+      if (error) {
+        console.error('Update email error:', error.message)
+        return false
+      }
+
+      console.log('Email update initiated successfully')
+      return true
+    } catch (error) {
+      console.error('Update email exception:', error)
       return false
     }
   }
@@ -413,7 +471,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []) // removed processSession from deps to prevent re-runs
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, logout, resetPassword, updatePassword, refreshUser }}>
+    <AuthContext.Provider value={{ state, login, signup, logout, resetPassword, updatePassword, updateEmail, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )

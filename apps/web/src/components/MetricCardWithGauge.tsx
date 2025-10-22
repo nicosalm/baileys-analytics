@@ -90,6 +90,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
             format={format === 'custom' ? 'number' : format}
             width={180}
             height={120}
+            onClick={onClick}
           />
           {trend && (
             <div className={`text-xs mt-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>

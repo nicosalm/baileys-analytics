@@ -34,14 +34,14 @@ export const Signup = () => {
     }
 
     setLoading(true)
-    const success = await signup(email, password)
+    const result = await signup(email, password)
     setLoading(false)
 
-    if (success) {
+    if (result.success) {
       // Show confirmation message instead of auto-navigating since email confirmation is required
       setSignupSuccess(true)
     } else {
-      addToast('error', 'Failed to create account. Email may already be in use.')
+      addToast('error', result.error || 'Failed to create account')
     }
   }
 

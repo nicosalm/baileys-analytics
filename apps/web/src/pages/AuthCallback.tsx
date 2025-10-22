@@ -177,9 +177,18 @@ export const AuthCallback = () => {
             break
             
           case 'email_change':
-            setStatus('success')
-            setMessage('Email changed successfully!')
-            setTimeout(() => navigate('/dashboard/overview'), 2000)
+            try {
+              // Refresh user to update auth context with new email
+              await refreshUser()
+              setStatus('success')
+              setMessage('Email changed successfully!')
+              setTimeout(() => navigate('/dashboard/settings'), 2000)
+            } catch (error) {
+              console.error('Failed to refresh user after email change:', error)
+              setStatus('success')
+              setMessage('Email changed! Please refresh the page to see updates.')
+              setTimeout(() => navigate('/dashboard/settings'), 3000)
+            }
             break
             
           case 'magiclink':

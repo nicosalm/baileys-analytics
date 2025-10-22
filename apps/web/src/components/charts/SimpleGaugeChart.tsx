@@ -9,6 +9,7 @@ interface SimpleGaugeChartProps {
   format?: 'currency' | 'percent' | 'number'
   width?: number
   height?: number
+  onClick?: () => void
 }
 
 const RADIAN = Math.PI / 180
@@ -48,7 +49,8 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   max = 100,
   format = 'number',
   width = 200,
-  height = 120
+  height = 120,
+  onClick
 }) => {
   // Normalize value to 0-100 range
   const normalizedValue = ((value - min) / (max - min)) * 100
@@ -82,29 +84,39 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   }
 
   return (
-    <div style={{ width, height, position: 'relative' }}>
-      <PieChart width={width} height={height - 25}>
-        <Pie
-          dataKey="value"
-          startAngle={180}
-          endAngle={0}
-          data={gaugeData}
-          cx={cx}
-          cy={cy}
-          innerRadius={innerRadius}
-          outerRadius={outerRadius}
-          fill="#8884d8"
-          stroke="none"
-        >
-          {gaugeData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Pie>
-        {renderNeedle(clampedValue, [{ value: 100 }], cx, cy, innerRadius, outerRadius)}
-      </PieChart>
+    <div
+      style={{
+        width,
+        height,
+        position: 'relative',
+        cursor: onClick ? 'pointer' : 'default'
+      }}
+      onClick={onClick}
+    >
+      <div style={{ pointerEvents: onClick ? 'none' : 'auto' }}>
+        <PieChart width={width} height={height - 25}>
+          <Pie
+            dataKey="value"
+            startAngle={180}
+            endAngle={0}
+            data={gaugeData}
+            cx={cx}
+            cy={cy}
+            innerRadius={innerRadius}
+            outerRadius={outerRadius}
+            fill="#8884d8"
+            stroke="none"
+          >
+            {gaugeData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          {renderNeedle(clampedValue, [{ value: 100 }], cx, cy, innerRadius, outerRadius)}
+        </PieChart>
+      </div>
       
       {/* Value label - positioned well below the gauge to avoid overlap */}
-      <div 
+      <div
         style={{
           position: 'absolute',
           left: '50%',
@@ -112,36 +124,42 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
           transform: 'translateX(-50%)',
           fontSize: '22px',
           fontWeight: 'bold',
-          color: '#111827',  // gray-900
-          textAlign: 'center'
+          color: '#111827',
+          textAlign: 'center',
+          pointerEvents: 'none',
+          zIndex: 10
         }}
       >
         {formatValue()}
       </div>
-      
+
       {/* Min label - positioned at left edge of gauge */}
-      <div 
+      <div
         style={{
           position: 'absolute',
           left: cx - outerRadius - 20,
           top: cy + 2,
           fontSize: '11px',
-          color: '#6B7280',  // gray-500
-          fontWeight: '400'
+          color: '#6B7280',
+          fontWeight: '400',
+          pointerEvents: 'none',
+          zIndex: 10
         }}
       >
         {formatValue(min)}
       </div>
-      
+
       {/* Max label - positioned at right edge of gauge */}
-      <div 
+      <div
         style={{
           position: 'absolute',
           right: cx - outerRadius - 20,
           top: cy + 2,
           fontSize: '11px',
-          color: '#6B7280',  // gray-500
-          fontWeight: '400'
+          color: '#6B7280',
+          fontWeight: '400',
+          pointerEvents: 'none',
+          zIndex: 10
         }}
       >
         {formatValue(max)}

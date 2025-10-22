@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
 import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics, ChartDataPoint } from '@/types/api'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Calendar, DollarSign, Home, Info, Percent, TrendingUp, TrendingDown, ScatterChart, LayoutGrid, Table, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
@@ -374,12 +374,12 @@ export const PropertiesDashboard = () => {
   
     
   const chartData = useMemo<ChartDataPoint[]>(() => validProperties.map((p: PropertyMetrics) => ({
-    name: p.propertyName.length > 15 ? p.propertyName.substring(0, 15) + '...' : p.propertyName,
-    fullName: p.propertyName, // Keep full name for tooltip
+    name: p.propertyName.length > 25 ? p.propertyName.substring(0, 25) + '...' : p.propertyName,
+    fullName: p.propertyName,
     revenue: p.revenue || 0,
-    occupancy: Math.round((p.occupancyRate || 0) * 100), // Round to integer for cleaner display
+    occupancy: Math.round((p.occupancyRate || 0) * 100),
     bookings: p.bookings || 0,
-    date: p.date || null // Include date if available for period detection
+    date: p.date || null
   })), [validProperties])
 
   const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
@@ -585,109 +585,169 @@ export const PropertiesDashboard = () => {
         {/* Revenue Comparison Chart */}
         <ChartWrapper
           title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Revenue vs Occupancy${timePeriod}`}
-          subtitle={comparisonMode !== 'none' 
+          subtitle={comparisonMode !== 'none'
             ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
             : validProperties.length > 10 ? `Showing all ${validProperties.length} properties` : undefined
           }
           icon={TrendingUp}
-          height={360}
+          height={Math.max(420, validProperties.length * 50)}
         >
-          {comparisonMode !== 'none' && previousProperties ? (
-            <BarChart data={chartData.map((item: ChartDataPoint) => {
-              const prevProp = previousProperties.find((p: PropertyMetrics) => 
-                p.propertyName === item.fullName || 
-                (p.propertyName.length > 15 ? p.propertyName.substring(0, 15) + '...' : p.propertyName) === item.name
-              )
-              return {
-                ...item,
-                previousRevenue: prevProp?.revenue || 0,
-                previousOccupancy: Math.round((prevProp?.occupancyRate || 0) * 100)
-              }
-            })}
-              margin={{ top: 20, right: 30, left: 50, bottom: 80 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="name"
-                angle={-45}
-                textAnchor="end"
-                interval={0}
-                tick={{ fontSize: validProperties.length > 15 ? 8 : 9 }}
-                height={70}
-              />
-              <YAxis tickFormatter={(value: number) => formatCompactCurrency(value)} />
-              <Tooltip
-                formatter={(value: number, name: string) => {
-                  if (name.includes('Revenue')) return formatCurrency(value)
-                  return value
-                }}
-                contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-              />
-              <Legend 
-                wrapperStyle={{ paddingTop: '15px' }}
-                iconType="rect"
-                iconSize={12}
-                formatter={(value: string) => {
-                  if (value === 'Current Revenue') return 'Current'
-                  if (value === 'Last Year Revenue') return 'Last Year'
-                  if (value === 'Previous Period Revenue') return 'Previous'
-                  return value
-                }}
-              />
-              <Bar 
-                dataKey="revenue" 
-                fill={METRIC_COLORS.revenue} 
-                name="Current Revenue"
-                radius={[4, 4, 0, 0]}
-              />
-              <Bar 
-                dataKey="previousRevenue" 
-                fill="#94a3b8" 
-                name={comparisonMode === 'previous-year' ? 'Last Year Revenue' : 'Previous Period Revenue'}
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          ) : (
-            <BarChart data={chartData}
-              margin={{ top: 20, right: 30, left: 50, bottom: 80 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="name"
-                angle={-45}
-                textAnchor="end"
-                interval={0}
-                tick={{ fontSize: validProperties.length > 15 ? 8 : 9 }}
-                height={70}
-              />
-              <YAxis
-                yAxisId="left"
-                tickFormatter={(value: number) => formatCompactCurrency(value)}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                domain={[0, 100]}
-                tickFormatter={(value: number) => `${value}%`}
-              />
-              <Tooltip
-                formatter={(value: number, name: string) => {
-                  if (name === 'Revenue') return formatCurrency(value)
-                  if (name === 'Occupancy Rate') return `${value}%`
-                  return value
-                }}
-                contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                labelFormatter={(label: any, payload: any) => {
-                  if (payload && payload.length > 0) {
-                    return payload[0].payload.fullName
+          <ResponsiveContainer width="100%" height="100%">
+            {comparisonMode !== 'none' && previousProperties ? (
+              <BarChart
+                data={chartData.map((item: ChartDataPoint) => {
+                  const prevProp = previousProperties.find((p: PropertyMetrics) =>
+                    p.propertyName === item.fullName
+                  )
+                  return {
+                    ...item,
+                    previousRevenue: prevProp?.revenue || 0,
+                    previousOccupancy: Math.round((prevProp?.occupancyRate || 0) * 100)
                   }
-                  return label
-                }}
-              />
-              <Bar yAxisId="left" dataKey="revenue" fill={METRIC_COLORS.revenue} name="Revenue" />
-              <Bar yAxisId="right" dataKey="occupancy" fill={METRIC_COLORS.occupancy} name="Occupancy Rate" />
-            </BarChart>
-          )}
+                })}
+                layout="vertical"
+                margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" tickFormatter={(value: number) => formatCompactCurrency(value)} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={180}
+                  tick={{ fontSize: 11 }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    if (name.includes('Revenue')) return formatCurrency(value)
+                    return value
+                  }}
+                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  labelFormatter={(label: any) => chartData.find(d => d.name === label)?.fullName || label}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: '15px' }}
+                  iconType="rect"
+                  iconSize={12}
+                  formatter={(value: string) => {
+                    if (value === 'Current Revenue') return 'Current'
+                    if (value === 'Last Year Revenue') return 'Last Year'
+                    if (value === 'Previous Period Revenue') return 'Previous'
+                    return value
+                  }}
+                />
+                <Bar
+                  dataKey="revenue"
+                  fill={METRIC_COLORS.revenue}
+                  name="Current Revenue"
+                  radius={[0, 4, 4, 0]}
+                  cursor="pointer"
+                  onClick={(data: any) => {
+                    const property = validProperties.find(p => p.propertyName === data.fullName)
+                    if (property) {
+                      openModal({
+                        type: 'property',
+                        propertyId: property.propertyId,
+                        propertyName: property.propertyName
+                      })
+                    }
+                  }}
+                />
+                <Bar
+                  dataKey="previousRevenue"
+                  fill="#94a3b8"
+                  name={comparisonMode === 'previous-year' ? 'Last Year Revenue' : 'Previous Period Revenue'}
+                  radius={[0, 4, 4, 0]}
+                  cursor="pointer"
+                  onClick={(data: any) => {
+                    const property = validProperties.find(p => p.propertyName === data.fullName)
+                    if (property) {
+                      openModal({
+                        type: 'property',
+                        propertyId: property.propertyId,
+                        propertyName: property.propertyName
+                      })
+                    }
+                  }}
+                />
+              </BarChart>
+            ) : (
+              <BarChart
+                data={chartData}
+                layout="vertical"
+                margin={{ top: 20, right: 60, left: 10, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  xAxisId="revenue"
+                  type="number"
+                  tickFormatter={(value: number) => formatCompactCurrency(value)}
+                />
+                <XAxis
+                  xAxisId="occupancy"
+                  type="number"
+                  orientation="top"
+                  domain={[0, 100]}
+                  tickFormatter={(value: number) => `${value}%`}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={180}
+                  tick={{ fontSize: 11 }}
+                />
+                <Tooltip
+                  formatter={(value: number, name: string) => {
+                    if (name === 'Revenue') return formatCurrency(value)
+                    if (name === 'Occupancy Rate') return `${value}%`
+                    return value
+                  }}
+                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
+                  labelFormatter={(label: any) => chartData.find(d => d.name === label)?.fullName || label}
+                />
+                <Legend
+                  wrapperStyle={{ paddingTop: '15px' }}
+                  iconType="rect"
+                  iconSize={12}
+                />
+                <Bar
+                  xAxisId="revenue"
+                  dataKey="revenue"
+                  fill={METRIC_COLORS.revenue}
+                  name="Revenue"
+                  radius={[0, 4, 4, 0]}
+                  cursor="pointer"
+                  onClick={(data: any) => {
+                    const property = validProperties.find(p => p.propertyName === data.fullName)
+                    if (property) {
+                      openModal({
+                        type: 'property',
+                        propertyId: property.propertyId,
+                        propertyName: property.propertyName
+                      })
+                    }
+                  }}
+                />
+                <Bar
+                  xAxisId="occupancy"
+                  dataKey="occupancy"
+                  fill={METRIC_COLORS.occupancy}
+                  name="Occupancy Rate"
+                  radius={[0, 4, 4, 0]}
+                  cursor="pointer"
+                  onClick={(data: any) => {
+                    const property = validProperties.find(p => p.propertyName === data.fullName)
+                    if (property) {
+                      openModal({
+                        type: 'property',
+                        propertyId: property.propertyId,
+                        propertyName: property.propertyName
+                      })
+                    }
+                  }}
+                />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
         </ChartWrapper>
 
         {/* Property Performance Scatter Plot */}
