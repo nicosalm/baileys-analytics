@@ -76,18 +76,24 @@ export const Landing = () => {
 
           <div className="mt-20">
             <p className="text-center text-sm text-gray-500 mb-6 uppercase tracking-wider">See Your Data In Minutes</p>
-            <div className="max-w-4xl mx-auto">
-              <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden" style={{ height: '300px' }}>
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 blur-sm"></div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-blue-600 bg-opacity-20 rounded-xl flex items-center justify-center mx-auto mb-3 backdrop-blur-sm">
-                      <BarChart3 className="w-8 h-8 text-blue-600 opacity-60" />
+            <div className="max-w-5xl mx-auto">
+              <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                >
+                  <source src="/demo.mp4" type="video/mp4" />
+                  {/* Fallback for browsers that don't support video */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+                    <div className="text-center">
+                      <BarChart3 className="w-8 h-8 text-blue-600 opacity-60 mx-auto mb-3" />
+                      <p className="text-sm font-medium text-gray-600">Your dashboard preview</p>
                     </div>
-                    <p className="text-sm font-medium text-gray-600">Your dashboard preview with live data</p>
-                    <p className="text-xs text-gray-400 mt-1">Ready in ~2 minutes after connecting OwnerRez</p>
                   </div>
-                </div>
+                </video>
               </div>
             </div>
           </div>
