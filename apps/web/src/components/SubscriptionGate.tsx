@@ -62,7 +62,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Complete vacation rental analytics for just $20/month.
-              Start with $1 for your first month.
+              Start with $1 for your first 30 days.
             </p>
           </div>
 
@@ -74,7 +74,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
             <h3 className="font-semibold text-blue-900 mb-2">how it works:</h3>
             <ol className="space-y-2 text-sm text-blue-800">
               <li>1. subscribe to get full access to all features</li>
-              <li>2. pay just $1 for your first month</li>
+              <li>2. pay just $1 for your first 30 days</li>
               <li>3. after 30 days, regular pricing applies ($20/month or $192/year)</li>
               <li>4. cancel anytime from settings</li>
             </ol>

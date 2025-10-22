@@ -210,43 +210,26 @@ export const Privacy = () => {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Customer Support</h2>
-            <div className="bg-blue-50 p-6 rounded-lg mb-4">
-              <p className="leading-relaxed mb-3">
-                <strong>For customer service and general support:</strong>
-              </p>
-              <div className="space-y-2">
-                <p><strong>Email:</strong> support@baileysanalytics.com</p>
-                <p><strong>Response Time:</strong> Within 24-48 hours on business days</p>
-                <p><strong>Business Hours:</strong> Monday - Friday, 9 AM - 5 PM EST</p>
-              </div>
-            </div>
+            <p className="leading-relaxed mb-3">
+              For customer service and general support:
+            </p>
+            <ul className="list-disc ml-6 space-y-1">
+              <li><strong>Email:</strong> support@baileysanalytics.com</li>
+              <li><strong>Response Time:</strong> Within 24-48 hours on business days</li>
+              <li><strong>Business Hours:</strong> Monday - Friday, 9 AM - 5 PM EST</li>
+            </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">14. Contact Information</h2>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <p className="leading-relaxed">
-                For questions about this Privacy Policy or our privacy practices, contact us at:
-              </p>
-              <div className="mt-3 space-y-1">
-                <p><strong>Email:</strong> privacy@baileysanalytics.com</p>
-                <p><strong>Address:</strong> Baileys Analytics, LLC</p>
-                <p><strong>Data Protection Officer:</strong> dpo@baileysanalytics.com</p>
-              </div>
-            </div>
-          </section>
-
-          <section>
-            <div className="bg-amber-50 border-l-4 border-amber-400 p-6 rounded mt-8">
-              <h3 className="text-lg font-medium text-amber-900 mb-3">Your Privacy Rights Summary</h3>
-              <ul className="list-disc ml-6 space-y-1 text-amber-900">
-                <li>We only collect data necessary to provide our service</li>
-                <li>Your data is never sold or shared with competitors</li>
-                <li>You can export or delete your data at any time</li>
-                <li>We use industry-standard security measures</li>
-                <li>You control your OwnerRez connection and can revoke access anytime</li>
-              </ul>
-            </div>
+            <p className="leading-relaxed mb-3">
+              For questions about this Privacy Policy or our privacy practices:
+            </p>
+            <ul className="list-disc ml-6 space-y-1">
+              <li><strong>Email:</strong> privacy@baileysanalytics.com</li>
+              <li><strong>Address:</strong> Baileys Analytics, LLC</li>
+              <li><strong>Data Protection Officer:</strong> dpo@baileysanalytics.com</li>
+            </ul>
           </section>
         </div>
       </div>

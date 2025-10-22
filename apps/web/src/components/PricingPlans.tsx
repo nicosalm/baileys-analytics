@@ -78,7 +78,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
           <div className="flex items-center justify-center gap-3">
             <div className="text-3xl font-bold">$1</div>
             <div className="text-left">
-              <div className="font-semibold">First Month Special</div>
+              <div className="font-semibold">First 30 Days</div>
               <div className="text-sm opacity-90">Full access to all features</div>
             </div>
           </div>
@@ -177,7 +177,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
         </p>
         <p className="text-sm text-gray-500">
           {!currentPlan
-            ? '$1 for your first month, then regular pricing. Cancel anytime.'
+            ? '$1 for your first 30 days, then regular pricing. Cancel anytime.'
             : 'Changes take effect immediately. Cancel anytime.'}
         </p>
       </div>

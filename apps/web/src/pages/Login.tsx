@@ -174,24 +174,24 @@ export const Login = () => {
         <div className="absolute bottom-20 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h3 className="text-4xl font-bold mb-6">Pull Back the Curtain on Your Rental Revenue</h3>
+          <h3 className="text-4xl font-bold mb-6">Analytics for Your OwnerRez Data</h3>
           <p className="text-lg opacity-90 mb-8">
-            Join property managers who've transformed their data into actionable insights.
+            Track revenue, occupancy, and guest metrics across all your properties.
           </p>
 
           {/* Feature highlights */}
           <div className="space-y-4">
             <div className="flex items-start">
               <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="opacity-90">Real-time sync with OwnerRez</p>
+              <p className="opacity-90">6 specialized dashboards</p>
             </div>
             <div className="flex items-start">
               <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="opacity-90">Automated tax calculations</p>
+              <p className="opacity-90">Platform fee tracking for taxes</p>
             </div>
             <div className="flex items-start">
               <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="opacity-90">Beautiful analytics dashboards</p>
+              <p className="opacity-90">Cross-property comparison</p>
             </div>
           </div>
         </div>

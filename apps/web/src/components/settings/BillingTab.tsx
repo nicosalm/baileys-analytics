@@ -254,7 +254,7 @@ export const BillingTab = () => {
           <div>
             <p className="text-sm font-medium text-gray-900 mb-1">Do you offer refunds?</p>
             <p className="text-sm text-gray-600">
-              We offer a 30-day money-back guarantee. Contact support if you're not satisfied.
+              All payments are non-refundable. The first 30 days cost just $1, so you can try the platform risk-free.
             </p>
           </div>
           <div>

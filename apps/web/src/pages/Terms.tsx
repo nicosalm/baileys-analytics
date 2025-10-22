@@ -62,14 +62,15 @@ export const Terms = () => {
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Subscription and Payment</h2>
             <p className="leading-relaxed mb-3">
-              The Service is offered on a subscription basis. Pricing and available subscription tiers are displayed 
-              during registration and in your account settings. You agree to pay all fees associated with your selected 
-              subscription plan. Subscriptions automatically renew unless cancelled before the renewal date. We reserve 
-              the right to change subscription fees upon reasonable notice.
+              The Service is offered on a subscription basis:
             </p>
-            <p className="leading-relaxed mb-3">
-              <strong>Billing Cycle:</strong> Subscriptions are billed monthly or annually in advance. No refunds for partial periods.
-            </p>
+            <ul className="list-disc ml-6 space-y-1 mb-3">
+              <li><strong>Trial Period:</strong> First 30 days for $1</li>
+              <li><strong>Monthly Subscription:</strong> $20/month after trial period</li>
+              <li><strong>Annual Subscription:</strong> $192/year ($16/month equivalent, 20% savings)</li>
+              <li><strong>Auto-Renewal:</strong> Subscriptions automatically renew unless cancelled before the renewal date</li>
+              <li><strong>No Refunds:</strong> All payments are non-refundable</li>
+            </ul>
             <p className="leading-relaxed">
               <strong>Payment Processing:</strong> All payments are processed securely through Stripe. We do not store credit card information.
             </p>
@@ -83,31 +84,22 @@ export const Terms = () => {
             <ul className="list-disc ml-6 space-y-1">
               <li>Cancellations take effect at the end of the current billing period</li>
               <li>You will retain access to the Service until the end of your paid period</li>
-              <li>No partial refunds for unused time in the current billing period</li>
-              <li>Annual subscriptions cancelled mid-term will not receive prorated refunds</li>
-              <li>To cancel, navigate to Settings → Subscription or email support@baileysanalytics.com</li>
+              <li>To cancel, navigate to Settings → Billing or email support@baileysanalytics.com</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Refund and Dispute Policy</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">8. No Refunds Policy</h2>
             <p className="leading-relaxed mb-3">
-              <strong>Refund Policy:</strong>
+              All payments are final and non-refundable. This includes the $1 trial period and all subsequent monthly charges.
             </p>
-            <ul className="list-disc ml-6 space-y-1 mb-4">
-              <li>We offer a 14-day money-back guarantee for new subscribers</li>
-              <li>Refunds must be requested within 14 days of initial subscription</li>
-              <li>No refunds after 14 days or for renewal periods</li>
-              <li>Refunds for technical issues may be granted at our discretion</li>
-              <li>To request a refund, contact support@baileysanalytics.com with your account details</li>
-            </ul>
             <p className="leading-relaxed mb-3">
-              <strong>Dispute Resolution:</strong>
+              <strong>Billing Disputes:</strong>
             </p>
             <ul className="list-disc ml-6 space-y-1">
-              <li>For billing disputes, contact us within 60 days of the charge</li>
+              <li>For billing errors or unauthorized charges, contact us within 60 days of the charge</li>
               <li>We will investigate and respond within 5 business days</li>
-              <li>If unresolved, disputes may be escalated to arbitration</li>
+              <li>Legitimate billing errors will be corrected</li>
               <li>Chargebacks initiated without contacting us first may result in account suspension</li>
             </ul>
           </section>
@@ -199,29 +191,25 @@ export const Terms = () => {
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">18. Customer Support</h2>
-            <div className="bg-blue-50 p-6 rounded-lg mb-4">
-              <p className="leading-relaxed mb-3">
-                <strong>For customer service and support:</strong>
-              </p>
-              <div className="space-y-2">
-                <p><strong>Email:</strong> support@baileysanalytics.com</p>
-                <p><strong>Response Time:</strong> Within 24-48 hours on business days</p>
-                <p><strong>Business Hours:</strong> Monday - Friday, 9 AM - 5 PM EST</p>
-              </div>
-            </div>
+            <p className="leading-relaxed mb-3">
+              For customer service and support:
+            </p>
+            <ul className="list-disc ml-6 space-y-1">
+              <li><strong>Email:</strong> support@baileysanalytics.com</li>
+              <li><strong>Response Time:</strong> Within 24-48 hours on business days</li>
+              <li><strong>Business Hours:</strong> Monday - Friday, 9 AM - 5 PM EST</li>
+            </ul>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-gray-900 mb-3">19. Contact Information</h2>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <p className="leading-relaxed">
-                For legal inquiries about these Terms:
-              </p>
-              <div className="mt-3 space-y-1">
-                <p><strong>Email:</strong> legal@baileysanalytics.com</p>
-                <p><strong>Address:</strong> Baileys Analytics, LLC</p>
-              </div>
-            </div>
+            <p className="leading-relaxed mb-3">
+              For legal inquiries about these Terms:
+            </p>
+            <ul className="list-disc ml-6 space-y-1">
+              <li><strong>Email:</strong> legal@baileysanalytics.com</li>
+              <li><strong>Address:</strong> Baileys Analytics, LLC</li>
+            </ul>
           </section>
         </div>
       </div>

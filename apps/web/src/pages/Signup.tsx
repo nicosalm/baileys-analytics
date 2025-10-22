@@ -102,7 +102,8 @@ export const Signup = () => {
           {/* Welcome text */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Start your $1 trial</h2>
-            <p className="text-gray-600">30 days full access for just $1. Cancel anytime.</p>
+            <p className="text-gray-600 mb-3">30 days full access for just $1. Then $20/month.</p>
+            <p className="text-sm text-gray-500">After signup: Connect OwnerRez → Sync data (2 min) → See insights</p>
           </div>
 
           {/* Signup form */}
@@ -229,38 +230,39 @@ export const Signup = () => {
         <div className="absolute bottom-20 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h3 className="text-4xl font-bold mb-6">Everything You Need to Succeed</h3>
+          <h3 className="text-4xl font-bold mb-6">What Happens After You Sign Up</h3>
           <p className="text-lg opacity-90 mb-8">
-            Get started in minutes with our powerful analytics platform.
+            You'll be up and running in under 5 minutes.
           </p>
 
           {/* Feature list */}
           <div className="space-y-6">
             <div className="flex items-start">
-              <CheckCircle className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" />
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">1</div>
               <div>
-                <h4 className="font-semibold mb-1">Connect in seconds</h4>
-                <p className="opacity-90 text-sm">Seamless OwnerRez integration with OAuth</p>
+                <h4 className="font-semibold mb-1">Connect OwnerRez (30 seconds)</h4>
+                <p className="opacity-90 text-sm">Secure OAuth connection - we never see your password</p>
               </div>
             </div>
             <div className="flex items-start">
-              <CheckCircle className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" />
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">2</div>
               <div>
-                <h4 className="font-semibold mb-1">Instant insights</h4>
-                <p className="opacity-90 text-sm">Your data transformed into actionable metrics</p>
+                <h4 className="font-semibold mb-1">Automatic sync (~2 minutes)</h4>
+                <p className="opacity-90 text-sm">We pull 3 years of bookings, properties, and guest data</p>
               </div>
             </div>
             <div className="flex items-start">
-              <CheckCircle className="w-6 h-6 mr-3 flex-shrink-0 mt-0.5" />
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">3</div>
               <div>
-                <h4 className="font-semibold mb-1">No risk, full access</h4>
-                <p className="opacity-90 text-sm">Complete platform access for 30 days, just $1</p>
+                <h4 className="font-semibold mb-1">See your insights instantly</h4>
+                <p className="opacity-90 text-sm">6 dashboards with your actual revenue, occupancy, and guest data</p>
               </div>
             </div>
           </div>
 
           {/* Trust badge */}
           <div className="mt-12 pt-8 border-t border-white/20">
+            <p className="text-sm opacity-90 mb-2">Cancel anytime from settings • No hassle</p>
             <p className="text-sm opacity-75">Made with 🧀 in Wisconsin</p>
           </div>
         </div>
