@@ -36,9 +36,19 @@ billing.get('/subscription', async (c) => {
     const stripeService = new StripeService(c.env, supabase);
     const tenantId = c.get('tenantId');
 
+    // check if tenant is exempt from subscriptions
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('subscription_exempt')
+      .eq('id', tenantId)
+      .single();
+
     const subscription = await stripeService.getSubscription(tenantId);
 
-    return c.json({ subscription });
+    return c.json({
+      subscription,
+      isExempt: tenant?.subscription_exempt === true
+    });
   } catch (error) {
     console.error('Error fetching subscription:', error);
     return c.json({ error: 'Failed to fetch subscription' }, 500);

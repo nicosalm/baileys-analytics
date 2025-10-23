@@ -36,6 +36,18 @@ export const subscriptionMiddleware = async (c: Context<{ Bindings: Env; Variabl
 
   const supabase = createSupabaseClient(c.env);
 
+  // check if tenant is exempt from subscription requirements (free accounts)
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('subscription_exempt')
+    .eq('id', tenantId)
+    .single();
+
+  if (tenant?.subscription_exempt === true) {
+    // exempt accounts bypass all subscription checks
+    return next();
+  }
+
   // check subscription status
   const { data: subscription, error } = await supabase
     .from('subscriptions')
