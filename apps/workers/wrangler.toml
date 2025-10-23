@@ -26,7 +26,7 @@ binding = "CACHE"
 id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
-FRONTEND_URL = "https://baileys-dashboard.pages.dev"
+FRONTEND_URL = "https://baileysanalytics.com"
 # Webhook credentials are stored as secrets via wrangler secret put
 # See setup-webhooks.md for deployment instructions
 

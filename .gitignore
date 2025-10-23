@@ -16,6 +16,9 @@ build/
 .env.production
 .dev.vars
 
+# Wrangler config with secrets (use wrangler.toml instead)
+wrangler.jsonc
+
 # IDE
 .vscode/*
 !.vscode/extensions.json
