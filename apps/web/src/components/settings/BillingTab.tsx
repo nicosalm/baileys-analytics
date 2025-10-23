@@ -31,7 +31,6 @@ export const BillingTab = () => {
       setSubscription(sub);
       setBillingHistory(history);
     } catch (error) {
-      console.error('Error loading billing data:', error);
       addToast('error', 'Failed to load billing information');
     } finally {
       setLoading(false);
@@ -43,7 +42,6 @@ export const BillingTab = () => {
     try {
       await billingClient.createPortalSession();
     } catch (error) {
-      console.error('Portal session error:', error);
       addToast('error', error instanceof Error ? error.message : 'Failed to open billing portal');
     } finally {
       setPortalLoading(false);

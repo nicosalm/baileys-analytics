@@ -37,19 +37,6 @@ export const GuestsDashboard = () => {
     const data = rawData?.current || rawData
     const previousData = rawData?.previous || null
     
-    // Debug logging
-    if (data?.guests) {
-        const sampleGuest = data.guests.find((g: GuestListItem) => g.name === 'Katie Schreiber')
-        if (sampleGuest) {
-            console.log('[DEBUG Frontend] Katie Schreiber data:', {
-                name: sampleGuest.name,
-                email: sampleGuest.email,
-                phone: sampleGuest.phone
-            })
-        }
-        console.log('[DEBUG Frontend] Total guests with email:', data.guests.filter((g: GuestListItem) => g.email).length)
-        console.log('[DEBUG Frontend] Total guests with phone:', data.guests.filter((g: GuestListItem) => g.phone).length)
-    }
 
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')

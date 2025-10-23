@@ -56,7 +56,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       window.URL.revokeObjectURL(url)
       addToast('success', 'Tax report downloaded')
     } catch (error) {
-      console.error('Download error:', error)
       addToast('error', 'Failed to download tax report')
     }
   }

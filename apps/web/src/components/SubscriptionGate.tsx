@@ -27,7 +27,6 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
       const sub = await billingClient.getSubscription();
       setSubscription(sub);
     } catch (error) {
-      console.error('Error checking subscription:', error);
       // on error, assume no subscription to show pricing
       setSubscription(null);
     } finally {

@@ -50,7 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         retryCountRef.current.delete(operationName)
         return result
       } catch (error) {
-        console.warn(`Attempt ${i + 1} failed for ${operationName}:`, error)
         if (i === maxRetries - 1) {
           retryCountRef.current.delete(operationName)
           throw error
@@ -136,13 +135,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return retryTenant.id
         }
 
-        console.error('Failed to create tenant:', insertError)
         return null
       }
 
       return (newTenant as any)?.id || null
     } catch (err) {
-      console.error('Error ensuring tenant exists:', err)
       return null
     }
   }
@@ -156,7 +153,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // check if session is about to expire or already expired
     if (isSessionExpired(session)) {
-      console.log('Session expired or about to expire, refreshing...')
       // trigger a refresh instead of processing stale session
       const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
       if (!refreshedSession) {
@@ -204,7 +200,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       })
 
       if (error) {
-        console.error('Login failed:', error.message)
         return false
       }
 
@@ -215,7 +210,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       return false
     } catch (error) {
-      console.error('Login error:', error)
       return false
     }
   }
@@ -238,12 +232,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       })
 
       if (error) {
-        console.error('Signup failed:', error.message)
         return { success: false, error: error.message }
       }
 
       if (data.user && !data.session) {
-        console.log('Please check your email for confirmation link')
         return { success: true }
       }
 
@@ -254,7 +246,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       return { success: false, error: 'Unknown error occurred' }
     } catch (error) {
-      console.error('Signup error:', error)
       const message = error instanceof Error ? error.message : 'Unknown error occurred'
       return { success: false, error: message }
     }
@@ -262,12 +253,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Logout error:', error.message)
-      }
+      await supabase.auth.signOut()
     } catch (error) {
-      console.error('Logout error:', error)
+      // Silent error handling
     } finally {
       api.setAccessToken(null)
       setState({ status: 'unauthenticated' })
@@ -290,7 +278,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Check if session exists first
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        console.error('No active session for password update')
         return false
       }
 
@@ -306,14 +293,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await Promise.race([updatePromise, timeoutPromise])
 
       if (error) {
-        console.error('Update password error:', error.message)
         return false
       }
 
-      console.log('Password updated successfully')
       return true
     } catch (error) {
-      console.error('Update password exception:', error)
       return false
     }
   }
@@ -323,31 +307,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Check if session exists first
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
-        console.error('No active session for email update')
         return false
       }
 
-      // Add timeout to prevent indefinite hanging
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Email update timeout')), 15000)
-      )
+      // Add timeout to prevent indefinite hanging (15 seconds)
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Email update timeout after 15 seconds'))
+        }, 15000)
+        return timeoutId
+      })
 
       const updatePromise = supabase.auth.updateUser(
         { email: newEmail },
         { emailRedirectTo: `${window.location.origin}/auth/callback` }
       )
 
-      const { error } = await Promise.race([updatePromise, timeoutPromise])
+      const result = await Promise.race([updatePromise, timeoutPromise])
 
-      if (error) {
-        console.error('Update email error:', error.message)
+      if (result.error) {
         return false
       }
 
-      console.log('Email update initiated successfully')
       return true
     } catch (error) {
-      console.error('Update email exception:', error)
       return false
     }
   }
@@ -364,7 +347,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: { session }, error } = await supabase.auth.getSession()
 
         if (error) {
-          console.error('Session get error:', error)
           api.setAccessToken(null)
           setState({ status: 'unauthenticated' })
           return
@@ -385,7 +367,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setState({ status: 'unauthenticated' })
         }
       } catch (error) {
-        console.error('Auth refresh error:', error)
         api.setAccessToken(null)
         setState({ status: 'unauthenticated' })
       } finally {
@@ -405,8 +386,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // set up auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.email)
-
       // handle different auth events
       switch (event) {
         case 'SIGNED_OUT':
@@ -449,7 +428,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           break
 
         case 'PASSWORD_RECOVERY':
-          console.log('Password recovery mode activated')
+          // Password recovery mode activated
           break
       }
     })

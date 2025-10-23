@@ -358,6 +358,8 @@ export const Settings = () => {
       } else {
         addToast('error', 'Failed to update email. Please try again.')
       }
+    } catch (error) {
+      addToast('error', 'An error occurred while updating email.')
     } finally {
       setIsChangingEmail(false)
     }

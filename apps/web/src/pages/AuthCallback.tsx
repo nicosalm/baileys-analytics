@@ -27,12 +27,6 @@ export const AuthCallback = () => {
           // validate OAuth was initiated recently
           const oauthInitiated = sessionStorage.getItem('oauth_initiated')
           if (oauthInitiated) {
-            const initiatedTime = parseInt(oauthInitiated)
-            const timeDiff = Date.now() - initiatedTime
-            // OAuth flow should complete within 10 minutes
-            if (timeDiff > 10 * 60 * 1000) {
-              console.warn('OAuth flow took too long, may be suspicious')
-            }
             sessionStorage.removeItem('oauth_initiated')
           }
 
@@ -82,7 +76,6 @@ export const AuthCallback = () => {
               setTimeout(() => navigate('/dashboard/settings'), 3000)
             }
           } catch (err) {
-            console.error('OAuth callback error:', err)
             setStatus('error')
             setMessage('Failed to complete OAuth connection')
             setTimeout(() => navigate('/dashboard/settings'), 3000)
@@ -184,7 +177,6 @@ export const AuthCallback = () => {
               setMessage('Email changed successfully!')
               setTimeout(() => navigate('/dashboard/settings'), 2000)
             } catch (error) {
-              console.error('Failed to refresh user after email change:', error)
               setStatus('success')
               setMessage('Email changed! Please refresh the page to see updates.')
               setTimeout(() => navigate('/dashboard/settings'), 3000)
@@ -220,7 +212,6 @@ export const AuthCallback = () => {
             }
         }
       } catch (err) {
-        console.error('Auth callback error:', err)
         setStatus('error')
         setMessage('An unexpected error occurred')
         setTimeout(() => navigate('/login'), 3000)
