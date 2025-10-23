@@ -44,11 +44,13 @@ export function rateLimit(options: RateLimitOptions = {}) {
 		}
 		
 		// increment count
-		await c.env.CACHE.put(key, JSON.stringify({ 
-			count: data.count + 1, 
-			resetAt: data.resetAt 
-		}), { 
-			expirationTtl: Math.ceil((data.resetAt - now) / 1000) 
+		// KV requires minimum TTL of 60 seconds
+		const ttl = Math.max(60, Math.ceil((data.resetAt - now) / 1000));
+		await c.env.CACHE.put(key, JSON.stringify({
+			count: data.count + 1,
+			resetAt: data.resetAt
+		}), {
+			expirationTtl: ttl
 		});
 		
 		return next();
