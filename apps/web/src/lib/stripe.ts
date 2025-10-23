@@ -19,8 +19,8 @@ export const getStripe = () => {
 // billing api client
 class BillingClient {
   async getSubscription() {
-    const result = await api.request<{ subscription: any }>('/billing/subscription');
-    return result.success ? result.data.subscription : null;
+    const result = await api.request<{ subscription: any; isExempt: boolean }>('/billing/subscription');
+    return result.success ? result.data : null;
   }
 
   async createCheckoutSession(priceId: string, isYearly: boolean = false, isFirstMonth: boolean = false) {
