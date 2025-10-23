@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { DollarSign, Plus, AlertCircle, Edit2, ChevronDown, ChevronUp } from 'lucide-react'
+import { DollarSign, Plus, AlertCircle, Edit2, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react'
 import { formatCurrency, format } from '@baileys/utils'
 import { usePlatformFees } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -82,19 +82,31 @@ export const PlatformFeeCard = ({
       }
       minHeight={120}
     >
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+      <div className={`bg-white p-4 rounded-lg shadow-sm border transition-colors ${
+        hasData ? 'border-green-200 bg-green-50/30' : 'border-gray-200'
+      }`}>
         <div className="flex justify-between items-start mb-3">
           <div>
-            <h3 className="font-semibold text-gray-900 flex items-center">
-              <DollarSign className="w-4 h-4 mr-1" />
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <DollarSign className="w-4 h-4" />
               Platform Fees - {formatMonth(month)}
+              {hasData && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                  <CheckCircle className="w-3 h-3 mr-1" />
+                  Configured
+                </span>
+              )}
             </h3>
             <p className="text-sm text-gray-600 mt-1">{propertyName}</p>
           </div>
           <button
             onClick={handleAddFees}
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
-            title="Add another platform"
+            className={`p-1 rounded transition-colors ${
+              hasData
+                ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+            }`}
+            title={hasData ? 'Add another platform' : 'Add platform fees'}
           >
             <Plus className="w-4 h-4" />
           </button>

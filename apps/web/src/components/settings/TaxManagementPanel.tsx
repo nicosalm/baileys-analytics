@@ -1,11 +1,68 @@
 import { useState } from 'react'
 import { useModal } from '@/contexts/modal'
-import { useProperties } from '@/hooks/use-api'
+import { useProperties, usePlatformFees } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 import {
   DollarSign, Building2,
-  Calendar
+  Calendar, CheckCircle
 } from 'lucide-react'
+
+interface PropertyFeeRowProps {
+  property: any
+  month: string
+  onManageFees: (propertyId: string, propertyName: string) => void
+}
+
+const PropertyFeeRow = ({ property, month, onManageFees }: PropertyFeeRowProps) => {
+  const { data: platformFees } = usePlatformFees(property.id, month)
+  const fees = Array.isArray(platformFees) ? platformFees : []
+  const hasData = fees.length > 0
+
+  return (
+    <div
+      key={property.id}
+      className={`bg-white rounded-lg shadow-sm border transition-all ${
+        hasData
+          ? 'border-green-200 hover:shadow-md hover:border-green-300'
+          : 'border-gray-200 hover:shadow-md hover:border-blue-200'
+      }`}
+    >
+      <div className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Building2 className="w-5 h-5 text-gray-500" />
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-medium text-gray-900">{property.name}</h4>
+                {hasData && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Configured
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onManageFees(property.id, property.name)}
+              className={`px-3 py-1.5 text-white text-sm rounded-lg flex items-center gap-1 transition-colors ${
+                hasData
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+              title="Track monthly platform service fees"
+            >
+              <DollarSign className="w-4 h-4" />
+              {hasData ? 'Update' : 'Manage'} Platform Fees
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export const TaxManagementPanel = () => {
   const { openModal } = useModal()
@@ -92,32 +149,12 @@ export const TaxManagementPanel = () => {
       >
         <div className="space-y-3">
           {(properties || []).map((property: any) => (
-            <div
+            <PropertyFeeRow
               key={property.id}
-              className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all"
-            >
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Building2 className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-900">{property.name}</h4>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleManageFees(property.id, property.name)}
-                      className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"
-                      title="Track monthly platform service fees"
-                    >
-                      <DollarSign className="w-4 h-4" />
-                      Manage Platform Fees
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+              property={property}
+              month={formattedMonth}
+              onManageFees={handleManageFees}
+            />
           ))}
         </div>
       </StateWrapper>
