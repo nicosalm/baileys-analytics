@@ -10,7 +10,7 @@ interface SubscriptionGateProps {
 }
 
 export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) => {
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
 
@@ -24,11 +24,11 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
 
   const checkSubscription = async () => {
     try {
-      const sub = await billingClient.getSubscription();
-      setSubscription(sub);
+      const data = await billingClient.getSubscription();
+      setSubscriptionData(data);
     } catch (error) {
       // on error, assume no subscription to show pricing
-      setSubscription(null);
+      setSubscriptionData(null);
     } finally {
       setLoading(false);
     }
@@ -43,11 +43,14 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
     return <LoadingState fullScreen />;
   }
 
-  // check if subscription exists and is active
+  // check if account is exempt or has active subscription
+  const isExempt = subscriptionData?.isExempt === true;
+  const subscription = subscriptionData?.subscription;
   const hasActiveSubscription = subscription &&
     ['active', 'trialing'].includes(subscription.status);
 
-  if (!hasActiveSubscription) {
+  // allow access if exempt or has active subscription
+  if (!isExempt && !hasActiveSubscription) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 py-12">
         <div className="max-w-6xl mx-auto px-6">
