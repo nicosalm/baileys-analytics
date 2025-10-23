@@ -66,9 +66,6 @@ app.use('/*', cors({
 	credentials: true,
 }));
 
-// rate limiting: 1000 req/min per ip
-app.use('/api/*', rateLimit({ max: 1000, windowMs: 60000 }));
-
 // timeout: 30s
 app.use('/api/*', timeout({ ms: 30000 }));
 
@@ -82,6 +79,13 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.route('/health', health);
+
+// apply strict rate limiting to public/auth endpoints
+app.use('/api/waitlist/*', strictRateLimit());
+app.use('/api/auth/login', strictRateLimit());
+app.use('/api/auth/signup', strictRateLimit());
+app.use('/api/auth/refresh', rateLimit({ max: 100, windowMs: 60000 }));
+
 app.route('/api/waitlist', waitlist);
 
 app.post('/api/auth/login', async (c) => {
@@ -869,6 +873,10 @@ app.route('/api/seasons', seasons);
 app.route('/api/tags', tags);
 app.route('/api/tax', tax);
 app.route('/api/platform-fees', platformFeesRoute);
+
+// rate limit billing checkout to prevent abuse
+app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));
+
 app.route('/api/billing', billing);
 app.route('/api/reports', reports);
 app.route('/api/scheduler', scheduler);
