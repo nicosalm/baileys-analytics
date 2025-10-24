@@ -126,7 +126,7 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 		startDay: z.number().int().min(1).max(31),
 		endMonth: z.number().int().min(1).max(12),
 		endDay: z.number().int().min(1).max(31),
-		isActive: z.boolean()
+		isActive: z.boolean().optional()
 	});
 	
 	const validation = seasonSchema.safeParse(body);
@@ -140,14 +140,17 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
-	const dbData = {
+	const dbData: any = {
 		name: body.name,
 		start_month: body.startMonth,
 		start_day: body.startDay,
 		end_month: body.endMonth,
-		end_day: body.endDay,
-		is_active: body.isActive
+		end_day: body.endDay
 	};
+
+	if (body.isActive !== undefined) {
+		dbData.is_active = body.isActive;
+	}
 	
 	const { data: season, error } = await supabase
 		.from('season_configurations')

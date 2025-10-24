@@ -2,22 +2,16 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 
-const properties = new Hono<{ Bindings: Env; Variables: { user: any } }>();
+const properties = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
 properties.use('/*', authMiddleware);
 
 properties.get('/metrics', async (c) => {
 	const { from, to, tags, comparisonFrom, comparisonTo } = c.req.query();
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
@@ -30,7 +24,7 @@ properties.get('/metrics', async (c) => {
 	
 	if (comparisonFrom && comparisonTo) {
 		const metrics = await metricsService.calculateComparativeMetrics(
-			tenant.id,
+			tenantId,
 			fromDate,
 			toDate,
 			comparisonFrom,
@@ -40,7 +34,7 @@ properties.get('/metrics', async (c) => {
 	}
 	
 	const metrics = await metricsService.calculatePropertyMetrics(
-		tenant.id,
+		tenantId,
 		fromDate,
 		toDate,
 		undefined,
@@ -52,22 +46,16 @@ properties.get('/metrics', async (c) => {
 
 properties.get('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
+
 	const { data: properties, error } = await supabase
 		.from('properties')
 		.select('*')
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.order('name');
 	
 	if (error) {
@@ -80,23 +68,17 @@ properties.get('/', async (c) => {
 properties.get('/:id', async (c) => {
 	const propertyId = c.req.param('id');
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
+
 	const { data: property, error } = await supabase
 		.from('properties')
 		.select('*')
 		.eq('id', propertyId)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.single();
 	
 	if (error || !property) {
@@ -110,15 +92,9 @@ properties.get('/:id/metrics', async (c) => {
 	const propertyId = c.req.param('id');
 	const { from, to } = c.req.query();
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
@@ -129,7 +105,7 @@ properties.get('/:id/metrics', async (c) => {
 	const toDate = to || new Date().toISOString().split('T')[0];
 	
 	const metrics = await metricsService.calculatePropertyMetrics(
-		tenant.id,
+		tenantId,
 		fromDate,
 		toDate,
 		propertyId
@@ -150,23 +126,17 @@ properties.get('/:id/metrics', async (c) => {
 
 properties.get('/platforms', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 	const propertyId = c.req.query('propertyId');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
+
 	let query = supabase
 		.from('bookings')
 		.select('platform')
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.not('platform', 'is', null);
 	
 	if (propertyId) {
@@ -188,20 +158,12 @@ properties.get('/:propertyId/month/:year/:month', async (c) => {
 	const propertyId = c.req.param('propertyId');
 	const year = c.req.param('year');
 	const month = c.req.param('month');
-	const user = c.get('user');
 	const supabase = createSupabaseClient(c.env);
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
-	const tenantId = tenant.id;
 	
 	const monthPadded = month.padStart(2, '0');
 	const yearInt = parseInt(year);

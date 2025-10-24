@@ -2,22 +2,16 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 
-const bookings = new Hono<{ Bindings: Env; Variables: { user: any } }>();
+const bookings = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
 bookings.use('/*', authMiddleware);
 
 bookings.get('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 	const { limit = '50', offset = '0', propertyId, startDate, endDate } = c.req.query();
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
@@ -27,7 +21,7 @@ bookings.get('/', async (c) => {
 			*,
 			properties!inner(name)
 		`)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.order('arrival', { ascending: false })
 		.limit(parseInt(limit))
 		.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
@@ -59,15 +53,9 @@ bookings.get('/', async (c) => {
 bookings.get('/:id', async (c) => {
 	const bookingId = c.req.param('id');
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
@@ -79,7 +67,7 @@ bookings.get('/:id', async (c) => {
 				properties!inner(name, address, bedrooms, bathrooms, max_guests)
 			`)
 			.eq('id', bookingId)
-			.eq('tenant_id', tenant.id)
+			.eq('tenant_id', tenantId)
 			.single(),
 		supabase
 			.from('booking_charges')
@@ -128,15 +116,9 @@ bookings.get('/:id', async (c) => {
 
 bookings.get('/recent', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
@@ -151,7 +133,7 @@ bookings.get('/recent', async (c) => {
 			booking_status,
 			properties!inner(name)
 		`)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.order('created_at', { ascending: false })
 		.limit(10);
 	

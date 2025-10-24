@@ -647,10 +647,15 @@ app.post('/api/sync-guest-details', authMiddleware, async (c) => {
 
 app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 	const view = c.req.query('view') || 'overview';
 	const from = c.req.query('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
 	const to = c.req.query('to') || new Date().toISOString().split('T')[0];
 	const tags = c.req.query('tags')?.split(',').filter(Boolean);
+
+	if (!tenantId) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
 
 	const cacheKey = `dashboard:${user.id}:${view}:${from}:${to}:${tags?.join(',')}`;
 
@@ -663,18 +668,6 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 	}
 
 	const supabase = createSupabaseClient(c.env);
-
-	const { data: tenantData } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenantData) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-
-	const tenantId = tenantData.id;
 	let data: any = {};
 
 	switch(view) {
