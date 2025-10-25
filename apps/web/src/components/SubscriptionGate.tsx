@@ -3,7 +3,6 @@ import { useLocation } from 'react-router-dom';
 import { billingClient } from '@/lib/stripe';
 import { PricingPlans } from './PricingPlans';
 import { LoadingState } from './LoadingState';
-import { AlertCircle } from 'lucide-react';
 
 interface SubscriptionGateProps {
   children: React.ReactNode;
