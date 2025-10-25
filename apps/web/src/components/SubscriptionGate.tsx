@@ -52,42 +52,27 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
   // allow access if exempt or has active subscription
   if (!isExempt && !hasActiveSubscription) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 py-12">
-        <div className="max-w-6xl mx-auto px-6">
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4">
           {/* header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl mb-4">
-              <AlertCircle className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">
-              Get Started with Baileys Analytics
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Complete vacation rental analytics for just $20/month.
-              Start with $1 for your first 30 days.
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Subscribe to continue</h2>
+            <p className="text-gray-600 text-sm mb-4">
+              $1 for the first month, then $20/month or $192/year. Cancel anytime.
             </p>
+            <div className="text-sm text-gray-600">
+              <p className="mb-1">What's included:</p>
+              <ul className="space-y-1 ml-4">
+                <li>• Track revenue and bookings across all your properties</li>
+                <li>• See occupancy rates and availability</li>
+                <li>• Export financial reports</li>
+                <li>• Sync with OwnerRez</li>
+              </ul>
+            </div>
           </div>
 
           {/* pricing plans */}
           <PricingPlans onPlanSelect={checkSubscription} />
-
-          {/* additional info */}
-          <div className="mt-12 bg-blue-50 rounded-xl p-6 max-w-2xl mx-auto">
-            <h3 className="font-semibold text-blue-900 mb-2">how it works:</h3>
-            <ol className="space-y-2 text-sm text-blue-800">
-              <li>1. subscribe to get full access to all features</li>
-              <li>2. pay just $1 for your first 30 days</li>
-              <li>3. after 30 days, regular pricing applies ($20/month or $192/year)</li>
-              <li>4. cancel anytime from settings</li>
-            </ol>
-          </div>
-
-          {/* link to settings */}
-          <div className="text-center mt-8">
-            <a href="/settings?tab=billing" className="text-sm text-gray-600 hover:text-gray-900">
-              need to update payment details? go to settings →
-            </a>
-          </div>
         </div>
       </div>
     );

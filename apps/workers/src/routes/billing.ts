@@ -55,6 +55,34 @@ billing.get('/subscription', async (c) => {
   }
 });
 
+// check if tenant is eligible for $1 trial
+billing.get('/trial-eligible', async (c) => {
+  try {
+    const supabase = createSupabaseClient(c.env);
+    const tenantId = c.get('tenantId');
+
+    const { data: tenant, error } = await supabase
+      .from('tenants')
+      .select('first_subscription_at')
+      .eq('id', tenantId)
+      .single();
+
+    // fail-closed: if query fails or tenant not found, not eligible
+    if (error || !tenant) {
+      console.error('Error checking trial eligibility for tenant:', tenantId, error);
+      return c.json({ isEligible: false });
+    }
+
+    // eligible if they've never subscribed before
+    const isEligible = !tenant.first_subscription_at;
+
+    return c.json({ isEligible });
+  } catch (error) {
+    console.error('Error checking trial eligibility:', error);
+    return c.json({ error: 'Failed to check trial eligibility' }, 500);
+  }
+});
+
 // create checkout session for new subscription or upgrade
 billing.post('/create-checkout-session', async (c) => {
   try {

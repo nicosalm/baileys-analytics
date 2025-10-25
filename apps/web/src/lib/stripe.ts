@@ -23,6 +23,11 @@ class BillingClient {
     return result.success ? result.data : null;
   }
 
+  async isTrialEligible() {
+    const result = await api.request<{ isEligible: boolean }>('/billing/trial-eligible');
+    return result.success ? result.data.isEligible : false;
+  }
+
   async createCheckoutSession(priceId: string, isYearly: boolean = false, isFirstMonth: boolean = false) {
     const result = await api.request<{ url: string; sessionId: string }>('/billing/create-checkout-session', {
       method: 'POST',

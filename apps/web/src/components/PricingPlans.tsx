@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, Zap } from 'lucide-react';
 import { billingClient } from '@/lib/stripe';
 import { useToast } from '@/contexts/toast';
 import { LoadingButton } from './LoadingButton';
+import { LoadingState } from './LoadingState';
 
 interface PricingPlansProps {
   currentPlan?: string;
@@ -34,20 +35,38 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
 }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
   const [loading, setLoading] = useState(false);
+  const [isTrialEligible, setIsTrialEligible] = useState(false);
+  const [checkingEligibility, setCheckingEligibility] = useState(true);
+  const [eligibilityError, setEligibilityError] = useState<string | null>(null);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    const checkEligibility = async () => {
+      try {
+        const eligible = await billingClient.isTrialEligible();
+        setIsTrialEligible(eligible);
+        setEligibilityError(null);
+      } catch (error) {
+        console.error('Failed to check trial eligibility:', error);
+        setIsTrialEligible(false);
+        setEligibilityError('Unable to verify trial eligibility. Please try again.');
+      } finally {
+        setCheckingEligibility(false);
+      }
+    };
+
+    checkEligibility();
+  }, []);
 
   const handleSelectPlan = async () => {
     try {
       setLoading(true);
 
-      // check if this is user's first subscription (no currentPlan means first time)
-      const isFirstSubscription = !currentPlan;
-
-      // create checkout session
+      // create checkout session with trial if eligible
       await billingClient.createCheckoutSession(
         plan.id,
         billingCycle === 'yearly',
-        isFirstSubscription // only $1 for first-time subscribers
+        isTrialEligible // only $1 for first-time subscribers
       );
 
       if (onPlanSelect) {
@@ -63,17 +82,36 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
   const getButtonText = () => {
     if (currentPlan) return 'Current Plan';
     if (loading) return 'Processing...';
-    return 'Get Started - $1'; // first-time users
+    if (checkingEligibility) return 'Loading...';
+    return isTrialEligible ? 'Get Started - $1' : 'Subscribe';
   };
 
   const price = billingCycle === 'yearly' ? plan.yearlyMonthly : plan.monthlyPrice;
   const totalYearly = plan.yearlyPrice;
   const savings = plan.monthlyPrice * 12 - plan.yearlyPrice;
 
+  // show loading state while checking trial eligibility
+  if (checkingEligibility) {
+    return (
+      <div className="space-y-8">
+        <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-8">
+          <LoadingState message="Checking trial eligibility..." size="md" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
-      {/* special offer banner for new users */}
-      {!currentPlan && (
+      {/* error banner if eligibility check failed */}
+      {eligibilityError && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+          <p className="text-sm text-yellow-800">{eligibilityError}</p>
+        </div>
+      )}
+
+      {/* special offer banner for trial-eligible users */}
+      {!currentPlan && isTrialEligible && !checkingEligibility && (
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-4 text-center">
           <div className="flex items-center justify-center gap-3">
             <div className="text-3xl font-bold">$1</div>
@@ -176,8 +214,10 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
           {billingCycle === 'yearly' ? 'Billed annually' : 'Save 20% with annual billing'}
         </p>
         <p className="text-sm text-gray-500">
-          {!currentPlan
+          {!currentPlan && isTrialEligible && !checkingEligibility
             ? '$1 for your first 30 days, then regular pricing. Cancel anytime.'
+            : !currentPlan
+            ? 'Cancel anytime.'
             : 'Changes take effect immediately. Cancel anytime.'}
         </p>
       </div>

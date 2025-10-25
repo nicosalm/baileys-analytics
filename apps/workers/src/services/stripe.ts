@@ -59,6 +59,27 @@ export class StripeService {
   ): Promise<{ sessionId: string; url: string }> {
     const customerId = await this.createOrRetrieveCustomer(tenantId, email);
 
+    // check if tenant has ever subscribed before
+    const { data: tenant, error: tenantError } = await this.supabase
+      .from('tenants')
+      .select('first_subscription_at')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantError) {
+      console.error('Failed to check trial eligibility for tenant:', tenantId, tenantError);
+      // fail-closed: if we can't verify eligibility, don't allow trial
+      throw new Error('Unable to verify trial eligibility');
+    }
+
+    // only allow trial if tenant has never subscribed before
+    const allowTrial = isFirstMonth && !tenant?.first_subscription_at;
+
+    // log trial denial for audit trail
+    if (isFirstMonth && !allowTrial) {
+      console.log('Trial denied for tenant:', tenantId, 'first_subscription_at:', tenant?.first_subscription_at);
+    }
+
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ['card'],
@@ -70,7 +91,7 @@ export class StripeService {
       }
     };
 
-    if (isFirstMonth) {
+    if (allowTrial) {
       // first month: $1 total using trial + invoice item
       // Add subscription line item and $1 setup fee separately
       sessionConfig.line_items = [
@@ -335,7 +356,14 @@ export class StripeService {
         onConflict: 'tenant_id'
       });
 
-    // update tenant subscription status
+    // check if this is the tenant's first subscription
+    const { data: tenant } = await this.supabase
+      .from('tenants')
+      .select('first_subscription_at')
+      .eq('id', tenantId)
+      .single();
+
+    // always update subscription status fields
     await this.supabase
       .from('tenants')
       .update({
@@ -344,6 +372,20 @@ export class StripeService {
         subscription_ends_at: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null
       })
       .eq('id', tenantId);
+
+    // atomically set first_subscription_at only if it's still NULL
+    // this prevents race conditions from concurrent webhooks
+    if (!tenant?.first_subscription_at) {
+      const { error: updateError } = await this.supabase
+        .from('tenants')
+        .update({ first_subscription_at: new Date().toISOString() })
+        .eq('id', tenantId)
+        .is('first_subscription_at', null);
+
+      if (!updateError) {
+        console.log('Set first_subscription_at for tenant:', tenantId, 'subscription:', subscription.id);
+      }
+    }
   }
 
   private async handleSubscriptionDeleted(subscription: Stripe.Subscription) {
