@@ -206,6 +206,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
                 onPeriodClick(e.activeLabel)
               }
             }}
+            style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />

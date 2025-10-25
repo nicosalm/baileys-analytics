@@ -185,7 +185,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -195,7 +195,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
             </span>
             <button
               type="button"
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
               disabled={maxDate && currentMonth >= maxDate}
             >
@@ -232,11 +232,11 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   className={cn(
                     "p-3 text-sm rounded-lg transition-colors relative",
                     !isCurrentMonth && "text-gray-300",
-                    isCurrentMonth && !isDisabled && "hover:bg-gray-100",
+                    isCurrentMonth && !isDisabled && "hover:bg-gray-100 cursor-pointer",
                     isDisabled && !isOutOfSeason && "text-gray-300 cursor-not-allowed",
                     isOutOfSeason && "text-gray-400 cursor-not-allowed bg-gray-50",
-                    isInRange && !isOutOfSeason && "bg-blue-100",
-                    (isStart || isEnd) && "bg-blue-500 text-white hover:bg-blue-600"
+                    isInRange && !isOutOfSeason && "bg-blue-100 cursor-pointer",
+                    (isStart || isEnd) && "bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
                   )}
                 >
                   {date.getDate()}
@@ -260,7 +260,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = formatDateISO(new Date())
                       handleQuickSelect(today, today)
@@ -270,7 +270,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       handleQuickSelect(formatDateISO(subDays(today, 7)), formatDateISO(today))
@@ -280,7 +280,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       handleQuickSelect(formatDateISO(subDays(today, 30)), formatDateISO(today))
@@ -290,7 +290,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       handleQuickSelect(formatDateISO(subDays(today, 90)), formatDateISO(today))
@@ -300,7 +300,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       handleQuickSelect(formatDateISO(startOfMonth(today)), formatDateISO(today))
@@ -310,7 +310,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       handleQuickSelect(formatDateISO(startOfQuarter(today)), formatDateISO(today))
@@ -327,7 +327,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       handleQuickSelect(formatDateISO(startOfYear(today)), formatDateISO(today))
@@ -337,12 +337,12 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       const lastYear = subYears(today, 1)
                       handleQuickSelect(
-                        formatDateISO(startOfYear(lastYear)), 
+                        formatDateISO(startOfYear(lastYear)),
                         formatDateISO(new Date(getYear(lastYear), 11, 31))
                       )
                     }}
@@ -351,12 +351,12 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       const currentMonth = getMonth(today)
                       const currentYear = getYear(today)
-                      const fiscalYearStart = currentMonth >= 9 
+                      const fiscalYearStart = currentMonth >= 9
                         ? new Date(currentYear, 9, 1)
                         : new Date(currentYear - 1, 9, 1)
                       handleQuickSelect(formatDateISO(fiscalYearStart), formatDateISO(today))
@@ -367,12 +367,12 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left"
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
                     onClick={() => {
                       const today = new Date()
                       const currentMonth = getMonth(today)
                       const currentYear = getYear(today)
-                      const lastFiscalYearStart = currentMonth >= 9 
+                      const lastFiscalYearStart = currentMonth >= 9
                         ? new Date(currentYear - 1, 9, 1)
                         : new Date(currentYear - 2, 9, 1)
                       const lastFiscalYearEnd = currentMonth >= 9

@@ -151,7 +151,7 @@ export const DashboardLayout = () => {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold text-gray-900">Baileys Analytics</h1>
-              <button onClick={handleLogout} className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-all px-3 py-1.5 rounded-md hover:bg-gray-100">
+              <button onClick={handleLogout} className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-all px-3 py-1.5 rounded-md hover:bg-gray-100 cursor-pointer">
                 <LogOut className="w-4 h-4 mr-1.5" />
                 Logout
               </button>
@@ -221,7 +221,7 @@ export const DashboardLayout = () => {
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                      className="relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
                       style={{ isolation: 'isolate' }}
                     >
                       <LogOut className="w-4 h-4" />

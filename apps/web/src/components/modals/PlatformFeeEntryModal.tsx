@@ -224,7 +224,7 @@ export const PlatformFeeEntryModal = ({
                   <button
                     type="button"
                     onClick={() => removePlatformRow(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors"
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors cursor-pointer"
                     title="Remove platform"
                   >
                     <X className="w-5 h-5" />
@@ -237,7 +237,7 @@ export const PlatformFeeEntryModal = ({
           <button
             type="button"
             onClick={addPlatformRow}
-            className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add another platform

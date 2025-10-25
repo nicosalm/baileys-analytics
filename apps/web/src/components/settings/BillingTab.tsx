@@ -228,7 +228,7 @@ export const BillingTab = () => {
                 </p>
                 <button
                   onClick={handleManageSubscription}
-                  className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
                 >
                   Update Payment Method →
                 </button>

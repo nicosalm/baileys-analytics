@@ -94,7 +94,7 @@ export const CollapsibleTags: React.FC<CollapsibleTagsProps> = ({
         {hiddenCount > 0 && (
           <button
             onClick={handleShowMore}
-            className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200`}
+            className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer`}
           >
             +{hiddenCount} more
           </button>

@@ -111,7 +111,7 @@ const GeneralTab = ({
         <div className="space-y-3">
           <button
             onClick={onChangeEmail}
-            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200"
+            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4" />
@@ -121,7 +121,7 @@ const GeneralTab = ({
           </button>
           <button
             onClick={onChangePassword}
-            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200"
+            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
           >
             <div className="flex items-center gap-2">
               <Lock className="w-4 h-4" />
@@ -141,7 +141,7 @@ const GeneralTab = ({
         </div>
         <button
           onClick={onDeleteAccount}
-          className="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all flex items-center gap-2 border border-red-200"
+          className="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all flex items-center gap-2 border border-red-200 cursor-pointer"
         >
           <Trash2 className="w-4 h-4" />
           Delete Account
@@ -173,7 +173,7 @@ const PreferencesTab = () => {
             </div>
             <button
               onClick={handleToggleTips}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
                 showTips ? 'bg-blue-600' : 'bg-gray-300'
               }`}
             >
@@ -197,7 +197,7 @@ const PreferencesTab = () => {
             </div>
             <button
               onClick={() => setNotifications(!notifications)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
                 notifications ? 'bg-blue-600' : 'bg-gray-300'
               }`}
             >
@@ -404,7 +404,7 @@ export const Settings = () => {
                   await logout()
                   window.location.href = '/'
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -427,7 +427,7 @@ export const Settings = () => {
                 <button
                   key={id}
                   onClick={() => handleTabChange(id)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
                     activeTab === id
                       ? 'bg-blue-50 text-blue-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -442,7 +442,7 @@ export const Settings = () => {
             <div className="mt-6 pt-6 border-t border-gray-200">
               <button
                 onClick={handleSendFeedback}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-all"
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-all cursor-pointer"
               >
                 <MessageSquare className="w-4 h-4" />
                 Send Feedback
@@ -530,14 +530,14 @@ export const Settings = () => {
               <button
                 onClick={() => setChangeEmailModalOpen(false)}
                 disabled={isChangingEmail}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmChangeEmail}
                 disabled={isChangingEmail}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isChangingEmail ? 'Sending...' : 'Send Confirmation'}
               </button>
@@ -579,7 +579,7 @@ export const Settings = () => {
                   <button
                     type="button"
                     onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
                     disabled={isChangingPassword}
                     tabIndex={-1}
                   >
@@ -604,7 +604,7 @@ export const Settings = () => {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
                     disabled={isChangingPassword}
                     tabIndex={-1}
                   >
@@ -617,14 +617,14 @@ export const Settings = () => {
               <button
                 onClick={() => setChangePasswordModalOpen(false)}
                 disabled={isChangingPassword}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmChangePassword}
                 disabled={isChangingPassword}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isChangingPassword ? 'Changing...' : 'Change Password'}
               </button>

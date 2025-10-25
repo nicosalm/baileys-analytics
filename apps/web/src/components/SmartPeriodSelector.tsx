@@ -355,7 +355,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             setComparisonDropdownOpen(false) // Close comparison when opening period selector
           }}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg",
+            "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg cursor-pointer",
             "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
             isOpen && "ring-2 ring-blue-600 border-blue-600",
             seasonStatus === 'in-season' && "border-green-600 bg-green-50/50",
@@ -388,7 +388,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               setIsOpen(false) // Close period selector when opening comparison
             }}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg",
+              "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg cursor-pointer",
               "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
               comparisonDropdownOpen && "ring-2 ring-blue-600 border-blue-600",
               comparisonType !== 'none' && "border-blue-600 bg-blue-50/50"
@@ -420,9 +420,9 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                     }
                   }}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
-                    comparisonType === 'none' 
-                      ? "bg-blue-50 text-blue-700" 
+                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between cursor-pointer",
+                    comparisonType === 'none'
+                      ? "bg-blue-50 text-blue-700"
                       : "hover:bg-gray-100 text-gray-700"
                   )}
                 >
@@ -452,11 +452,11 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                       disabled={isDisabled}
                       className={cn(
                         "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
-                        isDisabled 
+                        isDisabled
                           ? "opacity-50 cursor-not-allowed text-gray-400"
-                          : comparisonType === 'lastPeriod' 
-                            ? "bg-blue-50 text-blue-700" 
-                            : "hover:bg-gray-100 text-gray-700"
+                          : comparisonType === 'lastPeriod'
+                            ? "bg-blue-50 text-blue-700 cursor-pointer"
+                            : "hover:bg-gray-100 text-gray-700 cursor-pointer"
                       )}
                       title={isDisabled ? "No data available in previous period for selected season" : undefined}
                     >
@@ -490,9 +490,9 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                         "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
                         isDisabled
                           ? "opacity-50 cursor-not-allowed text-gray-400"
-                          : comparisonType === 'lastYear' 
-                            ? "bg-blue-50 text-blue-700" 
-                            : "hover:bg-gray-100 text-gray-700"
+                          : comparisonType === 'lastYear'
+                            ? "bg-blue-50 text-blue-700 cursor-pointer"
+                            : "hover:bg-gray-100 text-gray-700 cursor-pointer"
                       )}
                       title={isDisabled ? "No data available in last year for selected season" : undefined}
                     >
@@ -548,9 +548,9 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   key={option.id}
                   onClick={() => handlePeriodSelect(option)}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
-                    isSelected 
-                      ? "bg-blue-50 text-blue-700" 
+                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between cursor-pointer",
+                    isSelected
+                      ? "bg-blue-50 text-blue-700"
                       : "hover:bg-gray-100 text-gray-700"
                   )}
                 >
@@ -567,7 +567,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   setCustomRangeOpen(true)
                   setIsOpen(false)
                 }}
-                className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 text-gray-700"
+                className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 text-gray-700 cursor-pointer"
               >
                 Custom Range...
               </button>
@@ -595,7 +595,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
               <button
                 onClick={() => setCustomRangeOpen(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 rounded-lg"
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 rounded-lg cursor-pointer"
               >
                 Cancel
               </button>
@@ -604,7 +604,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   onChange(tempCustomRange)
                   setCustomRangeOpen(false)
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium cursor-pointer"
                 disabled={!tempCustomRange.from || !tempCustomRange.to}
               >
                 Apply Range

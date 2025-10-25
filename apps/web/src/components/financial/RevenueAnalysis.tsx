@@ -225,13 +225,13 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           <SimpleTable
             data={analysis.topProperties}
             columns={[
-              { 
-                key: 'propertyName', 
+              {
+                key: 'propertyName',
                 header: 'Property',
                 render: (row: any) => (
                   <button
                     onClick={() => onPropertyClick?.(row.propertyId)}
-                    className="text-blue-600 hover:underline text-left"
+                    className="text-blue-600 hover:underline text-left cursor-pointer"
                   >
                     {row.propertyName}
                   </button>
@@ -276,13 +276,13 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           <SimpleTable
             data={analysis.bottomProperties}
             columns={[
-              { 
-                key: 'propertyName', 
+              {
+                key: 'propertyName',
                 header: 'Property',
                 render: (row: any) => (
                   <button
                     onClick={() => onPropertyClick?.(row.propertyId)}
-                    className="text-blue-600 hover:underline text-left"
+                    className="text-blue-600 hover:underline text-left cursor-pointer"
                   >
                     {row.propertyName}
                   </button>

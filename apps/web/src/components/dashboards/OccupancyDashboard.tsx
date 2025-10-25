@@ -275,14 +275,14 @@ export const OccupancyDashboard = () => {
 
       <ChartWrapper
         title={getChartTitle()}
-        subtitle={comparisonMode !== 'none' && previousData 
+        subtitle={comparisonMode !== 'none' && previousData
           ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
           : undefined
         }
         icon={TrendingUp}
         height={360}
       >
-        <LineChart data={chartData} onClick={handlePeriodClick}>
+        <LineChart data={chartData} onClick={handlePeriodClick} style={{ cursor: 'pointer' }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="month"
@@ -313,7 +313,8 @@ export const OccupancyDashboard = () => {
             dataKey="rate"
             stroke={METRIC_COLORS.occupancy}
             strokeWidth={3}
-            dot={{ fill: METRIC_COLORS.occupancy, r: 6, cursor: 'pointer' }}
+            dot={{ fill: METRIC_COLORS.occupancy, r: 6 }}
+            style={{ cursor: 'pointer' }}
             activeDot={{ r: 8 }}
             name="Current Period"
           />

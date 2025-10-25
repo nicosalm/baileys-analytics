@@ -125,7 +125,7 @@ const SeasonForm: React.FC<{
         <button
           type="submit"
           disabled={isSubmitting || !formData.name}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Check className="w-4 h-4" />
           {isEditing ? 'Update' : 'Add'} Season
@@ -134,7 +134,7 @@ const SeasonForm: React.FC<{
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 cursor-pointer"
         >
           <X className="w-4 h-4 inline mr-1" />
           Cancel
@@ -184,7 +184,7 @@ const SeasonRow: React.FC<{
             {season.isActive ? (
               <button
                 onClick={() => onToggleActive(season)}
-                className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1"
+                className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
                 Deactivate
@@ -192,7 +192,7 @@ const SeasonRow: React.FC<{
             ) : (
               <button
                 onClick={() => onToggleActive(season)}
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 Activate
@@ -200,7 +200,7 @@ const SeasonRow: React.FC<{
             )}
             <button
               onClick={() => onEdit(season)}
-              className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1"
+              className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1 cursor-pointer"
             >
               <Edit2 className="w-4 h-4" />
               Edit
@@ -327,7 +327,7 @@ export const SeasonManagementPanel: React.FC = () => {
         {!isAddingNew && !editingSeasonId && (
           <button
             onClick={() => setIsAddingNew(true)}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Season

@@ -126,6 +126,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
       <ScatterChart
         margin={{ top: 20, right: 30, left: 50, bottom: 40 }}
         onClick={handleClick}
+        style={{ cursor: onPropertyClick ? 'pointer' : 'default' }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
         <XAxis

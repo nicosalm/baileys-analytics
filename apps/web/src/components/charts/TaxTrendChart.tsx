@@ -57,6 +57,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
               }
             }
           }}
+          style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />

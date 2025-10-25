@@ -145,7 +145,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
           <nav className="flex space-x-6">
             <button
               onClick={() => setActiveTab('config')}
-              className={`pb-2 border-b-2 transition-colors ${
+              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'config'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -158,7 +158,7 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
-              className={`pb-2 border-b-2 transition-colors ${
+              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'schedule'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'

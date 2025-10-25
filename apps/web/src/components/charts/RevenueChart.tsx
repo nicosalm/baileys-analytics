@@ -64,6 +64,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
               }
             }
           }}
+          style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
         >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />

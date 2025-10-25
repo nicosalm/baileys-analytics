@@ -192,7 +192,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
           <nav className="flex space-x-6">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`pb-2 border-b-2 transition-colors ${
+              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'overview'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -202,7 +202,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
             </button>
             <button
               onClick={() => setActiveTab('bookings')}
-              className={`pb-2 border-b-2 transition-colors ${
+              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'bookings'
                   ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-600 hover:text-gray-900'

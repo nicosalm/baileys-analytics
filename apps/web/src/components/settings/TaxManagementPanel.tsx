@@ -47,7 +47,7 @@ const PropertyFeeRow = ({ property, month, onManageFees }: PropertyFeeRowProps) 
           <div className="flex items-center gap-2">
             <button
               onClick={() => onManageFees(property.id, property.name)}
-              className={`px-3 py-1.5 text-white text-sm rounded-lg flex items-center gap-1 transition-colors ${
+              className={`px-3 py-1.5 text-white text-sm rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
                 hasData
                   ? 'bg-green-600 hover:bg-green-700'
                   : 'bg-blue-600 hover:bg-blue-700'

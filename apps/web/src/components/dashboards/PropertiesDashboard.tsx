@@ -534,9 +534,9 @@ export const PropertiesDashboard = () => {
           <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'table' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -545,9 +545,9 @@ export const PropertiesDashboard = () => {
             </button>
             <button
               onClick={() => setViewMode('cards')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'cards' 
-                  ? 'bg-white text-gray-900 shadow-sm' 
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                viewMode === 'cards'
+                  ? 'bg-white text-gray-900 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >

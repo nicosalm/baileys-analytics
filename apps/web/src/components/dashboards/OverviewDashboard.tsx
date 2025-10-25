@@ -650,7 +650,7 @@ export const OverviewDashboard = () => {
                 <div
                   key={activity.id}
                   className={`flex items-center justify-between py-2 border-b last:border-0 ${
-                    activity.bookingId ? 'hover:bg-gray-50 px-2 -mx-2 rounded transition-colors' : ''
+                    activity.bookingId ? 'hover:bg-gray-50 px-2 -mx-2 rounded transition-colors cursor-pointer' : ''
                   }`}
                   onClick={() => {
                     if (activity.bookingId) {

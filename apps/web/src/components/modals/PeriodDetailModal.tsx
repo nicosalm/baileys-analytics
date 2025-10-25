@@ -168,7 +168,7 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
               <tbody>
                 {data?.bookings?.map((booking: any) => (
                   <tr key={booking.id} className="border-t hover:bg-gray-50">
-                    <td 
+                    <td
                       className="p-4 cursor-pointer"
                       onClick={() => openModal({
                         type: 'guest',
@@ -180,7 +180,7 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
                         {booking.guestName}
                       </div>
                     </td>
-                    <td 
+                    <td
                       className="p-4 cursor-pointer"
                       onClick={() => openModal({
                         type: 'property',

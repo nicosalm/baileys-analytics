@@ -109,7 +109,7 @@ export const IntegrationsTab = () => {
                   </span>
                   <button
                     onClick={() => setDisconnectModalOpen(true)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                     title="Disconnect OwnerRez"
                   >
                     <Link2Off className="w-5 h-5" />
@@ -118,7 +118,7 @@ export const IntegrationsTab = () => {
               ) : (
                 <button
                   onClick={handleConnect}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium cursor-pointer"
                 >
                   <Link2 className="w-4 h-4" />
                   Connect
@@ -147,7 +147,7 @@ export const IntegrationsTab = () => {
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleManualSync}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium cursor-pointer"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Re-sync All Data (3 years)

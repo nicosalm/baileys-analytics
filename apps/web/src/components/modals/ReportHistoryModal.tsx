@@ -233,7 +233,7 @@ export const ReportHistoryModal = ({ templateId, templateName }: ReportHistoryMo
                               e.stopPropagation()
                               // Handle download
                             }}
-                            className="p-1 text-blue-600 hover:text-blue-700"
+                            className="p-1 text-blue-600 hover:text-blue-700 cursor-pointer"
                             title="Download"
                           >
                             <Download className="w-4 h-4" />
@@ -244,7 +244,7 @@ export const ReportHistoryModal = ({ templateId, templateName }: ReportHistoryMo
                             e.stopPropagation()
                             handleRerun()
                           }}
-                          className="p-1 text-gray-600 hover:text-gray-700"
+                          className="p-1 text-gray-600 hover:text-gray-700 cursor-pointer"
                           title="Run Again"
                         >
                           <ExternalLink className="w-4 h-4" />
