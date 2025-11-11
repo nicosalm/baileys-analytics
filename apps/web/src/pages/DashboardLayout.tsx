@@ -15,6 +15,7 @@ import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { InitialSyncModal } from '@/components/InitialSyncModal'
+import { MobileWarning } from '@/components/MobileWarning'
 import { useState, useEffect } from 'react'
 
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -184,8 +185,9 @@ export const DashboardLayout = () => {
 
   return (
     <>
+      <MobileWarning />
       {showInitialSync && (
-        <InitialSyncModal 
+        <InitialSyncModal
           onComplete={() => {
             setShowInitialSync(false)
           }}
