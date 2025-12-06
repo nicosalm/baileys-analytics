@@ -15,28 +15,34 @@ export const Footer = () => {
           </div>
           
           <nav className="flex items-center gap-6 text-sm">
-            <a 
-              href="mailto:support@baileysanalytics.com" 
+            <Link
+              to="/help"
+              className="text-gray-600 hover:text-gray-900 transition-all font-medium"
+            >
+              Help
+            </Link>
+            <a
+              href="mailto:support@baileysanalytics.com"
               className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Support
             </a>
-            <a 
-              href="https://status.baileysanalytics.com" 
-              target="_blank" 
+            <a
+              href="https://status.baileysanalytics.com"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Status
             </a>
-            <Link 
-              to="/terms" 
+            <Link
+              to="/terms"
               className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Terms
             </Link>
-            <Link 
-              to="/privacy" 
+            <Link
+              to="/privacy"
               className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
               Privacy

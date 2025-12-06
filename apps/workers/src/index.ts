@@ -41,6 +41,8 @@ import { scheduled } from './scheduled';
 import { waitlist } from './routes/waitlist';
 import { debug } from './routes/debug';
 import { billing } from './routes/billing';
+import { account } from './routes/account';
+import { admin } from './routes/admin';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -871,6 +873,8 @@ app.route('/api/platform-fees', platformFeesRoute);
 app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));
 
 app.route('/api/billing', billing);
+app.route('/api/account', account);
+app.route('/api/admin', admin);
 app.route('/api/reports', reports);
 app.route('/api/scheduler', scheduler);
 app.route('/api/validation', validation);

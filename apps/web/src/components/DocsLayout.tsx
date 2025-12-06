@@ -1,16 +1,21 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
-import { Compass, FileText, Shield, ArrowLeft, ChevronRight } from 'lucide-react'
+import { Compass, FileText, Shield, ArrowLeft, ChevronRight, HelpCircle, Database } from 'lucide-react'
 import { BRAND } from '@/constants'
 
-interface LegalLayoutProps {
+interface DocsLayoutProps {
   children: ReactNode
 }
 
-export const LegalLayout = ({ children }: LegalLayoutProps) => {
+export const DocsLayout = ({ children }: DocsLayoutProps) => {
   const location = useLocation()
-  
+
+  const docPages = [
+    { path: '/help', label: 'Help & FAQ', icon: HelpCircle },
+    { path: '/docs/ownerrez-data', label: 'OwnerRez Data Guide', icon: Database },
+  ]
+
   const legalPages = [
     { path: '/terms', label: 'Terms of Service', icon: FileText },
     { path: '/privacy', label: 'Privacy Policy', icon: Shield }
@@ -18,11 +23,11 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-50">
-      {/* Header */}
+      {/* header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo */}
+            {/* logo */}
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
               <div className={`w-10 h-10 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
                 <Compass className="w-6 h-6 text-white" />
@@ -30,13 +35,13 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
               <div className="ml-3 flex items-center">
                 <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
                 <ChevronRight className="w-5 h-5 mx-2 text-gray-400" />
-                <span className="text-xl text-gray-600">Legal</span>
+                <span className="text-xl text-gray-600">Docs</span>
               </div>
             </Link>
 
-            {/* Back to home */}
-            <Link 
-              to="/" 
+            {/* back to home */}
+            <Link
+              to="/"
               className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all flex items-center gap-1 px-3 py-1.5 hover:bg-gray-100 rounded-lg"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -48,13 +53,13 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
 
       <div className="flex-1 max-w-7xl mx-auto px-6 py-6 w-full">
         <div className="grid md:grid-cols-4 gap-8">
-          {/* Sidebar Navigation */}
+          {/* sidebar navigation */}
           <aside className="md:col-span-1">
             <nav className="space-y-1">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                Legal Documents
+                Documentation
               </h3>
-              {legalPages.map(({ path, label, icon: Icon }) => {
+              {docPages.map(({ path, label, icon: Icon }) => {
                 const isActive = location.pathname === path
                 return (
                   <Link
@@ -62,8 +67,8 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
                     to={path}
                     className={`
                       flex items-center px-3 py-2 text-sm rounded-lg transition-all
-                      ${isActive 
-                        ? 'bg-blue-50 text-blue-700 font-medium' 
+                      ${isActive
+                        ? 'bg-blue-50 text-blue-700 font-medium'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                       }
                     `}
@@ -73,7 +78,32 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
                   </Link>
                 )
               })}
-              
+
+              <div className="pt-6 mt-6 border-t">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Legal
+                </h3>
+                {legalPages.map(({ path, label, icon: Icon }) => {
+                  const isActive = location.pathname === path
+                  return (
+                    <Link
+                      key={path}
+                      to={path}
+                      className={`
+                        flex items-center px-3 py-2 text-sm rounded-lg transition-all
+                        ${isActive
+                          ? 'bg-blue-50 text-blue-700 font-medium'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }
+                      `}
+                    >
+                      <Icon className="w-4 h-4 mr-3" />
+                      {label}
+                    </Link>
+                  )
+                })}
+              </div>
+
               <div className="pt-6 mt-6 border-t">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   Resources
@@ -87,20 +117,20 @@ export const LegalLayout = ({ children }: LegalLayoutProps) => {
                   System Status
                   <ChevronRight className="w-3 h-3 ml-auto" />
                 </a>
-                <Link
-                  to="/contact"
+                <a
+                  href="mailto:support@baileysanalytics.com"
                   className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all"
                 >
-                  Contact Us
+                  Contact Support
                   <ChevronRight className="w-3 h-3 ml-auto" />
-                </Link>
+                </a>
               </div>
             </nav>
           </aside>
 
-          {/* Main Content */}
+          {/* main content */}
           <main className="md:col-span-3">
-            <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-gray-200 p-8 md:p-12">
+            <div className="bg-white rounded-xl border border-gray-200 p-6 md:p-8">
               {children}
             </div>
           </main>

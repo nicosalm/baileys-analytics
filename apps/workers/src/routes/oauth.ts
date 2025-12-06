@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
 import { authMiddleware } from '../middleware/auth';
+import { EmailService } from '../services/email';
 
 const oauth = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -237,8 +238,22 @@ oauth.post('/callback', async (c) => {
       }, {
         onConflict: 'tenant_id,sync_type'
       });
-    
-    return c.json({ 
+
+    // send welcome email
+    if (c.env.RESEND_API_KEY) {
+      try {
+        const { data: userData } = await supabase.auth.admin.getUserById(oauthState.user_id);
+        if (userData?.user?.email) {
+          const emailService = new EmailService(c.env.RESEND_API_KEY);
+          await emailService.sendWelcomeEmail(userData.user.email, userData.user.user_metadata?.name);
+        }
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        // don't fail the request if email fails
+      }
+    }
+
+    return c.json({
       success: true,
       message: 'OwnerRez connected successfully'
     });

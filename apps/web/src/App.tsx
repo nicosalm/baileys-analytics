@@ -21,6 +21,9 @@ const DashboardLayout = lazy(() => import('@/pages/DashboardLayout').then(m => (
 const Settings = lazy(() => import('@/pages/Settings').then(m => ({ default: m.Settings })))
 const Terms = lazy(() => import('@/pages/Terms').then(m => ({ default: m.Terms })))
 const Privacy = lazy(() => import('@/pages/Privacy').then(m => ({ default: m.Privacy })))
+const Help = lazy(() => import('@/pages/Help').then(m => ({ default: m.Help })))
+const OwnerRezDataGuide = lazy(() => import('@/pages/OwnerRezDataGuide').then(m => ({ default: m.OwnerRezDataGuide })))
+const Admin = lazy(() => import('@/pages/Admin').then(m => ({ default: m.Admin })))
 const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })))
 const AuthCallback = lazy(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallback })))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })))
@@ -41,6 +44,8 @@ export const App = () => {
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/docs/ownerrez-data" element={<OwnerRezDataGuide />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
 
@@ -68,6 +73,7 @@ export const App = () => {
                   </ModalProvider>
                   }
                 />
+                <Route path="/admin" element={<Admin />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

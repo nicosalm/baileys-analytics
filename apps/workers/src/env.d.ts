@@ -25,4 +25,13 @@ interface Env {
 	// stripe price ids (single tier)
 	STRIPE_PRICE_MONTHLY: string;
 	STRIPE_PRICE_YEARLY: string;
+
+	// email service
+	RESEND_API_KEY: string;
+
+	// error monitoring (optional)
+	SENTRY_DSN?: string;
+
+	// admin panel (optional)
+	ADMIN_EMAILS?: string; // comma-separated list of admin emails
 }

@@ -1,8 +1,8 @@
-import { LegalLayout } from '@/components/LegalLayout'
+import { DocsLayout } from '@/components/DocsLayout'
 
 export const Privacy = () => {
   return (
-    <LegalLayout>
+    <DocsLayout>
       <div className="prose prose-gray max-w-none">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Privacy Policy</h1>
         <p className="text-sm text-gray-500 mb-8">Effective Date: January 1, 2025</p>
@@ -233,6 +233,6 @@ export const Privacy = () => {
           </section>
         </div>
       </div>
-    </LegalLayout>
+    </DocsLayout>
   )
 }

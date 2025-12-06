@@ -30,11 +30,15 @@ const IntegrationsTab = lazy(() =>
   import('@/components/settings/IntegrationsTab').then(m => ({ default: m.IntegrationsTab }))
 )
 
-const BillingTab = lazy(() => 
+const BillingTab = lazy(() =>
   import('@/components/settings/BillingTab').then(m => ({ default: m.BillingTab }))
 )
 
-type SettingsTab = 'general' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons'
+const AccountTab = lazy(() =>
+  import('@/components/settings/AccountTab').then(m => ({ default: m.AccountTab }))
+)
+
+type SettingsTab = 'general' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons' | 'account'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   { 
@@ -62,10 +66,15 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     label: 'Platform Fees',
     icon: Calculator
   },
-  { 
-    id: 'seasons', 
-    label: 'Seasons', 
+  {
+    id: 'seasons',
+    label: 'Seasons',
     icon: Calendar
+  },
+  {
+    id: 'account',
+    label: 'Account',
+    icon: Lock
   }
 ]
 
@@ -466,6 +475,7 @@ export const Settings = () => {
               {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'billing' && <BillingTab />}
               {activeTab === 'tax' && <TaxManagementPanel />}
+              {activeTab === 'account' && <AccountTab />}
               {activeTab === 'seasons' && <SeasonManagementPanel />}
             </Suspense>
           </div>
