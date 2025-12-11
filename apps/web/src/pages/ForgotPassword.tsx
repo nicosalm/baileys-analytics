@@ -48,7 +48,7 @@ export const ForgotPassword = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
         <div className="max-w-md w-full px-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div className="text-center">
@@ -78,7 +78,7 @@ export const ForgotPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
       <div className="max-w-md w-full px-8">
         <div className="mb-8">
           <Link to="/login" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors">

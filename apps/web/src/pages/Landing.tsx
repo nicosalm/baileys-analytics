@@ -11,7 +11,7 @@ import { useState } from 'react'
 import { BRAND } from '@/constants'
 
 export const Landing = () => {
-  const { state } = useAuth()
+  const { state, logout } = useAuth()
   const isAuthenticated = state.status === 'authenticated'
   const [yearlyBilling, setYearlyBilling] = useState(true)
 
@@ -27,9 +27,17 @@ export const Landing = () => {
           </div>
           <div className="flex items-center gap-3">
             {isAuthenticated ? (
-              <Link to="/dashboard/overview" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
-                Open Dashboard
-              </Link>
+              <>
+                <button
+                  onClick={() => logout()}
+                  className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-all hover:bg-gray-100/70 rounded-lg"
+                >
+                  Logout
+                </button>
+                <Link to="/dashboard/overview" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
+                  Open Dashboard
+                </Link>
+              </>
             ) : (
               <>
                 <Link to="/login" className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-all hover:bg-gray-100/70 rounded-lg">
@@ -44,7 +52,7 @@ export const Landing = () => {
         </div>
       </nav>
 
-      <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50">
 
         <div className="relative max-w-7xl mx-auto px-6 py-32 text-center">
           <div className="mb-8 inline-flex items-center px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
@@ -62,7 +70,7 @@ export const Landing = () => {
 
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
-              <Link to="/signup" className={`group px-8 py-4 ${BRAND.buttonGradient} text-white rounded-full text-lg font-medium hover:shadow-xl transition-all transform hover:scale-105 flex items-center`}>
+              <Link to="/signup" className={`group px-8 py-4 ${BRAND.buttonGradient} text-white rounded-lg text-lg font-medium hover:shadow-lg transition-all flex items-center`}>
                 Start Your $1 Trial
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -87,7 +95,7 @@ export const Landing = () => {
                 >
                   <source src="/demo.mp4" type="video/mp4" />
                   {/* Fallback for browsers that don't support video */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
                     <div className="text-center">
                       <BarChart3 className="w-8 h-8 text-blue-600 opacity-60 mx-auto mb-3" />
                       <p className="text-sm font-medium text-gray-600">Your dashboard preview</p>
@@ -103,7 +111,7 @@ export const Landing = () => {
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">What You Can Actually Do With This</h2>
+            <h2 className="text-4xl font-bold mb-4">Built for Real Work</h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -133,7 +141,7 @@ export const Landing = () => {
 
       <section className="py-20 bg-gray-50">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-8 border border-blue-200">
+          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-8 border border-blue-200">
             <h4 className="text-center font-semibold text-gray-900 mb-6">Get Started in 3 Steps (Under 5 Minutes)</h4>
             <div className="grid md:grid-cols-3 gap-6 text-center">
               <div>
@@ -241,7 +249,7 @@ export const Landing = () => {
 
           <div className="max-w-lg mx-auto">
             <div className="relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl blur opacity-25" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-blue-500 rounded-2xl blur opacity-25" />
               <div className="relative bg-white rounded-2xl shadow-xl p-10 border-2 border-blue-500">
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                   <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
@@ -280,7 +288,7 @@ export const Landing = () => {
                     <span className="text-sm">Automatic OwnerRez sync</span>
                   </div>
                 </div>
-                <Link to="/signup" className={`block w-full py-4 text-lg ${BRAND.buttonGradient} text-white rounded-full hover:shadow-xl transition-all transform hover:scale-105 font-semibold text-center`}>
+                <Link to="/signup" className={`block w-full py-4 text-lg ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all font-semibold text-center`}>
                   Start $1 Trial
                 </Link>
               </div>

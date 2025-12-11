@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
@@ -118,8 +118,16 @@ export const AuthCallback = () => {
         }
 
         const type = hashParams.get('type') || searchParams.get('type')
-        
+
         if (!type) {
+          // check if session exists - supabase may have already established it via detectSessionInUrl
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            setStatus('success')
+            setMessage('Email verified! Redirecting...')
+            setTimeout(() => navigate('/dashboard/overview'), 1500)
+            return
+          }
           setStatus('error')
           setMessage('Invalid callback parameters')
           setTimeout(() => navigate('/login'), 3000)
@@ -222,7 +230,7 @@ export const AuthCallback = () => {
   }, [navigate])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
       <div className="max-w-md w-full px-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="flex items-center justify-center mb-6">
@@ -255,7 +263,10 @@ export const AuthCallback = () => {
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Authentication Error</h2>
               <p className="text-gray-600 mb-2">{message}</p>
-              <p className="text-sm text-gray-500">Redirecting...</p>
+              <p className="text-sm text-gray-500 mb-4">Redirecting...</p>
+              <Link to="/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                Go to login →
+              </Link>
             </div>
           )}
         </div>

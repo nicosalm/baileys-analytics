@@ -216,7 +216,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-white to-blue-50 z-50 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-xl p-8 max-w-lg w-full mx-4">
         <div className="text-center">
           <div className={`w-16 h-16 ${BRAND.logoGradient} rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg`}>

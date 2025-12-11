@@ -112,7 +112,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
 
       {/* special offer banner for trial-eligible users */}
       {!currentPlan && isTrialEligible && !checkingEligibility && (
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl p-4 text-center">
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-4 text-center">
           <div className="flex items-center justify-center gap-3">
             <div className="text-3xl font-bold">$1</div>
             <div className="text-left">
@@ -172,13 +172,9 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
                 <span className="text-lg text-gray-500 font-normal">/mo</span>
               </div>
               <p className="text-gray-600 mb-2">{plan.description}</p>
-              {billingCycle === 'yearly' ? (
+              {billingCycle === 'yearly' && (
                 <p className="text-sm text-green-600">
                   ${totalYearly}/year (save ${savings})
-                </p>
-              ) : (
-                <p className="text-sm text-gray-400">
-                  ${plan.monthlyPrice * 12} billed monthly
                 </p>
               )}
             </div>
@@ -199,7 +195,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
               className={`block w-full py-3 rounded-full font-medium transition-all ${
                 currentPlan
                   ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-lg transform hover:scale-105'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-lg'
               }`}
             >
               {getButtonText()}
@@ -208,19 +204,6 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
         </div>
       </div>
 
-      {/* pricing notice */}
-      <div className="text-center space-y-2">
-        <p className="text-sm text-gray-500">
-          {billingCycle === 'yearly' ? 'Billed annually' : 'Save 20% with annual billing'}
-        </p>
-        <p className="text-sm text-gray-500">
-          {!currentPlan && isTrialEligible && !checkingEligibility
-            ? '$1 for your first 30 days, then regular pricing. Cancel anytime.'
-            : !currentPlan
-            ? 'Cancel anytime.'
-            : 'Changes take effect immediately. Cancel anytime.'}
-        </p>
-      </div>
     </div>
   );
 };

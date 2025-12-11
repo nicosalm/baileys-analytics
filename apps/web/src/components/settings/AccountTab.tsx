@@ -60,11 +60,14 @@ export const AccountTab = () => {
 
       if (result.success) {
         addToast('success', 'Account deleted successfully')
-        // log out after short delay
-        setTimeout(async () => {
+        // clear auth state and redirect immediately
+        try {
           await logout()
-          window.location.href = '/'
-        }, 1500)
+        } catch {
+          // logout might fail if session already invalid, that's ok
+        }
+        window.location.href = '/'
+        return
       } else {
         addToast('error', result.error || 'Failed to delete account')
         setDeleteLoading(false)

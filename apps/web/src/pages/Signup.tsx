@@ -48,7 +48,7 @@ export const Signup = () => {
   // Show success message if signup was successful
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
         <div className="max-w-md w-full px-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
             <div className="text-center">
@@ -81,7 +81,7 @@ export const Signup = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex">
       {/* Left side - Signup Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 xl:px-24">
         <div className="max-w-md w-full mx-auto">
@@ -102,8 +102,7 @@ export const Signup = () => {
           {/* Welcome text */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-2">Start your $1 trial</h2>
-            <p className="text-gray-600 mb-3">30 days full access for just $1. Then $20/month.</p>
-            <p className="text-sm text-gray-500">After signup: Connect OwnerRez → Sync data (2 min) → See insights</p>
+            <p className="text-gray-600">30 days full access for just $1. Then $20/month.</p>
           </div>
 
           {/* Signup form */}
@@ -223,11 +222,11 @@ export const Signup = () => {
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-purple-600 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-700 relative overflow-hidden">
         {/* Floating shapes */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
+        <div className="absolute top-40 right-10 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
+        <div className="absolute bottom-20 left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <h3 className="text-4xl font-bold mb-6">What Happens After You Sign Up</h3>

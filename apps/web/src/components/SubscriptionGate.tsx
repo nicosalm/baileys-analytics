@@ -56,18 +56,9 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
           {/* header */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Subscribe to continue</h2>
-            <p className="text-gray-600 text-sm mb-4">
-              $1 for the first month, then $20/month or $192/year. Cancel anytime.
+            <p className="text-gray-600 text-sm">
+              $1 for the first month, then $20/month or $192/year.
             </p>
-            <div className="text-sm text-gray-600">
-              <p className="mb-1">What's included:</p>
-              <ul className="space-y-1 ml-4">
-                <li>• Track revenue and bookings across all your properties</li>
-                <li>• See occupancy rates and availability</li>
-                <li>• Export financial reports</li>
-                <li>• Sync with OwnerRez</li>
-              </ul>
-            </div>
           </div>
 
           {/* pricing plans */}

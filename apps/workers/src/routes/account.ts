@@ -125,34 +125,49 @@ account.delete('/delete', authMiddleware, async (c) => {
 
     // 3. delete all tenant data (cascade deletes should handle related tables)
     // order matters due to foreign key constraints
-    const deleteOperations = [
-      supabase.from('booking_charges').delete().eq('tenant_id', tenantId),
-      supabase.from('booking_tags').delete().eq('tenant_id', tenantId),
-      supabase.from('property_tags').delete().eq('tenant_id', tenantId),
-      supabase.from('guest_tags').delete().eq('tenant_id', tenantId),
-      supabase.from('blocks').delete().eq('tenant_id', tenantId),
-      supabase.from('bookings').delete().eq('tenant_id', tenantId),
-      supabase.from('guests').delete().eq('tenant_id', tenantId),
-      supabase.from('properties').delete().eq('tenant_id', tenantId),
-      supabase.from('tags').delete().eq('tenant_id', tenantId),
-      supabase.from('season_configurations').delete().eq('tenant_id', tenantId),
-      supabase.from('property_tax_configs').delete().eq('tenant_id', tenantId),
-      supabase.from('platform_fee_entries').delete().eq('tenant_id', tenantId),
-      supabase.from('generated_reports').delete().eq('tenant_id', tenantId),
-      supabase.from('sync_status').delete().eq('tenant_id', tenantId),
-      supabase.from('webhook_events').delete().eq('tenant_id', tenantId),
-      supabase.from('billing_history').delete().eq('tenant_id', tenantId),
-      supabase.from('usage_metrics').delete().eq('tenant_id', tenantId),
-      supabase.from('subscriptions').delete().eq('tenant_id', tenantId),
-      supabase.from('stripe_customers').delete().eq('tenant_id', tenantId),
-      supabase.from('oauth_tokens').delete().eq('tenant_id', tenantId),
-      supabase.from('oauth_states').delete().eq('tenant_id', tenantId),
-      supabase.from('tenants').delete().eq('id', tenantId),
+    const tablesToDelete = [
+      { table: 'booking_charges', key: 'tenant_id', value: tenantId },
+      { table: 'booking_tags', key: 'tenant_id', value: tenantId },
+      { table: 'property_tags', key: 'tenant_id', value: tenantId },
+      { table: 'guest_tags', key: 'tenant_id', value: tenantId },
+      { table: 'blocks', key: 'tenant_id', value: tenantId },
+      { table: 'bookings', key: 'tenant_id', value: tenantId },
+      { table: 'guests', key: 'tenant_id', value: tenantId },
+      { table: 'properties', key: 'tenant_id', value: tenantId },
+      { table: 'tags', key: 'tenant_id', value: tenantId },
+      { table: 'season_configurations', key: 'tenant_id', value: tenantId },
+      { table: 'property_tax_configs', key: 'tenant_id', value: tenantId },
+      { table: 'platform_fee_entries', key: 'tenant_id', value: tenantId },
+      { table: 'generated_reports', key: 'tenant_id', value: tenantId },
+      { table: 'sync_status', key: 'tenant_id', value: tenantId },
+      { table: 'webhook_events', key: 'tenant_id', value: tenantId },
+      { table: 'billing_history', key: 'tenant_id', value: tenantId },
+      { table: 'usage_metrics', key: 'tenant_id', value: tenantId },
+      { table: 'subscriptions', key: 'tenant_id', value: tenantId },
+      { table: 'stripe_customers', key: 'tenant_id', value: tenantId },
+      { table: 'oauth_tokens', key: 'tenant_id', value: tenantId },
+      { table: 'oauth_states', key: 'tenant_id', value: tenantId },
+      { table: 'tenants', key: 'id', value: tenantId },
     ];
 
-    // execute all deletes
-    for (const operation of deleteOperations) {
-      await operation;
+    // execute all deletes with error handling
+    for (const { table, key, value } of tablesToDelete) {
+      const { error } = await supabase.from(table).delete().eq(key, value);
+      if (error) {
+        console.error(`Failed to delete from ${table}:`, error);
+        // continue with other deletions even if one fails
+      }
+    }
+
+    // verify tenants table was deleted
+    const { data: tenantCheck } = await supabase
+      .from('tenants')
+      .select('id')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantCheck) {
+      console.error('Tenant record still exists after deletion attempt');
     }
 
     // 4. delete auth user (this will log them out)
