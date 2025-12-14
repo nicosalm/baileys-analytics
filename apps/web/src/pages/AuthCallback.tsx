@@ -83,6 +83,44 @@ export const AuthCallback = () => {
           return
         }
 
+        // handle PKCE code exchange for email confirmation (signup, magic link, etc.)
+        // this happens when Supabase redirects with a code parameter after email verification
+        if (code && !state) {
+          try {
+            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+
+            if (exchangeError) {
+              // code verifier missing (different browser) or code expired/invalid
+              // email is still confirmed, user just needs to log in
+              const errorMsg = exchangeError.message?.toLowerCase() || ''
+              if (errorMsg.includes('code verifier') ||
+                  errorMsg.includes('invalid') ||
+                  errorMsg.includes('expired') ||
+                  errorMsg.includes('not found')) {
+                setStatus('success')
+                setMessage('Email confirmed! Please log in to continue.')
+                setTimeout(() => navigate('/login'), 2000)
+                return
+              }
+              throw exchangeError
+            }
+
+            if (data.session) {
+              await refreshUser()
+              setStatus('success')
+              setMessage('Email verified! Logging you in...')
+              setTimeout(() => navigate('/dashboard/overview'), 1500)
+              return
+            }
+          } catch {
+            // fallback: email was likely confirmed, user can log in
+            setStatus('success')
+            setMessage('Email confirmed! Please log in to continue.')
+            setTimeout(() => navigate('/login'), 2000)
+            return
+          }
+        }
+
         const error = searchParams.get('error') || hashParams.get('error')
         const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
         
@@ -128,9 +166,11 @@ export const AuthCallback = () => {
             setTimeout(() => navigate('/dashboard/overview'), 1500)
             return
           }
-          setStatus('error')
-          setMessage('Invalid callback parameters')
-          setTimeout(() => navigate('/login'), 3000)
+          // no session and no type - likely email confirmed but session not established
+          // this can happen if PKCE exchange failed silently, user can still log in
+          setStatus('success')
+          setMessage('Please log in to continue.')
+          setTimeout(() => navigate('/login'), 2000)
           return
         }
 
