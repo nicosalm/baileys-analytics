@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 import { authMiddleware } from '../middleware/auth';
 
 const admin = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
@@ -202,6 +203,108 @@ admin.post('/users/:tenantId/exempt', authMiddleware, adminMiddleware, async (c)
   } catch (error) {
     console.error('Failed to update exemption:', error);
     return c.json({ error: 'Failed to update exemption' }, 500);
+  }
+});
+
+// delete user account (admin only)
+admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
+  const tenantId = c.req.param('tenantId');
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+
+  try {
+    // get the user_id from tenant
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenants')
+      .select('user_id, email')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantError || !tenant) {
+      return c.json({ error: 'Tenant not found' }, 404);
+    }
+
+    const userId = tenant.user_id;
+
+    // 1. cancel stripe subscription if exists
+    if (c.env.STRIPE_SECRET_KEY) {
+      try {
+        const { data: customer } = await supabase
+          .from('stripe_customers')
+          .select('stripe_customer_id')
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (customer?.stripe_customer_id) {
+          const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
+            apiVersion: '2025-09-30.clover',
+            httpClient: Stripe.createFetchHttpClient()
+          });
+
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customer.stripe_customer_id,
+            status: 'active'
+          });
+
+          for (const sub of subscriptions.data) {
+            await stripe.subscriptions.cancel(sub.id);
+          }
+        }
+      } catch (stripeError) {
+        console.error('Failed to cancel stripe subscription:', stripeError);
+      }
+    }
+
+    // 2. delete all tenant data (order matters for FK constraints)
+    const tablesToDelete = [
+      { table: 'booking_charges', key: 'tenant_id', value: tenantId },
+      { table: 'booking_tags', key: 'tenant_id', value: tenantId },
+      { table: 'property_tags', key: 'tenant_id', value: tenantId },
+      { table: 'guest_tags', key: 'tenant_id', value: tenantId },
+      { table: 'blocks', key: 'tenant_id', value: tenantId },
+      { table: 'bookings', key: 'tenant_id', value: tenantId },
+      { table: 'guests', key: 'tenant_id', value: tenantId },
+      { table: 'properties', key: 'tenant_id', value: tenantId },
+      { table: 'tags', key: 'tenant_id', value: tenantId },
+      { table: 'season_configurations', key: 'tenant_id', value: tenantId },
+      { table: 'property_tax_configs', key: 'tenant_id', value: tenantId },
+      { table: 'platform_fee_entries', key: 'tenant_id', value: tenantId },
+      { table: 'generated_reports', key: 'tenant_id', value: tenantId },
+      { table: 'sync_status', key: 'tenant_id', value: tenantId },
+      { table: 'webhook_events', key: 'tenant_id', value: tenantId },
+      { table: 'billing_history', key: 'tenant_id', value: tenantId },
+      { table: 'usage_metrics', key: 'tenant_id', value: tenantId },
+      { table: 'subscriptions', key: 'tenant_id', value: tenantId },
+      { table: 'stripe_customers', key: 'tenant_id', value: tenantId },
+      { table: 'oauth_tokens', key: 'tenant_id', value: tenantId },
+      { table: 'oauth_states', key: 'tenant_id', value: tenantId },
+      { table: 'tenants', key: 'id', value: tenantId },
+    ];
+
+    for (const { table, key, value } of tablesToDelete) {
+      const { error } = await supabase.from(table).delete().eq(key, value);
+      if (error) {
+        console.error(`Failed to delete from ${table}:`, error);
+      }
+    }
+
+    // 3. delete auth user
+    if (userId) {
+      const { error: deleteUserError } = await supabase.auth.admin.deleteUser(userId);
+      if (deleteUserError) {
+        console.error('Failed to delete auth user:', deleteUserError);
+      }
+    }
+
+    return c.json({
+      success: true,
+      message: `Account ${tenant.email} deleted successfully`
+    });
+  } catch (error) {
+    console.error('Failed to delete account:', error);
+    return c.json({
+      error: 'Failed to delete account',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
   }
 });
 

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
-import { Users, DollarSign, TrendingUp, Database, Shield, Search } from 'lucide-react'
+import { Users, DollarSign, TrendingUp, Database, Shield, Search, Trash2, AlertTriangle, X } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { Footer } from '@/components/Footer'
 
@@ -39,6 +39,9 @@ export const Admin = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [isVerified, setIsVerified] = useState(false)
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: AdminUser | null }>({ open: false, user: null })
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     verifyAndLoadAdmin()
@@ -96,6 +99,41 @@ export const Admin = () => {
       }
     } catch {
       alert('Failed to update exemption')
+    }
+  }
+
+  const handleDeleteUser = async () => {
+    if (!deleteModal.user || deleteConfirmText !== 'DELETE') return
+
+    try {
+      setDeleting(true)
+      const result = await api.request(`/admin/users/${deleteModal.user.id}`, {
+        method: 'DELETE'
+      })
+
+      if (result.success) {
+        // refresh users list and metrics
+        const [metricsResult, usersResult] = await Promise.all([
+          api.request<{ metrics: AdminMetrics }>('/admin/metrics', { method: 'GET' }),
+          api.request<{ users: AdminUser[] }>('/admin/users', { method: 'GET' })
+        ])
+
+        if (metricsResult.success && metricsResult.data) {
+          setMetrics(metricsResult.data.metrics)
+        }
+        if (usersResult.success && usersResult.data) {
+          setUsers(usersResult.data.users)
+        }
+
+        setDeleteModal({ open: false, user: null })
+        setDeleteConfirmText('')
+      } else {
+        alert('Failed to delete user')
+      }
+    } catch {
+      alert('Failed to delete user')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -239,16 +277,25 @@ export const Admin = () => {
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => handleGrantExemption(user.id, user.subscription_exempt)}
-                        className={`px-3 py-1 text-xs font-medium rounded-md ${
-                          user.subscription_exempt
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-green-100 text-green-700 hover:bg-green-200'
-                        }`}
-                      >
-                        {user.subscription_exempt ? 'Revoke' : 'Grant'} Exemption
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleGrantExemption(user.id, user.subscription_exempt)}
+                          className={`px-3 py-1 text-xs font-medium rounded-md ${
+                            user.subscription_exempt
+                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                              : 'bg-green-100 text-green-700 hover:bg-green-200'
+                          }`}
+                        >
+                          {user.subscription_exempt ? 'Revoke' : 'Grant'} Exemption
+                        </button>
+                        <button
+                          onClick={() => setDeleteModal({ open: true, user })}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete account"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -257,6 +304,81 @@ export const Admin = () => {
           </div>
         </div>
       </div>
+
+      {/* delete confirmation modal */}
+      {deleteModal.open && deleteModal.user && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-gray-900">Delete Account</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    This will permanently delete the account for:
+                  </p>
+                  <p className="text-sm font-medium text-gray-900 mt-2">{deleteModal.user.email}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setDeleteModal({ open: false, user: null })
+                    setDeleteConfirmText('')
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                <p className="text-sm text-red-800">
+                  This action cannot be undone. All data will be permanently deleted including:
+                </p>
+                <ul className="text-sm text-red-700 mt-2 list-disc list-inside">
+                  <li>All properties, bookings, and guests</li>
+                  <li>Subscription and billing history</li>
+                  <li>OwnerRez connection</li>
+                  <li>Reports and settings</li>
+                </ul>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE</span> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="DELETE"
+                />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setDeleteModal({ open: false, user: null })
+                  setDeleteConfirmText('')
+                }}
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                disabled={deleteConfirmText !== 'DELETE' || deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {deleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
