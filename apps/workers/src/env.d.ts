@@ -29,9 +29,6 @@ interface Env {
 	// email service
 	RESEND_API_KEY: string;
 
-	// error monitoring (optional)
-	SENTRY_DSN?: string;
-
 	// admin panel (optional)
 	ADMIN_EMAILS?: string; // comma-separated list of admin emails
 }

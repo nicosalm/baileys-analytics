@@ -7,16 +7,13 @@ import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
 import {
   Calendar, Calculator,
-  Trash2,
-  LogOut, Settings as SettingsIcon, Compass,
+  LogOut, Compass,
   Palette, CreditCard, Link2,
-  Lock, MessageSquare, ChevronRight, ArrowLeft,
+  Lock, MessageSquare, ArrowLeft,
   Eye, EyeOff
 } from 'lucide-react'
-import { formatDateDisplay } from '@baileys/utils'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
-import { ConfirmModal } from '@/components/ConfirmModal'
 
 const TaxManagementPanel = lazy(() => 
   import('@/components/settings/TaxManagementPanel').then(m => ({ default: m.TaxManagementPanel }))
@@ -38,15 +35,15 @@ const AccountTab = lazy(() =>
   import('@/components/settings/AccountTab').then(m => ({ default: m.AccountTab }))
 )
 
-type SettingsTab = 'general' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons' | 'account'
+type SettingsTab = 'account' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
-  { 
-    id: 'general', 
-    label: 'General', 
-    icon: SettingsIcon
+  {
+    id: 'account',
+    label: 'Account',
+    icon: Lock
   },
-  { 
+  {
     id: 'preferences',
     label: 'Preferences',
     icon: Palette
@@ -70,95 +67,8 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     id: 'seasons',
     label: 'Seasons',
     icon: Calendar
-  },
-  {
-    id: 'account',
-    label: 'Account',
-    icon: Lock
   }
 ]
-
-const GeneralTab = ({
-  email,
-  createdAt,
-  companyName,
-  onChangePassword,
-  onChangeEmail,
-  onDeleteAccount
-}: {
-  email: string
-  createdAt: string
-  companyName?: string | null
-  onChangePassword: () => void
-  onChangeEmail: () => void
-  onDeleteAccount: () => void
-}) => {
-  return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Information</h3>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Email</span>
-            <span className="text-sm font-medium text-gray-900">{email}</span>
-          </div>
-          {companyName && (
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">Company</span>
-              <span className="text-sm font-medium text-gray-900">{companyName}</span>
-            </div>
-          )}
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Member Since</span>
-            <span className="text-sm font-medium text-gray-900">{formatDateDisplay(new Date(createdAt))}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Security</h3>
-        <div className="space-y-3">
-          <button
-            onClick={onChangeEmail}
-            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              <span>Change Email</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-          </button>
-          <button
-            onClick={onChangePassword}
-            className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Lock className="w-4 h-4" />
-              <span>Change Password</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Danger Zone</h3>
-          <p className="text-sm text-gray-600">
-            Permanently delete your account and all associated data. This action cannot be undone.
-          </p>
-        </div>
-        <button
-          onClick={onDeleteAccount}
-          className="px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all flex items-center gap-2 border border-red-200 cursor-pointer"
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete Account
-        </button>
-      </div>
-    </div>
-  )
-}
 
 const PreferencesTab = () => {
   const { showTips, toggleTips } = useTips()
@@ -229,9 +139,8 @@ export const Settings = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const tab = searchParams.get('tab')
-    return (tab as SettingsTab) || 'general'
+    return (tab as SettingsTab) || 'account'
   })
-  const [deleteAccountModalOpen, setDeleteAccountModalOpen] = useState(false)
   const [changeEmailModalOpen, setChangeEmailModalOpen] = useState(false)
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false)
   const [newEmail, setNewEmail] = useState('')
@@ -374,11 +283,6 @@ export const Settings = () => {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    addToast('info', 'Account deletion is not available during beta')
-    setDeleteAccountModalOpen(false)
-  }
-  
   const handleSendFeedback = () => {
     window.open('https://github.com/baileys-analytics/feedback/issues', '_blank')
   }
@@ -386,7 +290,7 @@ export const Settings = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <Link to="/dashboard/overview" className="flex items-center hover:opacity-80 transition-opacity">
@@ -423,14 +327,42 @@ export const Settings = () => {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
           <p className="text-gray-600 text-sm">Manage your account settings and preferences</p>
         </div>
 
+        {/* mobile tab bar */}
+        <div className="md:hidden mb-6">
+          <nav className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
+            {tabConfig.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => handleTabChange(id)}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === id
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-transparent'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+            <button
+              onClick={handleSendFeedback}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-transparent transition-all cursor-pointer"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Feedback
+            </button>
+          </nav>
+        </div>
+
         <div className="flex gap-6">
-          <div className="w-64 flex-shrink-0">
+          {/* desktop sidebar */}
+          <div className="hidden md:block w-64 flex-shrink-0">
             <nav className="space-y-1 bg-white/50 backdrop-blur-sm rounded-lg p-2 border border-gray-200">
               {tabConfig.map(({ id, label, icon: Icon }) => (
                 <button
@@ -459,23 +391,18 @@ export const Settings = () => {
             </div>
           </div>
 
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <Suspense fallback={<LoadingState />}>
-              {activeTab === 'general' && (
-                <GeneralTab
-                  email={user.email!}
-                  createdAt={user.created_at || new Date().toISOString()}
-                  companyName={user.companyName}
-                  onChangePassword={handleChangePassword}
+              {activeTab === 'account' && (
+                <AccountTab
                   onChangeEmail={handleChangeEmail}
-                  onDeleteAccount={() => setDeleteAccountModalOpen(true)}
+                  onChangePassword={handleChangePassword}
                 />
               )}
               {activeTab === 'preferences' && <PreferencesTab />}
               {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'billing' && <BillingTab />}
               {activeTab === 'tax' && <TaxManagementPanel />}
-              {activeTab === 'account' && <AccountTab />}
               {activeTab === 'seasons' && <SeasonManagementPanel />}
             </Suspense>
           </div>
@@ -483,16 +410,6 @@ export const Settings = () => {
       </main>
 
       <Footer />
-      
-      <ConfirmModal
-        isOpen={deleteAccountModalOpen}
-        onClose={() => setDeleteAccountModalOpen(false)}
-        onConfirm={handleDeleteAccount}
-        title="Delete Account?"
-        message="This will permanently delete your account and all associated data. This action cannot be undone."
-        confirmText="Delete Account"
-        variant="danger"
-      />
 
       {changeEmailModalOpen && (
         <div

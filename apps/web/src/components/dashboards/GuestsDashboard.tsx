@@ -346,7 +346,7 @@ export const GuestsDashboard = () => {
                 </div>
             )}
 
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                 <MetricCard
                     icon={Users}
                     label="Total Guests"
@@ -503,7 +503,7 @@ export const GuestsDashboard = () => {
                         <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
                             <button
                                 onClick={() => setViewMode('all')}
-                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'all'
                                         ? 'bg-white text-gray-900 shadow-sm'
                                         : 'text-gray-600 hover:text-gray-900'
@@ -513,7 +513,7 @@ export const GuestsDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setViewMode('repeat')}
-                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'repeat'
                                         ? 'bg-white text-gray-900 shadow-sm'
                                         : 'text-gray-600 hover:text-gray-900'
@@ -523,7 +523,7 @@ export const GuestsDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setViewMode('new')}
-                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'new'
                                         ? 'bg-white text-gray-900 shadow-sm'
                                         : 'text-gray-600 hover:text-gray-900'
@@ -533,7 +533,7 @@ export const GuestsDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setViewMode('top')}
-                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors cursor-pointer ${
+                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'top'
                                         ? 'bg-white text-gray-900 shadow-sm'
                                         : 'text-gray-600 hover:text-gray-900'

@@ -1,11 +1,16 @@
 import { useState } from 'react'
-import { Download, Trash2, AlertTriangle } from 'lucide-react'
+import { Download, Trash2, AlertTriangle, Lock, MessageSquare, ChevronRight } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
 import { LoadingButton } from '@/components/LoadingButton'
 
-export const AccountTab = () => {
+interface AccountTabProps {
+  onChangeEmail?: () => void
+  onChangePassword?: () => void
+}
+
+export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps) => {
   const { state, logout } = useAuth()
   const { addToast } = useToast()
   const [exportLoading, setExportLoading] = useState(false)
@@ -89,6 +94,12 @@ export const AccountTab = () => {
             <span className="text-sm text-gray-600">Email</span>
             <span className="text-sm font-medium text-gray-900">{user.email}</span>
           </div>
+          {user.companyName && (
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm text-gray-600">Company</span>
+              <span className="text-sm font-medium text-gray-900">{user.companyName}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">Account Created</span>
             <span className="text-sm font-medium text-gray-900">
@@ -97,6 +108,39 @@ export const AccountTab = () => {
           </div>
         </div>
       </div>
+
+      {/* security */}
+      {(onChangeEmail || onChangePassword) && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Security</h2>
+          <div className="space-y-3">
+            {onChangeEmail && (
+              <button
+                onClick={onChangeEmail}
+                className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Change Email</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </button>
+            )}
+            {onChangePassword && (
+              <button
+                onClick={onChangePassword}
+                className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  <span>Change Password</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* data export */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

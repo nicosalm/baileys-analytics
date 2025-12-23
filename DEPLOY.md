@@ -10,7 +10,7 @@
 ### Local Development (.env.local)
 Create `apps/web/.env.local`:
 ```
-VITE_API_URL=http://localhost:8788
+VITE_API_URL=http://localhost:8787
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key
 ```
@@ -56,7 +56,7 @@ cd apps/web
 pnpm dev
 ```
 
-- Workers API: http://localhost:8788
+- Workers API: http://localhost:8787
 - Web App: http://localhost:5173
 
 ## Production Deployment
@@ -87,7 +87,7 @@ git pull origin main
 - Backend: Use local development
 
 ### How API Routing Works
-- Local: Direct to `localhost:8788` via env variable
+- Local: Direct to `localhost:8787` via env variable
 - Production: `/api/*` → Cloudflare Functions → Workers API
 - This allows the frontend to always use `/api/*` paths
 
@@ -120,4 +120,4 @@ See [BRANCHING.md](./BRANCHING.md) for detailed workflow.
 ### Local development issues
 - Ensure .env.local exists in apps/web
 - Ensure .dev.vars exists in apps/workers
-- Check both services are running (Workers on 8788, Web on 5173)
+- Check both services are running (Workers on 8787, Web on 5173)

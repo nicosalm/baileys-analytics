@@ -33,21 +33,30 @@ billing.use('/*', authMiddleware);
 billing.get('/subscription', async (c) => {
   try {
     const supabase = createSupabaseClient(c.env);
-    const stripeService = new StripeService(c.env, supabase);
     const tenantId = c.get('tenantId');
 
-    // check if tenant is exempt from subscriptions
+    // check if tenant is exempt from subscriptions first
     const { data: tenant } = await supabase
       .from('tenants')
       .select('subscription_exempt')
       .eq('id', tenantId)
       .single();
 
+    // if exempt, return early without hitting stripe
+    if (tenant?.subscription_exempt === true) {
+      return c.json({
+        subscription: null,
+        isExempt: true
+      });
+    }
+
+    // only create stripe service if we need to check subscription
+    const stripeService = new StripeService(c.env, supabase);
     const subscription = await stripeService.getSubscription(tenantId);
 
     return c.json({
       subscription,
-      isExempt: tenant?.subscription_exempt === true
+      isExempt: false
     });
   } catch (error) {
     console.error('Error fetching subscription:', error);
@@ -63,7 +72,7 @@ billing.get('/trial-eligible', async (c) => {
 
     const { data: tenant, error } = await supabase
       .from('tenants')
-      .select('first_subscription_at')
+      .select('first_subscription_at, subscription_exempt')
       .eq('id', tenantId)
       .single();
 
@@ -71,6 +80,11 @@ billing.get('/trial-eligible', async (c) => {
     if (error || !tenant) {
       console.error('Error checking trial eligibility for tenant:', tenantId, error);
       return c.json({ isEligible: false });
+    }
+
+    // exempt accounts don't need trials
+    if (tenant.subscription_exempt === true) {
+      return c.json({ isEligible: false, isExempt: true });
     }
 
     // eligible if they've never subscribed before

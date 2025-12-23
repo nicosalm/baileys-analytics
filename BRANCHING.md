@@ -6,7 +6,7 @@
 - **`main`** - Production branch. Deploys to production environment
 - **`dev`** - Development branch. Integration branch for features, creates preview deployments
 
-### Supporting Branches  
+### Supporting Branches
 - **`feature/*`** - Feature branches created from `dev`
 - **`hotfix/*`** - Emergency fixes created from `main`
 
@@ -104,9 +104,9 @@ git push origin dev
 | Branch | Environment | Web URL | API URL |
 |--------|------------|---------|----------|
 | `main` | Production | https://baileys-dashboard.pages.dev | https://baileys-analytics-api-production.nicosalm.workers.dev |
-| `dev` | Preview | Preview URL from Cloudflare Pages | Local development (localhost:8788) |
-| `feature/*` | Preview | Preview URL from Cloudflare Pages | Local development (localhost:8788) |
-| Local | Development | http://localhost:5173 | http://localhost:8788 |
+| `dev` | Preview | Preview URL from Cloudflare Pages | Local development (localhost:8787) |
+| `feature/*` | Preview | Preview URL from Cloudflare Pages | Local development (localhost:8787) |
+| Local | Development | http://localhost:5173 | http://localhost:8787 |
 
 ## Deployment Scripts
 
@@ -115,7 +115,7 @@ git push origin dev
 # Deploy Workers API
 ./scripts/deploy-workers.sh
 
-# Deploy Web App  
+# Deploy Web App
 ./scripts/deploy-web.sh
 ```
 

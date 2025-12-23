@@ -32,9 +32,9 @@ export const FilterBar: React.FC = () => {
 
   return (
     <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 relative z-30">
-      <div className="max-w-7xl mx-auto px-6 py-3">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-1">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
             <SmartPeriodSelector
               value={filters.dateRange}
               onChange={updateDateRange}
@@ -44,7 +44,7 @@ export const FilterBar: React.FC = () => {
               <button
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 transition-all cursor-pointer",
+                  "flex items-center gap-2 px-3 md:px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 transition-all cursor-pointer",
                   "text-sm font-medium text-gray-700",
                   showTagDropdown && "ring-2 ring-blue-600 border-blue-600",
                   filters.selectedTags.length > 0 && "border-blue-600 bg-blue-50/50"
@@ -54,7 +54,7 @@ export const FilterBar: React.FC = () => {
                 <span>
                   {filters.selectedTags.length > 0
                     ? `${filters.selectedTags.length} Tag${filters.selectedTags.length > 1 ? 's' : ''}`
-                    : 'Filter by Tags'
+                    : 'Tags'
                   }
                 </span>
                 <ChevronDown className={cn(

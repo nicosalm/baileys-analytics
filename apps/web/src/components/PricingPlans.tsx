@@ -128,7 +128,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
         <div className="bg-gray-100 p-1 rounded-lg inline-flex">
           <button
             onClick={() => setBillingCycle('monthly')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               billingCycle === 'monthly'
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
@@ -138,7 +138,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
           </button>
           <button
             onClick={() => setBillingCycle('yearly')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
               billingCycle === 'yearly'
                 ? 'bg-white text-gray-900 shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'

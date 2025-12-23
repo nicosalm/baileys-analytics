@@ -79,13 +79,13 @@ const DashboardTabs = () => {
   return (
     <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200">
       <div className="max-w-7xl mx-auto">
-        <nav className="flex gap-1 px-6" aria-label="Tabs">
+        <nav className="flex gap-1 px-4 md:px-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
           {tabConfig.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => handleTabClick(id)}
               className={`
-                py-3 px-4 border-b-2 font-medium text-sm flex items-center transition-all
+                py-3 px-3 md:px-4 border-b-2 font-medium text-sm flex items-center transition-all whitespace-nowrap
                 ${displayActiveTab === id
                   ? 'border-blue-600 text-blue-600 bg-blue-50/30'
                   : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
@@ -93,7 +93,7 @@ const DashboardTabs = () => {
               `}
               aria-current={displayActiveTab === id ? 'page' : undefined}
             >
-              <Icon className="w-4 h-4 mr-2" />
+              <Icon className="w-4 h-4 mr-1.5 md:mr-2" />
               {label}
             </button>
           ))}
@@ -196,7 +196,7 @@ export const DashboardLayout = () => {
       <DashboardProvider>
         <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
           <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
                   <div className="flex items-center">
@@ -238,7 +238,7 @@ export const DashboardLayout = () => {
           <DashboardTabs />
           <FilterBar />
 
-          <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
+          <main className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6 flex-1 w-full">
             <DashboardContent />
           </main>
 

@@ -29,7 +29,6 @@
 		"jspdf": "^3.0.1",
 		"jspdf-autotable": "^5.0.2",
 		"resend": "^6.5.2",
-		"stripe": "^19.1.0",
-		"toucan-js": "^4.1.1"
+		"stripe": "^19.1.0"
 	}
 }

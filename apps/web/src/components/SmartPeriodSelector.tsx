@@ -346,16 +346,16 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
   return (
     <div className={cn("relative", className)} ref={containerRef}>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         {/* Main selector button */}
         <button
           type="button"
           onClick={() => {
             setIsOpen(!isOpen)
-            setComparisonDropdownOpen(false) // Close comparison when opening period selector
+            setComparisonDropdownOpen(false)
           }}
           className={cn(
-            "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg cursor-pointer",
+            "flex items-center gap-2 px-3 md:px-4 py-2 bg-white border rounded-lg cursor-pointer",
             "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
             isOpen && "ring-2 ring-blue-600 border-blue-600",
             seasonStatus === 'in-season' && "border-green-600 bg-green-50/50",
@@ -364,52 +364,52 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           )}
         >
           <Calendar className={cn(
-            "w-4 h-4",
+            "w-4 h-4 flex-shrink-0",
             seasonStatus === 'in-season' && "text-green-600",
             seasonStatus === 'pre-season' && "text-blue-600",
             seasonStatus === 'post-season' && "text-gray-500",
             !seasonStatus && "text-gray-500"
           )} />
-          <span>
+          <span className="truncate">
             {formatRangeDisplay()}
           </span>
           <ChevronDown className={cn(
-            "w-4 h-4 text-gray-500 transition-transform",
+            "w-4 h-4 text-gray-500 transition-transform flex-shrink-0",
             isOpen && "rotate-180"
           )} />
         </button>
-        
+
         {/* Comparison toggle */}
         <div className="relative" ref={comparisonRef}>
           <button
             type="button"
             onClick={() => {
               setComparisonDropdownOpen(!comparisonDropdownOpen)
-              setIsOpen(false) // Close period selector when opening comparison
+              setIsOpen(false)
             }}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 bg-white border rounded-lg cursor-pointer",
+              "flex items-center gap-2 px-3 md:px-4 py-2 bg-white border rounded-lg cursor-pointer w-full sm:w-auto",
               "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
               comparisonDropdownOpen && "ring-2 ring-blue-600 border-blue-600",
               comparisonType !== 'none' && "border-blue-600 bg-blue-50/50"
             )}
           >
             <GitCompare className={cn(
-              "w-4 h-4",
+              "w-4 h-4 flex-shrink-0",
               comparisonType !== 'none' ? "text-blue-600" : "text-gray-500"
             )} />
-            <span>
+            <span className="truncate">
               {getComparisonLabel(comparisonType, activeSeasons.length > 0)}
             </span>
             <ChevronDown className={cn(
-              "w-4 h-4 text-gray-500 transition-transform",
+              "w-4 h-4 text-gray-500 transition-transform flex-shrink-0",
               comparisonDropdownOpen && "rotate-180"
             )} />
           </button>
           
           {/* Comparison Dropdown */}
           {comparisonDropdownOpen && (
-            <div className="absolute z-40 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[200px] right-0">
+            <div className="absolute z-40 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[200px] left-0 sm:left-auto sm:right-0">
               <div className="p-1">
                 <button
                   onClick={() => {
@@ -420,7 +420,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                     }
                   }}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between cursor-pointer",
+                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
                     comparisonType === 'none'
                       ? "bg-blue-50 text-blue-700"
                       : "hover:bg-gray-100 text-gray-700"
@@ -451,7 +451,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                       }}
                       disabled={isDisabled}
                       className={cn(
-                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
                         isDisabled
                           ? "opacity-50 cursor-not-allowed text-gray-400"
                           : comparisonType === 'lastPeriod'
@@ -487,7 +487,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                       }}
                       disabled={isDisabled}
                       className={cn(
-                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
+                        "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
                         isDisabled
                           ? "opacity-50 cursor-not-allowed text-gray-400"
                           : comparisonType === 'lastYear'
@@ -548,7 +548,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   key={option.id}
                   onClick={() => handlePeriodSelect(option)}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between cursor-pointer",
+                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
                     isSelected
                       ? "bg-blue-50 text-blue-700"
                       : "hover:bg-gray-100 text-gray-700"
@@ -567,7 +567,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   setCustomRangeOpen(true)
                   setIsOpen(false)
                 }}
-                className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-gray-100 text-gray-700 cursor-pointer"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 text-gray-700 cursor-pointer"
               >
                 Custom Range...
               </button>

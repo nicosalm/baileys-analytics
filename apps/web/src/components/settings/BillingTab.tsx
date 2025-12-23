@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
   Receipt, ExternalLink,
-  AlertCircle, Loader, CheckCircle
+  AlertCircle, CheckCircle
 } from 'lucide-react';
+import { LoadingState } from '@/components/LoadingState';
 import { billingClient } from '@/lib/stripe';
 import { PricingPlans } from '@/components/PricingPlans';
 import { LoadingButton } from '@/components/LoadingButton';
@@ -51,11 +52,7 @@ export const BillingTab = () => {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader className="w-8 h-8 animate-spin text-gray-400" />
-      </div>
-    );
+    return <LoadingState />;
   }
 
   // show free account status for exempt accounts

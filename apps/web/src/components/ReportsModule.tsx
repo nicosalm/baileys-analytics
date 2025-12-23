@@ -238,7 +238,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
       <button
         onClick={handleQuickGenerate}
         disabled={isGenerating}
-        className="w-full flex items-center justify-center px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors disabled:opacity-50 mt-auto cursor-pointer"
+        className="w-full flex items-center justify-center px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 mt-auto cursor-pointer"
       >
         {isGenerating ? (
           <LoadingState size="sm" inline message="Generating..." />
