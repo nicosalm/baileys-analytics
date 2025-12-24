@@ -16,6 +16,7 @@ enabled = true
 
 [vars]
 FRONTEND_URL = "http://localhost:5173"
+ADMIN_EMAILS = "demo@baileysanalytics.com"
 
 
 [env.production]
@@ -27,8 +28,7 @@ id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
 FRONTEND_URL = "https://baileysanalytics.com"
-# Webhook credentials are stored as secrets via wrangler secret put
-# See setup-webhooks.md for deployment instructions
+ADMIN_EMAILS = "demo@baileysanalytics.com"
 
 [env.staging]
 name = "baileys-analytics-api-staging"
