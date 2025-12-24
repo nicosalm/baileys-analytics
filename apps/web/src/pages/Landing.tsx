@@ -218,7 +218,7 @@ export const Landing = () => {
                 <PieChart className="w-5 h-5 md:w-7 md:h-7 text-white" />
               </div>
               <h3 className="text-sm md:text-lg font-semibold text-gray-900 mb-1 md:mb-2">Reports</h3>
-              <p className="text-gray-600 text-xs md:text-sm hidden md:block">Generate reports. Export to CSV for taxes.</p>
+              <p className="text-gray-600 text-xs md:text-sm hidden md:block">Generate 6 PDF reports. Export data for taxes.</p>
             </div>
           </div>
         </div>

@@ -66,7 +66,7 @@ const QUICK_REPORTS = [
   {
     id: 'financial-summary',
     name: 'Financial Summary',
-    description: 'Revenue, platform fees, and profit analysis',
+    description: 'Revenue, platform fees, and monthly trends',
     icon: TrendingUp,
     category: 'financial',
     config: {
@@ -78,7 +78,7 @@ const QUICK_REPORTS = [
   {
     id: 'tax-report',
     name: 'Tax Report',
-    description: 'Tax collected by jurisdiction with details',
+    description: 'Tax collected, owner vs platform remittance',
     icon: FileText,
     category: 'financial',
     config: {
