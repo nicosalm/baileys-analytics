@@ -438,9 +438,6 @@ export class ReportGenerator {
 			.reduce((sum, [, fee]) => sum + fee, 0);
 
 		const netRevenue = revenue - platformFees;
-		const expenses = platformFees; // For now, expenses = platform fees (can expand later)
-		const netProfit = netRevenue - expenses;
-		const profitMargin = revenue > 0 ? netProfit / revenue : 0;
 		
 		const monthlyRevenue: any[] = [];
 		const monthMap = new Map();
@@ -463,9 +460,9 @@ export class ReportGenerator {
 		
 		return {
 			module,
-			title: module === 'pl' ? 'Profit & Loss' :
+			title: module === 'pl' ? 'Revenue & Platform Fees' :
 			       module === 'revenue' ? 'Revenue Summary' :
-			       module === 'expenses' ? 'Expense Report' : 'Financial Trends',
+			       module === 'expenses' ? 'Platform Fee Breakdown' : 'Financial Trends',
 			data: {
 				revenue,
 				platformFees,
@@ -474,9 +471,6 @@ export class ReportGenerator {
 				bookingFees,
 				otherFees,
 				netRevenue,
-				expenses,
-				netProfit,
-				profitMargin,
 				bookingCount: bookings?.length || 0,
 				avgBookingValue: bookings?.length ? revenue / bookings.length : 0,
 				monthlyRevenue

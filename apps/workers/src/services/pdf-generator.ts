@@ -253,24 +253,22 @@ export class PDFGenerator {
     const revenue = data.revenue || 0
     const platformFees = data.platformFees || 0
     const netRevenue = data.netRevenue || revenue - platformFees
-    const netProfit = data.netProfit || netRevenue
-    const profitMargin = revenue > 0 ? netProfit / revenue : 0
-    
+
     doc.setFontSize(8)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(80, 80, 80)
     doc.text(
-      `${this.formatCurrency(revenue)} Gross  •  ${this.formatCurrency(netRevenue)} Net  •  ${this.formatCurrency(netProfit)} Profit  •  ${this.formatPercentage(profitMargin)} Margin`,
+      `${this.formatCurrency(revenue)} Gross  •  ${this.formatCurrency(platformFees)} Fees  •  ${this.formatCurrency(netRevenue)} Net`,
       20,
       yPos
     )
     doc.setTextColor(0, 0, 0)
     yPos += 8
-    
+
     const financialData = [
       ['Gross Revenue', this.formatCurrency(revenue)],
       ['Platform Fees', this.formatCurrency(-platformFees)],
-      ['Net Revenue', this.formatCurrency(netRevenue)],
+      ['Net After Fees', this.formatCurrency(netRevenue)],
       ['Bookings', (data.bookingCount || 0).toString()],
       ['Avg Booking Value', this.formatCurrency(data.avgBookingValue || 0)]
     ]

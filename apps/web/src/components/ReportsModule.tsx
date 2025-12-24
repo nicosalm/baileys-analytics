@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import {
-  Calendar, FileText,
+  FileText,
   Play, TrendingUp, Users,
   AlertCircle, Home, DollarSign,
-  BarChart3, Building2, PieChart, Zap
+  Building2, PieChart, Zap
 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { useReportTemplates } from '@/hooks/use-api'
@@ -76,18 +76,6 @@ const QUICK_REPORTS = [
     }
   },
   {
-    id: 'booking-details',
-    name: 'Booking Details',
-    description: 'Complete booking list with guest information',
-    icon: Calendar,
-    category: 'operational',
-    config: {
-      modules: ['bookings', 'guests'],
-      dateRange: 'last30days',
-      format: 'pdf'
-    }
-  },
-  {
     id: 'tax-report',
     name: 'Tax Report',
     description: 'Tax collected by jurisdiction with details',
@@ -106,20 +94,8 @@ const QUICK_REPORTS = [
     icon: PieChart,
     category: 'analytics',
     config: {
-      modules: ['channels', 'conversion', 'revenue_by_channel'],
+      modules: ['channels', 'revenue_by_channel'],
       dateRange: 'last90days',
-      format: 'pdf'
-    }
-  },
-  {
-    id: 'occupancy-trends',
-    name: 'Occupancy Trends',
-    description: 'Historical occupancy patterns',
-    icon: BarChart3,
-    category: 'analytics',
-    config: {
-      modules: ['occupancy', 'trends'],
-      dateRange: 'lastYear',
       format: 'pdf'
     }
   },
