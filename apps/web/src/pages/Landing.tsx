@@ -116,9 +116,9 @@ export const Landing = () => {
 
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-8">
             <div className="bg-gray-50 rounded-xl p-4 md:p-6 border border-gray-200 shadow-sm">
-              <div className="text-sm font-medium text-blue-600 mb-2 md:mb-3">Calculate Taxes</div>
+              <div className="text-sm font-medium text-blue-600 mb-2 md:mb-3">Track Platform Fees</div>
               <p className="text-gray-700 text-xs md:text-sm">
-                Track Airbnb/VRBO fees automatically. See exactly how much each platform takes from each booking. Export clean reports for your accountant.
+                Log platform fees by property and month. See tax obligations from your bookings. Export clean reports for your accountant.
               </p>
             </div>
 
@@ -186,7 +186,7 @@ export const Landing = () => {
                 <DollarSign className="w-5 h-5 md:w-7 md:h-7 text-white" />
               </div>
               <h3 className="text-sm md:text-lg font-semibold text-gray-900 mb-1 md:mb-2">Platform Fees</h3>
-              <p className="text-gray-600 text-xs md:text-sm hidden md:block">Track exactly how much Airbnb and VRBO take from each booking.</p>
+              <p className="text-gray-600 text-xs md:text-sm hidden md:block">Track service fees and see which platforms remit taxes on your behalf.</p>
             </div>
 
             <div className="bg-gray-50 rounded-xl md:rounded-2xl p-4 md:p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">

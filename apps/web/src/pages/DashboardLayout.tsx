@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Compass } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Compass, Shield } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
@@ -108,6 +108,7 @@ export const DashboardLayout = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showInitialSync, setShowInitialSync] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   if (state.status !== 'authenticated') return null
 
@@ -132,6 +133,20 @@ export const DashboardLayout = () => {
       setShowInitialSync(true)
     }
   }, [searchParams, setSearchParams, user?.hasOwnerRezConnection])
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        const result = await api.request<{ isAdmin: boolean }>('/admin/verify', { method: 'GET' })
+        if (result.success && result.data?.isAdmin) {
+          setIsAdmin(true)
+        }
+      } catch {
+        // silently ignore - user is not admin
+      }
+    }
+    checkAdminStatus()
+  }, [])
 
   const handleLogout = async () => {
     await logout()
@@ -213,6 +228,15 @@ export const DashboardLayout = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-500 hidden sm:inline">{user.email}</span>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                      title="Admin Panel"
+                    >
+                      <Shield className="w-5 h-5" />
+                    </Link>
+                  )}
                   <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
                     <Link
                       to="/settings"
