@@ -3,7 +3,7 @@ import {
   FileText,
   Play, TrendingUp, Users,
   AlertCircle, Home, DollarSign,
-  Building2, PieChart, Zap
+  BarChart3, Building2, PieChart, Zap
 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { useReportTemplates } from '@/hooks/use-api'

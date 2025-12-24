@@ -144,7 +144,7 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>Profit & Loss:</strong> Shows your actual earnings after all platform fees and costs are deducted
+              <strong>Revenue Summary:</strong> Shows revenue after platform fees and taxes. Does not include operating expenses like cleaning, management, or utilities.
             </div>
           </div>
         </div>
@@ -168,14 +168,14 @@ export const PLView: React.FC<PLViewProps> = ({
         />
         <MetricCard
           icon={Wallet}
-          label="Net Profit"
+          label="Net Revenue"
           value={revenue.net}
           format="currency"
-          tooltip="Revenue after all fees and taxes"
+          tooltip="Revenue after platform fees and taxes (does not include operating expenses)"
           color="green"
           subValue={comparisonMode !== 'none' && comparison.previousProfit > 0
             ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousProfit)}`
-            : `${formatPercentage(profitability.marginPercent, 1)} margin | After ${formatCurrency(revenue.platformFees)} fees`}
+            : `${formatPercentage(profitability.marginPercent, 1)} retained | After ${formatCurrency(revenue.platformFees)} fees`}
           trend={comparisonMode !== 'none' && comparison.profitGrowth !== 0 ? {
             value: comparison.profitGrowth,
             isPositive: comparison.profitGrowth > 0
@@ -192,14 +192,14 @@ export const PLView: React.FC<PLViewProps> = ({
         />
         <MetricCard
           icon={Target}
-          label="Profit Margin"
+          label="Net Margin"
           value={profitability.marginPercent}
           format="percent"
           color={profitability.marginPercent > 70 ? 'green' : profitability.marginPercent > 50 ? 'yellow' : 'red'}
           subValue={comparisonMode !== 'none' && comparison.previousProfitMargin > 0
             ? `${comparison.periodLabel}: ${comparison.previousProfitMargin.toFixed(1)}% | Target: 70%`
             : `Target: 70% | ${profitability.marginPercent > 70 ? 'Above' : 'Below'} target`}
-          tooltip="Percentage of revenue kept after all costs"
+          tooltip="Percentage of revenue kept after fees and taxes"
           trend={comparisonMode !== 'none' && comparison.profitMarginChange !== 0 ? {
             value: comparison.profitMarginChange,
             isPositive: comparison.profitMarginChange > 0
@@ -283,8 +283,8 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <TrendingDown className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
             <div className="text-sm text-yellow-800">
-              <strong>Optimization Opportunity:</strong> Your profit margin is {formatPercentage(profitability.marginPercent, 1)}. 
-              Consider reviewing platform fees and exploring direct booking options to improve profitability.
+              <strong>Optimization Opportunity:</strong> Your net margin is {formatPercentage(profitability.marginPercent, 1)}.
+              Consider reviewing platform fees and exploring direct booking options to retain more revenue.
             </div>
           </div>
         </div>
