@@ -156,7 +156,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
           <p className="text-sm text-blue-800">
-            <strong>GDPR Compliance:</strong> You have the right to access and export all your personal data at any time.
+            You can access and export all your personal data at any time.
           </p>
         </div>
 

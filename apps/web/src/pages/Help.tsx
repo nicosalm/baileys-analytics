@@ -188,7 +188,7 @@ export const Help = () => {
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Can I export my data?</h3>
               <p className="text-gray-700 text-sm">
                 Yes! Use the <strong>Reports</strong> feature to generate PDF exports of your analytics. You can also export your
-                complete data as JSON from Settings → Account (GDPR compliance).
+                complete data as JSON from Settings → Account.
               </p>
             </div>
 

@@ -5,7 +5,7 @@ import { authMiddleware } from '../middleware/auth';
 
 const account = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
-// export all user data (GDPR compliance)
+// export all user data
 account.get('/export', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
   const user = c.get('user');
@@ -67,7 +67,7 @@ account.get('/export', authMiddleware, async (c) => {
   }
 });
 
-// delete account permanently (GDPR compliance)
+// delete account permanently
 account.delete('/delete', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
   const userId = c.get('user').id;

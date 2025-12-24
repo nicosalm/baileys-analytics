@@ -166,21 +166,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">9. GDPR Compliance</h2>
-            <p className="leading-relaxed mb-3">
-              For users in the European Economic Area, we comply with GDPR requirements:
-            </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li>We process data based on legitimate interests and consent</li>
-              <li>You have rights to access, rectification, erasure, and portability</li>
-              <li>You can object to processing and request restriction</li>
-              <li>You can withdraw consent at any time</li>
-              <li>You can lodge complaints with supervisory authorities</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">10. California Privacy Rights</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">9. California Privacy Rights</h2>
             <p className="leading-relaxed mb-3">
               California residents have additional rights under CCPA:
             </p>
@@ -193,7 +179,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Children's Privacy</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Children's Privacy</h2>
             <p className="leading-relaxed">
               Our Service is not intended for children under 13. We do not knowingly collect information from
               children under 13. If we discover such information, we will promptly delete it.
@@ -201,7 +187,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Changes to This Policy</h2>
             <p className="leading-relaxed">
               We may update this Privacy Policy from time to time. We will notify you of material changes via
               email or through the Service. Your continued use after changes constitutes acceptance.
@@ -209,7 +195,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Customer Support</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Customer Support</h2>
             <p className="leading-relaxed mb-3">
               For customer service and general support:
             </p>
@@ -221,7 +207,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">14. Contact Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Contact Information</h2>
             <p className="leading-relaxed mb-3">
               For questions about this Privacy Policy or our privacy practices:
             </p>
