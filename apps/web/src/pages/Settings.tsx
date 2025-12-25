@@ -49,16 +49,6 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     icon: Palette
   },
   {
-    id: 'integrations',
-    label: 'Integrations',
-    icon: Link2
-  },
-  {
-    id: 'billing',
-    label: 'Billing',
-    icon: CreditCard
-  },
-  {
     id: 'tax',
     label: 'Platform Fees',
     icon: Calculator
@@ -67,6 +57,16 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     id: 'seasons',
     label: 'Seasons',
     icon: Calendar
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: Link2
+  },
+  {
+    id: 'billing',
+    label: 'Billing',
+    icon: CreditCard
   }
 ]
 
