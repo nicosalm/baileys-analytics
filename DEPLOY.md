@@ -61,19 +61,15 @@ pnpm dev
 
 ## Production Deployment
 
-**IMPORTANT**: Only deploy from the `main` branch
-
 ```bash
-# Ensure you're on main and up to date
-git checkout main
-git pull origin main
-
 # Deploy Workers API
 ./scripts/deploy-workers.sh
 
 # Deploy Web Application
 ./scripts/deploy-web.sh
 ```
+
+Environment variables for Pages are configured in Cloudflare Dashboard.
 
 ## URLs
 
@@ -108,12 +104,10 @@ See [BRANCHING.md](./BRANCHING.md) for detailed workflow.
 ## Troubleshooting
 
 ### Workers deployment fails
-- Check you're on main branch
 - Verify wrangler is logged in: `wrangler whoami`
 - Check secrets are set: `wrangler secret list --env production`
 
 ### Pages deployment fails
-- Check you're on main branch
 - Verify build succeeds locally: `cd apps/web && pnpm build`
 - Check environment variables in Cloudflare dashboard
 
