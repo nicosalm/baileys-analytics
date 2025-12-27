@@ -273,6 +273,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
               tenant_id: tenantId,
               property_id: property.id,
               ownerrez_booking_id: booking.id,
+              ownerrez_guest_id: booking.guest?.id?.toString(),
               guest_name: guestName,
               guest_email: guestEmail,
               guest_phone: guestPhone,
@@ -373,12 +374,12 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
                 .from('guests')
                 .insert({
                   tenant_id: tenantId,
-                  ownerrez_guest_id: booking.guest?.id,
+                  ownerrez_guest_id: booking.guest?.id?.toString(),
                   full_name: guestName,
                   first_name: booking.guest?.first_name,
                   last_name: booking.guest?.last_name,
-                  email: booking.guest?.email || booking.guest_email,
-                  phone: booking.guest?.phone || booking.guest_phone,
+                  email: guestEmail,
+                  phone: guestPhone,
                   updated_at: new Date().toISOString()
                 })
                 .select()
@@ -476,7 +477,7 @@ initialSyncChunked.post('/guests', async (c) => {
       const { data: upsertedGuest } = await supabase
         .from('guests')
         .upsert({
-          ownerrez_guest_id: guest.id,
+          ownerrez_guest_id: guest.id?.toString(),
           tenant_id: tenantId,
           first_name: guest.first_name,
           last_name: guest.last_name,
@@ -535,30 +536,61 @@ initialSyncChunked.post('/guests', async (c) => {
       guestsCount++;
     }
 
-    // After syncing all guests, update bookings with guest email/phone
+    // after syncing all guests, update bookings with guest email/phone
     console.log('Updating bookings with guest contact information...');
-    
-    // Get all bookings that might need updating
-    const { data: bookings } = await supabase
+
+    // first: match by ownerrez_guest_id (most reliable)
+    const { data: bookingsById } = await supabase
       .from('bookings')
-      .select('id, guest_name, guest_email, guest_phone')
+      .select('id, ownerrez_guest_id')
       .eq('tenant_id', tenantId)
       .is('guest_email', null)
+      .not('ownerrez_guest_id', 'is', null);
+
+    if (bookingsById && bookingsById.length > 0) {
+      console.log(`Found ${bookingsById.length} bookings to update via ownerrez_guest_id`);
+
+      for (const booking of bookingsById) {
+        const { data: guest } = await supabase
+          .from('guests')
+          .select('email, phone')
+          .eq('tenant_id', tenantId)
+          .eq('ownerrez_guest_id', booking.ownerrez_guest_id)
+          .single();
+
+        if (guest?.email || guest?.phone) {
+          await supabase
+            .from('bookings')
+            .update({
+              guest_email: guest.email,
+              guest_phone: guest.phone
+            })
+            .eq('id', booking.id);
+        }
+      }
+    }
+
+    // second: fall back to case-insensitive name matching for bookings without ownerrez_guest_id
+    const { data: bookingsByName } = await supabase
+      .from('bookings')
+      .select('id, guest_name')
+      .eq('tenant_id', tenantId)
+      .is('guest_email', null)
+      .is('ownerrez_guest_id', null)
       .not('guest_name', 'is', null);
 
-    if (bookings && bookings.length > 0) {
-      console.log(`Found ${bookings.length} bookings to potentially update with guest info`);
-      
-      for (const booking of bookings) {
-        // Try to find the guest by name
+    if (bookingsByName && bookingsByName.length > 0) {
+      console.log(`Found ${bookingsByName.length} bookings to update via name matching`);
+
+      for (const booking of bookingsByName) {
         const { data: matchingGuests } = await supabase
           .from('guests')
           .select('email, phone')
           .eq('tenant_id', tenantId)
-          .eq('full_name', booking.guest_name)
+          .ilike('full_name', booking.guest_name)
           .limit(1);
-        
-        if (matchingGuests && matchingGuests.length > 0 && matchingGuests[0].email) {
+
+        if (matchingGuests && matchingGuests.length > 0 && (matchingGuests[0].email || matchingGuests[0].phone)) {
           await supabase
             .from('bookings')
             .update({
@@ -570,10 +602,10 @@ initialSyncChunked.post('/guests', async (c) => {
       }
     }
 
-    // Also update bookings that have guest_email but no guest_phone
+    // also update bookings that have guest_email but no guest_phone
     const { data: bookingsWithEmail } = await supabase
       .from('bookings')
-      .select('id, guest_name, guest_email')
+      .select('id, guest_email')
       .eq('tenant_id', tenantId)
       .not('guest_email', 'is', null)
       .is('guest_phone', null);
@@ -586,7 +618,7 @@ initialSyncChunked.post('/guests', async (c) => {
           .eq('tenant_id', tenantId)
           .eq('email', booking.guest_email)
           .limit(1);
-        
+
         if (matchingGuests && matchingGuests.length > 0 && matchingGuests[0].phone) {
           await supabase
             .from('bookings')

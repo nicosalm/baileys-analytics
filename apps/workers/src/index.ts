@@ -440,13 +440,25 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 						? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 						: booking.guest_name || 'Unknown';
 
+					// extract email/phone from nested arrays (if available) or flat properties
+					const guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
+						booking.guest?.email_addresses?.[0]?.address ||
+						booking.guest?.email ||
+						booking.guest_email;
+
+					const guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
+						booking.guest?.phones?.[0]?.number ||
+						booking.guest?.phone ||
+						booking.guest_phone;
+
 					allBookings.push({
 						tenant_id: tenantId,
 						property_id: property.id,
 						ownerrez_booking_id: booking.id,
+						ownerrez_guest_id: booking.guest?.id?.toString(),
 						guest_name: guestName,
-						guest_email: booking.guest?.email || booking.guest_email,
-						guest_phone: booking.guest?.phone || booking.guest_phone,
+						guest_email: guestEmail,
+						guest_phone: guestPhone,
 						arrival: booking.arrival,
 						departure: booking.departure,
 						total_amount: booking.total_amount || 0,

@@ -327,9 +327,16 @@ async function handleBookingUpdate(
 			? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 			: booking.guest_name || 'Unknown';
 
-		// Try to get email/phone from guests table if not in booking
-		let guestEmail = booking.guest?.email || booking.guest_email;
-		let guestPhone = booking.guest?.phone || booking.guest_phone;
+		// extract email/phone from nested arrays (if available) or flat properties
+		let guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
+			booking.guest?.email_addresses?.[0]?.address ||
+			booking.guest?.email ||
+			booking.guest_email;
+
+		let guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
+			booking.guest?.phones?.[0]?.number ||
+			booking.guest?.phone ||
+			booking.guest_phone;
 		
 		if (!guestEmail || !guestPhone) {
 			// Try to find guest by ownerrez_guest_id if available
@@ -338,7 +345,7 @@ async function handleBookingUpdate(
 					.from('guests')
 					.select('email, phone')
 					.eq('tenant_id', tenantId)
-					.eq('ownerrez_guest_id', booking.guest.id)
+					.eq('ownerrez_guest_id', booking.guest.id.toString())
 					.single();
 				
 				if (existingGuest) {
@@ -365,6 +372,7 @@ async function handleBookingUpdate(
 			tenant_id: tenantId,
 			property_id: property.id,
 			ownerrez_booking_id: booking.id,
+			ownerrez_guest_id: booking.guest?.id?.toString(),
 			guest_name: guestName,
 			guest_email: guestEmail,
 			guest_phone: guestPhone,
@@ -537,7 +545,7 @@ async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 	const { data: upsertedGuest } = await supabase
 		.from('guests')
 		.upsert({
-			ownerrez_guest_id: guest.id,
+			ownerrez_guest_id: guest.id?.toString(),
 			tenant_id: tenantId,
 			first_name: guest.first_name,
 			last_name: guest.last_name,
@@ -547,7 +555,7 @@ async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 			data: guest,
 			updated_at: new Date().toISOString()
 		})
-		.eq('ownerrez_guest_id', guest.id)
+		.eq('ownerrez_guest_id', guest.id?.toString())
 		.eq('tenant_id', tenantId)
 		.select()
 		.single();
@@ -669,7 +677,7 @@ async function handleEntityDelete(
 			await supabase
 				.from('guests')
 				.delete()
-				.eq('ownerrez_guest_id', payload.entity_id)
+				.eq('ownerrez_guest_id', payload.entity_id?.toString())
 				.eq('tenant_id', tenantId);
 			break;
 
