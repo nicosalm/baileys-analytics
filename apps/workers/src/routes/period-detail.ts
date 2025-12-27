@@ -172,7 +172,7 @@ periodDetail.get('/', async (c) => {
         id: b.id,
         propertyId: b.property_id,
         propertyName: propertyMap.get(b.property_id) || 'Unknown Property',
-        guestId: b.guest_email || b.guest_name,
+        guestId: `${(b.guest_name || '').toLowerCase().trim()}_${(b.guest_email || '').toLowerCase().trim()}`,
         guestName: b.guest_name,
         guestEmail: b.guest_email,
         arrival: b.arrival,
