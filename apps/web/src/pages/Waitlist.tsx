@@ -179,7 +179,7 @@ export const Waitlist = () => {
               type="submit"
               loading={loading}
               loadingText="Joining waitlist..."
-              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:shadow-lg transition-all transform hover:scale-[1.02]`}
+              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:opacity-90 transition-opacity`}
             >
               Join Early Access List
             </LoadingButton>

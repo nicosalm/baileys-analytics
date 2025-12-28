@@ -198,7 +198,7 @@ export const BillingTab = () => {
           <LoadingButton
             onClick={handleManageSubscription}
             loading={portalLoading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2"
           >
             <ExternalLink className="w-4 h-4" />
             Manage Subscription

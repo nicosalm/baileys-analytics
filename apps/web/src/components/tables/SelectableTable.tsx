@@ -190,7 +190,7 @@ export function SelectableTable<T extends Record<string, any>>({
                 <div className="relative">
                   <button
                     onClick={() => setShowBulkMenu(!showBulkMenu)}
-                    className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
                   >
                     <span>Actions</span>
                     <MoreHorizontal className="w-4 h-4" />
@@ -201,7 +201,7 @@ export function SelectableTable<T extends Record<string, any>>({
                         <button
                           key={action.action}
                           onClick={() => handleBulkAction(action.action)}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-left hover:bg-gray-50 transition-all first:rounded-t-lg last:rounded-b-lg"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-left hover:bg-gray-50 transition-all first:rounded-t-lg last:rounded-b-lg cursor-pointer"
                         >
                           {action.icon}
                           <span>{action.label}</span>
@@ -219,7 +219,7 @@ export function SelectableTable<T extends Record<string, any>>({
           {enableRefresh && (
             <button
               onClick={onRefresh}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
@@ -228,7 +228,7 @@ export function SelectableTable<T extends Record<string, any>>({
           {enableExport && (
             <button
               onClick={onExport}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               title="Export"
             >
               <Download className="w-4 h-4" />

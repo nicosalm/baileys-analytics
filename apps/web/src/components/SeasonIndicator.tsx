@@ -78,7 +78,7 @@ export const SeasonIndicator: React.FC<{
       )}
       
       <div className="group relative">
-        <button className="p-1 hover:bg-gray-100 rounded">
+        <button className="p-1 hover:bg-gray-100 rounded cursor-pointer">
           <AlertCircle className="w-4 h-4 text-gray-400" />
         </button>
         <div className="absolute bottom-full mb-2 right-0 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">

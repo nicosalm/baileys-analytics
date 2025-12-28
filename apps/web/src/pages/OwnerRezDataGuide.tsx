@@ -6,7 +6,7 @@ export const OwnerRezDataGuide = () => {
     <DocsLayout>
       <div className="prose prose-gray max-w-none">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">OwnerRez Data Guide</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">OwnerRez Data Guide</h1>
           <p className="text-gray-500 text-sm">What data we sync, how it works, and how to keep everything up to date</p>
         </div>
 

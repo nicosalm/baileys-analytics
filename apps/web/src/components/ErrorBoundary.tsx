@@ -142,14 +142,14 @@ export class ErrorBoundary extends Component<Props, State> {
                 <div className="flex gap-3">
                   <button
                     onClick={() => window.location.href = '/'}
-                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-all"
+                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                   >
                     <Home className="w-4 h-4" />
                     Go to Dashboard
                   </button>
                   <button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2 transition-all font-medium"
+                    className="px-4 py-2 bg-blue-600 hover:opacity-90 text-white rounded-lg flex items-center gap-2 transition-opacity font-medium cursor-pointer"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Refresh Page

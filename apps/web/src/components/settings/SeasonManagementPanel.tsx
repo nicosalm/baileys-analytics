@@ -125,7 +125,7 @@ const SeasonForm: React.FC<{
         <button
           type="submit"
           disabled={isSubmitting || !formData.name}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <Check className="w-4 h-4" />
           {isEditing ? 'Update' : 'Add'} Season
@@ -155,7 +155,7 @@ const SeasonRow: React.FC<{
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50/50 transition-colors">
       <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -192,7 +192,7 @@ const SeasonRow: React.FC<{
             ) : (
               <button
                 onClick={() => onToggleActive(season)}
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 flex items-center gap-1 cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 Activate
@@ -327,7 +327,7 @@ export const SeasonManagementPanel: React.FC = () => {
         {!isAddingNew && !editingSeasonId && (
           <button
             onClick={() => setIsAddingNew(true)}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1 cursor-pointer"
+            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 flex items-center gap-1 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Season

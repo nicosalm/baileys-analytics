@@ -149,7 +149,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       <div className="flex justify-end">
         <button
           onClick={handleDownloadTaxReport}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-2 cursor-pointer"
+          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 flex items-center gap-2 cursor-pointer"
         >
           <Download className="w-4 h-4" />
           Download Tax Report (CSV)

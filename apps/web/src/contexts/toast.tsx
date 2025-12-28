@@ -91,7 +91,7 @@ const ToastContainer = ({ toasts, removeToast }: { toasts: Toast[], removeToast:
           <span className="flex-1 text-sm font-medium text-gray-900">{toast.message}</span>
           <button
             onClick={() => removeToast(toast.id)}
-            className="ml-2 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+            className="ml-2 p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

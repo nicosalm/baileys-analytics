@@ -6,7 +6,7 @@ export const Help = () => {
     <DocsLayout>
       <div className="prose prose-gray max-w-none">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Help & FAQ</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Help & FAQ</h1>
           <p className="text-gray-500 text-sm">Common questions and quick answers</p>
         </div>
 
@@ -247,7 +247,7 @@ export const Help = () => {
           <div className="flex flex-col sm:flex-row gap-2">
             <a
               href="mailto:support@baileysanalytics.com"
-              className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 transition-opacity"
             >
               Email Support
             </a>

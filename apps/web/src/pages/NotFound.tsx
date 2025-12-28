@@ -22,15 +22,15 @@ export const NotFound = () => {
             </Link>
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
-                <Link to="/dashboard/overview" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
+                <Link to="/dashboard/overview" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium`}>
                   Open Dashboard
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-all hover:bg-gray-100/70 rounded-lg">
+                  <Link to="/login" className="px-5 py-2.5 text-gray-700 hover:text-gray-900 font-medium transition-colors hover:bg-gray-100/70 rounded-lg">
                     Login
                   </Link>
-                  <Link to="/signup" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:shadow-lg transition-all hover:scale-[1.02] font-medium`}>
+                  <Link to="/signup" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium`}>
                     Start Free Trial
                   </Link>
                 </>
@@ -51,24 +51,24 @@ export const NotFound = () => {
           
           {/* Action Buttons */}
           <div className="flex items-center justify-center gap-3">
-            <Link 
-              to="/" 
+            <Link
+              to="/"
               className="inline-flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to Home
             </Link>
             {isAuthenticated ? (
-              <Link 
-                to="/dashboard/overview" 
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
+              <Link
+                to="/dashboard/overview"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
               >
                 Go to Dashboard
               </Link>
             ) : (
-              <Link 
-                to="/login" 
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium"
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
               >
                 Sign In
               </Link>

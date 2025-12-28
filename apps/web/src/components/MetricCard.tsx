@@ -148,7 +148,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <div 
       className={cn(
         "bg-white rounded-lg shadow-sm border border-gray-200 transition-all",
-        onClick && "cursor-pointer hover:shadow-md hover:border-blue-200",
+        onClick && "cursor-pointer hover:bg-gray-50/50",
         currentSize.padding,
         className
       )}

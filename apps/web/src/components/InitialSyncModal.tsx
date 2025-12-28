@@ -206,7 +206,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           <p className="text-gray-600 mb-6">{error}</p>
           <button
             onClick={() => navigate('/dashboard/settings')}
-            className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"
+            className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
           >
             Go to Settings
           </button>

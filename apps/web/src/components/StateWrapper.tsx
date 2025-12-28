@@ -91,7 +91,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
         {onRetry && (
           <button
             onClick={onRetry}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             {retryLabel}
@@ -112,7 +112,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
         {onRetry && (
           <button
             onClick={onRetry}
-            className="mt-4 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium"
+            className="mt-4 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             {retryLabel}

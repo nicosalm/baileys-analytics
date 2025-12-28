@@ -192,10 +192,10 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
               onClick={handleSelectPlan}
               disabled={!!currentPlan || loading}
               loading={loading}
-              className={`block w-full py-3 rounded-full font-medium transition-all ${
+              className={`block w-full py-3 rounded-full font-medium transition-opacity ${
                 currentPlan
                   ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:shadow-lg'
+                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:opacity-90'
               }`}
             >
               {getButtonText()}

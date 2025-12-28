@@ -17,7 +17,7 @@ export const LoadingButton = ({
   return (
     <button
       disabled={loading || disabled}
-      className={`${className} disabled:opacity-50 disabled:cursor-not-allowed`}
+      className={`${className} cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed`}
       {...props}
     >
       {loading ? (

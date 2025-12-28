@@ -75,7 +75,7 @@ export const PlatformFeeCard = ({
       emptyIcon={
         <button
           onClick={handleAddFees}
-          className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+          className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
         >
           Add platform fees
         </button>
@@ -215,7 +215,7 @@ export const PlatformFeeCard = ({
             <p className="text-sm text-gray-600">No platform fees entered</p>
             <button
               onClick={handleAddFees}
-              className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-sm hover:bg-blue-700"
+              className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-sm hover:opacity-90 cursor-pointer"
             >
               Add Fees
             </button>

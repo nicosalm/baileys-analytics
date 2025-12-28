@@ -271,14 +271,14 @@ export const PlatformFeeEntryModal = ({
           <button
             type="button"
             onClick={closeModal}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-sm"
+            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-sm cursor-pointer"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Saving...' : `Save ${platformRows.filter(r => r.platform && r.amount > 0).length} Platform${platformRows.filter(r => r.platform && r.amount > 0).length !== 1 ? 's' : ''}`}

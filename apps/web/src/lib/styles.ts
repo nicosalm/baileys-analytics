@@ -2,20 +2,20 @@
 
 // Button styles
 export const buttonStyles = {
-  primary: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium',
-  secondary: 'px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-lg transition-all font-medium',
-  danger: 'px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium',
-  success: 'px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-medium',
-  ghost: 'px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all font-medium',
-  
+  primary: 'px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium',
+  secondary: 'px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 rounded-lg transition-colors font-medium',
+  danger: 'px-4 py-2 bg-red-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium',
+  success: 'px-4 py-2 bg-green-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium',
+  ghost: 'px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors font-medium',
+
   // Size variants
   sm: 'px-3 py-1.5 text-sm',
   md: 'px-4 py-2',
   lg: 'px-6 py-3',
-  
+
   // Icon button
-  icon: 'p-2 hover:bg-gray-100 rounded-lg transition-all',
-  iconPrimary: 'p-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-all',
+  icon: 'p-2 hover:bg-gray-100 rounded-lg transition-colors',
+  iconPrimary: 'p-2 bg-blue-600 text-white hover:opacity-90 rounded-lg transition-opacity',
 } as const
 
 // Input styles
@@ -34,8 +34,8 @@ export const inputStyles = {
 // Card styles
 export const cardStyles = {
   base: 'bg-white rounded-lg shadow-sm border border-gray-200',
-  hover: 'bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all',
-  clickable: 'bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer',
+  hover: 'bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50/50 transition-colors',
+  clickable: 'bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50/50 transition-colors cursor-pointer',
   
   // Padding variants
   sm: 'p-4',

@@ -464,7 +464,7 @@ export const Settings = () => {
               <button
                 onClick={handleConfirmChangeEmail}
                 disabled={isChangingEmail}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isChangingEmail ? 'Sending...' : 'Send Confirmation'}
               </button>
@@ -551,7 +551,7 @@ export const Settings = () => {
               <button
                 onClick={handleConfirmChangePassword}
                 disabled={isChangingPassword}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isChangingPassword ? 'Changing...' : 'Change Password'}
               </button>

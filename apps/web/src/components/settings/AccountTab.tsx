@@ -163,7 +163,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
         <LoadingButton
           onClick={handleExportData}
           loading={exportLoading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
           Export Data as JSON
@@ -197,7 +197,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
 
         <button
           onClick={() => setDeleteModalOpen(true)}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium flex items-center gap-2"
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2 cursor-pointer"
         >
           <Trash2 className="w-4 h-4" />
           Delete Account Permanently
@@ -240,7 +240,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
                   setDeleteConfirmText('')
                 }}
                 disabled={deleteLoading}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -248,7 +248,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
                 onClick={handleDeleteAccount}
                 loading={deleteLoading}
                 disabled={deleteConfirmText !== 'DELETE'}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 hover:opacity-90 text-white rounded-lg transition-opacity disabled:opacity-50 cursor-pointer"
               >
                 Delete Forever
               </LoadingButton>

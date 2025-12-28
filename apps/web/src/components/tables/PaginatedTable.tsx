@@ -130,7 +130,7 @@ export function PaginatedTable<T extends Record<string, any>>({
             {enableRefresh && (
               <button
                 onClick={onRefresh}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                 title="Refresh"
               >
                 <RefreshCw className="w-4 h-4" />
@@ -139,7 +139,7 @@ export function PaginatedTable<T extends Record<string, any>>({
             {enableExport && (
               <button
                 onClick={onExport}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                 title="Export"
               >
                 <Download className="w-4 h-4" />

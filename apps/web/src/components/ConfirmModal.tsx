@@ -32,9 +32,9 @@ export const ConfirmModal = ({
   }
 
   const buttonColors = {
-    danger: 'bg-red-600 hover:bg-red-700 text-white',
-    warning: 'bg-yellow-600 hover:bg-yellow-700 text-white',
-    info: 'bg-blue-600 hover:bg-blue-700 text-white'
+    danger: 'bg-red-600 hover:opacity-90 text-white',
+    warning: 'bg-yellow-600 hover:opacity-90 text-white',
+    info: 'bg-blue-600 hover:opacity-90 text-white'
   }
 
   return (
@@ -49,7 +49,7 @@ export const ConfirmModal = ({
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
           >
             {cancelText}
           </button>

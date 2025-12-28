@@ -70,7 +70,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
 
   return (
     <div 
-      className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 ${onClick ? 'cursor-pointer hover:shadow-md hover:border-blue-200 transition-all' : ''}`} 
+      className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 ${onClick ? 'cursor-pointer hover:bg-gray-50/50 transition-colors' : ''}`} 
       title={tooltip}
       onClick={onClick}
     >

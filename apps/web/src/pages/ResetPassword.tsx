@@ -154,7 +154,7 @@ export const ResetPassword = () => {
               <p className="text-gray-600 mb-6">{error}</p>
               <Link
                 to="/forgot-password"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
               >
                 Request New Link
               </Link>
@@ -260,7 +260,7 @@ export const ResetPassword = () => {
               type="submit"
               loading={loading}
               loadingText="Resetting..."
-              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:shadow-lg transition-all transform hover:scale-[1.02]`}
+              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:opacity-90 transition-opacity`}
             >
               Reset password
             </LoadingButton>

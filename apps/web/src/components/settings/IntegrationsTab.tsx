@@ -118,7 +118,7 @@ export const IntegrationsTab = () => {
               ) : (
                 <button
                   onClick={handleConnect}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium cursor-pointer"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
                 >
                   <Link2 className="w-4 h-4" />
                   Connect
@@ -147,7 +147,7 @@ export const IntegrationsTab = () => {
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={handleManualSync}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all font-medium cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Re-sync All Data (3 years)

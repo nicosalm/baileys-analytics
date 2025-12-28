@@ -187,7 +187,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
   }
 
   return (
-    <div className="h-full bg-white rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all p-4 flex flex-col">
+    <div className="h-full bg-white rounded-lg border border-gray-200 hover:bg-gray-50/50 transition-colors p-4 flex flex-col">
       <div className="flex items-start justify-between mb-3 flex-1">
         <div className="flex items-start gap-3 flex-1">
           <div className={`p-2 rounded-lg ${

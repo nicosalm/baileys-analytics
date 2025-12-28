@@ -21,10 +21,10 @@ const PropertyFeeRow = ({ property, month, onManageFees }: PropertyFeeRowProps) 
   return (
     <div
       key={property.id}
-      className={`bg-white rounded-lg shadow-sm border transition-all ${
+      className={`bg-white rounded-lg shadow-sm border transition-colors ${
         hasData
-          ? 'border-green-200 hover:shadow-md hover:border-green-300'
-          : 'border-gray-200 hover:shadow-md hover:border-blue-200'
+          ? 'border-green-200 hover:bg-gray-50/50'
+          : 'border-gray-200 hover:bg-gray-50/50'
       }`}
     >
       <div className="p-4">
@@ -47,10 +47,10 @@ const PropertyFeeRow = ({ property, month, onManageFees }: PropertyFeeRowProps) 
           <div className="flex items-center gap-2">
             <button
               onClick={() => onManageFees(property.id, property.name)}
-              className={`px-3 py-1.5 text-white text-sm rounded-lg flex items-center gap-1 transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 text-white text-sm rounded-lg flex items-center gap-1 transition-opacity cursor-pointer ${
                 hasData
-                  ? 'bg-green-600 hover:bg-green-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                  ? 'bg-green-600 hover:opacity-90'
+                  : 'bg-blue-600 hover:opacity-90'
               }`}
               title="Track monthly platform service fees"
             >
