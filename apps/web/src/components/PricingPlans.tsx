@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Zap } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { billingClient } from '@/lib/stripe';
 import { useToast } from '@/contexts/toast';
 import { LoadingButton } from './LoadingButton';
 import { LoadingState } from './LoadingState';
+import { BRAND } from '@/constants';
 
 interface PricingPlansProps {
   currentPlan?: string;
@@ -12,20 +13,14 @@ interface PricingPlansProps {
 
 const plan = {
   id: 'standard',
-  name: 'Baileys Analytics',
   monthlyPrice: 20,
-  yearlyPrice: 192,  // 20% off: $20 * 12 * 0.8
-  yearlyMonthly: 16,  // $192 / 12
-  description: 'Complete vacation rental analytics',
+  yearlyPrice: 192,
+  yearlyMonthly: 16,
   features: [
-    'Full analytics dashboard',
-    'Real-time OwnerRez sync',
-    'Financial & occupancy insights',
-    'Guest history & analytics',
-    'Advanced tax tracking',
-    'Custom reports & exports',
-    'Season analysis',
-    'Email support'
+    'Full OwnerRez sync (3 years of data)',
+    '6 dashboards with filtering',
+    'Exportable PDF reports',
+    'Cancel anytime'
   ]
 };
 
@@ -33,11 +28,10 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
   currentPlan,
   onPlanSelect
 }) => {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
+  const [yearlyBilling, setYearlyBilling] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isTrialEligible, setIsTrialEligible] = useState(false);
   const [checkingEligibility, setCheckingEligibility] = useState(true);
-  const [eligibilityError, setEligibilityError] = useState<string | null>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
@@ -45,165 +39,105 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
       try {
         const eligible = await billingClient.isTrialEligible();
         setIsTrialEligible(eligible);
-        setEligibilityError(null);
       } catch (error) {
         console.error('Failed to check trial eligibility:', error);
         setIsTrialEligible(false);
-        setEligibilityError('Unable to verify trial eligibility. Please try again.');
       } finally {
         setCheckingEligibility(false);
       }
     };
-
     checkEligibility();
   }, []);
 
   const handleSelectPlan = async () => {
     try {
       setLoading(true);
-
-      // create checkout session with trial if eligible
       await billingClient.createCheckoutSession(
         plan.id,
-        billingCycle === 'yearly',
-        isTrialEligible // only $1 for first-time subscribers
+        yearlyBilling,
+        isTrialEligible
       );
-
       if (onPlanSelect) {
         onPlanSelect();
       }
     } catch (error) {
-      addToast('error', 'Failed to start subscription process. Please try again.');
+      addToast('error', 'Failed to start subscription. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const getButtonText = () => {
-    if (currentPlan) return 'Current Plan';
-    if (loading) return 'Processing...';
-    if (checkingEligibility) return 'Loading...';
-    return isTrialEligible ? 'Get Started - $1' : 'Subscribe';
-  };
+  const price = yearlyBilling ? plan.yearlyMonthly : plan.monthlyPrice;
 
-  const price = billingCycle === 'yearly' ? plan.yearlyMonthly : plan.monthlyPrice;
-  const totalYearly = plan.yearlyPrice;
-  const savings = plan.monthlyPrice * 12 - plan.yearlyPrice;
-
-  // show loading state while checking trial eligibility
   if (checkingEligibility) {
     return (
-      <div className="space-y-8">
-        <div className="max-w-md mx-auto bg-white rounded-2xl shadow-xl border-2 border-gray-200 p-8">
-          <LoadingState message="Checking trial eligibility..." size="md" />
-        </div>
+      <div className="flex justify-center py-12">
+        <LoadingState message="Loading..." size="md" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* error banner if eligibility check failed */}
-      {eligibilityError && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <p className="text-sm text-yellow-800">{eligibilityError}</p>
-        </div>
-      )}
-
-      {/* special offer banner for trial-eligible users */}
-      {!currentPlan && isTrialEligible && !checkingEligibility && (
-        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-4 text-center">
-          <div className="flex items-center justify-center gap-3">
-            <div className="text-3xl font-bold">$1</div>
-            <div className="text-left">
-              <div className="font-semibold">First 30 Days</div>
-              <div className="text-sm opacity-90">Full access to all features</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* billing cycle toggle */}
-      <div className="flex justify-center">
-        <div className="bg-gray-100 p-1 rounded-lg inline-flex">
-          <button
-            onClick={() => setBillingCycle('monthly')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-              billingCycle === 'monthly'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingCycle('yearly')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
-              billingCycle === 'yearly'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Yearly
-            <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-              Save 20%
-            </span>
-          </button>
-        </div>
+    <div className="max-w-md mx-auto">
+      {/* billing toggle */}
+      <div className="flex justify-center items-center gap-4 mb-8">
+        <span className={`text-sm font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
+          Monthly
+        </span>
+        <button
+          onClick={() => setYearlyBilling(!yearlyBilling)}
+          aria-label="Toggle billing cycle"
+          className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${yearlyBilling ? 'translate-x-6' : 'translate-x-1'}`} />
+        </button>
+        <span className={`text-sm font-medium ${yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
+          Yearly
+          <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            Save 20%
+          </span>
+        </span>
       </div>
 
-      {/* single pricing card */}
-      <div className="max-w-md mx-auto">
-        <div className="relative bg-white rounded-2xl shadow-xl border-2 border-blue-500 p-8">
-          <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-            <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-              <Zap className="w-3 h-3 mr-1" />
-              SINGLE PLAN
-            </div>
+      {/* pricing card */}
+      <div className="bg-white rounded-2xl border-2 border-blue-500 p-8">
+        <div className="text-center mb-6">
+          <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-1">
+            ${price}<span className="text-xl text-gray-500 font-normal">/mo</span>
           </div>
-
-          <div className="space-y-4">
-            <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {plan.name}
-              </h3>
-              <div className="text-5xl font-bold mb-2">
-                ${price}
-                <span className="text-lg text-gray-500 font-normal">/mo</span>
-              </div>
-              <p className="text-gray-600 mb-2">{plan.description}</p>
-              {billingCycle === 'yearly' && (
-                <p className="text-sm text-green-600">
-                  ${totalYearly}/year (save ${savings})
-                </p>
-              )}
-            </div>
-
-            <ul className="space-y-3 mb-8 text-left">
-              {plan.features.map((feature, index) => (
-                <li key={index} className="flex items-start">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">{feature}</span>
-                </li>
-              ))}
-            </ul>
-
-            <LoadingButton
-              onClick={handleSelectPlan}
-              disabled={!!currentPlan || loading}
-              loading={loading}
-              className={`block w-full py-3 rounded-full font-medium transition-opacity ${
-                currentPlan
-                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:opacity-90'
-              }`}
-            >
-              {getButtonText()}
-            </LoadingButton>
-          </div>
+          {yearlyBilling && <p className="text-sm text-green-600">$192/year, save $48</p>}
+          {!yearlyBilling && <p className="text-sm text-gray-500">Billed monthly</p>}
         </div>
-      </div>
 
+        <div className="space-y-3 mb-8">
+          {plan.features.map((feature, index) => (
+            <div key={index} className="flex items-center">
+              <CheckCircle className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
+              <span className="text-sm text-gray-700">{feature}</span>
+            </div>
+          ))}
+        </div>
+
+        <LoadingButton
+          onClick={handleSelectPlan}
+          disabled={!!currentPlan || loading}
+          loading={loading}
+          loadingText="Processing..."
+          className={`w-full py-3 text-center rounded-lg font-medium transition-opacity cursor-pointer ${
+            currentPlan
+              ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+              : `${BRAND.buttonGradient} text-white hover:opacity-90`
+          }`}
+        >
+          {currentPlan ? 'Current Plan' : isTrialEligible ? 'Start $1 Trial' : 'Subscribe'}
+        </LoadingButton>
+
+        {isTrialEligible && (
+          <p className="text-center text-xs text-gray-500 mt-4">
+            $1 for 30 days, then {yearlyBilling ? '$192/year' : '$20/month'}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

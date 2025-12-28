@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import { billingClient } from '@/lib/stripe';
 import { PricingPlans } from './PricingPlans';
 import { LoadingState } from './LoadingState';
@@ -51,17 +52,16 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
   // allow access if exempt or has active subscription
   if (!isExempt && !hasActiveSubscription) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-4xl mx-auto px-4">
-          {/* header */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Subscribe to continue</h2>
-            <p className="text-gray-600 text-sm">
-              $1 for the first month, then $20/month or $192/year.
-            </p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors mb-6">
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back to home
+            </Link>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Subscribe to continue</h2>
+            <p className="text-gray-600">Choose your billing cycle to get started.</p>
           </div>
-
-          {/* pricing plans */}
           <PricingPlans onPlanSelect={checkSubscription} />
         </div>
       </div>
