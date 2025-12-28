@@ -70,7 +70,11 @@ export const Landing = () => {
       {/* hero */}
       <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-50 to-white pt-20">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-24 md:py-32 text-center">
-          <p className="text-sm font-medium text-blue-600 mb-6">Built for OwnerRez users</p>
+          <div className="flex items-center justify-center gap-1 mb-6">
+            <span className="text-sm font-medium text-gray-500">Built for</span>
+            <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5" />
+            <span className="text-sm font-medium text-gray-500">users</span>
+          </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
             Know which properties actually make money

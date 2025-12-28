@@ -20,6 +20,21 @@ interface PlatformRow {
   notes?: string
 }
 
+const generateMonthOptions = () => {
+  const options: { value: string; label: string }[] = []
+  const now = new Date()
+
+  // last 24 months + next 6 months
+  for (let i = -24; i <= 6; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    const value = format(date, 'yyyy-MM')
+    const label = format(date, 'MMMM yyyy')
+    options.push({ value, label })
+  }
+
+  return options.reverse()
+}
+
 export const PlatformFeeEntryModal = ({
   propertyId,
   propertyName,
@@ -147,43 +162,16 @@ export const PlatformFeeEntryModal = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Month
           </label>
-          <div className="flex gap-2">
-            <select
-              value={month.split('-')[1]}
-              onChange={(e) => {
-                const yr = month.split('-')[0]
-                setMonth(`${yr}-${e.target.value}`)
-              }}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="01">January</option>
-              <option value="02">February</option>
-              <option value="03">March</option>
-              <option value="04">April</option>
-              <option value="05">May</option>
-              <option value="06">June</option>
-              <option value="07">July</option>
-              <option value="08">August</option>
-              <option value="09">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
-            </select>
-            <select
-              value={month.split('-')[0]}
-              onChange={(e) => {
-                const mon = month.split('-')[1]
-                setMonth(`${e.target.value}-${mon}`)
-              }}
-              className="w-24 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              {Array.from({ length: 11 }, (_, i) => new Date().getFullYear() - 5 + i).map(yr => (
-                <option key={yr} value={yr}>{yr}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            required
+          >
+            {generateMonthOptions().map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -197,7 +185,7 @@ export const PlatformFeeEntryModal = ({
                 <select
                   value={row.platform}
                   onChange={(e) => updatePlatformRow(index, 'platform', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">Select platform</option>
@@ -214,7 +202,7 @@ export const PlatformFeeEntryModal = ({
                     step="0.01"
                     value={row.amount || ''}
                     onChange={(e) => updatePlatformRow(index, 'amount', parseFloat(e.target.value) || 0)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="0.00"
                     required
                   />
@@ -224,7 +212,7 @@ export const PlatformFeeEntryModal = ({
                   <button
                     type="button"
                     onClick={() => removePlatformRow(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm transition-colors cursor-pointer"
+                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                     title="Remove platform"
                   >
                     <X className="w-5 h-5" />
@@ -256,32 +244,30 @@ export const PlatformFeeEntryModal = ({
           </div>
         )}
 
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <p className="text-sm text-gray-600">
-            <strong>Where to find these fees:</strong>
-          </p>
-          <ul className="text-sm text-gray-600 mt-2 space-y-1 ml-4 list-disc">
-            <li>Airbnb: Earnings → Transaction History → "Guest service fee" column</li>
-            <li>Vrbo: Performance → Payouts → "Traveler Service Fee"</li>
-            <li>Booking.com: Extranet → Finance → Check commission details</li>
+        <details className="text-sm text-gray-500">
+          <summary className="cursor-pointer hover:text-gray-700">Where to find these fees</summary>
+          <ul className="mt-2 space-y-1 ml-4 list-disc text-gray-600">
+            <li>Airbnb: Earnings → Transaction History</li>
+            <li>Vrbo: Performance → Payouts</li>
+            <li>Booking.com: Extranet → Finance</li>
           </ul>
-        </div>
+        </details>
 
-        <div className="flex justify-end space-x-3 pt-4 border-t">
+        <div className="flex justify-end gap-3 pt-4 border-t">
           <button
             type="button"
             onClick={closeModal}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-sm cursor-pointer"
+            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
             disabled={isSubmitting}
           >
             Cancel
           </button>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-sm hover:opacity-90 disabled:opacity-50 cursor-pointer"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer font-medium"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Saving...' : `Save ${platformRows.filter(r => r.platform && r.amount > 0).length} Platform${platformRows.filter(r => r.platform && r.amount > 0).length !== 1 ? 's' : ''}`}
+            {isSubmitting ? 'Saving...' : 'Save Fees'}
           </button>
         </div>
       </form>

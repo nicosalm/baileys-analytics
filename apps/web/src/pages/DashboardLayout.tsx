@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth'
 import { DashboardProvider, useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Compass, Shield, ArrowLeft, Database } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Compass, Shield, ArrowLeft } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
@@ -193,9 +193,11 @@ export const DashboardLayout = () => {
             </div>
 
             <div className="bg-white rounded-2xl border-2 border-blue-500 p-8">
-              <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Database className="w-7 h-7 text-blue-600" />
-              </div>
+              <img
+                src="/logos/ownerrez-app-icon.png"
+                alt="OwnerRez"
+                className="w-16 h-16 rounded-xl mx-auto mb-6"
+              />
 
               <div className="space-y-3 mb-8">
                 <div className="flex items-center text-sm text-gray-700">

@@ -155,7 +155,7 @@ export const PlatformFeeCard = ({
                   {fees.map((fee: any) => (
                     <div 
                       key={fee.platform}
-                      className="flex justify-between items-center p-2 bg-gray-50 rounded-sm"
+                      className="flex justify-between items-center p-2 bg-gray-50 rounded-lg"
                     >
                       <div className="flex items-center">
                         <span className="font-medium text-sm capitalize">
@@ -193,7 +193,7 @@ export const PlatformFeeCard = ({
             
             {/* Warning if fees affect tax calculation */}
             {totalFees > 0 && (
-              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-sm">
+              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <div className="flex items-start">
                   <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5" />
                   <div className="text-xs text-yellow-800">
@@ -215,7 +215,7 @@ export const PlatformFeeCard = ({
             <p className="text-sm text-gray-600">No platform fees entered</p>
             <button
               onClick={handleAddFees}
-              className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-sm hover:opacity-90 cursor-pointer"
+              className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 cursor-pointer"
             >
               Add Fees
             </button>

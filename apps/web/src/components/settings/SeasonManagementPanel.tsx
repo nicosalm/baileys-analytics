@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonActive } from '@/hooks/use-api'
-import { Plus, Edit2, Calendar, Check, X } from 'lucide-react'
+import { Plus, Edit2, Calendar, Check, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import { ConfirmModal } from '@/components/ConfirmModal'
@@ -22,18 +22,15 @@ const SeasonForm: React.FC<{
       name: '',
       startMonth: 1,
       startDay: 1,
-      endMonth: 1,
-      endDay: 1
+      endMonth: 12,
+      endDay: 31
     }
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (!formData.name) {
-      return
-    }
+    if (!formData.name) return
 
     setIsSubmitting(true)
     try {
@@ -44,99 +41,85 @@ const SeasonForm: React.FC<{
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="md:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Season Name
-          </label>
+    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Season Name</label>
           <input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="e.g., High Season"
+            placeholder="e.g., Summer Season"
             required
           />
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Start Month
-          </label>
-          <select
-            value={formData.startMonth}
-            onChange={(e) => setFormData({ ...formData, startMonth: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {months.map((month, index) => (
-              <option key={index} value={index + 1}>{month}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Start Day
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="31"
-            value={formData.startDay}
-            onChange={(e) => setFormData({ ...formData, startDay: parseInt(e.target.value) || 1 })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            End Month
-          </label>
-          <select
-            value={formData.endMonth}
-            onChange={(e) => setFormData({ ...formData, endMonth: parseInt(e.target.value) })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            {months.map((month, index) => (
-              <option key={index} value={index + 1}>{month}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            End Day
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="31"
-            value={formData.endDay}
-            onChange={(e) => setFormData({ ...formData, endDay: parseInt(e.target.value) || 1 })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            required
-          />
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <div className="flex gap-2">
+              <select
+                value={formData.startMonth}
+                onChange={(e) => setFormData({ ...formData, startMonth: parseInt(e.target.value) })}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {months.map((month, index) => (
+                  <option key={index} value={index + 1}>{month}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={formData.startDay}
+                onChange={(e) => setFormData({ ...formData, startDay: parseInt(e.target.value) || 1 })}
+                className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <div className="flex gap-2">
+              <select
+                value={formData.endMonth}
+                onChange={(e) => setFormData({ ...formData, endMonth: parseInt(e.target.value) })}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {months.map((month, index) => (
+                  <option key={index} value={index + 1}>{month}</option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min="1"
+                max="31"
+                value={formData.endDay}
+                onChange={(e) => setFormData({ ...formData, endDay: parseInt(e.target.value) || 1 })}
+                className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-4">
+      <div className="flex items-center gap-2 mt-6 pt-4 border-t">
         <button
           type="submit"
           disabled={isSubmitting || !formData.name}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
         >
-          <Check className="w-4 h-4" />
-          {isEditing ? 'Update' : 'Add'} Season
+          {isEditing ? 'Save Changes' : 'Add Season'}
         </button>
         <button
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 cursor-pointer"
+          className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
         >
-          <X className="w-4 h-4 inline mr-1" />
           Cancel
         </button>
       </div>
@@ -149,63 +132,67 @@ const SeasonRow: React.FC<{
   onEdit: (season: Season) => void
   onDelete: (season: Season) => void
   onToggleActive: (season: Season) => void
-}> = ({ season, onEdit, onToggleActive }) => {
+}> = ({ season, onEdit, onDelete, onToggleActive }) => {
   const formatSeasonDate = (month: number, day: number) => {
     return `${months[month - 1]} ${day}`
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:bg-gray-50/50 transition-colors">
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-gray-500" />
-            <div>
-              <h4 className="text-sm font-medium text-gray-900">{season.name}</h4>
-              <div className="flex items-center gap-4 mt-1">
-                {season.isActive ? (
-                  <span className="text-xs text-green-600 flex items-center gap-1">
-                    <Check className="w-3 h-3" />
-                    Active Season
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-500">
-                    Inactive
-                  </span>
-                )}
-                <span className="text-xs text-gray-500">
-                  {formatSeasonDate(season.startMonth, season.startDay)} - {formatSeasonDate(season.endMonth, season.endDay)}
+    <div className={`bg-white rounded-xl border p-4 transition-colors ${
+      season.isActive ? 'border-green-200 bg-green-50/30' : 'border-gray-200'
+    }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+            season.isActive ? 'bg-green-100' : 'bg-gray-100'
+          }`}>
+            <Calendar className={`w-5 h-5 ${season.isActive ? 'text-green-600' : 'text-gray-500'}`} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="font-medium text-gray-900">{season.name}</h4>
+              {season.isActive && (
+                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                  Active
                 </span>
-              </div>
+              )}
             </div>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {formatSeasonDate(season.startMonth, season.startDay)} – {formatSeasonDate(season.endMonth, season.endDay)}
+            </p>
           </div>
-          
-          <div className="flex items-center gap-2">
-            {season.isActive ? (
-              <button
-                onClick={() => onToggleActive(season)}
-                className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1 cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-                Deactivate
-              </button>
-            ) : (
-              <button
-                onClick={() => onToggleActive(season)}
-                className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 flex items-center gap-1 cursor-pointer"
-              >
-                <Check className="w-4 h-4" />
-                Activate
-              </button>
-            )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {season.isActive ? (
             <button
-              onClick={() => onEdit(season)}
-              className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 flex items-center gap-1 cursor-pointer"
+              onClick={() => onToggleActive(season)}
+              className="px-3 py-1.5 text-gray-600 text-sm rounded-lg hover:bg-gray-100 cursor-pointer"
             >
-              <Edit2 className="w-4 h-4" />
-              Edit
+              Deactivate
             </button>
-          </div>
+          ) : (
+            <button
+              onClick={() => onToggleActive(season)}
+              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 cursor-pointer"
+            >
+              Activate
+            </button>
+          )}
+          <button
+            onClick={() => onEdit(season)}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
+            title="Edit"
+          >
+            <Edit2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => onDelete(season)}
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -218,9 +205,8 @@ export const SeasonManagementPanel: React.FC = () => {
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; season: Season | null }>({ show: false, season: null })
-  
-  const activeSeasons = seasons.filter(s => s.isActive).length
-  const inactiveSeasons = seasons.filter(s => !s.isActive).length
+
+  const activeSeason = seasons.find(s => s.isActive)
 
   const handleCreateSeason = async (data: SeasonFormData) => {
     const result = await createSeason(data)
@@ -297,41 +283,44 @@ export const SeasonManagementPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-start justify-between">
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Season Management</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">Season Management</h2>
             <p className="text-gray-600 text-sm">
-              Define operational seasons to filter analytics by actual booking periods
+              Define seasons to filter analytics by booking periods
             </p>
           </div>
-          <div className="flex gap-3">
-            <div className="bg-gray-50 rounded-lg px-4 py-3">
-              <div className="text-2xl font-bold text-blue-600">
-                {activeSeasons}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Active</div>
+          {!isAddingNew && !editingSeasonId && (
+            <button
+              onClick={() => setIsAddingNew(true)}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 flex items-center gap-2 cursor-pointer font-medium"
+            >
+              <Plus className="w-4 h-4" />
+              Add Season
+            </button>
+          )}
+        </div>
+
+        {activeSeason ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <Check className="w-4 h-4 text-green-600" />
             </div>
-            <div className="bg-gray-50 rounded-lg px-4 py-3">
-              <div className="text-2xl font-bold text-gray-400">
-                {inactiveSeasons}
-              </div>
-              <div className="text-xs text-gray-500 mt-1">Inactive</div>
+            <div>
+              <p className="text-sm font-medium text-green-800">Active Season: {activeSeason.name}</p>
+              <p className="text-xs text-green-700">
+                {months[activeSeason.startMonth - 1]} {activeSeason.startDay} – {months[activeSeason.endMonth - 1]} {activeSeason.endDay}
+              </p>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Configured Seasons</h3>
-        {!isAddingNew && !editingSeasonId && (
-          <button
-            onClick={() => setIsAddingNew(true)}
-            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 flex items-center gap-1 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Add Season
-          </button>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center gap-3">
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <Calendar className="w-4 h-4 text-gray-400" />
+            </div>
+            <p className="text-sm text-gray-600">No active season — showing all data</p>
+          </div>
         )}
       </div>
 
@@ -342,17 +331,10 @@ export const SeasonManagementPanel: React.FC = () => {
         />
       )}
 
-      <div className="space-y-3">
-        {seasons.length === 0 ? (
-          <div className="text-center py-8 bg-gray-50 rounded-lg shadow-sm border border-gray-200">
-            <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-            <p className="text-gray-600">No seasons defined yet</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Add your first season to start filtering your booking data
-            </p>
-          </div>
-        ) : (
-          seasons.map((season: Season) => (
+      {seasons.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-gray-700">Your Seasons</h3>
+          {seasons.map((season: Season) => (
             editingSeasonId === season.id ? (
               <SeasonForm
                 key={season.id}
@@ -376,9 +358,9 @@ export const SeasonManagementPanel: React.FC = () => {
                 onToggleActive={handleToggleActive}
               />
             )
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={deleteConfirm.show}

@@ -6,8 +6,7 @@ import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import { useNavigate } from 'react-router-dom'
 import {
-  RefreshCw, AlertCircle, Check, Link2, Link2Off,
-  Building2, Webhook
+  RefreshCw, AlertCircle, Check, Link2, Link2Off, Webhook
 } from 'lucide-react'
 import { ConfirmModal } from '@/components/ConfirmModal'
 
@@ -90,9 +89,11 @@ export const IntegrationsTab = () => {
         <div className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-blue-600" />
-              </div>
+              <img
+                src="/logos/ownerrez-app-icon.png"
+                alt="OwnerRez"
+                className="w-12 h-12 rounded-lg"
+              />
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">OwnerRez</h2>
                 <p className="text-gray-600 text-sm">
@@ -181,23 +182,6 @@ export const IntegrationsTab = () => {
         </div>
       </div>
 
-      {/* future integrations placeholder */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 opacity-60">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <Link2 className="w-6 h-6 text-gray-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">More Integrations Coming Soon</h2>
-              <p className="text-gray-600 text-sm">
-                Additional property management platforms and services will be available in future updates
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-      
       <ConfirmModal
         isOpen={disconnectModalOpen}
         onClose={() => setDisconnectModalOpen(false)}
