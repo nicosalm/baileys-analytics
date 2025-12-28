@@ -30,5 +30,3 @@ BEGIN
 END;
 $$;
 
--- To run this migration:
--- PGPASSWORD=***REMOVED*** psql -h db.ojpmtekljijcurgzrses.supabase.co -U postgres -d postgres -f apps/workers/migrations/update_oauth_states_table.sql
