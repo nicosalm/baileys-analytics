@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth'
@@ -11,255 +11,215 @@ export const AuthCallback = () => {
   const { refreshUser } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
+  const hasHandled = useRef(false)
 
+  // google oauth - listen for auth state changes
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const searchParams = new URLSearchParams(window.location.search)
-        
-        const code = searchParams.get('code')
-        const state = searchParams.get('state')
-        
-        // Check if this is an OwnerRez OAuth callback (has both code and state)
-        // OwnerRez callbacks have UUID state tokens
-        if (code && state && state.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-          // validate OAuth was initiated recently
-          const oauthInitiated = sessionStorage.getItem('oauth_initiated')
-          if (oauthInitiated) {
-            sessionStorage.removeItem('oauth_initiated')
-          }
+    if (hasHandled.current) return
 
-          try {
-            // first ensure we have a session
-            const { data: { session } } = await supabase.auth.getSession()
-            
-            const { api } = await import('@/lib/api')
-            
-            // if we have a session, set the token before making the oauth callback
-            if (session) {
-              api.setAccessToken(session.access_token)
-            }
-            
-            const result = await api.oauth.callback(code, state)
-            if (result.success) {
-              setStatus('success')
-              setMessage('Successfully connected to OwnerRez!')
-              
-              // Store that we need to sync after login
-              localStorage.setItem('pendingInitialSync', 'true')
-              
-              // refresh user to get updated connection status
-              await refreshUser()
-              
-              // wait a moment to ensure auth context updates
-              await new Promise(resolve => setTimeout(resolve, 500))
-              
-              // ensure we have a session after oauth
-              const { data: { session: currentSession } } = await supabase.auth.getSession()
-              
-              if (currentSession) {
-                // we have a session, redirect to dashboard with sync trigger
-                setTimeout(() => {
-                  navigate('/dashboard/overview?sync=initial')
-                }, 1500)
-              } else {
-                // no session, redirect to login with success message
-                setMessage('OwnerRez connected! Please log in to continue.')
-                setTimeout(() => {
-                  navigate('/login?oauth=success')
-                }, 2000)
-              }
-            } else {
-              setStatus('error')
-              setMessage(result.error || 'Failed to connect to OwnerRez')
-              setTimeout(() => navigate('/dashboard/settings'), 3000)
-            }
-          } catch (err) {
-            setStatus('error')
-            setMessage('Failed to complete OAuth connection')
-            setTimeout(() => navigate('/dashboard/settings'), 3000)
-          }
-          return
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (hasHandled.current) return
 
-        // handle PKCE code exchange (Google OAuth or email confirmation)
-        if (code && !state) {
-          try {
-            // Try to exchange the code for a session
-            const { error } = await supabase.auth.exchangeCodeForSession(code)
-            if (!error) {
-              // Check if we have a valid session now
-              const { data: { session } } = await supabase.auth.getSession()
-              if (session) {
-                // OAuth sign-in successful (e.g., Google)
-                await refreshUser()
-                setStatus('success')
-                setMessage('Signed in successfully!')
-                setTimeout(() => navigate('/dashboard/overview'), 1500)
-                return
-              }
-            }
-            // Fall through to email confirmation flow if session wasn't established
-            setStatus('success')
-            setMessage('Email confirmed! Please log in to continue.')
-            setTimeout(() => navigate('/login'), 2000)
-          } catch {
-            // Error during code exchange - likely email confirmation
-            setStatus('success')
-            setMessage('Email confirmed! Please log in to continue.')
-            setTimeout(() => navigate('/login'), 2000)
-          }
-          return
-        }
+      if (event === 'SIGNED_IN' && session) {
+        hasHandled.current = true
+        setStatus('success')
+        setMessage('Signed in successfully!')
+        navigate('/dashboard/overview')
+      }
+    })
 
-        const error = searchParams.get('error') || hashParams.get('error')
-        const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
-        
-        if (error) {
-          // Handle flow_state_not_found specifically - this often happens after OAuth
-          if (error === 'flow_state_not_found') {
-            // Check if user is already authenticated
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
-              // User is authenticated, likely just connected OwnerRez
-              // Check if we just came from OAuth by looking for code parameter
-              if (code) {
-                setStatus('success')
-                setMessage('Connection successful, preparing sync...')
-                setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1000)
-              } else {
-                setStatus('success')
-                setMessage('Already authenticated, redirecting...')
-                setTimeout(() => navigate('/dashboard/overview'), 1000)
-              }
-            } else {
-              // User needs to log in
-              setStatus('error')
-              setMessage('Session expired. Please log in again.')
-              setTimeout(() => navigate('/login'), 2000)
-            }
-          } else {
-            setStatus('error')
-            setMessage(errorDescription || 'Authentication failed')
-            setTimeout(() => navigate('/login'), 3000)
-          }
-          return
-        }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && !hasHandled.current) {
+        hasHandled.current = true
+        setStatus('success')
+        setMessage('Signed in successfully!')
+        navigate('/dashboard/overview')
+      }
+    })
 
-        const type = hashParams.get('type') || searchParams.get('type')
+    return () => subscription.unsubscribe()
+  }, [navigate])
 
-        if (!type) {
-          // check if session exists - supabase may have already established it via detectSessionInUrl
-          const { data: { session } } = await supabase.auth.getSession()
+  // specialized flows: errors, ownerrez, type-based
+  useEffect(() => {
+    if (hasHandled.current) return
+
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+    const searchParams = new URLSearchParams(window.location.search)
+
+    const code = searchParams.get('code')
+    const state = searchParams.get('state')
+    const error = searchParams.get('error') || hashParams.get('error')
+    const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
+    const type = hashParams.get('type') || searchParams.get('type')
+
+    if (error) {
+      hasHandled.current = true
+      if (error === 'flow_state_not_found') {
+        supabase.auth.getSession().then(async ({ data: { session } }) => {
           if (session) {
             setStatus('success')
-            setMessage('Email verified! Redirecting...')
-            setTimeout(() => navigate('/dashboard/overview'), 1500)
-            return
+            setMessage('Already authenticated, redirecting...')
+            setTimeout(() => navigate('/dashboard/overview'), 1000)
+          } else {
+            setStatus('error')
+            setMessage('Session expired. Please log in again.')
+            setTimeout(() => navigate('/login'), 2000)
           }
-          // no session and no type - likely email confirmed but session not established
-          // this can happen if PKCE exchange failed silently, user can still log in
-          setStatus('success')
-          setMessage('Please log in to continue.')
-          setTimeout(() => navigate('/login'), 2000)
-          return
-        }
+        })
+      } else {
+        setStatus('error')
+        setMessage(errorDescription || 'Authentication failed')
+        setTimeout(() => navigate('/login'), 3000)
+      }
+      return
+    }
 
-        switch (type) {
-          case 'signup':
-          case 'invite':
-            const { data: { session: signupSession }, error: signupError } = await supabase.auth.getSession()
-            
-            if (signupError || !signupSession) {
-              setStatus('success')
-              setMessage('Email confirmed successfully! Please log in.')
-              setTimeout(() => navigate('/login'), 2000)
-            } else {
-              setStatus('success')
-              setMessage('Email confirmed! Logging you in...')
-              setTimeout(() => navigate('/dashboard/overview'), 2000)
-            }
-            break
-            
-          case 'recovery':
-            // for PKCE flow, exchange the code for a session first
-            const recoveryCode = searchParams.get('code')
-            if (recoveryCode) {
-              try {
-                const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(recoveryCode)
-                if (!exchangeError) {
-                  setStatus('success')
-                  setMessage('Email verified! You can now reset your password.')
-                  setTimeout(() => navigate('/reset-password'), 2000)
-                } else {
-                  setStatus('error')
-                  setMessage('Failed to verify recovery link')
-                  setTimeout(() => navigate('/forgot-password'), 3000)
-                }
-              } catch {
-                setStatus('error')
-                setMessage('Recovery link expired or invalid')
-                setTimeout(() => navigate('/forgot-password'), 3000)
-              }
-            } else {
+    // ownerrez oauth (uuid state format)
+    const isOwnerRezOAuth = code && state &&
+      state.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
+
+    if (isOwnerRezOAuth) {
+      hasHandled.current = true
+      handleOwnerRezOAuth(code, state)
+      return
+    }
+
+    if (type) {
+      hasHandled.current = true
+      handleTypeBasedFlow(type, code)
+      return
+    }
+  }, [navigate, refreshUser])
+
+  const handleOwnerRezOAuth = async (code: string, state: string) => {
+    const oauthInitiated = sessionStorage.getItem('oauth_initiated')
+    if (oauthInitiated) {
+      sessionStorage.removeItem('oauth_initiated')
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const { api } = await import('@/lib/api')
+
+      if (session) {
+        api.setAccessToken(session.access_token)
+      }
+
+      const result = await api.oauth.callback(code, state)
+      if (result.success) {
+        setStatus('success')
+        setMessage('Successfully connected to OwnerRez!')
+
+        localStorage.setItem('pendingInitialSync', 'true')
+        await refreshUser()
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        const { data: { session: currentSession } } = await supabase.auth.getSession()
+
+        if (currentSession) {
+          setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1500)
+        } else {
+          setMessage('OwnerRez connected! Please log in to continue.')
+          setTimeout(() => navigate('/login?oauth=success'), 2000)
+        }
+      } else {
+        setStatus('error')
+        setMessage(result.error || 'Failed to connect to OwnerRez')
+        setTimeout(() => navigate('/dashboard/settings'), 3000)
+      }
+    } catch {
+      setStatus('error')
+      setMessage('Failed to complete OAuth connection')
+      setTimeout(() => navigate('/dashboard/settings'), 3000)
+    }
+  }
+
+  const handleTypeBasedFlow = async (type: string, code: string | null) => {
+    switch (type) {
+      case 'signup':
+      case 'invite': {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          setStatus('success')
+          setMessage('Email confirmed! Logging you in...')
+          setTimeout(() => navigate('/dashboard/overview'), 2000)
+        } else {
+          setStatus('success')
+          setMessage('Email confirmed successfully! Please log in.')
+          setTimeout(() => navigate('/login'), 2000)
+        }
+        break
+      }
+
+      case 'recovery': {
+        if (code) {
+          try {
+            const { error } = await supabase.auth.exchangeCodeForSession(code)
+            if (!error) {
               setStatus('success')
               setMessage('Email verified! You can now reset your password.')
               setTimeout(() => navigate('/reset-password'), 2000)
-            }
-            break
-            
-          case 'email_change':
-            try {
-              // Refresh user to update auth context with new email
-              await refreshUser()
-              setStatus('success')
-              setMessage('Email changed successfully!')
-              setTimeout(() => navigate('/dashboard/settings'), 2000)
-            } catch (error) {
-              setStatus('success')
-              setMessage('Email changed! Please refresh the page to see updates.')
-              setTimeout(() => navigate('/dashboard/settings'), 3000)
-            }
-            break
-            
-          case 'magiclink':
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-            
-            if (sessionError || !session) {
-              setStatus('error')
-              setMessage('Failed to establish session')
-              setTimeout(() => navigate('/login'), 3000)
-              return
-            }
-            
-            setStatus('success')
-            setMessage('Logged in successfully!')
-            setTimeout(() => navigate('/dashboard/overview'), 1500)
-            break
-            
-          default:
-            const { data: { session: defaultSession } } = await supabase.auth.getSession()
-            
-            if (defaultSession) {
-              setStatus('success')
-              setMessage('Authentication successful!')
-              setTimeout(() => navigate('/dashboard/overview'), 1500)
             } else {
               setStatus('error')
-              setMessage('Unknown authentication type')
-              setTimeout(() => navigate('/login'), 3000)
+              setMessage('Failed to verify recovery link')
+              setTimeout(() => navigate('/forgot-password'), 3000)
             }
+          } catch {
+            setStatus('error')
+            setMessage('Recovery link expired or invalid')
+            setTimeout(() => navigate('/forgot-password'), 3000)
+          }
+        } else {
+          setStatus('success')
+          setMessage('Email verified! You can now reset your password.')
+          setTimeout(() => navigate('/reset-password'), 2000)
         }
-      } catch (err) {
-        setStatus('error')
-        setMessage('An unexpected error occurred')
-        setTimeout(() => navigate('/login'), 3000)
+        break
+      }
+
+      case 'email_change': {
+        try {
+          await refreshUser()
+          setStatus('success')
+          setMessage('Email changed successfully!')
+          setTimeout(() => navigate('/dashboard/settings'), 2000)
+        } catch {
+          setStatus('success')
+          setMessage('Email changed! Please refresh the page to see updates.')
+          setTimeout(() => navigate('/dashboard/settings'), 3000)
+        }
+        break
+      }
+
+      case 'magiclink': {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        if (error || !session) {
+          setStatus('error')
+          setMessage('Failed to establish session')
+          setTimeout(() => navigate('/login'), 3000)
+          return
+        }
+        setStatus('success')
+        setMessage('Logged in successfully!')
+        setTimeout(() => navigate('/dashboard/overview'), 1500)
+        break
+      }
+
+      default: {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          setStatus('success')
+          setMessage('Authentication successful!')
+          setTimeout(() => navigate('/dashboard/overview'), 1500)
+        } else {
+          setStatus('error')
+          setMessage('Unknown authentication type')
+          setTimeout(() => navigate('/login'), 3000)
+        }
       }
     }
-
-    handleCallback()
-  }, [navigate])
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
@@ -277,7 +237,7 @@ export const AuthCallback = () => {
               <LoadingState message="Processing authentication..." />
             </div>
           )}
-          
+
           {status === 'success' && (
             <div className="text-center">
               <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -287,7 +247,7 @@ export const AuthCallback = () => {
               <p className="text-gray-600">{message}</p>
             </div>
           )}
-          
+
           {status === 'error' && (
             <div className="text-center">
               <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">

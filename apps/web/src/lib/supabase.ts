@@ -9,33 +9,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// create a custom storage adapter that handles production environments better
-const customStorage = {
-  getItem: (key: string) => {
-    try {
-      return window.localStorage.getItem(key)
-    } catch (error) {
-      console.warn('localStorage.getItem failed:', error)
-      return null
-    }
-  },
-  setItem: (key: string, value: string) => {
-    try {
-      window.localStorage.setItem(key, value)
-    } catch (error) {
-      console.warn('localStorage.setItem failed:', error)
-    }
-  },
-  removeItem: (key: string) => {
-    try {
-      window.localStorage.removeItem(key)
-    } catch (error) {
-      console.warn('localStorage.removeItem failed:', error)
-    }
-  }
-}
-
-// ensure we only create one instance of the supabase client
 let supabaseInstance: ReturnType<typeof createClient> | null = null
 
 if (!supabaseInstance) {
@@ -44,10 +17,9 @@ if (!supabaseInstance) {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce',
+      flowType: 'implicit',
       storageKey: 'baileys-auth',
-      storage: customStorage,
-      debug: import.meta.env.DEV // only enable debug in development
+      debug: import.meta.env.DEV
     }
   })
 }
