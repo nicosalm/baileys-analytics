@@ -284,7 +284,7 @@ export const Settings = () => {
   }
 
   const handleSendFeedback = () => {
-    window.open('https://github.com/baileys-analytics/feedback/issues', '_blank')
+    window.location.href = 'mailto:support@baileysanalytics.com'
   }
   
   return (
