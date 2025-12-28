@@ -81,7 +81,7 @@ export const Landing = () => {
           </h1>
 
           <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Pull 3 years of booking data from OwnerRez. See revenue, occupancy, and fee breakdowns in minutes.
+            Pull 3 years of booking data from OwnerRez. See revenue and occupancy breakdowns in minutes.
           </p>
 
           {!isAuthenticated && (
