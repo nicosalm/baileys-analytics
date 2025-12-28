@@ -83,12 +83,33 @@ export const AuthCallback = () => {
           return
         }
 
-        // handle PKCE code exchange for email confirmation (signup, magic link, etc.)
-        // redirect to login - user will log in manually
+        // handle PKCE code exchange (Google OAuth or email confirmation)
         if (code && !state) {
-          setStatus('success')
-          setMessage('Email confirmed! Please log in to continue.')
-          setTimeout(() => navigate('/login'), 2000)
+          try {
+            // Try to exchange the code for a session
+            const { error } = await supabase.auth.exchangeCodeForSession(code)
+            if (!error) {
+              // Check if we have a valid session now
+              const { data: { session } } = await supabase.auth.getSession()
+              if (session) {
+                // OAuth sign-in successful (e.g., Google)
+                await refreshUser()
+                setStatus('success')
+                setMessage('Signed in successfully!')
+                setTimeout(() => navigate('/dashboard/overview'), 1500)
+                return
+              }
+            }
+            // Fall through to email confirmation flow if session wasn't established
+            setStatus('success')
+            setMessage('Email confirmed! Please log in to continue.')
+            setTimeout(() => navigate('/login'), 2000)
+          } catch {
+            // Error during code exchange - likely email confirmation
+            setStatus('success')
+            setMessage('Email confirmed! Please log in to continue.')
+            setTimeout(() => navigate('/login'), 2000)
+          }
           return
         }
 

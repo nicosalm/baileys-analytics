@@ -56,6 +56,12 @@
   }
 }
 
+/* Override react-google-button hover glow */
+.google-btn-wrapper > div:hover,
+.google-btn-wrapper > div > div:hover {
+  box-shadow: none !important;
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;

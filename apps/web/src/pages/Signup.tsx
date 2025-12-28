@@ -7,14 +7,16 @@ import { PasswordRequirements } from '@/components/PasswordRequirements'
 import { ArrowLeft, Mail, Lock, Compass, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { validatePassword } from '@/utils/password'
+import GoogleButton from 'react-google-button'
 
 export const Signup = () => {
-  const { signup } = useAuth()
+  const { signup, signInWithGoogle } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
@@ -43,6 +45,16 @@ export const Signup = () => {
     } else {
       addToast('error', result.error || 'Failed to create account')
     }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true)
+    const success = await signInWithGoogle()
+    if (!success) {
+      setGoogleLoading(false)
+      addToast('error', 'Failed to initiate Google sign-up. Please try again.')
+    }
+    // If success, the browser will redirect to Google
   }
 
   // Show success message if signup was successful
@@ -205,10 +217,29 @@ export const Signup = () => {
               type="submit"
               loading={loading}
               loadingText="Creating account..."
-              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:shadow-lg transition-all transform hover:scale-[1.02]`}
+              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium cursor-pointer hover:shadow-lg transition-all transform hover:scale-[1.02]`}
             >
               Start $1 Trial
             </LoadingButton>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gradient-to-br from-blue-50 via-white to-blue-50 text-gray-500">or sign up with</span>
+              </div>
+            </div>
+
+            {/* Google Sign-Up Button */}
+            <div className="google-btn-wrapper transition-all transform hover:scale-[1.02] hover:shadow-lg rounded-sm">
+              <GoogleButton
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+            </div>
           </form>
 
           {/* Sign in link */}

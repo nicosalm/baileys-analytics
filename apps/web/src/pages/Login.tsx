@@ -5,15 +5,17 @@ import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
 import { ArrowLeft, Mail, Lock, Compass, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
+import GoogleButton from 'react-google-button'
 
 export const Login = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { login, state } = useAuth()
+  const { login, signInWithGoogle, state } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const hasShownSuccessToast = useRef(false)
   const hasShownOAuthSuccess = useRef(false)
@@ -64,6 +66,16 @@ export const Login = () => {
       addToast('error', 'Invalid email or password. Please try again.')
     }
     // if success, the useEffect above will handle navigation
+  }
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true)
+    const success = await signInWithGoogle()
+    if (!success) {
+      setGoogleLoading(false)
+      addToast('error', 'Failed to initiate Google sign-in. Please try again.')
+    }
+    // If success, the browser will redirect to Google
   }
 
   return (
@@ -150,10 +162,29 @@ export const Login = () => {
               type="submit"
               loading={loading}
               loadingText="Signing in..."
-              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:shadow-lg transition-all transform hover:scale-[1.02]`}
+              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium cursor-pointer hover:shadow-lg transition-all transform hover:scale-[1.02]`}
             >
               Sign in
             </LoadingButton>
+
+            {/* Divider */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gradient-to-br from-blue-50 via-white to-blue-50 text-gray-500">or continue with</span>
+              </div>
+            </div>
+
+            {/* Google Sign-In Button */}
+            <div className="google-btn-wrapper transition-all transform hover:scale-[1.02] hover:shadow-lg rounded-sm">
+              <GoogleButton
+                onClick={handleGoogleSignIn}
+                disabled={googleLoading}
+                style={{ width: '100%', cursor: 'pointer' }}
+              />
+            </div>
           </form>
 
           {/* Sign up link */}
