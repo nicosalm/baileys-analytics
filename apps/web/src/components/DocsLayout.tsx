@@ -34,8 +34,8 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
               </div>
               <div className="ml-3 flex items-center">
                 <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
-                <ChevronRight className="w-5 h-5 mx-2 text-gray-400" />
-                <span className="text-xl text-gray-600">Docs</span>
+                <ChevronRight className="hidden sm:block w-5 h-5 mx-2 text-gray-400" />
+                <span className="hidden sm:block text-xl text-gray-600">Docs</span>
               </div>
             </Link>
 
@@ -51,8 +51,8 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
         </div>
       </header>
 
-      <div className="flex-1 max-w-7xl mx-auto px-6 py-6 w-full">
-        <div className="grid md:grid-cols-4 gap-8">
+      <div className="flex-1 max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6 w-full">
+        <div className="grid md:grid-cols-4 gap-4 md:gap-8">
           {/* sidebar navigation */}
           <aside className="md:col-span-1">
             <nav className="space-y-1">
@@ -79,7 +79,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
                 )
               })}
 
-              <div className="pt-6 mt-6 border-t">
+              <div className="pt-4 mt-4 md:pt-6 md:mt-6 border-t">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   Legal
                 </h3>
@@ -104,7 +104,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
                 })}
               </div>
 
-              <div className="pt-6 mt-6 border-t">
+              <div className="pt-4 mt-4 md:pt-6 md:mt-6 border-t">
                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   Resources
                 </h3>

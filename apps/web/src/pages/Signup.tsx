@@ -94,7 +94,7 @@ export const Signup = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex">
       {/* Left side - Signup Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 lg:px-16 xl:px-24">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
         <div className="max-w-md w-full mx-auto">
           {/* Back to home link */}
           <Link to="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-all mb-8">
@@ -119,9 +119,6 @@ export const Signup = () => {
           {/* Signup form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email address
-              </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -131,15 +128,12 @@ export const Signup = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="you@example.com"
+                  placeholder="name@example.com"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -149,7 +143,7 @@ export const Signup = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Create a strong password"
+                  placeholder="Password"
                 />
                 <button
                   type="button"
@@ -168,9 +162,6 @@ export const Signup = () => {
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm password
-              </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -180,7 +171,7 @@ export const Signup = () => {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="Re-enter your password"
+                  placeholder="Confirm password"
                 />
                 <button
                   type="button"
@@ -193,24 +184,16 @@ export const Signup = () => {
               </div>
             </div>
 
-            <div className="flex items-start">
-              <input
-                id="terms"
-                type="checkbox"
-                required
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1"
-              />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
-                I agree to the{' '}
-                <Link to="/terms" className="text-blue-600 hover:text-blue-700">
-                  Terms of Service
-                </Link>{' '}
-                and{' '}
-                <Link to="/privacy" className="text-blue-600 hover:text-blue-700">
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
+            <p className="text-sm text-gray-500 text-center">
+              By clicking to continue, you agree to our{' '}
+              <Link to="/terms" className="text-blue-600 hover:text-blue-700">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link to="/privacy" className="text-blue-600 hover:text-blue-700">
+                Privacy Policy
+              </Link>
+            </p>
 
             <LoadingButton
               type="submit"
@@ -227,7 +210,7 @@ export const Signup = () => {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gradient-to-br from-blue-50 via-white to-blue-50 text-gray-500">OR CONTINUE WITH</span>
+                <span className="px-2 bg-white text-gray-500">OR CONTINUE WITH</span>
               </div>
             </div>
 
