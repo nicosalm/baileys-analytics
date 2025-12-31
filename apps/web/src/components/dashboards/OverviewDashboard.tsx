@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useCallback, memo } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
@@ -23,26 +23,56 @@ const MAX_INDIVIDUAL_PROPERTIES = 8
 const MIN_OTHER_REVENUE_PORTION = 0.2
 const TOP_PROPERTIES_DEFAULT_PORTION = 0.8
 
-const AlertCard = ({ alert }: { alert: any }) => {
-  const icons = {
-    warning: <AlertTriangle className="w-4 h-4 text-yellow-600" />,
-    info: <AlertCircle className="w-4 h-4 text-blue-600" />,
-    success: <CheckCircle className="w-4 h-4 text-green-600" />
-  }
+const alertIcons = {
+  warning: <AlertTriangle className="w-4 h-4 text-yellow-600" />,
+  info: <AlertCircle className="w-4 h-4 text-blue-600" />,
+  success: <CheckCircle className="w-4 h-4 text-green-600" />
+}
 
-  return (
-    <div className="flex items-center justify-between py-2 border-b last:border-0">
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <div className="shrink-0">{(icons as any)[alert.type]}</div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium truncate">{alert.title}</p>
-          <p className="text-xs text-gray-500">
-            {formatDateDisplay(new Date(alert.timestamp))}
-          </p>
-        </div>
+const AlertCard = memo(({ alert }: { alert: any }) => (
+  <div className="flex items-center justify-between py-2 border-b last:border-0">
+    <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className="shrink-0">{(alertIcons as any)[alert.type]}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{alert.title}</p>
+        <p className="text-xs text-gray-500">
+          {formatDateDisplay(new Date(alert.timestamp))}
+        </p>
       </div>
     </div>
-  )
+  </div>
+))
+
+AlertCard.displayName = 'AlertCard'
+
+// extracted tooltip component to module scope
+const RevenueChartTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0)
+    return (
+      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+        <p className="font-semibold text-sm mb-2">{label}</p>
+        <div className="space-y-1 text-xs">
+          {payload.slice().reverse().map((entry: any, index: number) => (
+            <div key={index} className="flex justify-between gap-4">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+                <span className="text-gray-600">{entry.name}:</span>
+              </div>
+              <span className="font-medium">{formatCompactCurrency(entry.value)}</span>
+            </div>
+          ))}
+          <div className="pt-1 mt-1 border-t border-gray-200">
+            <div className="flex justify-between gap-4 font-semibold">
+              <span>Total:</span>
+              <span className="text-green-600">{formatCompactCurrency(total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+  return null
 }
 
 
@@ -53,12 +83,20 @@ export const OverviewDashboard = () => {
   const tagIds = useTagIds()
   const navigate = useNavigate()
 
-  const handleMetricCardClick = (tab: string) => {
-    // Preserve query params when navigating
+  const handleMetricCardClick = useCallback((tab: string) => {
     const currentParams = new URLSearchParams(window.location.search)
     const newPath = `/dashboard/${tab}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
     navigate(newPath)
-  }
+  }, [navigate])
+
+  const handleActivityClick = useCallback((activity: any) => {
+    if (activity.bookingId) {
+      openModal({
+        type: 'booking',
+        bookingId: activity.bookingId
+      })
+    }
+  }, [openModal])
 
   const { data, error, isLoading } = useDashboardBatch(
     'overview',
@@ -517,36 +555,7 @@ export const OverviewDashboard = () => {
               stroke="#6B7280"
               tick={{ fontSize: 11 }}
             />
-            <Tooltip
-              content={({ active, payload, label }: any) => {
-                if (active && payload && payload.length) {
-                  const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0)
-                  return (
-                    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-                      <p className="font-semibold text-sm mb-2">{label}</p>
-                      <div className="space-y-1 text-xs">
-                        {payload.slice().reverse().map((entry: any, index: number) => (
-                          <div key={index} className="flex justify-between gap-4">
-                            <div className="flex items-center gap-1">
-                              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
-                              <span className="text-gray-600">{entry.name}:</span>
-                            </div>
-                            <span className="font-medium">{formatCompactCurrency(entry.value)}</span>
-                          </div>
-                        ))}
-                        <div className="pt-1 mt-1 border-t border-gray-200">
-                          <div className="flex justify-between gap-4 font-semibold">
-                            <span>Total:</span>
-                            <span className="text-green-600">{formatCompactCurrency(total)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }
-                return null
-              }}
-            />
+            <Tooltip content={<RevenueChartTooltip />} />
             <Legend
               wrapperStyle={{ paddingTop: '10px' }}
               iconType="rect"
@@ -625,14 +634,7 @@ export const OverviewDashboard = () => {
                   className={`flex items-center justify-between py-2 border-b last:border-0 ${
                     activity.bookingId ? 'hover:bg-gray-50 px-2 -mx-2 rounded transition-colors cursor-pointer' : ''
                   }`}
-                  onClick={() => {
-                    if (activity.bookingId) {
-                      openModal({
-                        type: 'booking',
-                        bookingId: activity.bookingId
-                      })
-                    }
-                  }}
+                  onClick={() => handleActivityClick(activity)}
                 >
                   <div className="flex-1 min-w-0 mr-2">
                     <p className="text-sm font-medium truncate">{activity.description}</p>

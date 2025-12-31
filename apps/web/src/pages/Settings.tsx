@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState, useEffect, lazy, Suspense, ComponentType } from 'react'
+import { useState, useEffect, lazy, Suspense, ComponentType, useCallback } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
@@ -195,18 +195,18 @@ export const Settings = () => {
 
   const { user } = state
 
-  const handleTabChange = (tab: SettingsTab) => {
+  const handleTabChange = useCallback((tab: SettingsTab) => {
     setActiveTab(tab)
     setSearchParams({ tab })
-  }
-  
-  const handleChangePassword = () => {
+  }, [setSearchParams])
+
+  const handleChangePassword = useCallback(() => {
     setChangePasswordModalOpen(true)
     setNewPassword('')
     setConfirmNewPassword('')
     setShowNewPassword(false)
     setShowConfirmPassword(false)
-  }
+  }, [])
 
   const handleConfirmChangePassword = async () => {
     // Trim whitespace
@@ -283,9 +283,14 @@ export const Settings = () => {
     }
   }
 
-  const handleSendFeedback = () => {
+  const handleSendFeedback = useCallback(() => {
     window.location.href = 'mailto:support@baileysanalytics.com'
-  }
+  }, [])
+
+  const handleLogout = useCallback(async () => {
+    await logout()
+    window.location.href = '/'
+  }, [logout])
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
@@ -313,10 +318,7 @@ export const Settings = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <button
-                onClick={async () => {
-                  await logout()
-                  window.location.href = '/'
-                }}
+                onClick={handleLogout}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
               >
                 <LogOut className="w-4 h-4" />

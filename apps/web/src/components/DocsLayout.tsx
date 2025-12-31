@@ -8,18 +8,19 @@ interface DocsLayoutProps {
   children: ReactNode
 }
 
+// moved to module scope to avoid recreation on every render
+const docPages = [
+  { path: '/help', label: 'Help & FAQ', icon: HelpCircle },
+  { path: '/docs/ownerrez-data', label: 'OwnerRez Data Guide', icon: Database },
+]
+
+const legalPages = [
+  { path: '/terms', label: 'Terms of Service', icon: FileText },
+  { path: '/privacy', label: 'Privacy Policy', icon: Shield }
+]
+
 export const DocsLayout = ({ children }: DocsLayoutProps) => {
   const location = useLocation()
-
-  const docPages = [
-    { path: '/help', label: 'Help & FAQ', icon: HelpCircle },
-    { path: '/docs/ownerrez-data', label: 'OwnerRez Data Guide', icon: Database },
-  ]
-
-  const legalPages = [
-    { path: '/terms', label: 'Terms of Service', icon: FileText },
-    { path: '/privacy', label: 'Privacy Policy', icon: Shield }
-  ]
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-50">

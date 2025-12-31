@@ -1,4 +1,4 @@
-import { useState, useMemo, ReactNode, FC } from 'react'
+import { useState, useMemo, useCallback, ReactNode, FC, memo } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { useDashboard } from '@/contexts/dashboard'
@@ -17,7 +17,7 @@ interface TabButtonProps {
   children: ReactNode
 }
 
-const TabButton: FC<TabButtonProps> = ({ active, onClick, children }) => (
+const TabButton: FC<TabButtonProps> = memo(({ active, onClick, children }) => (
   <button
     onClick={onClick}
     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
@@ -28,7 +28,9 @@ const TabButton: FC<TabButtonProps> = ({ active, onClick, children }) => (
   >
     {children}
   </button>
-)
+))
+
+TabButton.displayName = 'TabButton'
 
 export const FinancialDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
@@ -91,7 +93,13 @@ export const FinancialDashboard = () => {
 
   useErrorToast(error, 'Failed to load financial data')
 
-  const handlePeriodClick = (dateStr: string) => {
+  // memoized tab click handlers
+  const handleTabPL = useCallback(() => setActiveTab('pl'), [])
+  const handleTabRevenue = useCallback(() => setActiveTab('revenue_analysis'), [])
+  const handleTabCashflow = useCallback(() => setActiveTab('cashflow'), [])
+  const handleTabTax = useCallback(() => setActiveTab('tax_center'), [])
+
+  const handlePeriodClick = useCallback((dateStr: string) => {
     let chartData: any[] = []
     
     switch (activeTab) {
@@ -198,19 +206,19 @@ export const FinancialDashboard = () => {
     }
     
     // Open modal with full date context
-    openModal({ 
-      type: 'period', 
-      month, 
+    openModal({
+      type: 'period',
+      month,
       year,
       day,
       originalDate: dateStr,
       granularity
     })
-  }
+  }, [activeTab, financialData?.monthlyTrend, revenueData?.byMonth, cashFlowData?.byMonth, taxData?.tax?.byMonth, openModal])
 
-  const handlePropertyClick = (propertyId: string) => {
+  const handlePropertyClick = useCallback((propertyId: string) => {
     openModal({ type: 'property', propertyId, propertyName: '' })
-  }
+  }, [openModal])
 
   return (
     <div className="space-y-6">
@@ -247,16 +255,16 @@ export const FinancialDashboard = () => {
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Financial Analysis</h3>
           <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-            <TabButton active={activeTab === 'pl'} onClick={() => setActiveTab('pl')}>
+            <TabButton active={activeTab === 'pl'} onClick={handleTabPL}>
               P&L View
             </TabButton>
-            <TabButton active={activeTab === 'revenue_analysis'} onClick={() => setActiveTab('revenue_analysis')}>
+            <TabButton active={activeTab === 'revenue_analysis'} onClick={handleTabRevenue}>
               Revenue
             </TabButton>
-            <TabButton active={activeTab === 'cashflow'} onClick={() => setActiveTab('cashflow')}>
+            <TabButton active={activeTab === 'cashflow'} onClick={handleTabCashflow}>
               Cash Flow
             </TabButton>
-            <TabButton active={activeTab === 'tax_center'} onClick={() => setActiveTab('tax_center')}>
+            <TabButton active={activeTab === 'tax_center'} onClick={handleTabTax}>
               Tax Center
             </TabButton>
           </div>

@@ -5,7 +5,7 @@ import {
   ArrowRight, CheckCircle, Compass,
   DollarSign, BarChart2, TrendingUp, Shield, Zap, Lock
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { BRAND } from '@/constants'
 import { useInView } from '@/hooks'
 
@@ -25,6 +25,9 @@ export const Landing = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const handleLogout = useCallback(() => logout(), [logout])
+  const handleToggleBilling = useCallback(() => setYearlyBilling(prev => !prev), [])
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* nav */}
@@ -43,7 +46,7 @@ export const Landing = () => {
               {isAuthenticated ? (
                 <>
                   <button
-                    onClick={() => logout()}
+                    onClick={handleLogout}
                     className="hidden sm:block px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm cursor-pointer"
                   >
                     Logout
@@ -238,7 +241,7 @@ export const Landing = () => {
           <div className="flex justify-center items-center gap-4 mb-10">
             <span className={`text-sm font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>Monthly</span>
             <button
-              onClick={() => setYearlyBilling(!yearlyBilling)}
+              onClick={handleToggleBilling}
               aria-label="Toggle billing cycle"
               className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
             >

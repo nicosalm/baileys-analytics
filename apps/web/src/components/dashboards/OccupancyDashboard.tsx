@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { BookingGapAlert } from '@/components/BookingGapAlert'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
@@ -122,32 +122,32 @@ export const OccupancyDashboard = () => {
     [currentData.byProperty]
   )
 
-  const formatPeriodDisplay = (dateStr: string): string => {
+  const formatPeriodDisplay = useCallback((dateStr: string): string => {
     if (!dateStr) return 'N/A'
-    
+
     if (dataGranularity === 'Daily' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = dateStr.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     }
-    
+
     if (dataGranularity === 'Weekly' && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [year, month, day] = dateStr.split('-')
       const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
       return `Week of ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
     }
-    
+
     const [year, month] = dateStr.split('-')
     const date = new Date(parseInt(year), parseInt(month) - 1)
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-  }
+  }, [dataGranularity])
 
-  const handlePeriodClick = (data: {activeLabel?: string}) => {
+  const handlePeriodClick = useCallback((data: {activeLabel?: string}) => {
     if (data && data.activeLabel) {
       const clickedData = chartData.find((d: {month: string; fullMonth: string}) => d.month === data.activeLabel)
       if (clickedData) {
         let granularity: 'daily' | 'weekly' | 'monthly' = 'monthly'
-        
+
         switch (dataGranularity) {
           case 'Daily':
             granularity = 'daily'
@@ -160,9 +160,9 @@ export const OccupancyDashboard = () => {
             granularity = 'monthly'
             break
         }
-        
+
         const [year, month, day] = clickedData.fullMonth.split('-')
-        
+
         openModal({
           type: 'period',
           month,
@@ -173,7 +173,36 @@ export const OccupancyDashboard = () => {
         })
       }
     }
-  }
+  }, [chartData, dataGranularity, openModal])
+
+  // memoized property click handler
+  const handlePropertyClick = useCallback((property: OccupancyByProperty) => {
+    openModal({
+      type: 'property',
+      propertyId: property.propertyId,
+      propertyName: property.propertyName
+    })
+  }, [openModal])
+
+  // memoized XAxis config
+  const xAxisConfig = useMemo(() => {
+    const shouldRotate = (dataGranularity === 'Daily' && chartData.length > 15) ||
+                         (dataGranularity === 'Weekly' && chartData.length > 10)
+    return {
+      angle: shouldRotate ? -45 : 0,
+      textAnchor: shouldRotate ? 'end' : 'middle' as const,
+      height: shouldRotate ? 60 : undefined,
+      interval: dataGranularity === 'Daily' && chartData.length > 30
+        ? Math.ceil(chartData.length / 15)
+        : dataGranularity === 'Weekly' && chartData.length > 12 ? 1 : 0
+    }
+  }, [dataGranularity, chartData.length])
+
+  // memoized tooltip formatter
+  const tooltipFormatter = useCallback((value: number, name: string) => [
+    `${value.toFixed(1)}%`,
+    name === 'rate' ? 'Current' : comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'
+  ], [comparisonMode])
 
   return (
     <div className="space-y-6">
@@ -293,26 +322,19 @@ export const OccupancyDashboard = () => {
       >
         <LineChart data={chartData} onClick={handlePeriodClick} style={{ cursor: 'pointer' }}>
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
+          <XAxis
             dataKey="month"
-            angle={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? -45 : 0}
-            textAnchor={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 'end' : 'middle'}
-            height={(dataGranularity === 'Daily' && chartData.length > 15) || (dataGranularity === 'Weekly' && chartData.length > 10) ? 60 : undefined}
-            interval={
-              dataGranularity === 'Daily' && chartData.length > 30 ? Math.ceil(chartData.length / 15) : 
-              dataGranularity === 'Weekly' && chartData.length > 12 ? 1 : 
-              0
-            }
+            angle={xAxisConfig.angle}
+            textAnchor={xAxisConfig.textAnchor}
+            height={xAxisConfig.height}
+            interval={xAxisConfig.interval}
           />
           <YAxis
             tickFormatter={(value: number) => `${value}%`}
             domain={[0, 100]}
           />
           <Tooltip
-            formatter={(value: number, name: string) => [
-              `${value.toFixed(1)}%`, 
-              name === 'rate' ? 'Current' : comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'
-            ]}
+            formatter={tooltipFormatter}
             labelFormatter={(label: any) => label}
             contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
           />
@@ -360,7 +382,7 @@ export const OccupancyDashboard = () => {
                   <div
                     key={property.propertyId}
                     className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
-                    onClick={() => openModal({ type: 'property', propertyId: property.propertyId, propertyName: property.propertyName })}
+                    onClick={() => handlePropertyClick(property)}
                   >
                     <div className="flex-1 min-w-0 mr-4">
                       <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>

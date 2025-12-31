@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
@@ -41,6 +41,10 @@ export const GuestsDashboard = () => {
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
     const [viewMode, setViewMode] = useState<'all' | 'repeat' | 'new' | 'top'>('all')
+
+    // use ref for date to avoid callback recreation
+    const dateRangeFromRef = useRef(filters.dateRange.from)
+    dateRangeFromRef.current = filters.dateRange.from
 
     useErrorToast(error, 'Failed to load guests data')
 
@@ -113,7 +117,7 @@ export const GuestsDashboard = () => {
     const handleGuestClick = useCallback((guest: GuestListItem) => {
         const isTopSpender = topPerformers.spenders.some((g: GuestListItem) => g.id === guest.id)
         const isFrequent = topPerformers.frequent.some((g: GuestListItem) => g.id === guest.id)
-        const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
+        const isNew = new Date(guest.firstVisit) >= new Date(dateRangeFromRef.current)
 
         openModal({
             type: 'guest',
@@ -125,7 +129,13 @@ export const GuestsDashboard = () => {
                 isNew
             }
         })
-    }, [openModal, topPerformers, filters.dateRange.from])
+    }, [openModal, topPerformers])
+
+    // memoized view mode handlers
+    const handleViewAll = useCallback(() => setViewMode('all'), [])
+    const handleViewRepeat = useCallback(() => setViewMode('repeat'), [])
+    const handleViewNew = useCallback(() => setViewMode('new'), [])
+    const handleViewTop = useCallback(() => setViewMode('top'), [])
 
     const handleSort = useCallback((column: string) => {
         if (column === sortBy) {
@@ -135,6 +145,11 @@ export const GuestsDashboard = () => {
             setSortOrder('desc')
         }
     }, [sortBy])
+
+    // memoized maxSpent for revenue column - must be defined before columns
+    const maxSpent = useMemo(() =>
+        data?.guests ? Math.max(...data.guests.map((g: GuestListItem) => g.periodSpent || 0)) : 0
+    , [data?.guests])
 
     const columns = useMemo(() => [
         {
@@ -183,9 +198,8 @@ export const GuestsDashboard = () => {
             sortable: true,
             width: 150,
             render: (guest: GuestListItem) => {
-                const maxSpent = Math.max(...data.guests.map((g: GuestListItem) => g.periodSpent || 0))
-                const spentPercentage = ((guest.periodSpent || 0) / maxSpent) * 100
-                
+                const spentPercentage = maxSpent > 0 ? ((guest.periodSpent || 0) / maxSpent) * 100 : 0
+
                 return (
                     <div>
                         <div className="flex items-center gap-2">
@@ -245,7 +259,7 @@ export const GuestsDashboard = () => {
                 />
             )
         }
-    ], [data, topPerformers, filters.dateRange.from])
+    ], [maxSpent, topPerformers, dateRangeFromRef])
 
     const sourceChartData = useMemo(() =>
         (data?.metrics?.guestsBySource || []).map((source: GuestSourceData, index: number) => ({
@@ -282,13 +296,32 @@ export const GuestsDashboard = () => {
 
     const tagChartData = useMemo(() =>
         tagDistribution
-            ?.slice(0, 15) // Show more tags in treemap
+            ?.slice(0, 15)
             .map((tag: GuestTagDistribution, index: number) => ({
                 name: tag.name || 'Unknown',
-                size: tag.count || 0, // Treemap uses 'size' instead of 'value'
-                value: tag.count || 0, // Keep for tooltip
+                size: tag.count || 0,
+                value: tag.count || 0,
                 color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
             })) || [], [tagDistribution])
+
+    // memoized pie chart totals
+    const sourceChartTotal = useMemo(() =>
+        sourceChartData.reduce((sum: number, item: GuestSourceData) => sum + (item.count || 0), 0)
+    , [sourceChartData])
+
+    // memoized pie chart label function
+    const pieChartLabel = useCallback((entry: any) => {
+        const percent = ((entry.count / sourceChartTotal) * 100).toFixed(0)
+        const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
+        return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
+    }, [sourceChartTotal])
+
+    // memoized tag chart derived values
+    const tagChartDerived = useMemo(() => {
+        const maxCount = tagChartData.length > 0 ? Math.max(...tagChartData.map((t: any) => t.value)) : 0
+        const totalTags = tagDistribution.reduce((sum: number, t: any) => sum + t.count, 0)
+        return { maxCount, totalTags }
+    }, [tagChartData, tagDistribution])
 
     if (isLoading || !data) {
         return (
@@ -433,12 +466,7 @@ export const GuestsDashboard = () => {
                             cx="50%"
                             cy="50%"
                             labelLine={false}
-                            label={(entry: any) => {
-                                const total = sourceChartData.reduce((sum: number, item: GuestSourceData) => sum + (item.count || 0), 0)
-                                const percent = ((entry.count / total) * 100).toFixed(0)
-                                const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
-                                return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
-                            }}
+                            label={pieChartLabel}
                             outerRadius={80}
                             fill="#8884d8"
                             dataKey="count"
@@ -464,11 +492,9 @@ export const GuestsDashboard = () => {
                 >
                     <div className="space-y-3 overflow-y-auto max-h-[280px] pr-2">
                         {tagChartData.map((tag: any, index: number) => {
-                            const maxCount = Math.max(...tagChartData.map((t: any) => t.value))
-                            const percentage = (tag.value / maxCount) * 100
-                            const totalTags = tagDistribution.reduce((sum: number, t: any) => sum + t.count, 0)
-                            const overallPercent = ((tag.value / totalTags) * 100).toFixed(0)
-                            
+                            const percentage = tagChartDerived.maxCount > 0 ? (tag.value / tagChartDerived.maxCount) * 100 : 0
+                            const overallPercent = tagChartDerived.totalTags > 0 ? ((tag.value / tagChartDerived.totalTags) * 100).toFixed(0) : '0'
+
                             return (
                                 <div key={tag.name} className="flex items-center gap-3">
                                     <div className="flex-1">
@@ -502,7 +528,7 @@ export const GuestsDashboard = () => {
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
                         <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
                             <button
-                                onClick={() => setViewMode('all')}
+                                onClick={handleViewAll}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'all'
                                         ? 'bg-white text-gray-900 shadow-sm'
@@ -512,7 +538,7 @@ export const GuestsDashboard = () => {
                                 All
                             </button>
                             <button
-                                onClick={() => setViewMode('repeat')}
+                                onClick={handleViewRepeat}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'repeat'
                                         ? 'bg-white text-gray-900 shadow-sm'
@@ -522,7 +548,7 @@ export const GuestsDashboard = () => {
                                 Repeat
                             </button>
                             <button
-                                onClick={() => setViewMode('new')}
+                                onClick={handleViewNew}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'new'
                                         ? 'bg-white text-gray-900 shadow-sm'
@@ -532,7 +558,7 @@ export const GuestsDashboard = () => {
                                 New
                             </button>
                             <button
-                                onClick={() => setViewMode('top')}
+                                onClick={handleViewTop}
                                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                                     viewMode === 'top'
                                         ? 'bg-white text-gray-900 shadow-sm'
