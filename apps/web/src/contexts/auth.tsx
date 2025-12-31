@@ -14,6 +14,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<boolean>
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signInWithGoogle: () => Promise<boolean>
+  signInWithMicrosoft: () => Promise<boolean>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<boolean>
   updatePassword: (newPassword: string) => Promise<boolean>
@@ -266,6 +267,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const signInWithMicrosoft = async (): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      return !error
+    } catch {
+      return false
+    }
+  }
+
   const logout = async () => {
     try {
       await supabase.auth.signOut()
@@ -465,7 +480,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []) // removed processSession from deps to prevent re-runs
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, logout, resetPassword, updatePassword, updateEmail, refreshUser }}>
+    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, logout, resetPassword, updatePassword, updateEmail, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
