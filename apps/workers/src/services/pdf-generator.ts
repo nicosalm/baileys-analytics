@@ -19,29 +19,31 @@ export class PDFGenerator {
 
   async generatePDF(reportData: ReportData): Promise<ArrayBuffer> {
     const doc = new jsPDF()
-    let yPosition = 20
-    
+
     const { period, sections } = reportData
-    
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text('Quick Report', 105, yPosition, { align: 'center' })
-    yPosition += 8
-    
+
+    // add header bar on first page
+    this.addPageHeader(doc, 'Quick Report')
+    let yPosition = 22
+
+    // period and generated info
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.text(`Period: ${this.formatDate(period.from)} to ${this.formatDate(period.to)}`, 105, yPosition, { align: 'center' })
-    doc.text(`Generated: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 105, yPosition + 5, { align: 'center' })
-    yPosition += 15
+    doc.setTextColor(80, 80, 80)
+    doc.text(`Period: ${this.formatDate(period.from)} to ${this.formatDate(period.to)}`, 14, yPosition)
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, yPosition, { align: 'right' })
+    doc.setTextColor(0, 0, 0)
+    yPosition += 10
     
     const renderedModules = new Set<string>()
     
     for (const section of sections) {
       if (!section || !section.title) continue
-      
+
       if (yPosition > 260) {
         doc.addPage()
-        yPosition = 20
+        this.addPageHeader(doc, 'Quick Report')
+        yPosition = 22
       }
       
       const startY = yPosition
@@ -52,13 +54,11 @@ export class PDFGenerator {
       }
     }
     
-    doc.setFontSize(8)
-    doc.setFont('helvetica', 'normal')
+    // add footer to all pages
     const pageCount = doc.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i)
-      doc.text(`Page ${i} of ${pageCount}`, 105, 285, { align: 'center' })
-      doc.text('Baileys Analytics', 20, 285)
+      this.addPageFooter(doc, i, pageCount)
     }
     
     return doc.output('arraybuffer')
@@ -97,7 +97,7 @@ export class PDFGenerator {
     if (!section.data) {
       doc.setFontSize(10)
       doc.setFont('helvetica', 'italic')
-      doc.text(section.error || 'No data available', 20, yPosition)
+      doc.text(section.error || 'No data available', 14, yPosition)
       return yPosition + 10
     }
     
@@ -142,17 +142,14 @@ export class PDFGenerator {
   private addOperationalList(doc: jsPDF, section: any, yPos: number): number {
     const { module, title, data } = section
     const items = Array.isArray(data) ? data : []
-    
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text(title.toUpperCase(), 20, yPos)
-    yPos += 8
-    
+
+    yPos = this.addSectionTitle(doc, title.toUpperCase(), yPos)
+
     if (items.length === 0) {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(80, 80, 80)
-      doc.text(`No ${module} scheduled today`, 20, yPos)
+      doc.text(`No ${module} scheduled today`, 14, yPos)
       doc.setTextColor(0, 0, 0)
       return yPos + 10
     }
@@ -187,8 +184,7 @@ export class PDFGenerator {
       startY: yPos,
       head: [headers],
       body: rows,
-      theme: 'plain',
-      styles: { fontSize: 8, cellPadding: 2 },
+      ...this.getTableStyles(),
       columnStyles: module === 'arrivals' ? {
         2: { halign: 'center' },
         3: { halign: 'center' },
@@ -199,23 +195,20 @@ export class PDFGenerator {
         3: { halign: 'right' }
       }
     })
-    
+
     return (doc as any).lastAutoTable.finalY + 5
   }
-  
+
   private addBookingsDetails(doc: jsPDF, data: any, yPos: number): number {
     const bookings = Array.isArray(data) ? data : []
-    
+
     if (bookings.length === 0) {
       doc.setFontSize(10)
-      doc.text('No bookings found for this period', 20, yPos)
+      doc.text('No bookings found for this period', 14, yPos)
       return yPos + 10
     }
-    
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('BOOKING DETAILS', 20, yPos)
-    yPos += 8
+
+    yPos = this.addSectionTitle(doc, 'BOOKING DETAILS', yPos)
     
     const headers = ['Property', 'Guest', 'Dates', 'Nights', 'Amount', 'Channel']
     const rows = bookings.slice(0, 20).map((booking: any) => [
@@ -231,8 +224,7 @@ export class PDFGenerator {
       startY: yPos,
       head: [headers],
       body: rows,
-      theme: 'plain',
-      styles: { fontSize: 8, cellPadding: 2 },
+      ...this.getTableStyles(),
       columnStyles: {
         3: { halign: 'center' },
         4: { halign: 'right' },
@@ -240,15 +232,12 @@ export class PDFGenerator {
       },
       foot: this.showTotals ? [this.calculateTotals(headers, rows)] : undefined
     })
-    
+
     return (doc as any).lastAutoTable.finalY + 5
   }
-  
+
   private addFinancialSummary(doc: jsPDF, data: any, yPos: number): number {
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('FINANCIAL SUMMARY', 20, yPos)
-    yPos += 8
+    yPos = this.addSectionTitle(doc, 'FINANCIAL SUMMARY', yPos)
     
     const revenue = data.revenue || 0
     const platformFees = data.platformFees || 0
@@ -259,11 +248,11 @@ export class PDFGenerator {
     doc.setTextColor(80, 80, 80)
     doc.text(
       `${this.formatCurrency(revenue)} Gross  •  ${this.formatCurrency(platformFees)} Fees  •  ${this.formatCurrency(netRevenue)} Net`,
-      20,
+      14,
       yPos
     )
     doc.setTextColor(0, 0, 0)
-    yPos += 8
+    yPos += 6
 
     const financialData = [
       ['Gross Revenue', this.formatCurrency(revenue)],
@@ -272,13 +261,12 @@ export class PDFGenerator {
       ['Bookings', (data.bookingCount || 0).toString()],
       ['Avg Booking Value', this.formatCurrency(data.avgBookingValue || 0)]
     ]
-    
+
     autoTable(doc, {
       startY: yPos,
       head: [['Metric', 'Amount']],
       body: financialData,
-      theme: 'plain',
-      styles: { fontSize: 8, cellPadding: 2 },
+      ...this.getTableStyles(),
       columnStyles: {
         1: { halign: 'right' }
       }
@@ -304,32 +292,28 @@ export class PDFGenerator {
         startY: yPos,
         head: [trendHeaders],
         body: trendRows,
-        theme: 'plain',
-        styles: { fontSize: 8, cellPadding: 2 },
+        ...this.getTableStyles(),
         columnStyles: {
           1: { halign: 'right' },
           2: { halign: 'center' },
           3: { halign: 'right' }
         }
       })
-      
+
       yPos = (doc as any).lastAutoTable.finalY + 5
     }
-    
+
     return yPos
   }
-  
+
   private addPropertyPerformance(doc: jsPDF, data: any, yPos: number): number {
     const properties = Array.isArray(data) ? data : []
-    
+
     if (properties.length === 0) {
       return yPos
     }
-    
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('PROPERTY PERFORMANCE', 20, yPos)
-    yPos += 8
+
+    yPos = this.addSectionTitle(doc, 'PROPERTY PERFORMANCE', yPos)
     
     if (data.gapAnalysis) {
       const { singleNightGaps = 0, twoNightGaps = 0, threeNightGaps = 0 } = data.gapAnalysis
@@ -348,13 +332,12 @@ export class PDFGenerator {
           startY: yPos,
           head: [gapHeaders],
           body: gapRows,
-          theme: 'plain',
-          styles: { fontSize: 8, cellPadding: 2 },
+          ...this.getTableStyles(),
           columnStyles: {
             1: { halign: 'center' }
           }
         })
-        
+
         yPos = (doc as any).lastAutoTable.finalY + 8
       }
     }
@@ -378,8 +361,7 @@ export class PDFGenerator {
       startY: yPos,
       head: [headers],
       body: rows,
-      theme: 'plain',
-      styles: { fontSize: 8, cellPadding: 2 },
+      ...this.getTableStyles(),
       columnStyles: {
         1: { halign: 'right' },
         2: { halign: 'center' },
@@ -388,15 +370,12 @@ export class PDFGenerator {
       },
       foot: this.showTotals ? [this.calculateTotals(headers, rows)] : undefined
     })
-    
+
     return (doc as any).lastAutoTable.finalY + 5
   }
-  
+
   private addGuestMetrics(doc: jsPDF, data: any, yPos: number): number {
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('GUEST ANALYTICS', 20, yPos)
-    yPos += 8
+    yPos = this.addSectionTitle(doc, 'GUEST ANALYTICS', yPos)
     
     const totalGuests = data.totalGuests || 0
     const repeatGuests = data.repeatGuests || 0
@@ -407,7 +386,7 @@ export class PDFGenerator {
       doc.setFontSize(8)
       doc.setFont('helvetica', 'italic')
       doc.setTextColor(120, 120, 120)
-      doc.text('No guest data available for this period', 20, yPos)
+      doc.text('No guest data available for this period', 14, yPos)
       doc.setTextColor(0, 0, 0)
       return yPos + 10
     }
@@ -417,7 +396,7 @@ export class PDFGenerator {
     doc.setTextColor(80, 80, 80)
     doc.text(
       `${totalGuests} Unique Guests  •  ${repeatGuests} Repeat (${this.formatPercentage(repeatRate)})  •  ${this.formatCurrency(avgSpend)} Avg Spend`,
-      20,
+      14,
       yPos
     )
     doc.setTextColor(0, 0, 0)
@@ -436,15 +415,14 @@ export class PDFGenerator {
         startY: yPos,
         head: [headers],
         body: rows,
-        theme: 'plain',
-        styles: { fontSize: 8, cellPadding: 2 },
+        ...this.getTableStyles(),
         columnStyles: {
           1: { halign: 'center' },
           2: { halign: 'right' },
           3: { halign: 'right' }
         }
       })
-      
+
       yPos = (doc as any).lastAutoTable.finalY + 5
     } else {
       const basicData = [
@@ -453,29 +431,25 @@ export class PDFGenerator {
         ['Average Spend per Guest', this.formatCurrency(avgSpend)],
         ['Average Stay Length', `${(data.avgStayLength || 0).toFixed(1)} nights`]
       ]
-      
+
       autoTable(doc, {
         startY: yPos,
         head: [['Metric', 'Value']],
         body: basicData,
-        theme: 'plain',
-        styles: { fontSize: 8, cellPadding: 2 },
+        ...this.getTableStyles(),
         columnStyles: {
           1: { halign: 'right' }
         }
       })
-      
+
       yPos = (doc as any).lastAutoTable.finalY + 5
     }
-    
+
     return yPos
   }
-  
+
   private addTaxSummary(doc: jsPDF, data: any, yPos: number): number {
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('TAX SUMMARY', 20, yPos)
-    yPos += 8
+    yPos = this.addSectionTitle(doc, 'TAX SUMMARY', yPos)
     
     const effectiveRate = data.effectiveRate || (data.totalRevenue > 0 ? (data.actualTax / data.totalRevenue) * 100 : 0)
     
@@ -484,7 +458,7 @@ export class PDFGenerator {
     doc.setTextColor(80, 80, 80)
     doc.text(
       `${this.formatCurrency(data.actualTax || data.estimatedTax || 0)} Total Tax  •  ${this.formatPercentage(effectiveRate / 100)} Effective Rate  •  ${data.bookingCount || 0} Bookings`,
-      20,
+      14,
       yPos
     )
     doc.setTextColor(0, 0, 0)
@@ -502,15 +476,14 @@ export class PDFGenerator {
       startY: yPos,
       head: [['Metric', 'Amount']],
       body: taxData,
-      theme: 'plain',
-      styles: { fontSize: 8, cellPadding: 2 },
+      ...this.getTableStyles(),
       columnStyles: {
         1: { halign: 'right' }
       }
     })
-    
+
     yPos = (doc as any).lastAutoTable.finalY + 8
-    
+
     if (data.byJurisdiction && data.byJurisdiction.length > 0) {
       const jurisdictionHeaders = ['Jurisdiction', 'Type', 'Total Tax', 'Owner', 'Platform']
       const jurisdictionRows = data.byJurisdiction.map((j: any) => [
@@ -520,13 +493,12 @@ export class PDFGenerator {
         this.formatCurrency(j.ownerRemitted || 0),
         this.formatCurrency(j.platformRemitted || 0)
       ])
-      
+
       autoTable(doc, {
         startY: yPos,
         head: [jurisdictionHeaders],
         body: jurisdictionRows,
-        theme: 'plain',
-        styles: { fontSize: 8, cellPadding: 2 },
+        ...this.getTableStyles(),
         columnStyles: {
           1: { halign: 'center' },
           2: { halign: 'right' },
@@ -534,24 +506,21 @@ export class PDFGenerator {
           4: { halign: 'right' }
         }
       })
-      
+
       yPos = (doc as any).lastAutoTable.finalY + 5
     }
-    
+
     return yPos
   }
-  
+
   private addChannelPerformance(doc: jsPDF, data: any, yPos: number): number {
     const channels = Array.isArray(data) ? data : []
-    
+
     if (channels.length === 0) {
       return yPos
     }
-    
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('CHANNEL PERFORMANCE', 20, yPos)
-    yPos += 8
+
+    yPos = this.addSectionTitle(doc, 'CHANNEL PERFORMANCE', yPos)
     
     const headers = ['Channel', 'Bookings', 'Revenue', 'Avg Value']
     const rows = channels.map((c: any) => [
@@ -565,8 +534,7 @@ export class PDFGenerator {
       startY: yPos,
       head: [headers],
       body: rows,
-      theme: 'plain',
-      styles: { fontSize: 8, cellPadding: 2 },
+      ...this.getTableStyles(),
       columnStyles: {
         1: { halign: 'center' },
         2: { halign: 'right' },
@@ -574,21 +542,18 @@ export class PDFGenerator {
       },
       foot: this.showTotals ? [this.calculateTotals(headers, rows)] : undefined
     })
-    
+
     return (doc as any).lastAutoTable.finalY + 5
   }
-  
+
   private addMonthlyTrends(doc: jsPDF, data: any, yPos: number): number {
     const trends = Array.isArray(data) ? data : []
-    
+
     if (trends.length === 0) {
       return yPos
     }
-    
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('MONTHLY TRENDS', 20, yPos)
-    yPos += 8
+
+    yPos = this.addSectionTitle(doc, 'MONTHLY TRENDS', yPos)
     
     const headers = ['Month', 'Revenue', 'Bookings', 'Occupancy']
     const rows = trends.slice(-12).map((t: any) => {
@@ -613,21 +578,75 @@ export class PDFGenerator {
       startY: yPos,
       head: [headers],
       body: rows,
-      theme: 'plain',
-      styles: { fontSize: 8, cellPadding: 2 },
+      ...this.getTableStyles(),
       columnStyles: {
         1: { halign: 'right' },
         2: { halign: 'center' },
         3: { halign: 'center' }
       }
     })
-    
+
     return (doc as any).lastAutoTable.finalY + 5
   }
-  
+
   // helper methods
   private showTotals = true
-  
+
+  private addPageHeader(doc: jsPDF, reportType: string): void {
+    doc.setFillColor(40, 40, 40)
+    doc.rect(0, 0, 210, 12, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Baileys Analytics', 15, 8)
+    doc.text(reportType, 195, 8, { align: 'right' })
+    doc.setTextColor(0, 0, 0)
+    doc.setFont('helvetica', 'normal')
+  }
+
+  private addPageFooter(doc: jsPDF, pageNum: number, totalPages: number): void {
+    doc.setDrawColor(180, 180, 180)
+    doc.line(15, 280, 195, 280)
+    doc.setFontSize(8)
+    doc.setTextColor(100, 100, 100)
+    doc.text(`Page ${pageNum} of ${totalPages}`, 105, 287, { align: 'center' })
+    doc.setTextColor(0, 0, 0)
+  }
+
+  private addSectionTitle(doc: jsPDF, title: string, yPos: number): number {
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(title, 14, yPos)
+    doc.setDrawColor(60, 60, 60)
+    doc.line(14, yPos + 2, 196, yPos + 2)
+    doc.setFont('helvetica', 'normal')
+    return yPos + 8
+  }
+
+  private getTableStyles() {
+    return {
+      theme: 'grid' as const,
+      headStyles: {
+        fillColor: [40, 40, 40] as [number, number, number],
+        textColor: [255, 255, 255] as [number, number, number],
+        fontStyle: 'bold' as const,
+        fontSize: 8
+      },
+      footStyles: {
+        fillColor: [60, 60, 60] as [number, number, number],
+        textColor: [255, 255, 255] as [number, number, number],
+        fontStyle: 'bold' as const,
+        fontSize: 8
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        lineColor: [120, 120, 120] as [number, number, number],
+        lineWidth: 0.1
+      }
+    }
+  }
+
   private calculateTotals(headers: string[], rows: any[][]): string[] {
     return headers.map((header, colIndex) => {
       if (colIndex === 0) return 'Total'

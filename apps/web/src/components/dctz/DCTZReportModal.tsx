@@ -8,7 +8,6 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle2,
-  Download,
   Edit3
 } from 'lucide-react'
 import { DCTZGuestFeeEntry } from './DCTZGuestFeeEntry'
@@ -168,69 +167,6 @@ export const DCTZReportModal = ({ onClose }: DCTZReportModalProps) => {
     }
   }
 
-  const downloadReport = () => {
-    if (!report) return
-
-    const totalTax = report.taxCalculation.line3_grossLodgingSales * DCTZ_RATE
-
-    const lines = [
-      'DOOR COUNTY TOURISM ZONE - Monthly Room Tax Report',
-      '═'.repeat(60),
-      `Property: ${report.property.name}`,
-      `Period: ${report.period.monthName} ${report.period.year}`,
-      '',
-      'LODGING ESTABLISHMENT',
-      '─'.repeat(60),
-      `  1. Total available rental unit nights: ${report.lodgingEstablishment.line1_availableNights}`,
-      `  2. Number rented unit nights: ${report.lodgingEstablishment.line2_rentedNights}`,
-      '',
-      'TAX CALCULATION (for DCTZ form)',
-      '─'.repeat(60),
-      `  3. Gross Lodging Sales: ${formatCurrency(report.taxCalculation.line3_grossLodgingSales)}`,
-      `     (Your Revenue: ${formatCurrency(report.breakdown.ownerRevenue)} + Guest Fees: ${formatCurrency(report.breakdown.guestServiceFees)})`,
-      '',
-      `  4. Exemptions: ${formatCurrency(report.taxCalculation.line4_exemptions)}`,
-      '',
-      `  5. Sales where tax was collected on your behalf:`,
-      `     (Guest service fees only): ${formatCurrency(report.taxCalculation.line5_marketplaceSales)}`,
-      '',
-      `     5a. Airbnb tax (on guest fee): ${formatCurrency(report.taxCalculation.line5a_airbnbTax)}`,
-      `     5b. VRBO tax (on guest fee): ${formatCurrency(report.taxCalculation.line5b_vrboTax)}`,
-      `     5c. Expedia tax (on guest fee): ${formatCurrency(report.taxCalculation.line5c_expediaTax)}`,
-      `     5d. Booking.com tax: ${formatCurrency(report.taxCalculation.line5d_bookingComTax)}`,
-      `     5e. Evolve tax (on guest fee): ${formatCurrency(report.taxCalculation.line5e_evolveTax)}`,
-      '',
-      '═'.repeat(60),
-      'YOUR TAX BREAKDOWN',
-      '─'.repeat(60),
-      `  Your Revenue: ${formatCurrency(report.breakdown.ownerRevenue)}`,
-      `  Your Tax (8%): ${formatCurrency(report.summary.ownerTaxDue)}`,
-      '',
-      `  Platform Guest Fees: ${formatCurrency(report.breakdown.guestServiceFees)}`,
-      `  Platform Tax Paid (8%): ${formatCurrency(report.summary.totalPaidOnBehalf)}`,
-      '',
-      `  Total Taxable (Line 3): ${formatCurrency(report.taxCalculation.line3_grossLodgingSales)}`,
-      `  Total Tax (8%): ${formatCurrency(totalTax)}`,
-      '',
-      '═'.repeat(60),
-      `  YOU OWE DCTZ: ${formatCurrency(report.summary.totalAmountDue)}`,
-      '═'.repeat(60),
-    ]
-
-    const content = lines.join('\n')
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `DCTZ_Report_${report.property.name.replace(/\s+/g, '_')}_${report.period.year}_${String(report.period.month).padStart(2, '0')}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-
-    addToast('success', 'Report downloaded')
-  }
-
   if (showFeeEntry && selectedProperty) {
     const property = properties.find(p => p.id === selectedProperty)
     return (
@@ -352,23 +288,12 @@ export const DCTZReportModal = ({ onClose }: DCTZReportModalProps) => {
         {report && (
           <div className="border border-gray-200 rounded-lg overflow-hidden">
             <div className="bg-teal-50 px-4 py-3 border-b border-teal-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-teal-900">
-                    {report.property.name}
-                  </h3>
-                  <p className="text-sm text-teal-700">
-                    {report.period.monthName} {report.period.year}
-                  </p>
-                </div>
-                <button
-                  onClick={downloadReport}
-                  className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  Download
-                </button>
-              </div>
+              <h3 className="font-semibold text-teal-900">
+                {report.property.name}
+              </h3>
+              <p className="text-sm text-teal-700">
+                {report.period.monthName} {report.period.year}
+              </p>
             </div>
 
             <div className="p-4 space-y-4 text-sm">
