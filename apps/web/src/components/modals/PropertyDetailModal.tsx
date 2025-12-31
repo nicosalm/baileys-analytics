@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
@@ -30,21 +30,54 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
     filters.selectedTags.map(t => t.id)
   )
 
-  const subtitle = isLoading ? "Loading property details..." : 
-                   error ? "Unable to load property details" : 
+  const subtitle = isLoading ? "Loading property details..." :
+                   error ? "Unable to load property details" :
                    `Performance metrics for ${propertyName}`
 
-  const monthlyChartData = data?.monthlyData?.map((m: any) => ({
-    month: new Date(m.month).toLocaleDateString('en-US', { month: 'short' }),
-    revenue: m.revenue,
-    bookings: m.bookings,
-    occupancy: m.occupancy
-  })) || []
+  const monthlyChartData = useMemo(() =>
+    data?.monthlyData?.map((m: any) => ({
+      month: new Date(m.month).toLocaleDateString('en-US', { month: 'short' }),
+      revenue: m.revenue,
+      bookings: m.bookings,
+      occupancy: m.occupancy
+    })) || []
+  , [data?.monthlyData])
 
-  const platformData = data?.revenueByPlatform?.map((p: any, index: number) => ({
-    ...p,
-    color: CHART_COLORS[index % CHART_COLORS.length]
-  })) || []
+  const platformData = useMemo(() =>
+    data?.revenueByPlatform?.map((p: any, index: number) => ({
+      ...p,
+      color: CHART_COLORS[index % CHART_COLORS.length]
+    })) || []
+  , [data?.revenueByPlatform])
+
+  // memoized platform total for pie chart label
+  const platformTotal = useMemo(() =>
+    platformData.reduce((sum: number, p: any) => sum + p.revenue, 0)
+  , [platformData])
+
+  // memoized pie chart label function
+  const pieChartLabel = useCallback((entry: any) => {
+    const percent = platformTotal > 0 ? ((entry.revenue / platformTotal) * 100).toFixed(0) : '0'
+    const name = entry.platform.length > 18 ? entry.platform.substring(0, 18) + '...' : entry.platform
+    return `${name} (${percent}%)`
+  }, [platformTotal])
+
+  // memoized tab handlers
+  const handleTabOverview = useCallback(() => setActiveTab('overview'), [])
+  const handleTabBookings = useCallback(() => setActiveTab('bookings'), [])
+  const handleTabRevenue = useCallback(() => setActiveTab('revenue'), [])
+
+  // memoized guest click handler
+  const handleGuestClick = useCallback((guestId: string, guestName: string) => {
+    openModal({ type: 'guest', guestId, guestName })
+  }, [openModal])
+
+  // memoized tooltip formatter
+  const tooltipFormatter = useCallback((value: any, name: string) => {
+    if (name === 'Revenue') return formatCurrency(value)
+    if (name === 'Occupancy') return `${value}%`
+    return value
+  }, [])
 
   return (
     <Modal
@@ -153,7 +186,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
         <div className="border-b">
           <nav className="flex space-x-6">
             <button
-              onClick={() => setActiveTab('overview')}
+              onClick={handleTabOverview}
               className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'overview'
                   ? 'border-blue-600 text-blue-600'
@@ -163,7 +196,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
               Performance Charts
             </button>
             <button
-              onClick={() => setActiveTab('bookings')}
+              onClick={handleTabBookings}
               className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'bookings'
                   ? 'border-blue-600 text-blue-600'
@@ -173,7 +206,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
               Recent Bookings
             </button>
             <button
-              onClick={() => setActiveTab('revenue')}
+              onClick={handleTabRevenue}
               className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'revenue'
                   ? 'border-blue-600 text-blue-600'
@@ -198,12 +231,8 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
                     <XAxis dataKey="month" />
                     <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
                     <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
-                    <Tooltip 
-                      formatter={(value: any, name: string) => {
-                        if (name === 'Revenue') return formatCurrency(value)
-                        if (name === 'Occupancy') return `${value}%`
-                        return value
-                      }}
+                    <Tooltip
+                      formatter={tooltipFormatter}
                       contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
                     />
                     <Line yAxisId="left" type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} name="Revenue" strokeWidth={2} />
@@ -236,11 +265,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
                     <tr
                       key={booking.id}
                       className="border-t hover:bg-gray-50 cursor-pointer"
-                      onClick={() => openModal({ 
-                        type: 'guest', 
-                        guestId: booking.guestId, 
-                        guestName: booking.guestName 
-                      })}
+                      onClick={() => handleGuestClick(booking.guestId, booking.guestName)}
                     >
                       <td className="p-4">
                         <div>
@@ -284,12 +309,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={(entry: any) => {
-                          const total = platformData.reduce((sum: number, p: any) => sum + p.revenue, 0)
-                          const percent = ((entry.revenue / total) * 100).toFixed(0)
-                          const name = entry.platform.length > 18 ? entry.platform.substring(0, 18) + '...' : entry.platform
-                          return `${name} (${percent}%)`
-                        }}
+                        label={pieChartLabel}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="revenue"

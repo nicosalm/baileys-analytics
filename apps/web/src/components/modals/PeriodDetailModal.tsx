@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react'
 import { usePeriodDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import { Calendar, DollarSign, Home, TrendingUp, Info } from 'lucide-react'
@@ -20,29 +21,44 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
   const { filters } = useDashboard()
-  
-  let displayName: string
-  let dateRangeStart: string
-  let dateRangeEnd: string
-  
-  if (granularity === 'daily' && day) {
-    const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-    const date = parseISO(dateStr)
-    displayName = format(date, 'EEEE, MMMM d, yyyy')
-    dateRangeStart = dateStr
-    dateRangeEnd = dateStr
-  } else if (granularity === 'weekly' && day) {
-    const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-    const date = parseISO(dateStr)
-    displayName = `Week of ${format(date, 'MMM d, yyyy')}`
-    dateRangeStart = dateStr
-    dateRangeEnd = format(addDays(date, 6), 'yyyy-MM-dd')
-  } else {
-    const monthDate = new Date(parseInt(year), parseInt(month) - 1)
-    displayName = format(monthDate, 'MMMM yyyy')
-    dateRangeStart = format(startOfMonth(monthDate), 'yyyy-MM-dd')
-    dateRangeEnd = format(endOfMonth(monthDate), 'yyyy-MM-dd')
-  }
+
+  // memoized date calculations
+  const { displayName, dateRangeStart, dateRangeEnd } = useMemo(() => {
+    if (granularity === 'daily' && day) {
+      const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      const date = parseISO(dateStr)
+      return {
+        displayName: format(date, 'EEEE, MMMM d, yyyy'),
+        dateRangeStart: dateStr,
+        dateRangeEnd: dateStr
+      }
+    } else if (granularity === 'weekly' && day) {
+      const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      const date = parseISO(dateStr)
+      return {
+        displayName: `Week of ${format(date, 'MMM d, yyyy')}`,
+        dateRangeStart: dateStr,
+        dateRangeEnd: format(addDays(date, 6), 'yyyy-MM-dd')
+      }
+    } else {
+      const monthDate = new Date(parseInt(year), parseInt(month) - 1)
+      return {
+        displayName: format(monthDate, 'MMMM yyyy'),
+        dateRangeStart: format(startOfMonth(monthDate), 'yyyy-MM-dd'),
+        dateRangeEnd: format(endOfMonth(monthDate), 'yyyy-MM-dd')
+      }
+    }
+  }, [granularity, day, year, month])
+
+  // memoized property click handler
+  const handlePropertyClick = useCallback((propertyId: string, propertyName: string) => {
+    openModal({ type: 'property', propertyId, propertyName })
+  }, [openModal])
+
+  // memoized guest click handler
+  const handleGuestClick = useCallback((guestId: string, guestName: string) => {
+    openModal({ type: 'guest', guestId, guestName })
+  }, [openModal])
   
   const { data, isLoading, error } = usePeriodDetail(
     day ? dateRangeStart : month, 
@@ -130,11 +146,7 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
               <div
                 key={property.propertyId}
                 className="p-4 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
-                onClick={() => openModal({
-                  type: 'property',
-                  propertyId: property.propertyId,
-                  propertyName: property.propertyName
-                })}
+                onClick={() => handlePropertyClick(property.propertyId, property.propertyName)}
               >
                 <div>
                   <div className="font-medium">{property.propertyName}</div>
@@ -170,11 +182,7 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
                   <tr key={booking.id} className="border-t hover:bg-gray-50">
                     <td
                       className="p-4 cursor-pointer"
-                      onClick={() => openModal({
-                        type: 'guest',
-                        guestId: booking.guestId,
-                        guestName: booking.guestName
-                      })}
+                      onClick={() => handleGuestClick(booking.guestId, booking.guestName)}
                     >
                       <div className="font-medium text-blue-600 hover:underline">
                         {booking.guestName}
@@ -182,11 +190,7 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
                     </td>
                     <td
                       className="p-4 cursor-pointer"
-                      onClick={() => openModal({
-                        type: 'property',
-                        propertyId: booking.propertyId,
-                        propertyName: booking.propertyName
-                      })}
+                      onClick={() => handlePropertyClick(booking.propertyId, booking.propertyName)}
                     >
                       <div className="text-blue-600 hover:underline">
                         {booking.propertyName}

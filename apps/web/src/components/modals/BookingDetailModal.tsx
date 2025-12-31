@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, differenceInDays } from '@baileys/utils'
 import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin } from 'lucide-react'
@@ -22,6 +23,19 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
                    error ? "Unable to load booking" :
                    `Booking #${booking?.confirmationCode || bookingId}`
   const nights = booking ? differenceInDays(new Date(booking.departure), new Date(booking.arrival)) : 0
+
+  // memoized click handlers
+  const handleGuestClick = useCallback(() => {
+    if (booking) {
+      openModal({ type: 'guest', guestId: booking.guestId, guestName: booking.guestName })
+    }
+  }, [booking, openModal])
+
+  const handlePropertyClick = useCallback(() => {
+    if (booking) {
+      openModal({ type: 'property', propertyId: booking.propertyId, propertyName: booking.propertyName })
+    }
+  }, [booking, openModal])
 
   return (
     <Modal
@@ -62,13 +76,9 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
 
         {/* Guest & Property Info */}
         <div className="grid md:grid-cols-2 gap-4">
-          <div 
+          <div
             className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100"
-            onClick={() => openModal({
-              type: 'guest',
-              guestId: booking.guestId,
-              guestName: booking.guestName
-            })}
+            onClick={handleGuestClick}
           >
             <div className="flex items-center text-sm text-gray-600 mb-2">
               <User className="w-4 h-4 mr-1" />
@@ -83,13 +93,9 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             )}
           </div>
 
-          <div 
+          <div
             className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100"
-            onClick={() => openModal({
-              type: 'property',
-              propertyId: booking.propertyId,
-              propertyName: booking.propertyName
-            })}
+            onClick={handlePropertyClick}
           >
             <div className="flex items-center text-sm text-gray-600 mb-2">
               <Home className="w-4 h-4 mr-1" />

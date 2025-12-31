@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -51,17 +51,33 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
   const bookingHistory = data?.bookings || []
   const spendingTrend = data?.spendingTrend || []
 
-  // Calculate simple metrics
-  const totalSpent = guest?.totalSpent || bookingHistory.reduce((sum: number, b: any) => sum + b.totalAmount, 0)
-  const avgStayLength = guest?.avgStayLength || (bookingHistory.length > 0 
-    ? bookingHistory.reduce((sum: number, b: any) => sum + b.nights, 0) / bookingHistory.length
-    : 0)
+  // memoized metrics
+  const totalSpent = useMemo(() =>
+    guest?.totalSpent || bookingHistory.reduce((sum: number, b: any) => sum + b.totalAmount, 0)
+  , [guest?.totalSpent, bookingHistory])
 
-  const chartData = spendingTrend.map((item: any) => ({
-    month: format(parseDate(`${item.month}-01`), 'MMM yyyy'),
-    amount: item.amount,
-    bookings: item.bookings
-  }))
+  const avgStayLength = useMemo(() =>
+    guest?.avgStayLength || (bookingHistory.length > 0
+      ? bookingHistory.reduce((sum: number, b: any) => sum + b.nights, 0) / bookingHistory.length
+      : 0)
+  , [guest?.avgStayLength, bookingHistory])
+
+  const chartData = useMemo(() =>
+    spendingTrend.map((item: any) => ({
+      month: format(parseDate(`${item.month}-01`), 'MMM yyyy'),
+      amount: item.amount,
+      bookings: item.bookings
+    }))
+  , [spendingTrend])
+
+  // memoized tab handlers
+  const handleTabOverview = useCallback(() => setActiveTab('overview'), [])
+  const handleTabBookings = useCallback(() => setActiveTab('bookings'), [])
+
+  // memoized property click handler
+  const handlePropertyClick = useCallback((propertyId: string, propertyName: string) => {
+    openModal({ type: 'property', propertyId, propertyName })
+  }, [openModal])
 
   return (
     <Modal
@@ -191,7 +207,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         <div className="border-b">
           <nav className="flex space-x-6">
             <button
-              onClick={() => setActiveTab('overview')}
+              onClick={handleTabOverview}
               className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'overview'
                   ? 'border-blue-600 text-blue-600'
@@ -201,7 +217,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
               Spending Pattern
             </button>
             <button
-              onClick={() => setActiveTab('bookings')}
+              onClick={handleTabBookings}
               className={`pb-2 border-b-2 transition-colors cursor-pointer ${
                 activeTab === 'bookings'
                   ? 'border-blue-600 text-blue-600'
@@ -262,11 +278,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                     <tr
                       key={booking.id}
                       className="border-t hover:bg-gray-50 cursor-pointer"
-                      onClick={() => openModal({ 
-                        type: 'property', 
-                        propertyId: booking.propertyId, 
-                        propertyName: booking.propertyName 
-                      })}
+                      onClick={() => handlePropertyClick(booking.propertyId, booking.propertyName)}
                     >
                       <td className="p-4">
                         <div className="font-medium text-blue-600 hover:underline">{booking.propertyName}</div>
