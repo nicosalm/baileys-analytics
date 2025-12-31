@@ -343,7 +343,7 @@ export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
   const { openModal } = useModal()
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
   
   const tagIds = useTagIds()
   
@@ -533,17 +533,6 @@ export const PropertiesDashboard = () => {
           <h3 className="text-lg font-semibold text-gray-900">Property Performance</h3>
           <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
             <button
-              onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Table className="w-4 h-4 inline mr-1.5" />
-              Table
-            </button>
-            <button
               onClick={() => setViewMode('cards')}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                 viewMode === 'cards'
@@ -554,22 +543,27 @@ export const PropertiesDashboard = () => {
               <LayoutGrid className="w-4 h-4 inline mr-1.5" />
               Cards
             </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                viewMode === 'table'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Table className="w-4 h-4 inline mr-1.5" />
+              Table
+            </button>
           </div>
         </div>
 
-        {viewMode === 'table' ? (
-          <PropertyTable 
-            properties={validProperties}
-            previousProperties={previousProperties}
-            comparisonMode={comparisonMode}
-          />
-        ) : (
+        {viewMode === 'cards' ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {validProperties.map((property: PropertyMetrics) => {
               const previousProperty = previousProperties?.find((p: PropertyMetrics) => p.propertyId === property.propertyId)
               return (
-                <PropertyCard 
-                  key={property.propertyId} 
+                <PropertyCard
+                  key={property.propertyId}
                   property={property}
                   previousProperty={previousProperty}
                   comparisonMode={comparisonMode}
@@ -577,6 +571,12 @@ export const PropertiesDashboard = () => {
               )
             })}
           </div>
+        ) : (
+          <PropertyTable
+            properties={validProperties}
+            previousProperties={previousProperties}
+            comparisonMode={comparisonMode}
+          />
         )}
       </div>
 
