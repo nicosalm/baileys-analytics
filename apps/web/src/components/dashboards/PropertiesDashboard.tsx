@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
 import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics, ChartDataPoint } from '@/types/api'
@@ -14,6 +14,23 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { METRIC_COLORS, getOccupancyColor } from '@/lib/theme'
 import { PropertyPerformanceScatter, PerformanceQuadrantLegend } from '@/components/charts/PropertyPerformanceScatter'
 
+// growth indicator helper - moved outside component to avoid recreation
+const getGrowthIndicator = (
+  current: number,
+  previous: number | undefined,
+  comparisonMode: 'none' | 'previous-period' | 'previous-year'
+) => {
+  if (comparisonMode === 'none' || !previous) return null
+  const growth = ((current - previous) / previous) * 100
+  const isPositive = growth > 0
+  return (
+    <span className={`text-xs flex items-center gap-1 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+      {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+      {Math.abs(growth).toFixed(0)}%
+    </span>
+  )
+}
+
 interface PropertyCardProps {
   property: PropertyMetrics
   previousProperty?: PropertyMetrics
@@ -22,18 +39,6 @@ interface PropertyCardProps {
 
 const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCardProps) => {
   const { openModal } = useModal()
-
-  const getGrowthIndicator = (current: number, previous?: number) => {
-    if (comparisonMode === 'none' || !previous) return null
-    const growth = ((current - previous) / previous) * 100
-    const isPositive = growth > 0
-    return (
-      <span className={`text-xs flex items-center gap-1 ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-        {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-        {Math.abs(growth).toFixed(0)}%
-      </span>
-    )
-  }
 
   return (
     <div
@@ -50,7 +55,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
           <div className="text-sm text-gray-600">Revenue</div>
           <div className="flex items-center gap-2">
             <div className="text-lg font-semibold">{formatCompactCurrency(property.revenue)}</div>
-            {getGrowthIndicator(property.revenue, previousProperty?.revenue)}
+            {getGrowthIndicator(property.revenue, previousProperty?.revenue, comparisonMode)}
           </div>
           {comparisonMode !== 'none' && previousProperty && (
             <div className="text-xs text-gray-500">
@@ -62,7 +67,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
           <div className="text-sm text-gray-600">Bookings</div>
           <div className="flex items-center gap-2">
             <div className="text-lg font-semibold">{property.bookings}</div>
-            {getGrowthIndicator(property.bookings, previousProperty?.bookings)}
+            {getGrowthIndicator(property.bookings, previousProperty?.bookings, comparisonMode)}
           </div>
           {comparisonMode !== 'none' && previousProperty && (
             <div className="text-xs text-gray-500">
@@ -76,7 +81,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
             <div className={`text-lg font-semibold ${getOccupancyColor(property.occupancyRate * 100)}`}>
               {formatPercentage(property.occupancyRate * 100, 0)}
             </div>
-            {getGrowthIndicator(property.occupancyRate, previousProperty?.occupancyRate)}
+            {getGrowthIndicator(property.occupancyRate, previousProperty?.occupancyRate, comparisonMode)}
           </div>
           <div className="text-xs text-gray-500">
             {property.bookedNights} of {property.availableNights} nights
@@ -86,7 +91,7 @@ const PropertyCard = ({ property, previousProperty, comparisonMode }: PropertyCa
           <div className="text-sm text-gray-600">Nightly Rate</div>
           <div className="flex items-center gap-2">
             <div className="text-lg font-semibold">{formatCompactCurrency(property.avgNightlyRate)}</div>
-            {getGrowthIndicator(property.avgNightlyRate, previousProperty?.avgNightlyRate)}
+            {getGrowthIndicator(property.avgNightlyRate, previousProperty?.avgNightlyRate, comparisonMode)}
           </div>
           <div className="text-xs text-gray-500">Average</div>
         </div>
@@ -395,7 +400,19 @@ export const PropertiesDashboard = () => {
     prevTotalBookings: sumBy(previousProperties || [], (p: PropertyMetrics) => p.bookings),
     prevAvgOccupancy: calculateAverage((previousProperties || []).map((p: PropertyMetrics) => p.occupancyRate))
   }), [previousProperties])
-  
+
+  // memoized click handler for bar chart
+  const handleBarClick = useCallback((data: any) => {
+    const property = validProperties.find(p => p.propertyName === data.fullName)
+    if (property) {
+      openModal({
+        type: 'property',
+        propertyId: property.propertyId,
+        propertyName: property.propertyName
+      })
+    }
+  }, [validProperties, openModal])
+
   if (isLoading || validProperties.length === 0) {
     return (
       <div className="space-y-6">
@@ -641,16 +658,7 @@ export const PropertiesDashboard = () => {
                   name="Current Revenue"
                   radius={[0, 4, 4, 0]}
                   cursor="pointer"
-                  onClick={(data: any) => {
-                    const property = validProperties.find(p => p.propertyName === data.fullName)
-                    if (property) {
-                      openModal({
-                        type: 'property',
-                        propertyId: property.propertyId,
-                        propertyName: property.propertyName
-                      })
-                    }
-                  }}
+                  onClick={handleBarClick}
                 />
                 <Bar
                   dataKey="previousRevenue"
@@ -658,16 +666,7 @@ export const PropertiesDashboard = () => {
                   name={comparisonMode === 'previous-year' ? 'Last Year Revenue' : 'Previous Period Revenue'}
                   radius={[0, 4, 4, 0]}
                   cursor="pointer"
-                  onClick={(data: any) => {
-                    const property = validProperties.find(p => p.propertyName === data.fullName)
-                    if (property) {
-                      openModal({
-                        type: 'property',
-                        propertyId: property.propertyId,
-                        propertyName: property.propertyName
-                      })
-                    }
-                  }}
+                  onClick={handleBarClick}
                 />
               </BarChart>
             ) : (
@@ -716,16 +715,7 @@ export const PropertiesDashboard = () => {
                   name="Revenue"
                   radius={[0, 4, 4, 0]}
                   cursor="pointer"
-                  onClick={(data: any) => {
-                    const property = validProperties.find(p => p.propertyName === data.fullName)
-                    if (property) {
-                      openModal({
-                        type: 'property',
-                        propertyId: property.propertyId,
-                        propertyName: property.propertyName
-                      })
-                    }
-                  }}
+                  onClick={handleBarClick}
                 />
                 <Bar
                   xAxisId="occupancy"
@@ -734,16 +724,7 @@ export const PropertiesDashboard = () => {
                   name="Occupancy Rate"
                   radius={[0, 4, 4, 0]}
                   cursor="pointer"
-                  onClick={(data: any) => {
-                    const property = validProperties.find(p => p.propertyName === data.fullName)
-                    if (property) {
-                      openModal({
-                        type: 'property',
-                        propertyId: property.propertyId,
-                        propertyName: property.propertyName
-                      })
-                    }
-                  }}
+                  onClick={handleBarClick}
                 />
               </BarChart>
             )}

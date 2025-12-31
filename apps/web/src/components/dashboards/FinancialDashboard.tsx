@@ -1,4 +1,4 @@
-import { useState, ReactNode, FC } from 'react'
+import { useState, useMemo, ReactNode, FC } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { useDashboard } from '@/contexts/dashboard'
@@ -46,16 +46,16 @@ export const FinancialDashboard = () => {
     comparisonRange?.to
   )
   
-  const financialData = data ? {
+  const financialData = useMemo(() => data ? {
     metrics: data.pl.metrics,
     platforms: data.pl.platforms,
     monthlyTrend: data.pl.monthlyTrend,
     weeklyRevenue: data.pl.weeklyRevenue,
     previousPeriod: data.pl.previousPeriod,
     byMonth: data.pl.monthlyTrend
-  } : null
+  } : null, [data])
 
-  const revenueData = data ? {
+  const revenueData = useMemo(() => data ? {
     metrics: data.pl.metrics,
     gross: data.revenue.gross,
     net: data.revenue.net,
@@ -63,12 +63,12 @@ export const FinancialDashboard = () => {
     fees: data.revenue.fees,
     bySource: data.revenue.bySource,
     byMonth: data.revenue.byMonth,
-    byProperty: [], // Properties data not available in revenue endpoint
+    byProperty: [],
     lastYearData: data.revenue.lastYearData,
     previousPeriod: data.revenue.previousPeriod || data.pl.previousPeriod
-  } : null
+  } : null, [data])
 
-  const cashFlowData = data ? {
+  const cashFlowData = useMemo(() => data ? {
     metrics: data.pl.metrics,
     byMonth: data.revenue.byMonth,
     platforms: data.pl.platforms,
@@ -77,9 +77,9 @@ export const FinancialDashboard = () => {
     taxes: data.revenue.taxes,
     gross: data.revenue.gross,
     net: data.revenue.net
-  } : null
+  } : null, [data])
 
-  const taxData = data ? {
+  const taxData = useMemo(() => data ? {
     tax: {
       summary: data.tax.summary,
       byProperty: data.tax.byProperty,
@@ -87,7 +87,7 @@ export const FinancialDashboard = () => {
     },
     metrics: data.pl.metrics,
     previousPeriod: data.tax?.previousPeriod || data.pl.previousPeriod
-  } : null
+  } : null, [data])
 
   useErrorToast(error, 'Failed to load financial data')
 

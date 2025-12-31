@@ -1,9 +1,40 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, memo } from 'react'
 import { SmartPeriodSelector } from './SmartPeriodSelector'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags } from '@/hooks/use-api'
 import { Filter, X, ChevronDown } from 'lucide-react'
 import { cn } from '@baileys/utils'
+import type { Tag } from '@/types/dashboard'
+
+interface TagButtonProps {
+  tag: Tag
+  isSelected: boolean
+  onToggle: (tag: Tag) => void
+}
+
+const TagButton = memo(({ tag, isSelected, onToggle }: TagButtonProps) => (
+  <button
+    onClick={() => onToggle(tag)}
+    className={cn(
+      "w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer",
+      isSelected
+        ? "bg-blue-50 text-blue-700 font-medium"
+        : "hover:bg-gray-50 text-gray-700"
+    )}
+  >
+    <div className="flex items-center justify-between">
+      <span>{tag.name}</span>
+      {tag.color && (
+        <span
+          className="w-3 h-3 rounded-full"
+          style={{ backgroundColor: tag.color }}
+        />
+      )}
+    </div>
+  </button>
+))
+
+TagButton.displayName = 'TagButton'
 
 export const FilterBar: React.FC = () => {
   const {
@@ -71,31 +102,14 @@ export const FilterBar: React.FC = () => {
                     <div className="text-center py-4 text-gray-500">No tags available</div>
                   ) : (
                     <div className="space-y-1">
-                      {availableTags.map((tag: any) => {
-                        const isSelected = filters.selectedTags.some(t => t.id === tag.id)
-                        return (
-                          <button
-                            key={tag.id}
-                            onClick={() => toggleTag(tag)}
-                            className={cn(
-                              "w-full text-left px-3 py-2 rounded-lg text-sm transition-all cursor-pointer",
-                              isSelected
-                                ? "bg-blue-50 text-blue-700 font-medium"
-                                : "hover:bg-gray-50 text-gray-700"
-                            )}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span>{tag.name}</span>
-                              {tag.color && (
-                                <span
-                                  className="w-3 h-3 rounded-full"
-                                  style={{ backgroundColor: tag.color }}
-                                />
-                              )}
-                            </div>
-                          </button>
-                        )
-                      })}
+                      {availableTags.map((tag: any) => (
+                        <TagButton
+                          key={tag.id}
+                          tag={tag}
+                          isSelected={filters.selectedTags.some(t => t.id === tag.id)}
+                          onToggle={toggleTag}
+                        />
+                      ))}
                     </div>
                   )}
                 </div>

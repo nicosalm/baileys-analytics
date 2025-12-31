@@ -5,6 +5,16 @@ import type { Season, SeasonFormData } from '@/types/season'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 import { measurePerformance } from '@/utils/performance'
 
+// helper to create stable SWR cache keys from parameters
+const createCacheKey = (prefix: string, ...parts: (string | string[] | undefined)[]) => {
+  const serialized = parts.map(p => {
+    if (p === undefined) return ''
+    if (Array.isArray(p)) return p.join(',')
+    return p
+  }).join('|')
+  return serialized ? `${prefix}:${serialized}` : null
+}
+
 // New batch endpoint hook for dashboards
 export function useDashboardBatch(
   view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests',
@@ -19,9 +29,11 @@ export function useDashboardBatch(
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
   const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
-  
-  const key = validFrom || validTo ? ['/dashboard-batch', view, validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
-  
+
+  const key = (validFrom || validTo)
+    ? createCacheKey('dashboard-batch', view, validFrom, validTo, validTagIds, validCompFrom, validCompTo)
+    : null
+
   return useSWR<any>(key, async () => {
     const params = new URLSearchParams()
     params.append('view', view)
@@ -55,8 +67,10 @@ export function useFinancial(
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
   const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
-  
-  const key = validFrom || validTo || validTagIds ? ['/financial', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
+
+  const key = (validFrom || validTo || validTagIds)
+    ? createCacheKey('financial', validFrom, validTo, validTagIds, validCompFrom, validCompTo)
+    : null
   return useSWR<any>(key, async () => {
     if (!key) return null
     const params = new URLSearchParams()

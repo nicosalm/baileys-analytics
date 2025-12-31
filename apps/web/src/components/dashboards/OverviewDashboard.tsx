@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
@@ -88,6 +89,173 @@ export const OverviewDashboard = () => {
   }
 
   const { metrics, alerts, recentActivity, charts } = data
+
+  // memoize revenue composition chart data
+  const revenueChartData = useMemo(() => {
+    const allSortedProps = charts.topProperties || []
+    const topRevenue = allSortedProps[0]?.revenue || 0
+    const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
+
+    const significantProps = allSortedProps
+      .filter((p: any) => p.revenue >= revenueThreshold)
+      .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+
+    const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
+
+    if (!charts.revenueLastWeek || charts.revenueLastWeek.length === 0) {
+      return []
+    }
+
+    const dataByDate: { [date: string]: any } = {}
+
+    charts.revenueLastWeek.forEach((item: any) => {
+      const dateKey = item.day || item.date || item.month
+      if (!dataByDate[dateKey]) {
+        dataByDate[dateKey] = {
+          date: dateKey,
+          prop1: 0, prop2: 0, prop3: 0, prop4: 0,
+          prop5: 0, prop6: 0, prop7: 0, prop8: 0,
+          other: 0
+        }
+      }
+      dataByDate[dateKey].totalRevenue = (dataByDate[dateKey].totalRevenue || 0) + (item.revenue || 0)
+    })
+
+    const totalPropertyCount = metrics?.properties?.total || 0
+    const topPropsRevenue = topProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
+    const allPropsRevenue = allSortedProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
+    const hasMoreProperties = totalPropertyCount > topProps.length || allSortedProps.length > topProps.length
+
+    const hasPropertyData = charts.revenueLastWeek.some((item: any) =>
+      item.propertyName || item.property || item.propertyId || item.name)
+
+    if (hasPropertyData) {
+      charts.revenueLastWeek.forEach((item: any) => {
+        const dateKey = item.day || item.date || item.month
+        const propName = item.propertyName
+
+        if (!dataByDate[dateKey]) {
+          dataByDate[dateKey] = {
+            date: dateKey,
+            prop1: 0, prop2: 0, prop3: 0, prop4: 0,
+            prop5: 0, prop6: 0, prop7: 0, prop8: 0,
+            other: 0
+          }
+        }
+
+        const topIndex = topProps.findIndex((p: any) => p.name === propName)
+        if (topIndex >= 0 && topIndex < MAX_INDIVIDUAL_PROPERTIES) {
+          dataByDate[dateKey][`prop${topIndex + 1}`] = (dataByDate[dateKey][`prop${topIndex + 1}`] || 0) + (item.revenue || 0)
+        } else if (propName) {
+          dataByDate[dateKey].other = (dataByDate[dateKey].other || 0) + (item.revenue || 0)
+        }
+      })
+    } else {
+      Object.keys(dataByDate).forEach(dateKey => {
+        const periodRevenue = dataByDate[dateKey].totalRevenue || 0
+
+        if (topPropsRevenue > 0) {
+          const topPropsPortion = allPropsRevenue > 0 ? topPropsRevenue / allPropsRevenue : TOP_PROPERTIES_DEFAULT_PORTION
+          const otherPortion = 1 - topPropsPortion
+
+          topProps.forEach((prop: any, index: number) => {
+            const propKey = `prop${index + 1}`
+            const proportion = (prop.revenue || 0) / topPropsRevenue
+            dataByDate[dateKey][propKey] = periodRevenue * proportion * topPropsPortion
+          })
+
+          if (hasMoreProperties) {
+            const actualOtherPortion = Math.max(otherPortion, MIN_OTHER_REVENUE_PORTION)
+            dataByDate[dateKey].other = periodRevenue * actualOtherPortion
+
+            if (otherPortion < MIN_OTHER_REVENUE_PORTION) {
+              const adjustmentFactor = (1 - MIN_OTHER_REVENUE_PORTION) / topPropsPortion
+              topProps.forEach((_: any, index: number) => {
+                const propKey = `prop${index + 1}`
+                dataByDate[dateKey][propKey] = dataByDate[dateKey][propKey] * adjustmentFactor
+              })
+            }
+          }
+        } else if (periodRevenue > 0) {
+          const numSlots = hasMoreProperties ? topProps.length + 1 : topProps.length
+          const sharePerProp = periodRevenue / numSlots
+          for (let i = 0; i < topProps.length; i++) {
+            dataByDate[dateKey][`prop${i + 1}`] = sharePerProp
+          }
+          if (hasMoreProperties) {
+            dataByDate[dateKey].other = sharePerProp
+          }
+        }
+      })
+    }
+
+    return Object.values(dataByDate)
+      .sort((a: any, b: any) => {
+        const dateA = new Date(a.date.includes('Jul') ? `${a.date} 2025` : a.date)
+        const dateB = new Date(b.date.includes('Jul') ? `${b.date} 2025` : b.date)
+        return dateA.getTime() - dateB.getTime()
+      })
+      .map((item: any) => {
+        const { date, totalRevenue, ...properties } = item
+        return {
+          week: date.replace(' 2025', '').replace('2025-', ''),
+          ...properties
+        }
+      })
+  }, [charts.topProperties, charts.revenueLastWeek, metrics?.properties?.total])
+
+  // memoize the Area components for revenue chart
+  const revenueChartAreas = useMemo(() => {
+    const allSortedProps = charts.topProperties || []
+    const topRevenue = allSortedProps[0]?.revenue || 0
+    const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
+
+    const significantProps = allSortedProps
+      .filter((p: any) => p.revenue >= revenueThreshold)
+      .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+
+    const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
+    const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+    const otherColor = '#9CA3AF'
+
+    const areas = []
+
+    for (let i = 0; i < topProps.length && i < MAX_INDIVIDUAL_PROPERTIES; i++) {
+      if (topProps[i]) {
+        areas.push(
+          <Area
+            key={`prop${i + 1}`}
+            type="monotone"
+            dataKey={`prop${i + 1}`}
+            stackId="1"
+            stroke={colors[i]}
+            fill={colors[i]}
+            fillOpacity={0.6}
+            name={topProps[i].name || `Property ${i + 1}`}
+          />
+        )
+      }
+    }
+
+    const otherCount = Math.max(0, totalPropertyCount - topProps.length)
+    if (otherCount > 0 || charts.revenueLastWeek?.length > 0) {
+      areas.push(
+        <Area
+          key="other"
+          type="monotone"
+          dataKey="other"
+          stackId="1"
+          stroke={otherColor}
+          fill={otherColor}
+          fillOpacity={0.6}
+          name={otherCount > 0 ? `Other (${otherCount} properties)` : 'Other'}
+        />
+      )
+    }
+
+    return areas
+  }, [charts.topProperties, charts.revenueLastWeek, metrics?.properties?.total])
 
   const upcomingArrivalsAlert = alerts?.find((alert: any) => {
     const hasArrival = alert.description?.toLowerCase().includes('arriving') ||
@@ -337,152 +505,7 @@ export const OverviewDashboard = () => {
           icon={Layers}
           height={300}
         >
-          <AreaChart data={(() => {
-            // Dynamic threshold: show properties with revenue >= 20% of top performer
-            const allSortedProps = charts.topProperties || []
-            const topRevenue = allSortedProps[0]?.revenue || 0
-            const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO // 20% of top performer
-
-            // Take properties above threshold, max 8 for readability
-            const significantProps = allSortedProps
-              .filter((p: any) => p.revenue >= revenueThreshold)
-              .slice(0, MAX_INDIVIDUAL_PROPERTIES)
-
-            // Use significant properties instead of fixed top 5
-            const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
-
-
-            if (charts.revenueLastWeek && charts.revenueLastWeek.length > 0) {
-              const dataByDate: { [date: string]: any } = {}
-
-              charts.revenueLastWeek.forEach((item: any) => {
-                const dateKey = item.day || item.date || item.month
-                if (!dataByDate[dateKey]) {
-                  dataByDate[dateKey] = {
-                    date: dateKey,
-                    prop1: 0,
-                    prop2: 0,
-                    prop3: 0,
-                    prop4: 0,
-                    prop5: 0,
-                    prop6: 0,
-                    prop7: 0,
-                    prop8: 0,
-                    other: 0
-                  }
-                }
-                dataByDate[dateKey].totalRevenue = (dataByDate[dateKey].totalRevenue || 0) + (item.revenue || 0)
-              })
-
-              const totalPropertyCount = metrics?.properties?.total || 0
-              const allSortedProps = charts.topProperties || []
-              const topPropsRevenue = topProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
-              const allPropsRevenue = allSortedProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
-
-              // Check if there are more properties than what we're showing
-              // We know there are 20 total properties, but we're only showing the significant ones
-              const hasMoreProperties = totalPropertyCount > topProps.length || allSortedProps.length > topProps.length
-
-              const hasPropertyData = charts.revenueLastWeek.some((item: any) =>
-                item.propertyName || item.property || item.propertyId || item.name)
-
-              if (hasPropertyData) {
-                const propertiesInOther = new Set()
-
-                charts.revenueLastWeek.forEach((item: any) => {
-                  const dateKey = item.day || item.date || item.month
-                  const propName = item.propertyName
-
-                  if (!dataByDate[dateKey]) {
-                    dataByDate[dateKey] = {
-                      date: dateKey,
-                      prop1: 0,
-                      prop2: 0,
-                      prop3: 0,
-                      prop4: 0,
-                      prop5: 0,
-                      prop6: 0,
-                      prop7: 0,
-                      prop8: 0,
-                      other: 0
-                    }
-                  }
-
-                  const topIndex = topProps.findIndex((p: any) => p.name === propName)
-                  if (topIndex >= 0 && topIndex < MAX_INDIVIDUAL_PROPERTIES) {
-                    dataByDate[dateKey][`prop${topIndex + 1}`] = (dataByDate[dateKey][`prop${topIndex + 1}`] || 0) + (item.revenue || 0)
-                  } else if (propName) {
-                    // ANY property not in top 5 goes to Other
-                    propertiesInOther.add(propName)
-                    dataByDate[dateKey].other = (dataByDate[dateKey].other || 0) + (item.revenue || 0)
-                  }
-                })
-              } else {
-                // No property-specific data, so distribute based on proportions
-                Object.keys(dataByDate).forEach(dateKey => {
-                  const periodRevenue = dataByDate[dateKey].totalRevenue || 0
-
-                  if (topPropsRevenue > 0) {
-                    // If we have actual revenue data from topProperties
-                    const topPropsPortion = allPropsRevenue > 0 ? topPropsRevenue / allPropsRevenue : TOP_PROPERTIES_DEFAULT_PORTION
-                    const otherPortion = 1 - topPropsPortion
-
-                    // Distribute to significant properties based on their relative revenue
-                    topProps.forEach((prop: any, index: number) => {
-                      const propKey = `prop${index + 1}`
-                      const proportion = (prop.revenue || 0) / topPropsRevenue
-                      dataByDate[dateKey][propKey] = periodRevenue * proportion * topPropsPortion
-                    })
-
-                    // Other properties get their actual proportion
-                    if (hasMoreProperties) {
-                      // Even if otherPortion calculates to 0, we know there are more properties
-                      // so give them at least 20% of revenue
-                      const actualOtherPortion = Math.max(otherPortion, MIN_OTHER_REVENUE_PORTION)
-                      dataByDate[dateKey].other = periodRevenue * actualOtherPortion
-
-                      // Adjust top properties proportionally if needed
-                      if (otherPortion < MIN_OTHER_REVENUE_PORTION) {
-                        const adjustmentFactor = (1 - MIN_OTHER_REVENUE_PORTION) / topPropsPortion
-                        topProps.forEach((_: any, index: number) => {
-                          const propKey = `prop${index + 1}`
-                          dataByDate[dateKey][propKey] = dataByDate[dateKey][propKey] * adjustmentFactor
-                        })
-                      }
-                    }
-                  } else if (periodRevenue > 0) {
-                    // Equal distribution if no revenue data
-                    const numSlots = hasMoreProperties ? topProps.length + 1 : topProps.length
-                    const sharePerProp = periodRevenue / numSlots
-                    for (let i = 0; i < topProps.length; i++) {
-                      dataByDate[dateKey][`prop${i + 1}`] = sharePerProp
-                    }
-                    if (hasMoreProperties) {
-                      dataByDate[dateKey].other = sharePerProp
-                    }
-                  }
-                })
-              }
-
-              const chartData = Object.values(dataByDate)
-                .sort((a: any, b: any) => {
-                  const dateA = new Date(a.date.includes('Jul') ? `${a.date} 2025` : a.date)
-                  const dateB = new Date(b.date.includes('Jul') ? `${b.date} 2025` : b.date)
-                  return dateA.getTime() - dateB.getTime()
-                })
-                .map((item: any) => {
-                  const { date, totalRevenue, ...properties } = item
-                  return {
-                    week: date.replace(' 2025', '').replace('2025-', ''),
-                    ...properties
-                  }
-                })
-
-              return chartData
-            }
-
-            return []
-          })()}>
+          <AreaChart data={revenueChartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis
               dataKey="week"
@@ -528,57 +551,7 @@ export const OverviewDashboard = () => {
               wrapperStyle={{ paddingTop: '10px' }}
               iconType="rect"
             />
-            {(() => {
-              const allSortedProps = charts.topProperties || []
-              const topRevenue = allSortedProps[0]?.revenue || 0
-              const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
-
-              const significantProps = allSortedProps
-                .filter((p: any) => p.revenue >= revenueThreshold)
-                .slice(0, MAX_INDIVIDUAL_PROPERTIES)
-
-              const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
-              const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
-              const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
-              const otherColor = '#9CA3AF'
-
-              const areas = []
-
-              for (let i = 0; i < topProps.length && i < MAX_INDIVIDUAL_PROPERTIES; i++) {
-                if (topProps[i]) {
-                  areas.push(
-                    <Area
-                      key={`prop${i + 1}`}
-                      type="monotone"
-                      dataKey={`prop${i + 1}`}
-                      stackId="1"
-                      stroke={colors[i]}
-                      fill={colors[i]}
-                      fillOpacity={0.6}
-                      name={topProps[i].name || `Property ${i + 1}`}
-                    />
-                  )
-                }
-              }
-
-              const otherCount = Math.max(0, totalPropertyCount - topProps.length)
-              if (otherCount > 0 || charts.revenueLastWeek?.length > 0) {
-                areas.push(
-                  <Area
-                    key="other"
-                    type="monotone"
-                    dataKey="other"
-                    stackId="1"
-                    stroke={otherColor}
-                    fill={otherColor}
-                    fillOpacity={0.6}
-                    name={otherCount > 0 ? `Other (${otherCount} properties)` : 'Other'}
-                  />
-                )
-              }
-
-              return areas
-            })()}
+            {revenueChartAreas}
           </AreaChart>
         </ChartWrapper>
 

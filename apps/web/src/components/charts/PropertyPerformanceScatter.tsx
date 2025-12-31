@@ -4,6 +4,43 @@ import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { PropertyMetrics } from '@/types/api'
 import { METRIC_COLORS } from '@/lib/theme'
 
+// extracted to module scope to prevent recreation on each render
+const ScatterTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+        <p className="font-semibold text-sm mb-2">{data.name}</p>
+        {data.isZeroData ? (
+          <div className="text-xs text-gray-500 italic">
+            No booking data for selected period
+          </div>
+        ) : (
+          <div className="space-y-1 text-xs">
+            <p className="flex justify-between gap-4">
+              <span className="text-gray-600">Occupancy:</span>
+              <span className="font-medium">{formatPercentage(data.property.occupancyRate * 100, 1)}</span>
+            </p>
+            <p className="flex justify-between gap-4">
+              <span className="text-gray-600">Revenue:</span>
+              <span className="font-medium text-green-600">{formatCurrency(data.property.revenue)}</span>
+            </p>
+            <p className="flex justify-between gap-4">
+              <span className="text-gray-600">Bookings:</span>
+              <span className="font-medium">{data.property.bookings || 0}</span>
+            </p>
+            <p className="flex justify-between gap-4">
+              <span className="text-gray-600">Avg Rate:</span>
+              <span className="font-medium">{formatCurrency(data.avgNightlyRate)}</span>
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
+  return null
+}
+
 interface PropertyPerformanceScatterProps {
   properties: PropertyMetrics[]
   onPropertyClick?: (property: PropertyMetrics) => void
@@ -65,42 +102,6 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
     }
   }
   
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-          <p className="font-semibold text-sm mb-2">{data.name}</p>
-          {data.isZeroData ? (
-            <div className="text-xs text-gray-500 italic">
-              No booking data for selected period
-            </div>
-          ) : (
-            <div className="space-y-1 text-xs">
-              <p className="flex justify-between gap-4">
-                <span className="text-gray-600">Occupancy:</span>
-                <span className="font-medium">{formatPercentage(data.property.occupancyRate * 100, 1)}</span>
-              </p>
-              <p className="flex justify-between gap-4">
-                <span className="text-gray-600">Revenue:</span>
-                <span className="font-medium text-green-600">{formatCurrency(data.property.revenue)}</span>
-              </p>
-              <p className="flex justify-between gap-4">
-                <span className="text-gray-600">Bookings:</span>
-                <span className="font-medium">{data.property.bookings || 0}</span>
-              </p>
-              <p className="flex justify-between gap-4">
-                <span className="text-gray-600">Avg Rate:</span>
-                <span className="font-medium">{formatCurrency(data.avgNightlyRate)}</span>
-              </p>
-            </div>
-          )}
-        </div>
-      )
-    }
-    return null
-  }
-  
   const handleClick = (data: any) => {
     if (data && data.activePayload && data.activePayload[0] && onPropertyClick) {
       const property = data.activePayload[0].payload.property
@@ -148,7 +149,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
           stroke="#6B7280"
         />
         <Tooltip
-          content={<CustomTooltip />}
+          content={<ScatterTooltip />}
           cursor={{ strokeDasharray: '3 3' }}
         />
         

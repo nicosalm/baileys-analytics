@@ -125,7 +125,11 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   const [tempCustomRange, setTempCustomRange] = useState<DateRange>(value)
   const containerRef = useRef<HTMLDivElement>(null)
   const comparisonRef = useRef<HTMLDivElement>(null)
-  
+
+  // store onChange in ref to avoid dependency array issues
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
+
   const { data: seasons = [], isLoading: seasonsLoading } = useSeasons()
   const activeSeasons = useMemo(() => seasons.filter(s => s.isActive), [seasons])
   
@@ -134,39 +138,38 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
     if (!seasonsLoading && activeSeasons.length > 0 && !hasSetInitialSeason.current) {
       const today = new Date()
       const ytdFrom = formatDateISO(new Date(getYear(today), 0, 1))
-      
+
       if (value.from === ytdFrom && activeSeasons.length === 1) {
         hasSetInitialSeason.current = true
         const season = activeSeasons[0]
-        
+
         if (!hasSeasonStartedThisYear(season)) {
           const lastSeasonDates = getPreviousSeasonDates(season)
           const activeSeason = activeSeasons[0]
           const comparisonResult = calculateComparisonRange(lastSeasonDates, comparisonType, activeSeason)
-          onChange(lastSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
+          onChangeRef.current(lastSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
         } else {
           const currentSeasonDates = getCurrentSeasonDates(season)
           const activeSeason = activeSeasons[0]
           const comparisonResult = calculateComparisonRange(currentSeasonDates, comparisonType, activeSeason)
-          onChange(currentSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
+          onChangeRef.current(currentSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
         }
       }
     }
-  }, [seasonsLoading, activeSeasons, value.from, onChange])
+  }, [seasonsLoading, activeSeasons, value.from, comparisonType])
   
   // Check if current comparison is still valid when date range changes
   useEffect(() => {
     if (comparisonType !== 'none' && value.from && value.to) {
       const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
       const comparisonResult = calculateComparisonRange(value, comparisonType, activeSeason)
-      
+
       if (!comparisonResult.isValid) {
-        // Reset to no comparison if current comparison is invalid
         setComparisonType('none')
-        onChange(value, undefined)
+        onChangeRef.current(value, undefined)
       }
     }
-  }, [value, activeSeasons])
+  }, [value, activeSeasons, comparisonType])
   
   const uiMode = useMemo(() => {
     if (activeSeasons.length === 0) return 'year-round'

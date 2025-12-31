@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { BookingGapAlert } from '@/components/BookingGapAlert'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
@@ -14,7 +15,6 @@ import { formatPercentage, minBy } from '@baileys/utils'
 import { METRIC_COLORS } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 import { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
-import { useState } from 'react'
 
 export const OccupancyDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
@@ -75,10 +75,10 @@ export const OccupancyDashboard = () => {
     }
   }
 
-  const chartData = timeSeriesData.map((dataPoint: OccupancyTrendData, index: number) => {
+  const chartData = useMemo(() => timeSeriesData.map((dataPoint: OccupancyTrendData, index: number) => {
     const prevDataPoint = previousData?.byMonth?.find((pd: OccupancyTrendData) => pd.month === dataPoint.month) ||
                          (previousData?.byMonth?.[index])
-    
+
     let label: string
     if (dataGranularity === 'Daily') {
       const [year, month, day] = dataPoint.month.split('-')
@@ -95,11 +95,11 @@ export const OccupancyDashboard = () => {
         const [y] = d.month.split('-')
         return y !== year
       })
-      label = hasMultipleYears 
+      label = hasMultipleYears
         ? date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
         : date.toLocaleDateString('en-US', { month: 'short' })
     }
-    
+
     return {
       month: label,
       fullMonth: dataPoint.month,
@@ -109,9 +109,18 @@ export const OccupancyDashboard = () => {
       availableNights: dataPoint.availableNights,
       tooltip: `${dataPoint.bookedNights} / ${dataPoint.availableNights} nights`
     }
-  })
+  }), [timeSeriesData, previousData?.byMonth, dataGranularity])
 
   const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1 }
+
+  // memoize sorted property list
+  const sortedProperties = useMemo(() =>
+    currentData.byProperty
+      .slice()
+      .sort((a: OccupancyByProperty, b: OccupancyByProperty) => b.rate - a.rate)
+      .slice(0, 10),
+    [currentData.byProperty]
+  )
 
   const formatPeriodDisplay = (dateStr: string): string => {
     if (!dateStr) return 'N/A'
@@ -341,47 +350,44 @@ export const OccupancyDashboard = () => {
             )}
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
-            {currentData.byProperty.length > 0 ? (
-              currentData.byProperty
-                .sort((a: OccupancyByProperty, b: OccupancyByProperty) => b.rate - a.rate)
-                .slice(0, 10)
-                .map((property: OccupancyByProperty) => {
-                  const occupancyPercent = property.rate * 100
-                  const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
-                  const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
+            {sortedProperties.length > 0 ? (
+              sortedProperties.map((property: OccupancyByProperty) => {
+                const occupancyPercent = property.rate * 100
+                const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
+                const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
 
-                  return (
-                    <div
-                      key={property.propertyId}
-                      className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
-                      onClick={() => openModal({ type: 'property', propertyId: property.propertyId, propertyName: property.propertyName })}
-                    >
-                      <div className="flex-1 min-w-0 mr-4">
-                        <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>
-                        <p className="text-xs text-gray-500">{property.bookedNights}/{property.availableNights} nights booked</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-sm font-semibold ${
-                          occupancyPercent >= 70 ? 'text-green-600' :
-                          occupancyPercent >= 50 ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          {formatPercentage(occupancyPercent, 0)}
-                        </span>
-                        {comparisonMode !== 'none' && prevOccupancy !== null && (
-                          <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-green-600' : occupancyPercent < prevOccupancy ? 'text-red-600' : 'text-gray-500'}`}>
-                            {occupancyPercent > prevOccupancy ? (
-                              <TrendingUp className="w-3 h-3" />
-                            ) : occupancyPercent < prevOccupancy ? (
-                              <TrendingDown className="w-3 h-3" />
-                            ) : null}
-                            {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
+                return (
+                  <div
+                    key={property.propertyId}
+                    className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
+                    onClick={() => openModal({ type: 'property', propertyId: property.propertyId, propertyName: property.propertyName })}
+                  >
+                    <div className="flex-1 min-w-0 mr-4">
+                      <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>
+                      <p className="text-xs text-gray-500">{property.bookedNights}/{property.availableNights} nights booked</p>
                     </div>
-                  )
-                })
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-sm font-semibold ${
+                        occupancyPercent >= 70 ? 'text-green-600' :
+                        occupancyPercent >= 50 ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {formatPercentage(occupancyPercent, 0)}
+                      </span>
+                      {comparisonMode !== 'none' && prevOccupancy !== null && (
+                        <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-green-600' : occupancyPercent < prevOccupancy ? 'text-red-600' : 'text-gray-500'}`}>
+                          {occupancyPercent > prevOccupancy ? (
+                            <TrendingUp className="w-3 h-3" />
+                          ) : occupancyPercent < prevOccupancy ? (
+                            <TrendingDown className="w-3 h-3" />
+                          ) : null}
+                          {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
             ) : (
               <div className="text-center text-gray-500 py-8">
                 <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
