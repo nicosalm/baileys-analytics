@@ -24,6 +24,10 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+const isOAuthUser = (identities?: { provider: string }[]): boolean => {
+  return identities?.some(id => ['google', 'azure'].includes(id.provider)) ?? false
+}
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) throw new Error('useAuth must be used within AuthProvider')
@@ -184,7 +188,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ...session.user,
       companyName: session.user.user_metadata?.company_name,
       hasOwnerRezConnection,
-      tenantId: tenantId || session.user.user_metadata?.tenant_id
+      tenantId: tenantId || session.user.user_metadata?.tenant_id,
+      isOAuthUser: isOAuthUser(session.user.identities)
     }
 
     setState({

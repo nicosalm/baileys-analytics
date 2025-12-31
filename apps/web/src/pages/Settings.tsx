@@ -395,8 +395,8 @@ export const Settings = () => {
             <Suspense fallback={<LoadingState />}>
               {activeTab === 'account' && (
                 <AccountTab
-                  onChangeEmail={handleChangeEmail}
-                  onChangePassword={handleChangePassword}
+                  onChangeEmail={!user.isOAuthUser ? handleChangeEmail : undefined}
+                  onChangePassword={!user.isOAuthUser ? handleChangePassword : undefined}
                 />
               )}
               {activeTab === 'preferences' && <PreferencesTab />}

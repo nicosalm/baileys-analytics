@@ -16,8 +16,7 @@ enabled = true
 
 [vars]
 FRONTEND_URL = "http://localhost:5173"
-ADMIN_EMAILS = "demo@baileysanalytics.com"
-
+ADMIN_EMAILS ="admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
 
 [env.production]
 name = "baileys-analytics-api-production"
@@ -28,7 +27,7 @@ id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
 FRONTEND_URL = "https://baileysanalytics.com"
-ADMIN_EMAILS = "demo@baileysanalytics.com"
+ADMIN_EMAILS ="admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
 
 [env.staging]
 name = "baileys-analytics-api-staging"
