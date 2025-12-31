@@ -17,20 +17,20 @@ export const IntegrationsTab = () => {
   const navigate = useNavigate()
   const [disconnectModalOpen, setDisconnectModalOpen] = useState(false)
   const [isDisconnecting, setIsDisconnecting] = useState(false)
-  
+
   const { data: syncStatus, isLoading, mutate } = useSyncStatus()
-  
+
   if (state.status === 'loading' || isLoading) {
     return <LoadingState />
   }
-  
+
   if (state.status !== 'authenticated') {
     return null
   }
-  
+
   const { user } = state
   const isConnected = user.hasOwnerRezConnection
-  
+
   const handleConnect = async () => {
     try {
       const result = await api.initiateOAuth()
@@ -45,7 +45,7 @@ export const IntegrationsTab = () => {
       addToast('error', 'Failed to initiate connection')
     }
   }
-  
+
   const handleDisconnect = async () => {
     setIsDisconnecting(true)
     try {
@@ -64,7 +64,7 @@ export const IntegrationsTab = () => {
       setDisconnectModalOpen(false)
     }
   }
-  
+
   const handleManualSync = async () => {
     // Reset the sync status to trigger a fresh sync
     try {
@@ -139,7 +139,6 @@ export const IntegrationsTab = () => {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                     <p className="text-sm text-green-800">
                       <span className="font-medium">✓ Real-time webhooks active</span> - Your data automatically syncs when changes occur in OwnerRez.
-                      Initial connection synced 3 years of historical data.
                     </p>
                   </div>
                 </div>
@@ -160,7 +159,7 @@ export const IntegrationsTab = () => {
               </div>
             </>
           )}
-          
+
           {!isConnected && (
             <div className="border-t border-gray-200 pt-6">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -171,7 +170,7 @@ export const IntegrationsTab = () => {
                       Connection Required
                     </p>
                     <p className="text-sm text-amber-700">
-                      Connect your OwnerRez account to start syncing property and booking data. 
+                      Connect your OwnerRez account to start syncing property and booking data.
                       Initial connection will sync 3 years of historical data and enable real-time webhook updates.
                     </p>
                   </div>

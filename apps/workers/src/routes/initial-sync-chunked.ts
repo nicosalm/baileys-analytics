@@ -87,10 +87,10 @@ initialSyncChunked.post('/properties', async (c) => {
   }
 
   const ownerRez = new OwnerRezService(ownerrezToken.access_token);
-  
+
   try {
     const properties = await ownerRez.fetchProperties();
-    
+
     for (const property of properties) {
       const { data: upsertedProperty, error: propertyError } = await supabase
         .from('properties')
@@ -123,7 +123,7 @@ initialSyncChunked.post('/properties', async (c) => {
           for (const tag of property.tags) {
             // tags come as strings from OwnerRez API
             const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
-            
+
             const { data: existingTags } = await supabase
               .from('tags')
               .select('id')
@@ -131,7 +131,7 @@ initialSyncChunked.post('/properties', async (c) => {
               .eq('name', tagName);
 
             let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
-            
+
             if (!tagId) {
               const { data: newTag, error: tagError } = await supabase
                 .from('tags')
@@ -142,7 +142,7 @@ initialSyncChunked.post('/properties', async (c) => {
                 })
                 .select()
                 .single();
-              
+
               if (tagError) {
                 console.error(`Failed to create tag ${tag.name || tag}:`, tagError);
                 continue;
@@ -159,7 +159,7 @@ initialSyncChunked.post('/properties', async (c) => {
                 }, {
                   onConflict: 'property_id,tag_id'
                 });
-              
+
               if (linkError) {
                 console.error(`Failed to link property to tag:`, linkError);
               }
@@ -212,7 +212,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
   }
 
   const ownerRez = new OwnerRezService(ownerrezToken.access_token);
-  
+
   try {
     // sync 3 years of historical data plus 1 year future
     const startDate = new Date();
@@ -233,7 +233,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
     const BATCH_SIZE = 50;
     for (let i = 0; i < bookings.length; i += BATCH_SIZE) {
       const batch = bookings.slice(i, i + BATCH_SIZE);
-      
+
       for (const booking of batch) {
         if (booking.is_block || booking.type === 'block') {
           await supabase
@@ -399,7 +399,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
                   .single();
 
                 let tagId = existingTag?.id;
-                
+
                 if (!tagId) {
                   // create tag if it doesn't exist
                   const { data: newTag } = await supabase
@@ -462,7 +462,7 @@ initialSyncChunked.post('/guests', async (c) => {
   }
 
   const ownerRez = new OwnerRezService(ownerrezToken.access_token);
-  
+
   try {
     const guests = await ownerRez.fetchAllGuests();
     let guestsCount = 0;
@@ -501,7 +501,7 @@ initialSyncChunked.post('/guests', async (c) => {
         for (const tag of guest.tags) {
           // tags come as strings from OwnerRez API
           const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
-          
+
           const { data: existingTags } = await supabase
             .from('tags')
             .select('id')
@@ -509,7 +509,7 @@ initialSyncChunked.post('/guests', async (c) => {
             .eq('name', tagName);
 
           let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
-          
+
           if (!tagId) {
             const { data: newTag } = await supabase
               .from('tags')
@@ -537,7 +537,7 @@ initialSyncChunked.post('/guests', async (c) => {
     }
 
     // after syncing all guests, update bookings with guest email/phone
-    console.log('Updating bookings with guest contact information...');
+    // console.log('Updating bookings with guest contact information...');
 
     // first: match by ownerrez_guest_id (most reliable)
     const { data: bookingsById } = await supabase
@@ -580,7 +580,7 @@ initialSyncChunked.post('/guests', async (c) => {
       .not('guest_name', 'is', null);
 
     if (bookingsByName && bookingsByName.length > 0) {
-      console.log(`Found ${bookingsByName.length} bookings to update via name matching`);
+      // console.log(`Found ${bookingsByName.length} bookings to update via name matching`);
 
       for (const booking of bookingsByName) {
         const { data: matchingGuests } = await supabase

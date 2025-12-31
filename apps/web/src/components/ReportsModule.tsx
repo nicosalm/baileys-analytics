@@ -6,9 +6,11 @@ import {
   BarChart3, Building2, PieChart, Zap
 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
+import { useAuth } from '@/contexts/auth'
 import { useReportTemplates } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
 import { authenticatedFetch } from '@/lib/api'
+import { DCTZReportCard, DCTZ_ENABLED_TENANTS } from '@/components/dctz'
 
 const REPORT_CATEGORIES = {
   operational: {
@@ -230,7 +232,11 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
 }
 
 export const ReportsModule = () => {
+  const { state } = useAuth()
   const { error } = useReportTemplates()
+
+  const tenantId = state.status === 'authenticated' ? state.user.tenantId : null
+  const hasDCTZAccess = tenantId ? DCTZ_ENABLED_TENANTS.includes(tenantId) : false
 
 
   if (error) {
@@ -257,7 +263,7 @@ export const ReportsModule = () => {
             <div className="text-right">
               <div className="text-xs text-gray-500">Available Reports</div>
               <div className="text-lg font-bold text-blue-600">
-                {QUICK_REPORTS.length}
+                {QUICK_REPORTS.length + (hasDCTZAccess ? 1 : 0)}
               </div>
             </div>
             <div className="text-right">
@@ -272,6 +278,7 @@ export const ReportsModule = () => {
 
       <div className="space-y-6">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DCTZReportCard hasDCTZAccess={hasDCTZAccess} />
           {QUICK_REPORTS.map(report => (
             <QuickReportCard key={report.id} report={report} />
           ))}
