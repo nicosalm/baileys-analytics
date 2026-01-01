@@ -58,12 +58,12 @@ function createGuestId(name: string, email?: string): string {
 function normalizePlatform(platform: string | null): string {
   if (!platform) return 'Direct';
   const normalized = platform.toLowerCase().trim();
-  
+
   if (normalized.includes('airbnb')) return 'Airbnb';
   if (normalized.includes('vrbo') || normalized.includes('homeaway')) return 'VRBO';
   if (normalized.includes('booking')) return 'Booking.com';
   if (normalized.includes('direct')) return 'Direct';
-  
+
   return platform;
 }
 
@@ -76,26 +76,26 @@ export async function getGuestsData(
 ): Promise<GuestData> {
   const hasDateFilter = from && to;
   const hasTagFilter = tagIds && tagIds.length > 0;
-  
+
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled');
-  
+
   if (hasDateFilter) {
     bookingsQuery = bookingsQuery
       .gte('arrival', from)
       .lte('arrival', to);
   }
-  
+
   let filteredBookingIds: string[] | null = null;
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
       .select('booking_id')
       .in('tag_id', tagIds);
-    
+
     if (taggedBookings && taggedBookings.length > 0) {
       filteredBookingIds = taggedBookings.map(tb => tb.booking_id);
     } else {
@@ -114,9 +114,9 @@ export async function getGuestsData(
       };
     }
   }
-  
+
   const { data: periodBookings } = await bookingsQuery;
-  
+
   if (!periodBookings || periodBookings.length === 0) {
     return {
       metrics: {
@@ -132,17 +132,17 @@ export async function getGuestsData(
       guests: []
     };
   }
-  
-  const filteredPeriodBookings = filteredBookingIds 
+
+  const filteredPeriodBookings = filteredBookingIds
     ? periodBookings.filter(b => filteredBookingIds.includes(b.id))
     : periodBookings;
-  
+
   const { data: allBookings } = await supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled');
-  
+
   const guestPeriodMap = new Map<string, {
     name: string;
     email?: string;
@@ -151,7 +151,7 @@ export async function getGuestsData(
     totalSpent: number;
     totalNights: number;
   }>();
-  
+
   const guestAllTimeMap = new Map<string, {
     name: string;
     email?: string;
@@ -163,25 +163,15 @@ export async function getGuestsData(
     lastVisit: string;
     propertyIds: Set<string>;
   }>();
-  
+
   for (const booking of filteredPeriodBookings) {
     if (!booking.guest_name) continue;
-    
+
     const guestId = createGuestId(booking.guest_name, booking.guest_email);
     const nights = Math.ceil(
       (new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24)
     );
-    
-    // Debug logging
-    if (booking.guest_name === 'Katie Schreiber') {
-      console.log('[DEBUG] Katie Schreiber booking:', {
-        name: booking.guest_name,
-        email: booking.guest_email,
-        phone: booking.guest_phone,
-        guestId
-      });
-    }
-    
+
     if (!guestPeriodMap.has(guestId)) {
       guestPeriodMap.set(guestId, {
         name: booking.guest_name,
@@ -192,25 +182,25 @@ export async function getGuestsData(
         totalNights: 0
       });
     }
-    
+
     const guest = guestPeriodMap.get(guestId)!;
     guest.bookings.push(booking);
     guest.totalSpent += booking.total_amount || 0;
     guest.totalNights += nights;
   }
-  
+
   if (allBookings) {
     for (const booking of allBookings) {
       if (!booking.guest_name) continue;
-      
+
       const guestId = createGuestId(booking.guest_name, booking.guest_email);
-      
+
       if (!guestPeriodMap.has(guestId)) continue;
-      
+
       const nights = Math.ceil(
         (new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24)
       );
-      
+
       if (!guestAllTimeMap.has(guestId)) {
         guestAllTimeMap.set(guestId, {
           name: booking.guest_name,
@@ -224,13 +214,13 @@ export async function getGuestsData(
           propertyIds: new Set()
         });
       }
-      
+
       const guest = guestAllTimeMap.get(guestId)!;
       guest.bookings.push(booking);
       guest.totalSpent += booking.total_amount || 0;
       guest.totalNights += nights;
       guest.propertyIds.add(booking.property_id);
-      
+
       if (booking.arrival < guest.firstVisit) {
         guest.firstVisit = booking.arrival;
       }
@@ -239,7 +229,7 @@ export async function getGuestsData(
       }
     }
   }
-  
+
   const totalGuests = guestPeriodMap.size;
 
   // Calculate repeat guests: guests in the period who also have bookings before the period start
@@ -264,45 +254,45 @@ export async function getGuestsData(
   }
 
   const repeatRate = totalGuests > 0 ? repeatGuests / totalGuests : 0;
-  
+
   let totalRevenue = 0;
   let totalStayNights = 0;
   let totalBookings = 0;
-  
+
   for (const guest of guestPeriodMap.values()) {
     totalRevenue += guest.totalSpent;
     totalStayNights += guest.totalNights;
     totalBookings += guest.bookings.length;
   }
-  
+
   const avgStayLength = totalBookings > 0 ? totalStayNights / totalBookings : 0;
   const avgSpend = totalGuests > 0 ? totalRevenue / totalGuests : 0;
-  
+
   const { data: properties } = await supabase
     .from('properties')
     .select('id, name')
     .eq('tenant_id', tenantId);
-  
+
   const propertyMap = new Map<string, string>();
   if (properties) {
     for (const prop of properties) {
       propertyMap.set(prop.id, prop.name);
     }
   }
-  
+
   const bookingIds = filteredPeriodBookings.map(b => b.id);
   const { data: bookingTags } = await supabase
     .from('booking_tags')
     .select('booking_id, tag_id')
     .in('booking_id', bookingIds);
-  
+
   const uniqueGuestEmails = new Set<string>();
   const uniqueGuestNames = new Set<string>();
   for (const booking of filteredPeriodBookings) {
     if (booking.guest_name) uniqueGuestNames.add(booking.guest_name);
     if (booking.guest_email) uniqueGuestEmails.add(booking.guest_email);
   }
-  
+
   let guestRecords: any[] = [];
   if (uniqueGuestNames.size > 0 || uniqueGuestEmails.size > 0) {
     const { data: guests } = await supabase
@@ -312,21 +302,21 @@ export async function getGuestsData(
       .or(`full_name.in.(${Array.from(uniqueGuestNames).join(',')}),email.in.(${Array.from(uniqueGuestEmails).join(',')})`);
     guestRecords = guests || [];
   }
-  
+
   const { data: tags } = await supabase
     .from('tags')
     .select('*')
     .eq('tenant_id', tenantId);
-  
+
   const tagMap = new Map<string, { id: string; name: string; color?: string }>();
   if (tags) {
     for (const tag of tags) {
       tagMap.set(tag.id, { id: tag.id, name: tag.name, color: tag.color });
     }
   }
-  
+
   const guestTagsMap = new Map<string, Set<string>>();
-  
+
   if (bookingTags) {
     for (const bt of bookingTags) {
       const booking = filteredPeriodBookings.find(b => b.id === bt.booking_id);
@@ -339,7 +329,7 @@ export async function getGuestsData(
       }
     }
   }
-  
+
   for (const guest of guestRecords) {
     if (guest.guest_tags && guest.full_name) {
       const guestId = createGuestId(guest.full_name, guest.email);
@@ -351,21 +341,12 @@ export async function getGuestsData(
       }
     }
   }
-  
+
   const guestsList: GuestListItem[] = [];
   for (const [guestId, periodData] of guestPeriodMap) {
     const allTimeData = guestAllTimeMap.get(guestId);
     const guestTags = guestTagsMap.get(guestId) || new Set();
-    
-    // Debug logging for specific guest
-    if (periodData.name === 'Katie Schreiber') {
-      console.log('[DEBUG] Creating guest list item for Katie:', {
-        name: periodData.name,
-        email: periodData.email,
-        phone: periodData.phone
-      });
-    }
-    
+
     guestsList.push({
       id: guestId,
       name: periodData.name,
@@ -375,12 +356,12 @@ export async function getGuestsData(
       lastVisit: allTimeData?.lastVisit || periodData.bookings[periodData.bookings.length - 1].arrival,
       bookingCount: allTimeData?.bookings.length || periodData.bookings.length,
       totalSpent: allTimeData?.totalSpent || periodData.totalSpent,
-      avgNightlyRate: allTimeData && allTimeData.totalNights > 0 
-        ? allTimeData.totalSpent / allTimeData.totalNights 
-        : periodData.totalNights > 0 
-          ? periodData.totalSpent / periodData.totalNights 
+      avgNightlyRate: allTimeData && allTimeData.totalNights > 0
+        ? allTimeData.totalSpent / allTimeData.totalNights
+        : periodData.totalNights > 0
+          ? periodData.totalSpent / periodData.totalNights
           : 0,
-      properties: allTimeData 
+      properties: allTimeData
         ? Array.from(allTimeData.propertyIds).map(id => propertyMap.get(id) || id).slice(0, 3)
         : Array.from(new Set(periodData.bookings.map(b => propertyMap.get(b.property_id) || b.property_id))),
       tags: Array.from(guestTags).map(tagId => tagMap.get(tagId) || { id: tagId, name: 'Unknown' }),
@@ -388,39 +369,39 @@ export async function getGuestsData(
       periodSpent: periodData.totalSpent
     });
   }
-  
+
   guestsList.sort((a, b) => b.periodSpent - a.periodSpent);
   const topSpenders = guestsList.slice(0, 10);
-  
+
   const sourceMap = new Map<string, { count: Set<string>; revenue: number }>();
   for (const booking of filteredPeriodBookings) {
     if (!booking.guest_name) continue;
-    
+
     const source = normalizePlatform(booking.platform);
     const guestId = createGuestId(booking.guest_name, booking.guest_email);
-    
+
     if (!sourceMap.has(source)) {
       sourceMap.set(source, { count: new Set(), revenue: 0 });
     }
-    
+
     const sourceData = sourceMap.get(source)!;
     sourceData.count.add(guestId);
     sourceData.revenue += booking.total_amount || 0;
   }
-  
+
   const guestsBySource: GuestSourceData[] = Array.from(sourceMap.entries()).map(([source, data]) => ({
     source,
     count: data.count.size,
     revenue: data.revenue
   })).sort((a, b) => b.count - a.count);
-  
+
   const tagDistMap = new Map<string, number>();
   for (const guestTags of guestTagsMap.values()) {
     for (const tagId of guestTags) {
       tagDistMap.set(tagId, (tagDistMap.get(tagId) || 0) + 1);
     }
   }
-  
+
   const tagDistribution: TagDistribution[] = Array.from(tagDistMap.entries())
     .map(([tagId, count]) => {
       const tag = tagMap.get(tagId);
@@ -432,20 +413,7 @@ export async function getGuestsData(
       };
     })
     .sort((a, b) => b.count - a.count);
-  
-  // Debug log sample of final data
-  const sampleGuest = guestsList.find(g => g.name === 'Katie Schreiber');
-  if (sampleGuest) {
-    console.log('[DEBUG] Final Katie Schreiber data:', {
-      name: sampleGuest.name,
-      email: sampleGuest.email,
-      phone: sampleGuest.phone
-    });
-  }
-  
-  console.log('[DEBUG] Total guests with email:', guestsList.filter(g => g.email).length);
-  console.log('[DEBUG] Total guests with phone:', guestsList.filter(g => g.phone).length);
-  
+
   return {
     metrics: {
       totalGuests,
