@@ -109,27 +109,12 @@ export const OverviewDashboard = () => {
 
   useErrorToast(error, 'Failed to load overview data')
 
-  if (isLoading || error || !data) {
-    return (
-      <StateWrapper
-        loading={isLoading}
-        error={error}
-        empty={!data && !isLoading && !error}
-        loadingMessage="Loading dashboard data..."
-        emptyMessage="No data available for the selected period"
-        onRetry={() => window.location.reload()}
-        minHeight={400}
-        className="py-12"
-      >
-        <div />
-      </StateWrapper>
-    )
-  }
+  const charts = data?.charts
+  const metrics = data?.metrics
 
-  const { metrics, alerts, recentActivity, charts } = data
-
-  // memoize revenue composition chart data
   const revenueChartData = useMemo(() => {
+    if (!charts?.topProperties || !charts?.revenueLastWeek) return []
+
     const allSortedProps = charts.topProperties || []
     const topRevenue = allSortedProps[0]?.revenue || 0
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
@@ -240,10 +225,11 @@ export const OverviewDashboard = () => {
           ...properties
         }
       })
-  }, [charts.topProperties, charts.revenueLastWeek, metrics?.properties?.total])
+  }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total])
 
-  // memoize the Area components for revenue chart
   const revenueChartAreas = useMemo(() => {
+    if (!charts?.topProperties) return []
+
     const allSortedProps = charts.topProperties || []
     const topRevenue = allSortedProps[0]?.revenue || 0
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
@@ -277,7 +263,7 @@ export const OverviewDashboard = () => {
     }
 
     const otherCount = Math.max(0, totalPropertyCount - topProps.length)
-    if (otherCount > 0 || charts.revenueLastWeek?.length > 0) {
+    if (otherCount > 0 || charts?.revenueLastWeek?.length > 0) {
       areas.push(
         <Area
           key="other"
@@ -293,7 +279,26 @@ export const OverviewDashboard = () => {
     }
 
     return areas
-  }, [charts.topProperties, charts.revenueLastWeek, metrics?.properties?.total])
+  }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total])
+
+  if (isLoading || error || !data) {
+    return (
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading dashboard data..."
+        emptyMessage="No data available for the selected period"
+        onRetry={() => window.location.reload()}
+        minHeight={400}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
+    )
+  }
+
+  const { alerts, recentActivity } = data
 
   const upcomingArrivalsAlert = alerts?.find((alert: any) => {
     const hasArrival = alert.description?.toLowerCase().includes('arriving') ||
