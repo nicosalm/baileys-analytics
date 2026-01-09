@@ -15,7 +15,6 @@ export class EmailService {
         subject: 'Welcome to Baileys Analytics!',
         html: this.getWelcomeEmailTemplate(userName)
       });
-      console.log('Welcome email sent to:', to);
     } catch (error) {
       console.error('Failed to send welcome email:', error);
       // don't throw - email failure shouldn't block the flow

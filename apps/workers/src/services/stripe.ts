@@ -75,11 +75,6 @@ export class StripeService {
     // only allow trial if tenant has never subscribed before
     const allowTrial = isFirstMonth && !tenant?.first_subscription_at;
 
-    // log trial denial for audit trail
-    if (isFirstMonth && !allowTrial) {
-      console.log('Trial denied for tenant:', tenantId, 'first_subscription_at:', tenant?.first_subscription_at);
-    }
-
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       payment_method_types: ['card'],
@@ -251,7 +246,6 @@ export class StripeService {
       .single();
 
     if (existingEvent?.processed) {
-      console.log(`Event ${event.id} already processed, skipping`);
       return { received: true };
     }
 
@@ -292,7 +286,7 @@ export class StripeService {
         break;
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        break;
     }
 
     // Mark event as processed
@@ -323,8 +317,6 @@ export class StripeService {
     const tenantId = session.metadata?.tenant_id;
     if (!tenantId) return;
 
-    // subscription will be created/updated through subscription webhook
-    console.log('Checkout completed for tenant:', tenantId);
   }
 
   private async handleSubscriptionUpdate(subscription: Stripe.Subscription) {
@@ -382,9 +374,6 @@ export class StripeService {
         .eq('id', tenantId)
         .is('first_subscription_at', null);
 
-      if (!updateError) {
-        console.log('Set first_subscription_at for tenant:', tenantId, 'subscription:', subscription.id);
-      }
     }
   }
 

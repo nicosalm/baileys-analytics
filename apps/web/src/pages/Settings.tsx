@@ -10,7 +10,7 @@ import {
   LogOut, Compass,
   Palette, CreditCard, Link2,
   Lock, MessageSquare, ArrowLeft,
-  Eye, EyeOff
+  Eye, EyeOff, Receipt
 } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
@@ -35,7 +35,11 @@ const AccountTab = lazy(() =>
   import('@/components/settings/AccountTab').then(m => ({ default: m.AccountTab }))
 )
 
-type SettingsTab = 'account' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons'
+const ExpenseManagementPanel = lazy(() =>
+  import('@/components/settings/ExpenseManagementPanel').then(m => ({ default: m.ExpenseManagementPanel }))
+)
+
+type SettingsTab = 'account' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons' | 'expenses'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   {
@@ -52,6 +56,11 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     id: 'tax',
     label: 'Platform Fees',
     icon: Calculator
+  },
+  {
+    id: 'expenses',
+    label: 'Expenses',
+    icon: Receipt
   },
   {
     id: 'seasons',
@@ -405,6 +414,7 @@ export const Settings = () => {
               {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'billing' && <BillingTab />}
               {activeTab === 'tax' && <TaxManagementPanel />}
+              {activeTab === 'expenses' && <ExpenseManagementPanel />}
               {activeTab === 'seasons' && <SeasonManagementPanel />}
             </Suspense>
           </div>

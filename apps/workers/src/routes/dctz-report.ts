@@ -50,10 +50,7 @@ dctzReport.post('/generate', async (c) => {
 	const tenantId = c.get('tenantId')
 	const supabase = createSupabaseClient(c.env)
 
-	console.log('DCTZ generate - tenantId:', tenantId)
-
 	const body = await c.req.json()
-	console.log('DCTZ generate - request body:', body)
 	const validation = reportRequestSchema.safeParse(body)
 
 	if (!validation.success) {

@@ -41,6 +41,8 @@ export const PLView: React.FC<PLViewProps> = ({
     const hostFees = metrics.revenue?.hostFees || 0
     const guestFees = metrics.revenue?.guestFees || 0
     const taxes = metrics.revenue?.taxes || 0
+    const operatingExpenses = metrics.operatingExpenses || { total: 0, byCategory: {} }
+    const operatingProfit = metrics.operatingProfit ?? (netRevenue - operatingExpenses.total)
     
     const profitMargin = grossRevenue > 0 
       ? ((netRevenue / grossRevenue) * 100)
@@ -97,7 +99,9 @@ export const PLView: React.FC<PLViewProps> = ({
         platformFees,
         hostFees,
         guestFees,
-        taxes
+        taxes,
+        operatingExpenses,
+        operatingProfit
       },
       profitability: {
         marginPercent: profitMargin
@@ -144,7 +148,10 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>Revenue Summary:</strong> Shows revenue after platform fees and taxes. Does not include operating expenses like cleaning, management, or utilities.
+              <strong>Revenue Summary:</strong> Shows revenue after platform fees and taxes.{' '}
+              {revenue.operatingExpenses.total > 0
+                ? 'Operating expenses are included in the cost breakdown below.'
+                : 'Track operating expenses in Settings → Expenses to see Operating Profit.'}
             </div>
           </div>
         </div>
@@ -265,15 +272,47 @@ export const PLView: React.FC<PLViewProps> = ({
                   <p className="text-xs text-gray-500">{formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} of revenue</p>
                 </div>
               </div>
+              {revenue.operatingExpenses.total > 0 && (
+                <div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-700">Operating Expenses</span>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatCurrency(revenue.operatingExpenses.total)}</p>
+                      <p className="text-xs text-gray-500">{formatPercentage((revenue.operatingExpenses.total / revenue.gross) * 100, 1)} of revenue</p>
+                    </div>
+                  </div>
+                  {Object.keys(revenue.operatingExpenses.byCategory).length > 0 && (
+                    <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-gray-200 pl-3">
+                      {Object.entries(revenue.operatingExpenses.byCategory).map(([category, amount]) => (
+                        <div key={category} className="flex justify-between items-center">
+                          <span className="text-xs text-gray-500 capitalize">{category}</span>
+                          <span className="text-xs font-medium text-gray-600">{formatCurrency(amount as number)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-900">Total Costs</span>
                   <div className="text-right">
-                    <p className="font-bold text-red-600">{formatCurrency(revenue.platformFees + revenue.taxes)}</p>
-                    <p className="text-xs text-gray-500">{formatPercentage(((revenue.platformFees + revenue.taxes) / revenue.gross) * 100, 1)} of revenue</p>
+                    <p className="font-bold text-red-600">{formatCurrency(revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total)}</p>
+                    <p className="text-xs text-gray-500">{formatPercentage(((revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total) / revenue.gross) * 100, 1)} of revenue</p>
                   </div>
                 </div>
               </div>
+              {revenue.operatingExpenses.total > 0 && (
+                <div className="border-t-2 border-green-200 pt-3 mt-1 bg-green-50 -mx-4 px-4 py-3 rounded-b-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-green-900">Operating Profit</span>
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-green-700">{formatCurrency(revenue.operatingProfit)}</p>
+                      <p className="text-xs text-green-600">{formatPercentage((revenue.operatingProfit / revenue.gross) * 100, 1)} margin</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -29,6 +29,7 @@ import { seasons } from './routes/seasons';
 import { tags } from './routes/tags';
 import { tax } from './routes/tax';
 import { platformFees as platformFeesRoute } from './routes/platform-fees';
+import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses';
 import { reports } from './routes/reports';
 import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
@@ -881,6 +882,7 @@ app.route('/api/seasons', seasons);
 app.route('/api/tags', tags);
 app.route('/api/tax', tax);
 app.route('/api/platform-fees', platformFeesRoute);
+app.route('/api/operating-expenses', operatingExpensesRoute);
 
 // rate limit billing checkout to prevent abuse
 app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));

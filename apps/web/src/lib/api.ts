@@ -401,6 +401,33 @@ class ApiClient {
         })
     }
 
+    async getOperatingExpenses(propertyId?: string, month?: string): Promise<ApiResult<any>> {
+        const params = new URLSearchParams()
+        if (propertyId) params.append('property', propertyId)
+        if (month) params.append('month', month)
+        return this.request(`/operating-expenses?${params}`)
+    }
+
+    async saveOperatingExpense(data: any): Promise<ApiResult<any>> {
+        return this.request('/operating-expenses', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async saveOperatingExpensesBulk(data: any): Promise<ApiResult<any>> {
+        return this.request('/operating-expenses/bulk', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async deleteOperatingExpense(id: string): Promise<ApiResult<any>> {
+        return this.request(`/operating-expenses/${id}`, {
+            method: 'DELETE'
+        })
+    }
+
     async getTaxRemittance(propertyId?: string, periodStart?: string, periodEnd?: string): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
         if (propertyId) params.append('property', propertyId)

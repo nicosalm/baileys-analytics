@@ -12,6 +12,7 @@ const ReportHistoryModal = lazy(() => import('./modals/ReportHistoryModal').then
 
 // Tax-related modals (heavier, load on demand)
 const PlatformFeeEntryModal = lazy(() => import('./modals/PlatformFeeEntryModal').then(m => ({ default: m.PlatformFeeEntryModal })))
+const OperatingExpenseEntryModal = lazy(() => import('./modals/OperatingExpenseEntryModal').then(m => ({ default: m.OperatingExpenseEntryModal })))
 
 export const ModalManager = () => {
   const { activeModal } = useModal()
@@ -88,6 +89,15 @@ export const ModalManager = () => {
             propertyName={activeModal.propertyName}
             month={activeModal.month}
             existingData={activeModal.existingData}
+          />
+        )
+
+      case 'operating-expense-entry':
+        return (
+          <OperatingExpenseEntryModal
+            propertyId={activeModal.propertyId}
+            propertyName={activeModal.propertyName}
+            month={activeModal.month}
           />
         )
 

@@ -548,8 +548,6 @@ initialSyncChunked.post('/guests', async (c) => {
       .not('ownerrez_guest_id', 'is', null);
 
     if (bookingsById && bookingsById.length > 0) {
-      console.log(`Found ${bookingsById.length} bookings to update via ownerrez_guest_id`);
-
       for (const booking of bookingsById) {
         const { data: guest } = await supabase
           .from('guests')

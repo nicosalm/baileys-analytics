@@ -13,6 +13,11 @@ interface FinancialMetrics {
     guestFees: number;
     taxes: number;
   };
+  operatingExpenses?: {
+    total: number;
+    byCategory: Record<string, number>;
+  };
+  operatingProfit?: number;
   performance: {
     netRevenueRate: number;
     avgBookingValue: number;
@@ -171,7 +176,7 @@ export async function getPLData(
   const toYear = toDate.getFullYear();
   const toMonth = toDate.getMonth() + 1;
 
-  const [bookingsResult, guestFeesResult, propertiesResult, upcomingResult] = await Promise.all([
+  const [bookingsResult, guestFeesResult, propertiesResult, upcomingResult, operatingExpensesResult] = await Promise.all([
     bookingsQuery,
     supabase
       .from('platform_guest_fees')
@@ -188,13 +193,19 @@ export async function getPLData(
       .select('total_amount, arrival')
       .eq('tenant_id', tenantId)
       .gte('arrival', new Date().toISOString().split('T')[0])
-      .neq('status', 'canceled')
+      .neq('status', 'canceled'),
+    supabase
+      .from('operating_expenses')
+      .select('category, amount')
+      .eq('tenant_id', tenantId)
+      .or(`and(year.eq.${fromYear},month.gte.${fromMonth}),and(year.eq.${toYear},month.lte.${toMonth}),and(year.gt.${fromYear},year.lt.${toYear})`)
   ]);
 
   const bookings = bookingsResult.data || [];
   const guestFees = guestFeesResult.data || [];
   const properties = propertiesResult.data || [];
   const upcomingBookings = upcomingResult.data || [];
+  const operatingExpensesList = operatingExpensesResult.data || [];
 
   const grossRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
@@ -212,6 +223,14 @@ export async function getPLData(
   }, 0);
 
   const netRevenue = grossRevenue - totalPlatformFees - totalTaxes;
+
+  const operatingExpensesByCategory = operatingExpensesList.reduce((acc: Record<string, number>, exp: any) => {
+    const category = exp.category || 'other';
+    acc[category] = (acc[category] || 0) + (parseFloat(exp.amount) || 0);
+    return acc;
+  }, {});
+  const totalOperatingExpenses = Object.values(operatingExpensesByCategory).reduce((sum: number, amt) => sum + (amt as number), 0);
+  const operatingProfit = netRevenue - totalOperatingExpenses;
 
   const today = new Date();
   const pendingRevenue = bookings
@@ -302,6 +321,11 @@ export async function getPLData(
         guestFees: totalGuestFees,
         taxes: totalTaxes
       },
+      operatingExpenses: {
+        total: totalOperatingExpenses,
+        byCategory: operatingExpensesByCategory
+      },
+      operatingProfit,
       performance: {
         netRevenueRate: grossRevenue > 0 ? (netRevenue / grossRevenue) * 100 : 0,
         avgBookingValue: bookings.length > 0 ? grossRevenue / bookings.length : 0,

@@ -17,8 +17,6 @@ export async function invalidateDashboardCache(
 		// delete all matching keys
 		const deletions = keys.keys.map(key => cache.delete(key.name));
 		await Promise.all(deletions);
-		
-		console.log(`Invalidated ${keys.keys.length} cache entries for user ${userId}`);
 	} catch (error) {
 		console.error('Failed to invalidate cache:', error);
 	}

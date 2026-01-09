@@ -72,8 +72,6 @@ export class DCTZCalculator {
 		year: number,
 		month: number
 	): Promise<DCTZReportData | null> {
-		console.log('DCTZ Calculator called with:', { tenantId, propertyId, year, month })
-
 		// get property info
 		const { data: property, error: propertyError } = await this.supabase
 			.from('properties')
@@ -81,8 +79,6 @@ export class DCTZCalculator {
 			.eq('id', propertyId)
 			.eq('tenant_id', tenantId)
 			.single()
-
-		console.log('Property lookup result:', { property, error: propertyError?.message })
 
 		if (!property) return null
 
@@ -106,15 +102,6 @@ export class DCTZCalculator {
 			.lte('arrival', endDate)
 			.gt('departure', startDate)
 			.neq('status', 'canceled')
-
-		console.log('DCTZ bookings query:', {
-			tenantId,
-			propertyId,
-			startDate,
-			endDate,
-			bookingsFound: bookings?.length || 0,
-			error: bookingsError?.message
-		})
 
 		// get guest service fees for this property/month
 		const { data: guestFees } = await this.supabase

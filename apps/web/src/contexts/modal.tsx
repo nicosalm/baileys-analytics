@@ -12,6 +12,7 @@ export type ModalType =
   | { type: 'report-history'; templateId: string; templateName: string }
   | { type: 'report-schedule'; templateId: string; templateName: string }
   | { type: 'platform-fee-entry'; propertyId: string; propertyName: string; month?: string; existingData?: any }
+  | { type: 'operating-expense-entry'; propertyId: string; propertyName: string; month?: string }
   | null
 
 interface ModalContextType {

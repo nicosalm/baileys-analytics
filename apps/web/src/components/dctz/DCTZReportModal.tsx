@@ -93,18 +93,14 @@ export const DCTZReportModal = ({ onClose }: DCTZReportModalProps) => {
   const loadProperties = async () => {
     try {
       const result = await api.request('/dctz/properties')
-      console.log('DCTZ properties response:', result)
       if (result.success && (result as any).data?.properties) {
         const props = (result as any).data.properties
-        console.log('DCTZ properties loaded:', props)
         setProperties(props)
         if (props.length > 0) {
-          console.log('Setting selected property to:', props[0].id)
           setSelectedProperty(props[0].id)
         }
       }
-    } catch (err) {
-      console.error('Failed to load DCTZ properties:', err)
+    } catch {
       addToast('error', 'Failed to load properties')
     } finally {
       setIsLoadingProperties(false)

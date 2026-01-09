@@ -519,8 +519,64 @@ export async function savePlatformFee(data: any): Promise<void> {
     throw new Error(result.error)
   }
   // Invalidate cache
-  await globalMutate((key: any) => 
+  await globalMutate((key: any) =>
     Array.isArray(key) && key[0] === '/platform-fees'
+  )
+}
+
+// Operating Expenses hooks
+export function useOperatingExpenses(propertyId?: string, month?: string) {
+  const key = month ? ['/operating-expenses', propertyId || 'all', month] : null
+  return useSWR(key, async () => {
+    if (!month) return []
+    const result = await api.getOperatingExpenses(propertyId, month)
+    if (!result.success) throw new Error(result.error)
+    const data = result.data?.data || result.data || []
+    return Array.isArray(data) ? data : []
+  }, {
+    revalidateOnMount: true,
+    revalidateOnFocus: true,
+    dedupingInterval: 0
+  })
+}
+
+export async function saveOperatingExpense(data: any): Promise<void> {
+  const result = await api.saveOperatingExpense(data)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  await globalMutate((key: any) =>
+    Array.isArray(key) && key[0] === '/operating-expenses'
+  )
+  // also invalidate financial data
+  await globalMutate((key: any) =>
+    typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
+  )
+}
+
+export async function saveOperatingExpensesBulk(data: any): Promise<void> {
+  const result = await api.saveOperatingExpensesBulk(data)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  await globalMutate((key: any) =>
+    Array.isArray(key) && key[0] === '/operating-expenses'
+  )
+  await globalMutate((key: any) =>
+    typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
+  )
+}
+
+export async function deleteOperatingExpense(id: string): Promise<void> {
+  const result = await api.deleteOperatingExpense(id)
+  if (!result.success) {
+    throw new Error(result.error)
+  }
+  await globalMutate((key: any) =>
+    Array.isArray(key) && key[0] === '/operating-expenses'
+  )
+  await globalMutate((key: any) =>
+    typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )
 }
 
