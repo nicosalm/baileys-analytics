@@ -118,6 +118,7 @@ export const PlatformFeeEntryModal = ({
       const result = await api.request('/platform-fees/bulk', {
         method: 'POST',
         body: JSON.stringify({
+          propertyId,
           year: parseInt(year),
           month: parseInt(monthNum),
           fees: validRows.map(row => ({

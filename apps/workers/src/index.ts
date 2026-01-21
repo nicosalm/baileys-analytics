@@ -94,15 +94,15 @@ app.route('/api/waitlist', waitlist);
 
 app.post('/api/auth/login', async (c) => {
 	const body = await c.req.json();
-	
+
 	// validate input
 	const validation = loginSchema.safeParse(body);
 	if (!validation.success) {
-		return c.json({ 
-			error: validation.error.errors.map(e => e.message).join(', ') 
+		return c.json({
+			error: validation.error.errors.map(e => e.message).join(', ')
 		}, 400);
 	}
-	
+
 	const { email, password } = validation.data;
 
 	const supabase = createSupabaseClient(c.env);
@@ -131,15 +131,15 @@ app.post('/api/auth/login', async (c) => {
 
 app.post('/api/auth/signup', async (c) => {
 	const body = await c.req.json();
-	
+
 	// validate input
 	const validation = signupSchema.safeParse(body);
 	if (!validation.success) {
-		return c.json({ 
-			error: validation.error.errors.map(e => e.message).join(', ') 
+		return c.json({
+			error: validation.error.errors.map(e => e.message).join(', ')
 		}, 400);
 	}
-	
+
 	const { email, password, companyName } = validation.data;
 
 	const supabase = createSupabaseClient(c.env);
@@ -178,15 +178,15 @@ app.post('/api/auth/signup', async (c) => {
 
 app.post('/api/auth/refresh', async (c) => {
 	const body = await c.req.json();
-	
+
 	// validate input
 	const validation = refreshTokenSchema.safeParse(body);
 	if (!validation.success) {
-		return c.json({ 
-			error: validation.error.errors.map(e => e.message).join(', ') 
+		return c.json({
+			error: validation.error.errors.map(e => e.message).join(', ')
 		}, 400);
 	}
-	
+
 	const { refreshToken } = validation.data;
 
 	const supabase = createSupabaseClient(c.env);
@@ -249,7 +249,7 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 	}
 
 	const supabase = createSupabaseClient(c.env);
-	
+
 	// get counts
 	const [properties, bookings, syncStatuses] = await Promise.all([
 		supabase
@@ -370,7 +370,7 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 			properties = updatedProperties;
 
 			if (!properties || properties.length === 0) {
-				return c.json({ 
+				return c.json({
 					success: true,
 					message: 'No properties found in your OwnerRez account. Please add properties in OwnerRez first.',
 					propertiesSynced: 0,
@@ -390,7 +390,7 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 
 	let startDate: string;
 	let endDate: string;
-	
+
 	if (type === 'historical') {
 		startDate = from || new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 		endDate = to || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -409,7 +409,7 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 
 	for (let i = 0; i < properties.length; i += BATCH_SIZE) {
 		const batch = properties.slice(i, i + BATCH_SIZE);
-		
+
 		const batchResults = await Promise.allSettled(
 			batch.map(async (property) => {
 				const bookings = await ownerRez.fetchBookings(property.ownerrez_id, startDate, endDate);
@@ -733,7 +733,7 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 					monthlyTrend: prevPL.monthlyTrend,
 					weeklyRevenue: prevPL.weeklyRevenue
 				} : null;
-				
+
 				previousRevenue = prevRevenue ? {
 					...prevRevenue,
 					revenue: {
@@ -742,7 +742,7 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 					},
 					monthlyTrend: prevRevenue.byMonth
 				} : null;
-				
+
 				previousCashflow = prevCashflow ? {
 					...prevCashflow,
 					revenue: {
@@ -751,7 +751,7 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 					},
 					monthlyTrend: prevPL?.monthlyTrend || []
 				} : null;
-				
+
 				previousTax = prevTax ? {
 					...prevTax,
 					revenue: {

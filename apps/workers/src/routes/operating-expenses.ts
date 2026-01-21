@@ -185,13 +185,18 @@ operatingExpenses.post('/bulk', async (c) => {
 		return c.json({ error: 'Property not found' }, 404)
 	}
 
-	await supabase
+	const { error: deleteError } = await supabase
 		.from('operating_expenses')
 		.delete()
 		.eq('tenant_id', tenant.id)
 		.eq('property_id', propertyId)
 		.eq('year', year)
 		.eq('month', month)
+
+	if (deleteError) {
+		console.error('Failed to delete existing operating expenses:', deleteError)
+		return c.json({ error: 'Failed to delete existing operating expenses' }, 500)
+	}
 
 	const entries = expenses.map(expense => ({
 		tenant_id: tenant.id,
@@ -200,7 +205,8 @@ operatingExpenses.post('/bulk', async (c) => {
 		amount: expense.amount,
 		year,
 		month,
-		description: expense.description || null
+		description: expense.description || null,
+		notes: null
 	}))
 
 	const { data, error } = await supabase

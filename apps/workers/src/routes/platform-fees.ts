@@ -8,6 +8,7 @@ const platformFees = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 platformFees.use('/*', authMiddleware);
 
 const bulkFeeSchema = z.object({
+	propertyId: z.string().uuid(),
 	year: z.number().int().min(2020).max(2100),
 	month: z.number().int().min(1).max(12),
 	fees: z.array(z.object({
@@ -48,18 +49,37 @@ platformFees.post('/bulk', async (c) => {
 		}, 400);
 	}
 
-	const { year, month, fees } = validation.data;
+	const { propertyId, year, month, fees } = validation.data;
 
-	await supabase
+	// Verify property belongs to tenant
+	const { data: property } = await supabase
+		.from('properties')
+		.select('id')
+		.eq('id', propertyId)
+		.eq('tenant_id', tenant.id)
+		.single();
+
+	if (!property) {
+		return c.json({ error: 'Property not found' }, 404);
+	}
+
+	const { error: deleteError } = await supabase
 		.from('platform_guest_fees')
 		.delete()
 		.eq('tenant_id', tenant.id)
+		.eq('property_id', propertyId)
 		.eq('year', year)
 		.eq('month', month)
 		.is('booking_id', null);
 
+	if (deleteError) {
+		console.error('Failed to delete existing platform fees:', deleteError);
+		return c.json({ error: 'Failed to delete existing platform fees' }, 500);
+	}
+
 	const entries = fees.map(fee => ({
 		tenant_id: tenant.id,
+		property_id: propertyId,
 		platform: fee.platform,
 		amount: fee.amount,
 		year,
@@ -252,6 +272,10 @@ platformFees.get('/', async (c) => {
 				.eq('month', parseInt(monthParam))
 				.is('booking_id', null);
 		}
+	}
+
+	if (propertyId) {
+		query = query.eq('property_id', propertyId);
 	}
 
 	const { data, error } = await query.order('created_at', { ascending: false });
