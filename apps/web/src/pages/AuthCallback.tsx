@@ -1,150 +1,46 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
 import { AlertCircle, CheckCircle, Compass } from 'lucide-react'
 import { BRAND } from '@/constants'
 
+type AuthStatus = 'loading' | 'success' | 'error'
+
+// Create a fresh Supabase client WITHOUT detectSessionInUrl for manual code exchange.
+// This avoids the race condition where the main client's detectSessionInUrl blocks everything.
+// Uses the SAME storage key so the session is available to the main client.
+const createCallbackClient = () => createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: false,
+      flowType: 'pkce',
+      storageKey: 'baileys-auth', // Same key as main client
+    }
+  }
+)
+
+/**
+ * Auth callback handler for OAuth (Google, Microsoft) and email confirmations.
+ * Uses a fresh Supabase client for code exchange to avoid blocking issues.
+ */
 export const AuthCallback = () => {
   const navigate = useNavigate()
   const { setOwnerRezConnected } = useAuth()
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [status, setStatus] = useState<AuthStatus>('loading')
   const [message, setMessage] = useState('')
-  const hasHandled = useRef(false)
+  const hasCompleted = useRef(false)
 
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
+  const handleSuccess = useCallback((type: string | null) => {
+    if (hasCompleted.current) return
+    hasCompleted.current = true
 
-    const code = searchParams.get('code')
-    const state = searchParams.get('state')
-    const error = searchParams.get('error') || hashParams.get('error')
-    const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
-    const type = hashParams.get('type') || searchParams.get('type')
-
-    // handle URL errors immediately
-    if (error && !hasHandled.current) {
-      hasHandled.current = true
-      setStatus('error')
-      setMessage(errorDescription || error)
-      setTimeout(() => navigate('/login'), 3000)
-      return
-    }
-
-    // ownerrez oauth (has both code and UUID state)
-    const isOwnerRezOAuth = code && state &&
-      state.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
-
-    if (isOwnerRezOAuth && !hasHandled.current) {
-      hasHandled.current = true
-      handleOwnerRezOAuth(code, state)
-      return
-    }
-
-    // supabase auth flow
-    handleSupabaseAuth(code, type)
-
-    // cleanup handled by handleSupabaseAuth's internal cleanup
-  }, [navigate])
-
-  const handleSupabaseAuth = async (code: string | null, type: string | null) => {
-    // set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (hasHandled.current) return
-
-      if (event === 'SIGNED_IN' && session) {
-        hasHandled.current = true
-        handleSuccess(type)
-      }
-    })
-
-    // small delay to let Supabase's detectSessionInUrl process first
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    // check if session already exists
-    const { data: { session: existingSession } } = await supabase.auth.getSession()
-    if (existingSession && !hasHandled.current) {
-      hasHandled.current = true
-      subscription.unsubscribe()
-      handleSuccess(type)
-      return
-    }
-
-    // if we have a code and no session yet, manually exchange it
-    if (code && !hasHandled.current) {
-      try {
-        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-
-        if (exchangeError) {
-          // check if session was established despite error (race condition)
-          const { data: { session: retrySession } } = await supabase.auth.getSession()
-          if (retrySession && !hasHandled.current) {
-            hasHandled.current = true
-            subscription.unsubscribe()
-            handleSuccess(type)
-            return
-          }
-
-          if (!hasHandled.current) {
-            hasHandled.current = true
-            subscription.unsubscribe()
-            setStatus('error')
-            setMessage(exchangeError.message || 'Failed to verify authentication')
-            setTimeout(() => navigate('/login'), 3000)
-          }
-          return
-        }
-
-        if (data?.session && !hasHandled.current) {
-          hasHandled.current = true
-          subscription.unsubscribe()
-          handleSuccess(type)
-          return
-        }
-      } catch (err) {
-        // check if session was established despite error
-        const { data: { session: fallbackSession } } = await supabase.auth.getSession()
-        if (fallbackSession && !hasHandled.current) {
-          hasHandled.current = true
-          subscription.unsubscribe()
-          handleSuccess(type)
-          return
-        }
-
-        if (!hasHandled.current) {
-          hasHandled.current = true
-          subscription.unsubscribe()
-          setStatus('error')
-          setMessage('Authentication failed. Please try again.')
-          setTimeout(() => navigate('/login'), 3000)
-        }
-        return
-      }
-    }
-
-    // timeout fallback
-    setTimeout(() => {
-      if (!hasHandled.current) {
-        // one final session check
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session && !hasHandled.current) {
-            hasHandled.current = true
-            subscription.unsubscribe()
-            handleSuccess(type)
-          } else if (!hasHandled.current) {
-            hasHandled.current = true
-            subscription.unsubscribe()
-            setStatus('error')
-            setMessage('Authentication timed out. Please try again.')
-            setTimeout(() => navigate('/login'), 3000)
-          }
-        })
-      }
-    }, 8000)
-  }
-
-  const handleSuccess = (type: string | null) => {
     if (type === 'recovery') {
       setStatus('success')
       setMessage('Email verified! You can now reset your password.')
@@ -158,35 +54,135 @@ export const AuthCallback = () => {
       setMessage('Signed in successfully!')
       setTimeout(() => navigate('/dashboard/overview'), 1500)
     }
-  }
+  }, [navigate])
 
-  const handleOwnerRezOAuth = async (code: string, state: string) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const { api } = await import('@/lib/api')
+  const handleError = useCallback((msg: string, redirectTo = '/login') => {
+    if (hasCompleted.current) return
+    hasCompleted.current = true
 
-      if (session) {
-        api.setAccessToken(session.access_token)
-      }
+    setStatus('error')
+    setMessage(msg)
+    setTimeout(() => navigate(redirectTo), 3000)
+  }, [navigate])
 
-      const result = await api.oauth.callback(code, state)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
-      if (result.success) {
-        setStatus('success')
-        setMessage('Successfully connected to OwnerRez!')
-        setOwnerRezConnected()
-        setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1000)
-      } else {
-        setStatus('error')
-        setMessage(result.error || 'Failed to connect to OwnerRez')
-        setTimeout(() => navigate('/dashboard/settings'), 3000)
-      }
-    } catch {
-      setStatus('error')
-      setMessage('Failed to complete OwnerRez connection')
-      setTimeout(() => navigate('/dashboard/settings'), 3000)
+    const code = searchParams.get('code')
+    const state = searchParams.get('state')
+    const error = searchParams.get('error') || hashParams.get('error')
+    const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
+    const type = hashParams.get('type') || searchParams.get('type')
+
+    // Handle URL errors
+    if (error) {
+      handleError(errorDescription || error)
+      return
     }
-  }
+
+    // OwnerRez OAuth (has both code and UUID state)
+    const isOwnerRezOAuth = code && state &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state)
+
+    if (isOwnerRezOAuth) {
+      handleOwnerRezOAuth(code, state)
+      return
+    }
+
+    // Supabase auth (OAuth or email confirmation)
+    // Use a fresh client to avoid blocking issues with the main client's detectSessionInUrl
+
+    const handleAuth = async () => {
+      // First, check if main client already has a session (e.g., page refresh)
+      try {
+        const { data: { session: existingSession } } = await supabase.auth.getSession()
+        if (existingSession) {
+          handleSuccess(type)
+          return
+        }
+      } catch (e) {
+        // Main client might be blocked, continue with fresh client
+      }
+
+      // No existing session - exchange the code using a fresh client
+      if (!code) {
+        handleError('No authentication code found.')
+        return
+      }
+
+      try {
+        // Create fresh client that won't have detectSessionInUrl blocking
+        const callbackClient = createCallbackClient()
+
+        // Exchange the code
+        const { data, error: exchangeError } = await callbackClient.auth.exchangeCodeForSession(code)
+
+        if (exchangeError) {
+          const msg = exchangeError.message?.toLowerCase() || ''
+          if (msg.includes('verifier') || msg.includes('pkce') || msg.includes('code challenge')) {
+            handleError('Please open this link in the same browser where you started sign-in.')
+          } else {
+            handleError(exchangeError.message || 'Authentication failed.')
+          }
+          return
+        }
+
+        if (data?.session) {
+          // Session is persisted by the callback client to 'baileys-auth' storage.
+          // Verify the main client can now read it.
+          const { data: mainSession } = await supabase.auth.getSession()
+          if (!mainSession?.session) {
+            // If main client can't see it, the storage might not have synced.
+            // Wait a moment and try again.
+            await new Promise(resolve => setTimeout(resolve, 100))
+            const { data: retrySession } = await supabase.auth.getSession()
+            if (!retrySession?.session) {
+              console.error('Main client cannot read session from storage')
+            }
+          }
+          handleSuccess(type)
+          return
+        }
+
+        handleError('Authentication failed. Please try again.')
+      } catch (err) {
+        console.error('Auth callback error:', err)
+        handleError('Authentication failed. Please try again.')
+      }
+    }
+
+    handleAuth()
+
+    // No cleanup needed - handleAuth is self-contained
+    return () => {}
+
+    async function handleOwnerRezOAuth(code: string, state: string) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const { api } = await import('@/lib/api')
+
+        if (session) {
+          api.setAccessToken(session.access_token)
+        }
+
+        const result = await api.oauth.callback(code, state)
+
+        if (result.success) {
+          if (hasCompleted.current) return
+          hasCompleted.current = true
+          setStatus('success')
+          setMessage('Successfully connected to OwnerRez!')
+          setOwnerRezConnected()
+          setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1000)
+        } else {
+          handleError(result.error || 'Failed to connect to OwnerRez', '/dashboard/settings')
+        }
+      } catch {
+        handleError('Failed to complete OwnerRez connection', '/dashboard/settings')
+      }
+    }
+  }, [handleSuccess, handleError, navigate, setOwnerRezConnected])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">

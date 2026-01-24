@@ -16,10 +16,9 @@ if (!supabaseInstance) {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: false, // Disabled - we handle code exchange manually in AuthCallback
       flowType: 'pkce',
       storageKey: 'baileys-auth',
-      debug: import.meta.env.DEV
     }
   })
 }
