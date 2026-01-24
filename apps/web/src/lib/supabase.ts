@@ -17,7 +17,7 @@ if (!supabaseInstance) {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'implicit',
+      flowType: 'pkce',
       storageKey: 'baileys-auth',
       debug: import.meta.env.DEV
     }

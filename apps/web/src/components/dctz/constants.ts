@@ -1,8 +1,9 @@
 // tenant ids that have access to dctz report feature
 // add tenant ids to this array to enable the feature for them
 export const DCTZ_ENABLED_TENANTS = [
-  'df2d602d-0472-4ccc-bcfd-374de378a175' // demo tenant for testing
-  // TODO: add jerry's actual tenant id when known
+  'df2d602d-0472-4ccc-bcfd-374de378a175', // demo tenant for testing
+  '91616123-1ffc-4c54-a4ad-f1670b1ce857'
+  // ^^ jerry's tenant id
 ]
 
 // dctz-specific tax rates

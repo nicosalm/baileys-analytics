@@ -35,8 +35,6 @@ export const IntegrationsTab = () => {
     try {
       const result = await api.initiateOAuth()
       if (result.success) {
-        // store the expected OAuth flow timestamp for additional validation
-        sessionStorage.setItem('oauth_initiated', Date.now().toString())
         window.location.href = result.data.authUrl
       } else {
         addToast('error', result.error || 'Failed to initiate connection')

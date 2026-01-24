@@ -4,9 +4,6 @@ import { parseApiError, getErrorMessageByStatus } from '@/utils/api-helpers'
 
 export interface UseApiErrorConfig {
   showToast?: boolean
-  autoRetry?: boolean
-  retryDelay?: number
-  maxRetries?: number
   onError?: (error: string) => void
 }
 
@@ -15,79 +12,38 @@ export interface UseApiErrorReturn {
   isError: boolean
   setError: (error: unknown) => void
   clearError: () => void
-  retry: () => void
-  retryCount: number
-  isRetrying: boolean
 }
 
 export function useApiError(
   config: UseApiErrorConfig = {}
 ): UseApiErrorReturn {
-  const {
-    showToast = true,
-    autoRetry = false,
-    retryDelay = 3000,
-    maxRetries = 3,
-    onError
-  } = config
-  
+  const { showToast = true, onError } = config
+
   const { addToast } = useToast()
   const [error, setErrorState] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
-  const [isRetrying, setIsRetrying] = useState(false)
-  const [retryCallback] = useState<(() => void) | null>(null)
-  
-  // Handle error
+
   const setError = useCallback((err: unknown) => {
     const errorMessage = parseApiError(err)
     setErrorState(errorMessage)
-    
+
     if (showToast) {
       addToast('error', errorMessage)
     }
-    
+
     if (onError) {
       onError(errorMessage)
     }
-    
-    // Setup auto-retry if enabled
-    if (autoRetry && retryCount < maxRetries) {
-      setIsRetrying(true)
-      setTimeout(() => {
-        if (retryCallback) {
-          retryCallback()
-        }
-        setRetryCount(prev => prev + 1)
-        setIsRetrying(false)
-      }, retryDelay)
-    }
-  }, [showToast, addToast, onError, autoRetry, retryCount, maxRetries, retryDelay, retryCallback])
-  
-  // Clear error
+  }, [showToast, addToast, onError])
+
   const clearError = useCallback(() => {
     setErrorState(null)
-    setRetryCount(0)
-    setIsRetrying(false)
   }, [])
-  
-  // Manual retry
-  const retry = useCallback(() => {
-    if (retryCallback) {
-      clearError()
-      retryCallback()
-    }
-  }, [retryCallback, clearError])
-  
-  // Register retry callback
-  
+
   return {
     error,
     isError: error !== null,
     setError,
-    clearError,
-    retry,
-    retryCount,
-    isRetrying
+    clearError
   }
 }
 

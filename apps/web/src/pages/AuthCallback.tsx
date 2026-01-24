@@ -8,44 +8,14 @@ import { BRAND } from '@/constants'
 
 export const AuthCallback = () => {
   const navigate = useNavigate()
-  const { refreshUser } = useAuth()
+  const { setOwnerRezConnected } = useAuth()
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
   const [message, setMessage] = useState('')
   const hasHandled = useRef(false)
 
-  // google oauth - listen for auth state changes
   useEffect(() => {
-    if (hasHandled.current) return
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (hasHandled.current) return
-
-      if (event === 'SIGNED_IN' && session) {
-        hasHandled.current = true
-        setStatus('success')
-        setMessage('Signed in successfully!')
-        navigate('/dashboard/overview')
-      }
-    })
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !hasHandled.current) {
-        hasHandled.current = true
-        setStatus('success')
-        setMessage('Signed in successfully!')
-        navigate('/dashboard/overview')
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [navigate])
-
-  // specialized flows: errors, ownerrez, type-based
-  useEffect(() => {
-    if (hasHandled.current) return
-
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
     const searchParams = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
     const code = searchParams.get('code')
     const state = searchParams.get('state')
@@ -53,51 +23,144 @@ export const AuthCallback = () => {
     const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
     const type = hashParams.get('type') || searchParams.get('type')
 
-    if (error) {
+    // handle URL errors immediately
+    if (error && !hasHandled.current) {
       hasHandled.current = true
-      if (error === 'flow_state_not_found') {
-        supabase.auth.getSession().then(async ({ data: { session } }) => {
-          if (session) {
-            setStatus('success')
-            setMessage('Already authenticated, redirecting...')
-            setTimeout(() => navigate('/dashboard/overview'), 1000)
-          } else {
-            setStatus('error')
-            setMessage('Session expired. Please log in again.')
-            setTimeout(() => navigate('/login'), 2000)
-          }
-        })
-      } else {
-        setStatus('error')
-        setMessage(errorDescription || 'Authentication failed')
-        setTimeout(() => navigate('/login'), 3000)
-      }
+      setStatus('error')
+      setMessage(errorDescription || error)
+      setTimeout(() => navigate('/login'), 3000)
       return
     }
 
-    // ownerrez oauth (uuid state format)
+    // ownerrez oauth (has both code and UUID state)
     const isOwnerRezOAuth = code && state &&
       state.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
 
-    if (isOwnerRezOAuth) {
+    if (isOwnerRezOAuth && !hasHandled.current) {
       hasHandled.current = true
       handleOwnerRezOAuth(code, state)
       return
     }
 
-    if (type) {
+    // supabase auth flow
+    handleSupabaseAuth(code, type)
+
+    // cleanup handled by handleSupabaseAuth's internal cleanup
+  }, [navigate])
+
+  const handleSupabaseAuth = async (code: string | null, type: string | null) => {
+    // set up auth state listener first
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (hasHandled.current) return
+
+      if (event === 'SIGNED_IN' && session) {
+        hasHandled.current = true
+        handleSuccess(type)
+      }
+    })
+
+    // small delay to let Supabase's detectSessionInUrl process first
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // check if session already exists
+    const { data: { session: existingSession } } = await supabase.auth.getSession()
+    if (existingSession && !hasHandled.current) {
       hasHandled.current = true
-      handleTypeBasedFlow(type, code)
+      subscription.unsubscribe()
+      handleSuccess(type)
       return
     }
-  }, [navigate, refreshUser])
 
-  const handleOwnerRezOAuth = async (code: string, state: string) => {
-    const oauthInitiated = sessionStorage.getItem('oauth_initiated')
-    if (oauthInitiated) {
-      sessionStorage.removeItem('oauth_initiated')
+    // if we have a code and no session yet, manually exchange it
+    if (code && !hasHandled.current) {
+      try {
+        const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+
+        if (exchangeError) {
+          // check if session was established despite error (race condition)
+          const { data: { session: retrySession } } = await supabase.auth.getSession()
+          if (retrySession && !hasHandled.current) {
+            hasHandled.current = true
+            subscription.unsubscribe()
+            handleSuccess(type)
+            return
+          }
+
+          if (!hasHandled.current) {
+            hasHandled.current = true
+            subscription.unsubscribe()
+            setStatus('error')
+            setMessage(exchangeError.message || 'Failed to verify authentication')
+            setTimeout(() => navigate('/login'), 3000)
+          }
+          return
+        }
+
+        if (data?.session && !hasHandled.current) {
+          hasHandled.current = true
+          subscription.unsubscribe()
+          handleSuccess(type)
+          return
+        }
+      } catch (err) {
+        // check if session was established despite error
+        const { data: { session: fallbackSession } } = await supabase.auth.getSession()
+        if (fallbackSession && !hasHandled.current) {
+          hasHandled.current = true
+          subscription.unsubscribe()
+          handleSuccess(type)
+          return
+        }
+
+        if (!hasHandled.current) {
+          hasHandled.current = true
+          subscription.unsubscribe()
+          setStatus('error')
+          setMessage('Authentication failed. Please try again.')
+          setTimeout(() => navigate('/login'), 3000)
+        }
+        return
+      }
     }
 
+    // timeout fallback
+    setTimeout(() => {
+      if (!hasHandled.current) {
+        // one final session check
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session && !hasHandled.current) {
+            hasHandled.current = true
+            subscription.unsubscribe()
+            handleSuccess(type)
+          } else if (!hasHandled.current) {
+            hasHandled.current = true
+            subscription.unsubscribe()
+            setStatus('error')
+            setMessage('Authentication timed out. Please try again.')
+            setTimeout(() => navigate('/login'), 3000)
+          }
+        })
+      }
+    }, 8000)
+  }
+
+  const handleSuccess = (type: string | null) => {
+    if (type === 'recovery') {
+      setStatus('success')
+      setMessage('Email verified! You can now reset your password.')
+      setTimeout(() => navigate('/reset-password'), 1500)
+    } else if (type === 'email_change') {
+      setStatus('success')
+      setMessage('Email changed successfully!')
+      setTimeout(() => navigate('/dashboard/settings'), 1500)
+    } else {
+      setStatus('success')
+      setMessage('Signed in successfully!')
+      setTimeout(() => navigate('/dashboard/overview'), 1500)
+    }
+  }
+
+  const handleOwnerRezOAuth = async (code: string, state: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const { api } = await import('@/lib/api')
@@ -107,22 +170,12 @@ export const AuthCallback = () => {
       }
 
       const result = await api.oauth.callback(code, state)
+
       if (result.success) {
         setStatus('success')
         setMessage('Successfully connected to OwnerRez!')
-
-        localStorage.setItem('pendingInitialSync', 'true')
-        await refreshUser()
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        const { data: { session: currentSession } } = await supabase.auth.getSession()
-
-        if (currentSession) {
-          setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1500)
-        } else {
-          setMessage('OwnerRez connected! Please log in to continue.')
-          setTimeout(() => navigate('/login?oauth=success'), 2000)
-        }
+        setOwnerRezConnected()
+        setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1000)
       } else {
         setStatus('error')
         setMessage(result.error || 'Failed to connect to OwnerRez')
@@ -130,94 +183,8 @@ export const AuthCallback = () => {
       }
     } catch {
       setStatus('error')
-      setMessage('Failed to complete OAuth connection')
+      setMessage('Failed to complete OwnerRez connection')
       setTimeout(() => navigate('/dashboard/settings'), 3000)
-    }
-  }
-
-  const handleTypeBasedFlow = async (type: string, code: string | null) => {
-    switch (type) {
-      case 'signup':
-      case 'invite': {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          setStatus('success')
-          setMessage('Email confirmed! Logging you in...')
-          setTimeout(() => navigate('/dashboard/overview'), 2000)
-        } else {
-          setStatus('success')
-          setMessage('Email confirmed successfully! Please log in.')
-          setTimeout(() => navigate('/login'), 2000)
-        }
-        break
-      }
-
-      case 'recovery': {
-        if (code) {
-          try {
-            const { error } = await supabase.auth.exchangeCodeForSession(code)
-            if (!error) {
-              setStatus('success')
-              setMessage('Email verified! You can now reset your password.')
-              setTimeout(() => navigate('/reset-password'), 2000)
-            } else {
-              setStatus('error')
-              setMessage('Failed to verify recovery link')
-              setTimeout(() => navigate('/forgot-password'), 3000)
-            }
-          } catch {
-            setStatus('error')
-            setMessage('Recovery link expired or invalid')
-            setTimeout(() => navigate('/forgot-password'), 3000)
-          }
-        } else {
-          setStatus('success')
-          setMessage('Email verified! You can now reset your password.')
-          setTimeout(() => navigate('/reset-password'), 2000)
-        }
-        break
-      }
-
-      case 'email_change': {
-        try {
-          await refreshUser()
-          setStatus('success')
-          setMessage('Email changed successfully!')
-          setTimeout(() => navigate('/dashboard/settings'), 2000)
-        } catch {
-          setStatus('success')
-          setMessage('Email changed! Please refresh the page to see updates.')
-          setTimeout(() => navigate('/dashboard/settings'), 3000)
-        }
-        break
-      }
-
-      case 'magiclink': {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        if (error || !session) {
-          setStatus('error')
-          setMessage('Failed to establish session')
-          setTimeout(() => navigate('/login'), 3000)
-          return
-        }
-        setStatus('success')
-        setMessage('Logged in successfully!')
-        setTimeout(() => navigate('/dashboard/overview'), 1500)
-        break
-      }
-
-      default: {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          setStatus('success')
-          setMessage('Authentication successful!')
-          setTimeout(() => navigate('/dashboard/overview'), 1500)
-        } else {
-          setStatus('error')
-          setMessage('Unknown authentication type')
-          setTimeout(() => navigate('/login'), 3000)
-        }
-      }
     }
   }
 
@@ -255,7 +222,7 @@ export const AuthCallback = () => {
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Authentication Error</h2>
               <p className="text-gray-600 mb-2">{message}</p>
-              <p className="text-sm text-gray-500 mb-4">Redirecting...</p>
+              <p className="text-sm text-gray-500 mb-4">Redirecting to login...</p>
               <Link to="/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                 Go to login →
               </Link>

@@ -20,6 +20,7 @@ type AuthContextValue = {
   updatePassword: (newPassword: string) => Promise<boolean>
   updateEmail: (newEmail: string) => Promise<boolean>
   refreshUser: () => Promise<void>
+  setOwnerRezConnected: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -37,9 +38,15 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
+  const stateRef = useRef<AuthState>(state)
   const refreshPromiseRef = useRef<Promise<void> | null>(null)
   const isInitializedRef = useRef(false)
   const retryCountRef = useRef<Map<string, number>>(new Map())
+
+  // keep ref in sync with state for use in callbacks
+  useEffect(() => {
+    stateRef.current = state
+  }, [state])
 
   // utility for retry with exponential backoff
   const retryWithBackoff = async <T,>(
@@ -223,18 +230,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      // sign out any existing user first to prevent session mixup
-      const { data: { session: existingSession } } = await supabase.auth.getSession()
-      if (existingSession) {
-        await supabase.auth.signOut()
-        api.setAccessToken(null)
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`,
         }
       })
 
@@ -242,18 +242,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { success: false, error: error.message }
       }
 
+      // email confirmation required - user created but no session yet
       if (data.user && !data.session) {
         return { success: true }
       }
 
+      // email confirmation not required - user created with session
+      // (this happens if email confirmation is disabled in Supabase settings)
       if (data.user && data.session) {
-        // process session immediately
         await processSession(data.session)
         return { success: true }
       }
-      return { success: false, error: 'Unknown error occurred' }
+
+      // edge case: no user returned (shouldn't happen without error)
+      return { success: false, error: 'Failed to create account' }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error occurred'
+      const message = error instanceof Error ? error.message : 'Failed to create account'
       return { success: false, error: message }
     }
   }
@@ -370,6 +374,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  // directly update hasOwnerRezConnection state after oauth success
+  // this avoids race conditions from polling the database
+  const setOwnerRezConnected = useCallback(() => {
+    setState(prevState => {
+      if (prevState.status === 'authenticated') {
+        return {
+          ...prevState,
+          user: {
+            ...prevState.user,
+            hasOwnerRezConnection: true
+          }
+        }
+      }
+      return prevState
+    })
+  }, [])
+
   const refreshUser = useCallback(async () => {
     // prevent multiple simultaneous refresh attempts
     if (refreshPromiseRef.current) {
@@ -430,8 +451,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         case 'SIGNED_IN':
           // only process if we're not already authenticated
-          // this prevents duplicate processing after login
-          if (state.status !== 'authenticated' && session) {
+          // use ref to avoid stale closure
+          if (stateRef.current.status !== 'authenticated' && session) {
             await processSession(session)
           }
           break
@@ -485,7 +506,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []) // removed processSession from deps to prevent re-runs
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, logout, resetPassword, updatePassword, updateEmail, refreshUser }}>
+    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, logout, resetPassword, updatePassword, updateEmail, refreshUser, setOwnerRezConnected }}>
       {children}
     </AuthContext.Provider>
   )

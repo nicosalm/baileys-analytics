@@ -114,24 +114,18 @@ export const DashboardLayout = () => {
   const { user } = state
 
   useEffect(() => {
-    // Check if we should show initial sync (from OAuth callback or manual trigger)
     const syncParam = searchParams.get('sync')
-    const pendingSync = localStorage.getItem('pendingInitialSync')
-    
+
     if (syncParam === 'initial') {
       setShowInitialSync(true)
-      // Remove the query parameter to clean up the URL after a short delay
+      // clean up the URL
       setTimeout(() => {
         const newParams = new URLSearchParams(searchParams)
         newParams.delete('sync')
         setSearchParams(newParams, { replace: true })
       }, 100)
-    } else if (pendingSync === 'true' && user.hasOwnerRezConnection) {
-      // Handle case where we lost the sync param but still need to sync
-      localStorage.removeItem('pendingInitialSync')
-      setShowInitialSync(true)
     }
-  }, [searchParams, setSearchParams, user?.hasOwnerRezConnection])
+  }, [searchParams, setSearchParams])
 
   useEffect(() => {
     const checkAdminStatus = async () => {
