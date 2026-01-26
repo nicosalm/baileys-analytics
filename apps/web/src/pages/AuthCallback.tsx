@@ -44,15 +44,15 @@ export const AuthCallback = () => {
     if (type === 'recovery') {
       setStatus('success')
       setMessage('Email verified! You can now reset your password.')
-      setTimeout(() => navigate('/reset-password'), 1500)
+      setTimeout(() => navigate('/reset-password', { replace: true }), 1500)
     } else if (type === 'email_change') {
       setStatus('success')
       setMessage('Email changed successfully!')
-      setTimeout(() => navigate('/dashboard/settings'), 1500)
+      setTimeout(() => navigate('/dashboard/settings', { replace: true }), 1500)
     } else {
       setStatus('success')
       setMessage('Signed in successfully!')
-      setTimeout(() => navigate('/dashboard/overview'), 1500)
+      setTimeout(() => navigate('/dashboard/overview', { replace: true }), 1500)
     }
   }, [navigate])
 
@@ -62,7 +62,7 @@ export const AuthCallback = () => {
 
     setStatus('error')
     setMessage(msg)
-    setTimeout(() => navigate(redirectTo), 3000)
+    setTimeout(() => navigate(redirectTo, { replace: true }), 3000)
   }, [navigate])
 
   useEffect(() => {
@@ -91,9 +91,9 @@ export const AuthCallback = () => {
     }
 
     // Supabase auth (OAuth or email confirmation)
-    // Use a fresh client to avoid blocking issues with the main client's detectSessionInUrl
+    handleSupabaseAuth(code, type)
 
-    const handleAuth = async () => {
+    async function handleSupabaseAuth(code: string | null, type: string | null) {
       // First, check if main client already has a session (e.g., page refresh)
       try {
         const { data: { session: existingSession } } = await supabase.auth.getSession()
@@ -101,8 +101,8 @@ export const AuthCallback = () => {
           handleSuccess(type)
           return
         }
-      } catch (e) {
-        // Main client might be blocked, continue with fresh client
+      } catch {
+        // Continue with fresh client
       }
 
       // No existing session - exchange the code using a fresh client
@@ -112,10 +112,7 @@ export const AuthCallback = () => {
       }
 
       try {
-        // Create fresh client that won't have detectSessionInUrl blocking
         const callbackClient = createCallbackClient()
-
-        // Exchange the code
         const { data, error: exchangeError } = await callbackClient.auth.exchangeCodeForSession(code)
 
         if (exchangeError) {
@@ -133,48 +130,43 @@ export const AuthCallback = () => {
           // Verify the main client can now read it.
           const { data: mainSession } = await supabase.auth.getSession()
           if (!mainSession?.session) {
-            // If main client can't see it, the storage might not have synced.
-            // Wait a moment and try again.
             await new Promise(resolve => setTimeout(resolve, 100))
-            const { data: retrySession } = await supabase.auth.getSession()
-            if (!retrySession?.session) {
-              console.error('Main client cannot read session from storage')
-            }
           }
           handleSuccess(type)
           return
         }
 
         handleError('Authentication failed. Please try again.')
-      } catch (err) {
-        console.error('Auth callback error:', err)
+      } catch {
         handleError('Authentication failed. Please try again.')
       }
     }
-
-    handleAuth()
-
-    // No cleanup needed - handleAuth is self-contained
-    return () => {}
 
     async function handleOwnerRezOAuth(code: string, state: string) {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         const { api } = await import('@/lib/api')
 
-        if (session) {
-          api.setAccessToken(session.access_token)
+        if (!session) {
+          handleError('Not authenticated. Please log in first.', '/login')
+          return
         }
 
+        api.setAccessToken(session.access_token)
         const result = await api.oauth.callback(code, state)
 
         if (result.success) {
           if (hasCompleted.current) return
           hasCompleted.current = true
+
+          // Update auth state directly - no database polling needed
+          setOwnerRezConnected()
+
           setStatus('success')
           setMessage('Successfully connected to OwnerRez!')
-          setOwnerRezConnected()
-          setTimeout(() => navigate('/dashboard/overview?sync=initial'), 1000)
+
+          // Navigate after a brief moment to ensure state propagates
+          setTimeout(() => navigate('/dashboard/overview?sync=initial', { replace: true }), 500)
         } else {
           handleError(result.error || 'Failed to connect to OwnerRez', '/dashboard/settings')
         }
