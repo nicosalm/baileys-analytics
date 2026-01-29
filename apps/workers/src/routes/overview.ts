@@ -315,7 +315,7 @@ async function getRecentActivity(
     `)
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
-    .order('created_at', { ascending: false })
+    .order('booked_utc', { ascending: false, nullsFirst: false })
     .limit(10);
 
   return (data || []).map((b: any) => ({

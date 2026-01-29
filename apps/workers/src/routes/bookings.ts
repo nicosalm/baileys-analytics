@@ -131,10 +131,11 @@ bookings.get('/recent', async (c) => {
 			departure,
 			total_amount,
 			booking_status,
+			booked_utc,
 			properties!inner(name)
 		`)
 		.eq('tenant_id', tenantId)
-		.order('created_at', { ascending: false })
+		.order('booked_utc', { ascending: false, nullsFirst: false })
 		.limit(10);
 	
 	if (error) {

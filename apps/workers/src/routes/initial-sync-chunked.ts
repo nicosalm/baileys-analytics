@@ -257,6 +257,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
           platform: booking.source || booking.listing_site || 'Direct',
           adults: booking.adults || 0,
           children: booking.children || 0,
+          booked_utc: booking.booked_date || booking.created_date,
           updated_at: new Date().toISOString()
         });
 

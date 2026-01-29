@@ -471,14 +471,14 @@ async function getRecentActivity(
 			properties!inner(name)
 		`)
 		.eq('tenant_id', tenantId)
-		.order('created_at', { ascending: false })
+		.order('booked_utc', { ascending: false, nullsFirst: false })
 		.limit(10);
 
 	return recentBookings?.map(b => ({
 		id: b.id,
 		type: 'booking' as const,
 		description: `${b.guest_name} booked ${b.properties?.name}`,
-		timestamp: b.created_at || b.arrival,
+		timestamp: b.booked_utc || b.created_at || b.arrival,
 		value: b.total_amount,
 		metadata: {
 			guestName: b.guest_name,
