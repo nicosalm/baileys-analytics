@@ -9,6 +9,7 @@ import { rateLimit, strictRateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
 
 import { createSupabaseClient } from './services/supabase';
+import { getValidOwnerRezToken } from './services/ownerrez-token';
 import { AuthService } from './services/auth';
 import { DashboardService } from './services/dashboard';
 import { getOverviewData } from './services/overview';
@@ -311,23 +312,17 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const { data: ownerrezToken } = await supabase
-		.from('oauth_tokens')
-		.select('access_token')
-		.eq('tenant_id', tenantId)
-		.eq('provider', 'ownerrez')
-		.single();
-
-	if (!ownerrezToken?.access_token) {
+	const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
+	if (tokenResult.error) {
 		return c.json({
-			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			error: tokenResult.error.message,
 			requiresAuth: true
-		}, 400);
+		}, tokenResult.error.status);
 	}
 
 	const user = c.get('user');
 	const { OwnerRezService } = await import('./services/ownerrez');
-	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+	const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
 	let { data: properties } = await supabase
 		.from('properties')
@@ -380,9 +375,9 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 		} catch (error: any) {
 			if (error.message?.includes('Forbidden') || error.message?.includes('Unauthorized')) {
 				return c.json({
-					error: 'OwnerRez authentication failed. Please reconnect to OwnerRez.',
+					error: 'OwnerRez rejected the request. Please reconnect to OwnerRez in Settings.',
 					requiresAuth: true
-				}, 401);
+				}, 400);
 			}
 			return c.json({ error: 'Failed to sync properties from OwnerRez' }, 500);
 		}
@@ -430,7 +425,7 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 					allBlocks.push({
 						ownerrez_block_id: booking.id,
 						tenant_id: tenantId,
-						property_id: property.id,
+						property_id: property.ownerrez_id,
 						arrival: booking.arrival,
 						departure: booking.departure,
 						type: booking.type || 'block',
@@ -563,23 +558,17 @@ app.post('/api/sync-guest-details', authMiddleware, async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const { data: ownerrezToken } = await supabase
-		.from('oauth_tokens')
-		.select('access_token')
-		.eq('tenant_id', tenantId)
-		.eq('provider', 'ownerrez')
-		.single();
-
-	if (!ownerrezToken?.access_token) {
+	const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
+	if (tokenResult.error) {
 		return c.json({
-			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			error: tokenResult.error.message,
 			requiresAuth: true
-		}, 400);
+		}, tokenResult.error.status);
 	}
 
 	const user = c.get('user');
 	const { OwnerRezService } = await import('./services/ownerrez');
-	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+	const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
 	const { data: guestsNeedingInfo } = await supabase
 		.from('bookings')

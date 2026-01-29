@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSeasons } from './seasons';
 import { TaxCalculator } from './tax-calculator';
+import { SUPABASE_MAX_ROWS } from '../constants';
 
 interface FinancialMetrics {
   revenue: {
@@ -152,9 +153,10 @@ export async function getPLData(
       booking_charges(amount, type)
     `)
     .eq('tenant_id', tenantId)
-    .gte('arrival', from)
     .lte('arrival', to)
-    .neq('status', 'canceled');
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
@@ -182,7 +184,8 @@ export async function getPLData(
       .from('platform_guest_fees')
       .select('*')
       .eq('tenant_id', tenantId)
-      .or(`and(year.eq.${fromYear},month.gte.${fromMonth}),and(year.eq.${toYear},month.lte.${toMonth}),and(year.gt.${fromYear},year.lt.${toYear})`),
+      .or(`and(year.eq.${fromYear},month.gte.${fromMonth}),and(year.eq.${toYear},month.lte.${toMonth}),and(year.gt.${fromYear},year.lt.${toYear})`)
+      .limit(SUPABASE_MAX_ROWS),
     supabase
       .from('properties')
       .select('*')
@@ -193,12 +196,14 @@ export async function getPLData(
       .select('total_amount, arrival')
       .eq('tenant_id', tenantId)
       .gte('arrival', new Date().toISOString().split('T')[0])
-      .neq('status', 'canceled'),
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS),
     supabase
       .from('operating_expenses')
       .select('category, amount')
       .eq('tenant_id', tenantId)
       .or(`and(year.eq.${fromYear},month.gte.${fromMonth}),and(year.eq.${toYear},month.lte.${toMonth}),and(year.gt.${fromYear},year.lt.${toYear})`)
+      .limit(SUPABASE_MAX_ROWS)
   ]);
 
   const bookings = bookingsResult.data || [];
@@ -366,9 +371,10 @@ export async function getRevenueData(
       booking_charges(amount, type)
     `)
     .eq('tenant_id', tenantId)
-    .gte('arrival', from)
     .lte('arrival', to)
-    .neq('status', 'canceled');
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
@@ -390,6 +396,7 @@ export async function getRevenueData(
       .eq('tenant_id', tenantId)
       .gte('month', from.substring(0, 7))
       .lte('month', to.substring(0, 7))
+      .limit(SUPABASE_MAX_ROWS)
   ]);
 
   const bookings = bookingsResult.data || [];
@@ -432,15 +439,17 @@ export async function getRevenueData(
         booking_charges(amount, type)
       `)
       .eq('tenant_id', tenantId)
-      .gte('arrival', lastYearFrom)
       .lte('arrival', lastYearTo)
-      .neq('status', 'canceled'),
+      .gte('departure', lastYearFrom)
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS),
     supabase
       .from('platform_fee_entries')
       .select('*')
       .eq('tenant_id', tenantId)
       .gte('month', lastYearFrom.substring(0, 7))
       .lte('month', lastYearTo.substring(0, 7))
+      .limit(SUPABASE_MAX_ROWS)
   ]);
 
   const lastYearBookings = lastYearBookingsResult.data || [];
@@ -486,16 +495,17 @@ export async function getCashflowData(
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
-    .gte('arrival', from)
     .lte('arrival', to)
-    .neq('status', 'canceled');
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
       .select('booking_id')
       .in('tag_id', tagIds);
-    
+
     if (taggedBookings) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
@@ -503,7 +513,7 @@ export async function getCashflowData(
   }
 
   const { data: bookings } = await bookingsQuery;
-  
+
   const today = new Date();
   const collected = bookings?.filter(b => new Date(b.arrival) <= today)
     .reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
@@ -516,7 +526,8 @@ export async function getCashflowData(
     .select('total_amount, arrival')
     .eq('tenant_id', tenantId)
     .gte('arrival', today.toISOString().split('T')[0])
-    .neq('status', 'canceled');
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
   const next30Days = upcomingBookings?.filter(b => {
     const daysDiff = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -564,16 +575,17 @@ export async function getTaxData(
       booking_charges(amount, type)
     `)
     .eq('tenant_id', tenantId)
-    .gte('arrival', from)
     .lte('arrival', to)
-    .neq('status', 'canceled');
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
       .select('booking_id')
       .in('tag_id', tagIds);
-    
+
     if (taggedBookings) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
@@ -587,7 +599,8 @@ export async function getTaxData(
       .select('*')
       .eq('tenant_id', tenantId)
       .gte('month', from.substring(0, 7))
-      .lte('month', to.substring(0, 7)),
+      .lte('month', to.substring(0, 7))
+      .limit(SUPABASE_MAX_ROWS),
     supabase
       .from('property_tax_configs')
       .select('*')

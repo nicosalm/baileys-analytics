@@ -131,8 +131,8 @@ export class TaxCalculator {
         booking_charges(amount, type, description)
       `)
       .eq('tenant_id', tenantId)
-      .gte('arrival', from)
       .lte('arrival', to)
+      .gte('departure', from)
       .neq('status', 'canceled');
 
     if (propertyId) {

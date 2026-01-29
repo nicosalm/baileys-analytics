@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_MAX_ROWS } from '../constants';
 
 export interface GuestMetrics {
   totalGuests: number;
@@ -81,12 +82,13 @@ export async function getGuestsData(
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
-    .neq('status', 'canceled');
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
   if (hasDateFilter) {
     bookingsQuery = bookingsQuery
-      .gte('arrival', from)
-      .lte('arrival', to);
+      .lte('arrival', to)
+      .gte('departure', from);
   }
 
   let filteredBookingIds: string[] | null = null;
@@ -141,7 +143,8 @@ export async function getGuestsData(
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
-    .neq('status', 'canceled');
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
   const guestPeriodMap = new Map<string, {
     name: string;

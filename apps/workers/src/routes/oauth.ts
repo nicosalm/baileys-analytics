@@ -169,14 +169,14 @@ oauth.post('/callback', async (c) => {
       }
     }
 
-    // calculate proper expiration time based on expires_in from token response
+    // calculate expiration time based on expires_in from token response
+    // OwnerRez tokens are long-lived and never expire unless revoked,
+    // so expires_in is typically absent. Default to 100 years.
     const expiresAt = new Date();
     if (tokenData.expires_in) {
-      // expires_in is typically in seconds
       expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
     } else {
-      // default to 1 hour if no expiration provided
-      expiresAt.setHours(expiresAt.getHours() + 1);
+      expiresAt.setFullYear(expiresAt.getFullYear() + 100);
     }
 
     const { error: tokenError } = await supabase

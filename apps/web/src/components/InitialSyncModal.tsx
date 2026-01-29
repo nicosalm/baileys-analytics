@@ -62,13 +62,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       }>('/initial-sync-chunked/properties', { method: 'POST' })
       
       if (!propertiesResult.success) {
-        const errorMessage = propertiesResult.error || 'Failed to sync properties'
-
-        // check if it's an authentication error
-        if (errorMessage.toLowerCase().includes('unauthorized') || errorMessage.toLowerCase().includes('expired')) {
-          throw new Error('OwnerRez authentication failed. Please reconnect to OwnerRez in Settings.')
-        }
-        throw new Error(errorMessage)
+        throw new Error(propertiesResult.error || 'Failed to sync properties')
       }
       
       const properties = propertiesResult.data.properties || []

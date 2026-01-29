@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSeasons, buildBookingFilters } from './seasons';
+import { SUPABASE_MAX_ROWS } from '../constants';
 
 export async function getOverviewData(
 	supabase: SupabaseClient,
@@ -48,16 +49,17 @@ async function getCurrentPeriodMetrics(
 		.from('bookings')
 		.select('*')
 		.eq('tenant_id', tenantId)
-		.gte('arrival', from)
 		.lte('arrival', to)
-		.neq('status', 'canceled');
+		.gte('departure', from)
+		.neq('status', 'canceled')
+		.limit(SUPABASE_MAX_ROWS);
 
 	if (hasTagFilter) {
 		const { data: taggedBookings } = await supabase
 			.from('booking_tags')
 			.select('booking_id')
 			.in('tag_id', tagIds);
-		
+
 		if (taggedBookings) {
 			const bookingIds = taggedBookings.map(tb => tb.booking_id);
 			bookingsQuery = bookingsQuery.in('id', bookingIds);
@@ -76,8 +78,8 @@ async function getCurrentPeriodMetrics(
 		.from('bookings')
 		.select('*', { count: 'exact', head: true })
 		.eq('tenant_id', tenantId)
-		.gte('arrival', from)
 		.lte('arrival', to)
+		.gte('departure', from)
 		.eq('status', 'canceled');
 
 	const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
@@ -111,7 +113,8 @@ async function getCurrentPeriodMetrics(
 		.select('guest_email, guest_name')
 		.eq('tenant_id', tenantId)
 		.lt('arrival', from)
-		.neq('status', 'canceled');
+		.neq('status', 'canceled')
+		.limit(SUPABASE_MAX_ROWS);
 
 	const historicalGuestIds = new Set(
 		historicalBookings?.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean) || []
@@ -168,16 +171,17 @@ async function getChartsData(
 		.from('bookings')
 		.select('*')
 		.eq('tenant_id', tenantId)
-		.gte('arrival', from)
 		.lte('arrival', to)
-		.neq('status', 'canceled');
+		.gte('departure', from)
+		.neq('status', 'canceled')
+		.limit(SUPABASE_MAX_ROWS);
 
 	if (hasTagFilter) {
 		const { data: taggedBookings } = await supabase
 			.from('booking_tags')
 			.select('booking_id')
 			.in('tag_id', tagIds);
-		
+
 		if (taggedBookings) {
 			const bookingIds = taggedBookings.map(tb => tb.booking_id);
 			bookingsQuery = bookingsQuery.in('id', bookingIds);
@@ -391,7 +395,8 @@ async function getAlerts(
 		.eq('tenant_id', tenantId)
 		.gte('arrival', today.toISOString().split('T')[0])
 		.lte('arrival', thirtyDaysFromNow.toISOString().split('T')[0])
-		.neq('status', 'canceled');
+		.neq('status', 'canceled')
+		.limit(SUPABASE_MAX_ROWS);
 
 	const { count: propertyCount } = await supabase
 		.from('properties')
@@ -427,15 +432,15 @@ async function getAlerts(
 		.from('bookings')
 		.select('*', { count: 'exact', head: true })
 		.eq('tenant_id', tenantId)
-		.gte('arrival', from)
-		.lte('arrival', to);
+		.lte('arrival', to)
+		.gte('departure', from);
 
 	const { count: canceledBookings } = await supabase
 		.from('bookings')
 		.select('*', { count: 'exact', head: true })
 		.eq('tenant_id', tenantId)
-		.gte('arrival', from)
 		.lte('arrival', to)
+		.gte('departure', from)
 		.eq('status', 'canceled');
 
 	if (totalBookings && canceledBookings) {

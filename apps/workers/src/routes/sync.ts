@@ -5,6 +5,7 @@ import { authMiddleware } from '../middleware/auth';
 import { strictRateLimit } from '../middleware/rate-limit';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
+import { getValidOwnerRezToken } from '../services/ownerrez-token';
 
 const sync = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
@@ -25,22 +26,15 @@ sync.post('/properties', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	// get oauth token for this tenant
-	const { data: ownerrezToken } = await supabase
-		.from('oauth_tokens')
-		.select('access_token')
-		.eq('tenant_id', tenant.id)
-		.eq('provider', 'ownerrez')
-		.single();
-
-	if (!ownerrezToken?.access_token) {
+	const tokenResult = await getValidOwnerRezToken(c.env, tenant.id);
+	if (tokenResult.error) {
 		return c.json({
-			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			error: tokenResult.error.message,
 			requiresAuth: true
-		}, 400);
+		}, tokenResult.error.status);
 	}
 
-	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+	const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
 	try {
 		const properties = await ownerRez.fetchProperties();
@@ -134,22 +128,15 @@ sync.post('/bookings', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	// get oauth token for this tenant
-	const { data: ownerrezToken } = await supabase
-		.from('oauth_tokens')
-		.select('access_token')
-		.eq('tenant_id', tenant.id)
-		.eq('provider', 'ownerrez')
-		.single();
-
-	if (!ownerrezToken?.access_token) {
+	const tokenResult = await getValidOwnerRezToken(c.env, tenant.id);
+	if (tokenResult.error) {
 		return c.json({
-			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			error: tokenResult.error.message,
 			requiresAuth: true
-		}, 400);
+		}, tokenResult.error.status);
 	}
 
-	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+	const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
 	try {
 		// first, look up the actual property UUID
@@ -175,7 +162,7 @@ sync.post('/bookings', async (c) => {
 				blocks.push({
 					ownerrez_block_id: booking.id,
 					tenant_id: tenant.id,
-					property_id: property.id,
+					property_id: parseInt(propertyId),
 					arrival: booking.arrival,
 					departure: booking.departure,
 					type: booking.type || 'block',
@@ -320,18 +307,12 @@ sync.post('/recovery', async (c) => {
 		}, 400);
 	}
 
-	const { data: ownerrezToken } = await supabase
-		.from('oauth_tokens')
-		.select('access_token')
-		.eq('tenant_id', tenant.id)
-		.eq('provider', 'ownerrez')
-		.single();
-
-	if (!ownerrezToken?.access_token) {
-		return c.json({ error: 'No OwnerRez connection found' }, 400);
+	const tokenResult = await getValidOwnerRezToken(c.env, tenant.id);
+	if (tokenResult.error) {
+		return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
 	}
 
-	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+	const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
 	try {
 		const startDate = new Date();
@@ -385,7 +366,7 @@ sync.post('/recovery', async (c) => {
 						.upsert({
 							ownerrez_block_id: booking.id,
 							tenant_id: tenant.id,
-							property_id: upsertedProperty.id,
+							property_id: property.id,
 							arrival: booking.arrival,
 							departure: booking.departure,
 							type: booking.type || 'block',
@@ -482,22 +463,15 @@ sync.post('/guest-details', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	// get oauth token for this tenant
-	const { data: ownerrezToken } = await supabase
-		.from('oauth_tokens')
-		.select('access_token')
-		.eq('tenant_id', tenant.id)
-		.eq('provider', 'ownerrez')
-		.single();
-
-	if (!ownerrezToken?.access_token) {
+	const tokenResult = await getValidOwnerRezToken(c.env, tenant.id);
+	if (tokenResult.error) {
 		return c.json({
-			error: 'No OwnerRez connection found. Please connect to OwnerRez first.',
+			error: tokenResult.error.message,
 			requiresAuth: true
-		}, 400);
+		}, tokenResult.error.status);
 	}
 
-	const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+	const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
 	const { data: guestsNeedingInfo } = await supabase
 		.from('bookings')

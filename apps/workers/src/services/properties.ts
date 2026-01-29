@@ -53,8 +53,8 @@ export async function getPropertyMetrics(
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
-    .gte('arrival', from)
     .lte('arrival', to)
+    .gte('departure', from)
     .neq('status', 'canceled');
 
   if (hasTagFilter) {

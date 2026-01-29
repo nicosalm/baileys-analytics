@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
+import { getValidOwnerRezToken } from '../services/ownerrez-token';
+import { normalizeBookingStatus } from '../constants';
 
 const webhookPayloadSchema = z.object({
 	id: z.union([z.string(), z.number()]),
@@ -266,6 +268,8 @@ async function handleBookingUpdate(
 	categories?: string[],
 	env?: Env
 ) {
+	const normalizedStatus = normalizeBookingStatus(booking.status);
+
 	if (booking.is_block || booking.type === 'block') {
 		const { data: existingBlock } = await supabase
 			.from('blocks')
@@ -274,7 +278,7 @@ async function handleBookingUpdate(
 			.eq('tenant_id', tenantId)
 			.single();
 
-		if (booking.status === 'canceled' || booking.canceled_utc) {
+		if (normalizedStatus === 'canceled' || booking.canceled_utc) {
 			if (existingBlock) {
 				await supabase
 					.from('blocks')
@@ -301,7 +305,7 @@ async function handleBookingUpdate(
 			.upsert({
 				ownerrez_block_id: booking.id,
 				tenant_id: tenantId,
-				property_id: blockProperty.id,
+				property_id: booking.property_id,
 				arrival: booking.arrival,
 				departure: booking.departure,
 				type: booking.type || 'block',
@@ -380,7 +384,7 @@ async function handleBookingUpdate(
 			departure: booking.departure,
 			total_amount: booking.total_amount || 0,
 			host_service_fee: booking.total_host_fees || 0,
-			status: booking.status,
+			status: normalizedStatus,
 			platform: booking.source || booking.listing_site || 'Direct',
 			platform_reservation_number: booking.custom_source_id || booking.external_id,
 			adults: booking.adults || 0,
@@ -388,11 +392,11 @@ async function handleBookingUpdate(
 			infants: booking.infants || 0,
 			pets: booking.pets || 0,
 			booked_utc: booking.booked_date || booking.created_date,
-			canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+			canceled_utc: normalizedStatus === 'canceled' ? booking.modified_date : null,
 			updated_at: new Date().toISOString()
 		};
 
-		if (booking.status === 'canceled' || booking.canceled_utc) {
+		if (normalizedStatus === 'canceled' || booking.canceled_utc) {
 			bookingData.status = 'canceled';
 		}
 
@@ -457,16 +461,10 @@ async function handleBookingUpdate(
 		// Always fetch and process charges for every booking
 		if (env) {
 			try {
-				// Get OAuth token for this tenant
-				const { data: ownerrezToken } = await supabase
-					.from('oauth_tokens')
-					.select('access_token')
-					.eq('tenant_id', tenantId)
-					.eq('provider', 'ownerrez')
-					.single();
+				const tokenResult = await getValidOwnerRezToken(env, tenantId);
 
-				if (ownerrezToken?.access_token) {
-					const ownerRez = new OwnerRezService(ownerrezToken.access_token);
+				if (!tokenResult.error) {
+					const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
 					// Fetch full booking details including charges
 					const fullBooking = await ownerRez.fetchBookingDetail(String(booking.id));

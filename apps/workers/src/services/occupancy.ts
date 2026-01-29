@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSeasons } from './seasons';
+import { SUPABASE_MAX_ROWS } from '../constants';
 
 export interface OccupancyData {
   overall: number;
@@ -70,8 +71,9 @@ async function fetchOverallOccupancy(
     .select('property_id, arrival')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
-    .order('arrival', { ascending: true });
-  
+    .order('arrival', { ascending: true })
+    .limit(SUPABASE_MAX_ROWS);
+
   const firstBookingDates = new Map<string, Date>();
   if (firstBookings) {
     for (const property of properties) {
@@ -81,21 +83,21 @@ async function fetchOverallOccupancy(
       }
     }
   }
-  
+
   let totalAvailableNights = 0;
   const today = new Date();
   const endDate = new Date(to);
   const startDate = new Date(from);
-  
+
   for (const property of properties) {
     const firstBooking = firstBookingDates.get(property.id);
     if (!firstBooking || firstBooking > endDate) {
       continue;
     }
-    
+
     const effectiveStart = firstBooking > startDate ? firstBooking : startDate;
     const effectiveEnd = endDate > today ? today : endDate;
-    
+
     if (effectiveStart <= effectiveEnd) {
       const nights = Math.ceil(
         (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
@@ -103,14 +105,15 @@ async function fetchOverallOccupancy(
       totalAvailableNights += Math.max(0, nights);
     }
   }
-  
+
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
     .lte('arrival', to)
     .gte('departure', from)
-    .neq('status', 'canceled');
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
   
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
@@ -179,8 +182,9 @@ async function fetchPropertyOccupancy(
     .select('property_id, arrival')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
-    .order('arrival', { ascending: true });
-  
+    .order('arrival', { ascending: true })
+    .limit(SUPABASE_MAX_ROWS);
+
   const firstBookingDates = new Map<string, Date>();
   if (firstBookings) {
     for (const property of properties) {
@@ -190,29 +194,30 @@ async function fetchPropertyOccupancy(
       }
     }
   }
-  
+
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
     .lte('arrival', to)
     .gte('departure', from)
-    .neq('status', 'canceled');
-  
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
+
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
       .select('booking_id')
       .in('tag_id', tagIds);
-    
+
     if (taggedBookings && taggedBookings.length > 0) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
     }
   }
-  
+
   const { data: bookings } = await bookingsQuery;
-  
+
   const propertyOccupancy: PropertyOccupancy[] = [];
   const today = new Date();
   const endDate = new Date(to);
@@ -290,8 +295,9 @@ async function fetchMonthlyOccupancy(
     .select('property_id, arrival')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
-    .order('arrival', { ascending: true });
-  
+    .order('arrival', { ascending: true })
+    .limit(SUPABASE_MAX_ROWS);
+
   const firstBookingDates = new Map<string, Date>();
   if (firstBookings) {
     for (const property of properties) {
@@ -301,29 +307,30 @@ async function fetchMonthlyOccupancy(
       }
     }
   }
-  
+
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
     .lte('arrival', to)
     .gte('departure', from)
-    .neq('status', 'canceled');
-  
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
+
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
       .select('booking_id')
       .in('tag_id', tagIds);
-    
+
     if (taggedBookings && taggedBookings.length > 0) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
     }
   }
-  
+
   const { data: bookings } = await bookingsQuery;
-  
+
   const periods = new Map<string, { bookedNights: number; availableNights: number }>();
   const startDate = new Date(from);
   const endDate = new Date(to);
@@ -452,22 +459,23 @@ async function fetchDailyOccupancy(
     .eq('tenant_id', tenantId)
     .lte('arrival', to)
     .gte('departure', from)
-    .neq('status', 'canceled');
-  
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
+
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
       .select('booking_id')
       .in('tag_id', tagIds);
-    
+
     if (taggedBookings && taggedBookings.length > 0) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
     }
   }
-  
+
   const { data: bookings } = await bookingsQuery;
-  
+
   const dailyOccupancy: DailyOccupancy[] = [];
   const startDate = new Date(from);
   const endDate = new Date(to);
@@ -577,7 +585,8 @@ export async function detectBookingGaps(
     .lte('arrival', endDate.toISOString())
     .neq('status', 'canceled')
     .order('property_id', { ascending: true })
-    .order('arrival', { ascending: true });
+    .order('arrival', { ascending: true })
+    .limit(SUPABASE_MAX_ROWS);
 
   const gaps: BookingGap[] = [];
   
