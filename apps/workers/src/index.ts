@@ -466,8 +466,8 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 						children: booking.children || 0,
 						infants: booking.infants || 0,
 						pets: booking.pets || 0,
-						booked_utc: booking.booked_date || booking.created_date,
-						canceled_utc: booking.status === 'canceled' ? booking.modified_date : null,
+						booked_utc: booking.booked_utc || booking.created_utc,
+						canceled_utc: booking.canceled_utc || null,
 						updated_at: new Date().toISOString()
 					});
 				}
