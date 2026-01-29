@@ -153,6 +153,9 @@ export const IntegrationsTab = () => {
                   <p className="text-xs text-gray-500 w-full mt-2">
                     This will re-run the initial sync process, refreshing all properties and bookings from the last 3 years.
                   </p>
+                  <p className="text-xs text-gray-400 w-full mt-4">
+                    Dashboard data reflects what is available from the OwnerRez API. Items not provided by the API — such as platform fees, operating expenses, and custom tax rates — must be configured manually in Settings.
+                  </p>
                 </div>
               </div>
             </>

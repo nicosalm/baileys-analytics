@@ -101,6 +101,25 @@ export const Help = () => {
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">How accurate is the dashboard data?</h3>
+              <p className="text-gray-700 text-sm mb-2">
+                Dashboard data reflects what is available from the OwnerRez API. Bookings, guest details, property info, and charge breakdowns
+                are synced automatically and stay up to date via webhooks.
+              </p>
+              <p className="text-gray-700 text-sm">
+                However, some values are not available through the API and must be configured by you in <strong>Settings</strong>:
+              </p>
+              <ul className="text-gray-700 text-sm list-disc ml-6 space-y-1 mt-2">
+                <li><strong>Platform fees</strong> (Airbnb, Vrbo, etc.) — configure in Settings → Tax & Fees</li>
+                <li><strong>Operating expenses</strong> (cleaning, maintenance, etc.) — enter manually</li>
+                <li><strong>Custom tax rates</strong> — configure in Settings → Tax & Fees</li>
+              </ul>
+              <p className="text-gray-600 text-sm mt-2">
+                The accuracy of net revenue, profit, and tax calculations depends on these values being set correctly.
+              </p>
+            </div>
+
+            <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How do I manually sync my data?</h3>
               <p className="text-gray-700 text-sm">
                 Go to <strong>Settings → Integrations</strong> and click <strong>"Re-sync All Data"</strong>. This refreshes

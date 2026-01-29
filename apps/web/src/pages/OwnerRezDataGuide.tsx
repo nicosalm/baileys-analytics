@@ -68,6 +68,22 @@ export const OwnerRezDataGuide = () => {
           </div>
         </section>
 
+        {/* what we don't sync */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">What's Not Included from the API</h2>
+          <p className="text-gray-600 text-sm mb-4">
+            The following are not available through the OwnerRez API and must be configured manually in Settings:
+          </p>
+          <ul className="text-gray-600 space-y-1 list-disc ml-6 text-sm">
+            <li><strong>Platform fees</strong> — Airbnb, Vrbo, Booking.com host service fees</li>
+            <li><strong>Operating expenses</strong> — cleaning costs, maintenance, supplies, etc.</li>
+            <li><strong>Custom tax rates</strong> — local occupancy taxes, state taxes, etc.</li>
+          </ul>
+          <p className="text-gray-500 text-sm mt-4">
+            Net revenue, profit margins, and tax calculations depend on these values being set correctly in Settings → Tax & Fees.
+          </p>
+        </section>
+
         {/* real-time webhooks */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Real-Time Data Updates</h2>
