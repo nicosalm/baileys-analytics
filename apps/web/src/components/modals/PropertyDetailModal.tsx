@@ -15,18 +15,23 @@ import { METRIC_COLORS, CHART_COLORS } from '@/lib/theme'
 interface PropertyDetailModalProps {
   propertyId: string
   propertyName: string
+  from?: string
+  to?: string
 }
 
-export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetailModalProps) => {
+export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: PropertyDetailModalProps) => {
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
   const { filters } = useDashboard()
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'revenue'>('overview')
-  
+
+  const effectiveFrom = from || filters.dateRange.from
+  const effectiveTo = to || filters.dateRange.to
+
   const { data, isLoading, error } = usePropertyDetail(
     propertyId,
-    filters.dateRange.from,
-    filters.dateRange.to,
+    effectiveFrom,
+    effectiveTo,
     filters.selectedTags.map(t => t.id)
   )
 
@@ -39,7 +44,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
       month: new Date(m.month).toLocaleDateString('en-US', { month: 'short' }),
       revenue: m.revenue,
       bookings: m.bookings,
-      occupancy: m.occupancy
+      occupancy: Math.round(m.occupancy * 10) / 10
     })) || []
   , [data?.monthlyData])
 
@@ -75,7 +80,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName }: PropertyDetail
   // memoized tooltip formatter
   const tooltipFormatter = useCallback((value: any, name: string) => {
     if (name === 'Revenue') return formatCurrency(value)
-    if (name === 'Occupancy') return `${value}%`
+    if (name === 'Occupancy') return formatPercentage(value, 1)
     return value
   }, [])
 

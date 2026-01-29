@@ -26,6 +26,8 @@ export const ModalManager = () => {
           <PropertyDetailModal
             propertyId={activeModal.propertyId}
             propertyName={activeModal.propertyName}
+            from={activeModal.from}
+            to={activeModal.to}
           />
         )
     
@@ -57,15 +59,20 @@ export const ModalManager = () => {
           />
         )
     
-      case 'property-month':
-        // For property-month, we can show property modal with date filter
-        // Or create a specialized modal if needed
+      case 'property-month': {
+        const monthDate = new Date(parseInt(activeModal.year), parseInt(activeModal.month) - 1)
+        const monthFrom = `${activeModal.year}-${activeModal.month.padStart(2, '0')}-01`
+        const lastDay = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate()
+        const monthTo = `${activeModal.year}-${activeModal.month.padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
         return (
           <PropertyDetailModal
             propertyId={activeModal.propertyId}
             propertyName={activeModal.propertyName}
+            from={monthFrom}
+            to={monthTo}
           />
         )
+      }
     
       case 'report-builder':
         return (

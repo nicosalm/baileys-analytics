@@ -52,8 +52,8 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
 
   // memoized property click handler
   const handlePropertyClick = useCallback((propertyId: string, propertyName: string) => {
-    openModal({ type: 'property', propertyId, propertyName })
-  }, [openModal])
+    openModal({ type: 'property', propertyId, propertyName, from: dateRangeStart, to: dateRangeEnd })
+  }, [openModal, dateRangeStart, dateRangeEnd])
 
   // memoized guest click handler
   const handleGuestClick = useCallback((guestId: string, guestName: string) => {

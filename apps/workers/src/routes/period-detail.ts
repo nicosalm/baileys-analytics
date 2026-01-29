@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
+import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
 
 const periodDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -53,8 +54,9 @@ periodDetail.get('/', async (c) => {
       .eq('tenant_id', tenantId)
       .lte('arrival', endDate)
       .gt('departure', startDate)  // Changed: departure must be AFTER start (not on checkout day)
-      .neq('status', 'canceled');
-    
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS);
+
     if (tags && tags.length > 0) {
       const { data: taggedBookings } = await supabase
         .from('booking_tags')
@@ -88,39 +90,51 @@ periodDetail.get('/', async (c) => {
     // calculate metrics
     const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
     const totalBookings = bookings.length;
-    
-    let totalNights = 0;
+
+    const periodStart = new Date(startDate);
+    const periodEnd = new Date(endDate);
+
+    // Deduplicate occupancy: count each property-day at most once
+    const occupiedPropertyDays = new Set<string>();
+    const propertyOccupiedDays = new Map<string, Set<string>>();
+
     bookings.forEach(b => {
       if (b.arrival && b.departure) {
-        const nights = Math.ceil(
-          (new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
-        );
-        totalNights += nights;
+        const arrival = new Date(b.arrival);
+        const departure = new Date(b.departure);
+        const clampedStart = new Date(Math.max(arrival.getTime(), periodStart.getTime()));
+        const clampedEnd = new Date(Math.min(departure.getTime(), periodEnd.getTime() + MS_PER_DAY));
+
+        let day = new Date(clampedStart);
+        while (day < clampedEnd) {
+          const dayStr = day.toISOString().split('T')[0];
+          occupiedPropertyDays.add(`${b.property_id}_${dayStr}`);
+
+          if (!propertyOccupiedDays.has(b.property_id)) {
+            propertyOccupiedDays.set(b.property_id, new Set());
+          }
+          propertyOccupiedDays.get(b.property_id)!.add(dayStr);
+
+          day.setDate(day.getDate() + 1);
+        }
       }
     });
-    
+
+    const totalNights = occupiedPropertyDays.size;
     const avgNightlyRate = totalNights > 0 ? totalRevenue / totalNights : 0;
 
     const totalDays = Math.ceil(
-      (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24) + 1
+      (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24) + 1
     );
     const totalPossibleNights = properties.length * totalDays;
     const occupancyRate = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) : 0;
 
-    const propertyRevenue = new Map<string, { revenue: number; bookings: number; nights: number }>();
+    const propertyRevenue = new Map<string, { revenue: number; bookings: number }>();
     bookings.forEach(b => {
       const propId = b.property_id;
-      const current = propertyRevenue.get(propId) || { revenue: 0, bookings: 0, nights: 0 };
+      const current = propertyRevenue.get(propId) || { revenue: 0, bookings: 0 };
       current.revenue += b.total_amount || 0;
       current.bookings += 1;
-      
-      if (b.arrival && b.departure) {
-        const nights = Math.ceil(
-          (new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
-        );
-        current.nights += nights;
-      }
-      
       propertyRevenue.set(propId, current);
     });
 
@@ -130,7 +144,7 @@ periodDetail.get('/', async (c) => {
         propertyName: propertyMap.get(propertyId) || 'Unknown Property',
         revenue: data.revenue,
         bookings: data.bookings,
-        occupancyRate: totalDays > 0 ? data.nights / totalDays : 0
+        occupancyRate: totalDays > 0 ? (propertyOccupiedDays.get(propertyId)?.size || 0) / totalDays : 0
       }))
       .sort((a, b) => b.revenue - a.revenue);
 

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
+import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -44,10 +45,11 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         platform
       `)
       .eq('property_id', propertyId)
-      .gte('arrival', from)
       .lte('arrival', to)
+      .gte('departure', from)
       .neq('status', 'canceled')
-      .order('arrival');
+      .order('arrival')
+      .limit(SUPABASE_MAX_ROWS);
     
     if (tags && tags.length > 0) {
       const { data: taggedBookings } = await supabase
@@ -66,39 +68,57 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     if (bookingsError) throw bookingsError;
 
     let totalRevenue = 0;
-    let totalNights = 0;
     const platformRevenue = new Map<string, number>();
-    const monthlyData = new Map<string, { revenue: number; bookings: number; nights: number }>();
-    
+    const monthlyData = new Map<string, { revenue: number; bookings: number }>();
+
+    const periodStart = new Date(from);
+    const periodEnd = new Date(to);
+
+    // Deduplicate occupancy: count each day at most once (single property)
+    const occupiedDays = new Set<string>();
+    const monthOccupiedDays = new Map<string, Set<string>>();
+
     (bookings || []).forEach(booking => {
       totalRevenue += booking.total_amount || 0;
-      
+
       const platform = booking.platform || 'Direct';
       platformRevenue.set(platform, (platformRevenue.get(platform) || 0) + (booking.total_amount || 0));
-      
+
       const month = booking.arrival.substring(0, 7);
-      const monthData = monthlyData.get(month) || { revenue: 0, bookings: 0, nights: 0 };
+      const monthData = monthlyData.get(month) || { revenue: 0, bookings: 0 };
       monthData.revenue += booking.total_amount || 0;
       monthData.bookings += 1;
-      
-      if (booking.arrival && booking.departure) {
-        const nights = Math.ceil(
-          (new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / 
-          (1000 * 60 * 60 * 24)
-        );
-        totalNights += nights;
-        monthData.nights += nights;
-      }
-      
       monthlyData.set(month, monthData);
+
+      if (booking.arrival && booking.departure) {
+        const arrival = new Date(booking.arrival);
+        const departure = new Date(booking.departure);
+        const clampedStart = new Date(Math.max(arrival.getTime(), periodStart.getTime()));
+        const clampedEnd = new Date(Math.min(departure.getTime(), periodEnd.getTime() + MS_PER_DAY));
+
+        let day = new Date(clampedStart);
+        while (day < clampedEnd) {
+          const dayStr = day.toISOString().split('T')[0];
+          occupiedDays.add(dayStr);
+
+          const dayMonth = dayStr.substring(0, 7);
+          if (!monthOccupiedDays.has(dayMonth)) {
+            monthOccupiedDays.set(dayMonth, new Set());
+          }
+          monthOccupiedDays.get(dayMonth)!.add(dayStr);
+
+          day.setDate(day.getDate() + 1);
+        }
+      }
     });
-    
+
+    const totalNights = occupiedDays.size;
     const totalDays = Math.ceil(
-      (new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24) + 1
+      (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24) + 1
     );
     const occupancyRate = totalDays > 0 ? totalNights / totalDays : 0;
     const avgNightlyRate = totalNights > 0 ? totalRevenue / totalNights : 0;
-    
+
     const sortedMonths = Array.from(monthlyData.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, data]) => {
@@ -107,12 +127,13 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
           parseInt(month.split('-')[1]),
           0
         ).getDate();
-        
+        const monthNights = monthOccupiedDays.get(month)?.size || 0;
+
         return {
           month,
           revenue: data.revenue,
           bookings: data.bookings,
-          occupancy: (data.nights / daysInMonth) * 100
+          occupancy: (monthNights / daysInMonth) * 100
         };
       });
     

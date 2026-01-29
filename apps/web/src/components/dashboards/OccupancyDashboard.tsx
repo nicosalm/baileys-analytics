@@ -103,8 +103,8 @@ export const OccupancyDashboard = () => {
     return {
       month: label,
       fullMonth: dataPoint.month,
-      rate: dataPoint.rate * 100,
-      previousRate: prevDataPoint ? prevDataPoint.rate * 100 : undefined,
+      rate: Math.min(dataPoint.rate * 100, 100),
+      previousRate: prevDataPoint ? Math.min(prevDataPoint.rate * 100, 100) : undefined,
       bookedNights: dataPoint.bookedNights,
       availableNights: dataPoint.availableNights,
       tooltip: `${dataPoint.bookedNights} / ${dataPoint.availableNights} nights`
@@ -199,10 +199,11 @@ export const OccupancyDashboard = () => {
   }, [dataGranularity, chartData.length])
 
   // memoized tooltip formatter
-  const tooltipFormatter = useCallback((value: number, name: string) => [
-    `${value.toFixed(1)}%`,
-    name === 'rate' ? 'Current' : comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'
-  ], [comparisonMode])
+  const tooltipFormatter = useCallback((value: number, name: string) => {
+    if (name === 'Current Period') return [`${value.toFixed(1)}%`, 'Current']
+    if (name === 'Last Year' || name === 'Previous Period') return [`${value.toFixed(1)}%`, name]
+    return [null, null]
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -330,8 +331,9 @@ export const OccupancyDashboard = () => {
             interval={xAxisConfig.interval}
           />
           <YAxis
-            tickFormatter={(value: number) => `${value}%`}
+            tickFormatter={(value: number) => `${Math.round(value)}%`}
             domain={[0, 100]}
+            allowDataOverflow
           />
           <Tooltip
             formatter={tooltipFormatter}

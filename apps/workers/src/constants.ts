@@ -13,6 +13,9 @@ export const OWNERREZ_API = {
  */
 export const SUPABASE_MAX_ROWS = 10000;
 
+/** Milliseconds in one day — used to convert inclusive date boundaries to exclusive ones. */
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export const BOOKING_STATUS = {
   CONFIRMED: 'confirmed',
   CANCELED: 'canceled',

@@ -1,6 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSeasons } from './seasons';
-import { SUPABASE_MAX_ROWS } from '../constants';
+import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
 
 export interface OccupancyData {
   overall: number;
@@ -131,26 +131,28 @@ async function fetchOverallOccupancy(
   
   const { data: bookings } = await bookingsQuery;
   
-  let totalBookedNights = 0;
+  const countedPropertyDays = new Set<string>();
   if (bookings) {
+    const periodStart = new Date(from);
+    const periodEnd = new Date(to);
+
     for (const booking of bookings) {
       const arrivalDate = new Date(booking.arrival);
       const departureDate = new Date(booking.departure);
-      const periodStart = new Date(from);
-      const periodEnd = new Date(to);
-      
-      const effectiveArrival = arrivalDate < periodStart ? periodStart : arrivalDate;
-      const effectiveDeparture = departureDate > periodEnd ? periodEnd : 
-                                  departureDate > today ? today : departureDate;
-      
-      if (effectiveArrival <= effectiveDeparture && effectiveArrival <= periodEnd && effectiveDeparture >= periodStart) {
-        const nights = Math.ceil(
-          (effectiveDeparture.getTime() - effectiveArrival.getTime()) / (1000 * 60 * 60 * 24)
-        );
-        totalBookedNights += nights;
+
+      const effectiveStart = new Date(Math.max(arrivalDate.getTime(), periodStart.getTime()));
+      // periodEnd and today are inclusive boundaries; convert to exclusive for the < loop
+      const effectiveEnd = new Date(Math.min(departureDate.getTime(), periodEnd.getTime() + MS_PER_DAY, today.getTime() + MS_PER_DAY));
+
+      let day = new Date(effectiveStart);
+      while (day < effectiveEnd) {
+        const key = `${booking.property_id}_${day.toISOString().split('T')[0]}`;
+        countedPropertyDays.add(key);
+        day.setDate(day.getDate() + 1);
       }
     }
   }
+  const totalBookedNights = countedPropertyDays.size;
   
   return {
     bookedNights: totalBookedNights,
@@ -238,25 +240,25 @@ async function fetchPropertyOccupancy(
       }
     }
     
-    let bookedNights = 0;
+    const occupiedDays = new Set<string>();
     if (bookings) {
       const propertyBookings = bookings.filter(b => b.property_id === property.id);
       for (const booking of propertyBookings) {
         const arrivalDate = new Date(booking.arrival);
         const departureDate = new Date(booking.departure);
-        
-        const effectiveArrival = arrivalDate < startDate ? startDate : arrivalDate;
-        const effectiveDeparture = departureDate > endDate ? endDate : 
-                                    departureDate > today ? today : departureDate;
-        
-        if (effectiveArrival <= effectiveDeparture && effectiveArrival <= endDate && effectiveDeparture >= startDate) {
-          const nights = Math.ceil(
-            (effectiveDeparture.getTime() - effectiveArrival.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          bookedNights += nights;
+
+        const effectiveStart = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
+        // endDate and today are inclusive boundaries; convert to exclusive for the < loop
+        const effectiveEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY, today.getTime() + MS_PER_DAY));
+
+        let day = new Date(effectiveStart);
+        while (day < effectiveEnd) {
+          occupiedDays.add(day.toISOString().split('T')[0]);
+          day.setDate(day.getDate() + 1);
         }
       }
     }
+    const bookedNights = occupiedDays.size;
     
     propertyOccupancy.push({
       propertyId: property.id,
@@ -388,32 +390,43 @@ async function fetchMonthlyOccupancy(
     }
   }
   
+  // Track property-day pairs to avoid double-counting overlapping bookings
+  const countedPropertyDays = new Set<string>();
+
   if (bookings) {
     for (const booking of bookings) {
       const arrivalDate = new Date(booking.arrival);
       const departureDate = new Date(booking.departure);
-      
+
       let bookingDate = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
-      const bookingEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime(), today.getTime()));
-      
+      // endDate and today are inclusive boundaries; convert to exclusive for the < loop
+      const bookingEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY, today.getTime() + MS_PER_DAY));
+
       while (bookingDate < bookingEnd) {
-        let periodKey: string;
-        
-        if (granularity === 'daily') {
-          periodKey = bookingDate.toISOString().split('T')[0];
-        } else if (granularity === 'weekly') {
-          const weekStart = new Date(bookingDate);
-          weekStart.setDate(bookingDate.getDate() - bookingDate.getDay());
-          periodKey = weekStart.toISOString().split('T')[0];
-        } else {
-          periodKey = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}`;
+        const dayKey = bookingDate.toISOString().split('T')[0];
+        const propertyDayKey = `${booking.property_id}_${dayKey}`;
+
+        if (!countedPropertyDays.has(propertyDayKey)) {
+          countedPropertyDays.add(propertyDayKey);
+
+          let periodKey: string;
+
+          if (granularity === 'daily') {
+            periodKey = dayKey;
+          } else if (granularity === 'weekly') {
+            const weekStart = new Date(bookingDate);
+            weekStart.setDate(bookingDate.getDate() - bookingDate.getDay());
+            periodKey = weekStart.toISOString().split('T')[0];
+          } else {
+            periodKey = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}`;
+          }
+
+          const period = periods.get(periodKey);
+          if (period) {
+            period.bookedNights++;
+          }
         }
-        
-        const period = periods.get(periodKey);
-        if (period) {
-          period.bookedNights++;
-        }
-        
+
         bookingDate.setDate(bookingDate.getDate() + 1);
       }
     }
