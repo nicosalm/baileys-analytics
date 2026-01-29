@@ -378,7 +378,13 @@ initialSyncChunked.post('/guests', async (c) => {
 
   try {
     const guests = await ownerRez.fetchAllGuests();
-    let guestsCount = 0;
+    const CHUNK_SIZE = 100;
+
+    // Collect all guest data and tags in memory first
+    const allGuestData: any[] = [];
+    const allTagNames = new Set<string>();
+    // Map ownerrez_guest_id -> tag names for linking after upsert
+    const guestTagMap = new Map<string, string[]>();
 
     for (const guest of guests) {
       const fullName = `${guest.first_name || ''} ${guest.last_name || ''}`.trim();
@@ -386,165 +392,152 @@ initialSyncChunked.post('/guests', async (c) => {
                    guest.email_addresses?.[0]?.address;
       const phone = guest.phones?.find((p: any) => p.is_default)?.number ||
                    guest.phones?.[0]?.number;
+      const guestIdStr = guest.id?.toString();
 
-      const { data: upsertedGuest } = await supabase
+      allGuestData.push({
+        ownerrez_guest_id: guestIdStr,
+        tenant_id: tenantId,
+        first_name: guest.first_name,
+        last_name: guest.last_name,
+        full_name: fullName,
+        email: email,
+        phone: phone,
+        data: guest,
+        updated_at: new Date().toISOString()
+      });
+
+      if (guest.tags && Array.isArray(guest.tags) && guestIdStr) {
+        const tagNames = guest.tags.map((t: any) => typeof t === 'string' ? t : (t.name || t));
+        tagNames.forEach((n: string) => allTagNames.add(n));
+        guestTagMap.set(guestIdStr, tagNames);
+      }
+    }
+
+    // Batch upsert guests in chunks
+    for (let i = 0; i < allGuestData.length; i += CHUNK_SIZE) {
+      const chunk = allGuestData.slice(i, i + CHUNK_SIZE);
+      const { error } = await supabase
         .from('guests')
-        .upsert({
-          ownerrez_guest_id: guest.id?.toString(),
-          tenant_id: tenantId,
-          first_name: guest.first_name,
-          last_name: guest.last_name,
-          full_name: fullName,
-          email: email,
-          phone: phone,
-          data: guest,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'tenant_id,ownerrez_guest_id'
-        })
-        .select()
-        .single();
+        .upsert(chunk, { onConflict: 'tenant_id,ownerrez_guest_id' });
+      if (error) {
+        console.error(`Failed to batch upsert guests chunk ${i}:`, error);
+      }
+    }
 
-      if (guest.tags && Array.isArray(guest.tags) && upsertedGuest) {
-        await supabase
-          .from('guest_tags')
-          .delete()
-          .eq('guest_id', upsertedGuest.id);
+    // Batch ensure all tags exist and link to guests
+    if (allTagNames.size > 0 && guestTagMap.size > 0) {
+      const { data: existingTags } = await supabase
+        .from('tags')
+        .select('id, name')
+        .eq('tenant_id', tenantId);
 
-        for (const tag of guest.tags) {
-          // tags come as strings from OwnerRez API
-          const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+      const tagIdMap = new Map((existingTags || []).map((t: any) => [t.name, t.id]));
+      const missingTags = [...allTagNames].filter(name => !tagIdMap.has(name));
 
-          const { data: existingTags } = await supabase
-            .from('tags')
-            .select('id')
-            .eq('tenant_id', tenantId)
-            .eq('name', tagName);
+      if (missingTags.length > 0) {
+        const { data: newTags } = await supabase
+          .from('tags')
+          .upsert(
+            missingTags.map(name => ({ tenant_id: tenantId, name })),
+            { onConflict: 'tenant_id,name' }
+          )
+          .select('id, name');
 
-          let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
-
-          if (!tagId) {
-            const { data: newTag } = await supabase
-              .from('tags')
-              .insert({
-                tenant_id: tenantId,
-                name: tagName,
-                color: typeof tag === 'object' ? (tag.color || null) : null
-              })
-              .select()
-              .single();
-            tagId = newTag?.id;
-          }
-
-          if (tagId) {
-            await supabase
-              .from('guest_tags')
-              .insert({
-                guest_id: upsertedGuest.id,
-                tag_id: tagId
-              });
+        if (newTags) {
+          for (const t of newTags) {
+            tagIdMap.set(t.name, t.id);
           }
         }
       }
-      guestsCount++;
-    }
 
-    // after syncing all guests, update bookings with guest email/phone
-    // console.log('Updating bookings with guest contact information...');
+      // Fetch guest UUIDs for tag linking
+      const ownerrezGuestIds = [...guestTagMap.keys()];
+      const { data: dbGuests } = await supabase
+        .from('guests')
+        .select('id, ownerrez_guest_id')
+        .eq('tenant_id', tenantId)
+        .in('ownerrez_guest_id', ownerrezGuestIds);
 
-    // first: match by ownerrez_guest_id (most reliable)
-    const { data: bookingsById } = await supabase
-      .from('bookings')
-      .select('id, ownerrez_guest_id')
-      .eq('tenant_id', tenantId)
-      .is('guest_email', null)
-      .not('ownerrez_guest_id', 'is', null)
-      .limit(SUPABASE_MAX_ROWS);
+      if (dbGuests) {
+        const allLinks: any[] = [];
+        for (const dbGuest of dbGuests) {
+          const tagNames = guestTagMap.get(dbGuest.ownerrez_guest_id);
+          if (tagNames) {
+            for (const tagName of tagNames) {
+              const tagId = tagIdMap.get(tagName);
+              if (tagId) {
+                allLinks.push({ guest_id: dbGuest.id, tag_id: tagId });
+              }
+            }
+          }
+        }
 
-    if (bookingsById && bookingsById.length > 0) {
-      for (const booking of bookingsById) {
-        const { data: guest } = await supabase
-          .from('guests')
-          .select('email, phone')
-          .eq('tenant_id', tenantId)
-          .eq('ownerrez_guest_id', booking.ownerrez_guest_id)
-          .single();
-
-        if (guest?.email || guest?.phone) {
+        for (let i = 0; i < allLinks.length; i += CHUNK_SIZE) {
+          const chunk = allLinks.slice(i, i + CHUNK_SIZE);
           await supabase
-            .from('bookings')
-            .update({
-              guest_email: guest.email,
-              guest_phone: guest.phone
-            })
-            .eq('id', booking.id);
+            .from('guest_tags')
+            .upsert(chunk, { onConflict: 'guest_id,tag_id' });
         }
       }
     }
 
-    // second: fall back to case-insensitive name matching for bookings without ownerrez_guest_id
-    const { data: bookingsByName } = await supabase
-      .from('bookings')
-      .select('id, guest_name')
+    // Enrich bookings with guest contact info using batch lookups
+    // Fetch all guests with contact info in one query
+    const { data: allDbGuests } = await supabase
+      .from('guests')
+      .select('ownerrez_guest_id, full_name, email, phone')
       .eq('tenant_id', tenantId)
-      .is('guest_email', null)
-      .is('ownerrez_guest_id', null)
-      .not('guest_name', 'is', null)
       .limit(SUPABASE_MAX_ROWS);
 
-    if (bookingsByName && bookingsByName.length > 0) {
-      // console.log(`Found ${bookingsByName.length} bookings to update via name matching`);
-
-      for (const booking of bookingsByName) {
-        const { data: matchingGuests } = await supabase
-          .from('guests')
-          .select('email, phone')
-          .eq('tenant_id', tenantId)
-          .ilike('full_name', booking.guest_name)
-          .limit(1);
-
-        if (matchingGuests && matchingGuests.length > 0 && (matchingGuests[0].email || matchingGuests[0].phone)) {
-          await supabase
-            .from('bookings')
-            .update({
-              guest_email: matchingGuests[0].email,
-              guest_phone: matchingGuests[0].phone
-            })
-            .eq('id', booking.id);
-        }
+    if (allDbGuests && allDbGuests.length > 0) {
+      // Build lookup maps
+      const guestByOrId = new Map<string, { email: string | null; phone: string | null }>();
+      const guestByName = new Map<string, { email: string | null; phone: string | null }>();
+      for (const g of allDbGuests) {
+        if (g.ownerrez_guest_id) guestByOrId.set(g.ownerrez_guest_id, g);
+        if (g.full_name) guestByName.set(g.full_name.toLowerCase(), g);
       }
-    }
 
-    // also update bookings that have guest_email but no guest_phone
-    const { data: bookingsWithEmail } = await supabase
-      .from('bookings')
-      .select('id, guest_email')
-      .eq('tenant_id', tenantId)
-      .not('guest_email', 'is', null)
-      .is('guest_phone', null)
-      .limit(SUPABASE_MAX_ROWS);
+      // Fetch bookings missing contact info
+      const { data: bookingsToEnrich } = await supabase
+        .from('bookings')
+        .select('id, ownerrez_guest_id, guest_name, guest_email, guest_phone')
+        .eq('tenant_id', tenantId)
+        .or('guest_email.is.null,guest_phone.is.null')
+        .limit(SUPABASE_MAX_ROWS);
 
-    if (bookingsWithEmail && bookingsWithEmail.length > 0) {
-      for (const booking of bookingsWithEmail) {
-        const { data: matchingGuests } = await supabase
-          .from('guests')
-          .select('phone')
-          .eq('tenant_id', tenantId)
-          .eq('email', booking.guest_email)
-          .limit(1);
+      if (bookingsToEnrich && bookingsToEnrich.length > 0) {
+        const updates: { id: string; guest_email?: string; guest_phone?: string }[] = [];
 
-        if (matchingGuests && matchingGuests.length > 0 && matchingGuests[0].phone) {
-          await supabase
-            .from('bookings')
-            .update({ guest_phone: matchingGuests[0].phone })
-            .eq('id', booking.id);
+        for (const booking of bookingsToEnrich) {
+          // Try ownerrez_guest_id first, then name match
+          const match = (booking.ownerrez_guest_id && guestByOrId.get(booking.ownerrez_guest_id)) ||
+                       (booking.guest_name && guestByName.get(booking.guest_name.toLowerCase()));
+
+          if (match) {
+            const update: any = { id: booking.id };
+            if (!booking.guest_email && match.email) update.guest_email = match.email;
+            if (!booking.guest_phone && match.phone) update.guest_phone = match.phone;
+            if (update.guest_email || update.guest_phone) {
+              updates.push(update);
+            }
+          }
+        }
+
+        // Batch update bookings in chunks
+        for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+          const chunk = updates.slice(i, i + CHUNK_SIZE);
+          for (const u of chunk) {
+            const { id, ...fields } = u;
+            await supabase.from('bookings').update(fields).eq('id', id);
+          }
         }
       }
     }
 
     return c.json({
       success: true,
-      guestsCount
+      guestsCount: allGuestData.length
     });
   } catch (error) {
     console.error('Failed to sync guests:', error);
