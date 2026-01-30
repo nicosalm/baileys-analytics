@@ -356,7 +356,7 @@ export const OverviewDashboard = () => {
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
               <strong>Quick Start:</strong> Click any metric card to dive deeper into that area.
-              Green arrows mean improvement, red arrows mean decline. All numbers reflect your selected date range.
+              Green arrows mean improvement and red arrows mean decline compared to your selected comparison period. All numbers reflect your selected date range.
             </div>
           </div>
         </div>
@@ -514,7 +514,7 @@ export const OverviewDashboard = () => {
           label="Average Stay Length"
           value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
           format="custom"
-          subValue="Per guest"
+          subValue="Per booking"
           size="sm"
           color="gray"
           tooltip="Average length of stay per booking"
