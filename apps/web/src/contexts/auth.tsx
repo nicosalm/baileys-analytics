@@ -157,11 +157,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const processSession = useCallback(async (session: Session | null) => {
+  const processSession = useCallback(async (session: Session | null): Promise<boolean> => {
     if (!session) {
       api.setAccessToken(null)
       setState({ status: 'unauthenticated' })
-      return
+      return false
     }
 
     // check if session is about to expire or already expired
@@ -171,7 +171,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!refreshedSession) {
         api.setAccessToken(null)
         setState({ status: 'unauthenticated' })
-        return
+        return false
       }
       session = refreshedSession
     }
@@ -204,6 +204,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user: appUser,
       session
     })
+
+    return true
   }, []) // keep deps empty to avoid recreation, internal functions are stable
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -218,9 +220,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (data.user && data.session) {
-        // process session immediately to avoid race condition
-        await processSession(data.session)
-        return true
+        // process session and return its result to properly handle edge cases
+        return await processSession(data.session)
       }
       return false
     } catch (error) {
@@ -250,8 +251,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // email confirmation not required - user created with session
       // (this happens if email confirmation is disabled in Supabase settings)
       if (data.user && data.session) {
-        await processSession(data.session)
-        return { success: true }
+        const processed = await processSession(data.session)
+        return { success: processed, error: processed ? undefined : 'Failed to process session' }
       }
 
       // edge case: no user returned (shouldn't happen without error)

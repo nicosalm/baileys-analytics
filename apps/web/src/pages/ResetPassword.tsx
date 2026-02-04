@@ -27,14 +27,9 @@ export const ResetPassword = () => {
         const { data: { session } } = await supabase.auth.getSession()
 
         // check if we're in password recovery mode
-        // verify this is specifically a recovery session, not just any session
+        // only trust recovery_sent_at - don't accept any authenticated session
         if (session) {
-          // check for recovery-specific indicators
-          const isRecoverySession =
-            session.user?.recovery_sent_at ||
-            session.user?.aud === 'authenticated' &&
-            session.user?.role === 'authenticated' &&
-            session.user?.email
+          const isRecoverySession = !!session.user?.recovery_sent_at
 
           if (isRecoverySession) {
             setTokenValid(true)

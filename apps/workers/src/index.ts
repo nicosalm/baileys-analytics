@@ -1,8 +1,5 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { z } from 'zod';
-import { loginSchema, signupSchema, refreshTokenSchema } from '@baileys/schemas';
-
 import { authMiddleware } from './middleware/auth';
 import { subscriptionMiddleware } from './middleware/subscription';
 import { rateLimit, strictRateLimit } from './middleware/rate-limit';
@@ -10,7 +7,6 @@ import { timeout } from './middleware/timeout';
 
 import { createSupabaseClient } from './services/supabase';
 import { getValidOwnerRezToken } from './services/ownerrez-token';
-import { AuthService } from './services/auth';
 import { DashboardService } from './services/dashboard';
 import { getOverviewData } from './services/overview';
 import { getPLData, getRevenueData, getCashflowData, getTaxData } from './services/financial';
@@ -85,123 +81,12 @@ app.use('/api/*', async (c, next) => {
 
 app.route('/health', health);
 
-// apply strict rate limiting to public/auth endpoints
+// apply strict rate limiting to public endpoints
 app.use('/api/waitlist/*', strictRateLimit());
-app.use('/api/auth/login', strictRateLimit());
-app.use('/api/auth/signup', strictRateLimit());
-app.use('/api/auth/refresh', rateLimit({ max: 100, windowMs: 60000 }));
 
 app.route('/api/waitlist', waitlist);
 
-app.post('/api/auth/login', async (c) => {
-	const body = await c.req.json();
-
-	// validate input
-	const validation = loginSchema.safeParse(body);
-	if (!validation.success) {
-		return c.json({
-			error: validation.error.errors.map(e => e.message).join(', ')
-		}, 400);
-	}
-
-	const { email, password } = validation.data;
-
-	const supabase = createSupabaseClient(c.env);
-	const authService = new AuthService(supabase);
-
-	const result = await authService.login(email, password);
-
-	if ('error' in result) {
-		return c.json({ error: result.error }, 401);
-	}
-
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', result.user.id)
-		.single();
-
-	return c.json({
-		accessToken: result.accessToken,
-		refreshToken: result.refreshToken,
-		userId: result.user.id,
-		email: result.user.email,
-		tenantId: tenant?.id || null
-	});
-});
-
-app.post('/api/auth/signup', async (c) => {
-	const body = await c.req.json();
-
-	// validate input
-	const validation = signupSchema.safeParse(body);
-	if (!validation.success) {
-		return c.json({
-			error: validation.error.errors.map(e => e.message).join(', ')
-		}, 400);
-	}
-
-	const { email, password, companyName } = validation.data;
-
-	const supabase = createSupabaseClient(c.env);
-
-	const { data: authData, error: signUpError } = await supabase.auth.signUp({
-		email,
-		password,
-	});
-
-	if (signUpError || !authData.user) {
-		return c.json({ error: signUpError?.message || 'Signup failed' }, 400);
-	}
-
-	const { data: tenant, error: tenantError } = await supabase
-		.from('tenants')
-		.insert({
-			user_id: authData.user.id,
-			company_name: companyName || null,
-			created_at: new Date().toISOString()
-		})
-		.select()
-		.single();
-
-	if (tenantError) {
-		return c.json({ error: 'Failed to create tenant' }, 500);
-	}
-
-	return c.json({
-		userId: authData.user.id,
-		email: authData.user.email,
-		tenantId: tenant.id,
-		accessToken: authData.session?.access_token,
-		refreshToken: authData.session?.refresh_token
-	});
-});
-
-app.post('/api/auth/refresh', async (c) => {
-	const body = await c.req.json();
-
-	// validate input
-	const validation = refreshTokenSchema.safeParse(body);
-	if (!validation.success) {
-		return c.json({
-			error: validation.error.errors.map(e => e.message).join(', ')
-		}, 400);
-	}
-
-	const { refreshToken } = validation.data;
-
-	const supabase = createSupabaseClient(c.env);
-	const authService = new AuthService(supabase);
-
-	const accessToken = await authService.refreshAccessToken(refreshToken);
-
-	if (!accessToken) {
-		return c.json({ error: 'Invalid refresh token' }, 401);
-	}
-
-	return c.json({ accessToken });
-});
-
+// auth endpoints - only /me is used (login/signup/refresh handled by Supabase client directly)
 app.get('/api/auth/me', authMiddleware, async (c) => {
 	const user = c.get('user');
 	const supabase = createSupabaseClient(c.env);
@@ -230,10 +115,6 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 		hasOwnerRezConnection: !!ownerrezToken,
 		createdAt: user.created_at || new Date().toISOString()
 	});
-});
-
-app.post('/api/auth/logout', authMiddleware, async (c) => {
-	return c.json({ success: true });
 });
 
 app.get('/api/sync-status', authMiddleware, async (c) => {
