@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { createClient } from '@supabase/supabase-js'
-import { supabase } from '@/lib/supabase'
+import { supabase, clearAuthStorage } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
 import { AlertCircle, CheckCircle, Compass } from 'lucide-react'
@@ -9,19 +9,19 @@ import { BRAND } from '@/constants'
 
 type AuthStatus = 'loading' | 'success' | 'error'
 
-// Create a fresh Supabase client WITHOUT detectSessionInUrl for manual code exchange.
-// This avoids the race condition where the main client's detectSessionInUrl blocks everything.
-// Uses the SAME storage key so the session is available to the main client.
+// Create a fresh Supabase client for code exchange.
+// The main client's internal state can get corrupted, but a fresh instance
+// can still read the PKCE verifier from shared localStorage.
 const createCallbackClient = () => createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
   {
     auth: {
-      autoRefreshToken: true,
+      autoRefreshToken: false,  // Don't need this for one-time exchange
       persistSession: true,
       detectSessionInUrl: false,
       flowType: 'pkce',
-      storageKey: 'baileys-auth', // Same key as main client
+      storageKey: 'baileys-auth', // Same key as main client for shared PKCE verifier
     }
   }
 )
@@ -60,6 +60,9 @@ export const AuthCallback = () => {
     if (hasCompleted.current) return
     hasCompleted.current = true
 
+    // clear any corrupted auth state so user can retry with clean slate
+    clearAuthStorage()
+
     setStatus('error')
     setMessage(msg)
     setTimeout(() => navigate(redirectTo, { replace: true }), 3000)
@@ -74,6 +77,14 @@ export const AuthCallback = () => {
     const error = searchParams.get('error') || hashParams.get('error')
     const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
     const type = hashParams.get('type') || searchParams.get('type')
+
+    // DEBUG: log what we received
+    // console.log('[AuthCallback] URL:', window.location.href)
+    // console.log('[AuthCallback] code:', code ? 'present' : 'missing')
+    // console.log('[AuthCallback] state:', state)
+    // console.log('[AuthCallback] type:', type)
+    // console.log('[AuthCallback] error:', error)
+    // console.log('[AuthCallback] hash:', window.location.hash)
 
     // Handle URL errors
     if (error) {
@@ -94,29 +105,71 @@ export const AuthCallback = () => {
     handleSupabaseAuth(code, type)
 
     async function handleSupabaseAuth(code: string | null, type: string | null) {
-      // First, check if main client already has a session (e.g., page refresh)
-      try {
-        const { data: { session: existingSession } } = await supabase.auth.getSession()
-        if (existingSession) {
-          handleSuccess(type)
-          return
-        }
-      } catch {
-        // Continue with fresh client
-      }
+      // console.log('[AuthCallback] handleSupabaseAuth starting, code:', code ? 'present' : 'missing')
 
-      // No existing session - exchange the code using a fresh client
-      if (!code) {
-        handleError('No authentication code found.')
+      // If we have a code, go straight to exchange - don't call getSession() first
+      // as it can hang when there's partial auth state
+      if (code) {
+        // console.log('[AuthCallback] Have code, going straight to exchange...')
+        await exchangeCode(code, type)
         return
       }
 
+      // No code - check if there's an access_token in hash (implicit flow)
+      const accessToken = hashParams.get('access_token')
+      if (accessToken) {
+        // console.log('[AuthCallback] Found access_token in hash, setting session...')
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token') || '',
+          })
+          if (!error && data.session) {
+            handleSuccess(type)
+            return
+          }
+          // console.log('[AuthCallback] setSession error:', error)
+        } catch (e) {
+          // console.log('[AuthCallback] setSession exception:', e)
+        }
+      }
+
+      // No code and no access_token - check for existing session with timeout
       try {
+        // console.log('[AuthCallback] No code/token, checking existing session with timeout...')
+        const sessionPromise = supabase.auth.getSession()
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('getSession timeout')), 5000)
+        )
+        const { data: { session: existingSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any
+
+        if (existingSession) {
+          // console.log('[AuthCallback] Found existing session')
+          handleSuccess(type)
+          return
+        }
+      } catch (e) {
+        // console.log('[AuthCallback] getSession error/timeout:', e)
+      }
+
+      // console.log('[AuthCallback] No code found, showing error')
+      handleError('No authentication code found.')
+    }
+
+    async function exchangeCode(code: string, type: string | null) {
+      try {
+        // console.log('[AuthCallback] Creating fresh client for exchange...')
         const callbackClient = createCallbackClient()
+
+        // console.log('[AuthCallback] Exchanging code for session...')
+        // use fresh client - it reads PKCE verifier from shared localStorage but has clean internal state
         const { data, error: exchangeError } = await callbackClient.auth.exchangeCodeForSession(code)
+
+        // console.log('[AuthCallback] Exchange result - data:', !!data?.session, 'error:', exchangeError?.message)
 
         if (exchangeError) {
           const msg = exchangeError.message?.toLowerCase() || ''
+          console.log('[AuthCallback] Exchange error:', exchangeError.message)
           if (msg.includes('verifier') || msg.includes('pkce') || msg.includes('code challenge')) {
             handleError('Please open this link in the same browser where you started sign-in.')
           } else {
@@ -126,18 +179,15 @@ export const AuthCallback = () => {
         }
 
         if (data?.session) {
-          // Session is persisted by the callback client to 'baileys-auth' storage.
-          // Verify the main client can now read it.
-          const { data: mainSession } = await supabase.auth.getSession()
-          if (!mainSession?.session) {
-            await new Promise(resolve => setTimeout(resolve, 100))
-          }
+          // console.log('[AuthCallback] Session obtained successfully')
           handleSuccess(type)
           return
         }
 
+        console.log('[AuthCallback] No session in exchange response')
         handleError('Authentication failed. Please try again.')
-      } catch {
+      } catch (e) {
+        console.log('[AuthCallback] Exchange exception:', e)
         handleError('Authentication failed. Please try again.')
       }
     }
@@ -175,6 +225,17 @@ export const AuthCallback = () => {
       }
     }
   }, [handleSuccess, handleError, navigate, setOwnerRezConnected])
+
+  // timeout safeguard - if still loading after 15 seconds, show error
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (!hasCompleted.current) {
+        handleError('Authentication timed out. Please try again.')
+      }
+    }, 15000)
+
+    return () => clearTimeout(timeout)
+  }, [handleError])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
