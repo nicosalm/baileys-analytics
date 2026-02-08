@@ -518,6 +518,17 @@ class ApiClient {
         return this.request(`/tax/platforms?propertyId=${propertyId}`)
     }
 
+    async getGoals(): Promise<ApiResult<any>> {
+        return this.request('/goals')
+    }
+
+    async saveGoals(goals: { metricKey: string; targetValue: number; isEnabled: boolean }[]): Promise<ApiResult<any>> {
+        return this.request('/goals', {
+            method: 'PUT',
+            body: JSON.stringify(goals)
+        })
+    }
+
 }
 
 export const api = new ApiClient()

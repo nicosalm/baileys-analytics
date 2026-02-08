@@ -23,6 +23,7 @@ import { occupancy } from './routes/occupancy';
 import { periodDetail } from './routes/period-detail';
 import { seasonalAnalysis } from './routes/seasonal-analysis';
 import { seasons } from './routes/seasons';
+import { goals } from './routes/goals';
 import { tags } from './routes/tags';
 import { tax } from './routes/tax';
 import { platformFees as platformFeesRoute } from './routes/platform-fees';
@@ -730,6 +731,7 @@ const dashboardPaths = [
 	'/api/manual-sync',
 	'/api/sync-guest-details',
 	'/api/seasons',
+	'/api/goals',
 	'/api/tags'
 ];
 
@@ -749,6 +751,7 @@ app.route('/api/occupancy', occupancy);
 app.route('/api/period-detail', periodDetail);
 app.route('/api/seasonal-analysis', seasonalAnalysis);
 app.route('/api/seasons', seasons);
+app.route('/api/goals', goals);
 app.route('/api/tags', tags);
 app.route('/api/tax', tax);
 app.route('/api/platform-fees', platformFeesRoute);

@@ -1,12 +1,12 @@
-import { useMemo, useCallback, memo } from 'react'
-import { useDashboardBatch } from '@/hooks/use-api'
+import { useMemo, useCallback } from 'react'
+import { useDashboardBatch, useGoals } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import {
-  AlertCircle, CheckCircle, TrendingUp, TrendingDown,
+  TrendingUp, TrendingDown,
   DollarSign, Users, Calendar, Clock,
-  BarChart3, AlertTriangle, Info, Percent, Layers
+  BarChart3, Info, Percent, Layers, Target, Settings
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
@@ -16,34 +16,43 @@ import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, A
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { getPlatformColor } from '@/lib/theme'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 const REVENUE_THRESHOLD_RATIO = 0.2
 const MAX_INDIVIDUAL_PROPERTIES = 8
 const MIN_OTHER_REVENUE_PORTION = 0.2
 const TOP_PROPERTIES_DEFAULT_PORTION = 0.8
 
-const alertIcons = {
-  warning: <AlertTriangle className="w-4 h-4 text-yellow-600" />,
-  info: <AlertCircle className="w-4 h-4 text-blue-600" />,
-  success: <CheckCircle className="w-4 h-4 text-green-600" />
+const GOAL_METRIC_CONFIG: Record<string, { label: string; icon: any; format: string; getSource: (metrics: any) => number }> = {
+  revenue: { label: 'Total Revenue', icon: DollarSign, format: 'currency', getSource: (m) => Number(m.revenue?.current) || 0 },
+  bookings: { label: 'Total Bookings', icon: Calendar, format: 'number', getSource: (m) => Number(m.bookings?.current) || 0 },
+  occupancy: { label: 'Occupancy Rate', icon: Percent, format: 'percent', getSource: (m) => Number(m.occupancy?.current) || 0 },
+  guests: { label: 'Total Guests', icon: Users, format: 'number', getSource: (m) => Number(m.guests?.total) || 0 },
+  avgBookingValue: { label: 'Avg Booking Value', icon: DollarSign, format: 'currency', getSource: (m) => Number(m.revenue?.avgBookingValue) || 0 },
+  repeatRate: { label: 'Repeat Guest Rate', icon: TrendingUp, format: 'percent', getSource: (m) => (Number(m.guests?.repeatRate) || 0) * 100 },
+  avgStayLength: { label: 'Avg Stay Length', icon: Clock, format: 'nights', getSource: (m) => Number(m.bookings?.avgNights) || 0 },
 }
 
-const AlertCard = memo(({ alert }: { alert: any }) => (
-  <div className="flex items-center justify-between py-2 border-b last:border-0">
-    <div className="flex items-center gap-2 flex-1 min-w-0">
-      <div className="shrink-0">{(alertIcons as any)[alert.type]}</div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{alert.title}</p>
-        <p className="text-xs text-gray-500">
-          {formatDateDisplay(new Date(alert.timestamp))}
-        </p>
-      </div>
-    </div>
-  </div>
-))
+const formatGoalValue = (value: number, format: string) => {
+  switch (format) {
+    case 'currency': return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    case 'percent': return `${value.toFixed(1)}%`
+    case 'nights': return `${value.toFixed(1)}`
+    default: return String(Math.round(value))
+  }
+}
 
-AlertCard.displayName = 'AlertCard'
+const getProgressColor = (pct: number) => {
+  if (pct >= 80) return 'bg-green-500'
+  if (pct >= 50) return 'bg-yellow-500'
+  return 'bg-red-500'
+}
+
+const getProgressBgColor = (pct: number) => {
+  if (pct >= 80) return 'bg-green-100'
+  if (pct >= 50) return 'bg-yellow-100'
+  return 'bg-red-100'
+}
 
 // extracted tooltip component to module scope
 const RevenueChartTooltip = ({ active, payload, label }: any) => {
@@ -97,6 +106,8 @@ export const OverviewDashboard = () => {
       })
     }
   }, [openModal])
+
+  const { data: goalsData } = useGoals()
 
   const { data, error, isLoading } = useDashboardBatch(
     'overview',
@@ -281,6 +292,21 @@ export const OverviewDashboard = () => {
     return areas
   }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total])
 
+  const enabledGoals = useMemo(() => {
+    if (!goalsData || !metrics) return []
+    return goalsData
+      .filter(g => g.isEnabled)
+      .map(g => {
+        const config = GOAL_METRIC_CONFIG[g.metricKey]
+        if (!config) return null
+        const current = config.getSource(metrics)
+        const target = g.targetValue
+        const pct = target > 0 ? Math.min((current / target) * 100, 100) : 0
+        return { ...g, current, target, pct, config }
+      })
+      .filter(Boolean) as Array<{ metricKey: string; current: number; target: number; pct: number; config: typeof GOAL_METRIC_CONFIG[string] }>
+  }, [goalsData, metrics])
+
   if (isLoading || error || !data) {
     return (
       <StateWrapper
@@ -298,38 +324,9 @@ export const OverviewDashboard = () => {
     )
   }
 
-  const { alerts, recentActivity } = data
+  const { recentActivity } = data
 
-  const upcomingArrivalsAlert = alerts?.find((alert: any) => {
-    const hasArrival = alert.description?.toLowerCase().includes('arriving') ||
-                      alert.description?.toLowerCase().includes('guests arriving') ||
-                      alert.title?.toLowerCase().includes('upcoming arrivals') ||
-                      (alert.title?.toLowerCase().includes('arrival') && !alert.title?.toLowerCase().includes('occupancy'))
-    return hasArrival
-  })
-
-  let upcomingFromAlert = null
-  if (upcomingArrivalsAlert) {
-    const patterns = [
-      /(\d+)\s+guest/i,
-      /(\d+)\s+arrival/i,
-      /(\d+)\s+booking/i,
-    ]
-
-    for (const pattern of patterns) {
-      const match = upcomingArrivalsAlert.description?.match(pattern) ||
-                   upcomingArrivalsAlert.title?.match(pattern)
-      if (match) {
-        upcomingFromAlert = match[1]
-        break
-      }
-    }
-  }
-
-  const metricsUpcoming = parseInt(metrics.bookings.upcoming) || 0
-  const actualUpcoming = (metricsUpcoming === 0 && upcomingFromAlert)
-    ? parseInt(upcomingFromAlert)
-    : metricsUpcoming
+  const actualUpcoming = parseInt(metrics.bookings.upcoming) || 0
 
   return (
     <div className="space-y-6">
@@ -608,19 +605,48 @@ export const OverviewDashboard = () => {
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Things to Know</h3>
-            <span className="text-xs text-gray-500">{alerts?.length || 0} items</span>
+            <div className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-bold">Your Goals</h3>
+            </div>
+            {enabledGoals.length > 0 && (
+              <Link to="/settings?tab=goals" className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <Settings className="w-3 h-3" />
+                Edit
+              </Link>
+            )}
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto">
-            {alerts && alerts.length > 0 ? (
-              alerts.map((alert: any) => (
-                <AlertCard key={alert.id} alert={alert} />
-              ))
+            {enabledGoals.length > 0 ? (
+              enabledGoals.map(goal => {
+                const Icon = goal.config.icon
+                return (
+                  <div key={goal.metricKey} className="py-2 border-b last:border-0">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <Icon className="w-4 h-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">{goal.config.label}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {formatGoalValue(goal.current, goal.config.format)} / {formatGoalValue(goal.target, goal.config.format)}
+                      </span>
+                    </div>
+                    <div className={`w-full h-2 rounded-full ${getProgressBgColor(goal.pct)}`}>
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(goal.pct)}`}
+                        style={{ width: `${goal.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })
             ) : (
               <div className="text-center py-8 text-gray-500">
-                <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">Everything looks good!</p>
-                <p className="text-xs mt-1 text-gray-400">No issues to report</p>
+                <Target className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">No goals set yet</p>
+                <Link to="/settings?tab=goals" className="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-block">
+                  Set goals in Settings to track your progress
+                </Link>
               </div>
             )}
           </div>

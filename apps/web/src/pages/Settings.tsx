@@ -10,7 +10,7 @@ import {
   LogOut, Compass,
   Palette, CreditCard, Link2,
   Lock, MessageSquare, ArrowLeft,
-  Eye, EyeOff, Receipt
+  Eye, EyeOff, Receipt, Target
 } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
@@ -39,7 +39,11 @@ const ExpenseManagementPanel = lazy(() =>
   import('@/components/settings/ExpenseManagementPanel').then(m => ({ default: m.ExpenseManagementPanel }))
 )
 
-type SettingsTab = 'account' | 'preferences' | 'integrations' | 'billing' | 'tax' | 'seasons' | 'expenses'
+const GoalManagementPanel = lazy(() =>
+  import('@/components/settings/GoalManagementPanel').then(m => ({ default: m.GoalManagementPanel }))
+)
+
+type SettingsTab = 'account' | 'preferences' | 'goals' | 'integrations' | 'billing' | 'tax' | 'seasons' | 'expenses'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   {
@@ -51,6 +55,11 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     id: 'preferences',
     label: 'Preferences',
     icon: Palette
+  },
+  {
+    id: 'goals',
+    label: 'Goals',
+    icon: Target
   },
   {
     id: 'tax',
@@ -411,6 +420,7 @@ export const Settings = () => {
                 />
               )}
               {activeTab === 'preferences' && <PreferencesTab />}
+              {activeTab === 'goals' && <GoalManagementPanel />}
               {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'billing' && <BillingTab />}
               {activeTab === 'tax' && <TaxManagementPanel />}

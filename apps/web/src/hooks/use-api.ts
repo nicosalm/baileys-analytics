@@ -2,6 +2,7 @@ import useSWR, { mutate as globalMutate } from 'swr'
 import { api } from '@/lib/api'
 import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
 import type { Season, SeasonFormData } from '@/types/season'
+import type { Goal, GoalFormData } from '@/types/goal'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 import { measurePerformance } from '@/utils/performance'
 
@@ -656,6 +657,22 @@ export async function toggleSeasonActive(id: string, isActive: boolean) {
   const result = await api.toggleSeasonActive(id, isActive)
   if (result.success) {
     await globalMutate('/seasons')
+  }
+  return result
+}
+
+export function useGoals() {
+  return useSWR<Goal[]>('/goals', async () => {
+    const result = await api.getGoals()
+    if (!result.success) throw new Error(result.error)
+    return result.data || []
+  })
+}
+
+export async function saveGoals(goals: GoalFormData[]) {
+  const result = await api.saveGoals(goals)
+  if (result.success) {
+    await globalMutate('/goals')
   }
   return result
 }
