@@ -6,6 +6,7 @@ import { useModal } from '@/contexts/modal'
 import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
 import { formatCompactCurrency } from '@baileys/utils'
 
+import { StateWrapper } from '@/components/StateWrapper'
 import { PLView } from '@/components/financial/PLView'
 import { RevenueAnalysis } from '@/components/financial/RevenueAnalysis'
 import { CashFlowView } from '@/components/financial/CashFlowView'
@@ -219,6 +220,23 @@ export const FinancialDashboard = () => {
   const handlePropertyClick = useCallback((propertyId: string) => {
     openModal({ type: 'property', propertyId, propertyName: '' })
   }, [openModal])
+
+  if (isLoading || error || !data) {
+    return (
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!data && !isLoading && !error}
+        loadingMessage="Loading financial data..."
+        emptyMessage="No financial data available"
+        onRetry={() => window.location.reload()}
+        minHeight={400}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
+    )
+  }
 
   return (
     <div className="space-y-6">

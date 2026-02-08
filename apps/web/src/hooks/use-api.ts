@@ -35,7 +35,7 @@ export function useDashboardBatch(
     ? createCacheKey('dashboard-batch', view, validFrom, validTo, validTagIds, validCompFrom, validCompTo)
     : null
 
-  return useSWR<any>(key, async () => {
+  const result = useSWR<any>(key, async () => {
     const params = new URLSearchParams()
     params.append('view', view)
     if (validFrom) params.append('from', validFrom)
@@ -43,17 +43,26 @@ export function useDashboardBatch(
     if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
     if (validCompFrom) params.append('comparisonFrom', validCompFrom)
     if (validCompTo) params.append('comparisonTo', validCompTo)
-    
+
     const endpoint = `/dashboard-batch?${params}`
-    const result = await measurePerformance(
+    const fetchResult = await measurePerformance(
       () => api.request(endpoint),
       `dashboard-batch-${view}`,
       (res: any) => res.success && res.data?._cached === true
     )
-    
-    if (!result.success) throw new Error(result.error)
-    return result.data
+
+    if (!fetchResult.success) throw new Error(fetchResult.error)
+    return fetchResult.data
   })
+
+  // Normalize: if we have no data yet, treat as loading (not error).
+  // This covers the window between SWR retries where isLoading=false
+  // but data hasn't arrived. Dashboards see loading spinner, not crash.
+  return {
+    ...result,
+    isLoading: result.isLoading || (!result.data && !result.error),
+    error: (!result.data && result.isValidating) ? undefined : result.error,
+  }
 }
 
 export function useFinancial(

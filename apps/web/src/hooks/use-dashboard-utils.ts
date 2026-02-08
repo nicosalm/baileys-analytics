@@ -64,8 +64,13 @@ export function useDashboardData<T = any>(
   const data = batchData || oldData
   const error = batchError || oldError
   const isLoading = batchLoading || (!batchData && oldLoading)
-  
-  return { data, error, isLoading }
+  const isValidating = !!(batchData ? false : !batchLoading)
+
+  return {
+    data,
+    error: (!data && isValidating) ? undefined : error,
+    isLoading: isLoading || (!data && !error),
+  }
 }
 
 /**

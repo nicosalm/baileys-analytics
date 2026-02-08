@@ -323,15 +323,17 @@ export const GuestsDashboard = () => {
         return { maxCount, totalTags }
     }, [tagChartData, tagDistribution])
 
-    if (isLoading || !data) {
+    if (isLoading || error || !data) {
         return (
             <StateWrapper
                 loading={isLoading}
-                empty={!data && !isLoading}
+                error={error}
+                empty={!data && !isLoading && !error}
                 loadingMessage="Loading guest analytics..."
                 emptyMessage="No guest data available"
                 emptySubMessage="Guest data will appear once bookings are synced"
                 emptyIcon={<Users className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+                onRetry={() => window.location.reload()}
                 minHeight={400}
                 className="py-12"
             >
