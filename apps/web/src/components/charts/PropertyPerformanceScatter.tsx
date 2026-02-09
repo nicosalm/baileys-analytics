@@ -4,6 +4,18 @@ import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { PropertyMetrics } from '@/types/api'
 import { METRIC_COLORS } from '@/lib/theme'
 
+// Pick a clean tick interval for ~5 ticks across the given range
+function niceStep(range: number): number {
+  if (range <= 0) return 1000
+  const rough = range / 5
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)))
+  const normalized = rough / pow
+  if (normalized <= 1) return pow
+  if (normalized <= 2) return 2 * pow
+  if (normalized <= 5) return 5 * pow
+  return 10 * pow
+}
+
 // extracted to module scope to prevent recreation on each render
 const ScatterTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -51,37 +63,85 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
   onPropertyClick
 }) => {
   const scatterData = useMemo(() => {
-    if (!properties || properties.length === 0) return { data: [], avgOccupancy: 0, avgRevenue: 0 }
-    
-    const validProperties = properties
-    
-    let zeroOffsetIndex = 0
-    const data = validProperties.map(property => {
-      let x = (property.occupancyRate || 0) * 100
-      let y = property.revenue || 0
-      
+    const empty = { data: [], avgOccupancy: 0, avgRevenue: 0, xDomain: [0, 100] as [number, number], yDomain: [0, 1000] as [number, number] }
+    if (!properties || properties.length === 0) return empty
+
+    // Separate real data from zero-data properties
+    const realPoints: any[] = []
+    const zeroProperties: PropertyMetrics[] = []
+
+    properties.forEach(property => {
+      const x = (property.occupancyRate || 0) * 100
+      const y = property.revenue || 0
+
       if (x === 0 && y === 0) {
-        x = 2 + (zeroOffsetIndex % 3) * 2
-        y = 500 + (Math.floor(zeroOffsetIndex / 3) * 500)
-        zeroOffsetIndex++
+        zeroProperties.push(property)
+      } else {
+        realPoints.push({
+          x, y,
+          z: Math.max(property.bookings || 0, 10),
+          name: property.propertyName,
+          propertyId: property.propertyId,
+          avgNightlyRate: property.avgNightlyRate || 0,
+          isZeroData: false,
+          property
+        })
       }
-      
+    })
+
+    if (realPoints.length === 0) return empty
+
+    // Compute axis bounds from real data only
+    const xValues = realPoints.map((d: any) => d.x)
+    const yValues = realPoints.map((d: any) => d.y)
+
+    const dataMinX = Math.min(...xValues)
+    const dataMaxX = Math.max(...xValues)
+    const dataMinY = Math.min(...yValues)
+    const dataMaxY = Math.max(...yValues)
+
+    const xRange = dataMaxX - dataMinX
+    const yRange = dataMaxY - dataMinY
+
+    // Pad by 15% of data range; minimums prevent a cramped single-point view
+    const xPad = Math.max(xRange * 0.15, 5)
+    const yPad = Math.max(yRange * 0.15, dataMaxY * 0.05 || 1000)
+
+    // X: round to nearest 5%
+    const xMin = Math.max(0, Math.floor((dataMinX - xPad) / 5) * 5)
+    const xMax = Math.min(100, Math.ceil((dataMaxX + xPad) / 5) * 5)
+
+    // Y: round to clean tick intervals
+    const rawYMin = Math.max(0, dataMinY - yPad)
+    const rawYMax = dataMaxY + yPad
+    const yTickStep = niceStep(rawYMax - rawYMin)
+    const yMin = Math.max(0, Math.floor(rawYMin / yTickStep) * yTickStep)
+    const yMax = Math.ceil(rawYMax / yTickStep) * yTickStep
+
+    // Place zero-data properties in the bottom-left of the visible area
+    let zeroOffsetIndex = 0
+    const zeroPoints = zeroProperties.map(property => {
+      const x = xMin + (xMax - xMin) * 0.04 + (zeroOffsetIndex % 3) * (xMax - xMin) * 0.02
+      const y = yMin + (yMax - yMin) * 0.04 + Math.floor(zeroOffsetIndex / 3) * (yMax - yMin) * 0.02
+      zeroOffsetIndex++
       return {
-        x,
-        y,
-        z: Math.max(property.bookings || 0, 10),
+        x, y,
+        z: 10,
         name: property.propertyName,
         propertyId: property.propertyId,
         avgNightlyRate: property.avgNightlyRate || 0,
-        isZeroData: property.revenue === 0 && property.occupancyRate === 0,
+        isZeroData: true,
         property
       }
     })
-    
-    const avgOccupancy = data.reduce((sum, d) => sum + d.x, 0) / data.length
-    const avgRevenue = data.reduce((sum, d) => sum + d.y, 0) / data.length
-    
-    return { data, avgOccupancy, avgRevenue }
+
+    const data = [...realPoints, ...zeroPoints]
+
+    // Averages from real data only (zero-data properties are a separate visual category)
+    const avgOccupancy = realPoints.reduce((sum: number, d: any) => sum + d.x, 0) / realPoints.length
+    const avgRevenue = realPoints.reduce((sum: number, d: any) => sum + d.y, 0) / realPoints.length
+
+    return { data, avgOccupancy, avgRevenue, xDomain: [xMin, xMax] as [number, number], yDomain: [yMin, yMax] as [number, number] }
   }, [properties])
   
   const getPointColor = (point: any) => {
@@ -109,8 +169,6 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
     }
   }
   
-  const maxRevenue = Math.max(...scatterData.data.map(d => d.y), 1)
-  
   if (scatterData.data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
@@ -134,7 +192,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
           type="number"
           dataKey="x"
           name="Occupancy"
-          domain={[0, 100]}
+          domain={scatterData.xDomain}
           tickFormatter={(value) => `${value}%`}
           label={{ value: 'Occupancy Rate (%)', position: 'insideBottom', offset: -5 }}
           stroke="#6B7280"
@@ -143,7 +201,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
           type="number"
           dataKey="y"
           name="Revenue"
-          domain={[0, maxRevenue * 1.1]}
+          domain={scatterData.yDomain}
           tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
           label={{ value: 'Revenue', angle: -90, position: 'insideLeft' }}
           stroke="#6B7280"
