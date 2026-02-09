@@ -212,14 +212,17 @@ async function getChartsData(
 		.sort((a, b) => b.revenue - a.revenue)
 		.slice(0, 5);
 
-	const sourceMap = new Map();
+	const sourceMap = new Map<string, { count: number; revenue: number }>();
 	bookings?.forEach(b => {
 		const source = b.platform || 'Direct';
-		sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
+		const existing = sourceMap.get(source) || { count: 0, revenue: 0 };
+		existing.count++;
+		existing.revenue += b.total_amount || 0;
+		sourceMap.set(source, existing);
 	});
 
 	const bookingsBySource = Array.from(sourceMap.entries())
-		.map(([source, count]) => ({ source, count }))
+		.map(([source, data]) => ({ source, count: data.count, revenue: data.revenue }))
 		.sort((a, b) => b.count - a.count);
 
 	const occupancyData = buildOccupancyChartData(bookings || [], properties || [], from, to, daysDiff <= 60);

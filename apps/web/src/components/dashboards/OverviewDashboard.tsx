@@ -55,6 +55,36 @@ const getProgressBgColor = (pct: number) => {
 }
 
 // extracted tooltip component to module scope
+const BookingSourceTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    const total = payload[0].payload?.totalBookings || 0
+    const percent = total > 0 ? ((data.count / total) * 100).toFixed(1) : '0.0'
+    return (
+      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+        <p className="font-semibold text-sm mb-2">{data.source}</p>
+        <div className="space-y-1 text-xs">
+          <p className="flex justify-between gap-4">
+            <span className="text-gray-600">Bookings:</span>
+            <span className="font-medium">{data.count}</span>
+          </p>
+          <p className="flex justify-between gap-4">
+            <span className="text-gray-600">Share:</span>
+            <span className="font-medium">{percent}%</span>
+          </p>
+          {data.revenue !== undefined && (
+            <p className="flex justify-between gap-4">
+              <span className="text-gray-600">Revenue:</span>
+              <span className="font-medium text-green-600">{formatCurrency(data.revenue)}</span>
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
 const RevenueChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0)
@@ -123,6 +153,16 @@ export const OverviewDashboard = () => {
 
   const charts = data?.charts
   const metrics = data?.metrics
+
+  const bookingSourceChartData = useMemo(() => {
+    const sources = charts?.bookingsBySource || []
+    const totalBookings = sources.reduce((sum: number, item: any) => sum + Number(item.count), 0)
+    return sources.map((item: any) => ({
+      ...item,
+      count: Number(item.count),
+      totalBookings
+    }))
+  }, [charts?.bookingsBySource])
 
   const revenueChartData = useMemo(() => {
     if (!charts?.topProperties || !charts?.revenueLastWeek) return []
@@ -578,10 +618,7 @@ export const OverviewDashboard = () => {
         >
           <PieChart width={360} height={240}>
             <Pie
-              data={charts.bookingsBySource.map((item: any) => ({
-                ...item,
-                count: Number(item.count)
-              }))}
+              data={bookingSourceChartData}
               cx="50%"
               cy="50%"
               labelLine={false}
@@ -598,10 +635,7 @@ export const OverviewDashboard = () => {
                 <Cell key={`cell-${index}`} fill={getPlatformColor(entry.source, index)} />
               ))}
             </Pie>
-            <Tooltip
-              formatter={(value: any) => [value, 'Bookings']}
-              contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-            />
+            <Tooltip content={<BookingSourceTooltip />} />
           </PieChart>
         </ChartWrapper>
       </div>

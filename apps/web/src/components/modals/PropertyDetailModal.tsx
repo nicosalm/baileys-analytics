@@ -19,6 +19,28 @@ interface PropertyDetailModalProps {
   to?: string
 }
 
+const PlatformRevenueTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload
+    return (
+      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+        <p className="font-semibold text-sm mb-2">{data.platform}</p>
+        <div className="space-y-1 text-xs">
+          <p className="flex justify-between gap-4">
+            <span className="text-gray-600">Revenue:</span>
+            <span className="font-medium text-green-600">{formatCurrency(data.revenue)}</span>
+          </p>
+          <p className="flex justify-between gap-4">
+            <span className="text-gray-600">Share:</span>
+            <span className="font-medium">{data.percentage?.toFixed(1) || '0.0'}%</span>
+          </p>
+        </div>
+      </div>
+    )
+  }
+  return null
+}
+
 export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: PropertyDetailModalProps) => {
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
@@ -323,10 +345,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip 
-                        formatter={(value: any) => formatCurrency(value)}
-                        contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                      />
+                      <Tooltip content={<PlatformRevenueTooltip />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

@@ -18,6 +18,36 @@ import {
 } from 'recharts'
 
 
+const GuestSourceTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload
+        const total = data.totalGuests || 0
+        const percent = total > 0 ? ((data.count / total) * 100).toFixed(1) : '0.0'
+        return (
+            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                <p className="font-semibold text-sm mb-2">{data.source}</p>
+                <div className="space-y-1 text-xs">
+                    <p className="flex justify-between gap-4">
+                        <span className="text-gray-600">Guests:</span>
+                        <span className="font-medium">{data.count}</span>
+                    </p>
+                    <p className="flex justify-between gap-4">
+                        <span className="text-gray-600">Share:</span>
+                        <span className="font-medium">{percent}%</span>
+                    </p>
+                    {data.revenue !== undefined && data.revenue > 0 && (
+                        <p className="flex justify-between gap-4">
+                            <span className="text-gray-600">Revenue:</span>
+                            <span className="font-medium text-green-600">{formatCurrency(data.revenue)}</span>
+                        </p>
+                    )}
+                </div>
+            </div>
+        )
+    }
+    return null
+}
+
 export const GuestsDashboard = () => {
     const { openModal } = useModal()
     const { filters, comparisonRange, comparisonMode } = useDashboard()
@@ -262,11 +292,15 @@ export const GuestsDashboard = () => {
         }
     ], [maxSpent, topPerformers, dateRangeFromRef])
 
-    const sourceChartData = useMemo(() =>
-        (data?.metrics?.guestsBySource || []).map((source: GuestSourceData, index: number) => ({
+    const sourceChartData = useMemo(() => {
+        const sources = data?.metrics?.guestsBySource || []
+        const totalGuests = sources.reduce((sum: number, s: GuestSourceData) => sum + s.count, 0)
+        return sources.map((source: GuestSourceData, index: number) => ({
             ...source,
+            totalGuests,
             color: getPlatformColor(source.source, index)
-        })), [data?.metrics?.guestsBySource])
+        }))
+    }, [data?.metrics?.guestsBySource])
 
     const tagDistribution = useMemo(() => {
         if (data?.metrics?.tagDistribution && data.metrics.tagDistribution.length > 0) {
@@ -478,10 +512,7 @@ export const GuestsDashboard = () => {
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                         </Pie>
-                        <Tooltip 
-                            formatter={(value) => [`${value} guests`, 'Count']}
-                            contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                        />
+                        <Tooltip content={<GuestSourceTooltip />} />
                     </PieChart>
                 </ChartWrapper>
 

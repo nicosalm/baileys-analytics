@@ -209,6 +209,7 @@ export interface GuestListItem {
 export interface GuestSourceData {
   source: string
   count: number
+  revenue?: number
   percentage?: number
 }
 
