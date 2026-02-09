@@ -175,6 +175,12 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           value={analysis.monthlyData.length > 0 ? Math.max(...analysis.monthlyData.map((m: any) => m.revenue || 0)) : 0}
           format="currency"
           color="green"
+          subValue={analysis.monthlyData.length > 0 ? (() => {
+            const best = analysis.monthlyData.reduce((max: any, m: any) => (m.revenue || 0) > (max.revenue || 0) ? m : max, analysis.monthlyData[0])
+            if (!best?.month) return undefined
+            const [year, month] = best.month.split('-')
+            return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          })() : undefined}
         />
         <MetricCard
           icon={ArrowDown}
@@ -182,6 +188,12 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           value={analysis.monthlyData.length > 0 ? Math.min(...analysis.monthlyData.map((m: any) => m.revenue || 0)) : 0}
           format="currency"
           color="yellow"
+          subValue={analysis.monthlyData.length > 0 ? (() => {
+            const lowest = analysis.monthlyData.reduce((min: any, m: any) => (m.revenue || 0) < (min.revenue || 0) ? m : min, analysis.monthlyData[0])
+            if (!lowest?.month) return undefined
+            const [year, month] = lowest.month.split('-')
+            return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+          })() : undefined}
         />
       </div>
       
