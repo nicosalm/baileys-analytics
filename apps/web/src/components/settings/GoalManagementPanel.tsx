@@ -3,7 +3,7 @@ import { useGoals, saveGoals } from '@/hooks/use-api'
 import { DollarSign, Calendar, Percent, Users, TrendingUp, Clock, Target } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
-import type { GoalFormData } from '@/types/goal'
+import type { GoalFormData, GoalPeriod } from '@/types/goal'
 
 const METRIC_CATALOG = [
   { key: 'revenue', label: 'Total Revenue', icon: DollarSign, format: 'currency', placeholder: 'e.g. 50000' },
@@ -17,7 +17,7 @@ const METRIC_CATALOG = [
 
 type MetricKey = typeof METRIC_CATALOG[number]['key']
 
-type GoalState = Record<MetricKey, { isEnabled: boolean; targetValue: string }>
+type GoalState = Record<MetricKey, { isEnabled: boolean; targetValue: string; period: GoalPeriod }>
 
 const buildInitialState = (savedGoals: GoalFormData[]): GoalState => {
   const state: GoalState = {} as GoalState
@@ -25,7 +25,8 @@ const buildInitialState = (savedGoals: GoalFormData[]): GoalState => {
     const saved = savedGoals.find(g => g.metricKey === metric.key)
     state[metric.key] = {
       isEnabled: saved?.isEnabled ?? false,
-      targetValue: saved ? String(saved.targetValue) : ''
+      targetValue: saved ? String(saved.targetValue) : '',
+      period: saved?.period ?? 'yearly'
     }
   }
   return state
@@ -58,13 +59,21 @@ export const GoalManagementPanel: React.FC = () => {
     }))
   }
 
+  const handlePeriodChange = (key: MetricKey, period: GoalPeriod) => {
+    setGoalState(prev => ({
+      ...prev,
+      [key]: { ...prev[key], period }
+    }))
+  }
+
   const handleSave = async () => {
     const goalsToSave: GoalFormData[] = METRIC_CATALOG
       .filter(m => goalState[m.key].isEnabled && goalState[m.key].targetValue !== '')
       .map(m => ({
         metricKey: m.key,
         targetValue: Number(goalState[m.key].targetValue),
-        isEnabled: true
+        isEnabled: true,
+        period: goalState[m.key].period
       }))
 
     const disabledGoals: GoalFormData[] = METRIC_CATALOG
@@ -72,7 +81,8 @@ export const GoalManagementPanel: React.FC = () => {
       .map(m => ({
         metricKey: m.key,
         targetValue: Number(goalState[m.key].targetValue) || 0,
-        isEnabled: false
+        isEnabled: false,
+        period: goalState[m.key].period
       }))
 
     const allGoals = [...goalsToSave, ...disabledGoals]
@@ -147,25 +157,39 @@ export const GoalManagementPanel: React.FC = () => {
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{metric.label}</h4>
                     {state.isEnabled && (
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-sm text-gray-500">Target:</span>
-                        <div className="relative">
-                          {prefix && (
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{prefix}</span>
-                          )}
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={state.targetValue}
-                            onChange={e => handleValueChange(metric.key, e.target.value)}
-                            placeholder={metric.placeholder}
-                            className={`w-40 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
-                              prefix ? 'pl-7 pr-3' : 'px-3'
-                            }`}
-                          />
-                          {suffix && (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{suffix}</span>
-                          )}
+                      <div className="flex items-center gap-4 mt-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Target:</span>
+                          <div className="relative">
+                            {prefix && (
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{prefix}</span>
+                            )}
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={state.targetValue}
+                              onChange={e => handleValueChange(metric.key, e.target.value)}
+                              placeholder={metric.placeholder}
+                              className={`w-40 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
+                                prefix ? 'pl-7 pr-3' : 'px-3'
+                              }`}
+                            />
+                            {suffix && (
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{suffix}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500">Period:</span>
+                          <select
+                            value={state.period}
+                            onChange={e => handlePeriodChange(metric.key, e.target.value as GoalPeriod)}
+                            className="py-1.5 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white cursor-pointer"
+                          >
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                          </select>
                         </div>
                       </div>
                     )}

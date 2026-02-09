@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { useDashboardBatch, useGoals } from '@/hooks/use-api'
+import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
@@ -23,14 +23,14 @@ const MAX_INDIVIDUAL_PROPERTIES = 8
 const MIN_OTHER_REVENUE_PORTION = 0.2
 const TOP_PROPERTIES_DEFAULT_PORTION = 0.8
 
-const GOAL_METRIC_CONFIG: Record<string, { label: string; icon: any; format: string; getSource: (metrics: any) => number }> = {
-  revenue: { label: 'Total Revenue', icon: DollarSign, format: 'currency', getSource: (m) => Number(m.revenue?.current) || 0 },
-  bookings: { label: 'Total Bookings', icon: Calendar, format: 'number', getSource: (m) => Number(m.bookings?.current) || 0 },
-  occupancy: { label: 'Occupancy Rate', icon: Percent, format: 'percent', getSource: (m) => Number(m.occupancy?.current) || 0 },
-  guests: { label: 'Total Guests', icon: Users, format: 'number', getSource: (m) => Number(m.guests?.total) || 0 },
-  avgBookingValue: { label: 'Avg Booking Value', icon: DollarSign, format: 'currency', getSource: (m) => Number(m.revenue?.avgBookingValue) || 0 },
-  repeatRate: { label: 'Repeat Guest Rate', icon: TrendingUp, format: 'percent', getSource: (m) => (Number(m.guests?.repeatRate) || 0) * 100 },
-  avgStayLength: { label: 'Avg Stay Length', icon: Clock, format: 'nights', getSource: (m) => Number(m.bookings?.avgNights) || 0 },
+const GOAL_METRIC_CONFIG: Record<string, { label: string; icon: any; format: string }> = {
+  revenue: { label: 'Total Revenue', icon: DollarSign, format: 'currency' },
+  bookings: { label: 'Total Bookings', icon: Calendar, format: 'number' },
+  occupancy: { label: 'Occupancy Rate', icon: Percent, format: 'percent' },
+  guests: { label: 'Total Guests', icon: Users, format: 'number' },
+  avgBookingValue: { label: 'Avg Booking Value', icon: DollarSign, format: 'currency' },
+  repeatRate: { label: 'Repeat Guest Rate', icon: TrendingUp, format: 'percent' },
+  avgStayLength: { label: 'Avg Stay Length', icon: Clock, format: 'nights' },
 }
 
 const formatGoalValue = (value: number, format: string) => {
@@ -107,7 +107,7 @@ export const OverviewDashboard = () => {
     }
   }, [openModal])
 
-  const { data: goalsData } = useGoals()
+  const { data: goalProgressData } = useGoalProgress()
 
   const { data, error, isLoading } = useDashboardBatch(
     'overview',
@@ -293,19 +293,22 @@ export const OverviewDashboard = () => {
   }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total])
 
   const enabledGoals = useMemo(() => {
-    if (!goalsData || !metrics) return []
-    return goalsData
-      .filter(g => g.isEnabled)
+    if (!goalProgressData) return []
+    return goalProgressData
       .map(g => {
         const config = GOAL_METRIC_CONFIG[g.metricKey]
         if (!config) return null
-        const current = config.getSource(metrics)
-        const target = g.targetValue
-        const pct = target > 0 ? Math.min((current / target) * 100, 100) : 0
-        return { ...g, current, target, pct, config }
+        return {
+          metricKey: g.metricKey,
+          current: g.currentValue,
+          target: g.targetValue,
+          pct: g.progress,
+          periodLabel: g.periodLabel,
+          config,
+        }
       })
-      .filter(Boolean) as Array<{ metricKey: string; current: number; target: number; pct: number; config: typeof GOAL_METRIC_CONFIG[string] }>
-  }, [goalsData, metrics])
+      .filter(Boolean) as Array<{ metricKey: string; current: number; target: number; pct: number; periodLabel: string; config: typeof GOAL_METRIC_CONFIG[string] }>
+  }, [goalProgressData])
 
   if (isLoading || error || !data) {
     return (
@@ -626,6 +629,7 @@ export const OverviewDashboard = () => {
                       <div className="flex items-center gap-2">
                         <Icon className="w-4 h-4 text-gray-500" />
                         <span className="text-sm font-medium text-gray-700">{goal.config.label}</span>
+                        <span className="text-xs text-gray-400">({goal.periodLabel})</span>
                       </div>
                       <span className="text-xs text-gray-500">
                         {formatGoalValue(goal.current, goal.config.format)} / {formatGoalValue(goal.target, goal.config.format)}

@@ -522,11 +522,15 @@ class ApiClient {
         return this.request('/goals')
     }
 
-    async saveGoals(goals: { metricKey: string; targetValue: number; isEnabled: boolean }[]): Promise<ApiResult<any>> {
+    async saveGoals(goals: { metricKey: string; targetValue: number; isEnabled: boolean; period: string }[]): Promise<ApiResult<any>> {
         return this.request('/goals', {
             method: 'PUT',
             body: JSON.stringify(goals)
         })
+    }
+
+    async getGoalProgress(): Promise<ApiResult<any>> {
+        return this.request('/goals/progress')
     }
 
 }

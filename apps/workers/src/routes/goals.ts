@@ -3,10 +3,23 @@ import { z } from 'zod';
 
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
+import { getGoalProgress } from '../services/goals';
 
 const goals = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
 goals.use('/*', authMiddleware);
+
+goals.get('/progress', async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	const progress = await getGoalProgress(supabase, tenantId);
+	return c.json(progress);
+});
 
 goals.get('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
@@ -29,7 +42,8 @@ goals.get('/', async (c) => {
 		id: g.id,
 		metricKey: g.metric_key,
 		targetValue: Number(g.target_value),
-		isEnabled: g.is_enabled
+		isEnabled: g.is_enabled,
+		period: g.period || 'yearly'
 	}));
 
 	return c.json(formatted);
@@ -43,7 +57,8 @@ goals.put('/', async (c) => {
 	const goalsSchema = z.array(z.object({
 		metricKey: z.string().min(1),
 		targetValue: z.number().min(0),
-		isEnabled: z.boolean()
+		isEnabled: z.boolean(),
+		period: z.enum(['monthly', 'quarterly', 'yearly'])
 	}));
 
 	const validation = goalsSchema.safeParse(body);
@@ -62,6 +77,7 @@ goals.put('/', async (c) => {
 		metric_key: g.metricKey,
 		target_value: g.targetValue,
 		is_enabled: g.isEnabled,
+		period: g.period,
 		updated_at: new Date().toISOString()
 	}));
 
@@ -81,7 +97,8 @@ goals.put('/', async (c) => {
 		id: g.id,
 		metricKey: g.metric_key,
 		targetValue: Number(g.target_value),
-		isEnabled: g.is_enabled
+		isEnabled: g.is_enabled,
+		period: g.period || 'yearly'
 	}));
 
 	return c.json(formatted);

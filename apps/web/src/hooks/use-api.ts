@@ -2,7 +2,7 @@ import useSWR, { mutate as globalMutate } from 'swr'
 import { api } from '@/lib/api'
 import type { ReportTemplate, CreateReportTemplate } from '@/schemas/reports'
 import type { Season, SeasonFormData } from '@/types/season'
-import type { Goal, GoalFormData } from '@/types/goal'
+import type { Goal, GoalFormData, GoalProgress } from '@/types/goal'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 import { measurePerformance } from '@/utils/performance'
 
@@ -678,10 +678,19 @@ export function useGoals() {
   })
 }
 
+export function useGoalProgress() {
+  return useSWR<GoalProgress[]>('/goals/progress', async () => {
+    const result = await api.getGoalProgress()
+    if (!result.success) throw new Error(result.error)
+    return result.data || []
+  })
+}
+
 export async function saveGoals(goals: GoalFormData[]) {
   const result = await api.saveGoals(goals)
   if (result.success) {
     await globalMutate('/goals')
+    await globalMutate('/goals/progress')
   }
   return result
 }
