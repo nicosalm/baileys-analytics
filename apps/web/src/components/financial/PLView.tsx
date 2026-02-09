@@ -4,9 +4,9 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { RevenueChart } from '@/components/charts/RevenueChart'
 import { PlatformDistributionChart } from '@/components/charts/PlatformDistributionChart'
 import { useTips } from '@/hooks/use-tips'
-import { 
-  DollarSign, Wallet, Receipt, 
-  Info, Target, TrendingDown 
+import {
+  DollarSign, Wallet, Receipt,
+  Info, Landmark, TrendingDown
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
@@ -44,22 +44,43 @@ export const PLView: React.FC<PLViewProps> = ({
     const operatingExpenses = metrics.operatingExpenses || { total: 0, byCategory: {} }
     const operatingProfit = metrics.operatingProfit ?? (netRevenue - operatingExpenses.total)
     
-    const profitMargin = grossRevenue > 0 
+    const totalCosts = platformFees + operatingExpenses.total
+    const operatingMargin = grossRevenue > 0
+      ? ((operatingProfit / grossRevenue) * 100)
+      : 0
+
+    const profitMargin = grossRevenue > 0
       ? ((netRevenue / grossRevenue) * 100)
       : 0
-    
-    const revenueGrowth = previousPeriod?.revenue?.gross 
+
+    const revenueGrowth = previousPeriod?.revenue?.gross
       ? ((grossRevenue - previousPeriod.revenue.gross) / previousPeriod.revenue.gross) * 100
       : 0
-    
+
     const profitGrowth = previousPeriod?.revenue?.net
       ? ((netRevenue - previousPeriod.revenue.net) / previousPeriod.revenue.net) * 100
       : 0
-    
+
+    const previousOperatingExpenses = previousPeriod?.operatingExpenses || { total: 0, byCategory: {} }
+    const previousTotalCosts = (previousPeriod?.revenue?.platformFees || 0) + previousOperatingExpenses.total
+    const costsGrowth = previousTotalCosts > 0
+      ? ((totalCosts - previousTotalCosts) / previousTotalCosts) * 100
+      : 0
+
+    const previousTaxes = previousPeriod?.revenue?.taxes || 0
+    const taxesGrowth = previousTaxes > 0
+      ? ((taxes - previousTaxes) / previousTaxes) * 100
+      : 0
+
+    const previousOperatingProfit = previousPeriod?.operatingProfit ?? ((previousPeriod?.revenue?.net || 0) - previousOperatingExpenses.total)
+    const operatingProfitGrowth = previousOperatingProfit > 0
+      ? ((operatingProfit - previousOperatingProfit) / previousOperatingProfit) * 100
+      : 0
+
     const previousProfitMargin = previousPeriod?.revenue?.gross > 0
       ? ((previousPeriod.revenue.net / previousPeriod.revenue.gross) * 100)
       : 0
-    
+
     const profitMarginChange = previousProfitMargin > 0
       ? profitMargin - previousProfitMargin
       : 0
@@ -101,19 +122,27 @@ export const PLView: React.FC<PLViewProps> = ({
         guestFees,
         taxes,
         operatingExpenses,
-        operatingProfit
+        operatingProfit,
+        totalCosts
       },
       profitability: {
-        marginPercent: profitMargin
+        marginPercent: profitMargin,
+        operatingMargin
       },
       comparison: {
         revenueGrowth,
         profitGrowth,
+        costsGrowth,
+        taxesGrowth,
+        operatingProfitGrowth,
         profitMarginChange,
         previousRevenue: previousPeriod?.revenue?.gross || 0,
         previousProfit: previousPeriod?.revenue?.net || 0,
+        previousTotalCosts,
+        previousTaxes,
+        previousOperatingProfit,
         previousProfitMargin,
-        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
+        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' :
                      comparisonMode === 'previous-period' ? 'vs Previous Period' : '',
         hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some((m: any) => m.previousRevenue !== undefined)
       },
@@ -148,10 +177,10 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>Revenue Summary:</strong> Shows revenue after platform fees and taxes.{' '}
+              <strong>P&L Summary:</strong> Revenue → Costs → Taxes → Net Revenue.{' '}
               {revenue.operatingExpenses.total > 0
-                ? 'Operating expenses are included in the cost breakdown below.'
-                : 'Track operating expenses in Settings → Expenses to see Operating Profit.'}
+                ? `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
+                : 'Track operating expenses in Settings → Expenses for a complete picture.'}
             </div>
           </div>
         </div>
@@ -165,51 +194,57 @@ export const PLView: React.FC<PLViewProps> = ({
           format="currency"
           tooltip="Total revenue from all bookings in selected period"
           color="blue"
-          subValue={comparisonMode !== 'none' && comparison.previousRevenue !== undefined
-            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousRevenue)} | Net: ${formatCurrency(revenue.net)}`
-            : `Net: ${formatCurrency(revenue.net)} | Fees: ${formatCurrency(revenue.platformFees)}`}
-          trend={comparisonMode !== 'none' && comparison.previousRevenue !== undefined ? {
+          subValue={comparisonMode !== 'none' && comparison.previousRevenue > 0
+            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousRevenue)}`
+            : `${platforms.length} platform${platforms.length !== 1 ? 's' : ''}`}
+          trend={comparisonMode !== 'none' && comparison.previousRevenue > 0 ? {
             value: comparison.revenueGrowth,
             isPositive: comparison.revenueGrowth > 0
           } : undefined}
         />
         <MetricCard
-          icon={Wallet}
-          label="Net Revenue"
-          value={revenue.net}
+          icon={Receipt}
+          label="Expenses & Platform Fees"
+          value={revenue.totalCosts}
           format="currency"
-          tooltip="Revenue after platform fees and taxes (does not include operating expenses)"
-          color="green"
-          subValue={comparisonMode !== 'none' && comparison.previousProfit > 0
-            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousProfit)}`
-            : `${formatPercentage(profitability.marginPercent, 1)} retained | After ${formatCurrency(revenue.platformFees)} fees`}
-          trend={comparisonMode !== 'none' && comparison.profitGrowth !== 0 ? {
-            value: comparison.profitGrowth,
-            isPositive: comparison.profitGrowth > 0
+          tooltip="Platform fees plus operating expenses"
+          color="orange"
+          subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
+            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousTotalCosts)}`
+            : `Fees: ${formatCurrency(revenue.platformFees)}${revenue.operatingExpenses.total > 0 ? ` | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}` : ''}`}
+          trend={comparisonMode !== 'none' && comparison.costsGrowth !== 0 ? {
+            value: comparison.costsGrowth,
+            isPositive: comparison.costsGrowth < 0
           } : undefined}
         />
         <MetricCard
-          icon={Receipt}
-          label="Platform Fees"
-          value={revenue.platformFees}
+          icon={Landmark}
+          label="Taxes"
+          value={revenue.taxes}
           format="currency"
+          tooltip="Taxes collected on bookings"
           color="yellow"
-          subValue={`${formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue | ${platforms.length} platforms`}
-          tooltip="Fees charged by booking platforms"
+          subValue={comparisonMode !== 'none' && comparison.previousTaxes > 0
+            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousTaxes)}`
+            : revenue.gross > 0 ? `${formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} effective rate` : '0% effective rate'}
+          trend={comparisonMode !== 'none' && comparison.taxesGrowth !== 0 ? {
+            value: comparison.taxesGrowth,
+            isPositive: comparison.taxesGrowth < 0
+          } : undefined}
         />
         <MetricCard
-          icon={Target}
-          label="Net Margin"
-          value={profitability.marginPercent}
-          format="percent"
-          color={profitability.marginPercent > 70 ? 'green' : profitability.marginPercent > 50 ? 'yellow' : 'red'}
-          subValue={comparisonMode !== 'none' && comparison.previousProfitMargin > 0
-            ? `${comparison.periodLabel}: ${comparison.previousProfitMargin.toFixed(1)}% | Target: 70%`
-            : `Target: 70% | ${profitability.marginPercent > 70 ? 'Above' : 'Below'} target`}
-          tooltip="Percentage of revenue kept after fees and taxes"
-          trend={comparisonMode !== 'none' && comparison.profitMarginChange !== 0 ? {
-            value: comparison.profitMarginChange,
-            isPositive: comparison.profitMarginChange > 0
+          icon={Wallet}
+          label="Net Revenue"
+          value={revenue.operatingProfit}
+          format="currency"
+          tooltip="Revenue after fees, expenses, and taxes"
+          color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
+          subValue={comparisonMode !== 'none' && comparison.previousOperatingProfit > 0
+            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousOperatingProfit)}`
+            : `${formatPercentage(profitability.operatingMargin, 1)} margin${revenue.operatingExpenses.total === 0 ? ' (excl. expenses)' : ''}`}
+          trend={comparisonMode !== 'none' && comparison.operatingProfitGrowth !== 0 ? {
+            value: comparison.operatingProfitGrowth,
+            isPositive: comparison.operatingProfitGrowth > 0
           } : undefined}
         />
       </div>
@@ -317,12 +352,12 @@ export const PLView: React.FC<PLViewProps> = ({
           </div>
         </div>
       
-      {showTips && profitability.marginPercent < 60 && (
+      {showTips && profitability.operatingMargin < 60 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-start">
             <TrendingDown className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
             <div className="text-sm text-yellow-800">
-              <strong>Optimization Opportunity:</strong> Your net margin is {formatPercentage(profitability.marginPercent, 1)}.
+              <strong>Optimization Opportunity:</strong> Your operating margin is {formatPercentage(profitability.operatingMargin, 1)}.
               Consider reviewing platform fees and exploring direct booking options to retain more revenue.
             </div>
           </div>

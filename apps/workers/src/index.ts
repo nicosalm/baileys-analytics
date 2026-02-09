@@ -601,6 +601,8 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 				previousPL = prevPL ? {
 					revenue: prevPL.metrics.revenue,
 					performance: prevPL.metrics.performance,
+					operatingExpenses: prevPL.metrics.operatingExpenses,
+					operatingProfit: prevPL.metrics.operatingProfit,
 					monthlyTrend: prevPL.monthlyTrend,
 					weeklyRevenue: prevPL.weeklyRevenue
 				} : null;
