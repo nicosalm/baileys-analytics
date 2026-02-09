@@ -539,12 +539,14 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 	const from = c.req.query('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
 	const to = c.req.query('to') || new Date().toISOString().split('T')[0];
 	const tags = c.req.query('tags')?.split(',').filter(Boolean);
+	const comparisonFrom = c.req.query('comparisonFrom');
+	const comparisonTo = c.req.query('comparisonTo');
 
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const cacheKey = `dashboard:${user.id}:${view}:${from}:${to}:${tags?.join(',')}`;
+	const cacheKey = `dashboard:${user.id}:${view}:${from}:${to}:${tags?.join(',')}:${comparisonFrom || ''}:${comparisonTo || ''}`;
 
 	// try to get from cache if available
 	if (c.env.CACHE) {
@@ -559,9 +561,6 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 
 	switch(view) {
 		case 'overview': {
-			const comparisonFrom = c.req.query('comparisonFrom');
-			const comparisonTo = c.req.query('comparisonTo');
-
 			data = await getOverviewData(
 				supabase,
 				tenantId,
@@ -575,9 +574,6 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		}
 
 		case 'financial': {
-			const comparisonFrom = c.req.query('comparisonFrom');
-			const comparisonTo = c.req.query('comparisonTo');
-
 			const [plData, revenueData, cashflowData, taxData] = await Promise.all([
 				getPLData(supabase, tenantId, from, to, tags),
 				getRevenueData(supabase, tenantId, from, to, tags),
@@ -645,9 +641,6 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		}
 
 		case 'properties': {
-			const comparisonFrom = c.req.query('comparisonFrom');
-			const comparisonTo = c.req.query('comparisonTo');
-
 			data = await getPropertiesData(
 				supabase,
 				tenantId,
@@ -661,9 +654,6 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		}
 
 		case 'occupancy': {
-			const comparisonFrom = c.req.query('comparisonFrom');
-			const comparisonTo = c.req.query('comparisonTo');
-
 			const { detectBookingGaps } = await import('./services/occupancy');
 			const currentData = await getOccupancyData(supabase, tenantId, from, to, tags);
 			// detect booking gaps for the next 60 days
@@ -683,9 +673,6 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		}
 
 		case 'guests': {
-			const comparisonFrom = c.req.query('comparisonFrom');
-			const comparisonTo = c.req.query('comparisonTo');
-
 			const currentData = await getGuestsData(supabase, tenantId, from, to, tags);
 
 			if (comparisonFrom && comparisonTo) {

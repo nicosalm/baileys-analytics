@@ -39,6 +39,7 @@ TagButton.displayName = 'TagButton'
 export const FilterBar: React.FC = () => {
   const {
     filters,
+    comparisonRange,
     updateDateRange,
     toggleTag,
     clearFilters
@@ -69,6 +70,7 @@ export const FilterBar: React.FC = () => {
             <SmartPeriodSelector
               value={filters.dateRange}
               onChange={updateDateRange}
+              comparisonRange={comparisonRange}
             />
 
             <div className="relative" ref={dropdownRef}>

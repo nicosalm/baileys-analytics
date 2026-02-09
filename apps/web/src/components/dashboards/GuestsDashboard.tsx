@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
-import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
+import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
 import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3 } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
@@ -22,6 +22,7 @@ export const GuestsDashboard = () => {
     const { openModal } = useModal()
     const { filters, comparisonRange, comparisonMode } = useDashboard()
     const { showTips } = useTips()
+    const comparisonDateRange = useComparisonDateRange()
 
     const tagIds = useTagIds()
 
@@ -389,7 +390,7 @@ export const GuestsDashboard = () => {
                     format="number"
                     tooltip="Total unique guests who have stayed"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.metrics.totalGuests} | In period`
+                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousData.metrics.totalGuests}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : "In selected period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
@@ -407,7 +408,7 @@ export const GuestsDashboard = () => {
                     format="percent"
                     tooltip="Percentage of returning guests"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(previousData.metrics.repeatRate * 100, 0)} | ${data.metrics.repeatGuests} returning`
+                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatPercentage(previousData.metrics.repeatRate * 100, 0)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : `${data.metrics.repeatGuests} returning guests`
                     }
                     color="green"
@@ -425,7 +426,7 @@ export const GuestsDashboard = () => {
                     format="custom"
                     tooltip="Average length of stay per booking"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousData.metrics.avgStayLength.toFixed(1)} nights`
+                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousData.metrics.avgStayLength.toFixed(1)} nights{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : "Per booking"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
@@ -442,7 +443,7 @@ export const GuestsDashboard = () => {
                     value={data.metrics.avgSpend}
                     format="currency"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(previousData.metrics.avgSpend)}`
+                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(previousData.metrics.avgSpend)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : "Per guest this period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics && previousData.metrics.avgSpend > 0 ? {

@@ -74,6 +74,24 @@ export function useDashboardData<T = any>(
 }
 
 /**
+ * Computes a short formatted date range string for comparison periods
+ */
+export function useComparisonDateRange() {
+  const { comparisonMode, comparisonRange } = useDashboard()
+  return useMemo(() => {
+    if (comparisonMode === 'none' || !comparisonRange) return ''
+    const fromDate = new Date(comparisonRange.from + 'T00:00:00')
+    const toDate = new Date(comparisonRange.to + 'T00:00:00')
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const fmtYear = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    if (fromDate.getFullYear() === toDate.getFullYear()) {
+      return `${fmt(fromDate)} \u2013 ${fmt(toDate)}, ${toDate.getFullYear()}`
+    }
+    return `${fmtYear(fromDate)} \u2013 ${fmtYear(toDate)}`
+  }, [comparisonMode, comparisonRange])
+}
+
+/**
  * Formats comparison period text consistently
  */
 export function formatComparisonText(

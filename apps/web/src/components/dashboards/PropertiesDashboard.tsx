@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
-import { useTagIds, useErrorToast, getTimePeriodGranularity } from '@/hooks/use-dashboard-utils'
+import { useTagIds, useErrorToast, getTimePeriodGranularity, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics, ChartDataPoint } from '@/types/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { Calendar, DollarSign, Home, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table } from 'lucide-react'
@@ -20,6 +20,7 @@ export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
   const { openModal } = useModal()
+  const comparisonDateRange = useComparisonDateRange()
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
   
   const tagIds = useTagIds()
@@ -185,7 +186,7 @@ export const PropertiesDashboard = () => {
           format="number"
           tooltip="Total number of properties in portfolio"
           subValue={comparisonMode !== 'none' && previousProperties && previousProperties.length > 0
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${previousProperties.length} | Active properties`
+            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousProperties.length}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
           }
           trend={comparisonMode !== 'none' && previousProperties && previousProperties.length > 0 ? {
@@ -201,7 +202,7 @@ export const PropertiesDashboard = () => {
           format="currency"
           tooltip="Total revenue from all bookings in selected period"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatCurrency(prevTotalRevenue)} | All properties`
+            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(prevTotalRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "All properties"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? {
@@ -217,7 +218,7 @@ export const PropertiesDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${formatPercentage(prevAvgOccupancy * 100, 0)} | Across all`
+            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatPercentage(prevAvgOccupancy * 100, 0)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0 ? {
@@ -233,7 +234,7 @@ export const PropertiesDashboard = () => {
           format="number"
           tooltip="Total number of confirmed bookings"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0
-            ? `vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: ${prevTotalBookings} | All bookings`
+            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {prevTotalBookings}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0 ? {

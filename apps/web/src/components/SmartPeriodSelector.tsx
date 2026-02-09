@@ -30,6 +30,7 @@ interface DateRange {
 interface SmartPeriodSelectorProps {
   value: DateRange
   onChange: (range: DateRange, comparison?: DateRange) => void
+  comparisonRange?: DateRange
   className?: string
 }
 
@@ -116,6 +117,7 @@ const hasSeasonStartedThisYear = (season: Season): boolean => {
 export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   value,
   onChange,
+  comparisonRange,
   className
 }) => {
   const [isOpen, setIsOpen] = useState(false)
@@ -336,6 +338,18 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
     }
   }, [isOpen, comparisonDropdownOpen])
   
+  const comparisonRangeLabel = useMemo(() => {
+    if (comparisonType === 'none' || !comparisonRange) return ''
+    const fromDate = parseDate(comparisonRange.from)
+    const toDate = parseDate(comparisonRange.to)
+    const fmtShort = (d: Date) => format(d, 'MMM d')
+    const fmtWithYear = (d: Date) => format(d, 'MMM d, yyyy')
+    if (fromDate.getFullYear() === toDate.getFullYear()) {
+      return `${fmtShort(fromDate)} – ${fmtShort(toDate)}, ${toDate.getFullYear()}`
+    }
+    return `${fmtWithYear(fromDate)} – ${fmtWithYear(toDate)}`
+  }, [comparisonType, comparisonRange])
+
   const seasonStatus = useMemo(() => {
     if (activeSeasons.length === 0) return null
     const season = activeSeasons[0]
@@ -403,6 +417,9 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             )} />
             <span className="truncate">
               {getComparisonLabel(comparisonType, activeSeasons.length > 0)}
+              {comparisonRangeLabel && (
+                <span className="text-gray-400 font-normal"> ({comparisonRangeLabel})</span>
+              )}
             </span>
             <ChevronDown className={cn(
               "w-4 h-4 text-gray-500 transition-transform flex-shrink-0",

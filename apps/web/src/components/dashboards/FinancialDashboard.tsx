@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, ReactNode, FC, memo } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
-import { useTagIds, useErrorToast } from '@/hooks/use-dashboard-utils'
+import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
@@ -92,17 +92,7 @@ export const FinancialDashboard = () => {
     previousPeriod: data.tax?.previousPeriod || data.pl.previousPeriod
   } : null, [data])
 
-  const comparisonDateRange = useMemo(() => {
-    if (comparisonMode === 'none' || !comparisonRange) return ''
-    const fromDate = new Date(comparisonRange.from + 'T00:00:00')
-    const toDate = new Date(comparisonRange.to + 'T00:00:00')
-    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    const fmtYear = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    if (fromDate.getFullYear() === toDate.getFullYear()) {
-      return `${fmt(fromDate)} – ${fmt(toDate)}, ${toDate.getFullYear()}`
-    }
-    return `${fmtYear(fromDate)} – ${fmtYear(toDate)}`
-  }, [comparisonMode, comparisonRange])
+  const comparisonDateRange = useComparisonDateRange()
 
   useErrorToast(error, 'Failed to load financial data')
 

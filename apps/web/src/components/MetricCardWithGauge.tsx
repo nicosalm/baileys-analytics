@@ -8,7 +8,7 @@ interface MetricCardWithGaugeProps {
   label: string
   value: number | string
   format?: 'currency' | 'percent' | 'number' | 'custom'
-  subValue?: string
+  subValue?: React.ReactNode
   color?: 'blue' | 'green' | 'red' | 'yellow' | 'purple' | 'gray' | 'orange'
   tooltip?: string
   trend?: {
