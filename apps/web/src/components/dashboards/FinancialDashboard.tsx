@@ -92,6 +92,18 @@ export const FinancialDashboard = () => {
     previousPeriod: data.tax?.previousPeriod || data.pl.previousPeriod
   } : null, [data])
 
+  const comparisonDateRange = useMemo(() => {
+    if (comparisonMode === 'none' || !comparisonRange) return ''
+    const fromDate = new Date(comparisonRange.from + 'T00:00:00')
+    const toDate = new Date(comparisonRange.to + 'T00:00:00')
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const fmtYear = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    if (fromDate.getFullYear() === toDate.getFullYear()) {
+      return `${fmt(fromDate)} – ${fmt(toDate)}, ${toDate.getFullYear()}`
+    }
+    return `${fmtYear(fromDate)} – ${fmtYear(toDate)}`
+  }, [comparisonMode, comparisonRange])
+
   useErrorToast(error, 'Failed to load financial data')
 
   // memoized tab click handlers
@@ -289,10 +301,10 @@ export const FinancialDashboard = () => {
         </div>
 
         <div className="p-6">
-          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} onPeriodClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'cashflow' && <CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} />}
-          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} />}
+          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
+          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} onPeriodClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
+          {activeTab === 'cashflow' && <CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
+          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
         </div>
       </div>
     </div>

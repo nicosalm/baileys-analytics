@@ -17,13 +17,15 @@ interface CashFlowViewProps {
   loading: boolean
   onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
+  comparisonDateRange?: string
 }
 
 export const CashFlowView: React.FC<CashFlowViewProps> = ({
   data,
   loading,
   onPeriodClick,
-  comparisonMode = 'none'
+  comparisonMode = 'none',
+  comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
   const cashFlowData = useMemo(() => {
@@ -101,7 +103,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         outflowGrowth,
         netFlowGrowth,
         avgMonthlyFlowGrowth,
-        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
+        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' :
                      comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
       }
     }
@@ -145,7 +147,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousInflow > 0
-            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousInflow)} | Avg: ${formatCurrency(cashFlowData.totalInflow / Math.max(cashFlowData.monthlyData.length, 1))}`
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousInflow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${cashFlowData.monthlyData.length} months | Avg: ${formatCurrency(cashFlowData.totalInflow / Math.max(cashFlowData.monthlyData.length, 1))}`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.inflowGrowth !== 0 ? {
             value: cashFlowData.comparison.inflowGrowth,
@@ -159,7 +161,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color="red"
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousOutflow > 0
-            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousOutflow)} | ${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow`
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousOutflow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow | Fees: ${formatCurrency(cashFlowData.totalFees)} + Tax: ${formatCurrency(cashFlowData.totalTaxes)}`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.outflowGrowth !== 0 ? {
             value: cashFlowData.comparison.outflowGrowth,
@@ -173,7 +175,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color={cashFlowData.netCashFlow > 0 ? 'green' : 'red'}
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousNetFlow !== 0
-            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousNetFlow)} | ${formatPercentage(cashFlowData.flowRatio, 1)} retained`
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousNetFlow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(cashFlowData.flowRatio, 1)} retained | ${cashFlowData.netCashFlow > 0 ? 'Positive' : 'Negative'} flow`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.netFlowGrowth !== 0 ? {
             value: cashFlowData.comparison.netFlowGrowth,
@@ -187,7 +189,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color="blue"
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousAvgMonthlyFlow !== 0
-            ? `${cashFlowData.comparison.periodLabel}: ${formatCurrency(cashFlowData.comparison.previousAvgMonthlyFlow)} | ${cashFlowData.avgMonthlyFlow > 0 ? 'Profitable' : 'Loss'}`
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousAvgMonthlyFlow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `Per month | ${cashFlowData.avgMonthlyFlow > 0 ? 'Profitable' : 'Loss'}`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.avgMonthlyFlowGrowth !== 0 ? {
             value: cashFlowData.comparison.avgMonthlyFlowGrowth,

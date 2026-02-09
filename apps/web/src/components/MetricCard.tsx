@@ -8,7 +8,7 @@ export interface MetricCardProps {
   label: string
   value: number | string
   format?: 'currency' | 'percent' | 'number' | 'compact' | 'custom'
-  subValue?: string
+  subValue?: React.ReactNode
   subtitle?: string
   tooltip?: string
   trend?: {

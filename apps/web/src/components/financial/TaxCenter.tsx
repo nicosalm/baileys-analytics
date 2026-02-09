@@ -21,6 +21,7 @@ interface TaxCenterProps {
   onPropertyClick?: (propertyId: string) => void
   onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
+  comparisonDateRange?: string
 }
 
 export const TaxCenter: React.FC<TaxCenterProps> = ({
@@ -28,7 +29,8 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   loading,
   onPropertyClick,
   onPeriodClick,
-  comparisonMode = 'none'
+  comparisonMode = 'none',
+  comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
   const { filters } = useDashboard()
@@ -110,7 +112,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         previousEffectiveRate,
         taxGrowth,
         ownerRemittedGrowth,
-        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' : 
+        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' :
                      comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
       }
     }
@@ -165,7 +167,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
-            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousTaxes)} | ${formatPercentage(taxData.effectiveTaxRate, 2)} rate`
+            ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
           tooltip="Total tax liability including platform fees"
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
@@ -180,7 +182,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           format="currency"
           color="blue"
           subValue={comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0
-            ? `${taxData.comparison.periodLabel}: ${formatCurrency(taxData.comparison.previousOwnerRemitted)}`
+            ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "Your responsibility"}
           tooltip="Tax amount you need to pay directly"
           trend={comparisonMode !== 'none' && taxData.comparison.ownerRemittedGrowth !== 0 ? {

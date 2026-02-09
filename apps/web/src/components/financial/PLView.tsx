@@ -16,13 +16,15 @@ interface PLViewProps {
   loading: boolean
   onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
+  comparisonDateRange?: string
 }
 
 export const PLView: React.FC<PLViewProps> = ({
   data,
   loading,
   onPeriodClick,
-  comparisonMode = 'none'
+  comparisonMode = 'none',
+  comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
   
@@ -195,7 +197,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Total revenue from all bookings in selected period"
           color="blue"
           subValue={comparisonMode !== 'none' && comparison.previousRevenue > 0
-            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousRevenue)}`
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${platforms.length} platform${platforms.length !== 1 ? 's' : ''}`}
           trend={comparisonMode !== 'none' && comparison.previousRevenue > 0 ? {
             value: comparison.revenueGrowth,
@@ -210,7 +212,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Platform fees plus operating expenses"
           color="orange"
           subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
-            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousTotalCosts)}`
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `Fees: ${formatCurrency(revenue.platformFees)}${revenue.operatingExpenses.total > 0 ? ` | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}` : ''}`}
           trend={comparisonMode !== 'none' && comparison.costsGrowth !== 0 ? {
             value: comparison.costsGrowth,
@@ -225,7 +227,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Taxes collected on bookings"
           color="yellow"
           subValue={comparisonMode !== 'none' && comparison.previousTaxes > 0
-            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousTaxes)}`
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : revenue.gross > 0 ? `${formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} effective rate` : '0% effective rate'}
           trend={comparisonMode !== 'none' && comparison.taxesGrowth !== 0 ? {
             value: comparison.taxesGrowth,
@@ -240,7 +242,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Revenue after fees, expenses, and taxes"
           color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
           subValue={comparisonMode !== 'none' && comparison.previousOperatingProfit > 0
-            ? `${comparison.periodLabel}: ${formatCurrency(comparison.previousOperatingProfit)}`
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousOperatingProfit)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(profitability.operatingMargin, 1)} margin${revenue.operatingExpenses.total === 0 ? ' (excl. expenses)' : ''}`}
           trend={comparisonMode !== 'none' && comparison.operatingProfitGrowth !== 0 ? {
             value: comparison.operatingProfitGrowth,

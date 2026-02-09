@@ -19,6 +19,7 @@ interface RevenueAnalysisProps {
   onPeriodClick?: (period: string) => void
   onPropertyClick?: (propertyId: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
+  comparisonDateRange?: string
 }
 
 export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
@@ -26,7 +27,8 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
   loading,
   onPeriodClick,
   onPropertyClick,
-  comparisonMode = 'none'
+  comparisonMode = 'none',
+  comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
   const { filters } = useDashboard()
@@ -146,7 +148,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && analysis.previousRevenue
-            ? `${comparisonMode === 'previous-year' ? 'vs Last Year' : 'vs Previous Period'}: ${formatCurrency(analysis.previousRevenue)} | Monthly avg: ${formatCurrency(analysis.avgMonthlyRevenue)}`
+            ? <>{comparisonMode === 'previous-year' ? 'vs Last Year' : 'vs Previous Period'}: {formatCurrency(analysis.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `Monthly avg: ${formatCurrency(analysis.avgMonthlyRevenue)} | ${analysis.monthlyData.length} months`}
           trend={analysis.revenueGrowth !== 0 ? {
             value: analysis.revenueGrowth,
@@ -160,7 +162,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           format="currency"
           color="blue"
           subValue={comparisonMode !== 'none' && analysis.previousAvgMonthlyRevenue > 0
-            ? `${comparisonMode === 'previous-year' ? 'vs Last Year' : 'vs Previous Period'}: ${formatCurrency(analysis.previousAvgMonthlyRevenue)} | ${analysis.monthlyData.length} months`
+            ? <>{comparisonMode === 'previous-year' ? 'vs Last Year' : 'vs Previous Period'}: {formatCurrency(analysis.previousAvgMonthlyRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${analysis.monthlyData.length} months | Best: ${formatCurrency(Math.max(...analysis.monthlyData.map((m: any) => m.revenue || 0)))}`}
           trend={comparisonMode !== 'none' && analysis.avgMonthlyGrowth !== 0 ? {
             value: analysis.avgMonthlyGrowth,
