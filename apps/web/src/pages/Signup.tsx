@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { LoadingButton } from '@/components/LoadingButton'
 import { PasswordRequirements } from '@/components/PasswordRequirements'
-import { ArrowLeft, Mail, Lock, Compass, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { ArrowLeft, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { validatePassword } from '@/utils/password'
 
@@ -113,10 +113,8 @@ export const Signup = () => {
 
           {/* Logo */}
           <div className="flex items-center mb-8">
-            <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-              <Compass className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-2xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
+            <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+            <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
           </div>
 
           {/* Welcome text */}

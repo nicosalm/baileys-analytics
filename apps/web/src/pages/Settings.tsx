@@ -7,7 +7,7 @@ import { useTips } from '@/hooks/use-tips'
 import { LoadingState } from '@/components/LoadingState'
 import {
   Calendar, Calculator,
-  LogOut, Compass,
+  LogOut,
   Palette, CreditCard, Link2,
   Lock, MessageSquare, ArrowLeft,
   Eye, EyeOff, Receipt, Target
@@ -317,9 +317,7 @@ export const Settings = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <Link to="/dashboard/overview" className="flex items-center hover:opacity-80 transition-opacity">
-                <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                  <Compass className="w-5 h-5 text-white" />
-                </div>
+                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                 <div className="ml-3">
                   <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
                   {user.companyName && (

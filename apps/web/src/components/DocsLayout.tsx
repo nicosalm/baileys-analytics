@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
-import { Compass, FileText, Shield, ArrowLeft, ChevronRight, HelpCircle, Database } from 'lucide-react'
+import { FileText, Shield, ArrowLeft, ChevronRight, HelpCircle, Database } from 'lucide-react'
 import { BRAND } from '@/constants'
 
 interface DocsLayoutProps {
@@ -26,17 +26,15 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-50">
       {/* header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             {/* logo */}
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                <Compass className="w-5 h-5 text-white" />
-              </div>
+              <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
               <div className="ml-3 flex items-center">
                 <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
-                <ChevronRight className="hidden sm:block w-5 h-5 mx-2 text-gray-400" />
-                <span className="hidden sm:block text-xl text-gray-600">Docs</span>
+                <ChevronRight className="hidden sm:block w-4 h-4 mx-1.5 text-gray-400" />
+                <span className="hidden sm:block text-sm font-medium text-gray-500">Docs</span>
               </div>
             </Link>
 

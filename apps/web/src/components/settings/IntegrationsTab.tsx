@@ -90,7 +90,7 @@ export const IntegrationsTab = () => {
               <img
                 src="/logos/ownerrez-app-icon.png"
                 alt="OwnerRez"
-                className="w-12 h-12 rounded-lg"
+                className="w-12 h-12"
               />
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-2">OwnerRez</h2>

@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Compass, Shield, ArrowLeft } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Shield, ArrowLeft } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
@@ -161,9 +161,7 @@ export const DashboardLayout = () => {
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
               <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-                <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                  <Compass className="w-5 h-5 text-white" />
-                </div>
+                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                 <span className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</span>
               </Link>
               <button onClick={handleLogout} className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-all px-3 py-1.5 rounded-md hover:bg-gray-100 cursor-pointer">
@@ -248,9 +246,7 @@ export const DashboardLayout = () => {
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
                   <div className="flex items-center">
-                    <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                      <Compass className="w-5 h-5 text-white" />
-                    </div>
+                    <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                     <div className="ml-3">
                       <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
                       {user.companyName && (

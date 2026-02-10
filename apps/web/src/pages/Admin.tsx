@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
-import { Users, DollarSign, TrendingUp, Database, Shield, Search, Trash2, AlertTriangle, X, Settings, LogOut, LayoutDashboard } from 'lucide-react'
+import { Users, DollarSign, TrendingUp, Database, Search, Trash2, AlertTriangle, X, Settings, LogOut, LayoutDashboard } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { Footer } from '@/components/Footer'
 
@@ -157,9 +157,7 @@ export const Admin = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-                <Shield className="w-5 h-5 text-white" />
-              </div>
+              <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
               <div className="ml-3">
                 <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
                 <p className="text-xs text-gray-500 -mt-0.5">System management</p>

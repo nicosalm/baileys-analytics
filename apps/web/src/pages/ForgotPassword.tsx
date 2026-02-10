@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Mail, ArrowLeft, Compass } from 'lucide-react'
+import { Mail, ArrowLeft } from 'lucide-react'
 import { LoadingButton } from '@/components/LoadingButton'
 import { BRAND } from '@/constants'
 
@@ -89,10 +89,8 @@ export const ForgotPassword = () => {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="flex items-center mb-6">
-            <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center shadow-sm`}>
-              <Compass className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-2xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
+            <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+            <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
           </div>
 
           <div className="mb-6">

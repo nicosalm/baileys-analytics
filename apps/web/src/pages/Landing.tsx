@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
 import {
-  ArrowRight, CheckCircle, Compass,
+  ArrowRight, CheckCircle,
   DollarSign, BarChart2, TrendingUp, Shield, Zap, Lock
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
@@ -37,10 +37,8 @@ export const Landing = () => {
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <div className={`w-9 h-9 ${BRAND.logoGradient} rounded-xl flex items-center justify-center`}>
-                <Compass className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900 ml-2.5">{BRAND.name}</span>
+              <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+              <span className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</span>
             </div>
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
