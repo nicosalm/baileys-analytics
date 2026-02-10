@@ -209,6 +209,39 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
           />
         </div>
 
+        {/* Cost Metrics */}
+        {(data.metrics.platformFees > 0 || data.metrics.taxes > 0 || data.metrics.operatingExpenses > 0) && (
+          <div className="bg-white rounded-lg border p-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Cost Summary</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {data.metrics.platformFees > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500">Platform Fees</div>
+                  <div className="text-lg font-semibold text-red-600">-{formatCurrency(data.metrics.platformFees)}</div>
+                </div>
+              )}
+              {data.metrics.taxes > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500">Taxes</div>
+                  <div className="text-lg font-semibold text-red-600">-{formatCurrency(data.metrics.taxes)}</div>
+                </div>
+              )}
+              {data.metrics.operatingExpenses > 0 && (
+                <div>
+                  <div className="text-xs text-gray-500">Operating Expenses</div>
+                  <div className="text-lg font-semibold text-red-600">-{formatCurrency(data.metrics.operatingExpenses)}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-xs text-gray-500">Net Revenue</div>
+                <div className={`text-lg font-semibold ${data.metrics.netRevenue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(data.metrics.netRevenue)}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="border-b">
           <nav className="flex space-x-6">

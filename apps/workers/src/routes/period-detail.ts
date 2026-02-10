@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
+import { buildYearMonthFilter } from '../utils/date-filters';
 
 const periodDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -49,7 +50,8 @@ periodDetail.get('/', async (c) => {
         guest_email,
         status,
         platform,
-        property_id
+        property_id,
+        host_service_fee
       `)
       .eq('tenant_id', tenantId)
       .lte('arrival', endDate)
@@ -69,13 +71,33 @@ periodDetail.get('/', async (c) => {
       }
     }
     
-    const [bookingsData, propertiesData] = await Promise.all([
+    // Parse year/month for fee and expense queries
+    const fromDate = new Date(startDate);
+    const toDate = new Date(endDate);
+    const fromYear = fromDate.getFullYear();
+    const fromMonth = fromDate.getMonth() + 1;
+    const toYear = toDate.getFullYear();
+    const toMonth = toDate.getMonth() + 1;
+
+    const [bookingsData, propertiesData, platformFeesData, operatingExpensesData] = await Promise.all([
       bookingsQuery,
       supabase
         .from('properties')
         .select('id, name')
         .eq('tenant_id', tenantId)
-        .eq('active', true)
+        .eq('active', true),
+      supabase
+        .from('platform_guest_fees')
+        .select('amount')
+        .eq('tenant_id', tenantId)
+        .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
+        .limit(SUPABASE_MAX_ROWS),
+      supabase
+        .from('operating_expenses')
+        .select('amount')
+        .eq('tenant_id', tenantId)
+        .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
+        .limit(SUPABASE_MAX_ROWS)
     ]);
 
     if (bookingsData.error) throw bookingsData.error;
@@ -83,6 +105,27 @@ periodDetail.get('/', async (c) => {
 
     const bookings = bookingsData.data || [];
     const properties = propertiesData.data || [];
+
+    // Calculate costs
+    const totalPlatformFees = (platformFeesData.data || []).reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
+    const totalOperatingExpenses = (operatingExpensesData.data || []).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+
+    // Query booking_charges for tax amounts on these bookings
+    let totalTaxes = 0;
+    if (bookings.length > 0) {
+      const bookingIds = bookings.map(b => b.id);
+      const { data: charges } = await supabase
+        .from('booking_charges')
+        .select('amount')
+        .in('booking_id', bookingIds)
+        .eq('type', 'tax')
+        .limit(SUPABASE_MAX_ROWS);
+      totalTaxes = (charges || []).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+    }
+
+    // Also sum host_service_fee from bookings
+    const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
+    const combinedPlatformFees = totalPlatformFees + totalHostFees;
     
     const propertyMap = new Map<string, string>();
     properties.forEach(p => propertyMap.set(p.id, p.name));
@@ -165,6 +208,8 @@ periodDetail.get('/', async (c) => {
       }))
       .sort((a, b) => b.revenue - a.revenue);
 
+    const netRevenue = totalRevenue - combinedPlatformFees - totalTaxes - totalOperatingExpenses;
+
     return c.json({
       metrics: {
         revenue: totalRevenue,
@@ -172,12 +217,18 @@ periodDetail.get('/', async (c) => {
         occupancyRate,
         avgNightlyRate
       },
+      costs: {
+        platformFees: combinedPlatformFees,
+        taxes: totalTaxes,
+        operatingExpenses: totalOperatingExpenses,
+        netRevenue
+      },
       summary: {
         totalRevenue,
         totalBookings,
         avgNightlyRate,
         totalNights,
-        netRevenue: totalRevenue
+        netRevenue
       },
       topProperties: byProperty.slice(0, 5),
       byProperty,

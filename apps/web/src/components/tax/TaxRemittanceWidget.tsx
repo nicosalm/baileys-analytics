@@ -21,7 +21,7 @@ export const TaxRemittanceWidget = ({
   
   const totals = taxData ? {
     revenue: taxData.summary.totalRent || 0,
-    platformFees: 0, // Will be calculated from platform fee entries if needed
+    platformFees: financialData?.pl?.metrics?.revenue?.platformFees || 0,
     totalTax: taxData.summary.totalTax || 0,
     platformRemitted: taxData.summary.platformRemitted || 0,
     ownerRemitted: taxData.summary.ownerRemitted || 0,

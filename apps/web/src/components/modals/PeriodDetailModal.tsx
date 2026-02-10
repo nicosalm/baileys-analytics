@@ -136,6 +136,39 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
           </div>
         )}
 
+        {/* Financial Summary */}
+        {data?.costs && (data.costs.platformFees > 0 || data.costs.taxes > 0 || data.costs.operatingExpenses > 0) && (
+          <div className="bg-white rounded-lg border p-4">
+            <h3 className="font-semibold mb-3">Financial Summary</h3>
+            <div className="space-y-2">
+              {data.costs.platformFees > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Platform Fees</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(data.costs.platformFees)}</span>
+                </div>
+              )}
+              {data.costs.taxes > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Taxes</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(data.costs.taxes)}</span>
+                </div>
+              )}
+              {data.costs.operatingExpenses > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Operating Expenses</span>
+                  <span className="font-medium text-red-600">-{formatCurrency(data.costs.operatingExpenses)}</span>
+                </div>
+              )}
+              <div className="flex justify-between pt-2 border-t font-semibold">
+                <span>Net Revenue</span>
+                <span className={data.costs.netRevenue >= 0 ? 'text-green-600' : 'text-red-600'}>
+                  {formatCurrency(data.costs.netRevenue)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Top Properties */}
         <div className="bg-white rounded-lg border">
           <div className="p-4 border-b">

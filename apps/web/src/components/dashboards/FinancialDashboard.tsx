@@ -79,7 +79,8 @@ export const FinancialDashboard = () => {
     fees: data.revenue.fees,
     taxes: data.revenue.taxes,
     gross: data.revenue.gross,
-    net: data.revenue.net
+    net: data.revenue.net,
+    operatingExpenses: data.pl.metrics.operatingExpenses?.total || 0
   } : null, [data])
 
   const taxData = useMemo(() => data ? {

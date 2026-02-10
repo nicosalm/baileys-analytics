@@ -31,13 +31,14 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   const cashFlowData = useMemo(() => {
     if (!data) return null
     
-    const { byMonth, fees, taxes, gross, previousPeriod } = data
-    
-    // Calculate actual outflow from fees and taxes
+    const { byMonth, fees, taxes, gross, previousPeriod, operatingExpenses } = data
+
+    // Calculate actual outflow from fees, taxes, and operating expenses
     const totalFees = fees || 0
     const totalTaxes = taxes || 0
+    const totalOperatingExpenses = operatingExpenses || 0
     const totalGross = gross || 0
-    const actualOutflowRate = totalGross > 0 ? (totalFees + totalTaxes) / totalGross : 0.3
+    const actualOutflowRate = totalGross > 0 ? (totalFees + totalTaxes + totalOperatingExpenses) / totalGross : 0.3
     
     // Calculate cash flow metrics
     const monthlyData = byMonth?.map((month: any) => {
@@ -94,6 +95,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       flowRatio: totalInflow > 0 ? (netCashFlow / totalInflow) * 100 : 0,
       totalFees: totalFees,
       totalTaxes: totalTaxes,
+      totalOperatingExpenses: totalOperatingExpenses,
       comparison: {
         previousInflow,
         previousOutflow,
@@ -132,7 +134,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-purple-600 mr-2 mt-0.5" />
             <div className="text-sm text-purple-800">
-              <strong>Cash Flow:</strong> Track money coming in (revenue) versus money going out (fees, taxes) to understand your liquidity
+              <strong>Cash Flow:</strong> Track money coming in (revenue) versus money going out (fees, taxes, expenses) to understand your liquidity
             </div>
           </div>
         </div>
@@ -162,7 +164,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           color="red"
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousOutflow > 0
             ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousOutflow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow | Fees: ${formatCurrency(cashFlowData.totalFees)} + Tax: ${formatCurrency(cashFlowData.totalTaxes)}`}
+            : `${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow | Fees: ${formatCurrency(cashFlowData.totalFees)} + Tax: ${formatCurrency(cashFlowData.totalTaxes)}${cashFlowData.totalOperatingExpenses > 0 ? ` + Expenses: ${formatCurrency(cashFlowData.totalOperatingExpenses)}` : ''}`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.outflowGrowth !== 0 ? {
             value: cashFlowData.comparison.outflowGrowth,
             isPositive: cashFlowData.comparison.outflowGrowth > 0  // Keep standard: up arrow for increases
@@ -246,7 +248,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div>
             <h4 className="font-semibold text-gray-900">Cash Flow Health</h4>
             <p className="text-sm text-gray-600 mt-1">
-              You're retaining {formatPercentage(cashFlowData.flowRatio, 1)} of your revenue after fees and taxes
+              You're retaining {formatPercentage(cashFlowData.flowRatio, 1)} of your revenue after fees, taxes, and expenses
             </p>
           </div>
           <div className={`text-3xl font-bold ${

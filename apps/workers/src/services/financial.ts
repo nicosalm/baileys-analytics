@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSeasons } from './seasons';
 import { TaxCalculator } from './tax-calculator';
 import { SUPABASE_MAX_ROWS } from '../constants';
+import { buildYearMonthFilter } from '../utils/date-filters';
 
 interface FinancialMetrics {
   revenue: {
@@ -184,7 +185,7 @@ export async function getPLData(
       .from('platform_guest_fees')
       .select('*')
       .eq('tenant_id', tenantId)
-      .or(`and(year.eq.${fromYear},month.gte.${fromMonth}),and(year.eq.${toYear},month.lte.${toMonth}),and(year.gt.${fromYear},year.lt.${toYear})`)
+      .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
       .limit(SUPABASE_MAX_ROWS),
     supabase
       .from('properties')
@@ -202,7 +203,7 @@ export async function getPLData(
       .from('operating_expenses')
       .select('category, amount')
       .eq('tenant_id', tenantId)
-      .or(`and(year.eq.${fromYear},month.gte.${fromMonth}),and(year.eq.${toYear},month.lte.${toMonth}),and(year.gt.${fromYear},year.lt.${toYear})`)
+      .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
       .limit(SUPABASE_MAX_ROWS)
   ]);
 

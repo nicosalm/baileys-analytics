@@ -159,6 +159,12 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
                 <span className="font-medium">{formatCurrency(booking.taxes)}</span>
               </div>
             )}
+            {(booking.hostServiceFee || booking.host_service_fee) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Host Service Fee</span>
+                <span className="font-medium">{formatCurrency(booking.hostServiceFee || booking.host_service_fee)}</span>
+              </div>
+            )}
             <div className="flex justify-between pt-2 border-t font-semibold">
               <span>Total Amount</span>
               <span className="text-green-600">{formatCurrency(booking.totalAmount)}</span>
