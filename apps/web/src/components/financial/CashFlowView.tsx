@@ -9,8 +9,49 @@ import {
   Info, ArrowUpRight, ArrowDownRight
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
-import { chartFormatters, tooltipFormatters, detectGranularity } from '@/utils/chart-helpers'
+import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
 import { METRIC_COLORS } from '@/lib/theme'
+
+const CashFlowChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+  const netFlow = data.inflow - data.outflow
+
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <p className="font-semibold text-sm mb-2">{label}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.success }} />
+            <span className="text-gray-600">Inflow:</span>
+          </div>
+          <span className="font-medium">{formatCurrency(data.inflow)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.danger }} />
+            <span className="text-gray-600">Outflow:</span>
+          </div>
+          <span className="font-medium">{formatCurrency(data.outflow)}</span>
+        </div>
+        <div className="pt-1 mt-1 border-t border-gray-200">
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-600">Net Flow:</span>
+            <span className={`font-medium ${netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(netFlow)}</span>
+          </div>
+          {data.inflow > 0 && (
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Retained:</span>
+              <span className="font-medium">{((netFlow / data.inflow) * 100).toFixed(1)}%</span>
+            </div>
+          )}
+        </div>
+        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view details</p>
+      </div>
+    </div>
+  )
+}
 
 interface CashFlowViewProps {
   data: any
@@ -215,7 +256,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="month" />
             <YAxis tickFormatter={chartFormatters.currency} />
-            <Tooltip formatter={tooltipFormatters.currency} />
+            <Tooltip content={<CashFlowChartTooltip />} />
             <Area
               type="monotone"
               dataKey="inflow"

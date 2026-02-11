@@ -2,7 +2,55 @@ import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { METRIC_COLORS } from '@/lib/theme'
-import { chartFormatters, tooltipFormatters, formatChartData } from '@/utils/chart-helpers'
+import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
+import { formatCurrency } from '@/utils/formatters'
+
+const TaxChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <p className="font-semibold text-sm mb-2">{label}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.tax }} />
+            <span className="text-gray-600">Total Tax:</span>
+          </div>
+          <span className="font-medium">{formatCurrency(data.totalTax)}</span>
+        </div>
+        {data.ownerRemitted !== undefined && (
+          <div className="flex justify-between gap-4">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.primary }} />
+              <span className="text-gray-600">Owner Remitted:</span>
+            </div>
+            <span className="font-medium">{formatCurrency(data.ownerRemitted)}</span>
+          </div>
+        )}
+        {data.platformRemitted !== undefined && (
+          <div className="flex justify-between gap-4">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.success }} />
+              <span className="text-gray-600">Platform Remitted:</span>
+            </div>
+            <span className="font-medium">{formatCurrency(data.platformRemitted)}</span>
+          </div>
+        )}
+        {data.ownerRemitted !== undefined && data.platformRemitted !== undefined && (
+          <div className="pt-1 mt-1 border-t border-gray-200">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Your responsibility:</span>
+              <span className="font-medium text-amber-600">{formatCurrency(data.ownerRemitted)}</span>
+            </div>
+          </div>
+        )}
+        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view details</p>
+      </div>
+    </div>
+  )
+}
 
 interface TaxTrendChartProps {
   data: Array<{
@@ -62,7 +110,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />
           <YAxis tickFormatter={chartFormatters.currency} />
-          <Tooltip formatter={tooltipFormatters.currency} />
+          <Tooltip content={<TaxChartTooltip />} />
           <Line
             type="monotone"
             dataKey="totalTax"

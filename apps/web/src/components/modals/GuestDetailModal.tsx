@@ -10,6 +10,38 @@ import { useModal } from '@/contexts/modal'
 import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS } from '@/lib/theme'
 
+const GuestSpendingTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <p className="font-semibold text-sm mb-2">{label}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
+            <span className="text-gray-600">Spent:</span>
+          </div>
+          <span className="font-medium">{formatCurrency(data.amount)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-600">Bookings:</span>
+          <span className="font-medium">{data.bookings}</span>
+        </div>
+        {data.bookings > 0 && (
+          <div className="pt-1 mt-1 border-t border-gray-200">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Avg per booking:</span>
+              <span className="font-medium">{formatCurrency(data.amount / data.bookings)}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 interface GuestDetailModalProps {
   guestId: string
   guestName: string
@@ -239,14 +271,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="month" />
                   <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip 
-                    formatter={(value: any, name: string) => {
-                      if (name === 'amount') return formatCurrency(value)
-                      return value
-                    }}
-                    labelFormatter={(label) => `Month: ${label}`}
-                    contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                  />
+                  <Tooltip content={<GuestSpendingTooltip />} />
                   <Line 
                     type="monotone" 
                     dataKey="amount" 

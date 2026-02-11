@@ -16,6 +16,86 @@ import { PropertyPerformanceScatter, PerformanceQuadrantLegend } from '@/compone
 import { PropertyCard } from '@/components/cards/PropertyCard'
 import { PropertyTable } from '@/components/tables/PropertyTable'
 
+const PropertyComparisonTooltip = ({ active, payload, comparisonMode }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <p className="font-semibold text-sm mb-2">{data.fullName || data.name}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
+            <span className="text-gray-600">Revenue:</span>
+          </div>
+          <span className="font-medium">{formatCurrency(data.revenue)}</span>
+        </div>
+        {data.previousRevenue !== undefined && (
+          <div className="flex justify-between gap-4">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-slate-400" />
+              <span className="text-gray-600">{comparisonMode === 'previous-year' ? 'Last Year' : 'Previous'}:</span>
+            </div>
+            <span className="font-medium">{formatCurrency(data.previousRevenue)}</span>
+          </div>
+        )}
+        {data.previousRevenue !== undefined && data.previousRevenue > 0 && (
+          <div className="pt-1 mt-1 border-t border-gray-200">
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Change:</span>
+              <span className={`font-medium ${data.revenue >= data.previousRevenue ? 'text-green-600' : 'text-red-600'}`}>
+                {data.revenue >= data.previousRevenue ? '+' : ''}{(((data.revenue - data.previousRevenue) / data.previousRevenue) * 100).toFixed(1)}%
+              </span>
+            </div>
+          </div>
+        )}
+        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view property</p>
+      </div>
+    </div>
+  )
+}
+
+const PropertyRevOccTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <p className="font-semibold text-sm mb-2">{data.fullName || data.name}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
+            <span className="text-gray-600">Revenue:</span>
+          </div>
+          <span className="font-medium">{formatCurrency(data.revenue)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.occupancy }} />
+            <span className="text-gray-600">Occupancy:</span>
+          </div>
+          <span className="font-medium">{data.occupancy}%</span>
+        </div>
+        <div className="pt-1 mt-1 border-t border-gray-200">
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-600">Bookings:</span>
+            <span className="font-medium">{data.bookings}</span>
+          </div>
+          {data.bookings > 0 && data.revenue > 0 && (
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Avg per booking:</span>
+              <span className="font-medium">{formatCurrency(data.revenue / data.bookings)}</span>
+            </div>
+          )}
+        </div>
+        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view property</p>
+      </div>
+    </div>
+  )
+}
+
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
@@ -74,7 +154,7 @@ export const PropertiesDashboard = () => {
     prevAvgOccupancy: calculateAverage((previousProperties || []).map((p: PropertyMetrics) => p.occupancyRate))
   }), [previousProperties])
 
-  // memoized click handler for bar chart
+  // click handler for individual bars and chart whitespace
   const handleBarClick = useCallback((data: any) => {
     const property = validProperties.find(p => p.propertyName === data.fullName)
     if (property) {
@@ -85,6 +165,7 @@ export const PropertiesDashboard = () => {
       })
     }
   }, [validProperties, openModal])
+
 
   // memoized view toggle handlers
   const handleViewCards = useCallback(() => setViewMode('cards'), [])
@@ -325,14 +406,7 @@ export const PropertiesDashboard = () => {
                   width={180}
                   tick={{ fontSize: 11 }}
                 />
-                <Tooltip
-                  formatter={(value: number, name: string) => {
-                    if (name.includes('Revenue')) return formatCurrency(value)
-                    return value
-                  }}
-                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                  labelFormatter={(label: any) => chartData.find(d => d.name === label)?.fullName || label}
-                />
+                <Tooltip content={<PropertyComparisonTooltip comparisonMode={comparisonMode} />} />
                 <Legend
                   wrapperStyle={{ paddingTop: '15px' }}
                   iconType="rect"
@@ -386,15 +460,7 @@ export const PropertiesDashboard = () => {
                   width={180}
                   tick={{ fontSize: 11 }}
                 />
-                <Tooltip
-                  formatter={(value: number, name: string) => {
-                    if (name === 'Revenue') return formatCurrency(value)
-                    if (name === 'Occupancy Rate') return `${value}%`
-                    return value
-                  }}
-                  contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                  labelFormatter={(label: any) => chartData.find(d => d.name === label)?.fullName || label}
-                />
+                <Tooltip content={<PropertyRevOccTooltip />} />
                 <Legend
                   wrapperStyle={{ paddingTop: '15px' }}
                   iconType="rect"

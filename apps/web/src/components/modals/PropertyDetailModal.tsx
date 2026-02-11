@@ -19,6 +19,45 @@ interface PropertyDetailModalProps {
   to?: string
 }
 
+const PropertyPerformanceTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <p className="font-semibold text-sm mb-2">{label}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
+            <span className="text-gray-600">Revenue:</span>
+          </div>
+          <span className="font-medium">{formatCurrency(data.revenue)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.occupancy }} />
+            <span className="text-gray-600">Occupancy:</span>
+          </div>
+          <span className="font-medium">{formatPercentage(data.occupancy, 1)}</span>
+        </div>
+        <div className="pt-1 mt-1 border-t border-gray-200">
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-600">Bookings:</span>
+            <span className="font-medium">{data.bookings}</span>
+          </div>
+          {data.bookings > 0 && data.revenue > 0 && (
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Avg per booking:</span>
+              <span className="font-medium">{formatCurrency(data.revenue / data.bookings)}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const PlatformRevenueTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
@@ -98,13 +137,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
   const handleGuestClick = useCallback((guestId: string, guestName: string) => {
     openModal({ type: 'guest', guestId, guestName })
   }, [openModal])
-
-  // memoized tooltip formatter
-  const tooltipFormatter = useCallback((value: any, name: string) => {
-    if (name === 'Revenue') return formatCurrency(value)
-    if (name === 'Occupancy') return formatPercentage(value, 1)
-    return value
-  }, [])
 
   return (
     <Modal
@@ -291,10 +323,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                     <XAxis dataKey="month" />
                     <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
                     <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
-                    <Tooltip
-                      formatter={tooltipFormatter}
-                      contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                    />
+                    <Tooltip content={<PropertyPerformanceTooltip />} />
                     <Line yAxisId="left" type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} name="Revenue" strokeWidth={2} />
                     <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} name="Occupancy" strokeWidth={2} />
                   </LineChart>
