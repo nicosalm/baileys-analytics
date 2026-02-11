@@ -43,7 +43,7 @@ const GoalManagementPanel = lazy(() =>
   import('@/components/settings/GoalManagementPanel').then(m => ({ default: m.GoalManagementPanel }))
 )
 
-type SettingsTab = 'account' | 'preferences' | 'goals' | 'integrations' | 'billing' | 'tax' | 'seasons' | 'expenses'
+type SettingsTab = 'account' | 'preferences' | 'goals' | 'integrations' | 'billing' | 'platform-fees' | 'seasons' | 'expenses'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   {
@@ -62,7 +62,7 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     icon: Target
   },
   {
-    id: 'tax',
+    id: 'platform-fees',
     label: 'Platform Fees',
     icon: Calculator
   },
@@ -421,7 +421,7 @@ export const Settings = () => {
               {activeTab === 'goals' && <GoalManagementPanel />}
               {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'billing' && <BillingTab />}
-              {activeTab === 'tax' && <TaxManagementPanel />}
+              {activeTab === 'platform-fees' && <TaxManagementPanel />}
               {activeTab === 'expenses' && <ExpenseManagementPanel />}
               {activeTab === 'seasons' && <SeasonManagementPanel />}
             </Suspense>

@@ -1,12 +1,12 @@
 import { useMemo, useCallback } from 'react'
-import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
+import { useDashboardBatch, useGoalProgress, useSeasons } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
-import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay, formatDateISO, subDays, startOfYear, endOfYear, subYears } from '@baileys/utils'
 import {
   TrendingUp, TrendingDown,
   DollarSign, Users, Calendar, Clock,
-  BarChart3, Info, Percent, Layers, Target, Settings
+  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
@@ -116,12 +116,15 @@ const RevenueChartTooltip = ({ active, payload, label }: any) => {
 
 
 export const OverviewDashboard = () => {
-  const { filters, comparisonRange, comparisonMode } = useDashboard()
+  const { filters, comparisonRange, comparisonMode, updateDateRange } = useDashboard()
   const { showTips } = useTips()
   const { openModal } = useModal()
   const tagIds = useTagIds()
   const comparisonDateRange = useComparisonDateRange()
   const navigate = useNavigate()
+
+  const { data: seasons = [] } = useSeasons()
+  const hasActiveSeasons = seasons.some(s => s.isActive)
 
   const handleMetricCardClick = useCallback((tab: string) => {
     const currentParams = new URLSearchParams(window.location.search)
@@ -153,6 +156,27 @@ export const OverviewDashboard = () => {
 
   const charts = data?.charts
   const metrics = data?.metrics
+
+  const showEmptyNudge = metrics &&
+    Number(metrics.revenue.current) === 0 &&
+    metrics.bookings.current === 0
+
+  const handleViewLastYear = useCallback(() => {
+    const today = new Date()
+    const lastYear = subYears(today, 1)
+    updateDateRange({
+      from: formatDateISO(startOfYear(lastYear)),
+      to: formatDateISO(endOfYear(lastYear))
+    })
+  }, [updateDateRange])
+
+  const handleLast12Months = useCallback(() => {
+    const today = new Date()
+    updateDateRange({
+      from: formatDateISO(subDays(today, 365)),
+      to: formatDateISO(today)
+    })
+  }, [updateDateRange])
 
   const bookingSourceChartData = useMemo(() => {
     const sources = charts?.bookingsBySource || []
@@ -402,6 +426,46 @@ export const OverviewDashboard = () => {
           </div>
         </div>
       )}
+
+      {showEmptyNudge && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-amber-800">
+                <strong>No data in this date range.</strong>{' '}
+                Your bookings may fall outside the current period — try a different range.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button
+                  onClick={handleViewLastYear}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
+                >
+                  <Calendar className="w-3.5 h-3.5" />
+                  View Last Year
+                </button>
+                <button
+                  onClick={handleLast12Months}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  Last 12 Months
+                </button>
+                {!hasActiveSeasons && (
+                  <Link
+                    to="/settings?tab=seasons"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    Set Up Seasons
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 cursor-pointer gap-3 md:gap-4">
         <MetricCardWithGauge
           icon={DollarSign}

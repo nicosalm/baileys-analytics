@@ -214,7 +214,7 @@ export const Privacy = () => {
             <ul className="list-disc ml-6 space-y-1">
               <li><strong>Email:</strong> privacy@baileysanalytics.com</li>
               <li><strong>Address:</strong> Baileys Analytics, LLC</li>
-              <li><strong>Data Protection Officer:</strong> dpo@baileysanalytics.com</li>
+
             </ul>
           </section>
         </div>

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { RevenueChart } from '@/components/charts/RevenueChart'
@@ -179,10 +180,10 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>P&L Summary:</strong> Revenue → Costs → Taxes → Net Revenue.{' '}
+              <strong>P&L Summary:</strong> Revenue → Platform Fees → Operating Expenses → Taxes → Net Revenue.{' '}
               {revenue.operatingExpenses.total > 0
                 ? `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
-                : 'Track operating expenses in Settings → Expenses for a complete picture.'}
+                : <>Configure <Link to="/settings?tab=platform-fees" className="underline hover:text-blue-900">Platform Fees</Link> and <Link to="/settings?tab=expenses" className="underline hover:text-blue-900">Expenses</Link> in Settings for a complete picture.</>}
             </div>
           </div>
         </div>

@@ -52,7 +52,7 @@ export const TaxQuickConfigWidget = () => {
             <h3 className="font-semibold text-gray-900">Tax Configuration</h3>
           </div>
           <button
-            onClick={() => navigate('/settings?tab=tax')}
+            onClick={() => navigate('/settings?tab=platform-fees')}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
           >
             Manage →
@@ -104,7 +104,7 @@ export const TaxQuickConfigWidget = () => {
         {/* Action Buttons */}
         {missingFees.length > 0 || partialFees.length > 0 ? (
           <button
-            onClick={() => navigate('/settings?tab=tax')}
+            onClick={() => navigate('/settings?tab=platform-fees')}
             className="w-full px-3 py-2 bg-yellow-600 text-white text-sm rounded-sm hover:bg-yellow-700 transition-colors flex items-center justify-center"
           >
             <Plus className="w-4 h-4 mr-2" />
