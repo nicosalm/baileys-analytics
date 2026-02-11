@@ -56,52 +56,12 @@ const PropertyComparisonTooltip = ({ active, payload, comparisonMode }: any) => 
   )
 }
 
-const PropertyRevOccTooltip = ({ active, payload }: any) => {
-  if (!active || !payload?.length) return null
-  const data = payload[0].payload
-
-  return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-      <p className="font-semibold text-sm mb-2">{data.fullName || data.name}</p>
-      <div className="space-y-1 text-xs">
-        <div className="flex justify-between gap-4">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
-            <span className="text-gray-600">Revenue:</span>
-          </div>
-          <span className="font-medium">{formatCurrency(data.revenue)}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.occupancy }} />
-            <span className="text-gray-600">Occupancy:</span>
-          </div>
-          <span className="font-medium">{data.occupancy}%</span>
-        </div>
-        <div className="pt-1 mt-1 border-t border-gray-200">
-          <div className="flex justify-between gap-4">
-            <span className="text-gray-600">Bookings:</span>
-            <span className="font-medium">{data.bookings}</span>
-          </div>
-          {data.bookings > 0 && data.revenue > 0 && (
-            <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Avg per booking:</span>
-              <span className="font-medium">{formatCurrency(data.revenue / data.bookings)}</span>
-            </div>
-          )}
-        </div>
-        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view property</p>
-      </div>
-    </div>
-  )
-}
-
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { showTips } = useTips()
   const { openModal } = useModal()
   const comparisonDateRange = useComparisonDateRange()
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('cards')
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
   
   const tagIds = useTagIds()
   
@@ -142,17 +102,28 @@ export const PropertiesDashboard = () => {
 
   const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
 
-  const { totalRevenue, totalBookings, avgOccupancy } = useMemo(() => ({
-    totalRevenue: sumBy(validProperties, (p: PropertyMetrics) => p.revenue),
-    totalBookings: sumBy(validProperties, (p: PropertyMetrics) => p.bookings),
-    avgOccupancy: calculateAverage(validProperties.map((p: PropertyMetrics) => p.occupancyRate))
-  }), [validProperties])
-  
-  const { prevTotalRevenue, prevTotalBookings, prevAvgOccupancy } = useMemo(() => ({
-    prevTotalRevenue: sumBy(previousProperties || [], (p: PropertyMetrics) => p.revenue),
-    prevTotalBookings: sumBy(previousProperties || [], (p: PropertyMetrics) => p.bookings),
-    prevAvgOccupancy: calculateAverage((previousProperties || []).map((p: PropertyMetrics) => p.occupancyRate))
-  }), [previousProperties])
+  const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN } = useMemo(() => {
+    const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
+    const totalRev = sumBy(validProperties, (p: PropertyMetrics) => p.revenue)
+    return {
+      totalRevenue: totalRev,
+      totalBookings: sumBy(validProperties, (p: PropertyMetrics) => p.bookings),
+      avgOccupancy: calculateAverage(validProperties.map((p: PropertyMetrics) => p.occupancyRate)),
+      avgRevPAN: totalAvailableNights > 0 ? totalRev / totalAvailableNights : 0
+    }
+  }, [validProperties])
+
+  const { prevTotalRevenue, prevTotalBookings, prevAvgOccupancy, prevAvgRevPAN } = useMemo(() => {
+    const prev = previousProperties || []
+    const prevTotalAvailableNights = sumBy(prev, (p: PropertyMetrics) => p.availableNights)
+    const prevTotalRev = sumBy(prev, (p: PropertyMetrics) => p.revenue)
+    return {
+      prevTotalRevenue: prevTotalRev,
+      prevTotalBookings: sumBy(prev, (p: PropertyMetrics) => p.bookings),
+      prevAvgOccupancy: calculateAverage(prev.map((p: PropertyMetrics) => p.occupancyRate)),
+      prevAvgRevPAN: prevTotalAvailableNights > 0 ? prevTotalRev / prevTotalAvailableNights : 0
+    }
+  }, [previousProperties])
 
   // click handler for individual bars and chart whitespace
   const handleBarClick = useCallback((data: any) => {
@@ -261,18 +232,18 @@ export const PropertiesDashboard = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
-          icon={Home}
-          label="Property Count"
-          value={(properties || []).length}
-          format="number"
-          tooltip="Total number of properties in portfolio"
-          subValue={comparisonMode !== 'none' && previousProperties && previousProperties.length > 0
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousProperties.length}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
-            : "In selected period"
+          icon={TrendingUp}
+          label="Avg RevPAN"
+          value={avgRevPAN}
+          format="currency"
+          tooltip="Revenue Per Available Night — portfolio-wide revenue efficiency combining rate and occupancy"
+          subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
+            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            : "Across all properties"
           }
-          trend={comparisonMode !== 'none' && previousProperties && previousProperties.length > 0 ? {
-            value: (((properties || []).length - previousProperties.length) / (previousProperties.length || 1)) * 100,
-            isPositive: (properties || []).length >= previousProperties.length
+          trend={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? {
+            value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100,
+            isPositive: avgRevPAN > prevAvgRevPAN
           } : undefined}
           color="blue"
         />
@@ -306,7 +277,7 @@ export const PropertiesDashboard = () => {
             value: ((avgOccupancy - prevAvgOccupancy) / prevAvgOccupancy) * 100,
             isPositive: avgOccupancy > prevAvgOccupancy
           } : undefined}
-          color={avgOccupancy > 0.7 ? "green" : avgOccupancy > 0.5 ? "yellow" : "red"}
+          color={avgOccupancy >= 0.7 ? "green" : avgOccupancy >= 0.5 ? "yellow" : "red"}
         />
         <MetricCard
           icon={Calendar}
@@ -332,17 +303,6 @@ export const PropertiesDashboard = () => {
           <h3 className="text-lg font-semibold text-gray-900">Property Performance</h3>
           <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
             <button
-              onClick={handleViewCards}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                viewMode === 'cards'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4 inline mr-1.5" />
-              Cards
-            </button>
-            <button
               onClick={handleViewTable}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
                 viewMode === 'table'
@@ -352,6 +312,17 @@ export const PropertiesDashboard = () => {
             >
               <Table className="w-4 h-4 inline mr-1.5" />
               Table
+            </button>
+            <button
+              onClick={handleViewCards}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                viewMode === 'cards'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 inline mr-1.5" />
+              Cards
             </button>
           </div>
         </div>
@@ -380,19 +351,16 @@ export const PropertiesDashboard = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Revenue Comparison Chart */}
-        <ChartWrapper
-          title={comparisonMode !== 'none' ? `Revenue Comparison${timePeriod}` : `Revenue vs Occupancy${timePeriod}`}
-          subtitle={comparisonMode !== 'none'
-            ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
-            : validProperties.length > 10 ? `Showing all ${validProperties.length} properties` : undefined
-          }
-          icon={TrendingUp}
-          height={Math.max(420, validProperties.length * 50)}
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            {comparisonMode !== 'none' && comparisonChartData ? (
+      <div className={`grid gap-6 ${comparisonMode !== 'none' ? 'lg:grid-cols-2' : 'max-w-4xl'}`}>
+        {/* Revenue Comparison Chart — only shown in comparison mode */}
+        {comparisonMode !== 'none' && comparisonChartData && (
+          <ChartWrapper
+            title={`Revenue Comparison${timePeriod}`}
+            subtitle={`Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`}
+            icon={TrendingUp}
+            height={Math.max(420, validProperties.length * 50)}
+          >
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={comparisonChartData}
                 layout="vertical"
@@ -435,64 +403,14 @@ export const PropertiesDashboard = () => {
                   onClick={handleBarClick}
                 />
               </BarChart>
-            ) : (
-              <BarChart
-                data={chartData}
-                layout="vertical"
-                margin={{ top: 20, right: 60, left: 10, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  xAxisId="revenue"
-                  type="number"
-                  tickFormatter={(value: number) => formatCompactCurrency(value)}
-                />
-                <XAxis
-                  xAxisId="occupancy"
-                  type="number"
-                  orientation="top"
-                  domain={[0, 100]}
-                  tickFormatter={(value: number) => `${value}%`}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={180}
-                  tick={{ fontSize: 11 }}
-                />
-                <Tooltip content={<PropertyRevOccTooltip />} />
-                <Legend
-                  wrapperStyle={{ paddingTop: '15px' }}
-                  iconType="rect"
-                  iconSize={12}
-                />
-                <Bar
-                  xAxisId="revenue"
-                  dataKey="revenue"
-                  fill={METRIC_COLORS.revenue}
-                  name="Revenue"
-                  radius={[0, 4, 4, 0]}
-                  cursor="pointer"
-                  onClick={handleBarClick}
-                />
-                <Bar
-                  xAxisId="occupancy"
-                  dataKey="occupancy"
-                  fill={METRIC_COLORS.occupancy}
-                  name="Occupancy Rate"
-                  radius={[0, 4, 4, 0]}
-                  cursor="pointer"
-                  onClick={handleBarClick}
-                />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        </ChartWrapper>
+            </ResponsiveContainer>
+          </ChartWrapper>
+        )}
 
         {/* Property Performance Scatter Plot */}
         <ChartWrapper
           title="Performance Matrix"
-          subtitle={`Revenue vs Occupancy Analysis`}
+          subtitle="Revenue vs Occupancy Analysis"
           icon={ScatterChart}
           height={360}
         >
