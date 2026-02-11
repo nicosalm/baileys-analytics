@@ -53,7 +53,7 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   onClick
 }) => {
   // Normalize value to 0-100 range
-  const normalizedValue = ((value - min) / (max - min)) * 100
+  const normalizedValue = (max - min) > 0 ? ((value - min) / (max - min)) * 100 : 0
   const clampedValue = Math.min(Math.max(normalizedValue, 0), 100)
   
   // Create gauge data with dashboard-consistent colors (using Tailwind palette)

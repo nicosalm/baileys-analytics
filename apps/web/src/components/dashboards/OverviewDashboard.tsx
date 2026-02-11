@@ -423,7 +423,7 @@ export const OverviewDashboard = () => {
             min: 0,
             max: comparisonMode !== 'none' && metrics.revenue.previous ?
               Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5 :
-              metrics.revenue.current * 2,
+              Math.max(metrics.revenue.current * 2, 1000),
             segments: comparisonMode !== 'none' && metrics.revenue.previous ? [
               { threshold: metrics.revenue.previous * 0.8 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
               { threshold: metrics.revenue.previous * 1.0 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
@@ -458,7 +458,7 @@ export const OverviewDashboard = () => {
             min: 0,
             max: comparisonMode !== 'none' && metrics.bookings.previous ?
               Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5 :
-              metrics.bookings.current * 2,
+              Math.max(metrics.bookings.current * 2, 10),
             segments: comparisonMode !== 'none' && metrics.bookings.previous ? [
               { threshold: metrics.bookings.previous * 0.8 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
               { threshold: metrics.bookings.previous * 1.0 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
@@ -522,7 +522,7 @@ export const OverviewDashboard = () => {
             min: 0,
             max: comparisonMode !== 'none' && metrics.guests.previous ?
               Math.max(metrics.guests.total, metrics.guests.previous) * 1.5 :
-              metrics.guests.total * 2,
+              Math.max(metrics.guests.total * 2, 10),
             segments: comparisonMode !== 'none' && metrics.guests.previous ? [
               { threshold: metrics.guests.previous * 0.8 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
               { threshold: metrics.guests.previous * 1.0 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
