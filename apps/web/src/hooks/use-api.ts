@@ -706,6 +706,15 @@ export async function savePropertyTaxConfig(data: any): Promise<void> {
 }
 
 // Tax Jurisdictions hook
+export function useBookingsForRange(from?: string, to?: string) {
+  const key = from && to ? createCacheKey('bookings-range', from, to) : null
+  return useSWR<any[]>(key, async () => {
+    const result = await api.getBookings({ startDate: from!, endDate: to!, limit: '1000' })
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  })
+}
+
 export function useTaxJurisdictions(propertyId?: string) {
   return useSWR(
     propertyId ? `/tax/auto-detect?propertyId=${propertyId}` : null,

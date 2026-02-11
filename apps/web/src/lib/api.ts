@@ -533,6 +533,14 @@ class ApiClient {
         return this.request('/goals/progress')
     }
 
+    async getBookings(params: { startDate?: string; endDate?: string; limit?: string }): Promise<ApiResult<any>> {
+        const qs = new URLSearchParams()
+        if (params.startDate) qs.append('startDate', params.startDate)
+        if (params.endDate) qs.append('endDate', params.endDate)
+        if (params.limit) qs.append('limit', params.limit)
+        return this.request(`/bookings?${qs.toString()}`)
+    }
+
 }
 
 export const api = new ApiClient()

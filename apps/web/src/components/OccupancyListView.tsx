@@ -1,0 +1,434 @@
+import { useMemo, useState, useCallback, useEffect } from 'react'
+import { ChevronDown, ChevronRight, AlertTriangle, Clock, Info } from 'lucide-react'
+import { formatCurrency, formatDateDisplay } from '@baileys/utils'
+import { useBookingsForRange } from '@/hooks/use-api'
+import { useModal } from '@/contexts/modal'
+import { StateWrapper } from '@/components/StateWrapper'
+
+interface OccupancyListViewProps {
+  properties: { propertyId: string; propertyName: string }[]
+}
+
+type LookAhead = 30 | 60 | 90
+
+type ListEntry =
+  | { type: 'booking'; id: string; propertyId: string; propertyName: string; guestName: string; arrival: string; departure: string; nights: number; amount: number }
+  | { type: 'gap'; propertyId: string; propertyName: string; gapStart: string; gapEnd: string; nights: number; severity: 'critical' | 'warning' | 'info' }
+
+const INACTIVE_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected']
+const TRUNCATION_LIMIT = 1000
+
+function toDateString(d: Date) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function daysBetween(a: string, b: string) {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function getGapSeverity(nights: number): 'critical' | 'warning' | 'info' {
+  if (nights >= 7) return 'critical'
+  if (nights >= 3) return 'warning'
+  return 'info'
+}
+
+export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
+  const [lookAhead, setLookAhead] = useState<LookAhead>(90)
+
+  const dateRange = useMemo(() => {
+    const today = new Date()
+    const future = new Date(today.getTime() + lookAhead * 86400000)
+    return { from: toDateString(today), to: toDateString(future) }
+  }, [lookAhead])
+
+  const { data: bookings, isLoading, error } = useBookingsForRange(dateRange.from, dateRange.to)
+  const { openModal } = useModal()
+  const [groupBy, setGroupBy] = useState<'property' | 'time'>('property')
+  const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set())
+
+  // Auto-expand new properties (initial load + tag changes)
+  // Preserves user's collapse state for properties they've already seen
+  useEffect(() => {
+    setExpandedProperties(prev => {
+      const newIds = properties.map(p => p.propertyId).filter(id => !prev.has(id))
+      if (newIds.length === 0) return prev
+      const next = new Set(prev)
+      newIds.forEach(id => next.add(id))
+      return next
+    })
+  }, [properties])
+
+  const isTruncated = bookings?.length === TRUNCATION_LIMIT
+
+  const toggleProperty = useCallback((propertyId: string) => {
+    setExpandedProperties(prev => {
+      const next = new Set(prev)
+      if (next.has(propertyId)) next.delete(propertyId)
+      else next.add(propertyId)
+      return next
+    })
+  }, [])
+
+  const expandAll = useCallback(() => {
+    setExpandedProperties(new Set(properties.map(p => p.propertyId)))
+  }, [properties])
+
+  const collapseAll = useCallback(() => {
+    setExpandedProperties(new Set())
+  }, [])
+
+  // Group bookings by property, compute gaps, include zero-booking properties
+  const propertyGroups = useMemo(() => {
+    if (properties.length === 0) return []
+
+    const propertyIdSet = new Set(properties.map(p => p.propertyId))
+
+    // Filter to active bookings belonging to filtered properties
+    const activeBookings = (bookings || []).filter((b: any) =>
+      propertyIdSet.has(b.property_id) &&
+      !INACTIVE_STATUSES.includes((b.status || '').toLowerCase())
+    )
+
+    // Group by property
+    const byProperty = new Map<string, any[]>()
+    for (const b of activeBookings) {
+      if (!byProperty.has(b.property_id)) byProperty.set(b.property_id, [])
+      byProperty.get(b.property_id)!.push(b)
+    }
+
+    // Build groups for ALL properties (including those with zero bookings)
+    return properties.map(({ propertyId, propertyName }) => {
+      const propBookings = byProperty.get(propertyId) || []
+      const sorted = propBookings.slice().sort((a: any, b: any) =>
+        new Date(a.arrival).getTime() - new Date(b.arrival).getTime()
+      )
+
+      const entries: ListEntry[] = []
+      const rangeStart = dateRange.from
+      const rangeEnd = dateRange.to
+      const name = propertyName || `Property ${propertyId.slice(0, 8)}`
+
+      if (sorted.length === 0) {
+        // Entire range is a gap
+        const gapNights = daysBetween(rangeStart, rangeEnd)
+        if (gapNights > 0) {
+          entries.push({
+            type: 'gap', propertyId, propertyName: name,
+            gapStart: rangeStart, gapEnd: rangeEnd,
+            nights: gapNights, severity: getGapSeverity(gapNights)
+          })
+        }
+      } else {
+        // Gap before first booking
+        if (sorted[0].arrival > rangeStart) {
+          const gapNights = daysBetween(rangeStart, sorted[0].arrival)
+          if (gapNights > 0) {
+            entries.push({
+              type: 'gap', propertyId, propertyName: name,
+              gapStart: rangeStart, gapEnd: sorted[0].arrival,
+              nights: gapNights, severity: getGapSeverity(gapNights)
+            })
+          }
+        }
+
+        for (let i = 0; i < sorted.length; i++) {
+          const b = sorted[i]
+          const nights = daysBetween(b.arrival, b.departure)
+          entries.push({
+            type: 'booking', id: b.id, propertyId, propertyName: name,
+            guestName: b.guest_name || 'Unknown Guest',
+            arrival: b.arrival, departure: b.departure,
+            nights, amount: b.total_amount || 0
+          })
+
+          // Gap between this and next booking
+          if (i < sorted.length - 1) {
+            const gapNights = daysBetween(b.departure, sorted[i + 1].arrival)
+            if (gapNights > 0) {
+              entries.push({
+                type: 'gap', propertyId, propertyName: name,
+                gapStart: b.departure, gapEnd: sorted[i + 1].arrival,
+                nights: gapNights, severity: getGapSeverity(gapNights)
+              })
+            }
+          }
+        }
+
+        // Gap after last booking
+        if (sorted[sorted.length - 1].departure < rangeEnd) {
+          const gapNights = daysBetween(sorted[sorted.length - 1].departure, rangeEnd)
+          if (gapNights > 0) {
+            entries.push({
+              type: 'gap', propertyId, propertyName: name,
+              gapStart: sorted[sorted.length - 1].departure, gapEnd: rangeEnd,
+              nights: gapNights, severity: getGapSeverity(gapNights)
+            })
+          }
+        }
+      }
+
+      const totalNightsInRange = daysBetween(rangeStart, rangeEnd)
+      const bookedNights = sorted.reduce((sum: number, b: any) => {
+        const start = b.arrival < rangeStart ? rangeStart : b.arrival
+        const end = b.departure > rangeEnd ? rangeEnd : b.departure
+        return sum + Math.max(0, daysBetween(start, end))
+      }, 0)
+      const occupancyRate = totalNightsInRange > 0 ? bookedNights / totalNightsInRange : 0
+      const gapCount = entries.filter(e => e.type === 'gap').length
+
+      return { propertyId, name, entries, bookedNights, totalNights: totalNightsInRange, occupancyRate, bookingCount: sorted.length, gapCount }
+    }).sort((a, b) => a.name.localeCompare(b.name))
+  }, [bookings, dateRange.from, dateRange.to, properties])
+
+  // Flat chronological view
+  const chronologicalEntries = useMemo(() => {
+    return propertyGroups
+      .flatMap(g => g.entries)
+      .sort((a, b) => {
+        const dateA = a.type === 'booking' ? a.arrival : a.gapStart
+        const dateB = b.type === 'booking' ? b.arrival : b.gapStart
+        return new Date(dateA).getTime() - new Date(dateB).getTime()
+      })
+  }, [propertyGroups])
+
+  const handleBookingClick = useCallback((bookingId: string, guestName: string) => {
+    openModal({ type: 'booking', bookingId, guestName })
+  }, [openModal])
+
+  if (isLoading || (!bookings && !error)) {
+    return (
+      <StateWrapper
+        loading={true}
+        loadingMessage="Loading bookings..."
+        minHeight={300}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
+    )
+  }
+
+  if (error) {
+    return (
+      <StateWrapper
+        error={error}
+        errorMessage="Failed to load bookings"
+        minHeight={300}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
+    )
+  }
+
+  if (properties.length === 0) {
+    return (
+      <StateWrapper
+        empty={true}
+        emptyMessage="No properties found"
+        emptySubMessage="Properties will appear once bookings are synced"
+        emptyIcon={<Clock className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+        minHeight={300}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Truncation warning */}
+      {isTruncated && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+          <Info className="w-4 h-4 shrink-0" />
+          Showing first {TRUNCATION_LIMIT.toLocaleString()} bookings. Try a shorter look-ahead for complete results.
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          {/* Group toggle */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setGroupBy('property')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                groupBy === 'property'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              By Property
+            </button>
+            <button
+              onClick={() => setGroupBy('time')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                groupBy === 'time'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              By Time
+            </button>
+          </div>
+          {/* Look-ahead selector */}
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+            {([30, 60, 90] as LookAhead[]).map(days => (
+              <button
+                key={days}
+                onClick={() => setLookAhead(days)}
+                className={`px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                  lookAhead === days
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {days}d
+              </button>
+            ))}
+          </div>
+        </div>
+        {groupBy === 'property' && (
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <button onClick={expandAll} className="hover:text-gray-700 cursor-pointer">Expand all</button>
+            <span>|</span>
+            <button onClick={collapseAll} className="hover:text-gray-700 cursor-pointer">Collapse all</button>
+          </div>
+        )}
+      </div>
+
+      {/* By Property view */}
+      {groupBy === 'property' && (
+        <div className="space-y-2">
+          {propertyGroups.map(group => {
+            const isExpanded = expandedProperties.has(group.propertyId)
+            const occupancyPct = Math.round(group.occupancyRate * 100)
+
+            return (
+              <div key={group.propertyId} className="border border-gray-200 rounded-lg overflow-hidden">
+                {/* Property header */}
+                <button
+                  onClick={() => toggleProperty(group.propertyId)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    {isExpanded
+                      ? <ChevronDown className="w-4 h-4 text-gray-500" />
+                      : <ChevronRight className="w-4 h-4 text-gray-500" />
+                    }
+                    <span className="font-medium text-sm text-gray-900">{group.name}</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <span>{group.bookingCount} {group.bookingCount === 1 ? 'booking' : 'bookings'}</span>
+                    <span>{group.bookedNights} / {group.totalNights} nights</span>
+                    {group.gapCount > 0 && (
+                      <span className="text-amber-600">{group.gapCount} {group.gapCount === 1 ? 'gap' : 'gaps'}</span>
+                    )}
+                    <span className={`font-semibold ${
+                      occupancyPct >= 70 ? 'text-green-600' :
+                      occupancyPct >= 50 ? 'text-yellow-600' :
+                      'text-red-600'
+                    }`}>
+                      {occupancyPct}%
+                    </span>
+                  </div>
+                </button>
+
+                {/* Entries */}
+                {isExpanded && (
+                  <div className="divide-y divide-gray-100">
+                    {group.entries.map((entry, idx) =>
+                      entry.type === 'booking' ? (
+                        <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} />
+                      ) : (
+                        <GapRow key={`g-${idx}`} entry={entry} />
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* By Time view */}
+      {groupBy === 'time' && (
+        <div className="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+          {chronologicalEntries.map((entry, idx) =>
+            entry.type === 'booking' ? (
+              <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} showProperty />
+            ) : (
+              <GapRow key={`g-${idx}`} entry={entry} showProperty />
+            )
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function BookingRow({ entry, onClick, showProperty }: {
+  entry: Extract<ListEntry, { type: 'booking' }>
+  onClick: (id: string, name: string) => void
+  showProperty?: boolean
+}) {
+  return (
+    <div
+      className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
+      onClick={() => onClick(entry.id, entry.guestName)}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          {showProperty && (
+            <span className="text-xs text-gray-400 shrink-0">{entry.propertyName}</span>
+          )}
+          <span className="text-sm font-medium text-gray-900 truncate">{entry.guestName}</span>
+        </div>
+        <div className="text-xs text-gray-500 mt-0.5">
+          {formatDateDisplay(new Date(entry.arrival))} &rarr; {formatDateDisplay(new Date(entry.departure))}
+          <span className="ml-2">{entry.nights} {entry.nights === 1 ? 'night' : 'nights'}</span>
+        </div>
+      </div>
+      <div className="text-sm font-medium text-gray-700 shrink-0 ml-4">
+        {entry.amount > 0 ? formatCurrency(entry.amount) : ''}
+      </div>
+    </div>
+  )
+}
+
+function GapRow({ entry, showProperty }: {
+  entry: Extract<ListEntry, { type: 'gap' }>
+  showProperty?: boolean
+}) {
+  const severityStyles = {
+    critical: 'bg-red-50 border-l-red-400 text-red-700',
+    warning: 'bg-amber-50 border-l-amber-400 text-amber-700',
+    info: 'bg-blue-50 border-l-blue-300 text-blue-600',
+  }
+
+  return (
+    <div className={`flex items-center justify-between px-4 py-2 border-l-4 ${severityStyles[entry.severity]}`}>
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+        <div>
+          <div className="flex items-center gap-2">
+            {showProperty && (
+              <span className="text-xs opacity-70">{entry.propertyName}</span>
+            )}
+            <span className="text-sm font-medium">
+              Gap: {entry.nights} {entry.nights === 1 ? 'night' : 'nights'}
+            </span>
+          </div>
+          <div className="text-xs opacity-70">
+            {formatDateDisplay(new Date(entry.gapStart))} &rarr; {formatDateDisplay(new Date(entry.gapEnd))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

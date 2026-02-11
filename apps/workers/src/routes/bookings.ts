@@ -30,11 +30,12 @@ bookings.get('/', async (c) => {
 		query = query.eq('property_id', propertyId);
 	}
 	
-	if (startDate) {
+	if (startDate && endDate) {
+		// Overlap logic: booking touches range if arrival <= endDate AND departure >= startDate
+		query = query.lte('arrival', endDate).gte('departure', startDate);
+	} else if (startDate) {
 		query = query.gte('arrival', startDate);
-	}
-	
-	if (endDate) {
+	} else if (endDate) {
 		query = query.lte('departure', endDate);
 	}
 	

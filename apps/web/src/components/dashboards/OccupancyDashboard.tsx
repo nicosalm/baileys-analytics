@@ -1,8 +1,9 @@
 import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
+import { OccupancyListView } from '@/components/OccupancyListView'
 import { BookingGapAlert } from '@/components/BookingGapAlert'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
-import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown } from 'lucide-react'
+import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
@@ -23,6 +24,7 @@ export const OccupancyDashboard = () => {
   const tagIds = useTagIds()
   const comparisonDateRange = useComparisonDateRange()
   const [gapAlertDismissed, setGapAlertDismissed] = useState(false)
+  const [calendarView, setCalendarView] = useState<'calendar' | 'list'>('list')
   
   const { data, error, isLoading } = useDashboardBatch(
     'occupancy',
@@ -448,19 +450,56 @@ export const OccupancyDashboard = () => {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <div className="mb-4">
-          <h3 className="text-lg font-bold flex items-center">
-            <Calendar className="w-5 h-5 mr-2 text-gray-600" />
-            Daily Occupancy Calendar
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Click any day to see booking details
-          </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-gray-600" />
+              {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              {calendarView === 'calendar'
+                ? 'Click any day to see booking details'
+                : 'Upcoming bookings and gaps to fill'}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setCalendarView('list')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                calendarView === 'list'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <List className="w-4 h-4 inline mr-1.5" />
+              Timeline
+            </button>
+            <button
+              onClick={() => setCalendarView('calendar')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                calendarView === 'calendar'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Calendar className="w-4 h-4 inline mr-1.5" />
+              Calendar
+            </button>
+          </div>
         </div>
-        <OccupancyHeatmap
-          dateRange={filters.dateRange}
-          tagIds={filters.selectedTags.map(t => t.id)}
-        />
+        {calendarView === 'calendar' ? (
+          <OccupancyHeatmap
+            dateRange={filters.dateRange}
+            tagIds={filters.selectedTags.map(t => t.id)}
+          />
+        ) : (
+          <OccupancyListView
+            properties={(currentData.byProperty || []).map((p: OccupancyByProperty) => ({
+              propertyId: p.propertyId,
+              propertyName: p.propertyName
+            }))}
+          />
+        )}
       </div>
     </div>
   )
