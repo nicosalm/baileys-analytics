@@ -13,10 +13,15 @@ type LookAhead = 30 | 60 | 90
 
 type ListEntry =
   | { type: 'booking'; id: string; propertyId: string; propertyName: string; guestName: string; arrival: string; departure: string; nights: number; amount: number }
-  | { type: 'gap'; propertyId: string; propertyName: string; gapStart: string; gapEnd: string; nights: number; severity: 'critical' | 'warning' | 'info' }
+  | { type: 'gap'; propertyId: string; propertyName: string; gapStart: string; gapEnd: string; nights: number; severity: 'critical' | 'warning' | 'info'; estimatedLoss: number }
 
 const INACTIVE_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected']
 const TRUNCATION_LIMIT = 1000
+const GAP_SEVERITY_STYLES = {
+  critical: 'bg-red-50 border-l-red-400 text-red-700',
+  warning: 'bg-amber-50 border-l-amber-400 text-amber-700',
+  info: 'bg-blue-50 border-l-blue-300 text-blue-600',
+} as const
 
 function toDateString(d: Date) {
   const year = d.getFullYear()
@@ -47,6 +52,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   const { data: bookings, isLoading, error } = useBookingsForRange(dateRange.from, dateRange.to)
   const { openModal } = useModal()
   const [groupBy, setGroupBy] = useState<'property' | 'time'>('property')
+  const [sortBy, setSortBy] = useState<'name' | 'occupancy'>('occupancy')
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set())
 
   // Auto-expand new properties (initial load + tag changes)
@@ -111,6 +117,11 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       const rangeEnd = dateRange.to
       const name = propertyName || `Property ${propertyId.slice(0, 8)}`
 
+      // Compute average nightly rate from existing bookings
+      const totalRevenue = sorted.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0)
+      const totalBookedNights = sorted.reduce((sum: number, b: any) => sum + daysBetween(b.arrival, b.departure), 0)
+      const avgNightlyRate = totalBookedNights > 0 ? totalRevenue / totalBookedNights : 0
+
       if (sorted.length === 0) {
         // Entire range is a gap
         const gapNights = daysBetween(rangeStart, rangeEnd)
@@ -118,7 +129,8 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
           entries.push({
             type: 'gap', propertyId, propertyName: name,
             gapStart: rangeStart, gapEnd: rangeEnd,
-            nights: gapNights, severity: getGapSeverity(gapNights)
+            nights: gapNights, severity: getGapSeverity(gapNights),
+            estimatedLoss: avgNightlyRate * gapNights
           })
         }
       } else {
@@ -129,7 +141,8 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
             entries.push({
               type: 'gap', propertyId, propertyName: name,
               gapStart: rangeStart, gapEnd: sorted[0].arrival,
-              nights: gapNights, severity: getGapSeverity(gapNights)
+              nights: gapNights, severity: getGapSeverity(gapNights),
+              estimatedLoss: avgNightlyRate * gapNights
             })
           }
         }
@@ -151,7 +164,8 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
               entries.push({
                 type: 'gap', propertyId, propertyName: name,
                 gapStart: b.departure, gapEnd: sorted[i + 1].arrival,
-                nights: gapNights, severity: getGapSeverity(gapNights)
+                nights: gapNights, severity: getGapSeverity(gapNights),
+                estimatedLoss: avgNightlyRate * gapNights
               })
             }
           }
@@ -164,7 +178,8 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
             entries.push({
               type: 'gap', propertyId, propertyName: name,
               gapStart: sorted[sorted.length - 1].departure, gapEnd: rangeEnd,
-              nights: gapNights, severity: getGapSeverity(gapNights)
+              nights: gapNights, severity: getGapSeverity(gapNights),
+              estimatedLoss: avgNightlyRate * gapNights
             })
           }
         }
@@ -179,9 +194,12 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       const occupancyRate = totalNightsInRange > 0 ? bookedNights / totalNightsInRange : 0
       const gapCount = entries.filter(e => e.type === 'gap').length
 
-      return { propertyId, name, entries, bookedNights, totalNights: totalNightsInRange, occupancyRate, bookingCount: sorted.length, gapCount }
-    }).sort((a, b) => a.name.localeCompare(b.name))
-  }, [bookings, dateRange.from, dateRange.to, properties])
+      return { propertyId, name, entries, bookedNights, totalNights: totalNightsInRange, occupancyRate, bookingCount: sorted.length, gapCount, avgNightlyRate }
+    }).sort((a, b) => sortBy === 'occupancy'
+      ? a.occupancyRate - b.occupancyRate
+      : a.name.localeCompare(b.name)
+    )
+  }, [bookings, dateRange.from, dateRange.to, properties, sortBy])
 
   // Flat chronological view
   const chronologicalEntries = useMemo(() => {
@@ -293,7 +311,21 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
           </div>
         </div>
         {groupBy === 'property' && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-md">
+              <button
+                onClick={() => setSortBy('name')}
+                className={`px-2 py-1 rounded cursor-pointer transition-colors ${sortBy === 'name' ? 'bg-white text-gray-900 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                A-Z
+              </button>
+              <button
+                onClick={() => setSortBy('occupancy')}
+                className={`px-2 py-1 rounded cursor-pointer transition-colors ${sortBy === 'occupancy' ? 'bg-white text-gray-900 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                Occupancy ▲
+              </button>
+            </div>
             <button onClick={expandAll} className="hover:text-gray-700 cursor-pointer">Expand all</button>
             <span>|</span>
             <button onClick={collapseAll} className="hover:text-gray-700 cursor-pointer">Collapse all</button>
@@ -335,6 +367,9 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                     }`}>
                       {occupancyPct}%
                     </span>
+                    {group.avgNightlyRate > 0 && (
+                      <span className="text-gray-400">~{formatCurrency(group.avgNightlyRate)}/night</span>
+                    )}
                   </div>
                 </button>
 
@@ -405,14 +440,8 @@ function GapRow({ entry, showProperty }: {
   entry: Extract<ListEntry, { type: 'gap' }>
   showProperty?: boolean
 }) {
-  const severityStyles = {
-    critical: 'bg-red-50 border-l-red-400 text-red-700',
-    warning: 'bg-amber-50 border-l-amber-400 text-amber-700',
-    info: 'bg-blue-50 border-l-blue-300 text-blue-600',
-  }
-
   return (
-    <div className={`flex items-center justify-between px-4 py-2 border-l-4 ${severityStyles[entry.severity]}`}>
+    <div className={`flex items-center justify-between px-4 py-2 border-l-4 ${GAP_SEVERITY_STYLES[entry.severity]}`}>
       <div className="flex items-center gap-2">
         <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
         <div>
@@ -429,6 +458,11 @@ function GapRow({ entry, showProperty }: {
           </div>
         </div>
       </div>
+      {entry.estimatedLoss > 0 && (
+        <div className="text-xs font-medium opacity-70 shrink-0 ml-2">
+          ~{formatCurrency(entry.estimatedLoss)} lost
+        </div>
+      )}
     </div>
   )
 }
