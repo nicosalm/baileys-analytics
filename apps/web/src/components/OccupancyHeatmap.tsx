@@ -118,46 +118,37 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   )
 
   return (
-    <div className="space-y-4">
-      {/* Navigation */}
+    <div className="space-y-3">
+      {/* Navigation + Stats */}
       <div className="flex justify-between items-center">
         <button
           onClick={() => setCurrentMonthIndex(i => Math.max(0, i - 1))}
           disabled={validIndex === 0}
-          className={cn("p-2 rounded-sm", validIndex === 0 && "opacity-50")}
+          className={cn("p-1.5 rounded-sm", validIndex === 0 && "opacity-50")}
         >
-          <ChevronLeft />
+          <ChevronLeft className="w-4 h-4" />
         </button>
-        <div className="text-center">
-          <h4 className="text-lg font-semibold">{monthName} {year}</h4>
-          <p className="text-sm text-gray-600">{validIndex + 1} of {monthsData.length}</p>
+        <div className="flex items-center gap-6">
+          <div className="text-center">
+            <h4 className="text-sm font-semibold">{monthName} {year}</h4>
+            <p className="text-xs text-gray-500">{validIndex + 1} of {monthsData.length}</p>
+          </div>
+          {monthStats && (
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <span><span className="font-semibold text-gray-900">{monthStats.avgOccupancy}%</span> avg</span>
+              <span><span className="font-semibold text-gray-900">{monthStats.totalBooked}</span> booked</span>
+              <span><span className="font-semibold text-gray-900">{monthStats.utilizationRate}%</span> used</span>
+            </div>
+          )}
         </div>
         <button
           onClick={() => setCurrentMonthIndex(i => Math.min(monthsData.length - 1, i + 1))}
           disabled={validIndex === monthsData.length - 1}
-          className={cn("p-2 rounded-sm", validIndex === monthsData.length - 1 && "opacity-50")}
+          className={cn("p-1.5 rounded-sm", validIndex === monthsData.length - 1 && "opacity-50")}
         >
-          <ChevronRight />
+          <ChevronRight className="w-4 h-4" />
         </button>
       </div>
-
-      {/* Compact Stats */}
-      {monthStats && (
-        <div className="flex justify-around text-xs">
-          <div className="text-center">
-            <div className="font-semibold text-lg">{monthStats.avgOccupancy}%</div>
-            <div className="text-gray-500">Average</div>
-          </div>
-          <div className="text-center">
-            <div className="font-semibold text-lg">{monthStats.totalBooked}</div>
-            <div className="text-gray-500">Booked</div>
-          </div>
-          <div className="text-center">
-            <div className="font-semibold text-lg">{monthStats.utilizationRate}%</div>
-            <div className="text-gray-500">Used</div>
-          </div>
-        </div>
-      )}
 
       {/* Calendar */}
       <div>
@@ -187,7 +178,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
                 key={idx} 
                 onClick={handleDayClick}
                 className={cn(
-                  'aspect-square text-[11px] flex items-center justify-center rounded relative group transition-all',
+                  'h-9 text-[11px] flex items-center justify-center rounded relative group transition-all',
                   day ? `${getColor(day.occupancyRate)} hover:scale-105 hover:z-20 cursor-pointer` : 'bg-transparent cursor-default'
                 )}
               >
@@ -216,7 +207,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center space-x-3 text-xs pt-2 border-t">
+      <div className="flex items-center justify-center space-x-3 text-xs pt-1 border-t">
         <span className="text-gray-600">Occupancy:</span>
         {[
           { color: 'bg-gray-100', label: '0%' },

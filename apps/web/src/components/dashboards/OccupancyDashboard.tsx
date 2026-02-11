@@ -1,7 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { OccupancyListView } from '@/components/OccupancyListView'
-import { BookingGapAlert } from '@/components/BookingGapAlert'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
@@ -17,13 +16,59 @@ import { METRIC_COLORS } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 import { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
 
+const OccupancyChartTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0].payload
+  const emptyNights = data.availableNights - data.bookedNights
+
+  return (
+    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <p className="font-semibold text-sm mb-2">{label}</p>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.occupancy }} />
+            <span className="text-gray-600">Occupancy:</span>
+          </div>
+          <span className="font-medium">{data.rate.toFixed(1)}%</span>
+        </div>
+        {data.previousRate !== undefined && (
+          <div className="flex justify-between gap-4">
+            <div className="flex items-center gap-1">
+              <div className="w-3 h-3 rounded-sm bg-slate-400" />
+              <span className="text-gray-600">Previous:</span>
+            </div>
+            <span className="font-medium">{data.previousRate.toFixed(1)}%</span>
+          </div>
+        )}
+        <div className="pt-1 mt-1 border-t border-gray-200 space-y-1">
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-600">Booked:</span>
+            <span className="font-medium">{data.bookedNights.toLocaleString()} nights</span>
+          </div>
+          <div className="flex justify-between gap-4">
+            <span className="text-gray-600">Available:</span>
+            <span className="font-medium">{data.availableNights.toLocaleString()} nights</span>
+          </div>
+          {emptyNights > 0 && (
+            <div className="flex justify-between gap-4">
+              <span className="text-gray-600">Empty:</span>
+              <span className="font-medium text-amber-600">{emptyNights.toLocaleString()} nights</span>
+            </div>
+          )}
+        </div>
+        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view details</p>
+      </div>
+    </div>
+  )
+}
+
 export const OccupancyDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
   const { openModal } = useModal()
   const { showTips } = useTips()
   const tagIds = useTagIds()
   const comparisonDateRange = useComparisonDateRange()
-  const [gapAlertDismissed, setGapAlertDismissed] = useState(false)
   const [calendarView, setCalendarView] = useState<'calendar' | 'list'>('list')
   
   const { data, error, isLoading } = useDashboardBatch(
@@ -37,12 +82,6 @@ export const OccupancyDashboard = () => {
 
   const currentData = data?.current || data
   const previousData = data?.previous || null
-  const bookingGaps = currentData?.gaps || []
-  
-  // only show gaps that are not dismissed and have critical or warning severity
-  const visibleGaps = bookingGaps.filter((gap: any) => 
-    gap.severity === 'critical' || gap.severity === 'warning'
-  )
 
   useErrorToast(error, 'Failed to load occupancy data')
 
@@ -109,8 +148,7 @@ export const OccupancyDashboard = () => {
       rate: Math.min(dataPoint.rate * 100, 100),
       previousRate: prevDataPoint ? Math.min(prevDataPoint.rate * 100, 100) : undefined,
       bookedNights: dataPoint.bookedNights,
-      availableNights: dataPoint.availableNights,
-      tooltip: `${dataPoint.bookedNights} / ${dataPoint.availableNights} nights`
+      availableNights: dataPoint.availableNights
     }
   }), [timeSeriesData, previousData?.byMonth, dataGranularity])
 
@@ -200,13 +238,6 @@ export const OccupancyDashboard = () => {
         : dataGranularity === 'Weekly' && chartData.length > 12 ? 1 : 0
     }
   }, [dataGranularity, chartData.length])
-
-  // memoized tooltip formatter
-  const tooltipFormatter = useCallback((value: number, name: string) => {
-    if (name === 'Current Period') return [`${value.toFixed(1)}%`, 'Current']
-    if (name === 'Last Year' || name === 'Previous Period') return [`${value.toFixed(1)}%`, name]
-    return [null, null]
-  }, [])
 
   return (
     <div className="space-y-6">
@@ -315,140 +346,6 @@ export const OccupancyDashboard = () => {
       </div>
 
 
-      <ChartWrapper
-        title={getChartTitle()}
-        subtitle={comparisonMode !== 'none' && previousData
-          ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
-          : undefined
-        }
-        icon={TrendingUp}
-        height={360}
-      >
-        <LineChart data={chartData} onClick={handlePeriodClick} style={{ cursor: 'pointer' }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="month"
-            angle={xAxisConfig.angle}
-            textAnchor={xAxisConfig.textAnchor}
-            height={xAxisConfig.height}
-            interval={xAxisConfig.interval}
-          />
-          <YAxis
-            tickFormatter={(value: number) => `${Math.round(value)}%`}
-            domain={[0, 100]}
-            allowDataOverflow
-          />
-          <Tooltip
-            formatter={tooltipFormatter}
-            labelFormatter={(label: any) => label}
-            contentStyle={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-          />
-          {comparisonMode !== 'none' && previousData && <Legend />}
-          <Line
-            type="monotone"
-            dataKey="rate"
-            stroke={METRIC_COLORS.occupancy}
-            strokeWidth={3}
-            dot={{ fill: METRIC_COLORS.occupancy, r: 6 }}
-            style={{ cursor: 'pointer' }}
-            activeDot={{ r: 8 }}
-            name="Current Period"
-          />
-          {comparisonMode !== 'none' && previousData && (
-            <Line
-              type="monotone"
-              dataKey="previousRate"
-              stroke="#94a3b8"
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ fill: '#94a3b8', r: 4 }}
-              name={comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'}
-            />
-          )}
-        </LineChart>
-      </ChartWrapper>
-
-      <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Property Occupancy</h3>
-            {currentData.byProperty.length > 5 && (
-              <span className="text-xs text-gray-500">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
-            )}
-          </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
-            {sortedProperties.length > 0 ? (
-              sortedProperties.map((property: OccupancyByProperty) => {
-                const occupancyPercent = property.rate * 100
-                const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
-                const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
-
-                return (
-                  <div
-                    key={property.propertyId}
-                    className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
-                    onClick={() => handlePropertyClick(property)}
-                  >
-                    <div className="flex-1 min-w-0 mr-4">
-                      <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>
-                      <p className="text-xs text-gray-500">{property.bookedNights}/{property.availableNights} nights booked</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-sm font-semibold ${
-                        occupancyPercent >= 70 ? 'text-green-600' :
-                        occupancyPercent >= 50 ? 'text-yellow-600' :
-                        'text-red-600'
-                      }`}>
-                        {formatPercentage(occupancyPercent, 0)}
-                      </span>
-                      {comparisonMode !== 'none' && prevOccupancy !== null && (
-                        <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-green-600' : occupancyPercent < prevOccupancy ? 'text-red-600' : 'text-gray-500'}`}>
-                          {occupancyPercent > prevOccupancy ? (
-                            <TrendingUp className="w-3 h-3" />
-                          ) : occupancyPercent < prevOccupancy ? (
-                            <TrendingDown className="w-3 h-3" />
-                          ) : null}
-                          {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            ) : (
-              <div className="text-center text-gray-500 py-8">
-                <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">No property data available</p>
-                <p className="text-xs text-gray-400 mt-1">Data will appear once bookings are synced</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Booking Gaps Alert - Always Visible */}
-        {!gapAlertDismissed && (
-          visibleGaps.length > 0 ? (
-            <BookingGapAlert 
-              gaps={visibleGaps}
-              onDismiss={() => setGapAlertDismissed(true)}
-              maxGapsToShow={3}
-            />
-          ) : (
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold">Booking Gaps</h3>
-                <span className="text-xs text-gray-500">Next 60 days</span>
-              </div>
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">No gaps detected</p>
-                <p className="text-xs text-gray-400 mt-1">All properties are well-booked</p>
-              </div>
-            </div>
-          )
-        )}
-      </div>
-
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -500,6 +397,115 @@ export const OccupancyDashboard = () => {
             }))}
           />
         )}
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <ChartWrapper
+            title={getChartTitle()}
+            subtitle={comparisonMode !== 'none' && previousData
+              ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+              : undefined
+            }
+            icon={TrendingUp}
+            height={360}
+          >
+            <LineChart data={chartData} onClick={handlePeriodClick} style={{ cursor: 'pointer' }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="month"
+                angle={xAxisConfig.angle}
+                textAnchor={xAxisConfig.textAnchor}
+                height={xAxisConfig.height}
+                interval={xAxisConfig.interval}
+              />
+              <YAxis
+                tickFormatter={(value: number) => `${Math.round(value)}%`}
+                domain={[0, 100]}
+                allowDataOverflow
+              />
+              <Tooltip content={<OccupancyChartTooltip />} />
+              {comparisonMode !== 'none' && previousData && <Legend />}
+              <Line
+                type="monotone"
+                dataKey="rate"
+                stroke={METRIC_COLORS.occupancy}
+                strokeWidth={3}
+                dot={{ fill: METRIC_COLORS.occupancy, r: 6 }}
+                style={{ cursor: 'pointer' }}
+                activeDot={{ r: 8 }}
+                name="Current Period"
+              />
+              {comparisonMode !== 'none' && previousData && (
+                <Line
+                  type="monotone"
+                  dataKey="previousRate"
+                  stroke="#94a3b8"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={{ fill: '#94a3b8', r: 4 }}
+                  name={comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'}
+                />
+              )}
+            </LineChart>
+          </ChartWrapper>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-bold">Property Occupancy</h3>
+            {currentData.byProperty.length > 5 && (
+              <span className="text-xs text-gray-500">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
+            )}
+          </div>
+          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
+            {sortedProperties.length > 0 ? (
+              sortedProperties.map((property: OccupancyByProperty) => {
+                const occupancyPercent = property.rate * 100
+                const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
+                const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
+
+                return (
+                  <div
+                    key={property.propertyId}
+                    className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
+                    onClick={() => handlePropertyClick(property)}
+                  >
+                    <div className="flex-1 min-w-0 mr-3">
+                      <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>
+                      <p className="text-xs text-gray-500">{property.bookedNights}/{property.availableNights} nights</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className={`text-sm font-semibold ${
+                        occupancyPercent >= 70 ? 'text-green-600' :
+                        occupancyPercent >= 50 ? 'text-yellow-600' :
+                        'text-red-600'
+                      }`}>
+                        {formatPercentage(occupancyPercent, 0)}
+                      </span>
+                      {comparisonMode !== 'none' && prevOccupancy !== null && (
+                        <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-green-600' : occupancyPercent < prevOccupancy ? 'text-red-600' : 'text-gray-500'}`}>
+                          {occupancyPercent > prevOccupancy ? (
+                            <TrendingUp className="w-3 h-3" />
+                          ) : occupancyPercent < prevOccupancy ? (
+                            <TrendingDown className="w-3 h-3" />
+                          ) : null}
+                          {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="text-center text-gray-500 py-8">
+                <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-medium">No property data available</p>
+                <p className="text-xs text-gray-400 mt-1">Data will appear once bookings are synced</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

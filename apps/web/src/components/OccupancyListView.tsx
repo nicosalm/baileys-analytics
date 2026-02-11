@@ -41,7 +41,7 @@ function getGapSeverity(nights: number): 'critical' | 'warning' | 'info' {
 }
 
 export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
-  const [lookAhead, setLookAhead] = useState<LookAhead>(90)
+  const [lookAhead, setLookAhead] = useState<LookAhead>(60)
 
   const dateRange = useMemo(() => {
     const today = new Date()
