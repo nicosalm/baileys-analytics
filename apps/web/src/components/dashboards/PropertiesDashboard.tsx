@@ -223,30 +223,14 @@ export const PropertiesDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>Reading Your Data:</strong> Click any property card to see detailed insights. 
-              Higher occupancy means fewer empty nights. Compare revenue and rates to identify your top performers.
+              <strong>Reading Your Data:</strong> Click any property to see detailed insights.
+              Higher occupancy means fewer empty nights. Compare revenue and RevPAN to identify your top performers.
             </div>
           </div>
         </div>
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <MetricCard
-          icon={TrendingUp}
-          label="Avg RevPAN"
-          value={avgRevPAN}
-          format="currency"
-          tooltip="Revenue Per Available Night — portfolio-wide revenue efficiency combining rate and occupancy"
-          subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
-            : "Across all properties"
-          }
-          trend={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? {
-            value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100,
-            isPositive: avgRevPAN > prevAvgRevPAN
-          } : undefined}
-          color="blue"
-        />
         <MetricCard
           icon={DollarSign}
           label="Total Revenue"
@@ -262,6 +246,22 @@ export const PropertiesDashboard = () => {
             isPositive: totalRevenue > prevTotalRevenue
           } : undefined}
           color="green"
+        />
+        <MetricCard
+          icon={TrendingUp}
+          label="Avg RevPAN"
+          value={avgRevPAN}
+          format="currency"
+          tooltip="Revenue Per Available Night — portfolio-wide revenue efficiency combining rate and occupancy"
+          subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
+            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            : "Across all properties"
+          }
+          trend={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? {
+            value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100,
+            isPositive: avgRevPAN > prevAvgRevPAN
+          } : undefined}
+          color="blue"
         />
         <MetricCard
           icon={Percent}
