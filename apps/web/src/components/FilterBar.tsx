@@ -4,6 +4,7 @@ import { useDashboard } from '@/contexts/dashboard'
 import { useTags } from '@/hooks/use-api'
 import { Filter, X, ChevronDown } from 'lucide-react'
 import { cn } from '@baileys/utils'
+import { getTagColor } from '@/lib/theme'
 import type { Tag } from '@/types/dashboard'
 
 interface TagButtonProps {
@@ -22,14 +23,12 @@ const TagButton = memo(({ tag, isSelected, onToggle }: TagButtonProps) => (
         : "hover:bg-gray-50 text-gray-700"
     )}
   >
-    <div className="flex items-center justify-between">
+    <div className="flex items-center gap-2">
+      <span
+        className="w-3 h-3 rounded-full flex-shrink-0"
+        style={{ backgroundColor: getTagColor(tag) }}
+      />
       <span>{tag.name}</span>
-      {tag.color && (
-        <span
-          className="w-3 h-3 rounded-full"
-          style={{ backgroundColor: tag.color }}
-        />
-      )}
     </div>
   </button>
 ))
@@ -120,11 +119,15 @@ export const FilterBar: React.FC = () => {
 
             {filters.selectedTags.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
-                {filters.selectedTags.map(tag => (
+                {filters.selectedTags.map((tag) => (
                   <span
                     key={tag.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-sm font-medium"
                   >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: getTagColor(tag) }}
+                    />
                     <span>{tag.name}</span>
                     <button
                       onClick={() => toggleTag(tag)}

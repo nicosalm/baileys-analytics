@@ -100,6 +100,16 @@ export const getPlatformColor = (platform: string, index: number = 0): string =>
   return CHART_COLORS[index % CHART_COLORS.length]
 }
 
+export const getTagColor = (tag: { color?: string; id?: string; name?: string }): string => {
+  if (tag.color) return tag.color
+  const key = tag.id || tag.name || ''
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = ((hash << 5) - hash + key.charCodeAt(i)) | 0
+  }
+  return CHART_COLORS[Math.abs(hash) % CHART_COLORS.length]
+}
+
 export const getOccupancyColor = (rate: number): string => {
   if (rate >= 0.8) return 'text-green-600'
   if (rate >= 0.6) return 'text-yellow-600'

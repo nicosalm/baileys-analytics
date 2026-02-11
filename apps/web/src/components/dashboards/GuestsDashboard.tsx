@@ -11,7 +11,7 @@ import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
-import { CHART_COLORS, getPlatformColor } from '@/lib/theme'
+import { getPlatformColor, getTagColor } from '@/lib/theme'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
     PieChart, Pie, Cell, Tooltip
@@ -332,11 +332,11 @@ export const GuestsDashboard = () => {
     const tagChartData = useMemo(() =>
         tagDistribution
             ?.slice(0, 15)
-            .map((tag: GuestTagDistribution, index: number) => ({
+            .map((tag: GuestTagDistribution) => ({
                 name: tag.name || 'Unknown',
                 size: tag.count || 0,
                 value: tag.count || 0,
-                color: tag.color || CHART_COLORS[index % CHART_COLORS.length]
+                color: getTagColor(tag)
             })) || [], [tagDistribution])
 
     // memoized pie chart totals
@@ -525,7 +525,7 @@ export const GuestsDashboard = () => {
                     noDataMessage="No tag data available"
                 >
                     <div className="space-y-3 overflow-y-auto max-h-[280px] pr-2">
-                        {tagChartData.map((tag: any, index: number) => {
+                        {tagChartData.map((tag: any) => {
                             const percentage = tagChartDerived.maxCount > 0 ? (tag.value / tagChartDerived.maxCount) * 100 : 0
                             const overallPercent = tagChartDerived.totalTags > 0 ? ((tag.value / tagChartDerived.totalTags) * 100).toFixed(0) : '0'
 
@@ -544,7 +544,7 @@ export const GuestsDashboard = () => {
                                                 className="h-2 rounded-full transition-all"
                                                 style={{ 
                                                     width: `${percentage}%`,
-                                                    backgroundColor: tag.color || CHART_COLORS[index % CHART_COLORS.length]
+                                                    backgroundColor: getTagColor(tag)
                                                 }}
                                             />
                                         </div>
