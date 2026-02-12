@@ -1,8 +1,7 @@
 import { useMemo, useState, useCallback } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
-import { useTagIds, useErrorToast, getTimePeriodGranularity, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
-import { PropertyMetrics, ChartDataPoint } from '@/types/api'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
+import { PropertyMetrics } from '@/types/api'
 import { Calendar, DollarSign, Home, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
@@ -11,50 +10,9 @@ import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { METRIC_COLORS } from '@/lib/theme'
 import { PropertyPerformanceScatter, PerformanceQuadrantLegend } from '@/components/charts/PropertyPerformanceScatter'
 import { PropertyCard } from '@/components/cards/PropertyCard'
 import { PropertyTable } from '@/components/tables/PropertyTable'
-
-const PropertyComparisonTooltip = ({ active, payload, comparisonMode }: any) => {
-  if (!active || !payload?.length) return null
-  const data = payload[0].payload
-
-  return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-      <p className="font-semibold text-sm mb-2">{data.fullName || data.name}</p>
-      <div className="space-y-1 text-xs">
-        <div className="flex justify-between gap-4">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
-            <span className="text-gray-600">Revenue:</span>
-          </div>
-          <span className="font-medium">{formatCurrency(data.revenue)}</span>
-        </div>
-        {data.previousRevenue !== undefined && (
-          <div className="flex justify-between gap-4">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-slate-400" />
-              <span className="text-gray-600">{comparisonMode === 'previous-year' ? 'Last Year' : 'Previous'}:</span>
-            </div>
-            <span className="font-medium">{formatCurrency(data.previousRevenue)}</span>
-          </div>
-        )}
-        {data.previousRevenue !== undefined && data.previousRevenue > 0 && (
-          <div className="pt-1 mt-1 border-t border-gray-200">
-            <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Change:</span>
-              <span className={`font-medium ${data.revenue >= data.previousRevenue ? 'text-green-600' : 'text-red-600'}`}>
-                {data.revenue >= data.previousRevenue ? '+' : ''}{(((data.revenue - data.previousRevenue) / data.previousRevenue) * 100).toFixed(1)}%
-              </span>
-            </div>
-          </div>
-        )}
-        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view property</p>
-      </div>
-    </div>
-  )
-}
 
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
@@ -90,18 +48,6 @@ export const PropertiesDashboard = () => {
     ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
     : [] as PropertyMetrics[]
   
-    
-  const chartData = useMemo<ChartDataPoint[]>(() => validProperties.map((p: PropertyMetrics) => ({
-    name: p.propertyName.length > 25 ? p.propertyName.substring(0, 25) + '...' : p.propertyName,
-    fullName: p.propertyName,
-    revenue: p.revenue || 0,
-    occupancy: Math.round((p.occupancyRate || 0) * 100),
-    bookings: p.bookings || 0,
-    date: p.date || null
-  })), [validProperties])
-
-  const timePeriod = getTimePeriodGranularity(filters.dateRange.from, filters.dateRange.to)
-
   const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN } = useMemo(() => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
     const totalRev = sumBy(validProperties, (p: PropertyMetrics) => p.revenue)
@@ -125,19 +71,6 @@ export const PropertiesDashboard = () => {
     }
   }, [previousProperties])
 
-  // click handler for individual bars and chart whitespace
-  const handleBarClick = useCallback((data: any) => {
-    const property = validProperties.find(p => p.propertyName === data.fullName)
-    if (property) {
-      openModal({
-        type: 'property',
-        propertyId: property.propertyId,
-        propertyName: property.propertyName
-      })
-    }
-  }, [validProperties, openModal])
-
-
   // memoized view toggle handlers
   const handleViewCards = useCallback(() => setViewMode('cards'), [])
   const handleViewTable = useCallback(() => setViewMode('table'), [])
@@ -150,21 +83,6 @@ export const PropertiesDashboard = () => {
       propertyName: property.propertyName
     })
   }, [openModal])
-
-  // memoized chart data with comparison values
-  const comparisonChartData = useMemo(() => {
-    if (comparisonMode === 'none' || !previousProperties) return null
-    return chartData.map((item: ChartDataPoint) => {
-      const prevProp = previousProperties.find((p: PropertyMetrics) =>
-        p.propertyName === item.fullName
-      )
-      return {
-        ...item,
-        previousRevenue: prevProp?.revenue || 0,
-        previousOccupancy: Math.round((prevProp?.occupancyRate || 0) * 100)
-      }
-    })
-  }, [chartData, previousProperties, comparisonMode])
 
   if (isLoading || validProperties.length === 0) {
     return (
@@ -351,62 +269,7 @@ export const PropertiesDashboard = () => {
       </div>
 
       {/* Charts Section */}
-      <div className={`grid gap-6 ${comparisonMode !== 'none' ? 'lg:grid-cols-2' : 'max-w-4xl'}`}>
-        {/* Revenue Comparison Chart — only shown in comparison mode */}
-        {comparisonMode !== 'none' && comparisonChartData && (
-          <ChartWrapper
-            title={`Revenue Comparison${timePeriod}`}
-            subtitle={`Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`}
-            icon={TrendingUp}
-            height={Math.max(420, validProperties.length * 50)}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={comparisonChartData}
-                layout="vertical"
-                margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" tickFormatter={(value: number) => formatCompactCurrency(value)} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={180}
-                  tick={{ fontSize: 11 }}
-                />
-                <Tooltip content={<PropertyComparisonTooltip comparisonMode={comparisonMode} />} />
-                <Legend
-                  wrapperStyle={{ paddingTop: '15px' }}
-                  iconType="rect"
-                  iconSize={12}
-                  formatter={(value: string) => {
-                    if (value === 'Current Revenue') return 'Current'
-                    if (value === 'Last Year Revenue') return 'Last Year'
-                    if (value === 'Previous Period Revenue') return 'Previous'
-                    return value
-                  }}
-                />
-                <Bar
-                  dataKey="revenue"
-                  fill={METRIC_COLORS.revenue}
-                  name="Current Revenue"
-                  radius={[0, 4, 4, 0]}
-                  cursor="pointer"
-                  onClick={handleBarClick}
-                />
-                <Bar
-                  dataKey="previousRevenue"
-                  fill="#94a3b8"
-                  name={comparisonMode === 'previous-year' ? 'Last Year Revenue' : 'Previous Period Revenue'}
-                  radius={[0, 4, 4, 0]}
-                  cursor="pointer"
-                  onClick={handleBarClick}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartWrapper>
-        )}
-
+      <div>
         {/* Property Performance Scatter Plot */}
         <ChartWrapper
           title="Performance Matrix"
