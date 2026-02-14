@@ -13,7 +13,6 @@ export const userSchema = z.object({
 export const tenantSchema = z.object({
   id: uuidSchema,
   user_id: uuidSchema,
-  company_name: z.string().nullable(),
   ownerrez_username: z.string().nullable(),
   ownerrez_token: z.string().nullable(),
   created_at: z.string().datetime(),
@@ -22,7 +21,6 @@ export const tenantSchema = z.object({
 })
 
 export const updateTenantSchema = z.object({
-  company_name: z.string().min(1).optional(),
   ownerrez_username: z.string().min(1).optional(),
   ownerrez_token: z.string().min(1).optional(),
   settings: z.record(z.string(), z.any()).optional()

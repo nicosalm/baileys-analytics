@@ -106,7 +106,6 @@ oauth.post('/callback', async (c) => {
             id: tenantId,
             user_id: oauthState.user_id,
             email: data.user.email || '',
-            company_name: 'My Company',
             ownerrez_connected: false
           })
           .select()

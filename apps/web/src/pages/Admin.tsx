@@ -20,7 +20,6 @@ interface AdminMetrics {
 interface AdminUser {
   id: string
   email: string
-  company_name?: string
   created_at: string
   subscription_status?: string
   subscription_exempt: boolean
@@ -138,8 +137,7 @@ export const Admin = () => {
   }
 
   const filteredUsers = users.filter(user =>
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.company_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleLogout = async () => {
@@ -268,9 +266,6 @@ export const Admin = () => {
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{user.email}</div>
-                      {user.company_name && (
-                        <div className="text-sm text-gray-500">{user.company_name}</div>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {user.subscription_exempt ? (

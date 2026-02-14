@@ -96,7 +96,6 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 		.from('tenants')
 		.select(`
 			id,
-			company_name,
 			created_at
 		`)
 		.eq('user_id', user.id)
@@ -112,7 +111,6 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 		id: user.id,
 		email: user.email,
 		tenantId: tenantData?.id || null,
-		companyName: tenantData?.company_name || null,
 		hasOwnerRezConnection: !!ownerrezToken,
 		createdAt: user.created_at || new Date().toISOString()
 	});

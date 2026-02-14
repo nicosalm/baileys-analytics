@@ -56,7 +56,6 @@ export const loginRequestSchema = z.object({
 })
 
 export const signupRequestSchema = loginRequestSchema.extend({
-  companyName: z.string().optional(),
 })
 
 // ============= Property Schemas =============

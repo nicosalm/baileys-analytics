@@ -94,12 +94,6 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
             <span className="text-sm text-gray-600">Email</span>
             <span className="text-sm font-medium text-gray-900">{user.email}</span>
           </div>
-          {user.companyName && (
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-sm text-gray-600">Company</span>
-              <span className="text-sm font-medium text-gray-900">{user.companyName}</span>
-            </div>
-          )}
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">Account Created</span>
             <span className="text-sm font-medium text-gray-900">

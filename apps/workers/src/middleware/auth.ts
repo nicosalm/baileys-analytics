@@ -34,7 +34,6 @@ export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { us
 			.insert({
 				user_id: user.id,
 				email: user.email || '',
-				company_name: 'My Company',
 				ownerrez_connected: false
 			})
 			.select('id')

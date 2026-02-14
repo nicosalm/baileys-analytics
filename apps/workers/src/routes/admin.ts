@@ -99,7 +99,6 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
       .select(`
         id,
         email,
-        company_name,
         created_at,
         subscription_status,
         subscription_exempt,
@@ -110,7 +109,7 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
       .range((page - 1) * limit, page * limit - 1);
 
     if (search) {
-      query = query.or(`email.ilike.%${search}%,company_name.ilike.%${search}%`);
+      query = query.or(`email.ilike.%${search}%`);
     }
 
     const { data: users, error } = await query;

@@ -130,7 +130,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .insert({
           user_id: userId,
           email: email,
-          company_name: 'My Company',
           ownerrez_connected: false
         } as any)
         .select('id')
@@ -209,7 +208,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const appUser: AppUser = {
       ...session.user,
-      companyName: session.user.user_metadata?.company_name,
       hasOwnerRezConnection,
       tenantId: tenantId || session.user.user_metadata?.tenant_id,
       isOAuthUser: isOAuthUser(session.user.identities)

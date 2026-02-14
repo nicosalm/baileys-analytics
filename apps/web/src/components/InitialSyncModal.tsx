@@ -69,13 +69,14 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       const totalProperties = properties.length
       
       // Step 3: Sync bookings for each property
-      setProgress({ 
-        step: 'bookings', 
-        currentProperty: 0, 
+      setProgress({
+        step: 'bookings',
+        currentProperty: 0,
         totalProperties,
         propertiesLoaded: totalProperties,
         bookingsLoaded: 0,
-        blocksLoaded: 0
+        blocksLoaded: 0,
+        guestsLoaded: 0
       })
       
       let totalBookings = 0
@@ -108,13 +109,14 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       }
       
       // Step 4: Sync guests
-      setProgress({ 
+      setProgress({
         step: 'guests',
         currentProperty: totalProperties,
         totalProperties,
         propertiesLoaded: totalProperties,
         bookingsLoaded: totalBookings,
-        blocksLoaded: totalBlocks
+        blocksLoaded: totalBlocks,
+        guestsLoaded: 0
       })
       
       const guestsResult = await api.request<{
@@ -140,11 +142,12 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         })
       })
       
-      setProgress({ 
+      setProgress({
         step: 'complete',
         propertiesLoaded: totalProperties,
         bookingsLoaded: totalBookings,
-        blocksLoaded: totalBlocks
+        blocksLoaded: totalBlocks,
+        guestsLoaded: totalGuests
       })
       
       // Redirect to dashboard after a moment

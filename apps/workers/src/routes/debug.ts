@@ -211,7 +211,6 @@ debug.get('/check-oauth', authMiddleware, async (c) => {
 	return c.json({
 		tenant: {
 			id: tenant.id,
-			company_name: tenant.company_name,
 			ownerrez_connected: tenant.ownerrez_connected,
 			ownerrez_user_id: tenant.ownerrez_user_id
 		},
