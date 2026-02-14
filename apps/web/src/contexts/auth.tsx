@@ -178,17 +178,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     api.setAccessToken(session.access_token)
 
-    // ensure tenant exists with retry logic
-    const tenantId = await retryWithBackoff(
-      () => ensureTenantExists(session.user.id, session.user.email),
-      'ensureTenantExists',
-      2
+    // Helper: race a promise against a timeout, returning fallback on timeout
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
+      Promise.race([
+        promise,
+        new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms)),
+      ])
+
+    // ensure tenant exists with retry logic (10s timeout — use null if it hangs)
+    const tenantId = await withTimeout(
+      retryWithBackoff(
+        () => ensureTenantExists(session.user.id, session.user.email),
+        'ensureTenantExists',
+        2
+      ),
+      10000,
+      null
     )
 
     let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
 
     if (!hasOwnerRezConnection) {
-      hasOwnerRezConnection = await checkOwnerRezConnection(session.user.id)
+      // 10s timeout — default to false if it hangs
+      hasOwnerRezConnection = await withTimeout(
+        checkOwnerRezConnection(session.user.id),
+        10000,
+        false
+      )
     }
 
     const appUser: AppUser = {
@@ -490,15 +506,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     })
 
-    // check for existing session after setting up listener
-    // this ensures we don't miss any auth state changes
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        processSession(session)
-      } else {
-        setState({ status: 'unauthenticated' })
-      }
-    })
+    // INITIAL_SESSION event (above) handles the initial session check —
+    // no need for a separate getSession() call, which would cause
+    // processSession to run twice concurrently on page load.
 
     return () => {
       subscription.unsubscribe()

@@ -39,42 +39,20 @@ class ApiClient {
             })
 
             if (!response.ok) {
-                // Handle 401 Unauthorized - session expired or invalid
+                // For 401s, clear the in-memory token but don't nuke localStorage
+                // or force-redirect. The AuthProvider's onAuthStateChange listener
+                // will detect session expiry (via Supabase auto-refresh failure)
+                // and handle the redirect through ProtectedRoute naturally.
                 if (response.status === 401) {
-                    // Clear the token and any stale auth data
                     this.accessToken = null
-
-                    // Clear localStorage auth data to ensure clean state
-                    try {
-                        const keysToRemove: string[] = []
-                        for (let i = 0; i < localStorage.length; i++) {
-                            const key = localStorage.key(i)
-                            if (key && (key.includes('baileys-auth') || key.includes('supabase'))) {
-                                keysToRemove.push(key)
-                            }
-                        }
-                        keysToRemove.forEach(key => localStorage.removeItem(key))
-                    } catch (e) {
-                        console.warn('Failed to clear auth storage:', e)
-                    }
-
-                    // Only redirect if we're not already on the login page
-                    if (!window.location.pathname.includes('/login') &&
-                        !window.location.pathname.includes('/signup') &&
-                        !window.location.pathname.includes('/forgot-password')) {
-                        window.location.href = '/login'
-                    }
-                    return {
-                        success: false,
-                        error: 'Session expired. Please log in again.',
-                        status: 401,
-                    }
                 }
-                
+
                 const error = await response.json().catch(() => ({ error: 'Request failed' }))
                 return {
                     success: false,
-                    error: error.error || response.statusText,
+                    error: response.status === 401
+                        ? 'Session expired. Please log in again.'
+                        : (error.error || response.statusText),
                     status: response.status,
                 }
             }

@@ -211,17 +211,40 @@ oauth.post('/callback', async (c) => {
         .eq('id', tenantId);
 
       if (tenantError) {
-        // fallback: try minimal update
-        const { error: minimalError } = await supabase
-          .from('tenants')
-          .update({
-            ownerrez_user_id: ownerrezUserId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', tenantId);
-        
-        if (minimalError) {
-          console.error('Failed to update tenant with OwnerRez user ID:', minimalError);
+        // Handle UNIQUE constraint violation on ownerrez_user_id:
+        // Another tenant already has this ownerrez_user_id (e.g., user re-registered
+        // or switched accounts). Clear the old tenant's mapping first, then retry.
+        const isUniqueViolation = tenantError.code === '23505' ||
+          tenantError.message?.includes('unique') ||
+          tenantError.message?.includes('duplicate');
+
+        if (isUniqueViolation) {
+          // Clear ownerrez_user_id from the old tenant that has it
+          await supabase
+            .from('tenants')
+            .update({
+              ownerrez_user_id: null,
+              ownerrez_connected: false,
+              updated_at: new Date().toISOString()
+            })
+            .eq('ownerrez_user_id', ownerrezUserId)
+            .neq('id', tenantId);
+
+          // Retry the update on the current tenant
+          const { error: retryError } = await supabase
+            .from('tenants')
+            .update({
+              ownerrez_user_id: ownerrezUserId,
+              ownerrez_connected: true,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', tenantId);
+
+          if (retryError) {
+            console.error('Failed to update tenant with OwnerRez user ID after clearing old mapping:', retryError);
+          }
+        } else {
+          console.error('Failed to update tenant with OwnerRez user ID:', tenantError);
         }
       }
     }

@@ -36,6 +36,7 @@ export const AuthCallback = () => {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [message, setMessage] = useState('')
   const hasCompleted = useRef(false)
+  const isOwnerRezFlow = useRef(false)
 
   const handleSuccess = useCallback((type: string | null) => {
     if (hasCompleted.current) return
@@ -97,6 +98,7 @@ export const AuthCallback = () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state)
 
     if (isOwnerRezOAuth) {
+      isOwnerRezFlow.current = true
       handleOwnerRezOAuth(code, state)
       return
     }
@@ -194,14 +196,22 @@ export const AuthCallback = () => {
 
     async function handleOwnerRezOAuth(code: string, state: string) {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        const { api } = await import('@/lib/api')
+        // getSession may return null right after a page reload because the
+        // Supabase client hasn't finished initializing from localStorage yet.
+        // Retry once after a brief delay to handle this race condition.
+        let session = (await supabase.auth.getSession()).data.session
+        if (!session) {
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          session = (await supabase.auth.getSession()).data.session
+        }
 
         if (!session) {
+          // No session even after retry — this IS an auth issue
           handleError('Not authenticated. Please log in first.', '/login')
           return
         }
 
+        const { api } = await import('@/lib/api')
         api.setAccessToken(session.access_token)
         const result = await api.oauth.callback(code, state)
 
@@ -218,10 +228,21 @@ export const AuthCallback = () => {
           // Navigate after a brief moment to ensure state propagates
           setTimeout(() => navigate('/dashboard/overview?sync=initial', { replace: true }), 500)
         } else {
-          handleError(result.error || 'Failed to connect to OwnerRez', '/dashboard/settings')
+          // OwnerRez-specific failure — do NOT clear auth storage.
+          // The user is still authenticated; redirect them to settings to retry.
+          if (hasCompleted.current) return
+          hasCompleted.current = true
+          setStatus('error')
+          setMessage(result.error || 'Failed to connect to OwnerRez')
+          setTimeout(() => navigate('/dashboard/settings', { replace: true }), 3000)
         }
       } catch {
-        handleError('Failed to complete OwnerRez connection', '/dashboard/settings')
+        // OwnerRez-specific failure — do NOT clear auth storage.
+        if (hasCompleted.current) return
+        hasCompleted.current = true
+        setStatus('error')
+        setMessage('Failed to complete OwnerRez connection')
+        setTimeout(() => navigate('/dashboard/settings', { replace: true }), 3000)
       }
     }
   }, [handleSuccess, handleError, navigate, setOwnerRezConnected])
@@ -230,12 +251,20 @@ export const AuthCallback = () => {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (!hasCompleted.current) {
-        handleError('Authentication timed out. Please try again.')
+        if (isOwnerRezFlow.current) {
+          // OwnerRez timeout — don't clear auth storage, redirect to settings
+          hasCompleted.current = true
+          setStatus('error')
+          setMessage('OwnerRez connection timed out. Please try again from settings.')
+          setTimeout(() => navigate('/dashboard/settings', { replace: true }), 3000)
+        } else {
+          handleError('Authentication timed out. Please try again.')
+        }
       }
     }, 15000)
 
     return () => clearTimeout(timeout)
-  }, [handleError])
+  }, [handleError, navigate])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
@@ -269,7 +298,7 @@ export const AuthCallback = () => {
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Authentication Error</h2>
               <p className="text-gray-600 mb-2">{message}</p>
-              <p className="text-sm text-gray-500 mb-4">Redirecting to login...</p>
+              <p className="text-sm text-gray-500 mb-4">Redirecting...</p>
               <Link to="/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
                 Go to login →
               </Link>
