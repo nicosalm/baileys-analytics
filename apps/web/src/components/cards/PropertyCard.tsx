@@ -75,7 +75,7 @@ export const PropertyCard = memo(({ property, previousProperty, comparisonMode }
           <div className="text-sm text-gray-600">Occupancy</div>
           <div className="flex items-center gap-2">
             <div className={`text-lg font-semibold ${getOccupancyColor(property.occupancyRate * 100)}`}>
-              {formatPercentage(property.occupancyRate * 100, 0)}
+              {formatPercentage(property.occupancyRate * 100, 1)}
             </div>
             {getGrowthIndicator(property.occupancyRate, previousProperty?.occupancyRate, comparisonMode)}
           </div>

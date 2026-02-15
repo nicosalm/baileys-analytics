@@ -128,7 +128,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                 <Home className="w-4 h-4 mr-1" />
                 Occupancy Rate
               </div>
-              <div className="text-2xl font-bold">{formatPercentage((data?.metrics?.occupancyRate || 0) * 100, 0)}</div>
+              <div className="text-2xl font-bold">{formatPercentage((data?.metrics?.occupancyRate || 0) * 100, 1)}</div>
             </div>
             <div className="bg-white p-4 rounded-lg border">
               <div className="flex items-center text-sm text-gray-600 mb-1">
@@ -188,7 +188,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                 <div>
                   <div className="font-medium">{property.propertyName}</div>
                   <div className="text-sm text-gray-500">
-                    {property.bookings} bookings • {formatPercentage(property.occupancyRate * 100, 0)} occupancy
+                    {property.bookings} bookings • {formatPercentage(property.occupancyRate * 100, 1)} occupancy
                   </div>
                 </div>
                 <div className="text-right">

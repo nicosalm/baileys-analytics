@@ -188,7 +188,7 @@ export const PropertiesDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
-            ? <>vs {comparisonLabel}: {formatPercentage(prevAvgOccupancy * 100, 0)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatPercentage(prevAvgOccupancy * 100, 1)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0 ? {

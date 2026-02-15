@@ -254,7 +254,7 @@ export const OccupancyDashboard = () => {
             <div className="text-right">
               <div className="text-xs text-gray-500">Current Occupancy</div>
               <div className="text-lg font-bold text-blue-600">
-                {formatPercentage(currentData.overall * 100, 0)}
+                {formatPercentage(currentData.overall * 100, 1)}
               </div>
             </div>
             <div className="text-right">
@@ -287,7 +287,7 @@ export const OccupancyDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
-            ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 0)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 1)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
           }
           trend={comparisonMode !== 'none' && previousData?.overall !== undefined ? {
@@ -339,7 +339,7 @@ export const OccupancyDashboard = () => {
           label={`Lowest ${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'}`}
           value={formatPeriodDisplay(lowestPeriod.month)}
           format="custom"
-          subValue={`Only ${formatPercentage(lowestPeriod.rate * 100, 0)} booked`}
+          subValue={`Only ${formatPercentage(lowestPeriod.rate * 100, 1)} booked`}
           tooltip={`${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'} with lowest occupancy rate in the selected period`}
           color="yellow"
         />
@@ -481,7 +481,7 @@ export const OccupancyDashboard = () => {
                         occupancyPercent >= 50 ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
-                        {formatPercentage(occupancyPercent, 0)}
+                        {formatPercentage(occupancyPercent, 1)}
                       </span>
                       {comparisonMode !== 'none' && prevOccupancy !== null && (
                         <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-green-600' : occupancyPercent < prevOccupancy ? 'text-red-600' : 'text-gray-500'}`}>

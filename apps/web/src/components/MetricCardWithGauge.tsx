@@ -60,7 +60,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
       case 'currency':
         return compact ? formatCompactCurrency(val) : formatCurrency(val)
       case 'percent':
-        return formatPercentage(val, 0)
+        return formatPercentage(val, 1)
       case 'number':
         return formatNumber(val)
       default:

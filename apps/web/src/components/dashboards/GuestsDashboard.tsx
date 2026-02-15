@@ -397,7 +397,7 @@ export const GuestsDashboard = () => {
                         <div className="text-right">
                             <div className="text-xs text-gray-500">Repeat Rate</div>
                             <div className="text-lg font-bold text-gray-900">
-                                {formatPercentage(data.metrics.repeatRate * 100, 0)}
+                                {formatPercentage(data.metrics.repeatRate * 100, 1)}
                             </div>
                         </div>
                     </div>
@@ -442,7 +442,7 @@ export const GuestsDashboard = () => {
                     format="percent"
                     tooltip="Percentage of returning guests"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 0)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : `${data.metrics.repeatGuests} returning guests`
                     }
                     color="green"

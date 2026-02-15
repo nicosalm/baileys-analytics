@@ -21,7 +21,7 @@ export const DEFAULT_CHART_CONFIG: ChartConfig = {
 
 export const chartFormatters = {
   currency: (value: number) => formatCompactCurrency(value),
-  percentage: (value: number) => formatPercentage(value, 0),
+  percentage: (value: number) => formatPercentage(value, 1),
   number: (value: number) => value.toLocaleString(),
   compact: (value: number) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`

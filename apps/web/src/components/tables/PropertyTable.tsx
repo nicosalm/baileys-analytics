@@ -233,7 +233,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                         property.occupancyRate >= 0.5 ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
-                        {formatPercentage(property.occupancyRate * 100, 0)}
+                        {formatPercentage(property.occupancyRate * 100, 1)}
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 mt-1">

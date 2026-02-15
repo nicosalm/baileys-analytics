@@ -544,8 +544,8 @@ export const OverviewDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
-            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 0)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 0)} average`
+            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average`
           }
           trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
             value: metrics.occupancy.growth,
@@ -574,7 +574,7 @@ export const OverviewDashboard = () => {
           tooltip="Total unique guests who have stayed"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`
+            : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
           }
           trend={comparisonMode !== 'none' && metrics.guests.growth !== undefined ? {
             value: metrics.guests.growth,

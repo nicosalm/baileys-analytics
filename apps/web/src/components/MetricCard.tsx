@@ -100,7 +100,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       case 'compact':
         return formatCompactCurrency(val)
       case 'percent':
-        return formatPercentage(val, val < 1 ? 0 : 1)
+        return formatPercentage(val, 1)
       case 'number':
         return val.toLocaleString()
       default:

@@ -438,7 +438,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                       data.guestStats?.totalGuests 
                         ? (data.guestStats.repeatGuests / data.guestStats.totalGuests) * 100 
                         : 0, 
-                      0
+                      1
                     )}
                   </div>
                 </div>
