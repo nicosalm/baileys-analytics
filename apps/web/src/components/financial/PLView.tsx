@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
+import { useDashboard } from '@/contexts/dashboard'
 
 interface PLViewProps {
   data: any
@@ -28,7 +29,8 @@ export const PLView: React.FC<PLViewProps> = ({
   comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
-  
+  const { comparisonLabel } = useDashboard()
+
   const processedData = useMemo(() => {
     if (!data || !data.metrics) return null
     
@@ -145,15 +147,14 @@ export const PLView: React.FC<PLViewProps> = ({
         previousTaxes,
         previousOperatingProfit,
         previousProfitMargin,
-        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' :
-                     comparisonMode === 'previous-period' ? 'vs Previous Period' : '',
+        periodLabel: comparisonLabel ? `vs ${comparisonLabel}` : '',
         hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some((m: any) => m.previousRevenue !== undefined)
       },
       platforms: platformData,
       monthly: monthlyData,
       granularity
     }
-  }, [data, comparisonMode])
+  }, [data, comparisonMode, comparisonLabel])
   
   if (loading || !processedData) {
     return (
@@ -257,12 +258,12 @@ export const PLView: React.FC<PLViewProps> = ({
         data={monthly}
         title={`${granularity} Profit & Loss Trend`}
         subtitle={comparison.hasComparison 
-          ? `Comparing with ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+          ? `Comparing with ${comparisonLabel}`
           : undefined
         }
         showProfit={true}
         showComparison={comparison.hasComparison}
-        comparisonMode={comparisonMode}
+        comparisonLabel={comparisonLabel}
         onPeriodClick={onPeriodClick}
         height={360}
       />

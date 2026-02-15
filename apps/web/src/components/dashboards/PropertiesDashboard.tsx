@@ -15,7 +15,7 @@ import { PropertyCard } from '@/components/cards/PropertyCard'
 import { PropertyTable } from '@/components/tables/PropertyTable'
 
 export const PropertiesDashboard = () => {
-  const { filters, comparisonRange, comparisonMode } = useDashboard()
+  const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
   const { showTips } = useTips()
   const { openModal } = useModal()
   const comparisonDateRange = useComparisonDateRange()
@@ -156,7 +156,7 @@ export const PropertiesDashboard = () => {
           format="currency"
           tooltip="Total revenue from all bookings in selected period"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(prevTotalRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatCurrency(prevTotalRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "All properties"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? {
@@ -172,7 +172,7 @@ export const PropertiesDashboard = () => {
           format="currency"
           tooltip="Revenue Per Available Night — portfolio-wide revenue efficiency combining rate and occupancy"
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? {
@@ -188,7 +188,7 @@ export const PropertiesDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatPercentage(prevAvgOccupancy * 100, 0)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatPercentage(prevAvgOccupancy * 100, 0)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0 ? {
@@ -204,7 +204,7 @@ export const PropertiesDashboard = () => {
           format="number"
           tooltip="Total number of confirmed bookings"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {prevTotalBookings}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {prevTotalBookings}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
           }
           trend={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0 ? {

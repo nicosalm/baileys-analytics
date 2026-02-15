@@ -11,6 +11,7 @@ import {
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
 import { METRIC_COLORS } from '@/lib/theme'
+import { useDashboard } from '@/contexts/dashboard'
 
 const CashFlowChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -69,6 +70,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
   comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
+  const { comparisonLabel } = useDashboard()
   const cashFlowData = useMemo(() => {
     if (!data) return null
     
@@ -146,11 +148,10 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         outflowGrowth,
         netFlowGrowth,
         avgMonthlyFlowGrowth,
-        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' :
-                     comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
+        periodLabel: comparisonLabel ? `vs ${comparisonLabel}` : ''
       }
     }
-  }, [data, comparisonMode])
+  }, [data, comparisonMode, comparisonLabel])
   
   if (loading || !cashFlowData) {
     return (

@@ -301,23 +301,15 @@ export function useGuestDetail(guestId?: string) {
   )
 }
 
-export function usePeriodDetail(monthOrFrom?: string, yearOrTo?: string, tagIds?: string[], isDateRange: boolean = false) {
+export function usePeriodDetail(from?: string, to?: string, tagIds?: string[]) {
   const params = new URLSearchParams()
-  
-  if (isDateRange) {
-    // When called with date range (for daily/weekly views)
-    if (monthOrFrom) params.append('from', monthOrFrom)
-    if (yearOrTo) params.append('to', yearOrTo)
-  } else {
-    // Legacy month/year format
-    if (yearOrTo) params.append('year', yearOrTo)
-    if (monthOrFrom) params.append('month', monthOrFrom)
-  }
-  
+
+  if (from) params.append('from', from)
+  if (to) params.append('to', to)
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
-  
+
   return useSWR<any>(
-    monthOrFrom && yearOrTo ? [`/period-detail`, yearOrTo, monthOrFrom, tagIds, isDateRange] : null,
+    from && to ? [`/period-detail`, from, to, tagIds] : null,
     async () => {
       const url = `/period-detail?${params}`
       const result = await api.request(url)

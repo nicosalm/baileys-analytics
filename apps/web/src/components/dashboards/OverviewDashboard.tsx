@@ -116,7 +116,7 @@ const RevenueChartTooltip = ({ active, payload, label }: any) => {
 
 
 export const OverviewDashboard = () => {
-  const { filters, comparisonRange, comparisonMode, updateDateRange } = useDashboard()
+  const { filters, comparisonRange, comparisonMode, comparisonLabel, updateDateRange } = useDashboard()
   const { showTips } = useTips()
   const { openModal } = useModal()
   const tagIds = useTagIds()
@@ -474,7 +474,7 @@ export const OverviewDashboard = () => {
           format="currency"
           tooltip="Total revenue from all bookings in selected period"
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)}`
           }
           trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
@@ -509,7 +509,7 @@ export const OverviewDashboard = () => {
           format="number"
           tooltip="Total number of confirmed bookings"
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
           }
           trend={comparisonMode !== 'none' && metrics.bookings.previous !== undefined ? {
@@ -544,7 +544,7 @@ export const OverviewDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatPercentage(Number(metrics.occupancy.previous), 0)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 0)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 0)} average`
           }
           trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
@@ -573,7 +573,7 @@ export const OverviewDashboard = () => {
           format="number"
           tooltip="Total unique guests who have stayed"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 0)} returning`
           }
           trend={comparisonMode !== 'none' && metrics.guests.growth !== undefined ? {

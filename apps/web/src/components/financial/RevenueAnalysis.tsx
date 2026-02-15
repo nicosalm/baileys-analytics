@@ -31,7 +31,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
   comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
-  const { filters } = useDashboard()
+  const { filters, comparisonLabel } = useDashboard()
   const tagIds = filters.selectedTags.map(t => t.id)
   
   // Fetch property metrics for property-level revenue data
@@ -148,7 +148,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && analysis.previousRevenue
-            ? <>{comparisonMode === 'previous-year' ? 'vs Last Year' : 'vs Previous Period'}: {formatCurrency(analysis.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparisonLabel ? `vs ${comparisonLabel}` : 'vs Previous Period'}: {formatCurrency(analysis.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `Monthly avg: ${formatCurrency(analysis.avgMonthlyRevenue)} | ${analysis.monthlyData.length} months`}
           trend={analysis.revenueGrowth !== 0 ? {
             value: analysis.revenueGrowth,
@@ -162,7 +162,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           format="currency"
           color="blue"
           subValue={comparisonMode !== 'none' && analysis.previousAvgMonthlyRevenue > 0
-            ? <>{comparisonMode === 'previous-year' ? 'vs Last Year' : 'vs Previous Period'}: {formatCurrency(analysis.previousAvgMonthlyRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparisonLabel ? `vs ${comparisonLabel}` : 'vs Previous Period'}: {formatCurrency(analysis.previousAvgMonthlyRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${analysis.monthlyData.length} months | Best: ${formatCurrency(Math.max(...analysis.monthlyData.map((m: any) => m.revenue || 0)))}`}
           trend={comparisonMode !== 'none' && analysis.avgMonthlyGrowth !== 0 ? {
             value: analysis.avgMonthlyGrowth,
@@ -202,12 +202,12 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
         data={analysis.monthlyData}
         title={`${analysis.granularity} Revenue Trend`}
         subtitle={analysis.hasComparison 
-          ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+          ? `Comparing current period vs ${comparisonLabel}`
           : undefined
         }
         onPeriodClick={onPeriodClick}
         showComparison={analysis.hasComparison}
-        comparisonMode={comparisonMode}
+        comparisonLabel={comparisonLabel}
         height={360}
       />
       

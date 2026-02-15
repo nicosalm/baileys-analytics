@@ -50,7 +50,7 @@ const GuestSourceTooltip = ({ active, payload }: any) => {
 
 export const GuestsDashboard = () => {
     const { openModal } = useModal()
-    const { filters, comparisonRange, comparisonMode } = useDashboard()
+    const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
     const { showTips } = useTips()
     const comparisonDateRange = useComparisonDateRange()
 
@@ -424,7 +424,7 @@ export const GuestsDashboard = () => {
                     format="number"
                     tooltip="Total unique guests who have stayed"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousData.metrics.totalGuests}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {previousData.metrics.totalGuests}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : "In selected period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
@@ -442,7 +442,7 @@ export const GuestsDashboard = () => {
                     format="percent"
                     tooltip="Percentage of returning guests"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatPercentage(previousData.metrics.repeatRate * 100, 0)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 0)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : `${data.metrics.repeatGuests} returning guests`
                     }
                     color="green"
@@ -460,7 +460,7 @@ export const GuestsDashboard = () => {
                     format="custom"
                     tooltip="Average length of stay per booking"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousData.metrics.avgStayLength.toFixed(1)} nights{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {previousData.metrics.avgStayLength.toFixed(1)} nights{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : "Per booking"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
@@ -477,7 +477,7 @@ export const GuestsDashboard = () => {
                     value={data.metrics.avgSpend}
                     format="currency"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatCurrency(previousData.metrics.avgSpend)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {formatCurrency(previousData.metrics.avgSpend)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
                         : "Per guest this period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics && previousData.metrics.avgSpend > 0 ? {

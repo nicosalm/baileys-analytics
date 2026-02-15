@@ -18,11 +18,11 @@ interface RevenueChartProps {
   height?: number
   showProfit?: boolean
   showComparison?: boolean
-  comparisonMode?: 'none' | 'previous-period' | 'previous-year'
+  comparisonLabel?: string
   onPeriodClick?: (period: string) => void
 }
 
-const RevenueChartTooltip = ({ active, payload, label, showProfit, showComparison, comparisonMode }: any) => {
+const RevenueChartTooltip = ({ active, payload, label, showProfit, showComparison, comparisonLabel }: any) => {
   if (!active || !payload?.length) return null
   const data = payload[0].payload
 
@@ -41,7 +41,7 @@ const RevenueChartTooltip = ({ active, payload, label, showProfit, showCompariso
           <div className="flex justify-between gap-4">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-sm bg-slate-400" />
-              <span className="text-gray-600">{comparisonMode === 'previous-year' ? 'Last Year' : 'Previous'}:</span>
+              <span className="text-gray-600">{comparisonLabel || 'Previous'}:</span>
             </div>
             <span className="font-medium">{formatCurrency(data.previousRevenue)}</span>
           </div>
@@ -66,7 +66,7 @@ const RevenueChartTooltip = ({ active, payload, label, showProfit, showCompariso
               <div className="flex justify-between gap-4">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 rounded-sm bg-slate-300" />
-                  <span className="text-gray-600">{comparisonMode === 'previous-year' ? 'Last Year' : 'Previous'}:</span>
+                  <span className="text-gray-600">{comparisonLabel || 'Previous'}:</span>
                 </div>
                 <span className="font-medium">{formatCurrency(data.previousProfit)}</span>
               </div>
@@ -86,7 +86,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   height = 320,
   showProfit = false,
   showComparison = false,
-  comparisonMode = 'none',
+  comparisonLabel = '',
   onPeriodClick
 }) => {
   if (!data || data.length === 0) {
@@ -127,7 +127,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="month" />
           <YAxis tickFormatter={chartFormatters.currency} />
-          <Tooltip content={<RevenueChartTooltip showProfit={showProfit} showComparison={showComparison} comparisonMode={comparisonMode} />} />
+          <Tooltip content={<RevenueChartTooltip showProfit={showProfit} showComparison={showComparison} comparisonLabel={comparisonLabel} />} />
           <Legend />
           <Line
             type="monotone"
@@ -160,7 +160,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}
-                name={comparisonMode === 'previous-year' ? 'Last Year Revenue' : 'Previous Revenue'}
+                name={comparisonLabel ? `${comparisonLabel} Revenue` : 'Previous Revenue'}
               />
               {showProfit && (
                 <Line
@@ -170,7 +170,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
                   strokeWidth={2}
                   strokeDasharray="3 3"
                   dot={false}
-                  name={comparisonMode === 'previous-year' ? 'Last Year Profit' : 'Previous Profit'}
+                  name={comparisonLabel ? `${comparisonLabel} Profit` : 'Previous Profit'}
                 />
               )}
             </>

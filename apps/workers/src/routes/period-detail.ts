@@ -18,27 +18,28 @@ periodDetail.get('/', async (c) => {
   
   const from = c.req.query('from');
   const to = c.req.query('to');
-  const year = c.req.query('year');
-  const month = c.req.query('month');
   const tags = c.req.query('tags')?.split(',').filter(Boolean);
-  
-  let startDate: string;
-  let endDate: string;
-  
-  if (from && to) {
-    startDate = from;
-    endDate = to;
-  } else if (year && month) {
-    startDate = `${year}-${month.padStart(2, '0')}-01`;
-    const lastDay = new Date(parseInt(year), parseInt(month), 0);
-    endDate = `${year}-${month.padStart(2, '0')}-${lastDay.getDate().toString().padStart(2, '0')}`;
-  } else {
-    return c.json({ error: 'Either from/to dates or year/month are required' }, 400);
+
+  if (!from || !to) {
+    return c.json({ error: 'from and to date parameters are required' }, 400);
   }
 
+  const startDate = from;
+  const endDate = to;
+
   try {
-    // Fetch all bookings that might overlap with the period
-    // We'll filter more precisely in code to match the calendar logic
+    // Fetch active properties first so we can filter bookings to match occupancy service
+    const propertiesData = await supabase
+      .from('properties')
+      .select('id, name')
+      .eq('tenant_id', tenantId)
+      .eq('active', true);
+
+    if (propertiesData.error) throw propertiesData.error;
+    const properties = propertiesData.data || [];
+    const propertyIds = properties.map(p => p.id);
+
+    // Build bookings query filtered to active properties (matches occupancy service)
     let bookingsQuery = supabase
       .from('bookings')
       .select(`
@@ -54,8 +55,9 @@ periodDetail.get('/', async (c) => {
         host_service_fee
       `)
       .eq('tenant_id', tenantId)
+      .in('property_id', propertyIds)
       .lte('arrival', endDate)
-      .gt('departure', startDate)  // Changed: departure must be AFTER start (not on checkout day)
+      .gte('departure', startDate)
       .neq('status', 'canceled')
       .limit(SUPABASE_MAX_ROWS);
 
@@ -64,13 +66,15 @@ periodDetail.get('/', async (c) => {
         .from('booking_tags')
         .select('booking_id')
         .in('tag_id', tags);
-      
+
       if (taggedBookings && taggedBookings.length > 0) {
         const bookingIds = taggedBookings.map(tb => tb.booking_id);
         bookingsQuery = bookingsQuery.in('id', bookingIds);
+      } else {
+        bookingsQuery = bookingsQuery.in('id', []);
       }
     }
-    
+
     // Parse year/month for fee and expense queries
     const fromDate = new Date(startDate);
     const toDate = new Date(endDate);
@@ -79,13 +83,8 @@ periodDetail.get('/', async (c) => {
     const toYear = toDate.getFullYear();
     const toMonth = toDate.getMonth() + 1;
 
-    const [bookingsData, propertiesData, platformFeesData, operatingExpensesData] = await Promise.all([
+    const [bookingsData, platformFeesData, operatingExpensesData] = await Promise.all([
       bookingsQuery,
-      supabase
-        .from('properties')
-        .select('id, name')
-        .eq('tenant_id', tenantId)
-        .eq('active', true),
       supabase
         .from('platform_guest_fees')
         .select('amount')
@@ -101,10 +100,8 @@ periodDetail.get('/', async (c) => {
     ]);
 
     if (bookingsData.error) throw bookingsData.error;
-    if (propertiesData.error) throw propertiesData.error;
 
     const bookings = bookingsData.data || [];
-    const properties = propertiesData.data || [];
 
     // Calculate costs
     const totalPlatformFees = (platformFeesData.data || []).reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
@@ -167,8 +164,8 @@ periodDetail.get('/', async (c) => {
     const avgNightlyRate = totalNights > 0 ? totalRevenue / totalNights : 0;
 
     const totalDays = Math.ceil(
-      (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24) + 1
-    );
+      (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
     const totalPossibleNights = properties.length * totalDays;
     const occupancyRate = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) : 0;
 

@@ -64,7 +64,7 @@ const OccupancyChartTooltip = ({ active, payload, label }: any) => {
 }
 
 export const OccupancyDashboard = () => {
-  const { filters, comparisonRange, comparisonMode } = useDashboard()
+  const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
   const { openModal } = useModal()
   const { showTips } = useTips()
   const tagIds = useTagIds()
@@ -287,7 +287,7 @@ export const OccupancyDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {formatPercentage(previousData.overall * 100, 0)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 0)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
           }
           trend={comparisonMode !== 'none' && previousData?.overall !== undefined ? {
@@ -305,7 +305,7 @@ export const OccupancyDashboard = () => {
           format="number"
           tooltip="Total nights booked across all properties"
           subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousData.bookedNights.toLocaleString()} nights{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
           }
           trend={comparisonMode !== 'none' && previousData?.bookedNights !== undefined ? {
@@ -323,7 +323,7 @@ export const OccupancyDashboard = () => {
           format="number"
           tooltip="Total nights available for booking"
           subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
-            ? <>vs {comparisonMode === 'previous-year' ? 'last year' : 'previous period'}: {previousData.availableNights.toLocaleString()}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
           }
           trend={comparisonMode !== 'none' && previousData?.availableNights !== undefined ? {
@@ -404,7 +404,7 @@ export const OccupancyDashboard = () => {
           <ChartWrapper
             title={getChartTitle()}
             subtitle={comparisonMode !== 'none' && previousData
-              ? `Comparing current period vs ${comparisonMode === 'previous-year' ? 'last year' : 'previous period'}`
+              ? `Comparing current period vs ${comparisonLabel}`
               : undefined
             }
             icon={TrendingUp}
@@ -444,7 +444,7 @@ export const OccupancyDashboard = () => {
                   strokeWidth={2}
                   strokeDasharray="5 5"
                   dot={{ fill: '#94a3b8', r: 4 }}
-                  name={comparisonMode === 'previous-year' ? 'Last Year' : 'Previous Period'}
+                  name={comparisonLabel || 'Previous Period'}
                 />
               )}
             </LineChart>

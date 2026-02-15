@@ -1,5 +1,4 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { getActiveSeasons } from './seasons';
 import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
 
 export interface OccupancyData {
@@ -61,55 +60,26 @@ async function fetchOverallOccupancy(
     .select('id')
     .eq('tenant_id', tenantId)
     .eq('active', true);
-  
+
   if (!properties || properties.length === 0) {
     return { bookedNights: 0, availableNights: 0 };
   }
-  
-  const { data: firstBookings } = await supabase
-    .from('bookings')
-    .select('property_id, arrival')
-    .eq('tenant_id', tenantId)
-    .neq('status', 'canceled')
-    .order('arrival', { ascending: true })
-    .limit(SUPABASE_MAX_ROWS);
 
-  const firstBookingDates = new Map<string, Date>();
-  if (firstBookings) {
-    for (const property of properties) {
-      const propertyBookings = firstBookings.filter(b => b.property_id === property.id);
-      if (propertyBookings.length > 0) {
-        firstBookingDates.set(property.id, new Date(propertyBookings[0].arrival));
-      }
-    }
-  }
+  const propertyIds = properties.map(p => p.id);
 
-  let totalAvailableNights = 0;
-  const today = new Date();
   const endDate = new Date(to);
   const startDate = new Date(from);
 
-  for (const property of properties) {
-    const firstBooking = firstBookingDates.get(property.id);
-    if (!firstBooking || firstBooking > endDate) {
-      continue;
-    }
-
-    const effectiveStart = firstBooking > startDate ? firstBooking : startDate;
-    const effectiveEnd = endDate > today ? today : endDate;
-
-    if (effectiveStart <= effectiveEnd) {
-      const nights = Math.ceil(
-        (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
-      ) + 1;
-      totalAvailableNights += Math.max(0, nights);
-    }
-  }
+  const totalDays = endDate >= startDate
+    ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 0;
+  const totalAvailableNights = totalDays * properties.length;
 
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
+    .in('property_id', propertyIds)
     .lte('arrival', to)
     .gte('departure', from)
     .neq('status', 'canceled')
@@ -141,8 +111,8 @@ async function fetchOverallOccupancy(
       const departureDate = new Date(booking.departure);
 
       const effectiveStart = new Date(Math.max(arrivalDate.getTime(), periodStart.getTime()));
-      // periodEnd and today are inclusive boundaries; convert to exclusive for the < loop
-      const effectiveEnd = new Date(Math.min(departureDate.getTime(), periodEnd.getTime() + MS_PER_DAY, today.getTime() + MS_PER_DAY));
+      // periodEnd is an inclusive boundary; convert to exclusive for the < loop
+      const effectiveEnd = new Date(Math.min(departureDate.getTime(), periodEnd.getTime() + MS_PER_DAY));
 
       let day = new Date(effectiveStart);
       while (day < effectiveEnd) {
@@ -174,33 +144,24 @@ async function fetchPropertyOccupancy(
     .select('*')
     .eq('tenant_id', tenantId)
     .eq('active', true);
-  
+
   if (!properties || properties.length === 0) {
     return [];
   }
-  
-  const { data: firstBookings } = await supabase
-    .from('bookings')
-    .select('property_id, arrival')
-    .eq('tenant_id', tenantId)
-    .neq('status', 'canceled')
-    .order('arrival', { ascending: true })
-    .limit(SUPABASE_MAX_ROWS);
 
-  const firstBookingDates = new Map<string, Date>();
-  if (firstBookings) {
-    for (const property of properties) {
-      const propertyBookings = firstBookings.filter(b => b.property_id === property.id);
-      if (propertyBookings.length > 0) {
-        firstBookingDates.set(property.id, new Date(propertyBookings[0].arrival));
-      }
-    }
-  }
+  const propertyIds = properties.map(p => p.id);
+
+  const endDate = new Date(to);
+  const startDate = new Date(from);
+  const totalDays = endDate >= startDate
+    ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 0;
 
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
+    .in('property_id', propertyIds)
     .lte('arrival', to)
     .gte('departure', from)
     .neq('status', 'canceled')
@@ -215,30 +176,24 @@ async function fetchPropertyOccupancy(
     if (taggedBookings && taggedBookings.length > 0) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
+    } else {
+      // No bookings match the tag filter — return all properties with 0 occupancy
+      return properties.map(p => ({
+        propertyId: p.id,
+        propertyName: p.name,
+        rate: 0,
+        bookedNights: 0,
+        availableNights: totalDays
+      }));
     }
   }
 
   const { data: bookings } = await bookingsQuery;
 
   const propertyOccupancy: PropertyOccupancy[] = [];
-  const today = new Date();
-  const endDate = new Date(to);
-  const startDate = new Date(from);
-  
+
   for (const property of properties) {
-    const firstBooking = firstBookingDates.get(property.id);
-    let availableNights = 0;
-    
-    if (firstBooking && firstBooking <= endDate) {
-      const effectiveStart = firstBooking > startDate ? firstBooking : startDate;
-      const effectiveEnd = endDate > today ? today : endDate;
-      
-      if (effectiveStart <= effectiveEnd) {
-        availableNights = Math.ceil(
-          (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
-        ) + 1;
-      }
-    }
+    const availableNights = totalDays;
     
     const occupiedDays = new Set<string>();
     if (bookings) {
@@ -248,8 +203,8 @@ async function fetchPropertyOccupancy(
         const departureDate = new Date(booking.departure);
 
         const effectiveStart = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
-        // endDate and today are inclusive boundaries; convert to exclusive for the < loop
-        const effectiveEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY, today.getTime() + MS_PER_DAY));
+        // endDate is an inclusive boundary; convert to exclusive for the < loop
+        const effectiveEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY));
 
         let day = new Date(effectiveStart);
         while (day < effectiveEnd) {
@@ -287,33 +242,19 @@ async function fetchMonthlyOccupancy(
     .select('id')
     .eq('tenant_id', tenantId)
     .eq('active', true);
-  
+
   if (!properties || properties.length === 0) {
     return [];
   }
-  
-  const { data: firstBookings } = await supabase
-    .from('bookings')
-    .select('property_id, arrival')
-    .eq('tenant_id', tenantId)
-    .neq('status', 'canceled')
-    .order('arrival', { ascending: true })
-    .limit(SUPABASE_MAX_ROWS);
 
-  const firstBookingDates = new Map<string, Date>();
-  if (firstBookings) {
-    for (const property of properties) {
-      const propertyBookings = firstBookings.filter(b => b.property_id === property.id);
-      if (propertyBookings.length > 0) {
-        firstBookingDates.set(property.id, new Date(propertyBookings[0].arrival));
-      }
-    }
-  }
+  const propertyIds = properties.map(p => p.id);
+  const propertyCount = properties.length;
 
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
+    .in('property_id', propertyIds)
     .lte('arrival', to)
     .gte('departure', from)
     .neq('status', 'canceled')
@@ -328,6 +269,8 @@ async function fetchMonthlyOccupancy(
     if (taggedBookings && taggedBookings.length > 0) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
+    } else {
+      bookingsQuery = bookingsQuery.in('id', []);
     }
   }
 
@@ -336,57 +279,52 @@ async function fetchMonthlyOccupancy(
   const periods = new Map<string, { bookedNights: number; availableNights: number }>();
   const startDate = new Date(from);
   const endDate = new Date(to);
-  const today = new Date();
-  
+
   let currentDate = new Date(startDate);
   while (currentDate <= endDate) {
     let periodKey: string;
+    let periodStart: Date;
     let periodEnd: Date;
-    
+
     if (granularity === 'daily') {
       periodKey = currentDate.toISOString().split('T')[0];
+      periodStart = new Date(currentDate);
       periodEnd = new Date(currentDate);
     } else if (granularity === 'weekly') {
       const weekStart = new Date(currentDate);
       weekStart.setDate(currentDate.getDate() - currentDate.getDay());
       periodKey = weekStart.toISOString().split('T')[0];
+      periodStart = weekStart < startDate ? new Date(startDate) : new Date(weekStart);
       periodEnd = new Date(weekStart);
       periodEnd.setDate(weekStart.getDate() + 6);
     } else {
       periodKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      periodStart = monthStart < startDate ? new Date(startDate) : monthStart;
       periodEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
     }
-    
+
     let periodAvailableNights = 0;
-    
-    const periodStart = new Date(currentDate);
+
     const actualPeriodEnd = periodEnd > endDate ? endDate : periodEnd;
-    const cappedPeriodEnd = actualPeriodEnd > today ? today : actualPeriodEnd;
-    
-    if (periodStart <= cappedPeriodEnd) {
-      let activePropertyCount = 0;
-      for (const property of properties) {
-        const firstBooking = firstBookingDates.get(property.id);
-        if (firstBooking && firstBooking <= cappedPeriodEnd) {
-          activePropertyCount++;
-        }
-      }
-      
+
+    if (periodStart <= actualPeriodEnd) {
       const periodNights = Math.ceil(
-        (cappedPeriodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)
+        (actualPeriodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)
       ) + 1;
-      
-      periodAvailableNights = periodNights * activePropertyCount;
+
+      periodAvailableNights = periodNights * propertyCount;
     }
-    
+
     periods.set(periodKey, { bookedNights: 0, availableNights: periodAvailableNights });
-    
+
     if (granularity === 'daily') {
       currentDate.setDate(currentDate.getDate() + 1);
     } else if (granularity === 'weekly') {
       currentDate.setDate(currentDate.getDate() + 7);
     } else {
-      currentDate.setMonth(currentDate.getMonth() + 1);
+      // Advance to the 1st of the next month
+      currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
     }
   }
   
@@ -399,8 +337,8 @@ async function fetchMonthlyOccupancy(
       const departureDate = new Date(booking.departure);
 
       let bookingDate = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
-      // endDate and today are inclusive boundaries; convert to exclusive for the < loop
-      const bookingEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY, today.getTime() + MS_PER_DAY));
+      // endDate is an inclusive boundary; convert to exclusive for the < loop
+      const bookingEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY));
 
       while (bookingDate < bookingEnd) {
         const dayKey = bookingDate.toISOString().split('T')[0];
@@ -465,11 +403,13 @@ async function fetchDailyOccupancy(
   }
   
   const totalProperties = properties.length;
-  
+  const propertyIds = properties.map(p => p.id);
+
   let bookingsQuery = supabase
     .from('bookings')
     .select('*')
     .eq('tenant_id', tenantId)
+    .in('property_id', propertyIds)
     .lte('arrival', to)
     .gte('departure', from)
     .neq('status', 'canceled')
@@ -484,6 +424,8 @@ async function fetchDailyOccupancy(
     if (taggedBookings && taggedBookings.length > 0) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
+    } else {
+      bookingsQuery = bookingsQuery.in('id', []);
     }
   }
 
@@ -492,10 +434,9 @@ async function fetchDailyOccupancy(
   const dailyOccupancy: DailyOccupancy[] = [];
   const startDate = new Date(from);
   const endDate = new Date(to);
-  const today = new Date();
-  
+
   let currentDate = new Date(startDate);
-  while (currentDate <= endDate && currentDate <= today) {
+  while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split('T')[0];
     const bookedProperties = new Set<string>();
     

@@ -9,18 +9,23 @@ import {
   startOfYear,
   subDays,
   subYears,
-  getYear,
-  getMonth
+  getYear
 } from '@baileys/utils'
 import { useSeasons } from '@/hooks/use-api'
 import { InlineDateRangePicker } from './InlineDateRangePicker'
 import { Modal } from './Modal'
 import type { Season } from '@/types/season'
-import { 
-  calculateComparisonRange, 
-  getComparisonLabel, 
-  type ComparisonType 
+import {
+  calculateComparisonRange,
+  getComparisonLabel,
+  type ComparisonType
 } from '@/utils/comparison'
+import {
+  getCurrentSeasonDates,
+  getPreviousSeasonDates,
+  isCurrentlyInSeason,
+  hasSeasonStartedThisYear
+} from '@/utils/season-dates'
 
 interface DateRange {
   from: string
@@ -29,7 +34,7 @@ interface DateRange {
 
 interface SmartPeriodSelectorProps {
   value: DateRange
-  onChange: (range: DateRange, comparison?: DateRange) => void
+  onChange: (range: DateRange, comparison?: DateRange, label?: string) => void
   comparisonRange?: DateRange
   className?: string
 }
@@ -44,76 +49,6 @@ type PeriodOption = {
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-const getCurrentSeasonDates = (season: Season, year: number = getYear(new Date())) => {
-  const today = new Date()
-  
-  let startDate: Date
-  let endDate: Date
-  
-  if (season.startMonth <= season.endMonth) {
-    startDate = new Date(year, season.startMonth - 1, season.startDay)
-    endDate = new Date(year, season.endMonth - 1, season.endDay)
-  } else {
-    const currentMonth = getMonth(today) + 1
-    if (currentMonth >= season.startMonth) {
-      startDate = new Date(year, season.startMonth - 1, season.startDay)
-      endDate = new Date(year + 1, season.endMonth - 1, season.endDay)
-    } else {
-      startDate = new Date(year - 1, season.startMonth - 1, season.startDay)
-      endDate = new Date(year, season.endMonth - 1, season.endDay)
-    }
-  }
-  
-  const cappedEndDate = endDate > today ? today : endDate
-  
-  return {
-    from: formatDateISO(startDate),
-    to: formatDateISO(cappedEndDate)
-  }
-}
-
-const getPreviousSeasonDates = (season: Season) => {
-  const currentYear = getYear(new Date())
-  return getCurrentSeasonDates(season, currentYear - 1)
-}
-
-const isCurrentlyInSeason = (season: Season): boolean => {
-  const today = new Date()
-  const currentMonth = getMonth(today) + 1
-  const currentDay = today.getDate()
-  
-  if (season.startMonth <= season.endMonth) {
-    // Season doesn't cross year boundary
-    return (
-      (currentMonth > season.startMonth || (currentMonth === season.startMonth && currentDay >= season.startDay)) &&
-      (currentMonth < season.endMonth || (currentMonth === season.endMonth && currentDay <= season.endDay))
-    )
-  } else {
-    // Season crosses year boundary
-    return (
-      (currentMonth > season.startMonth || (currentMonth === season.startMonth && currentDay >= season.startDay)) ||
-      (currentMonth < season.endMonth || (currentMonth === season.endMonth && currentDay <= season.endDay))
-    )
-  }
-}
-
-const hasSeasonStartedThisYear = (season: Season): boolean => {
-  const today = new Date()
-  const currentYear = getYear(today)
-  const seasonStart = new Date(currentYear, season.startMonth - 1, season.startDay)
-  
-  // For cross-year seasons, check if we're in the latter part
-  if (season.startMonth > season.endMonth) {
-    const currentMonth = getMonth(today) + 1
-    if (currentMonth <= season.endMonth) {
-      // We're in the end part of a season that started last year
-      return true
-    }
-  }
-  
-  return today >= seasonStart
-}
-
 export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   value,
   onChange,
@@ -122,6 +57,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [comparisonType, setComparisonType] = useState<ComparisonType>('none')
+  const [comparisonYearOffset, setComparisonYearOffset] = useState(1)
   const [comparisonDropdownOpen, setComparisonDropdownOpen] = useState(false)
   const [customRangeOpen, setCustomRangeOpen] = useState(false)
   const [tempCustomRange, setTempCustomRange] = useState<DateRange>(value)
@@ -148,13 +84,17 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
         if (!hasSeasonStartedThisYear(season)) {
           const lastSeasonDates = getPreviousSeasonDates(season)
           const activeSeason = activeSeasons[0]
-          const comparisonResult = calculateComparisonRange(lastSeasonDates, comparisonType, activeSeason)
-          onChangeRef.current(lastSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
+          const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
+          const comparisonResult = calculateComparisonRange(lastSeasonDates, comparisonType, activeSeason, offset)
+          const label = buildComparisonLabel(comparisonType, comparisonYearOffset, lastSeasonDates.from)
+          onChangeRef.current(lastSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined, label)
         } else {
           const currentSeasonDates = getCurrentSeasonDates(season)
           const activeSeason = activeSeasons[0]
-          const comparisonResult = calculateComparisonRange(currentSeasonDates, comparisonType, activeSeason)
-          onChangeRef.current(currentSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined)
+          const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
+          const comparisonResult = calculateComparisonRange(currentSeasonDates, comparisonType, activeSeason, offset)
+          const label = buildComparisonLabel(comparisonType, comparisonYearOffset, currentSeasonDates.from)
+          onChangeRef.current(currentSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined, label)
         }
       }
     }
@@ -164,14 +104,15 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   useEffect(() => {
     if (comparisonType !== 'none' && value.from && value.to) {
       const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-      const comparisonResult = calculateComparisonRange(value, comparisonType, activeSeason)
+      const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
+      const comparisonResult = calculateComparisonRange(value, comparisonType, activeSeason, offset)
 
       if (!comparisonResult.isValid) {
         setComparisonType('none')
-        onChangeRef.current(value, undefined)
+        onChangeRef.current(value, undefined, '')
       }
     }
-  }, [value, activeSeasons, comparisonType])
+  }, [value, activeSeasons, comparisonType, comparisonYearOffset])
   
   const uiMode = useMemo(() => {
     if (activeSeasons.length === 0) return 'year-round'
@@ -211,7 +152,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
         options.push(
           {
             id: 'current-season',
-            label: `${season.name} ${getYear(today)}${inSeason ? '' : ' (Ended)'}`,
+            label: inSeason ? 'Season to Date' : `${season.name} ${getYear(today)} (Ended)`,
             getRange: () => getCurrentSeasonDates(season)
           },
           {
@@ -220,14 +161,6 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             getRange: () => getPreviousSeasonDates(season)
           }
         )
-        
-        if (inSeason) {
-          options.push({
-            id: 'season-ytd',
-            label: 'Season to Date',
-            getRange: () => getCurrentSeasonDates(season)
-          })
-        }
       }
     } else {
       options.push(
@@ -285,16 +218,18 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   
   const handlePeriodSelect = (option: PeriodOption) => {
     const range = option.getRange(activeSeasons)
-    
+
     if (comparisonType !== 'none') {
       const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-      const comparisonResult = calculateComparisonRange(range, comparisonType, activeSeason)
-      
-      onChange(range, comparisonResult.isValid ? comparisonResult.range : undefined)
+      const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
+      const comparisonResult = calculateComparisonRange(range, comparisonType, activeSeason, offset)
+      const label = buildComparisonLabel(comparisonType, comparisonYearOffset, range.from)
+
+      onChange(range, comparisonResult.isValid ? comparisonResult.range : undefined, label)
     } else {
-      onChange(range, undefined)
+      onChange(range, undefined, '')
     }
-    
+
     setIsOpen(false)
   }
   
@@ -349,6 +284,18 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
     }
     return `${fmtWithYear(fromDate)} – ${fmtWithYear(toDate)}`
   }, [comparisonType, comparisonRange])
+
+  const buildComparisonLabel = (type: ComparisonType, offset: number, rangeFrom?: string): string => {
+    if (type === 'none') return ''
+    if (type === 'lastPeriod') {
+      return activeSeasons.length > 0 ? 'Previous Period' : 'Last Period'
+    }
+    const baseYear = rangeFrom ? getYear(parseDate(rangeFrom)) : getYear(new Date())
+    const targetYear = baseYear - offset
+    return activeSeasons.length > 0 && activeSeasons[0]
+      ? `${activeSeasons[0].name} ${targetYear}`
+      : `${targetYear}`
+  }
 
   const seasonStatus = useMemo(() => {
     if (activeSeasons.length === 0) return null
@@ -416,7 +363,11 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               comparisonType !== 'none' ? "text-blue-600" : "text-gray-500"
             )} />
             <span className="truncate">
-              {getComparisonLabel(comparisonType, activeSeasons.length > 0)}
+              {getComparisonLabel(comparisonType, activeSeasons.length > 0, {
+                yearOffset: comparisonYearOffset,
+                seasonName: activeSeasons.length > 0 ? activeSeasons[0].name : undefined,
+                baseYear: value.from ? getYear(parseDate(value.from)) : undefined
+              })}
               {comparisonRangeLabel && (
                 <span className="text-gray-400 font-normal"> ({comparisonRangeLabel})</span>
               )}
@@ -436,7 +387,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                     setComparisonType('none')
                     setComparisonDropdownOpen(false)
                     if (value.from && value.to) {
-                      onChange(value, undefined)
+                      onChange(value, undefined, '')
                     }
                   }}
                   className={cn(
@@ -450,14 +401,13 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   {comparisonType === 'none' && <Check className="w-4 h-4" />}
                 </button>
                 
-                {/* Check if Last Period is valid for current selection */}
                 {(() => {
                   const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-                  const lastPeriodResult = value.from && value.to 
+                  const lastPeriodResult = value.from && value.to
                     ? calculateComparisonRange(value, 'lastPeriod', activeSeason)
                     : { isValid: true }
                   const isDisabled = !lastPeriodResult.isValid
-                  
+
                   return (
                     <button
                       onClick={() => {
@@ -465,7 +415,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                           setComparisonType('lastPeriod')
                           setComparisonDropdownOpen(false)
                           if (value.from && value.to && lastPeriodResult.isValid && lastPeriodResult.range) {
-                            onChange(value, lastPeriodResult.range)
+                            onChange(value, lastPeriodResult.range, buildComparisonLabel('lastPeriod', 0, value.from))
                           }
                         }
                       }}
@@ -480,28 +430,36 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                       )}
                       title={isDisabled ? "No data available in previous period for selected season" : undefined}
                     >
-                      <span>vs Last Period</span>
+                      <span>{activeSeasons.length > 0 ? 'vs Previous Period' : 'vs Last Period'}</span>
                       {comparisonType === 'lastPeriod' && !isDisabled && <Check className="w-4 h-4" />}
                     </button>
                   )
                 })()}
-                
-                {/* Check if Last Year is valid for current selection */}
-                {(() => {
+
+                <div className="border-t my-1" />
+                {Array.from({ length: 3 }, (_, i) => i + 1).map(offset => {
                   const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-                  const lastYearResult = value.from && value.to 
-                    ? calculateComparisonRange(value, 'lastYear', activeSeason)
+                  const result = value.from && value.to
+                    ? calculateComparisonRange(value, 'lastYear', activeSeason, offset)
                     : { isValid: true }
-                  const isDisabled = !lastYearResult.isValid
-                  
+                  const isDisabled = !result.isValid
+                  const baseYear = value.from ? getYear(parseDate(value.from)) : getYear(new Date())
+                  const targetYear = baseYear - offset
+                  const label = activeSeason
+                    ? `vs ${activeSeason.name} ${targetYear}`
+                    : `vs ${targetYear}`
+                  const isSelected = comparisonType === 'lastYear' && comparisonYearOffset === offset
+
                   return (
                     <button
+                      key={offset}
                       onClick={() => {
                         if (!isDisabled) {
                           setComparisonType('lastYear')
+                          setComparisonYearOffset(offset)
                           setComparisonDropdownOpen(false)
-                          if (value.from && value.to && lastYearResult.isValid && lastYearResult.range) {
-                            onChange(value, lastYearResult.range)
+                          if (value.from && value.to && result.isValid && result.range) {
+                            onChange(value, result.range, buildComparisonLabel('lastYear', offset, value.from))
                           }
                         }
                       }}
@@ -510,17 +468,16 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                         "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
                         isDisabled
                           ? "opacity-50 cursor-not-allowed text-gray-400"
-                          : comparisonType === 'lastYear'
+                          : isSelected
                             ? "bg-blue-50 text-blue-700 cursor-pointer"
                             : "hover:bg-gray-100 text-gray-700 cursor-pointer"
                       )}
-                      title={isDisabled ? "No data available in last year for selected season" : undefined}
                     >
-                      <span>vs Last Year</span>
-                      {comparisonType === 'lastYear' && !isDisabled && <Check className="w-4 h-4" />}
+                      <span>{label}</span>
+                      {isSelected && !isDisabled && <Check className="w-4 h-4" />}
                     </button>
                   )
-                })()}
+                })}
               </div>
             </div>
           )}
@@ -621,7 +578,18 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               </button>
               <button
                 onClick={() => {
-                  onChange(tempCustomRange)
+                  if (comparisonType !== 'none' && tempCustomRange.from && tempCustomRange.to) {
+                    const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
+                    const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
+                    const comparisonResult = calculateComparisonRange(tempCustomRange, comparisonType, activeSeason, offset)
+                    const label = comparisonResult.isValid ? buildComparisonLabel(comparisonType, comparisonYearOffset, tempCustomRange.from) : ''
+                    onChange(tempCustomRange, comparisonResult.isValid ? comparisonResult.range : undefined, label)
+                    if (!comparisonResult.isValid) {
+                      setComparisonType('none')
+                    }
+                  } else {
+                    onChange(tempCustomRange, undefined, '')
+                  }
                   setCustomRangeOpen(false)
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"

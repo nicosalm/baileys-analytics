@@ -17,13 +17,16 @@ interface PeriodDetailModalProps {
   granularity?: 'daily' | 'weekly' | 'monthly'
 }
 
-export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDate, granularity }: PeriodDetailModalProps) => {
+export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetailModalProps) => {
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
   const { filters } = useDashboard()
 
-  // memoized date calculations
+  // memoized date calculations — clamp to dashboard date range so modal matches chart
   const { displayName, dateRangeStart, dateRangeEnd } = useMemo(() => {
+    const clampStart = (d: string) => d < filters.dateRange.from ? filters.dateRange.from : d
+    const clampEnd = (d: string) => d > filters.dateRange.to ? filters.dateRange.to : d
+
     if (granularity === 'daily' && day) {
       const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
       const date = parseISO(dateStr)
@@ -37,18 +40,20 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
       const date = parseISO(dateStr)
       return {
         displayName: `Week of ${format(date, 'MMM d, yyyy')}`,
-        dateRangeStart: dateStr,
-        dateRangeEnd: format(addDays(date, 6), 'yyyy-MM-dd')
+        dateRangeStart: clampStart(dateStr),
+        dateRangeEnd: clampEnd(format(addDays(date, 6), 'yyyy-MM-dd'))
       }
     } else {
       const monthDate = new Date(parseInt(year), parseInt(month) - 1)
+      const monthStart = format(startOfMonth(monthDate), 'yyyy-MM-dd')
+      const monthEnd = format(endOfMonth(monthDate), 'yyyy-MM-dd')
       return {
         displayName: format(monthDate, 'MMMM yyyy'),
-        dateRangeStart: format(startOfMonth(monthDate), 'yyyy-MM-dd'),
-        dateRangeEnd: format(endOfMonth(monthDate), 'yyyy-MM-dd')
+        dateRangeStart: clampStart(monthStart),
+        dateRangeEnd: clampEnd(monthEnd)
       }
     }
-  }, [granularity, day, year, month])
+  }, [granularity, day, year, month, filters.dateRange.from, filters.dateRange.to])
 
   // memoized property click handler
   const handlePropertyClick = useCallback((propertyId: string, propertyName: string) => {
@@ -61,10 +66,9 @@ export const PeriodDetailModal = ({ month, year, day, originalDate: _originalDat
   }, [openModal])
   
   const { data, isLoading, error } = usePeriodDetail(
-    day ? dateRangeStart : month, 
-    day ? dateRangeEnd : year, 
-    filters.selectedTags.map(t => t.id),
-    day !== undefined
+    dateRangeStart,
+    dateRangeEnd,
+    filters.selectedTags.map(t => t.id)
   )
 
   const subtitle = isLoading ? "Loading details..." :

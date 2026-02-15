@@ -33,7 +33,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
-  const { filters } = useDashboard()
+  const { filters, comparisonLabel } = useDashboard()
   const { addToast } = useToast()
 
   const handleDownloadTaxReport = async () => {
@@ -112,11 +112,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         previousEffectiveRate,
         taxGrowth,
         ownerRemittedGrowth,
-        periodLabel: comparisonMode === 'previous-year' ? 'vs Last Year' :
-                     comparisonMode === 'previous-period' ? 'vs Previous Period' : ''
+        periodLabel: comparisonLabel ? `vs ${comparisonLabel}` : ''
       }
     }
-  }, [data, comparisonMode])
+  }, [data, comparisonMode, comparisonLabel])
   
   if (loading || !taxData) {
     return (

@@ -24,6 +24,12 @@ import {
   startOfQuarter
 } from '@baileys/utils'
 import { useSeasons } from '@/hooks/use-api'
+import {
+  getCurrentSeasonDates,
+  getPreviousSeasonDates,
+  isCurrentlyInSeason,
+  hasSeasonStartedThisYear
+} from '@/utils/season-dates'
 
 interface DateRange {
   from: string
@@ -55,10 +61,10 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
   
   const isDateInSeason = (date: Date): boolean => {
     if (activeSeasons.length === 0) return true
-    
+
     const month = getMonth(date) + 1
     const day = getDate(date)
-    
+
     return activeSeasons.some(season => {
       if (season.startMonth <= season.endMonth) {
         return (
@@ -72,6 +78,21 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
         )
       }
     })
+  }
+
+  const doesRangeOverlapSeason = (from: Date, to: Date): boolean => {
+    if (activeSeasons.length === 0) return true
+    if (isDateInSeason(from) || isDateInSeason(to)) return true
+
+    // check if a season start falls within the range
+    // (handles ranges that span over the season without either endpoint being in it)
+    const season = activeSeasons[0]
+    for (let y = getYear(from); y <= getYear(to); y++) {
+      const seasonStart = new Date(y, season.startMonth - 1, season.startDay)
+      if (seasonStart >= from && seasonStart <= to) return true
+    }
+
+    return false
   }
 
   const formatDateDisplay = (dateStr: string): string => {
@@ -166,6 +187,21 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
     onChange(newRange)
   }
 
+  const commonPeriods = useMemo(() => {
+    const today = new Date()
+    const periods = [
+      { label: 'Today', from: today, to: today },
+      { label: 'Last 7 Days', from: subDays(today, 7), to: today },
+      { label: 'Last 30 Days', from: subDays(today, 30), to: today },
+      { label: 'Last 90 Days', from: subDays(today, 90), to: today },
+      { label: 'Month to Date', from: startOfMonth(today), to: today },
+      { label: 'Quarter to Date', from: startOfQuarter(today), to: today },
+    ]
+
+    if (activeSeasons.length === 0) return periods
+    return periods.filter(p => doesRangeOverlapSeason(p.from, p.to))
+  }, [activeSeasons])
+
   return (
     <div className={cn("bg-white rounded-lg", className)}>
       {/* Season Notice */}
@@ -254,138 +290,125 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
           <div className="mb-4">
             <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Select</h3>
             <div className="space-y-3">
-              {/* Common Periods */}
-              <div>
-                <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Common Periods</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = formatDateISO(new Date())
-                      handleQuickSelect(today, today)
-                    }}
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      handleQuickSelect(formatDateISO(subDays(today, 7)), formatDateISO(today))
-                    }}
-                  >
-                    Last 7 Days
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      handleQuickSelect(formatDateISO(subDays(today, 30)), formatDateISO(today))
-                    }}
-                  >
-                    Last 30 Days
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      handleQuickSelect(formatDateISO(subDays(today, 90)), formatDateISO(today))
-                    }}
-                  >
-                    Last 90 Days
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      handleQuickSelect(formatDateISO(startOfMonth(today)), formatDateISO(today))
-                    }}
-                  >
-                    Month to Date
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      handleQuickSelect(formatDateISO(startOfQuarter(today)), formatDateISO(today))
-                    }}
-                  >
-                    Quarter to Date
-                  </button>
+              {commonPeriods.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Common Periods</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {commonPeriods.map(period => (
+                      <button
+                        key={period.label}
+                        type="button"
+                        className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                        onClick={() => handleQuickSelect(formatDateISO(period.from), formatDateISO(period.to))}
+                      >
+                        {period.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Year Periods */}
-              <div>
-                <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Year Periods</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      handleQuickSelect(formatDateISO(startOfYear(today)), formatDateISO(today))
-                    }}
-                  >
-                    Year to Date
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      const lastYear = subYears(today, 1)
-                      handleQuickSelect(
-                        formatDateISO(startOfYear(lastYear)),
-                        formatDateISO(new Date(getYear(lastYear), 11, 31))
-                      )
-                    }}
-                  >
-                    Last Year
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      const currentMonth = getMonth(today)
-                      const currentYear = getYear(today)
-                      const fiscalYearStart = currentMonth >= 9
-                        ? new Date(currentYear, 9, 1)
-                        : new Date(currentYear - 1, 9, 1)
-                      handleQuickSelect(formatDateISO(fiscalYearStart), formatDateISO(today))
-                    }}
-                    title="Fiscal Year to Date (Oct 1 - Sep 30)"
-                  >
-                    Fiscal YTD
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
-                    onClick={() => {
-                      const today = new Date()
-                      const currentMonth = getMonth(today)
-                      const currentYear = getYear(today)
-                      const lastFiscalYearStart = currentMonth >= 9
-                        ? new Date(currentYear - 1, 9, 1)
-                        : new Date(currentYear - 2, 9, 1)
-                      const lastFiscalYearEnd = currentMonth >= 9
-                        ? new Date(currentYear, 8, 30)
-                        : new Date(currentYear - 1, 8, 30)
-                      handleQuickSelect(formatDateISO(lastFiscalYearStart), formatDateISO(lastFiscalYearEnd))
-                    }}
-                    title="Previous Fiscal Year (Oct 1 - Sep 30)"
-                  >
-                    Last Fiscal Year
-                  </button>
+              {activeSeasons.length > 0 ? (() => {
+                const season = activeSeasons[0]
+                const inSeason = isCurrentlyInSeason(season)
+                const seasonStarted = hasSeasonStartedThisYear(season)
+                const currentYear = getYear(new Date())
+
+                return (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Season Periods</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {seasonStarted && (
+                        <button
+                          type="button"
+                          className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                          onClick={() => {
+                            const range = getCurrentSeasonDates(season)
+                            handleQuickSelect(range.from, range.to)
+                          }}
+                        >
+                          {inSeason ? 'Season to Date' : `${season.name} ${currentYear}`}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                        onClick={() => {
+                          const range = getPreviousSeasonDates(season)
+                          handleQuickSelect(range.from, range.to)
+                        }}
+                      >
+                        Last Season
+                      </button>
+                    </div>
+                  </div>
+                )
+              })() : (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Year Periods</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      onClick={() => {
+                        const today = new Date()
+                        handleQuickSelect(formatDateISO(startOfYear(today)), formatDateISO(today))
+                      }}
+                    >
+                      Year to Date
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      onClick={() => {
+                        const today = new Date()
+                        const lastYear = subYears(today, 1)
+                        handleQuickSelect(
+                          formatDateISO(startOfYear(lastYear)),
+                          formatDateISO(new Date(getYear(lastYear), 11, 31))
+                        )
+                      }}
+                    >
+                      Last Year
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      onClick={() => {
+                        const today = new Date()
+                        const currentMonth = getMonth(today)
+                        const currentYear = getYear(today)
+                        const fiscalYearStart = currentMonth >= 9
+                          ? new Date(currentYear, 9, 1)
+                          : new Date(currentYear - 1, 9, 1)
+                        handleQuickSelect(formatDateISO(fiscalYearStart), formatDateISO(today))
+                      }}
+                      title="Fiscal Year to Date (Oct 1 - Sep 30)"
+                    >
+                      Fiscal YTD
+                    </button>
+                    <button
+                      type="button"
+                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      onClick={() => {
+                        const today = new Date()
+                        const currentMonth = getMonth(today)
+                        const currentYear = getYear(today)
+                        const lastFiscalYearStart = currentMonth >= 9
+                          ? new Date(currentYear - 1, 9, 1)
+                          : new Date(currentYear - 2, 9, 1)
+                        const lastFiscalYearEnd = currentMonth >= 9
+                          ? new Date(currentYear, 8, 30)
+                          : new Date(currentYear - 1, 8, 30)
+                        handleQuickSelect(formatDateISO(lastFiscalYearStart), formatDateISO(lastFiscalYearEnd))
+                      }}
+                      title="Previous Fiscal Year (Oct 1 - Sep 30)"
+                    >
+                      Last Fiscal Year
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 

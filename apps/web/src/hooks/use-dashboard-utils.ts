@@ -98,17 +98,18 @@ export function formatComparisonText(
   comparisonMode: 'none' | 'previous-period' | 'previous-year',
   _currentValue?: string | number,
   previousValue?: string | number,
-  suffix: string = ''
+  suffix: string = '',
+  comparisonLabel?: string
 ): string {
   if (comparisonMode === 'none' || !previousValue) {
     return suffix
   }
-  
-  const periodText = comparisonMode === 'previous-year' ? 'last year' : 'previous period'
-  const formattedPrevious = typeof previousValue === 'number' 
-    ? previousValue.toLocaleString() 
+
+  const periodText = comparisonLabel || (comparisonMode === 'previous-year' ? 'last year' : 'previous period')
+  const formattedPrevious = typeof previousValue === 'number'
+    ? previousValue.toLocaleString()
     : previousValue
-    
+
   return `vs ${periodText}: ${formattedPrevious}${suffix ? ' | ' + suffix : ''}`
 }
 

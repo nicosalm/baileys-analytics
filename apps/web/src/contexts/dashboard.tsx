@@ -11,7 +11,8 @@ type DashboardContextValue = {
   filters: FilterState
   comparisonMode: 'none' | 'previous-period' | 'previous-year'
   comparisonRange?: DateRange
-  updateDateRange: (range: DateRange, comparison?: DateRange) => void
+  comparisonLabel: string
+  updateDateRange: (range: DateRange, comparison?: DateRange, label?: string) => void
   resetDateRange: () => void
   toggleTag: (tag: Tag) => void
   clearTags: () => void
@@ -166,6 +167,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   const location = useLocation()
   const [comparisonMode, setComparisonMode] = useState<'none' | 'previous-period' | 'previous-year'>('none')
   const [comparisonRange, setComparisonRange] = useState<DateRange | undefined>()
+  const [comparisonLabel, setComparisonLabel] = useState('')
   const isInitialMount = useRef(true)
   
   
@@ -219,17 +221,20 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [])
 
-  const updateDateRange = useCallback((range: DateRange, comparison?: DateRange) => {
+  const updateDateRange = useCallback((range: DateRange, comparison?: DateRange, label?: string) => {
     setFilters(prev => ({ ...prev, dateRange: range }))
     setComparisonRange(comparison)
+    setComparisonLabel(label || '')
     if (!comparison) {
       setComparisonMode('none')
     } else {
       const mainFrom = new Date(range.from)
       const compFrom = new Date(comparison.from)
       const daysDiff = Math.abs((mainFrom.getTime() - compFrom.getTime()) / (1000 * 60 * 60 * 24))
-      
-      if (daysDiff > 300 && daysDiff < 400) {
+
+      // detect year-based comparisons (1 year, 2 years, etc.)
+      const nearestYearMultiple = Math.round(daysDiff / 365)
+      if (nearestYearMultiple >= 1 && Math.abs(daysDiff - nearestYearMultiple * 365) < 65) {
         setComparisonMode('previous-year')
       } else {
         setComparisonMode('previous-period')
@@ -271,6 +276,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     }))
     setComparisonRange(undefined)
     setComparisonMode('none')
+    setComparisonLabel('')
   }, [])
   
   const getShareableUrl = useCallback(() => {
@@ -286,6 +292,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
       filters,
       comparisonMode,
       comparisonRange,
+      comparisonLabel,
       updateDateRange,
       resetDateRange,
       toggleTag,
