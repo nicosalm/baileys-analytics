@@ -75,7 +75,7 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
       case 'currency':
         return formatCompactCurrency(displayVal)
       case 'percent':
-        return `${displayVal.toFixed(0)}%`
+        return `${displayVal.toFixed(1)}%`
       case 'number':
         return displayVal >= 1000 ? `${(displayVal / 1000).toFixed(1)}k` : displayVal.toString()
       default:

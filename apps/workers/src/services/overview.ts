@@ -483,6 +483,8 @@ async function getRecentActivity(
 		description: `${b.guest_name} booked ${b.properties?.name}`,
 		timestamp: b.booked_utc || b.created_at || b.arrival,
 		value: b.total_amount,
+		platform: b.platform || 'Direct',
+		ownerrezBookingId: b.ownerrez_booking_id || null,
 		metadata: {
 			guestName: b.guest_name,
 			propertyName: b.properties?.name,

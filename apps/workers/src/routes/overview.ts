@@ -311,6 +311,8 @@ async function getRecentActivity(
       total_amount,
       booked_utc,
       created_at,
+      platform,
+      ownerrez_booking_id,
       properties!inner(name)
     `)
     .eq('tenant_id', tenantId)
@@ -323,7 +325,9 @@ async function getRecentActivity(
     type: new Date(b.arrival) > new Date() ? 'upcoming' : 'past',
     description: `${b.guest_name} - ${b.properties.name} (${new Date(b.arrival).toLocaleDateString()} to ${new Date(b.departure).toLocaleDateString()})`,
     timestamp: b.booked_utc || b.created_at,
-    value: b.total_amount
+    value: b.total_amount,
+    platform: b.platform || 'Direct',
+    ownerrezBookingId: b.ownerrez_booking_id || null
   }));
 }
 

@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, BarChart3 } from 'lucide-react'
+import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, BarChart3, ExternalLink } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { MetricCard } from '@/components/MetricCard'
@@ -174,7 +174,20 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
         <div className="bg-gray-50 rounded-lg p-6">
           <div className="flex items-start justify-between">
             <div>
-              <h3 className="text-lg font-bold mb-2">{data.property.name}</h3>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-lg font-bold">{data.property.name}</h3>
+                {data.property.ownerrezId && (
+                  <a
+                    href={`https://app.ownerrez.com/properties/${data.property.ownerrezId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-blue-600 transition-colors"
+                    title="Open in OwnerRez"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
               <div className="flex items-center text-sm text-gray-600 mb-2">
                 <MapPin className="w-4 h-4 mr-1" />
                 {data.property.address}

@@ -232,7 +232,8 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         bedrooms: property.bedrooms,
         bathrooms: property.bathrooms,
         maxGuests: property.max_guests,
-        active: property.active
+        active: property.active,
+        ownerrezId: property.ownerrez_id || null
       },
       metrics: {
         totalRevenue,

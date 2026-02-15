@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from 'react'
 import { usePeriodDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
-import { Calendar, DollarSign, Home, TrendingUp, Info } from 'lucide-react'
+import { Calendar, DollarSign, Home, TrendingUp, Info, ExternalLink } from 'lucide-react'
 import { format, parseISO, addDays, startOfMonth, endOfMonth } from 'date-fns'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Modal } from '@/components/Modal'
@@ -212,6 +212,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                   <th className="text-left p-4 text-sm font-medium text-gray-700">Property</th>
                   <th className="text-left p-4 text-sm font-medium text-gray-700">Dates</th>
                   <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-700 w-10"></th>
                 </tr>
               </thead>
               <tbody>
@@ -238,6 +239,20 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                     </td>
                     <td className="p-4 font-medium">
                       {formatCurrency(booking.totalAmount)}
+                    </td>
+                    <td className="p-4">
+                      {booking.ownerrezBookingId && (
+                        <a
+                          href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Open in OwnerRez"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -6,7 +6,7 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisp
 import {
   TrendingUp, TrendingDown,
   DollarSign, Users, Calendar, Clock,
-  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle
+  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
@@ -760,7 +760,7 @@ export const OverviewDashboard = () => {
             <h3 className="text-lg font-bold">What's New</h3>
             <span className="text-xs text-gray-500">Recent bookings</span>
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
+          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
             {recentActivity && recentActivity.length > 0 ? (
               recentActivity.map((activity: any) => (
                 <div
@@ -772,15 +772,40 @@ export const OverviewDashboard = () => {
                 >
                   <div className="flex-1 min-w-0 mr-2">
                     <p className="text-sm font-medium truncate">{activity.description}</p>
-                    <p className="text-xs text-gray-500">
-                      {formatDateDisplay(new Date(activity.timestamp))}
-                    </p>
-                  </div>
-                  {activity.value && (
-                    <div className="text-sm font-medium text-green-600 flex-shrink-0">
-                      {formatCurrency(activity.value)}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-gray-500">
+                        {formatDateDisplay(new Date(activity.timestamp))}
+                      </span>
+                      {activity.platform && (
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                          <span
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: getPlatformColor(activity.platform) }}
+                          />
+                          {activity.platform}
+                        </span>
+                      )}
                     </div>
-                  )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {activity.value && (
+                      <div className="text-sm font-medium text-green-600">
+                        {formatCurrency(activity.value)}
+                      </div>
+                    )}
+                    {activity.ownerrezBookingId && (
+                      <a
+                        href={`https://app.ownerrez.com/bookings/${activity.ownerrezBookingId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        title="Open in OwnerRez"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (

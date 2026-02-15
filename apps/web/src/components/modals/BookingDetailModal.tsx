@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, differenceInDays } from '@baileys/utils'
-import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin } from 'lucide-react'
+import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin, ExternalLink } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -174,9 +174,23 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
 
         {/* Booking Source */}
         <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center text-sm text-gray-600 mb-2">
-            <CreditCard className="w-4 h-4 mr-1" />
-            Booking Information
+          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <div className="flex items-center">
+              <CreditCard className="w-4 h-4 mr-1" />
+              Booking Information
+            </div>
+            {booking.ownerrez_booking_id && (
+              <a
+                href={`https://app.ownerrez.com/bookings/${booking.ownerrez_booking_id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                title="Open in OwnerRez"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                OwnerRez
+              </a>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>

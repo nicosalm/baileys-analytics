@@ -52,7 +52,8 @@ periodDetail.get('/', async (c) => {
         status,
         platform,
         property_id,
-        host_service_fee
+        host_service_fee,
+        ownerrez_booking_id
       `)
       .eq('tenant_id', tenantId)
       .in('property_id', propertyIds)
@@ -241,7 +242,8 @@ periodDetail.get('/', async (c) => {
         departure: b.departure,
         totalAmount: b.total_amount,
         platform: b.platform || 'Direct',
-        status: b.status
+        status: b.status,
+        ownerrezBookingId: b.ownerrez_booking_id || null
       }))
     });
   } catch (error) {
