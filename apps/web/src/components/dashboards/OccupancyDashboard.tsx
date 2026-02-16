@@ -1,13 +1,14 @@
 import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { OccupancyListView } from '@/components/OccupancyListView'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
 import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
-import { useDashboardBatch } from '@/hooks/use-api'
+import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
+import { WhatIfCalculator } from '@/components/WhatIfCalculator'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -70,7 +71,12 @@ export const OccupancyDashboard = () => {
   const tagIds = useTagIds()
   const comparisonDateRange = useComparisonDateRange()
   const [calendarView, setCalendarView] = useState<'calendar' | 'list'>('list')
-  
+  const { data: goalProgressData } = useGoalProgress()
+  const occupancyGoal = useMemo(() => {
+    const goal = goalProgressData?.find(g => g.metricKey === 'occupancy')
+    return goal ? goal.targetValue : null
+  }, [goalProgressData])
+
   const { data, error, isLoading } = useDashboardBatch(
     'occupancy',
     filters.dateRange.from,
@@ -152,7 +158,7 @@ export const OccupancyDashboard = () => {
     }
   }), [timeSeriesData, previousData?.byMonth, dataGranularity])
 
-  const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1 }
+  const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1, bookedNights: 0, availableNights: 0 }
 
   // memoize sorted property list
   const sortedProperties = useMemo(() =>
@@ -337,14 +343,29 @@ export const OccupancyDashboard = () => {
         <MetricCard
           icon={TrendingDown}
           label={`Lowest ${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'}`}
-          value={formatPeriodDisplay(lowestPeriod.month)}
+          value={`${lowestPeriod.availableNights - lowestPeriod.bookedNights} open`}
           format="custom"
-          subValue={`Only ${formatPercentage(lowestPeriod.rate * 100, 1)} booked`}
-          tooltip={`${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'} with lowest occupancy rate in the selected period`}
+          subValue={
+            <>
+              {formatPeriodDisplay(lowestPeriod.month)} — {formatPercentage(lowestPeriod.rate * 100, 1)} booked
+              {occupancyGoal !== null && (() => {
+                const deviation = (lowestPeriod.rate * 100) - occupancyGoal
+                const isAbove = deviation >= 0
+                return (
+                  <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isAbove ? 'text-green-600' : 'text-red-600'}`}>
+                    {isAbove ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {Math.abs(deviation).toFixed(1)}% {isAbove ? 'above' : 'below'} goal
+                  </span>
+                )
+              })()}
+            </>
+          }
+          tooltip={`${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'} with the most open nights${occupancyGoal !== null ? ` (goal: ${occupancyGoal}%)` : ''}`}
           color="yellow"
         />
       </div>
 
+      <WhatIfCalculator byProperty={currentData.byProperty} />
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center justify-between mb-4">
@@ -426,6 +447,22 @@ export const OccupancyDashboard = () => {
               />
               <Tooltip content={<OccupancyChartTooltip />} />
               {comparisonMode !== 'none' && previousData && <Legend />}
+              {occupancyGoal !== null && (
+                <ReferenceLine
+                  y={occupancyGoal}
+                  stroke="#6366f1"
+                  strokeDasharray="6 4"
+                  strokeWidth={1.5}
+                  label={{
+                    value: `⬥ Goal: ${occupancyGoal}%`,
+                    position: 'insideTopLeft',
+                    fill: '#6366f1',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    offset: 4
+                  }}
+                />
+              )}
               <Line
                 type="monotone"
                 dataKey="rate"

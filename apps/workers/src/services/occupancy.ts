@@ -15,6 +15,7 @@ export interface PropertyOccupancy {
   rate: number;
   bookedNights: number;
   availableNights: number;
+  avgNightlyRate: number;
 }
 
 export interface MonthlyOccupancy {
@@ -183,7 +184,8 @@ async function fetchPropertyOccupancy(
         propertyName: p.name,
         rate: 0,
         bookedNights: 0,
-        availableNights: totalDays
+        availableNights: totalDays,
+        avgNightlyRate: 0
       }));
     }
   }
@@ -196,6 +198,7 @@ async function fetchPropertyOccupancy(
     const availableNights = totalDays;
     
     const occupiedDays = new Set<string>();
+    let totalRevenue = 0;
     if (bookings) {
       const propertyBookings = bookings.filter(b => b.property_id === property.id);
       for (const booking of propertyBookings) {
@@ -211,16 +214,18 @@ async function fetchPropertyOccupancy(
           occupiedDays.add(day.toISOString().split('T')[0]);
           day.setDate(day.getDate() + 1);
         }
+        totalRevenue += booking.total_amount || 0;
       }
     }
     const bookedNights = occupiedDays.size;
-    
+
     propertyOccupancy.push({
       propertyId: property.id,
       propertyName: property.name,
       rate: calculateOccupancyRate(bookedNights, availableNights),
       bookedNights,
-      availableNights
+      availableNights,
+      avgNightlyRate: bookedNights > 0 ? totalRevenue / bookedNights : 0
     });
   }
   
@@ -513,7 +518,8 @@ export interface BookingGap {
 export async function detectBookingGaps(
   supabase: SupabaseClient,
   tenantId: string,
-  maxDaysAhead: number = 60
+  maxDaysAhead: number = 60,
+  propertyRates: Map<string, number> = new Map()
 ): Promise<BookingGap[]> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -565,7 +571,8 @@ export async function detectBookingGaps(
           // Report gaps of 1+ days (even single-night gaps are valuable)
           if (gapDays >= 1) {
             const daysUntilGap = Math.floor((gapStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            const estimatedRevenueLoss = gapDays * 150; // default nightly rate
+            const propertyRate = propertyRates.get(property.id) || 0;
+            const estimatedRevenueLoss = gapDays * propertyRate;
 
             let severity: BookingGap['severity'] = 'info';
             if (daysUntilGap <= 7 && gapDays >= 3) severity = 'critical';
@@ -597,7 +604,8 @@ export async function detectBookingGaps(
         const gapDays = Math.floor((arrivalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
         if (gapDays >= 1) {
-          const estimatedRevenueLoss = gapDays * 150; // default nightly rate
+          const propertyRate = propertyRates.get(property.id) || 0;
+          const estimatedRevenueLoss = gapDays * propertyRate;
 
           let severity: BookingGap['severity'] = 'info';
           if (gapDays >= 7) severity = 'critical'; // no bookings for a week
@@ -628,7 +636,8 @@ export async function detectBookingGaps(
         // Report end gaps of 3+ days (longer threshold since this extends into future)
         if (gapDays >= 3) {
           const daysUntilGap = Math.floor((finalGapStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          const estimatedRevenueLoss = Math.min(gapDays, 14) * 150; // cap at 14 days, default nightly rate
+          const propertyRate = propertyRates.get(property.id) || 0;
+          const estimatedRevenueLoss = Math.min(gapDays, 14) * propertyRate;
 
           let severity: BookingGap['severity'] = 'info';
           if (daysUntilGap <= 0) severity = 'critical'; // current gap
@@ -651,7 +660,8 @@ export async function detectBookingGaps(
       const gapDays = Math.floor((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
       if (gapDays >= 3) {
-        const estimatedRevenueLoss = Math.min(gapDays, 14) * 150; // default nightly rate
+        const propertyRate = propertyRates.get(property.id) || 0;
+        const estimatedRevenueLoss = Math.min(gapDays, 14) * propertyRate;
 
         gaps.push({
           propertyId: property.id,

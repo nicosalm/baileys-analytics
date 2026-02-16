@@ -142,6 +142,7 @@ export interface OccupancyByProperty {
   rate: number
   bookedNights: number
   availableNights: number
+  avgNightlyRate: number
 }
 
 export interface OccupancyTrendData {

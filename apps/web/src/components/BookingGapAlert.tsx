@@ -134,9 +134,11 @@ export const BookingGapAlert = ({
                   </p>
                 </div>
               </div>
-              <div className="text-xs text-gray-500 shrink-0 ml-2">
-                {formatCurrency(gap.estimatedRevenueLoss)}
-              </div>
+              {gap.estimatedRevenueLoss > 0 && (
+                <div className="text-xs text-gray-500 shrink-0 ml-2">
+                  ~{formatCurrency(gap.estimatedRevenueLoss)}
+                </div>
+              )}
             </div>
           )
         })}

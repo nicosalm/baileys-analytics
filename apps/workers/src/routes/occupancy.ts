@@ -42,11 +42,20 @@ occupancy.get('/', cache({ ttl: 3600 }), async (c) => {
 		tagIds
 	);
 	
+	// build per-property avg nightly rate map from current occupancy data
+	const propertyRates = new Map<string, number>();
+	for (const p of currentData.byProperty) {
+		if (p.avgNightlyRate > 0) {
+			propertyRates.set(p.propertyId, p.avgNightlyRate);
+		}
+	}
+
 	// detect booking gaps for the next 60 days
 	const bookingGaps = await detectBookingGaps(
 		supabase,
 		tenant.id,
-		60
+		60,
+		propertyRates
 	);
 	
 	if (comparisonFrom && comparisonTo) {
