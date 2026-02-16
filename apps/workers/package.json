@@ -16,19 +16,18 @@
 		"tail": "wrangler tail"
 	},
 	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.8.19",
-		"@types/bcryptjs": "^3.0.0",
-		"typescript": "^5.5.2",
-		"vitest": "~3.2.0",
-		"wrangler": "^4.34.0"
+		"@cloudflare/vitest-pool-workers": "^0.8.71",
+		"typescript": "^5.9.3",
+		"vitest": "~3.2.4",
+		"wrangler": "^4.65.0"
 	},
 	"dependencies": {
 		"@baileys/schemas": "workspace:*",
-		"@supabase/supabase-js": "^2.56.1",
-		"hono": "^4.9.5",
-		"jspdf": "^3.0.1",
-		"jspdf-autotable": "^5.0.2",
-		"resend": "^6.5.2",
-		"stripe": "^19.1.0"
+		"@supabase/supabase-js": "^2.95.3",
+		"hono": "^4.11.9",
+		"jspdf": "^3.0.4",
+		"jspdf-autotable": "^5.0.7",
+		"resend": "^6.9.2",
+		"stripe": "^19.3.0"
 	}
 }
