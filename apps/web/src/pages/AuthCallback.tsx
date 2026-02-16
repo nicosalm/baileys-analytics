@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '@/types/database.types'
 import { supabase, clearAuthStorage } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
@@ -12,7 +13,7 @@ type AuthStatus = 'loading' | 'success' | 'error'
 // Create a fresh Supabase client for code exchange.
 // The main client's internal state can get corrupted, but a fresh instance
 // can still read the PKCE verifier from shared localStorage.
-const createCallbackClient = () => createClient(
+const createCallbackClient = () => createClient<Database>(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY,
   {

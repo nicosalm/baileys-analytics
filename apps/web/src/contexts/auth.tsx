@@ -91,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('tenants')
         .select('id')
         .eq('user_id', userId)
-        .maybeSingle() as { data: { id: string } | null; error: any }
+        .maybeSingle()
 
       if (!tenantError && tenant) {
         const { data: oauthToken } = await supabase
@@ -118,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .from('tenants')
         .select('id')
         .eq('user_id', userId)
-        .maybeSingle() as { data: { id: string } | null; error: any }
+        .maybeSingle()
 
       if (existingTenant) {
         return existingTenant.id
@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           user_id: userId,
           email: email,
           ownerrez_connected: false
-        } as any)
+        })
         .select('id')
         .single()
 
@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           .from('tenants')
           .select('id')
           .eq('user_id', userId)
-          .maybeSingle() as { data: { id: string } | null; error: any }
+          .maybeSingle()
 
         if (retryTenant) {
           return retryTenant.id
@@ -150,7 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return null
       }
 
-      return (newTenant as any)?.id || null
+      return newTenant?.id || null
     } catch (err) {
       return null
     }
@@ -329,9 +329,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updatePassword = async (newPassword: string): Promise<boolean> => {
     try {
-      // Check if session exists first
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      // Verify user is authenticated via server-side check (getUser validates the JWT
+      // against the Auth server, unlike getSession which only reads local storage)
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
         return false
       }
 
@@ -358,9 +359,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateEmail = async (newEmail: string): Promise<boolean> => {
     try {
-      // Check if session exists first
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      // Verify user is authenticated via server-side check
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
         return false
       }
 
@@ -414,26 +415,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     refreshPromiseRef.current = (async () => {
       try {
-        // first try to get the existing session
-        const { data: { session }, error } = await supabase.auth.getSession()
+        // verify the user is actually authenticated via server-side check
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-        if (error) {
+        if (userError || !user) {
           api.setAccessToken(null)
           setState({ status: 'unauthenticated' })
           return
         }
 
-        // if we have a session, try to refresh it
-        if (session) {
-          const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        // user is valid — refresh the session to get fresh tokens
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
 
-          if (!refreshError && refreshedSession) {
-            await processSession(refreshedSession)
-          } else {
-            // couldn't refresh, use existing session
-            await processSession(session)
-          }
+        if (!refreshError && refreshedSession) {
+          await processSession(refreshedSession)
         } else {
+          // couldn't refresh — treat as unauthenticated
           api.setAccessToken(null)
           setState({ status: 'unauthenticated' })
         }
@@ -456,8 +453,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isInitializedRef.current = true
 
     // set up auth state change listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // handle different auth events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // handle different auth events — avoid async work directly in this callback
+      // per Supabase docs (risk of deadlocks). Use setTimeout to defer instead.
       switch (event) {
         case 'SIGNED_OUT':
           api.setAccessToken(null)
@@ -467,8 +465,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         case 'SIGNED_IN':
           // only process if we're not already authenticated
           // use ref to avoid stale closure
+          // defer with setTimeout to avoid deadlocks — Supabase docs warn against
+          // calling async Supabase functions inside onAuthStateChange callbacks
           if (stateRef.current.status !== 'authenticated' && session) {
-            await processSession(session)
+            setTimeout(() => processSession(session), 0)
           }
           break
 
@@ -491,8 +491,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         case 'INITIAL_SESSION':
           // handle initial session on page load
+          // defer with setTimeout to avoid deadlocks in auth state change callback
           if (session) {
-            await processSession(session)
+            setTimeout(() => processSession(session), 0)
           } else {
             setState({ status: 'unauthenticated' })
           }

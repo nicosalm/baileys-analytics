@@ -23,13 +23,14 @@ export const ResetPassword = () => {
   useEffect(() => {
     const checkRecoverySession = async () => {
       try {
-        // with PKCE flow, check for existing session
-        const { data: { session } } = await supabase.auth.getSession()
+        // validate user via server-side check (getUser validates the JWT
+        // against the Auth server, unlike getSession which only reads local storage)
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
 
         // check if we're in password recovery mode
         // only trust recovery_sent_at - don't accept any authenticated session
-        if (session) {
-          const isRecoverySession = !!session.user?.recovery_sent_at
+        if (!userError && user) {
+          const isRecoverySession = !!user.recovery_sent_at
 
           if (isRecoverySession) {
             setTokenValid(true)
@@ -39,7 +40,7 @@ export const ResetPassword = () => {
             setError('This link is for password recovery only. Please use the link from your email.')
           }
         } else {
-          // no session, the link may have expired or been invalid
+          // no valid user, the link may have expired or been invalid
           setTokenValid(false)
           setError('Invalid or expired reset link. Please request a new one.')
         }

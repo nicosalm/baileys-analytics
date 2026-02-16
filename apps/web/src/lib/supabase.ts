@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { Database } from '@/types/database.types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -9,21 +10,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-let supabaseInstance: ReturnType<typeof createClient> | null = null
-
-if (!supabaseInstance) {
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: false, // Disabled - we handle code exchange manually in AuthCallback
-      flowType: 'pkce',
-      storageKey: 'baileys-auth',
-    }
-  })
-}
-
-export const supabase = supabaseInstance
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false, // Disabled - we handle code exchange manually in AuthCallback
+    flowType: 'pkce',
+    storageKey: 'baileys-auth',
+  }
+})
 
 export type AuthError = {
   message: string

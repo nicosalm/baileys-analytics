@@ -10,7 +10,8 @@
     "build": "pnpm -r build",
     "build:backend": "cd apps/workers && pnpm build",
     "build:frontend": "cd apps/web && pnpm build",
-    "test": "echo 'No tests yet'"
+    "test": "echo 'No tests yet'",
+    "db:types": "npx supabase gen types typescript --project-id ojpmtekljijcurgzrses > apps/web/src/types/database.types.ts"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.56.1",
