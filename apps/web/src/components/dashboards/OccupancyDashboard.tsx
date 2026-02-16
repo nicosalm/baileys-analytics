@@ -189,7 +189,7 @@ export const OccupancyDashboard = () => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
   }, [dataGranularity])
 
-  const handlePeriodClick = useCallback((data: {activeLabel?: string}) => {
+  const handlePeriodClick = useCallback((data: {activeLabel?: string | number}) => {
     if (data && data.activeLabel) {
       const clickedData = chartData.find((d: {month: string; fullMonth: string}) => d.month === data.activeLabel)
       if (clickedData) {
@@ -237,7 +237,7 @@ export const OccupancyDashboard = () => {
                          (dataGranularity === 'Weekly' && chartData.length > 10)
     return {
       angle: shouldRotate ? -45 : 0,
-      textAnchor: shouldRotate ? 'end' : 'middle' as const,
+      textAnchor: shouldRotate ? 'end' as const : 'middle' as const,
       height: shouldRotate ? 60 : undefined,
       interval: dataGranularity === 'Daily' && chartData.length > 30
         ? Math.ceil(chartData.length / 15)
