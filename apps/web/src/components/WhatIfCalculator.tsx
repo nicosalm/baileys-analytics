@@ -12,6 +12,7 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('')
   const [rateInput, setRateInput] = useState('')
 
+
   const propertiesWithRate = useMemo(
     () => byProperty.filter(p => p.avgNightlyRate > 0),
     [byProperty]

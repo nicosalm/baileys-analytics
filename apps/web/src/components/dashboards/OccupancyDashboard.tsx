@@ -278,8 +278,9 @@ export const OccupancyDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
             <div className="text-sm text-blue-800">
-              <strong>Understanding Your Numbers:</strong> Occupancy shows what percentage of available nights were booked. 
-              Higher percentages mean fewer empty nights. Look for patterns to optimize pricing and availability.
+              <strong>Understanding Your Numbers:</strong> Occupancy shows what percentage of available nights were booked.
+              Higher percentages mean fewer empty nights. Use the <strong>What If calculator</strong> to estimate revenue from unbooked nights,
+              the <strong>timeline view</strong> to spot booking gaps, and the <strong>trend chart</strong> to track patterns over time.
             </div>
           </div>
         </div>
