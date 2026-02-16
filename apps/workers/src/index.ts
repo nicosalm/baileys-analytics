@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { authMiddleware } from './middleware/auth';
 import { subscriptionMiddleware } from './middleware/subscription';
-import { rateLimit, strictRateLimit } from './middleware/rate-limit';
+import { rateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
 
 import { createSupabaseClient } from './services/supabase';
@@ -37,7 +37,6 @@ import { webhooks } from './routes/webhooks';
 import { initialSyncChunked } from './routes/initial-sync-chunked';
 import { health } from './routes/health';
 import { scheduled } from './scheduled';
-import { waitlist } from './routes/waitlist';
 import { debug } from './routes/debug';
 import { billing } from './routes/billing';
 import { account } from './routes/account';
@@ -81,11 +80,6 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.route('/health', health);
-
-// apply strict rate limiting to public endpoints
-app.use('/api/waitlist/*', strictRateLimit());
-
-app.route('/api/waitlist', waitlist);
 
 // auth endpoints - only /me is used (login/signup/refresh handled by Supabase client directly)
 app.get('/api/auth/me', authMiddleware, async (c) => {
