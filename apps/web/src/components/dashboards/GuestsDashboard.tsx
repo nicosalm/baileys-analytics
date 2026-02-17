@@ -72,6 +72,7 @@ export const GuestsDashboard = () => {
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
     const [viewMode, setViewMode] = useState<'all' | 'repeat' | 'new' | 'top'>('all')
+    const [staysFilter, setStaysFilter] = useState<'any' | '1' | '2-3' | '4+'>('any')
 
     // use ref for date to avoid callback recreation
     const dateRangeFromRef = useRef(filters.dateRange.from)
@@ -109,7 +110,7 @@ export const GuestsDashboard = () => {
 
         switch (viewMode) {
             case 'repeat':
-                filtered = filtered.filter(g => (g.periodBookings || g.bookingCount) > 1)
+                filtered = filtered.filter(g => g.bookingCount > 1)
                 break
             case 'new':
                 filtered = filtered.filter(g => {
@@ -126,8 +127,22 @@ export const GuestsDashboard = () => {
                 break
         }
 
+        if (staysFilter !== 'any') {
+            switch (staysFilter) {
+                case '1':
+                    filtered = filtered.filter(g => g.bookingCount === 1)
+                    break
+                case '2-3':
+                    filtered = filtered.filter(g => g.bookingCount >= 2 && g.bookingCount <= 3)
+                    break
+                case '4+':
+                    filtered = filtered.filter(g => g.bookingCount >= 4)
+                    break
+            }
+        }
+
         return filtered
-    }, [data, viewMode, filters.dateRange.from])
+    }, [data, viewMode, staysFilter, filters.dateRange.from])
 
     const sortedGuests = useMemo(() => {
         return [...filteredGuests].sort((a, b) => {
@@ -167,6 +182,17 @@ export const GuestsDashboard = () => {
     const handleViewRepeat = useCallback(() => setViewMode('repeat'), [])
     const handleViewNew = useCallback(() => setViewMode('new'), [])
     const handleViewTop = useCallback(() => setViewMode('top'), [])
+
+    const handleStaysFilter = useCallback((value: string) => {
+        setStaysFilter(value as 'any' | '1' | '2-3' | '4+')
+    }, [])
+
+    const viewModes = useMemo(() => [
+        { key: 'all' as const, label: 'All', handler: handleViewAll },
+        { key: 'repeat' as const, label: 'Repeat', handler: handleViewRepeat },
+        { key: 'new' as const, label: 'New', handler: handleViewNew },
+        { key: 'top' as const, label: 'Top 20%', handler: handleViewTop },
+    ], [handleViewAll, handleViewRepeat, handleViewNew, handleViewTop])
 
     const handleSort = useCallback((column: string) => {
         if (column === sortBy) {
@@ -561,54 +587,46 @@ export const GuestsDashboard = () => {
                 <div className="p-4 border-b border-gray-200">
                     <div className="flex justify-between items-center">
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
-                        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-                            <button
-                                onClick={handleViewAll}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                                    viewMode === 'all'
-                                        ? 'bg-white text-gray-900 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                }`}
+                        <div className="flex items-center gap-3">
+                            <select
+                                value={staysFilter}
+                                onChange={(e) => handleStaysFilter(e.target.value)}
+                                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
-                                All
-                            </button>
-                            <button
-                                onClick={handleViewRepeat}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                                    viewMode === 'repeat'
-                                        ? 'bg-white text-gray-900 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                            >
-                                Repeat
-                            </button>
-                            <button
-                                onClick={handleViewNew}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                                    viewMode === 'new'
-                                        ? 'bg-white text-gray-900 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                            >
-                                New
-                            </button>
-                            <button
-                                onClick={handleViewTop}
-                                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                                    viewMode === 'top'
-                                        ? 'bg-white text-gray-900 shadow-sm'
-                                        : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                            >
-                                Top 20%
-                            </button>
+                                <option value="any">Any stays</option>
+                                <option value="1">1 stay</option>
+                                <option value="2-3">2-3 stays</option>
+                                <option value="4+">4+ stays</option>
+                            </select>
+                            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                                {viewModes.map((mode) => (
+                                    <button
+                                        key={mode.key}
+                                        onClick={mode.handler}
+                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                                            viewMode === mode.key
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        {mode.label}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                    {viewMode !== 'all' && (
+                    {(viewMode !== 'all' || staysFilter !== 'any') && (
                         <div className="mt-2 text-xs text-gray-500">
-                            {viewMode === 'repeat' && 'Showing guests with multiple bookings in this period'}
+                            {viewMode === 'all' && 'Showing all guests'}
+                            {viewMode === 'repeat' && 'Showing returning guests (2+ lifetime stays)'}
                             {viewMode === 'new' && 'Showing first-time guests in this period'}
                             {viewMode === 'top' && 'Showing top 20% of guests by spending in this period'}
+                            {staysFilter !== 'any' && (
+                                <span>
+                                    {viewMode !== 'all' ? ' ' : ''}
+                                    with {staysFilter === '1' ? '1 lifetime stay' : `${staysFilter} lifetime stays`}
+                                </span>
+                            )}
                         </div>
                     )}
                 </div>
