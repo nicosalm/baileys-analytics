@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
-import { ChevronDown, ChevronRight, Calculator } from 'lucide-react'
-import { formatCurrency } from '@baileys/utils'
+import { ChevronDown, ChevronRight, Calculator, TrendingUp, ArrowRight } from 'lucide-react'
+import { formatCurrency, formatPercentage, safeDivide } from '@baileys/utils'
 import { OccupancyByProperty } from '@/types/api'
 
 interface WhatIfCalculatorProps {
@@ -9,29 +9,30 @@ interface WhatIfCalculatorProps {
 
 export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
   const [expanded, setExpanded] = useState(false)
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('')
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('__portfolio__')
   const [rateInput, setRateInput] = useState('')
 
+  const scope = useMemo(() => {
+    const properties = selectedPropertyId === '__portfolio__'
+      ? byProperty
+      : byProperty.filter(p => p.propertyId === selectedPropertyId)
 
-  const propertiesWithRate = useMemo(
-    () => byProperty.filter(p => p.avgNightlyRate > 0),
-    [byProperty]
-  )
+    const availableNights = properties.reduce((sum, p) => sum + p.availableNights, 0)
+    const bookedNights = properties.reduce((sum, p) => sum + p.bookedNights, 0)
+    const openNights = availableNights - bookedNights
+    const estimatedRevenue = properties.reduce((sum, p) => sum + p.bookedNights * p.avgNightlyRate, 0)
+    const currentRevPAN = safeDivide(estimatedRevenue, availableNights)
+    const currentOccupancy = safeDivide(bookedNights, availableNights)
+    const weightedAvgRate = safeDivide(estimatedRevenue, bookedNights)
 
-  const selectedProperty = useMemo(() => {
-    const id = selectedPropertyId || propertiesWithRate[0]?.propertyId
-    return propertiesWithRate.find(p => p.propertyId === id) || propertiesWithRate[0]
-  }, [selectedPropertyId, propertiesWithRate])
+    return { availableNights, bookedNights, openNights, estimatedRevenue, currentRevPAN, currentOccupancy, weightedAvgRate }
+  }, [byProperty, selectedPropertyId])
 
-  const currentRate = selectedProperty?.avgNightlyRate || 0
-  const unbookedNights = selectedProperty
-    ? selectedProperty.availableNights - selectedProperty.bookedNights
-    : 0
-
-  const inputRate = rateInput === '' ? currentRate : parseFloat(rateInput) || 0
-  const projectedRevenue = unbookedNights * inputRate
-  const currentRateRevenue = unbookedNights * currentRate
-  const difference = projectedRevenue - currentRateRevenue
+  const inputRate = rateInput === '' ? 0 : parseFloat(rateInput) || 0
+  const additionalRevenue = scope.openNights * inputRate
+  const newTotalRevenue = scope.estimatedRevenue + additionalRevenue
+  const projectedRevPAN = safeDivide(newTotalRevenue, scope.availableNights)
+  const revPANChangePct = safeDivide(projectedRevPAN - scope.currentRevPAN, scope.currentRevPAN) * 100
 
   const handlePropertyChange = (propertyId: string) => {
     setSelectedPropertyId(propertyId)
@@ -43,7 +44,7 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
     setRateInput(value)
   }
 
-  if (propertiesWithRate.length === 0) return null
+  if (byProperty.length === 0) return null
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -58,22 +59,24 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
           }
           <Calculator className="w-5 h-5 text-gray-600" />
           <span className="font-bold text-gray-900">What If?</span>
-          <span className="text-sm text-gray-500">Revenue scenario calculator</span>
+          <span className="text-sm text-gray-500">RevPAN scenario calculator</span>
         </div>
       </button>
 
       {expanded && (
         <div className="px-6 pb-6 pt-2 border-t border-gray-100">
           <div className="grid md:grid-cols-2 gap-6">
+            {/* Left column — inputs */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Scope</label>
                 <select
-                  value={selectedProperty?.propertyId || ''}
+                  value={selectedPropertyId}
                   onChange={e => handlePropertyChange(e.target.value)}
                   className="w-full py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  {propertiesWithRate.map(p => (
+                  <option value="__portfolio__">All Properties (Portfolio)</option>
+                  {byProperty.map(p => (
                     <option key={p.propertyId} value={p.propertyId}>
                       {p.propertyName}
                     </option>
@@ -83,18 +86,22 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
 
               <div className="flex gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Current avg rate</span>
-                  <p className="font-semibold">{formatCurrency(currentRate)}/night</p>
+                  <span className="text-gray-500">Open nights</span>
+                  <p className="font-semibold">{scope.openNights}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Unbooked nights</span>
-                  <p className="font-semibold">{unbookedNights} remaining</p>
+                  <span className="text-gray-500">Current occupancy</span>
+                  <p className="font-semibold">{formatPercentage(scope.currentOccupancy * 100)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Current RevPAN</span>
+                  <p className="font-semibold">{formatCurrency(scope.currentRevPAN)}</p>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  What if you charged
+                  If open nights booked at
                 </label>
                 <div className="relative w-48">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
@@ -103,7 +110,7 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
                     inputMode="decimal"
                     value={rateInput}
                     onChange={e => handleRateChange(e.target.value)}
-                    placeholder={currentRate.toFixed(0)}
+                    placeholder={scope.weightedAvgRate > 0 ? scope.weightedAvgRate.toFixed(0) : '0'}
                     className="w-full py-2 pl-7 pr-14 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/night</span>
@@ -111,30 +118,39 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
               </div>
             </div>
 
+            {/* Right column — results */}
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-gray-700">Projected Scenario</h4>
+              <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                <TrendingUp className="w-4 h-4" />
+                RevPAN Impact
+              </h4>
+
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-gray-900">{formatCurrency(scope.currentRevPAN)}</span>
+                <ArrowRight className="w-4 h-4 text-gray-400" />
+                <span className="text-lg font-bold text-gray-900">{formatCurrency(projectedRevPAN)}</span>
+                {inputRate > 0 && (
+                  <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
+                    revPANChangePct >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {revPANChangePct >= 0 ? '+' : ''}{formatPercentage(revPANChangePct)}
+                  </span>
+                )}
+              </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Additional revenue</span>
-                <span className="text-lg font-bold text-gray-900">{formatCurrency(projectedRevenue)}</span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">At current rate</span>
-                <span className="text-sm text-gray-500">{formatCurrency(currentRateRevenue)}</span>
+                <span className="text-sm font-semibold text-gray-900">{formatCurrency(additionalRevenue)}</span>
               </div>
 
               <div className="border-t border-gray-200 pt-2 flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">Difference</span>
-                <span className={`text-sm font-bold ${
-                  difference > 0 ? 'text-green-600' : difference < 0 ? 'text-red-600' : 'text-gray-500'
-                }`}>
-                  {difference >= 0 ? '+' : ''}{formatCurrency(difference)}
-                </span>
+                <span className="text-sm font-medium text-gray-700">New total revenue</span>
+                <span className="text-lg font-bold text-gray-900">{formatCurrency(newTotalRevenue)}</span>
               </div>
 
               <p className="text-xs text-gray-400 pt-1">
-                Based on {unbookedNights} unbooked night{unbookedNights !== 1 ? 's' : ''} in selected period
+                {scope.openNights} open night{scope.openNights !== 1 ? 's' : ''} × {formatCurrency(inputRate)}/night
+                {selectedPropertyId === '__portfolio__' ? ' across all properties' : ''}
               </p>
             </div>
           </div>
