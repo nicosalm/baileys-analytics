@@ -119,7 +119,7 @@ export const GoalManagementPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-1">Goals</h2>
@@ -143,7 +143,7 @@ export const GoalManagementPanel: React.FC = () => {
           return (
             <div
               key={metric.key}
-              className={`bg-white rounded-xl border p-4 transition-colors ${
+              className={`bg-white rounded-lg shadow-sm border p-4 transition-colors ${
                 state.isEnabled ? 'border-blue-200 bg-blue-50/20' : 'border-gray-200'
               }`}
             >

@@ -276,6 +276,7 @@ export const PropertiesDashboard = () => {
           subtitle="Revenue vs Occupancy Analysis"
           icon={ScatterChart}
           height={360}
+          responsive={false}
         >
           <div className="h-full flex flex-col">
             <div className="flex-1">

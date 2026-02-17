@@ -41,7 +41,7 @@ const SeasonForm: React.FC<{
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Season Name</label>
@@ -138,7 +138,7 @@ const SeasonRow: React.FC<{
   }
 
   return (
-    <div className={`bg-white rounded-xl border p-4 transition-colors ${
+    <div className={`bg-white rounded-lg shadow-sm border p-4 transition-colors ${
       season.isActive ? 'border-green-200 bg-green-50/30' : 'border-gray-200'
     }`}>
       <div className="flex items-center justify-between">
@@ -283,7 +283,7 @@ export const SeasonManagementPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-1">Season Management</h2>

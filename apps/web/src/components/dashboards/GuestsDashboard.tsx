@@ -523,6 +523,7 @@ export const GuestsDashboard = () => {
                     height={320}
                     noData={!tagChartData || tagChartData.length === 0}
                     noDataMessage="No tag data available"
+                    responsive={false}
                 >
                     <div className="space-y-3 overflow-y-auto max-h-[280px] pr-2">
                         {tagChartData.map((tag: any) => {

@@ -216,9 +216,10 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
     <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-white to-blue-50 z-50 flex items-center justify-center">
       <div className="bg-white rounded-xl shadow-xl p-8 max-w-lg w-full mx-4">
         <div className="text-center">
-          <div className={`w-16 h-16 ${BRAND.logoGradient} rounded-xl flex items-center justify-center mx-auto mb-6 shadow-lg`}>
+          <div className="flex flex-col items-center mb-6">
+            <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-12 h-12 mb-3" />
             {progress.step === 'complete' ? (
-              <CheckCircle className="w-8 h-8 text-white" />
+              <CheckCircle className="w-6 h-6 text-green-500" />
             ) : (
               <LoadingState size="sm" />
             )}
