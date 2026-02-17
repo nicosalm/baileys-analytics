@@ -31,12 +31,6 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
     }
   }, [booking, openModal])
 
-  const handlePropertyClick = useCallback(() => {
-    if (booking) {
-      openModal({ type: 'property', propertyId: booking.propertyId, propertyName: booking.propertyName })
-    }
-  }, [booking, openModal])
-
   return (
     <Modal
       isOpen={true}
@@ -61,8 +55,8 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             <div className="flex items-start">
               <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
               <div className="text-sm text-blue-800">
-                <strong>Booking Details:</strong> Complete information about this reservation. 
-                Click guest or property names to view their details.
+                <strong>Booking Details:</strong> Complete information about this reservation.
+                Click the guest name to view their profile.
               </div>
             </div>
           </div>
@@ -94,14 +88,13 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           </div>
 
           <div
-            className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100"
-            onClick={handlePropertyClick}
+            className="bg-gray-50 p-4 rounded-lg"
           >
             <div className="flex items-center text-sm text-gray-600 mb-2">
               <Home className="w-4 h-4 mr-1" />
               Property
             </div>
-            <div className="font-semibold text-blue-600 hover:underline">{booking.propertyName}</div>
+            <div className="font-semibold text-gray-900">{booking.propertyName}</div>
             {booking.propertyAddress && (
               <div className="text-sm text-gray-500 flex items-start">
                 <MapPin className="w-3 h-3 mr-1 mt-0.5" />

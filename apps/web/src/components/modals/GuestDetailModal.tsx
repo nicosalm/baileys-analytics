@@ -53,7 +53,7 @@ interface GuestDetailModalProps {
 }
 
 export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestDetailModalProps) => {
-  const { closeModal, openModal } = useModal()
+  const { closeModal } = useModal()
   const { showTips } = useTips()
   const [activeTab, setActiveTab] = useState<'overview' | 'bookings'>('overview')
   
@@ -106,11 +106,6 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
   const handleTabOverview = useCallback(() => setActiveTab('overview'), [])
   const handleTabBookings = useCallback(() => setActiveTab('bookings'), [])
 
-  // memoized property click handler
-  const handlePropertyClick = useCallback((propertyId: string, propertyName: string) => {
-    openModal({ type: 'property', propertyId, propertyName })
-  }, [openModal])
-
   return (
     <Modal
       isOpen={true}
@@ -135,8 +130,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
             <div className="flex items-start">
               <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
               <div className="text-sm text-blue-800">
-                <strong>Guest Profile:</strong> View this guest's complete booking history and spending patterns. 
-                Click any property to see its details.
+                <strong>Guest Profile:</strong> View this guest's complete booking history and spending patterns.
               </div>
             </div>
           </div>
@@ -302,11 +296,10 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                   {bookingHistory.map((booking: any) => (
                     <tr
                       key={booking.id}
-                      className="border-t hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handlePropertyClick(booking.propertyId, booking.propertyName)}
+                      className="border-t"
                     >
                       <td className="p-4">
-                        <div className="font-medium text-blue-600 hover:underline">{booking.propertyName}</div>
+                        <div className="font-medium text-gray-900">{booking.propertyName}</div>
                         <div className="text-sm text-gray-500">{booking.nights} nights</div>
                       </td>
                       <td className="p-4 text-sm">
