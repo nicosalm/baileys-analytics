@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award } from 'lucide-react'
+import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -290,6 +290,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                     <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
                     <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
                     <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
+                    <th className="p-4"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -313,6 +314,20 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                       </td>
                       <td className="p-4">
                         <StatusBadge status={booking.status} />
+                      </td>
+                      <td className="p-4">
+                        {booking.ownerrezBookingId && (
+                          <a
+                            href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="Open in OwnerRez"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
                       </td>
                     </tr>
                   ))}

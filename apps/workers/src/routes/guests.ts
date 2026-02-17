@@ -97,7 +97,8 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			guest_name,
 			guest_email,
 			guest_phone,
-			property_id
+			property_id,
+			ownerrez_booking_id
 		`)
 		.eq('tenant_id', tenant.id)
 		.neq('status', 'canceled');
@@ -188,9 +189,10 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			platform: b.platform || 'Direct',
 			status: b.status,
 			nights: b.arrival && b.departure ? Math.ceil(
-				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / 
+				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) /
 				(1000 * 60 * 60 * 24)
-			) : 0
+			) : 0,
+			ownerrezBookingId: b.ownerrez_booking_id
 		})),
 		spendingTrend
 	});
