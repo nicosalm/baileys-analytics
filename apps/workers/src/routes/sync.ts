@@ -364,9 +364,7 @@ sync.post('/recovery', async (c) => {
 							type: booking.type || 'block',
 							reason: booking.reason,
 							updated_at: new Date().toISOString()
-						})
-						.eq('ownerrez_block_id', booking.id)
-						.eq('tenant_id', tenant.id);
+						}, { onConflict: 'ownerrez_block_id,tenant_id' });
 				} else {
 					const guestName = booking.guest
 						? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()

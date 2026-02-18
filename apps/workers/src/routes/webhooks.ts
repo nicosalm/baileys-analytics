@@ -309,9 +309,7 @@ async function handleBookingUpdate(
 				type: booking.type || 'block',
 				reason: booking.reason,
 				updated_at: new Date().toISOString()
-			})
-			.eq('ownerrez_block_id', booking.id)
-			.eq('tenant_id', tenantId);
+			}, { onConflict: 'ownerrez_block_id,tenant_id' });
 	} else {
 		const { data: property } = await supabase
 			.from('properties')
@@ -548,9 +546,7 @@ async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 			phone: phone,
 			data: guest,
 			updated_at: new Date().toISOString()
-		})
-		.eq('ownerrez_guest_id', guest.id?.toString())
-		.eq('tenant_id', tenantId)
+		}, { onConflict: 'tenant_id,ownerrez_guest_id' })
 		.select()
 		.single();
 
@@ -610,9 +606,7 @@ async function handleInquiryUpdate(supabase: any, tenantId: string, inquiry: any
 			status: inquiry.status,
 			data: inquiry,
 			updated_at: new Date().toISOString()
-		})
-		.eq('ownerrez_inquiry_id', inquiry.id)
-		.eq('tenant_id', tenantId);
+		}, { onConflict: 'ownerrez_inquiry_id,tenant_id' });
 }
 
 async function handleQuoteUpdate(supabase: any, tenantId: string, quote: any) {
@@ -630,9 +624,7 @@ async function handleQuoteUpdate(supabase: any, tenantId: string, quote: any) {
 			status: quote.status,
 			data: quote,
 			updated_at: new Date().toISOString()
-		})
-		.eq('ownerrez_quote_id', quote.id)
-		.eq('tenant_id', tenantId);
+		}, { onConflict: 'ownerrez_quote_id,tenant_id' });
 }
 
 async function handleEntityDelete(
