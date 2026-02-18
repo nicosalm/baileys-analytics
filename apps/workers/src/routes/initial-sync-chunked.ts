@@ -254,7 +254,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
           departure: booking.departure,
           total_amount: booking.total_amount || 0,
           status: normalizeBookingStatus(booking.status),
-          platform: booking.source || booking.listing_site || 'Direct',
+          platform: booking.source || booking.listing_site || 'Unassigned',
           adults: booking.adults || 0,
           children: booking.children || 0,
           booked_utc: booking.booked_utc || booking.created_utc,

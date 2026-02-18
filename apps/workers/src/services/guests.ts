@@ -57,7 +57,7 @@ function createGuestId(name: string, email?: string): string {
 }
 
 function normalizePlatform(platform: string | null): string {
-  if (!platform) return 'Direct';
+  if (!platform) return 'Unassigned';
   const normalized = platform.toLowerCase().trim();
 
   if (normalized.includes('airbnb')) return 'Airbnb';

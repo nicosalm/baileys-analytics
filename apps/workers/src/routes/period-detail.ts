@@ -191,7 +191,7 @@ periodDetail.get('/', async (c) => {
 
     const platformGroups = new Map<string, { count: number; revenue: number }>();
     bookings.forEach(b => {
-      const platform = b.platform || 'Direct';
+      const platform = b.platform || 'Unassigned';
       const current = platformGroups.get(platform) || { count: 0, revenue: 0 };
       current.count += 1;
       current.revenue += b.total_amount || 0;
@@ -241,7 +241,7 @@ periodDetail.get('/', async (c) => {
         arrival: b.arrival,
         departure: b.departure,
         totalAmount: b.total_amount,
-        platform: b.platform || 'Direct',
+        platform: b.platform || 'Unassigned',
         status: b.status,
         ownerrezBookingId: b.ownerrez_booking_id || null
       }))

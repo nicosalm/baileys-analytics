@@ -217,7 +217,7 @@ export class PDFGenerator {
       `${this.formatDate(booking.arrival)} - ${this.formatDate(booking.departure)}`,
       this.calculateNights(booking.arrival, booking.departure).toString(),
       this.formatCurrency(booking.total_amount || 0),
-      booking.platform || 'Direct'
+      booking.platform || 'Unassigned'
     ])
     
     autoTable(doc, {
@@ -524,7 +524,7 @@ export class PDFGenerator {
     
     const headers = ['Channel', 'Bookings', 'Revenue', 'Avg Value']
     const rows = channels.map((c: any) => [
-      c.channel || 'Direct',
+      c.channel || 'Unassigned',
       (c.bookings || 0).toString(),
       this.formatCurrency(c.revenue || 0),
       this.formatCurrency(c.avgValue || 0)

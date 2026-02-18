@@ -134,7 +134,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 	bookings.forEach(booking => {
 		totalRevenue += booking.total_amount || 0;
 		propertySet.add(booking.property_id);
-		platformSet.add(booking.platform || 'Direct');
+		platformSet.add(booking.platform || 'Unassigned');
 		
 		if (booking.arrival && booking.departure) {
 			const nights = Math.ceil(
@@ -186,7 +186,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			propertyId: b.property_id,
 			propertyName: propertyMap.get(b.property_id) || 'Unknown Property',
 			totalAmount: b.total_amount,
-			platform: b.platform || 'Direct',
+			platform: b.platform || 'Unassigned',
 			status: b.status,
 			nights: b.arrival && b.departure ? Math.ceil(
 				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) /

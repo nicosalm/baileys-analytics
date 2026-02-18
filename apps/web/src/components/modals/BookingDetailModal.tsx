@@ -176,7 +176,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600">Platform: </span>
-              <span className="font-medium">{booking?.platform || 'Direct'}</span>
+              <span className="font-medium">{booking?.platform || 'Unassigned'}</span>
             </div>
             <div>
               <span className="text-gray-600">Booked: </span>

@@ -91,7 +91,7 @@ export const PLView: React.FC<PLViewProps> = ({
       : 0
     
     const platformData = platforms?.map((p: any) => ({
-      name: p.platform || 'Direct',
+      name: p.platform || 'Unassigned',
       revenue: p.grossRevenue || 0,
       percentage: grossRevenue > 0 ? (p.grossRevenue / grossRevenue) * 100 : 0
     })) || []

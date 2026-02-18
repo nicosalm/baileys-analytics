@@ -381,7 +381,7 @@ async function handleBookingUpdate(
 			total_amount: booking.total_amount || 0,
 			host_service_fee: booking.total_host_fees || 0,
 			status: normalizedStatus,
-			platform: booking.source || booking.listing_site || 'Direct',
+			platform: booking.source || booking.listing_site || 'Unassigned',
 			platform_reservation_number: booking.custom_source_id || booking.external_id,
 			adults: booking.adults || 0,
 			children: booking.children || 0,

@@ -68,7 +68,7 @@ export function useFinancialData(
     
     // Transform platform data
     const platformData = platforms?.map((p: any) => ({
-      name: p.platform || 'Direct',
+      name: p.platform || 'Unassigned',
       revenue: ensureNumber(p.revenue),
       percentage: grossRevenue > 0 ? calculatePercentage(p.revenue, grossRevenue) : 0
     })) || []

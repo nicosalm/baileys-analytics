@@ -334,7 +334,7 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 						departure: booking.departure,
 						total_amount: booking.total_amount || 0,
 						status: booking.status,
-						platform: booking.source || booking.listing_site || 'Direct',
+						platform: booking.source || booking.listing_site || 'Unassigned',
 						platform_reservation_number: booking.custom_source_id || booking.external_id,
 						adults: booking.adults || 0,
 						children: booking.children || 0,

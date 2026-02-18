@@ -54,7 +54,7 @@ export const formatShortMonth = (date: Date | string): string => {
 }
 
 export const normalizePlatformName = (platform: string | null): string => {
-  if (!platform || platform === '') return 'Direct'
+  if (!platform || platform === '') return 'Unassigned'
   
   const lower = platform.toLowerCase()
   if (lower.includes('airbnb')) return 'Airbnb'

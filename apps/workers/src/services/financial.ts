@@ -282,7 +282,7 @@ export async function getPLData(
 
   const platformBreakdown = new Map<string, PlatformFinancials>();
   bookings.forEach(b => {
-    const platform = b.platform || 'Direct';
+    const platform = b.platform || 'Unassigned';
     const existing = platformBreakdown.get(platform) || {
       platform,
       grossRevenue: 0,
@@ -418,7 +418,7 @@ export async function getRevenueData(
 
   const sourceMap = new Map<string, number>();
   bookings?.forEach(b => {
-    const source = b.platform || 'Direct';
+    const source = b.platform || 'Unassigned';
     sourceMap.set(source, (sourceMap.get(source) || 0) + (b.total_amount || 0));
   });
 

@@ -286,7 +286,7 @@ export class ReportGenerator {
 				totalAmount: b.total_amount,
 				nights: Math.ceil((new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)),
 				status: b.status,
-				platform: b.platform || 'Direct'
+				platform: b.platform || 'Unassigned'
 			})) || []
 		};
 	}
@@ -573,7 +573,7 @@ export class ReportGenerator {
 		
 		const channelMap = new Map();
 		bookings?.forEach(b => {
-			const channel = b.platform || 'Direct';
+			const channel = b.platform || 'Unassigned';
 			if (!channelMap.has(channel)) {
 				channelMap.set(channel, { count: 0, revenue: 0 });
 			}

@@ -214,7 +214,7 @@ async function getChartsData(
 
 	const sourceMap = new Map<string, { count: number; revenue: number }>();
 	bookings?.forEach(b => {
-		const source = b.platform || 'Direct';
+		const source = b.platform || 'Unassigned';
 		const existing = sourceMap.get(source) || { count: 0, revenue: 0 };
 		existing.count++;
 		existing.revenue += b.total_amount || 0;
@@ -483,7 +483,7 @@ async function getRecentActivity(
 		description: `${b.guest_name} booked ${b.properties?.name}`,
 		timestamp: b.booked_utc || b.created_at || b.arrival,
 		value: b.total_amount,
-		platform: b.platform || 'Direct',
+		platform: b.platform || 'Unassigned',
 		ownerrezBookingId: b.ownerrez_booking_id || null,
 		metadata: {
 			guestName: b.guest_name,

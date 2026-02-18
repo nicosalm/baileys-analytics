@@ -393,7 +393,7 @@ tax.post('/calculate', async (c) => {
 		.select('*')
 		.eq('id', bookingId)
 		.single()
-		.then(r => r.data) : { total_amount: amount, platform: 'Direct' };
+		.then(r => r.data) : { total_amount: amount, platform: 'Unassigned' };
 	
 	if (!booking) {
 		return c.json({ error: 'Booking not found' }, 404);
@@ -455,7 +455,7 @@ tax.get('/export', async (c) => {
 				property: booking.properties.name,
 				checkin: booking.arrival,
 				checkout: booking.departure,
-				platform: booking.platform || 'Direct',
+				platform: booking.platform || 'Unassigned',
 				total: booking.total_amount || 0,
 				taxes: 0,
 				description: 'No taxes recorded'
@@ -466,7 +466,7 @@ tax.get('/export', async (c) => {
 			property: booking.properties.name,
 			checkin: booking.arrival,
 			checkout: booking.departure,
-			platform: booking.platform || 'Direct',
+			platform: booking.platform || 'Unassigned',
 			total: booking.total_amount || 0,
 			taxes: charge.amount || 0,
 			description: charge.description || 'Tax'

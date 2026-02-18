@@ -217,7 +217,7 @@ async function getChartsData(
 
   const sourcesCounts = new Map<string, number>();
   sourcesData?.forEach((b: any) => {
-    const source = b.platform || 'Direct';
+    const source = b.platform || 'Unassigned';
     sourcesCounts.set(source, (sourcesCounts.get(source) || 0) + 1);
   });
 
@@ -326,7 +326,7 @@ async function getRecentActivity(
     description: `${b.guest_name} - ${b.properties.name} (${new Date(b.arrival).toLocaleDateString()} to ${new Date(b.departure).toLocaleDateString()})`,
     timestamp: b.booked_utc || b.created_at,
     value: b.total_amount,
-    platform: b.platform || 'Direct',
+    platform: b.platform || 'Unassigned',
     ownerrezBookingId: b.ownerrez_booking_id || null
   }));
 }

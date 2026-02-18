@@ -129,7 +129,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     (bookings || []).forEach(booking => {
       totalRevenue += booking.total_amount || 0;
 
-      const platform = booking.platform || 'Direct';
+      const platform = booking.platform || 'Unassigned';
       platformRevenue.set(platform, (platformRevenue.get(platform) || 0) + (booking.total_amount || 0));
 
       const month = booking.arrival.substring(0, 7);
@@ -219,7 +219,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
           arrival: booking.arrival,
           departure: booking.departure,
           totalAmount: booking.total_amount,
-          platform: booking.platform || 'Direct',
+          platform: booking.platform || 'Unassigned',
           status: booking.status
         };
       });
