@@ -78,9 +78,7 @@ sync.post('/properties', async (c) => {
 				last_sync: new Date().toISOString(),
 				status: 'success',
 				records_synced: properties.length
-			})
-			.eq('tenant_id', tenant.id)
-			.eq('sync_type', 'properties');
+			}, { onConflict: 'tenant_id,sync_type' });
 
 		return c.json({
 			success: true,
@@ -95,9 +93,7 @@ sync.post('/properties', async (c) => {
 				last_sync: new Date().toISOString(),
 				status: 'error',
 				error_message: error.message
-			})
-			.eq('tenant_id', tenant.id)
-			.eq('sync_type', 'properties');
+			}, { onConflict: 'tenant_id,sync_type' });
 
 		return c.json({ error: error.message }, 500);
 	}
@@ -245,9 +241,7 @@ sync.post('/bookings', async (c) => {
 				last_sync: new Date().toISOString(),
 				status: 'success',
 				records_synced: bookings.length
-			})
-			.eq('tenant_id', tenant.id)
-			.eq('sync_type', 'bookings');
+			}, { onConflict: 'tenant_id,sync_type' });
 
 		return c.json({
 			success: true,
@@ -262,9 +256,7 @@ sync.post('/bookings', async (c) => {
 				last_sync: new Date().toISOString(),
 				status: 'error',
 				error_message: error.message
-			})
-			.eq('tenant_id', tenant.id)
-			.eq('sync_type', 'bookings');
+			}, { onConflict: 'tenant_id,sync_type' });
 
 		return c.json({ error: error.message }, 500);
 	}

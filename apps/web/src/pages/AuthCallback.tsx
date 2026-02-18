@@ -199,11 +199,15 @@ export const AuthCallback = () => {
       try {
         // getSession may return null right after a page reload because the
         // Supabase client hasn't finished initializing from localStorage yet.
-        // Retry once after a brief delay to handle this race condition.
+        // Retry with progressive delays to handle this race condition.
         let session = (await supabase.auth.getSession()).data.session
         if (!session) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
-          session = (await supabase.auth.getSession()).data.session
+          const delays = [500, 1000, 1500, 2000]
+          for (const delay of delays) {
+            await new Promise(resolve => setTimeout(resolve, delay))
+            session = (await supabase.auth.getSession()).data.session
+            if (session) break
+          }
         }
 
         if (!session) {

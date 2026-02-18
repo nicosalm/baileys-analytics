@@ -21,13 +21,13 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
   const booking = data?.booking
   const subtitle = isLoading ? "Loading booking information..." :
                    error ? "Unable to load booking" :
-                   `Booking #${booking?.confirmationCode || bookingId}`
+                   `Booking #${booking?.platform_reservation_number || bookingId}`
   const nights = booking ? differenceInDays(new Date(booking.departure), new Date(booking.arrival)) : 0
 
-  // memoized click handlers
   const handleGuestClick = useCallback(() => {
     if (booking) {
-      openModal({ type: 'guest', guestId: booking.guestId, guestName: booking.guestName })
+      const guestId = `${(booking.guest_name || '').toLowerCase().trim()}_${(booking.guest_email || '').toLowerCase().trim()}`
+      openModal({ type: 'guest', guestId, guestName: booking.guest_name })
     }
   }, [booking, openModal])
 
@@ -65,7 +65,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
         {/* Status */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600">Booking Status</div>
-          <StatusBadge status={booking.status} />
+          <StatusBadge status={booking?.status} />
         </div>
 
         {/* Guest & Property Info */}
@@ -78,12 +78,12 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
               <User className="w-4 h-4 mr-1" />
               Guest
             </div>
-            <div className="font-semibold text-blue-600 hover:underline">{booking.guestName}</div>
-            {booking.guestEmail && (
-              <div className="text-sm text-gray-500">{booking.guestEmail}</div>
+            <div className="font-semibold text-blue-600 hover:underline">{booking?.guest_name}</div>
+            {booking?.guest_email && (
+              <div className="text-sm text-gray-500">{booking.guest_email}</div>
             )}
-            {booking.guestPhone && (
-              <div className="text-sm text-gray-500">{booking.guestPhone}</div>
+            {booking?.guest_phone && (
+              <div className="text-sm text-gray-500">{booking.guest_phone}</div>
             )}
           </div>
 
@@ -94,11 +94,11 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
               <Home className="w-4 h-4 mr-1" />
               Property
             </div>
-            <div className="font-semibold text-gray-900">{booking.propertyName}</div>
-            {booking.propertyAddress && (
+            <div className="font-semibold text-gray-900">{booking?.property_name}</div>
+            {booking?.property_address && (
               <div className="text-sm text-gray-500 flex items-start">
                 <MapPin className="w-3 h-3 mr-1 mt-0.5" />
-                {booking.propertyAddress}
+                {booking.property_address}
               </div>
             )}
           </div>
@@ -113,18 +113,18 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           <div className="grid grid-cols-3 gap-4">
             <div>
               <div className="text-xs text-gray-500">Check In</div>
-              <div className="font-semibold">{formatDateDisplay(new Date(booking.arrival))}</div>
-              <div className="text-sm text-gray-600">{booking.checkInTime || '3:00 PM'}</div>
+              <div className="font-semibold">{booking?.arrival ? formatDateDisplay(new Date(booking.arrival)) : '-'}</div>
+              <div className="text-sm text-gray-600">3:00 PM</div>
             </div>
             <div>
               <div className="text-xs text-gray-500">Check Out</div>
-              <div className="font-semibold">{formatDateDisplay(new Date(booking.departure))}</div>
-              <div className="text-sm text-gray-600">{booking.checkOutTime || '11:00 AM'}</div>
+              <div className="font-semibold">{booking?.departure ? formatDateDisplay(new Date(booking.departure)) : '-'}</div>
+              <div className="text-sm text-gray-600">11:00 AM</div>
             </div>
             <div>
               <div className="text-xs text-gray-500">Duration</div>
               <div className="font-semibold">{nights} nights</div>
-              <div className="text-sm text-gray-600">{booking.guestCount || 1} guests</div>
+              <div className="text-sm text-gray-600">{(booking?.adults || 0) + (booking?.children || 0) || 1} guests</div>
             </div>
           </div>
         </div>
@@ -138,29 +138,17 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-600">Nightly Rate</span>
-              <span className="font-medium">{formatCurrency(booking.nightlyRate || booking.totalAmount / nights)}</span>
+              <span className="font-medium">{formatCurrency(booking?.avgNightlyRate || (nights > 0 ? (booking?.total_amount || 0) / nights : 0))}</span>
             </div>
-            {booking.cleaningFee && booking.cleaningFee > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Cleaning Fee</span>
-                <span className="font-medium">{formatCurrency(booking.cleaningFee)}</span>
-              </div>
-            )}
-            {booking.taxes && booking.taxes > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Taxes</span>
-                <span className="font-medium">{formatCurrency(booking.taxes)}</span>
-              </div>
-            )}
-            {(booking.hostServiceFee || booking.host_service_fee) > 0 && (
+            {booking?.host_service_fee > 0 && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Host Service Fee</span>
-                <span className="font-medium">{formatCurrency(booking.hostServiceFee || booking.host_service_fee)}</span>
+                <span className="font-medium">{formatCurrency(booking.host_service_fee)}</span>
               </div>
             )}
             <div className="flex justify-between pt-2 border-t font-semibold">
               <span>Total Amount</span>
-              <span className="text-green-600">{formatCurrency(booking.totalAmount)}</span>
+              <span className="text-green-600">{formatCurrency(booking?.total_amount)}</span>
             </div>
           </div>
         </div>
@@ -172,7 +160,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
               <CreditCard className="w-4 h-4 mr-1" />
               Booking Information
             </div>
-            {booking.ownerrez_booking_id && (
+            {booking?.ownerrez_booking_id && (
               <a
                 href={`https://app.ownerrez.com/bookings/${booking.ownerrez_booking_id}`}
                 target="_blank"
@@ -188,17 +176,17 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600">Platform: </span>
-              <span className="font-medium">{booking.platform || 'Direct'}</span>
+              <span className="font-medium">{booking?.platform || 'Direct'}</span>
             </div>
             <div>
               <span className="text-gray-600">Booked: </span>
-              <span className="font-medium">{formatDateDisplay(new Date(booking.bookedDate))}</span>
+              <span className="font-medium">{booking?.booked_utc ? formatDateDisplay(new Date(booking.booked_utc)) : '-'}</span>
             </div>
           </div>
         </div>
 
         {/* Notes */}
-        {booking.notes && (
+        {booking?.notes && (
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-sm text-gray-600 mb-2">Special Notes</div>
             <div className="text-sm">{booking.notes}</div>

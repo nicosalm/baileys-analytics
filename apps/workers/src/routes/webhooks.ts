@@ -256,9 +256,7 @@ async function handlePropertyUpdate(supabase: any, tenantId: string, property: a
 			last_sync: new Date().toISOString(),
 			status: 'success',
 			records_synced: 1
-		})
-		.eq('tenant_id', tenantId)
-		.eq('sync_type', 'properties_webhook');
+		}, { onConflict: 'tenant_id,sync_type' });
 }
 
 async function handleBookingUpdate(
@@ -514,9 +512,7 @@ async function handleBookingUpdate(
 			last_sync: new Date().toISOString(),
 			status: 'success',
 			records_synced: 1
-		})
-		.eq('tenant_id', tenantId)
-		.eq('sync_type', 'bookings_webhook');
+		}, { onConflict: 'tenant_id,sync_type' });
 }
 
 async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {

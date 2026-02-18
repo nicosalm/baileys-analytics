@@ -55,13 +55,14 @@ export function useDashboardBatch(
     return fetchResult.data
   })
 
-  // Normalize: if we have no data yet, treat as loading (not error).
-  // This covers the window between SWR retries where isLoading=false
-  // but data hasn't arrived. Dashboards see loading spinner, not crash.
+  // Normalize: if we have no data yet, always treat as loading regardless
+  // of error state. This ensures the first load shows a spinner rather than
+  // an error boundary (e.g. from Cloudflare Worker cold-start failures).
+  // Errors only surface if a subsequent request also fails (persistent error).
   return {
     ...result,
-    isLoading: result.isLoading || (!result.data && !result.error),
-    error: (!result.data && result.isValidating) ? undefined : result.error,
+    isLoading: result.isLoading || !result.data,
+    error: result.data ? result.error : undefined,
   }
 }
 
@@ -254,9 +255,9 @@ export async function historicalSync() {
 // Detail View Hooks
 export function useBookingDetail(bookingId?: string) {
   return useSWR<any>(
-    bookingId ? `/booking/${bookingId}/detail` : null,
+    bookingId ? `/bookings/${bookingId}` : null,
     async () => {
-      const result = await api.request(`/booking/${encodeURIComponent(bookingId!)}/detail`)
+      const result = await api.request(`/bookings/${encodeURIComponent(bookingId!)}`)
       if (!result.success) throw new Error(result.error)
       return result.data
     }
