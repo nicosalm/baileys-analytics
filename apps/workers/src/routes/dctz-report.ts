@@ -9,9 +9,8 @@ const dctzReport = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: s
 dctzReport.use('/*', authMiddleware)
 
 // tenant ids that have access to dctz report feature
-// TODO: replace with jerry's actual tenant id when known
 const DCTZ_ENABLED_TENANTS = [
-	'df2d602d-0472-4ccc-bcfd-374de378a175', // demo tenant for testing
+	'df2d602d-0472-4ccc-bcfd-374de378a175',
 	'91616123-1ffc-4c54-a4ad-f1670b1ce857'
 ]
 

@@ -80,14 +80,6 @@ export const AuthCallback = () => {
     const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
     const type = hashParams.get('type') || searchParams.get('type')
 
-    // DEBUG: log what we received
-    // console.log('[AuthCallback] URL:', window.location.href)
-    // console.log('[AuthCallback] code:', code ? 'present' : 'missing')
-    // console.log('[AuthCallback] state:', state)
-    // console.log('[AuthCallback] type:', type)
-    // console.log('[AuthCallback] error:', error)
-    // console.log('[AuthCallback] hash:', window.location.hash)
-
     // Handle URL errors
     if (error) {
       handleError(errorDescription || error)
@@ -108,12 +100,9 @@ export const AuthCallback = () => {
     handleSupabaseAuth(code, type)
 
     async function handleSupabaseAuth(code: string | null, type: string | null) {
-      // console.log('[AuthCallback] handleSupabaseAuth starting, code:', code ? 'present' : 'missing')
-
       // If we have a code, go straight to exchange - don't call getSession() first
       // as it can hang when there's partial auth state
       if (code) {
-        // console.log('[AuthCallback] Have code, going straight to exchange...')
         await exchangeCode(code, type)
         return
       }
@@ -121,7 +110,6 @@ export const AuthCallback = () => {
       // No code - check if there's an access_token in hash (implicit flow)
       const accessToken = hashParams.get('access_token')
       if (accessToken) {
-        // console.log('[AuthCallback] Found access_token in hash, setting session...')
         try {
           const { data, error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -131,15 +119,13 @@ export const AuthCallback = () => {
             handleSuccess(type)
             return
           }
-          // console.log('[AuthCallback] setSession error:', error)
-        } catch (e) {
-          // console.log('[AuthCallback] setSession exception:', e)
+        } catch {
+          // setSession failed, fall through to existing session check
         }
       }
 
       // No code and no access_token - check for existing session with timeout
       try {
-        // console.log('[AuthCallback] No code/token, checking existing session with timeout...')
         const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('getSession timeout')), 5000)
@@ -147,32 +133,24 @@ export const AuthCallback = () => {
         const { data: { session: existingSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any
 
         if (existingSession) {
-          // console.log('[AuthCallback] Found existing session')
           handleSuccess(type)
           return
         }
-      } catch (e) {
-        // console.log('[AuthCallback] getSession error/timeout:', e)
+      } catch {
+        // getSession timed out or failed
       }
 
-      // console.log('[AuthCallback] No code found, showing error')
       handleError('No authentication code found.')
     }
 
     async function exchangeCode(code: string, type: string | null) {
       try {
-        // console.log('[AuthCallback] Creating fresh client for exchange...')
+        // Use fresh client - it reads PKCE verifier from shared localStorage but has clean internal state
         const callbackClient = createCallbackClient()
-
-        // console.log('[AuthCallback] Exchanging code for session...')
-        // use fresh client - it reads PKCE verifier from shared localStorage but has clean internal state
         const { data, error: exchangeError } = await callbackClient.auth.exchangeCodeForSession(code)
-
-        // console.log('[AuthCallback] Exchange result - data:', !!data?.session, 'error:', exchangeError?.message)
 
         if (exchangeError) {
           const msg = exchangeError.message?.toLowerCase() || ''
-          console.log('[AuthCallback] Exchange error:', exchangeError.message)
           if (msg.includes('verifier') || msg.includes('pkce') || msg.includes('code challenge')) {
             handleError('Please open this link in the same browser where you started sign-in.')
           } else {
@@ -182,15 +160,12 @@ export const AuthCallback = () => {
         }
 
         if (data?.session) {
-          // console.log('[AuthCallback] Session obtained successfully')
           handleSuccess(type)
           return
         }
 
-        console.log('[AuthCallback] No session in exchange response')
         handleError('Authentication failed. Please try again.')
-      } catch (e) {
-        console.log('[AuthCallback] Exchange exception:', e)
+      } catch {
         handleError('Authentication failed. Please try again.')
       }
     }

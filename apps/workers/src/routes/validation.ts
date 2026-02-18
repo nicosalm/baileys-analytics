@@ -48,17 +48,12 @@ async function getOwnerRezData(
   fromDate: string,
   toDate: string
 ): Promise<ValidationResult> {
-  const authConfig = !token.startsWith('ey')
-    ? {
-        headers: { 'Accept': 'application/json' },
-        auth: { username: 'test@example.com', password: token }
-      }
-    : {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
-      };
+  const authConfig = {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json'
+    }
+  };
 
   const allBookings: any[] = [];
   const batchSize = 50;

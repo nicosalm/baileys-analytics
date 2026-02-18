@@ -37,7 +37,6 @@ import { webhooks } from './routes/webhooks';
 import { initialSyncChunked } from './routes/initial-sync-chunked';
 import { health } from './routes/health';
 import { scheduled } from './scheduled';
-import { debug } from './routes/debug';
 import { billing } from './routes/billing';
 import { account } from './routes/account';
 import { admin } from './routes/admin';
@@ -752,8 +751,6 @@ app.route('/api/sync', sync);
 app.route('/api/oauth', oauth);
 app.route('/api/webhooks', webhooks);
 app.route('/api/initial-sync-chunked', initialSyncChunked);
-// debug routes (dev only)
-app.route('/api/debug', debug);
 
 app.notFound((c) => {
 	return c.json({ error: 'Not Found' }, 404);

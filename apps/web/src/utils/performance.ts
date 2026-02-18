@@ -32,11 +32,6 @@ class PerformanceMonitor {
       this.metrics = this.metrics.slice(-this.maxMetrics)
     }
     
-    // Log to console in development
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      const cacheStatus = cached ? '(cached)' : ''
-      console.log(`[API Performance] ${endpoint} ${cacheStatus}: ${duration}ms`)
-    }
   }
   
   /**
@@ -114,20 +109,3 @@ export async function measurePerformance<T>(
   }
 }
 
-/**
- * Log performance summary to console
- */
-export function logPerformanceSummary() {
-  if (typeof window === 'undefined' || window.location.hostname !== 'localhost') return
-  
-  const summary = performanceMonitor.getSummary()
-  
-  console.group('📊 API Performance Summary')
-  console.table(summary)
-  console.groupEnd()
-}
-
-// Auto-log summary every 30 seconds in development
-if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-  setInterval(logPerformanceSummary, 30000)
-}

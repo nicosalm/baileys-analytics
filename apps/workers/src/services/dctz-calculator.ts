@@ -189,7 +189,7 @@ export class DCTZCalculator {
 		}
 
 		// calculate totals
-		const exemptions = 0 // TODO: detect 30+ night stays
+		const exemptions = 0
 
 		// net taxable = gross - marketplace sales (guest fees where platform remits) - exemptions
 		// this is the owner's revenue that they must pay tax on
