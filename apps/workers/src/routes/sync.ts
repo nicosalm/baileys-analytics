@@ -409,11 +409,7 @@ sync.post('/recovery', async (c) => {
 				sync_type: 'recovery',
 				last_sync: new Date().toISOString(),
 				status: 'success',
-				records_synced: bookingCount,
-				metadata: {
-					reason: isForced ? 'forced' : 'webhook_failure',
-					hours_since_last_webhook: hoursSinceLastWebhook
-				}
+				records_synced: bookingCount
 			});
 
 		return c.json({

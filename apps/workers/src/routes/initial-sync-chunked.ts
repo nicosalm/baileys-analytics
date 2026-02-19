@@ -16,7 +16,7 @@ initialSyncChunked.get('/status', async (c) => {
 
   const { data: completedSync } = await supabase
     .from('sync_status')
-    .select('status, last_sync, metadata')
+    .select('status, last_sync')
     .eq('tenant_id', tenantId)
     .eq('sync_type', 'initial_sync_completed')
     .single();
@@ -72,83 +72,98 @@ initialSyncChunked.post('/properties', async (c) => {
   try {
     const properties = await ownerRez.fetchProperties();
 
-    for (const property of properties) {
-      const { data: upsertedProperty, error: propertyError } = await supabase
-        .from('properties')
-        .upsert({
-          tenant_id: tenantId,
-          ownerrez_id: property.id,
-          name: property.name,
-          address: property.address?.street1 || property.address,
-          city: property.address?.city,
-          state: property.address?.state,
-          postal_code: property.address?.postal_code,
-          bedrooms: property.bedrooms || 0,
-          bathrooms: property.bathrooms || 0,
-          max_guests: property.max_guests || 0,
-          active: property.active !== false,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'tenant_id,ownerrez_id'
-        })
-        .select()
-        .single();
+    // Batch upsert all properties at once
+    const propertyData = properties.map(property => ({
+      tenant_id: tenantId,
+      ownerrez_id: property.id,
+      name: property.name,
+      address: property.address?.street1 || property.address,
+      city: property.address?.city,
+      state: property.address?.state,
+      postal_code: property.address?.postal_code,
+      bedrooms: property.bedrooms || 0,
+      bathrooms: property.bathrooms || 0,
+      max_guests: property.max_guests || 0,
+      active: property.active !== false,
+      updated_at: new Date().toISOString()
+    }));
 
-      if (propertyError) {
-        console.error(`Failed to upsert property ${property.id}:`, propertyError);
-        continue; // skip to next property
+    const { error: propertyError } = await supabase
+      .from('properties')
+      .upsert(propertyData, { onConflict: 'tenant_id,ownerrez_id' });
+
+    if (propertyError) {
+      console.error('Failed to batch upsert properties:', propertyError);
+      return c.json({ error: 'Failed to save properties' }, 500);
+    }
+
+    // Fetch back property IDs for tag linking
+    const { data: upsertedProperties } = await supabase
+      .from('properties')
+      .select('id, ownerrez_id')
+      .eq('tenant_id', tenantId);
+
+    const propertyIdMap = new Map(
+      (upsertedProperties || []).map((p: any) => [String(p.ownerrez_id), p.id])
+    );
+
+    // Collect all tags from properties, then batch process
+    const allTagNames = new Set<string>();
+    const propertyTagMap = new Map<string, string[]>();
+
+    for (const property of properties) {
+      if (property.tags && Array.isArray(property.tags)) {
+        const tagNames = property.tags.map((t: any) => typeof t === 'string' ? t : (t.name || t));
+        tagNames.forEach((n: string) => allTagNames.add(n));
+        propertyTagMap.set(String(property.id), tagNames);
+      }
+    }
+
+    if (allTagNames.size > 0) {
+      // Ensure all tags exist
+      const { data: existingTags } = await supabase
+        .from('tags')
+        .select('id, name')
+        .eq('tenant_id', tenantId);
+
+      const tagIdMap = new Map((existingTags || []).map((t: any) => [t.name, t.id]));
+      const missingTags = [...allTagNames].filter(name => !tagIdMap.has(name));
+
+      if (missingTags.length > 0) {
+        const { data: newTags } = await supabase
+          .from('tags')
+          .upsert(
+            missingTags.map(name => ({ tenant_id: tenantId, name })),
+            { onConflict: 'tenant_id,name' }
+          )
+          .select('id, name');
+
+        if (newTags) {
+          for (const t of newTags) {
+            tagIdMap.set(t.name, t.id);
+          }
+        }
       }
 
-      if (property.tags && Array.isArray(property.tags) && upsertedProperty) {
-        try {
-          for (const tag of property.tags) {
-            // tags come as strings from OwnerRez API
-            const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
-
-            const { data: existingTags } = await supabase
-              .from('tags')
-              .select('id')
-              .eq('tenant_id', tenantId)
-              .eq('name', tagName);
-
-            let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
-
-            if (!tagId) {
-              const { data: newTag, error: tagError } = await supabase
-                .from('tags')
-                .insert({
-                  tenant_id: tenantId,
-                  name: tagName,
-                  color: typeof tag === 'object' ? (tag.color || null) : null
-                })
-                .select()
-                .single();
-
-              if (tagError) {
-                console.error(`Failed to create tag ${tag.name || tag}:`, tagError);
-                continue;
-              }
-              tagId = newTag?.id;
-            }
-
-            if (tagId) {
-              const { error: linkError } = await supabase
-                .from('property_tags')
-                .upsert({
-                  property_id: upsertedProperty.id,
-                  tag_id: tagId
-                }, {
-                  onConflict: 'property_id,tag_id'
-                });
-
-              if (linkError) {
-                console.error(`Failed to link property to tag:`, linkError);
-              }
-            }
+      // Batch link properties to tags
+      const allLinks: any[] = [];
+      for (const [ownerrezId, tagNames] of propertyTagMap) {
+        const propertyId = propertyIdMap.get(ownerrezId);
+        if (!propertyId) continue;
+        for (const tagName of tagNames) {
+          const tagId = tagIdMap.get(tagName);
+          if (tagId) {
+            allLinks.push({ property_id: propertyId, tag_id: tagId });
           }
-        } catch (tagError) {
-          console.error(`Failed to sync tags for property ${property.id}:`, tagError);
         }
+      }
+
+      const CHUNK_SIZE = 100;
+      for (let i = 0; i < allLinks.length; i += CHUNK_SIZE) {
+        const chunk = allLinks.slice(i, i + CHUNK_SIZE);
+        await supabase
+          .from('property_tags')
+          .upsert(chunk, { onConflict: 'property_id,tag_id' });
       }
     }
 
@@ -525,13 +540,14 @@ initialSyncChunked.post('/guests', async (c) => {
           }
         }
 
-        // Batch update bookings in chunks
-        for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
-          const chunk = updates.slice(i, i + CHUNK_SIZE);
-          for (const u of chunk) {
+        // Update bookings in parallel batches of 10 to stay within limits
+        const PARALLEL_SIZE = 10;
+        for (let i = 0; i < updates.length; i += PARALLEL_SIZE) {
+          const batch = updates.slice(i, i + PARALLEL_SIZE);
+          await Promise.all(batch.map(u => {
             const { id, ...fields } = u;
-            await supabase.from('bookings').update(fields).eq('id', id);
-          }
+            return supabase.from('bookings').update(fields).eq('id', id);
+          }));
         }
       }
     }
@@ -559,14 +575,7 @@ initialSyncChunked.post('/complete', async (c) => {
       sync_type: 'initial_sync_completed',
       last_sync: new Date().toISOString(),
       status: 'success',
-      records_synced: totalBookings,
-      metadata: {
-        properties: totalProperties,
-        bookings: totalBookings,
-        blocks: totalBlocks,
-        guests: totalGuests || 0,
-        completedAt: new Date().toISOString()
-      }
+      records_synced: totalBookings
     }, {
       onConflict: 'tenant_id,sync_type'
     });

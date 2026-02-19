@@ -28,20 +28,40 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
     performInitialSync()
   }, [])
 
+  // Retry helper for transient failures (504 timeouts, network errors)
+  // api.request never throws - it returns { success: false } on failure,
+  // so we check the result and retry on transient errors.
+  const withRetry = async <T,>(
+    fn: () => Promise<{ success: true; data: T } | { success: false; error: string; status?: number }>,
+    retries = 2,
+    delay = 2000
+  ) => {
+    let lastResult: Awaited<ReturnType<typeof fn>> | null = null
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      lastResult = await fn()
+      if (lastResult.success) return lastResult
+      // Don't retry on auth or client errors - only transient/server failures
+      if (lastResult.status && lastResult.status >= 400 && lastResult.status < 500) return lastResult
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+    return lastResult!
+  }
+
   const performInitialSync = async () => {
     try {
       // Step 1: Check if sync is needed
       setProgress({ step: 'checking' })
-      const statusResult = await api.request<{ needed: boolean; completed: boolean }>(
-        '/initial-sync-chunked/status'
+      const statusResult = await withRetry(() =>
+        api.request<{ needed: boolean; completed: boolean }>('/initial-sync-chunked/status')
       )
-      
+
       if (!statusResult.success) {
         throw new Error('Failed to check sync status')
       }
-      
+
       if (!statusResult.data.needed || statusResult.data.completed) {
-        // Sync not needed or already completed
         setProgress({ step: 'complete' })
         setTimeout(() => {
           if (onComplete) {
@@ -54,20 +74,22 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
       // Step 2: Sync properties
       setProgress({ step: 'properties' })
-      
-      const propertiesResult = await api.request<{ 
-        success: boolean; 
-        propertiesCount: number;
-        properties: Array<{ id: string; name: string }>
-      }>('/initial-sync-chunked/properties', { method: 'POST' })
-      
+
+      const propertiesResult = await withRetry(() =>
+        api.request<{
+          success: boolean;
+          propertiesCount: number;
+          properties: Array<{ id: string; name: string }>
+        }>('/initial-sync-chunked/properties', { method: 'POST' })
+      )
+
       if (!propertiesResult.success) {
         throw new Error(propertiesResult.error || 'Failed to sync properties')
       }
-      
+
       const properties = propertiesResult.data.properties || []
       const totalProperties = properties.length
-      
+
       // Step 3: Sync bookings for each property
       setProgress({
         step: 'bookings',
@@ -78,28 +100,30 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         blocksLoaded: 0,
         guestsLoaded: 0
       })
-      
+
       let totalBookings = 0
       let totalBlocks = 0
-      
+
       for (let i = 0; i < properties.length; i++) {
         const property = properties[i]
-        
+
         setProgress(prev => ({
           ...prev,
           currentProperty: i + 1
         }))
-        
-        const bookingsResult = await api.request<{
-          success: boolean;
-          bookingsCount: number;
-          blocksCount: number;
-        }>(`/initial-sync-chunked/bookings/${property.id}`, { method: 'POST' })
-        
+
+        const bookingsResult = await withRetry(() =>
+          api.request<{
+            success: boolean;
+            bookingsCount: number;
+            blocksCount: number;
+          }>(`/initial-sync-chunked/bookings/${property.id}`, { method: 'POST' })
+        )
+
         if (bookingsResult.success) {
           totalBookings += bookingsResult.data.bookingsCount
           totalBlocks += bookingsResult.data.blocksCount
-          
+
           setProgress(prev => ({
             ...prev,
             bookingsLoaded: totalBookings,
@@ -107,8 +131,8 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           }))
         }
       }
-      
-      // Step 4: Sync guests
+
+      // Step 4: Sync guests (non-blocking - don't fail the whole sync if this times out)
       setProgress({
         step: 'guests',
         currentProperty: totalProperties,
@@ -118,30 +142,38 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         blocksLoaded: totalBlocks,
         guestsLoaded: 0
       })
-      
-      const guestsResult = await api.request<{
-        success: boolean;
-        guestsCount: number;
-      }>('/initial-sync-chunked/guests', { method: 'POST' })
-      
-      const totalGuests = guestsResult.success ? guestsResult.data.guestsCount : 0
-      
+
+      let totalGuests = 0
+      try {
+        const guestsResult = await withRetry(() =>
+          api.request<{
+            success: boolean;
+            guestsCount: number;
+          }>('/initial-sync-chunked/guests', { method: 'POST' })
+        )
+        totalGuests = guestsResult.success ? guestsResult.data.guestsCount : 0
+      } catch {
+        // Guest sync is supplementary - don't block completion
+      }
+
       setProgress(prev => ({
         ...prev,
         guestsLoaded: totalGuests
       }))
-      
+
       // Step 5: Mark as complete
-      await api.request('/initial-sync-chunked/complete', {
-        method: 'POST',
-        body: JSON.stringify({
-          totalProperties,
-          totalBookings,
-          totalBlocks,
-          totalGuests
+      await withRetry(() =>
+        api.request('/initial-sync-chunked/complete', {
+          method: 'POST',
+          body: JSON.stringify({
+            totalProperties,
+            totalBookings,
+            totalBlocks,
+            totalGuests
+          })
         })
-      })
-      
+      )
+
       setProgress({
         step: 'complete',
         propertiesLoaded: totalProperties,
@@ -149,7 +181,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         blocksLoaded: totalBlocks,
         guestsLoaded: totalGuests
       })
-      
+
       // Redirect to dashboard after a moment
       setTimeout(() => {
         if (onComplete) {
@@ -157,7 +189,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         }
         navigate('/dashboard/overview')
       }, 2000)
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sync data')
     }
