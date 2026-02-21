@@ -84,7 +84,7 @@ export const PropertiesDashboard = () => {
     })
   }, [openModal])
 
-  if (isLoading || validProperties.length === 0) {
+  if (isLoading || error || validProperties.length === 0) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-xl border border-gray-200 p-6">
@@ -95,11 +95,13 @@ export const PropertiesDashboard = () => {
         </div>
         <StateWrapper
           loading={isLoading}
-          empty={validProperties.length === 0}
+          error={error}
+          empty={validProperties.length === 0 && !isLoading && !error}
           loadingMessage="Loading property data..."
           emptyMessage="No Properties Found"
           emptySubMessage="Properties will appear here once they're synced from your booking platform."
           emptyIcon={<Home className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+          onRetry={() => window.location.reload()}
           minHeight={300}
           className="bg-white rounded-lg shadow-sm py-12"
         >

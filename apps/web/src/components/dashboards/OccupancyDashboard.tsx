@@ -91,37 +91,8 @@ export const OccupancyDashboard = () => {
 
   useErrorToast(error, 'Failed to load occupancy data')
 
-  if (isLoading || !currentData) {
-    return (
-      <StateWrapper
-        loading={isLoading}
-        empty={!currentData && !isLoading}
-        loadingMessage="Loading occupancy data..."
-        emptyMessage="No occupancy data available"
-        emptySubMessage="Occupancy data will appear once bookings are synced"
-        emptyIcon={<Percent className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
-        minHeight={400}
-        className="py-12"
-      >
-        <div />
-      </StateWrapper>
-    )
-  }
-
-  const timeSeriesData = currentData.byMonth || []
+  const timeSeriesData = currentData?.byMonth || []
   const dataGranularity = detectGranularity(timeSeriesData, 'month')
-  
-  const getChartTitle = () => {
-    switch (dataGranularity) {
-      case 'Daily':
-        return 'Daily Booking Patterns'
-      case 'Weekly':
-        return 'Weekly Booking Patterns'
-      case 'Monthly':
-      default:
-        return 'Monthly Booking Patterns'
-    }
-  }
 
   const chartData = useMemo(() => timeSeriesData.map((dataPoint: OccupancyTrendData, index: number) => {
     const prevDataPoint = previousData?.byMonth?.find((pd: OccupancyTrendData) => pd.month === dataPoint.month) ||
@@ -158,15 +129,12 @@ export const OccupancyDashboard = () => {
     }
   }), [timeSeriesData, previousData?.byMonth, dataGranularity])
 
-  const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1, bookedNights: 0, availableNights: 0 }
-
-  // memoize sorted property list
   const sortedProperties = useMemo(() =>
-    currentData.byProperty
+    (currentData?.byProperty || [])
       .slice()
       .sort((a: OccupancyByProperty, b: OccupancyByProperty) => b.rate - a.rate)
       .slice(0, 10),
-    [currentData.byProperty]
+    [currentData?.byProperty]
   )
 
   const formatPeriodDisplay = useCallback((dateStr: string): string => {
@@ -222,7 +190,6 @@ export const OccupancyDashboard = () => {
     }
   }, [chartData, dataGranularity, openModal])
 
-  // memoized property click handler
   const handlePropertyClick = useCallback((property: OccupancyByProperty) => {
     openModal({
       type: 'property',
@@ -231,7 +198,6 @@ export const OccupancyDashboard = () => {
     })
   }, [openModal])
 
-  // memoized XAxis config
   const xAxisConfig = useMemo(() => {
     const shouldRotate = (dataGranularity === 'Daily' && chartData.length > 15) ||
                          (dataGranularity === 'Weekly' && chartData.length > 10)
@@ -244,6 +210,39 @@ export const OccupancyDashboard = () => {
         : dataGranularity === 'Weekly' && chartData.length > 12 ? 1 : 0
     }
   }, [dataGranularity, chartData.length])
+
+  if (isLoading || error || !currentData) {
+    return (
+      <StateWrapper
+        loading={isLoading}
+        error={error}
+        empty={!currentData && !isLoading && !error}
+        loadingMessage="Loading occupancy data..."
+        emptyMessage="No occupancy data available"
+        emptySubMessage="Occupancy data will appear once bookings are synced"
+        emptyIcon={<Percent className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+        onRetry={() => window.location.reload()}
+        minHeight={400}
+        className="py-12"
+      >
+        <div />
+      </StateWrapper>
+    )
+  }
+
+  const getChartTitle = () => {
+    switch (dataGranularity) {
+      case 'Daily':
+        return 'Daily Booking Patterns'
+      case 'Weekly':
+        return 'Weekly Booking Patterns'
+      case 'Monthly':
+      default:
+        return 'Monthly Booking Patterns'
+    }
+  }
+
+  const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1, bookedNights: 0, availableNights: 0 }
 
   return (
     <div className="space-y-6">

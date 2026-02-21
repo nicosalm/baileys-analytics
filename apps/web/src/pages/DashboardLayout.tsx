@@ -109,10 +109,6 @@ export const DashboardLayout = () => {
   const [showInitialSync, setShowInitialSync] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
 
-  if (state.status !== 'authenticated') return null
-
-  const { user } = state
-
   useEffect(() => {
     const syncParam = searchParams.get('sync')
 
@@ -140,6 +136,10 @@ export const DashboardLayout = () => {
     }
     checkAdminStatus()
   }, [])
+
+  if (state.status !== 'authenticated') return null
+
+  const { user } = state
 
   const handleLogout = async () => {
     await logout()
