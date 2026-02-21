@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
@@ -20,6 +20,18 @@ export const Signup = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
+
+  // Reset OAuth loading states when page is restored from bfcache (user hit back)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setGoogleLoading(false)
+        setMicrosoftLoading(false)
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

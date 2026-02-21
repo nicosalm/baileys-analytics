@@ -20,6 +20,18 @@ export const Login = () => {
   const hasShownSuccessToast = useRef(false)
   const hasShownOAuthSuccess = useRef(false)
 
+  // Reset OAuth loading states when page is restored from bfcache (user hit back)
+  useEffect(() => {
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setGoogleLoading(false)
+        setMicrosoftLoading(false)
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, [])
+
   // check for oauth success message
   useEffect(() => {
     if (searchParams.get('oauth') === 'success' && !hasShownOAuthSuccess.current) {
