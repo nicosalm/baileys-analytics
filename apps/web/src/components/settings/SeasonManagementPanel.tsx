@@ -16,6 +16,10 @@ const months = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ]
 
+function getDaysInMonth(month: number): number {
+  return new Date(2001, month, 0).getDate() // non-leap year; seasons are yearly-recurring
+}
+
 const SeasonForm: React.FC<{
   initialData?: SeasonFormData
   onSubmit: (data: SeasonFormData) => Promise<void>
@@ -63,7 +67,14 @@ const SeasonForm: React.FC<{
           <div>
             <Label className="mb-1">Start Date</Label>
             <div className="flex gap-2">
-              <Select value={String(formData.startMonth)} onValueChange={(v) => setFormData({ ...formData, startMonth: parseInt(v) })}>
+              <Select
+                value={String(formData.startMonth)}
+                onValueChange={(v) => {
+                  const newMonth = parseInt(v)
+                  const maxDay = getDaysInMonth(newMonth)
+                  setFormData({ ...formData, startMonth: newMonth, startDay: Math.min(formData.startDay, maxDay) })
+                }}
+              >
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -73,22 +84,33 @@ const SeasonForm: React.FC<{
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="number"
-                min={1}
-                max={31}
-                value={formData.startDay}
-                onChange={(e) => setFormData({ ...formData, startDay: parseInt(e.target.value) || 1 })}
-                className="w-20"
-                required
-              />
+              <Select
+                value={String(formData.startDay)}
+                onValueChange={(v) => setFormData({ ...formData, startDay: parseInt(v) })}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: getDaysInMonth(formData.startMonth) }, (_, i) => i + 1).map(d => (
+                    <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div>
             <Label className="mb-1">End Date</Label>
             <div className="flex gap-2">
-              <Select value={String(formData.endMonth)} onValueChange={(v) => setFormData({ ...formData, endMonth: parseInt(v) })}>
+              <Select
+                value={String(formData.endMonth)}
+                onValueChange={(v) => {
+                  const newMonth = parseInt(v)
+                  const maxDay = getDaysInMonth(newMonth)
+                  setFormData({ ...formData, endMonth: newMonth, endDay: Math.min(formData.endDay, maxDay) })
+                }}
+              >
                 <SelectTrigger className="flex-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -98,22 +120,26 @@ const SeasonForm: React.FC<{
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="number"
-                min={1}
-                max={31}
-                value={formData.endDay}
-                onChange={(e) => setFormData({ ...formData, endDay: parseInt(e.target.value) || 1 })}
-                className="w-20"
-                required
-              />
+              <Select
+                value={String(formData.endDay)}
+                onValueChange={(v) => setFormData({ ...formData, endDay: parseInt(v) })}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: getDaysInMonth(formData.endMonth) }, (_, i) => i + 1).map(d => (
+                    <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-6 pt-4">
-        <Separator className="mb-4" />
+      <Separator className="mt-6" />
+      <div className="flex items-center gap-2 pt-4">
         <Button type="submit" disabled={isSubmitting || !formData.name}>
           {isEditing ? 'Save Changes' : 'Add Season'}
         </Button>

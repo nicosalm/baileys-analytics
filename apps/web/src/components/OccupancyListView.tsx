@@ -4,6 +4,7 @@ import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { useBookingsForRange } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { StateWrapper } from '@/components/StateWrapper'
+import { Button } from '@/components/ui/button'
 
 interface OccupancyListViewProps {
   properties: { propertyId: string; propertyName: string }[]
@@ -272,63 +273,61 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
         <div className="flex items-center gap-3">
           {/* Group toggle */}
           <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setGroupBy('property')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                groupBy === 'property'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={groupBy === 'property' ? 'bg-white text-gray-900 shadow-sm hover:bg-white' : 'text-gray-600'}
             >
               By Property
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setGroupBy('time')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                groupBy === 'time'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={groupBy === 'time' ? 'bg-white text-gray-900 shadow-sm hover:bg-white' : 'text-gray-600'}
             >
               By Time
-            </button>
+            </Button>
           </div>
           {/* Look-ahead selector */}
           <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
             {([30, 60, 90] as LookAhead[]).map(days => (
-              <button
+              <Button
                 key={days}
+                variant="ghost"
+                size="sm"
                 onClick={() => setLookAhead(days)}
-                className={`px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                  lookAhead === days
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={lookAhead === days ? 'bg-white text-gray-900 shadow-sm hover:bg-white' : 'text-gray-600'}
               >
                 {days}d
-              </button>
+              </Button>
             ))}
           </div>
         </div>
         {groupBy === 'property' && (
           <div className="flex items-center gap-3 text-xs text-gray-500">
             <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-md">
-              <button
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() => setSortBy('name')}
-                className={`px-2 py-1 rounded cursor-pointer transition-colors ${sortBy === 'name' ? 'bg-white text-gray-900 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                className={sortBy === 'name' ? 'bg-white text-gray-900 font-medium shadow-sm hover:bg-white' : 'text-gray-600'}
               >
                 A-Z
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="xs"
                 onClick={() => setSortBy('occupancy')}
-                className={`px-2 py-1 rounded cursor-pointer transition-colors ${sortBy === 'occupancy' ? 'bg-white text-gray-900 font-medium shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                className={sortBy === 'occupancy' ? 'bg-white text-gray-900 font-medium shadow-sm hover:bg-white' : 'text-gray-600'}
               >
                 Occupancy ▲
-              </button>
+              </Button>
             </div>
-            <button onClick={expandAll} className="hover:text-gray-700 cursor-pointer">Expand all</button>
+            <Button variant="link" size="sm" onClick={expandAll} className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto">Expand all</Button>
             <span>|</span>
-            <button onClick={collapseAll} className="hover:text-gray-700 cursor-pointer">Collapse all</button>
+            <Button variant="link" size="sm" onClick={collapseAll} className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto">Collapse all</Button>
           </div>
         )}
       </div>

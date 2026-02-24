@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useMemo } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -6,6 +6,7 @@ import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, 
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS } from '@/lib/theme'
@@ -55,7 +56,6 @@ interface GuestDetailModalProps {
 export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestDetailModalProps) => {
   const { closeModal } = useModal()
   const { showTips } = useTips()
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings'>('overview')
   
   const { data, isLoading, error } = useGuestDetail(guestId)
 
@@ -101,10 +101,6 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
       bookings: item.bookings
     }))
   , [spendingTrend])
-
-  // memoized tab handlers
-  const handleTabOverview = useCallback(() => setActiveTab('overview'), [])
-  const handleTabBookings = useCallback(() => setActiveTab('bookings'), [])
 
   return (
     <Modal
@@ -230,112 +226,95 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         </div>
 
         {/* Tabs */}
-        <div className="border-b">
-          <nav className="flex space-x-6">
-            <button
-              onClick={handleTabOverview}
-              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
-                activeTab === 'overview'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Spending Pattern
-            </button>
-            <button
-              onClick={handleTabBookings}
-              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
-                activeTab === 'bookings'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Booking History ({bookingHistory.length})
-            </button>
-          </nav>
-        </div>
+        <Tabs defaultValue="overview">
+          <TabsList variant="line">
+            <TabsTrigger value="overview">Spending Pattern</TabsTrigger>
+            <TabsTrigger value="bookings">Booking History ({bookingHistory.length})</TabsTrigger>
+          </TabsList>
 
-        {/* Tab Content */}
-        {activeTab === 'overview' && chartData.length > 0 && (
-          <div className="bg-white p-6 rounded-lg border">
-            <h3 className="text-lg font-bold mb-4">Spending Over Time</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-                  <Tooltip content={<GuestSpendingTooltip />} />
-                  <Line 
-                    type="monotone" 
-                    dataKey="amount" 
-                    stroke={METRIC_COLORS.revenue} 
-                    strokeWidth={2}
-                    dot={{ fill: METRIC_COLORS.revenue, r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
+          <TabsContent value="overview">
+            {chartData.length > 0 && (
+              <div className="bg-white p-6 rounded-lg border">
+                <h3 className="text-lg font-bold mb-4">Spending Over Time</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                      <Tooltip content={<GuestSpendingTooltip />} />
+                      <Line
+                        type="monotone"
+                        dataKey="amount"
+                        stroke={METRIC_COLORS.revenue}
+                        strokeWidth={2}
+                        dot={{ fill: METRIC_COLORS.revenue, r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </TabsContent>
 
-        {activeTab === 'bookings' && (
-          <div className="bg-white rounded-lg border overflow-hidden">
-            <div className="max-h-96 overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Property</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
-                    <th className="p-4"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookingHistory.map((booking: any) => (
-                    <tr
-                      key={booking.id}
-                      className="border-t"
-                    >
-                      <td className="p-4">
-                        <div className="font-medium text-gray-900">{booking.propertyName}</div>
-                        <div className="text-sm text-gray-500">{booking.nights} nights</div>
-                      </td>
-                      <td className="p-4 text-sm">
-                        {formatDateDisplay(new Date(booking.arrival))}
-                      </td>
-                      <td className="p-4 text-sm">
-                        {formatDateDisplay(new Date(booking.departure))}
-                      </td>
-                      <td className="p-4 text-sm font-medium">
-                        {formatCurrency(booking.totalAmount)}
-                      </td>
-                      <td className="p-4">
-                        <StatusBadge status={booking.status} />
-                      </td>
-                      <td className="p-4">
-                        {booking.ownerrezBookingId && (
-                          <a
-                            href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
-                            title="Open in OwnerRez"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
-                        )}
-                      </td>
+          <TabsContent value="bookings">
+            <div className="bg-white rounded-lg border overflow-hidden">
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Property</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
+                      <th className="p-4"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {bookingHistory.map((booking: any) => (
+                      <tr
+                        key={booking.id}
+                        className="border-t"
+                      >
+                        <td className="p-4">
+                          <div className="font-medium text-gray-900">{booking.propertyName}</div>
+                          <div className="text-sm text-gray-500">{booking.nights} nights</div>
+                        </td>
+                        <td className="p-4 text-sm">
+                          {formatDateDisplay(new Date(booking.arrival))}
+                        </td>
+                        <td className="p-4 text-sm">
+                          {formatDateDisplay(new Date(booking.departure))}
+                        </td>
+                        <td className="p-4 text-sm font-medium">
+                          {formatCurrency(booking.totalAmount)}
+                        </td>
+                        <td className="p-4">
+                          <StatusBadge status={booking.status} />
+                        </td>
+                        <td className="p-4">
+                          {booking.ownerrezBookingId && (
+                            <a
+                              href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-gray-400 hover:text-blue-600 transition-colors"
+                              title="Open in OwnerRez"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
         </div>
       </StateWrapper>
     </Modal>

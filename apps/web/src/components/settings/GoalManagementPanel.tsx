@@ -23,6 +23,13 @@ type MetricKey = typeof METRIC_CATALOG[number]['key']
 
 type GoalState = Record<MetricKey, { isEnabled: boolean; targetValue: string; period: GoalPeriod }>
 
+function getFormatting(metric: typeof METRIC_CATALOG[number]) {
+  return {
+    prefix: metric.format === 'currency' ? '$' : '',
+    suffix: metric.format === 'percent' ? '%' : metric.format === 'nights' ? ' nights' : ''
+  }
+}
+
 const buildInitialState = (savedGoals: GoalFormData[]): GoalState => {
   const state: GoalState = {} as GoalState
   for (const metric of METRIC_CATALOG) {
@@ -137,75 +144,67 @@ export const GoalManagementPanel: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-3">
-        {METRIC_CATALOG.map(metric => {
-          const state = goalState[metric.key]
-          const Icon = metric.icon
-          const prefix = metric.format === 'currency' ? '$' : ''
-          const suffix = metric.format === 'percent' ? '%' : metric.format === 'nights' ? ' nights' : ''
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="flex items-center gap-4 px-4 py-2 border-b bg-gray-50 text-xs font-medium text-gray-500">
+          <span className="w-44">Goal</span>
+          <span className="w-36">Target</span>
+          <span className="w-28">Period</span>
+          <span className="ml-auto">Enabled</span>
+        </div>
 
-          return (
-            <div
-              key={metric.key}
-              className={`bg-white rounded-lg shadow-sm border p-4 transition-colors ${
-                state.isEnabled ? 'border-blue-200 bg-blue-50/20' : 'border-gray-200'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                    state.isEnabled ? 'bg-blue-100' : 'bg-gray-100'
-                  }`}>
-                    <Icon className={`w-5 h-5 ${state.isEnabled ? 'text-blue-600' : 'text-gray-400'}`} />
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{metric.label}</h4>
-                    {state.isEnabled && (
-                      <div className="flex items-center gap-4 mt-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">Target:</span>
-                          <div className="relative">
-                            {prefix && (
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-10">{prefix}</span>
-                            )}
-                            <Input
-                              type="text"
-                              inputMode="decimal"
-                              value={state.targetValue}
-                              onChange={e => handleValueChange(metric.key, e.target.value)}
-                              placeholder={metric.placeholder}
-                              className={`w-40 h-8 text-sm ${prefix ? 'pl-7' : ''} ${suffix ? 'pr-14' : ''}`}
-                            />
-                            {suffix && (
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{suffix}</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-500">Period:</span>
-                          <Select value={state.period} onValueChange={(v) => handlePeriodChange(metric.key, v as GoalPeriod)}>
-                            <SelectTrigger className="w-[120px] h-8 text-sm">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="quarterly">Quarterly</SelectItem>
-                              <SelectItem value="yearly">Yearly</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
-                  </div>
+        <div className="divide-y divide-gray-100">
+          {METRIC_CATALOG.map((metric) => {
+            const state = goalState[metric.key]
+            const Icon = metric.icon
+            const { prefix, suffix } = getFormatting(metric)
+
+            return (
+              <div key={metric.key} className="flex items-center gap-4 px-4 py-3">
+                <div className="flex items-center gap-2 w-44 shrink-0">
+                  <Icon className={`w-4 h-4 shrink-0 ${state.isEnabled ? 'text-blue-600' : 'text-gray-300'}`} />
+                  <span className={`text-sm font-medium ${state.isEnabled ? 'text-gray-900' : 'text-gray-400'}`}>
+                    {metric.label}
+                  </span>
                 </div>
+
+                <div className="relative w-36">
+                  {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 z-10">{prefix}</span>}
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={state.targetValue}
+                    onChange={e => handleValueChange(metric.key, e.target.value)}
+                    placeholder={metric.placeholder}
+                    disabled={!state.isEnabled}
+                    className={`h-8 text-sm ${prefix ? 'pl-6' : ''} ${suffix ? 'pr-10' : ''}`}
+                  />
+                  {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{suffix}</span>}
+                </div>
+
+                <Select
+                  value={state.period}
+                  onValueChange={(v) => handlePeriodChange(metric.key, v as GoalPeriod)}
+                  disabled={!state.isEnabled}
+                >
+                  <SelectTrigger className="w-28 h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+
                 <Switch
                   checked={state.isEnabled}
                   onCheckedChange={() => handleToggle(metric.key)}
+                  className="ml-auto"
                 />
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       <div className="flex justify-end">

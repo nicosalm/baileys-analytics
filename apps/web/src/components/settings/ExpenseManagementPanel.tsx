@@ -2,13 +2,23 @@ import { useState } from 'react'
 import { useModal } from '@/contexts/modal'
 import { useProperties, useOperatingExpenses } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, format } from '@baileys/utils'
 import {
   Receipt, Building2,
   Calendar, CheckCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+
+function generateMonthOptions() {
+  const options: { value: string; label: string }[] = []
+  const now = new Date()
+  for (let i = -24; i <= 2; i++) {
+    const date = new Date(now.getFullYear(), now.getMonth() + i, 1)
+    options.push({ value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy') })
+  }
+  return options.reverse()
+}
 
 interface PropertyExpenseRowProps {
   property: any
@@ -70,10 +80,11 @@ export const ExpenseManagementPanel = () => {
   const { data: properties, isLoading } = useProperties()
 
   const currentDate = new Date()
-  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear())
-  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1)
+  const [selectedPeriod, setSelectedPeriod] = useState(
+    `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+  )
 
-  const formattedMonth = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+  const formattedMonth = selectedPeriod
 
   const handleManageExpenses = (propertyId: string, propertyName: string) => {
     openModal({
@@ -110,32 +121,13 @@ export const ExpenseManagementPanel = () => {
           <span className="text-sm text-gray-600">Expense Period:</span>
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
-              <SelectTrigger className="w-[140px] h-8 text-sm">
+            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+              <SelectTrigger className="w-44 h-8 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">January</SelectItem>
-                <SelectItem value="2">February</SelectItem>
-                <SelectItem value="3">March</SelectItem>
-                <SelectItem value="4">April</SelectItem>
-                <SelectItem value="5">May</SelectItem>
-                <SelectItem value="6">June</SelectItem>
-                <SelectItem value="7">July</SelectItem>
-                <SelectItem value="8">August</SelectItem>
-                <SelectItem value="9">September</SelectItem>
-                <SelectItem value="10">October</SelectItem>
-                <SelectItem value="11">November</SelectItem>
-                <SelectItem value="12">December</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-              <SelectTrigger className="w-[90px] h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - 2 + i).map(year => (
-                  <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+              <SelectContent className="max-h-64">
+                {generateMonthOptions().map(opt => (
+                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

@@ -68,25 +68,24 @@ export const PlatformFeeEntryModal = ({
   )
 
   const availablePlatforms = platformsResponse || ['Airbnb', 'Vrbo', 'Booking.com', 'Direct']
-  const existingFees = existingFeesResponse || []
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [platformRows, setPlatformRows] = useState<PlatformRow[]>([])
   const [month, setMonth] = useState(selectedMonth)
 
   useEffect(() => {
-    if (existingFees.length > 0) {
+    if (existingFeesResponse && existingFeesResponse.length > 0) {
       setPlatformRows(
-        existingFees.map((fee: any) => ({
+        existingFeesResponse.map((fee: any) => ({
           platform: fee.platform,
           amount: parseFloat(fee.amount) || 0,
           notes: fee.notes || ''
         }))
       )
-    } else {
+    } else if (existingFeesResponse) {
       setPlatformRows([{ platform: '', amount: 0, notes: '' }])
     }
-  }, [existingFees])
+  }, [existingFeesResponse])
 
   const addPlatformRow = () => {
     setPlatformRows([...platformRows, { platform: '', amount: 0, notes: '' }])

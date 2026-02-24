@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useMemo, useCallback } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
@@ -7,6 +7,7 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { MetricCard } from '@/components/MetricCard'
 import { Modal } from '@/components/Modal'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
@@ -84,7 +85,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
   const { filters } = useDashboard()
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'revenue'>('overview')
 
   const effectiveFrom = from || filters.dateRange.from
   const effectiveTo = to || filters.dateRange.to
@@ -127,11 +127,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
     const name = entry.platform.length > 18 ? entry.platform.substring(0, 18) + '...' : entry.platform
     return `${name} (${percent}%)`
   }, [platformTotal])
-
-  // memoized tab handlers
-  const handleTabOverview = useCallback(() => setActiveTab('overview'), [])
-  const handleTabBookings = useCallback(() => setActiveTab('bookings'), [])
-  const handleTabRevenue = useCallback(() => setActiveTab('revenue'), [])
 
   // memoized guest click handler
   const handleGuestClick = useCallback((guestId: string, guestName: string) => {
@@ -288,177 +283,146 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
         )}
 
         {/* Tabs */}
-        <div className="border-b">
-          <nav className="flex space-x-6">
-            <button
-              onClick={handleTabOverview}
-              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
-                activeTab === 'overview'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Performance Charts
-            </button>
-            <button
-              onClick={handleTabBookings}
-              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
-                activeTab === 'bookings'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Recent Bookings
-            </button>
-            <button
-              onClick={handleTabRevenue}
-              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
-                activeTab === 'revenue'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Revenue Sources
-            </button>
-          </nav>
-        </div>
+        <Tabs defaultValue="overview">
+          <TabsList variant="line">
+            <TabsTrigger value="overview">Performance Charts</TabsTrigger>
+            <TabsTrigger value="bookings">Recent Bookings</TabsTrigger>
+            <TabsTrigger value="revenue">Revenue Sources</TabsTrigger>
+          </TabsList>
 
-        {/* Tab Content */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* Monthly Performance Chart */}
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-bold mb-4">Monthly Performance</h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
-                    <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
-                    <Tooltip content={<PropertyPerformanceTooltip />} />
-                    <Line yAxisId="left" type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} name="Revenue" strokeWidth={2} />
-                    <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} name="Occupancy" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'bookings' && (
-          <div className="bg-white rounded-lg border overflow-hidden">
-            <div className="p-4 border-b">
-              <h3 className="font-semibold">Recent Bookings</h3>
-            </div>
-            <div className="max-h-96 overflow-y-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 sticky top-0">
-                  <tr>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Guest</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
-                    <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.recentBookings?.map((booking: any) => (
-                    <tr
-                      key={booking.id}
-                      className="border-t hover:bg-gray-50 cursor-pointer"
-                      onClick={() => handleGuestClick(booking.guestId, booking.guestName)}
-                    >
-                      <td className="p-4">
-                        <div>
-                          <div className="font-medium text-blue-600 hover:underline">{booking.guestName}</div>
-                          {booking.guestEmail && (
-                            <div className="text-sm text-gray-500">{booking.guestEmail}</div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-4 text-sm">
-                        {new Date(booking.arrival).toLocaleDateString()}
-                      </td>
-                      <td className="p-4 text-sm">
-                        {new Date(booking.departure).toLocaleDateString()}
-                      </td>
-                      <td className="p-4 text-sm font-medium text-green-600">
-                        {formatCurrency(booking.totalAmount)}
-                      </td>
-                      <td className="p-4">
-                        <StatusBadge status={booking.status} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'revenue' && (
-          <div className="space-y-6">
-            {/* Revenue by Platform */}
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-bold mb-4">Where Bookings Come From</h3>
-              {platformData.length > 0 ? (
+          <TabsContent value="overview">
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-lg border">
+                <h3 className="text-lg font-bold mb-4">Monthly Performance</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={platformData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={pieChartLabel}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="revenue"
-                      >
-                        {platformData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<PlatformRevenueTooltip />} />
-                    </PieChart>
+                    <LineChart data={monthlyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="month" />
+                      <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
+                      <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                      <Tooltip content={<PropertyPerformanceTooltip />} />
+                      <Line yAxisId="left" type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} name="Revenue" strokeWidth={2} />
+                      <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} name="Occupancy" strokeWidth={2} />
+                    </LineChart>
                   </ResponsiveContainer>
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500">No platform data available</p>
-                </div>
-              )}
+              </div>
             </div>
+          </TabsContent>
 
-            {/* Guest Stats */}
-            <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-bold mb-4">Guest Insights</h3>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <div className="text-sm text-gray-600">Total Guests</div>
-                  <div className="text-2xl font-bold">{data.guestStats?.totalGuests || 0}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Returning Guests</div>
-                  <div className="text-2xl font-bold">{data.guestStats?.repeatGuests || 0}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Return Rate</div>
-                  <div className="text-2xl font-bold">
-                    {formatPercentage(
-                      data.guestStats?.totalGuests 
-                        ? (data.guestStats.repeatGuests / data.guestStats.totalGuests) * 100 
-                        : 0, 
-                      1
-                    )}
+          <TabsContent value="bookings">
+            <div className="bg-white rounded-lg border overflow-hidden">
+              <div className="p-4 border-b">
+                <h3 className="font-semibold">Recent Bookings</h3>
+              </div>
+              <div className="max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0">
+                    <tr>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Guest</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
+                      <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.recentBookings?.map((booking: any) => (
+                      <tr
+                        key={booking.id}
+                        className="border-t hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleGuestClick(booking.guestId, booking.guestName)}
+                      >
+                        <td className="p-4">
+                          <div>
+                            <div className="font-medium text-blue-600 hover:underline">{booking.guestName}</div>
+                            {booking.guestEmail && (
+                              <div className="text-sm text-gray-500">{booking.guestEmail}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4 text-sm">
+                          {new Date(booking.arrival).toLocaleDateString()}
+                        </td>
+                        <td className="p-4 text-sm">
+                          {new Date(booking.departure).toLocaleDateString()}
+                        </td>
+                        <td className="p-4 text-sm font-medium text-green-600">
+                          {formatCurrency(booking.totalAmount)}
+                        </td>
+                        <td className="p-4">
+                          <StatusBadge status={booking.status} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="revenue">
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-lg border">
+                <h3 className="text-lg font-bold mb-4">Where Bookings Come From</h3>
+                {platformData.length > 0 ? (
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={platformData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={pieChartLabel}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="revenue"
+                        >
+                          {platformData.map((entry: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<PlatformRevenueTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500">No platform data available</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white p-6 rounded-lg border">
+                <h3 className="text-lg font-bold mb-4">Guest Insights</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-600">Total Guests</div>
+                    <div className="text-2xl font-bold">{data.guestStats?.totalGuests || 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">Returning Guests</div>
+                    <div className="text-2xl font-bold">{data.guestStats?.repeatGuests || 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600">Return Rate</div>
+                    <div className="text-2xl font-bold">
+                      {formatPercentage(
+                        data.guestStats?.totalGuests
+                          ? (data.guestStats.repeatGuests / data.guestStats.totalGuests) * 100
+                          : 0,
+                        1
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          </TabsContent>
+        </Tabs>
         </div>
         )}
       </StateWrapper>

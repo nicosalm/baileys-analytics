@@ -6,6 +6,7 @@ import {
   Check,
   Plus
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export const TaxQuickConfigWidget = () => {
   const { data: taxStatusData, isLoading } = usePropertyTaxStatus()
@@ -51,12 +52,14 @@ export const TaxQuickConfigWidget = () => {
             <Calculator className="w-5 h-5 text-gray-600 mr-2" />
             <h3 className="font-semibold text-gray-900">Tax Configuration</h3>
           </div>
-          <button
+          <Button
+            variant="link"
+            size="sm"
             onClick={() => navigate('/settings?tab=platform-fees')}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="p-0 h-auto"
           >
             Manage →
-          </button>
+          </Button>
         </div>
         
         {/* Progress Bar */}
@@ -103,13 +106,13 @@ export const TaxQuickConfigWidget = () => {
         
         {/* Action Buttons */}
         {missingFees.length > 0 || partialFees.length > 0 ? (
-          <button
+          <Button
             onClick={() => navigate('/settings?tab=platform-fees')}
-            className="w-full px-3 py-2 bg-yellow-600 text-white text-sm rounded-sm hover:bg-yellow-700 transition-colors flex items-center justify-center"
+            className="w-full bg-yellow-600 hover:bg-yellow-700"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-4 h-4" />
             {missingFees.length > 0 ? 'Add Platform Fees' : 'Complete Fee Data'}
-          </button>
+          </Button>
         ) : (
           <div className="flex items-center justify-center py-2 text-green-600 bg-green-50 rounded-sm">
             <Check className="w-4 h-4 mr-1" />

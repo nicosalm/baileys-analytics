@@ -16,6 +16,7 @@ import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, A
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { getPlatformColor } from '@/lib/theme'
+import { Button } from '@/components/ui/button'
 import { useNavigate, Link } from 'react-router-dom'
 
 const REVENUE_THRESHOLD_RATIO = 0.2
@@ -437,28 +438,36 @@ export const OverviewDashboard = () => {
                 Your bookings may fall outside the current period — try a different range.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleViewLastYear}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
+                  className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 text-xs"
                 >
                   <Calendar className="w-3.5 h-3.5" />
                   View Last Year
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={handleLast12Months}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
+                  className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 text-xs"
                 >
                   <Clock className="w-3.5 h-3.5" />
                   Last 12 Months
-                </button>
+                </Button>
                 {!hasActiveSeasons && (
-                  <Link
-                    to="/settings?tab=seasons"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition-colors cursor-pointer"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 text-xs"
                   >
-                    <Settings className="w-3.5 h-3.5" />
-                    Set Up Seasons
-                  </Link>
+                    <Link to="/settings?tab=seasons">
+                      <Settings className="w-3.5 h-3.5" />
+                      Set Up Seasons
+                    </Link>
+                  </Button>
                 )}
               </div>
             </div>

@@ -9,12 +9,12 @@ import {
   FileText, DollarSign, CheckCircle, Home,
   Info, AlertTriangle, Building, Download
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { authenticatedFetch } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
-import { Button } from '@/components/ui/button'
 
 interface TaxCenterProps {
   data: any
@@ -243,12 +243,13 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
                 key: 'propertyName',
                 header: 'Property',
                 render: (row: any) => (
-                  <button
+                  <Button
+                    variant="link"
                     onClick={() => onPropertyClick?.(row.propertyId)}
-                    className="text-blue-600 hover:underline text-left cursor-pointer"
+                    className="p-0 h-auto text-left"
                   >
                     {row.propertyName}
-                  </button>
+                  </Button>
                 )
               },
               {

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, ReactNode, FC, memo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { useDashboard } from '@/contexts/dashboard'
@@ -7,31 +7,11 @@ import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
 import { formatCompactCurrency } from '@baileys/utils'
 
 import { StateWrapper } from '@/components/StateWrapper'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PLView } from '@/components/financial/PLView'
 import { RevenueAnalysis } from '@/components/financial/RevenueAnalysis'
 import { CashFlowView } from '@/components/financial/CashFlowView'
 import { TaxCenter } from '@/components/financial/TaxCenter'
-
-interface TabButtonProps {
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}
-
-const TabButton: FC<TabButtonProps> = memo(({ active, onClick, children }) => (
-  <button
-    onClick={onClick}
-    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-      active
-        ? 'bg-white text-gray-900 shadow-sm'
-        : 'text-gray-600 hover:text-gray-900'
-    }`}
-  >
-    {children}
-  </button>
-))
-
-TabButton.displayName = 'TabButton'
 
 export const FinancialDashboard = () => {
   const { filters, comparisonRange, comparisonMode } = useDashboard()
@@ -96,12 +76,6 @@ export const FinancialDashboard = () => {
   const comparisonDateRange = useComparisonDateRange()
 
   useErrorToast(error, 'Failed to load financial data')
-
-  // memoized tab click handlers
-  const handleTabPL = useCallback(() => setActiveTab('pl'), [])
-  const handleTabRevenue = useCallback(() => setActiveTab('revenue_analysis'), [])
-  const handleTabCashflow = useCallback(() => setActiveTab('cashflow'), [])
-  const handleTabTax = useCallback(() => setActiveTab('tax_center'), [])
 
   const handlePeriodClick = useCallback((dateStr: string) => {
     let chartData: any[] = []
@@ -272,32 +246,24 @@ export const FinancialDashboard = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Financial Analysis</h3>
-          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-            <TabButton active={activeTab === 'pl'} onClick={handleTabPL}>
-              P&L View
-            </TabButton>
-            <TabButton active={activeTab === 'revenue_analysis'} onClick={handleTabRevenue}>
-              Revenue
-            </TabButton>
-            <TabButton active={activeTab === 'cashflow'} onClick={handleTabCashflow}>
-              Cash Flow
-            </TabButton>
-            <TabButton active={activeTab === 'tax_center'} onClick={handleTabTax}>
-              Tax Center
-            </TabButton>
-          </div>
+          <TabsList>
+            <TabsTrigger value="pl">P&L View</TabsTrigger>
+            <TabsTrigger value="revenue_analysis">Revenue</TabsTrigger>
+            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+            <TabsTrigger value="tax_center">Tax Center</TabsTrigger>
+          </TabsList>
         </div>
 
         <div className="p-6">
-          {activeTab === 'pl' && <PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
-          {activeTab === 'revenue_analysis' && <RevenueAnalysis data={revenueData} loading={isLoading} onPeriodClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
-          {activeTab === 'cashflow' && <CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
-          {activeTab === 'tax_center' && <TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} />}
+          <TabsContent value="pl" className="mt-0"><PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
+          <TabsContent value="revenue_analysis" className="mt-0"><RevenueAnalysis data={revenueData} loading={isLoading} onPeriodClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
+          <TabsContent value="cashflow" className="mt-0"><CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
+          <TabsContent value="tax_center" className="mt-0"><TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
         </div>
-      </div>
+      </Tabs>
     </div>
   )
 }

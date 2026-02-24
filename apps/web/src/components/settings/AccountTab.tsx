@@ -159,11 +159,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           </p>
         </div>
 
-        <Button
-          onClick={handleExportData}
-          loading={exportLoading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2"
-        >
+        <Button onClick={handleExportData} loading={exportLoading}>
           <Download className="w-4 h-4" />
           Export Data as JSON
         </Button>

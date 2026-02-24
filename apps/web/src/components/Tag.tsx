@@ -1,4 +1,5 @@
 import React from 'react'
+import { getTagColor } from '@/lib/theme'
 
 interface TagProps {
   tag: {
@@ -21,19 +22,12 @@ export const Tag: React.FC<TagProps> = ({
 }) => {
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'
 
-  // default styles if no color provided
-  const defaultStyles = {
-    backgroundColor: '#f3f4f6',
-    color: '#374151',
-    borderColor: '#d1d5db'
+  const color = getTagColor(tag)
+  const styles = {
+    backgroundColor: `${color}20`,
+    color: color,
+    borderColor: color
   }
-
-  // use custom color if provided, otherwise use defaults
-  const styles = tag.color ? {
-    backgroundColor: `${tag.color}20`,
-    color: tag.color,
-    borderColor: tag.color
-  } : defaultStyles
 
   return (
     <span

@@ -46,7 +46,7 @@ export const CollapsibleTags: React.FC<CollapsibleTagsProps> = ({
           <PopoverTrigger asChild>
             <button
               onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer`}
+              className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors border border-gray-200 cursor-pointer`}
             >
               +{hiddenCount} more
             </button>
