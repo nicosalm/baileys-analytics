@@ -5,6 +5,8 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { RevenueChart } from '@/components/charts/RevenueChart'
 import { PlatformDistributionChart } from '@/components/charts/PlatformDistributionChart'
 import { useTips } from '@/hooks/use-tips'
+import { useGoalProgress } from '@/hooks/use-api'
+import { getMonthlyGoalValue } from '@/utils/goals'
 import {
   DollarSign, Wallet, Receipt,
   Info, Landmark, TrendingDown
@@ -30,6 +32,8 @@ export const PLView: React.FC<PLViewProps> = ({
 }) => {
   const { showTips } = useTips()
   const { comparisonLabel } = useDashboard()
+  const { data: goalProgressData } = useGoalProgress()
+  const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
 
   const processedData = useMemo(() => {
     if (!data || !data.metrics) return null
@@ -257,7 +261,7 @@ export const PLView: React.FC<PLViewProps> = ({
       <RevenueChart
         data={monthly}
         title={`${granularity} Profit & Loss Trend`}
-        subtitle={comparison.hasComparison 
+        subtitle={comparison.hasComparison
           ? `Comparing with ${comparisonLabel}`
           : undefined
         }
@@ -266,6 +270,7 @@ export const PLView: React.FC<PLViewProps> = ({
         comparisonLabel={comparisonLabel}
         onPeriodClick={onPeriodClick}
         height={360}
+        revenueGoal={revenueGoal}
       />
       
       {/* Platform Distribution (2/3) and Cost Breakdown (1/3) */}

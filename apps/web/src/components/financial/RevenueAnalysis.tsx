@@ -10,7 +10,8 @@ import {
   Info, ArrowUp, ArrowDown, HelpCircle
 } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatters'
-import { usePropertyMetrics } from '@/hooks/use-api'
+import { usePropertyMetrics, useGoalProgress } from '@/hooks/use-api'
+import { getMonthlyGoalValue } from '@/utils/goals'
 import { useDashboard } from '@/contexts/dashboard'
 import { detectGranularity } from '@/utils/chart-helpers'
 
@@ -33,6 +34,8 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
 }) => {
   const { showTips } = useTips()
   const { filters, comparisonLabel } = useDashboard()
+  const { data: goalProgressData } = useGoalProgress()
+  const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
   const tagIds = filters.selectedTags.map(t => t.id)
   
   // Fetch property metrics for property-level revenue data
@@ -202,7 +205,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       <RevenueChart
         data={analysis.monthlyData}
         title={`${analysis.granularity} Revenue Trend`}
-        subtitle={analysis.hasComparison 
+        subtitle={analysis.hasComparison
           ? `Comparing current period vs ${comparisonLabel}`
           : undefined
         }
@@ -210,6 +213,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
         showComparison={analysis.hasComparison}
         comparisonLabel={comparisonLabel}
         height={360}
+        revenueGoal={revenueGoal}
       />
       
       {/* Property Performance Tables */}

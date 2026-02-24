@@ -1,5 +1,5 @@
 import React from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { METRIC_COLORS } from '@/lib/theme'
 import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
@@ -20,6 +20,7 @@ interface RevenueChartProps {
   showComparison?: boolean
   comparisonLabel?: string
   onPeriodClick?: (period: string) => void
+  revenueGoal?: number | null
 }
 
 const RevenueChartTooltip = ({ active, payload, label, showProfit, showComparison, comparisonLabel }: any) => {
@@ -87,7 +88,8 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   showProfit = false,
   showComparison = false,
   comparisonLabel = '',
-  onPeriodClick
+  onPeriodClick,
+  revenueGoal
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -174,6 +176,22 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
                 />
               )}
             </>
+          )}
+          {revenueGoal != null && (
+            <ReferenceLine
+              y={revenueGoal}
+              stroke="#6366f1"
+              strokeDasharray="6 4"
+              strokeWidth={1.5}
+              label={{
+                value: `⬥ Goal: ${formatCurrency(revenueGoal)}`,
+                position: 'insideTopLeft',
+                fill: '#6366f1',
+                fontSize: 12,
+                fontWeight: 600,
+                offset: 4
+              }}
+            />
           )}
         </LineChart>
       </ResponsiveContainer>

@@ -12,10 +12,11 @@ import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend } from 'recharts'
+import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend, ReferenceLine } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { getPlatformColor } from '@/lib/theme'
+import { getMonthlyGoalValue } from '@/utils/goals'
 import { Button } from '@/components/ui/button'
 import { useNavigate, Link } from 'react-router-dom'
 
@@ -143,6 +144,7 @@ export const OverviewDashboard = () => {
   }, [openModal])
 
   const { data: goalProgressData } = useGoalProgress()
+  const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
 
   const { data, error, isLoading } = useDashboardBatch(
     'overview',
@@ -680,6 +682,22 @@ export const OverviewDashboard = () => {
               iconType="rect"
             />
             {revenueChartAreas}
+            {revenueGoal != null && (
+              <ReferenceLine
+                y={revenueGoal}
+                stroke="#6366f1"
+                strokeDasharray="6 4"
+                strokeWidth={1.5}
+                label={{
+                  value: `⬥ Goal: ${formatCompactCurrency(revenueGoal)}`,
+                  position: 'insideTopLeft',
+                  fill: '#6366f1',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  offset: 4
+                }}
+              />
+            )}
           </AreaChart>
         </ChartWrapper>
 
