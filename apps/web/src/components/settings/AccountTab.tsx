@@ -3,7 +3,10 @@ import { Download, Trash2, AlertTriangle, Lock, MessageSquare, ChevronRight } fr
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
-import { LoadingButton } from '@/components/LoadingButton'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog'
 
 interface AccountTabProps {
   onChangeEmail?: () => void
@@ -109,28 +112,30 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Security</h2>
           <div className="space-y-3">
             {onChangeEmail && (
-              <button
+              <Button
+                variant="outline"
                 onClick={onChangeEmail}
-                className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
+                className="w-full justify-between"
               >
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
                   <span>Change Email</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </button>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Button>
             )}
             {onChangePassword && (
-              <button
+              <Button
+                variant="outline"
                 onClick={onChangePassword}
-                className="w-full px-4 py-2 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-all flex items-center justify-between border border-gray-200 cursor-pointer"
+                className="w-full justify-between"
               >
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4" />
                   <span>Change Password</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
-              </button>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </Button>
             )}
           </div>
         </div>
@@ -154,14 +159,14 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           </p>
         </div>
 
-        <LoadingButton
+        <Button
           onClick={handleExportData}
           loading={exportLoading}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2"
         >
           <Download className="w-4 h-4" />
           Export Data as JSON
-        </LoadingButton>
+        </Button>
       </div>
 
       {/* danger zone */}
@@ -189,67 +194,64 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           </ul>
         </div>
 
-        <button
-          onClick={() => setDeleteModalOpen(true)}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2 cursor-pointer"
-        >
+        <Button variant="destructive" onClick={() => setDeleteModalOpen(true)}>
           <Trash2 className="w-4 h-4" />
           Delete Account Permanently
-        </button>
+        </Button>
       </div>
 
       {/* delete confirmation modal */}
-      {deleteModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Delete Account Permanently</h3>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-red-800 mb-2">
-                <strong>Warning:</strong> This action cannot be undone.
-              </p>
-              <p className="text-sm text-red-700">
-                All your data will be permanently deleted and your subscription will be canceled.
-              </p>
-            </div>
+      <AlertDialog open={deleteModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteModalOpen(false)
+          setDeleteConfirmText('')
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Account Permanently</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All your data will be permanently deleted and your subscription will be canceled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Type <strong>DELETE</strong> to confirm:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="DELETE"
-                disabled={deleteLoading}
-                autoFocus
-              />
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setDeleteModalOpen(false)
-                  setDeleteConfirmText('')
-                }}
-                disabled={deleteLoading}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <LoadingButton
-                onClick={handleDeleteAccount}
-                loading={deleteLoading}
-                disabled={deleteConfirmText !== 'DELETE'}
-                className="px-4 py-2 bg-red-600 hover:opacity-90 text-white rounded-lg transition-opacity disabled:opacity-50 cursor-pointer"
-              >
-                Delete Forever
-              </LoadingButton>
-            </div>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm text-red-800 mb-2">
+              <strong>Warning:</strong> This will permanently delete:
+            </p>
+            <ul className="text-sm text-red-700 list-disc ml-6 space-y-1">
+              <li>All properties, bookings, and guest data</li>
+              <li>Your subscription and billing</li>
+              <li>All reports and settings</li>
+            </ul>
           </div>
-        </div>
-      )}
+
+          <div>
+            <Label className="mb-2">
+              Type <strong>DELETE</strong> to confirm:
+            </Label>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              disabled={deleteLoading}
+              autoFocus
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              loading={deleteLoading}
+              disabled={deleteConfirmText !== 'DELETE'}
+            >
+              Delete Forever
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   children: ReactNode
@@ -140,20 +141,19 @@ export class ErrorBoundary extends Component<Props, State> {
                   </details>
                 )}
                 <div className="flex gap-3">
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={() => window.location.href = '/'}
-                    className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2 transition-colors cursor-pointer"
                   >
                     <Home className="w-4 h-4" />
                     Go to Dashboard
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-blue-600 hover:opacity-90 text-white rounded-lg flex items-center gap-2 transition-opacity font-medium cursor-pointer"
                   >
                     <RefreshCw className="w-4 h-4" />
                     Refresh Page
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -180,12 +180,13 @@ export class ErrorBoundary extends Component<Props, State> {
                     This error has occurred multiple times. Please contact support if it persists.
                   </p>
                 )}
-                <button
+                <Button
+                  variant="link"
                   onClick={this.resetErrorBoundary}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-blue-600 hover:text-blue-700 px-0"
                 >
                   Try again
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -197,12 +198,13 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-50 text-red-700 rounded-md text-sm">
             <AlertTriangle className="w-4 h-4" />
             <span>Failed to load</span>
-            <button
+            <Button
+              variant="link"
               onClick={this.resetErrorBoundary}
-              className="underline hover:no-underline"
+              className="text-sm text-red-700 px-0 h-auto underline hover:no-underline"
             >
               Retry
-            </button>
+            </Button>
           </div>
         )
       }
@@ -216,12 +218,13 @@ export class ErrorBoundary extends Component<Props, State> {
           <p className="text-sm text-red-600 mt-1">
             This component failed to render properly.
           </p>
-          <button
+          <Button
+            variant="link"
             onClick={this.resetErrorBoundary}
-            className="mt-2 text-sm text-red-700 hover:text-red-800 underline"
+            className="mt-2 text-sm text-red-700 hover:text-red-800 px-0 h-auto underline"
           >
             Try again
-          </button>
+          </Button>
         </div>
       )
     }

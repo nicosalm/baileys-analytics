@@ -7,6 +7,8 @@ import {
   Receipt, Building2,
   Calendar, CheckCircle
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 interface PropertyExpenseRowProps {
   property: any
@@ -47,18 +49,15 @@ const PropertyExpenseRow = ({ property, month, onManageExpenses }: PropertyExpen
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
               onClick={() => onManageExpenses(property.id, property.name)}
-              className={`px-3 py-1.5 text-white text-sm rounded-lg flex items-center gap-1 transition-opacity cursor-pointer ${
-                hasData
-                  ? 'bg-green-600 hover:opacity-90'
-                  : 'bg-blue-600 hover:opacity-90'
-              }`}
+              className={hasData ? 'bg-green-600 hover:bg-green-600/90' : ''}
+              size="sm"
               title="Track monthly operating expenses"
             >
               <Receipt className="w-4 h-4" />
               {hasData ? 'Update' : 'Manage'} Expenses
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -109,35 +108,37 @@ export const ExpenseManagementPanel = () => {
         <h3 className="text-lg font-semibold text-gray-900">Properties</h3>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Expense Period:</span>
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-1.5">
+          <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-400" />
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
-              className="text-sm font-medium text-gray-700 bg-transparent focus:outline-none cursor-pointer"
-            >
-              <option value={1}>January</option>
-              <option value={2}>February</option>
-              <option value={3}>March</option>
-              <option value={4}>April</option>
-              <option value={5}>May</option>
-              <option value={6}>June</option>
-              <option value={7}>July</option>
-              <option value={8}>August</option>
-              <option value={9}>September</option>
-              <option value={10}>October</option>
-              <option value={11}>November</option>
-              <option value={12}>December</option>
-            </select>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="text-sm font-medium text-gray-700 bg-transparent focus:outline-none cursor-pointer"
-            >
-              {Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - 2 + i).map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+            <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
+              <SelectTrigger className="w-[140px] h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">January</SelectItem>
+                <SelectItem value="2">February</SelectItem>
+                <SelectItem value="3">March</SelectItem>
+                <SelectItem value="4">April</SelectItem>
+                <SelectItem value="5">May</SelectItem>
+                <SelectItem value="6">June</SelectItem>
+                <SelectItem value="7">July</SelectItem>
+                <SelectItem value="8">August</SelectItem>
+                <SelectItem value="9">September</SelectItem>
+                <SelectItem value="10">October</SelectItem>
+                <SelectItem value="11">November</SelectItem>
+                <SelectItem value="12">December</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+              <SelectTrigger className="w-[90px] h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 5 }, (_, i) => currentDate.getFullYear() - 2 + i).map(year => (
+                  <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

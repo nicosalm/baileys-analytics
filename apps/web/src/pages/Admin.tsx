@@ -3,9 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
-import { Users, DollarSign, TrendingUp, Database, Search, Trash2, AlertTriangle, X, Settings, LogOut, LayoutDashboard } from 'lucide-react'
+import { Users, DollarSign, TrendingUp, Database, Search, Trash2, AlertTriangle, Settings, LogOut, LayoutDashboard } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { Footer } from '@/components/Footer'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog'
 
 interface AdminMetrics {
   totalUsers: number
@@ -178,13 +182,10 @@ export const Admin = () => {
                 >
                   <Settings className="w-5 h-5" />
                 </Link>
-                <button
-                  onClick={handleLogout}
-                  className="relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
-                >
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
                   <LogOut className="w-4 h-4" />
                   <span className="hidden sm:inline">Logout</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -239,13 +240,13 @@ export const Admin = () => {
 
             {/* search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
                 type="text"
                 placeholder="Search by email or company..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-10"
               />
             </div>
           </div>
@@ -295,23 +296,22 @@ export const Admin = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex items-center gap-2">
-                        <button
+                        <Button
+                          variant={user.subscription_exempt ? "destructive" : "outline"}
+                          size="xs"
                           onClick={() => handleGrantExemption(user.id, user.subscription_exempt)}
-                          className={`px-3 py-1 text-xs font-medium rounded-md ${
-                            user.subscription_exempt
-                              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                              : 'bg-green-100 text-green-700 hover:bg-green-200'
-                          }`}
                         >
                           {user.subscription_exempt ? 'Revoke' : 'Grant'} Exemption
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           onClick={() => setDeleteModal({ open: true, user })}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                           title="Delete account"
+                          className="text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -323,79 +323,64 @@ export const Admin = () => {
       </div>
 
       {/* delete confirmation modal */}
-      {deleteModal.open && deleteModal.user && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">Delete Account</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    This will permanently delete the account for:
-                  </p>
-                  <p className="text-sm font-medium text-gray-900 mt-2">{deleteModal.user.email}</p>
-                </div>
-                <button
-                  onClick={() => {
-                    setDeleteModal({ open: false, user: null })
-                    setDeleteConfirmText('')
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+      <AlertDialog open={deleteModal.open} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteModal({ open: false, user: null })
+          setDeleteConfirmText('')
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-
-              <div className="mt-4 p-3 bg-red-50 rounded-lg border border-red-200">
-                <p className="text-sm text-red-800">
-                  This action cannot be undone. All data will be permanently deleted including:
-                </p>
-                <ul className="text-sm text-red-700 mt-2 list-disc list-inside">
-                  <li>All properties, bookings, and guests</li>
-                  <li>Subscription and billing history</li>
-                  <li>OwnerRez connection</li>
-                  <li>Reports and settings</li>
-                </ul>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE</span> to confirm
-                </label>
-                <input
-                  type="text"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  placeholder="DELETE"
-                />
+              <div>
+                <AlertDialogTitle>Delete Account</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the account for: <strong>{deleteModal.user?.email}</strong>
+                </AlertDialogDescription>
               </div>
             </div>
+          </AlertDialogHeader>
 
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setDeleteModal({ open: false, user: null })
-                  setDeleteConfirmText('')
-                }}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteUser}
-                disabled={deleteConfirmText !== 'DELETE' || deleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity cursor-pointer"
-              >
-                {deleting ? 'Deleting...' : 'Delete Account'}
-              </button>
-            </div>
+          <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+            <p className="text-sm text-red-800">
+              This action cannot be undone. All data will be permanently deleted including:
+            </p>
+            <ul className="text-sm text-red-700 mt-2 list-disc list-inside">
+              <li>All properties, bookings, and guests</li>
+              <li>Subscription and billing history</li>
+              <li>OwnerRez connection</li>
+              <li>Reports and settings</li>
+            </ul>
           </div>
-        </div>
-      )}
+
+          <div>
+            <Label className="mb-2">
+              Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE</span> to confirm
+            </Label>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={deleteConfirmText !== 'DELETE'}
+              loading={deleting}
+              loadingText="Deleting..."
+            >
+              Delete Account
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Footer />
     </div>

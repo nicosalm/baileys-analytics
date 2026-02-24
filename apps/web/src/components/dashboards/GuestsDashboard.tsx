@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
+import { Button } from '@/components/ui/button'
 import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3 } from 'lucide-react'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -12,6 +13,7 @@ import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
 import { getPlatformColor, getTagColor } from '@/lib/theme'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
     PieChart, Pie, Cell, Tooltip
@@ -588,29 +590,31 @@ export const GuestsDashboard = () => {
                     <div className="flex justify-between items-center">
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
                         <div className="flex items-center gap-3">
-                            <select
-                                value={staysFilter}
-                                onChange={(e) => handleStaysFilter(e.target.value)}
-                                className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 bg-white text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="any">Any stays</option>
-                                <option value="1">1 stay</option>
-                                <option value="2-3">2-3 stays</option>
-                                <option value="4+">4+ stays</option>
-                            </select>
+                            <Select value={staysFilter} onValueChange={handleStaysFilter}>
+                                <SelectTrigger className="w-[130px] h-8 text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="any">Any stays</SelectItem>
+                                    <SelectItem value="1">1 stay</SelectItem>
+                                    <SelectItem value="2-3">2-3 stays</SelectItem>
+                                    <SelectItem value="4+">4+ stays</SelectItem>
+                                </SelectContent>
+                            </Select>
                             <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
                                 {viewModes.map((mode) => (
-                                    <button
+                                    <Button
                                         key={mode.key}
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={mode.handler}
-                                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                                            viewMode === mode.key
-                                                ? 'bg-white text-gray-900 shadow-sm'
-                                                : 'text-gray-600 hover:text-gray-900'
-                                        }`}
+                                        className={viewMode === mode.key
+                                            ? 'bg-white text-gray-900 shadow-sm'
+                                            : 'text-gray-600 hover:text-gray-900'
+                                        }
                                     >
                                         {mode.label}
-                                    </button>
+                                    </Button>
                                 ))}
                             </div>
                         </div>

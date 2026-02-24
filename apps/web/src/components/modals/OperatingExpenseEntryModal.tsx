@@ -5,6 +5,10 @@ import { useToast } from '@/contexts/toast'
 import { useOperatingExpenses, saveOperatingExpensesBulk } from '@/hooks/use-api'
 import { Plus, X, DollarSign } from 'lucide-react'
 import { formatCurrency, format } from '@baileys/utils'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface OperatingExpenseEntryModalProps {
   propertyId: string
@@ -133,92 +137,94 @@ export const OperatingExpenseEntryModal = ({
       <form onSubmit={handleSubmit} className="space-y-6">
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <Label className="mb-2">
             Month
-          </label>
-          <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required
-          >
-            {generateMonthOptions().map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
+          </Label>
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {generateMonthOptions().map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <Label className="mb-3">
             Expenses
-          </label>
+          </Label>
 
           <div className="space-y-3">
             {expenseRows.map((row, index) => (
               <div key={index} className="flex gap-2 items-start">
-                <select
-                  value={row.category}
-                  onChange={(e) => updateExpenseRow(index, 'category', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select category</option>
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <option
-                      key={cat.value}
-                      value={cat.value}
-                      disabled={usedCategories.includes(cat.value) && row.category !== cat.value}
-                    >
-                      {cat.label}
-                    </option>
-                  ))}
-                </select>
+                <Select value={row.category || undefined} onValueChange={(v) => updateExpenseRow(index, 'category', v)}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXPENSE_CATEGORIES.map((cat) => (
+                      <SelectItem
+                        key={cat.value}
+                        value={cat.value}
+                        disabled={usedCategories.includes(cat.value) && row.category !== cat.value}
+                      >
+                        {cat.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
                 <div className="relative w-32">
-                  <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                  <input
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+                  <Input
                     type="number"
                     min="0"
                     step="0.01"
                     value={row.amount || ''}
                     onChange={(e) => updateExpenseRow(index, 'amount', parseFloat(e.target.value) || 0)}
-                    className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="pl-9"
                     placeholder="0.00"
                     required
                   />
                 </div>
 
-                <input
+                <Input
                   type="text"
                   value={row.description || ''}
                   onChange={(e) => updateExpenseRow(index, 'description', e.target.value)}
-                  className="w-40 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-40"
                   placeholder="Description"
                 />
 
                 {expenseRows.length > 1 && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => removeExpenseRow(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    className="text-gray-400 hover:text-red-600 hover:bg-red-50"
                     title="Remove expense"
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}
           </div>
 
           {expenseRows.length < EXPENSE_CATEGORIES.length && (
-            <button
+            <Button
               type="button"
+              variant="link"
               onClick={addExpenseRow}
-              className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 cursor-pointer"
+              className="mt-3 text-sm px-0"
             >
               <Plus className="w-4 h-4" />
               Add another expense
-            </button>
+            </Button>
           )}
         </div>
 
@@ -235,21 +241,22 @@ export const OperatingExpenseEntryModal = ({
         )}
 
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={closeModal}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
             disabled={isSubmitting}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 cursor-pointer font-medium"
             disabled={isSubmitting}
+            loading={isSubmitting}
+            loadingText="Saving..."
           >
-            {isSubmitting ? 'Saving...' : 'Save Expenses'}
-          </button>
+            Save Expenses
+          </Button>
         </div>
       </form>
     </Modal>

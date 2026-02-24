@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { SWRConfig } from 'swr'
 import { swrConfig } from '@/hooks/swr-config'
 import { AuthProvider } from '@/contexts/auth'
-import { ToastProvider } from '@/contexts/toast'
+import { Toaster } from '@/components/ui/sonner'
 import { DashboardProvider } from '@/contexts/dashboard'
 import { ModalProvider } from '@/contexts/modal'
 import { ModalManager } from '@/components/ModalManager'
@@ -34,7 +34,7 @@ export const App = () => {
       <SWRConfig value={swrConfig}>
         <BrowserRouter>
           <AuthProvider>
-            <ToastProvider>
+            <Toaster position="bottom-right" richColors />
             <Suspense fallback={<LoadingState fullScreen />}>
               <Routes>
               <Route path="/" element={<Landing />} />
@@ -78,7 +78,6 @@ export const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-          </ToastProvider>
         </AuthProvider>
       </BrowserRouter>
     </SWRConfig>

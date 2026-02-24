@@ -12,6 +12,9 @@ import {
 } from 'lucide-react'
 import { DCTZGuestFeeEntry } from './DCTZGuestFeeEntry'
 import { DCTZ_RATE } from './constants'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 interface DCTZReportModalProps {
   onClose: () => void
@@ -188,50 +191,45 @@ export const DCTZReportModal = ({ onClose }: DCTZReportModalProps) => {
         {/* property and month selection */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="mb-2">
               <Building2 className="w-4 h-4 inline mr-1" />
               Property
-            </label>
+            </Label>
             {isLoadingProperties ? (
               <div className="h-10 bg-gray-100 rounded-lg animate-pulse" />
             ) : (
-              <select
-                value={selectedProperty}
-                onChange={(e) => {
-                  setSelectedProperty(e.target.value)
-                  setReport(null)
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="">Select property</option>
-                {properties.map((property) => (
-                  <option key={property.id} value={property.id}>
-                    {property.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={selectedProperty || undefined} onValueChange={(v) => { setSelectedProperty(v); setReport(null) }}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select property" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((property) => (
+                    <SelectItem key={property.id} value={property.id}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <Label className="mb-2">
               <Calendar className="w-4 h-4 inline mr-1" />
               Month
-            </label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => {
-                setSelectedMonth(e.target.value)
-                setReport(null)
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-            >
-              {generateMonthOptions().map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            </Label>
+            <Select value={selectedMonth} onValueChange={(v) => { setSelectedMonth(v); setReport(null) }}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {generateMonthOptions().map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -261,24 +259,27 @@ export const DCTZReportModal = ({ onClose }: DCTZReportModalProps) => {
                 </>
               )}
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="xs"
               onClick={() => setShowFeeEntry(true)}
-              className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 hover:text-gray-900 hover:bg-white/50 rounded transition-colors cursor-pointer"
             >
               <Edit3 className="w-3 h-3" />
               {feeStatus.hasGuestFees ? 'Edit' : 'Add'} Fees
-            </button>
+            </Button>
           </div>
         )}
 
         {/* generate button */}
-        <button
+        <Button
           onClick={generateReport}
           disabled={!selectedProperty || isLoading}
-          className="w-full py-2.5 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
+          loading={isLoading}
+          loadingText="Generating..."
+          className="w-full bg-teal-600 hover:bg-teal-700"
         >
-          {isLoading ? 'Generating...' : 'Generate Report'}
-        </button>
+          Generate Report
+        </Button>
 
         {/* report display */}
         {report && (

@@ -8,6 +8,8 @@ import {
 import { useState, useEffect, useCallback } from 'react'
 import { BRAND } from '@/constants'
 import { useInView } from '@/hooks'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 
 export const Landing = () => {
   const { state, logout } = useAuth()
@@ -43,12 +45,13 @@ export const Landing = () => {
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
                 <>
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={handleLogout}
-                    className="hidden sm:block px-4 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors text-sm cursor-pointer"
+                    className="hidden sm:block text-gray-600 hover:text-gray-900 text-sm"
                   >
                     Logout
-                  </button>
+                  </Button>
                   <Link to="/dashboard/overview" className={`px-4 py-2 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium text-sm`}>
                     Dashboard
                   </Link>
@@ -238,13 +241,11 @@ export const Landing = () => {
 
           <div className="flex justify-center items-center gap-4 mb-10">
             <span className={`text-sm font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>Monthly</span>
-            <button
-              onClick={handleToggleBilling}
+            <Switch
+              checked={yearlyBilling}
+              onCheckedChange={handleToggleBilling}
               aria-label="Toggle billing cycle"
-              className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${yearlyBilling ? 'translate-x-6' : 'translate-x-1'}`} />
-            </button>
+            />
             <span className={`text-sm font-medium ${yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
               Yearly
               <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">

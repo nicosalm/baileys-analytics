@@ -4,6 +4,11 @@ import { Plus, Edit2, Calendar, Check, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import { ConfirmModal } from '@/components/ConfirmModal'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import type { Season, SeasonFormData } from '@/types/season'
 
 const months = [
@@ -44,12 +49,11 @@ const SeasonForm: React.FC<{
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Season Name</label>
-          <input
+          <Label className="mb-1">Season Name</Label>
+          <Input
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="e.g., Summer Season"
             required
           />
@@ -57,48 +61,50 @@ const SeasonForm: React.FC<{
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+            <Label className="mb-1">Start Date</Label>
             <div className="flex gap-2">
-              <select
-                value={formData.startMonth}
-                onChange={(e) => setFormData({ ...formData, startMonth: parseInt(e.target.value) })}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {months.map((month, index) => (
-                  <option key={index} value={index + 1}>{month}</option>
-                ))}
-              </select>
-              <input
+              <Select value={String(formData.startMonth)} onValueChange={(v) => setFormData({ ...formData, startMonth: parseInt(v) })}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((month, index) => (
+                    <SelectItem key={index} value={String(index + 1)}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
                 type="number"
-                min="1"
-                max="31"
+                min={1}
+                max={31}
                 value={formData.startDay}
                 onChange={(e) => setFormData({ ...formData, startDay: parseInt(e.target.value) || 1 })}
-                className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-20"
                 required
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <Label className="mb-1">End Date</Label>
             <div className="flex gap-2">
-              <select
-                value={formData.endMonth}
-                onChange={(e) => setFormData({ ...formData, endMonth: parseInt(e.target.value) })}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {months.map((month, index) => (
-                  <option key={index} value={index + 1}>{month}</option>
-                ))}
-              </select>
-              <input
+              <Select value={String(formData.endMonth)} onValueChange={(v) => setFormData({ ...formData, endMonth: parseInt(v) })}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((month, index) => (
+                    <SelectItem key={index} value={String(index + 1)}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
                 type="number"
-                min="1"
-                max="31"
+                min={1}
+                max={31}
                 value={formData.endDay}
                 onChange={(e) => setFormData({ ...formData, endDay: parseInt(e.target.value) || 1 })}
-                className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-20"
                 required
               />
             </div>
@@ -106,22 +112,14 @@ const SeasonForm: React.FC<{
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-6 pt-4 border-t">
-        <button
-          type="submit"
-          disabled={isSubmitting || !formData.name}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-        >
+      <div className="flex items-center gap-2 mt-6 pt-4">
+        <Separator className="mb-4" />
+        <Button type="submit" disabled={isSubmitting || !formData.name}>
           {isEditing ? 'Save Changes' : 'Add Season'}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isSubmitting}
-          className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
-        >
+        </Button>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   )
@@ -165,34 +163,20 @@ const SeasonRow: React.FC<{
 
         <div className="flex items-center gap-2">
           {season.isActive ? (
-            <button
-              onClick={() => onToggleActive(season)}
-              className="px-3 py-1.5 text-gray-600 text-sm rounded-lg hover:bg-gray-100 cursor-pointer"
-            >
+            <Button variant="ghost" size="sm" onClick={() => onToggleActive(season)}>
               Deactivate
-            </button>
+            </Button>
           ) : (
-            <button
-              onClick={() => onToggleActive(season)}
-              className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 cursor-pointer"
-            >
+            <Button size="sm" onClick={() => onToggleActive(season)}>
               Activate
-            </button>
+            </Button>
           )}
-          <button
-            onClick={() => onEdit(season)}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg cursor-pointer"
-            title="Edit"
-          >
+          <Button variant="ghost" size="icon-sm" onClick={() => onEdit(season)} title="Edit">
             <Edit2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onDelete(season)}
-            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer"
-            title="Delete"
-          >
+          </Button>
+          <Button variant="ghost" size="icon-sm" onClick={() => onDelete(season)} title="Delete" className="text-muted-foreground hover:text-destructive">
             <Trash2 className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -292,13 +276,10 @@ export const SeasonManagementPanel: React.FC = () => {
             </p>
           </div>
           {!isAddingNew && !editingSeasonId && (
-            <button
-              onClick={() => setIsAddingNew(true)}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 flex items-center gap-2 cursor-pointer font-medium"
-            >
+            <Button size="sm" onClick={() => setIsAddingNew(true)}>
               <Plus className="w-4 h-4" />
               Add Season
-            </button>
+            </Button>
           )}
         </div>
 

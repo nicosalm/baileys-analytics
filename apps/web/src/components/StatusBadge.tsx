@@ -1,4 +1,5 @@
 import React from 'react'
+import { Badge } from '@/components/ui/badge'
 import { STATUS_STYLES } from '@/lib/theme'
 
 interface StatusBadgeProps {
@@ -11,8 +12,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'sm' })
   const sizeClasses = size === 'sm' ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'
 
   return (
-    <span className={`${sizeClasses} rounded-full ${styles.bg} ${styles.text}`}>
+    <Badge variant="secondary" className={`${sizeClasses} ${styles.bg} ${styles.text}`}>
       {status}
-    </span>
+    </Badge>
   )
 }

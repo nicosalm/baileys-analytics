@@ -2,6 +2,7 @@ import React from 'react'
 import { cn } from '@baileys/utils'
 import { Loader2, AlertCircle, Database, RefreshCw } from 'lucide-react'
 import { LoadingState } from './LoadingState'
+import { Button } from '@/components/ui/button'
 
 export interface StateWrapperProps {
   loading?: boolean
@@ -89,13 +90,10 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
         <p className="text-gray-900 font-medium mb-1">Something went wrong</p>
         <p className="text-sm text-gray-600 mb-4">{errorMsg}</p>
         {onRetry && (
-          <button
-            onClick={onRetry}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
+          <Button onClick={onRetry}>
+            <RefreshCw className="w-4 h-4" />
             {retryLabel}
-          </button>
+          </Button>
         )}
       </div>
     )
@@ -110,13 +108,10 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
           <p className="text-xs text-gray-400 mt-1">{emptySubMessage}</p>
         )}
         {onRetry && (
-          <button
-            onClick={onRetry}
-            className="mt-4 flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
+          <Button onClick={onRetry} className="mt-4">
+            <RefreshCw className="w-4 h-4" />
             {retryLabel}
-          </button>
+          </Button>
         )}
       </div>
     )

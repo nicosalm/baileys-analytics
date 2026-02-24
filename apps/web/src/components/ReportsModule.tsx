@@ -9,6 +9,7 @@ import { useToast } from '@/contexts/toast'
 import { useAuth } from '@/contexts/auth'
 import { useReportTemplates } from '@/hooks/use-api'
 import { LoadingState } from '@/components/LoadingState'
+import { Button } from '@/components/ui/button'
 import { authenticatedFetch } from '@/lib/api'
 import { DCTZReportCard, DCTZ_ENABLED_TENANTS } from '@/components/dctz'
 
@@ -213,10 +214,12 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
         </div>
       </div>
 
-      <button
+      <Button
+        variant="outline"
+        size="sm"
         onClick={handleQuickGenerate}
         disabled={isGenerating}
-        className="w-full flex items-center justify-center px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 mt-auto cursor-pointer"
+        className="w-full mt-auto text-xs"
       >
         {isGenerating ? (
           <LoadingState size="sm" inline message="Generating..." />
@@ -226,7 +229,7 @@ const QuickReportCard = ({ report }: { report: typeof QUICK_REPORTS[0] }) => {
             Generate
           </>
         )}
-      </button>
+      </Button>
     </div>
   )
 }

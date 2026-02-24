@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Mail, ArrowLeft } from 'lucide-react'
-import { LoadingButton } from '@/components/LoadingButton'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { BRAND } from '@/constants'
 
 export const ForgotPassword = () => {
@@ -102,17 +104,15 @@ export const ForgotPassword = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email address
-              </label>
+              <Label htmlFor="email" className="mb-2">Email address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="pl-10 h-11"
                   placeholder="you@example.com"
                   required
                   disabled={loading}
@@ -126,14 +126,14 @@ export const ForgotPassword = () => {
               </div>
             )}
 
-            <LoadingButton
+            <Button
               type="submit"
               loading={loading}
               loadingText="Sending..."
               className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:opacity-90 transition-opacity`}
             >
               Send reset link
-            </LoadingButton>
+            </Button>
           </form>
         </div>
       </div>

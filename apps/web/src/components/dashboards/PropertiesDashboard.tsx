@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
+import { Button } from '@/components/ui/button'
 import { Calendar, DollarSign, Home, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
@@ -222,28 +223,24 @@ export const PropertiesDashboard = () => {
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900">Property Performance</h3>
           <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleViewTable}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={viewMode === 'table' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}
             >
-              <Table className="w-4 h-4 inline mr-1.5" />
+              <Table className="w-4 h-4" />
               Table
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={handleViewCards}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                viewMode === 'cards'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={viewMode === 'cards' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}
             >
-              <LayoutGrid className="w-4 h-4 inline mr-1.5" />
+              <LayoutGrid className="w-4 h-4" />
               Cards
-            </button>
+            </Button>
           </div>
         </div>
 

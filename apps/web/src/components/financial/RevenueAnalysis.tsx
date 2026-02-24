@@ -4,7 +4,8 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { SimpleTable } from '@/components/tables'
 import { RevenueChart } from '@/components/charts/RevenueChart'
 import { useTips } from '@/hooks/use-tips'
-import { 
+import { Button } from '@/components/ui/button'
+import {
   DollarSign, TrendingUp, Calendar,
   Info, ArrowUp, ArrowDown, HelpCircle
 } from 'lucide-react'
@@ -243,16 +244,17 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
                 key: 'propertyName',
                 header: 'Property',
                 render: (row: any) => (
-                  <button
+                  <Button
+                    variant="link"
+                    className="px-0 h-auto"
                     onClick={() => onPropertyClick?.(row.propertyId)}
-                    className="text-blue-600 hover:underline text-left cursor-pointer"
                   >
                     {row.propertyName}
-                  </button>
+                  </Button>
                 )
               },
-              { 
-                key: 'revenue', 
+              {
+                key: 'revenue',
                 header: 'Revenue',
                 render: (row: any) => formatCurrency(row.revenue || 0)
               },
@@ -264,7 +266,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             ]}
           />
         </div>
-        
+
         {/* Properties Needing Attention */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-start justify-between mb-3">
@@ -294,12 +296,13 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
                 key: 'propertyName',
                 header: 'Property',
                 render: (row: any) => (
-                  <button
+                  <Button
+                    variant="link"
+                    className="px-0 h-auto"
                     onClick={() => onPropertyClick?.(row.propertyId)}
-                    className="text-blue-600 hover:underline text-left cursor-pointer"
                   >
                     {row.propertyName}
-                  </button>
+                  </Button>
                 )
               },
               { 

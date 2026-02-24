@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
+import { Button } from '@/components/ui/button'
 import { CheckCircle, Home, Calendar, Users } from 'lucide-react'
 import { BRAND } from '@/constants'
 
@@ -233,12 +234,12 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4">
           <h2 className="text-xl font-bold text-red-600 mb-4">Sync Error</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <button
+          <Button
             onClick={() => navigate('/dashboard/settings')}
-            className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
+            className="w-full"
           >
             Go to Settings
-          </button>
+          </Button>
         </div>
       </div>
     )

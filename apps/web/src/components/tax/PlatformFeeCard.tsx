@@ -4,6 +4,7 @@ import { formatCurrency, format } from '@baileys/utils'
 import { usePlatformFees } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 import { useModal } from '@/contexts/modal'
+import { Button } from '@/components/ui/button'
 
 const formatMonth = (month: string): string => {
   if (!month || month.length < 7) return ''
@@ -73,12 +74,13 @@ export const PlatformFeeCard = ({
       empty={!hasData && !isLoading}
       emptyMessage="No platform fees recorded"
       emptyIcon={
-        <button
+        <Button
+          variant="link"
           onClick={handleAddFees}
-          className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+          className="mt-2 text-sm"
         >
           Add platform fees
-        </button>
+        </Button>
       }
       minHeight={120}
     >
@@ -99,17 +101,15 @@ export const PlatformFeeCard = ({
             </h3>
             <p className="text-sm text-gray-600 mt-1">{propertyName}</p>
           </div>
-          <button
+          <Button
+            variant="ghost"
+            size="icon-xs"
             onClick={handleAddFees}
-            className={`p-1 rounded transition-colors ${
-              hasData
-                ? 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                : 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-            }`}
+            className={hasData ? 'text-gray-400 hover:text-gray-600' : 'text-blue-600 hover:text-blue-700'}
             title={hasData ? 'Add another platform' : 'Add platform fees'}
           >
             <Plus className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
         
         {hasData ? (
@@ -138,9 +138,11 @@ export const PlatformFeeCard = ({
             
             {/* Platform breakdown (collapsible) */}
             <div className="border-t pt-3">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full text-left text-sm text-gray-600 hover:text-gray-900 font-medium flex items-center"
+                className="w-full justify-start text-sm text-gray-600 hover:text-gray-900 font-medium px-0"
               >
                 {isExpanded ? 'Hide' : 'Show'} platform breakdown
                 {isExpanded ? (
@@ -148,7 +150,7 @@ export const PlatformFeeCard = ({
                 ) : (
                   <ChevronDown className="w-4 h-4 ml-1" />
                 )}
-              </button>
+              </Button>
               
               {isExpanded && (
                 <div className="mt-3 space-y-2">
@@ -178,12 +180,14 @@ export const PlatformFeeCard = ({
                             </p>
                           )}
                         </div>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           onClick={() => handleEditFee(fee.platform)}
-                          className="p-1 text-gray-400 hover:text-gray-600"
+                          className="text-gray-400 hover:text-gray-600"
                         >
                           <Edit2 className="w-3 h-3" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -213,12 +217,13 @@ export const PlatformFeeCard = ({
           <div className="py-4 text-center">
             <AlertCircle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
             <p className="text-sm text-gray-600">No platform fees entered</p>
-            <button
+            <Button
               onClick={handleAddFees}
-              className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:opacity-90 cursor-pointer"
+              size="sm"
+              className="mt-2"
             >
               Add Fees
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { OccupancyListView } from '@/components/OccupancyListView'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
+import { Button } from '@/components/ui/button'
 import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
@@ -381,28 +382,24 @@ export const OccupancyDashboard = () => {
             </p>
           </div>
           <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCalendarView('list')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                calendarView === 'list'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={calendarView === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}
             >
-              <List className="w-4 h-4 inline mr-1.5" />
+              <List className="w-4 h-4" />
               Timeline
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setCalendarView('calendar')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                calendarView === 'calendar'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className={calendarView === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}
             >
-              <Calendar className="w-4 h-4 inline mr-1.5" />
+              <Calendar className="w-4 h-4" />
               Calendar
-            </button>
+            </Button>
           </div>
         </div>
         {calendarView === 'calendar' ? (

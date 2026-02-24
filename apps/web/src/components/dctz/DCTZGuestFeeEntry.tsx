@@ -5,6 +5,10 @@ import { api } from '@/lib/api'
 import { formatCurrency, format } from '@baileys/utils'
 import { Plus, X, DollarSign, Info } from 'lucide-react'
 import { PLATFORM_REMITS_TAX } from './constants'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 interface DCTZGuestFeeEntryProps {
   propertyId: string
@@ -194,27 +198,28 @@ export const DCTZGuestFeeEntry = ({
 
         {/* month selector */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <Label className="mb-2">
             Month
-          </label>
-          <select
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-          >
-            {generateMonthOptions().map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          </Label>
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {generateMonthOptions().map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* fee rows */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">
+          <Label className="mb-3">
             Platform Guest Service Fees
-          </label>
+          </Label>
 
           {isLoading ? (
             <div className="space-y-3">
@@ -230,24 +235,23 @@ export const DCTZGuestFeeEntry = ({
             <div className="space-y-3">
               {feeRows.map((row, index) => (
                 <div key={index} className="flex gap-2 items-start">
-                  <select
-                    value={row.platform}
-                    onChange={(e) => updateRow(index, 'platform', e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    required
-                  >
-                    <option value="">Select platform</option>
-                    {PLATFORMS.map((platform) => (
-                      <option key={platform} value={platform}>
-                        {platform}
-                        {PLATFORM_REMITS_TAX[platform.toLowerCase()] ? ' ✓' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  <Select value={row.platform || undefined} onValueChange={(v) => updateRow(index, 'platform', v)}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Select platform" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PLATFORMS.map((platform) => (
+                        <SelectItem key={platform} value={platform}>
+                          {platform}
+                          {PLATFORM_REMITS_TAX[platform.toLowerCase()] ? ' ✓' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
                   <div className="relative w-32">
-                    <DollarSign className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                    <input
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+                    <Input
                       type="number"
                       min="0"
                       step="0.01"
@@ -255,33 +259,36 @@ export const DCTZGuestFeeEntry = ({
                       onChange={(e) =>
                         updateRow(index, 'guestServiceFee', parseFloat(e.target.value) || 0)
                       }
-                      className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="pl-9"
                       placeholder="0.00"
                       title="Guest service fee (what platform charged guests)"
                     />
                   </div>
 
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() => removeRow(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                    className="text-gray-400 hover:text-red-600 hover:bg-red-50"
                     title="Remove platform"
                   >
                     <X className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
           )}
 
-          <button
+          <Button
             type="button"
+            variant="link"
             onClick={addRow}
-            className="mt-3 text-sm text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1 cursor-pointer"
+            className="mt-3 text-sm text-teal-600 hover:text-teal-700 px-0"
           >
             <Plus className="w-4 h-4" />
             {feeRows.length === 0 ? 'Add platform' : 'Add another platform'}
-          </button>
+          </Button>
         </div>
 
         {/* total */}
@@ -320,21 +327,23 @@ export const DCTZGuestFeeEntry = ({
 
         {/* actions */}
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer"
             disabled={isSubmitting}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 cursor-pointer font-medium"
+            className="bg-teal-600 hover:bg-teal-700"
             disabled={isSubmitting || isLoading}
+            loading={isSubmitting}
+            loadingText="Saving..."
           >
-            {isSubmitting ? 'Saving...' : 'Save Fees'}
-          </button>
+            Save Fees
+          </Button>
         </div>
       </form>
     </Modal>

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { 
   cn, 
   formatDateISO, 
@@ -295,14 +296,16 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Common Periods</p>
                   <div className="grid grid-cols-2 gap-2">
                     {commonPeriods.map(period => (
-                      <button
+                      <Button
                         key={period.label}
                         type="button"
-                        className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                        variant="secondary"
+                        size="sm"
+                        className="justify-start"
                         onClick={() => handleQuickSelect(formatDateISO(period.from), formatDateISO(period.to))}
                       >
                         {period.label}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -319,27 +322,31 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                     <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Season Periods</p>
                     <div className="grid grid-cols-2 gap-2">
                       {seasonStarted && (
-                        <button
+                        <Button
                           type="button"
-                          className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                          variant="secondary"
+                          size="sm"
+                          className="justify-start"
                           onClick={() => {
                             const range = getCurrentSeasonDates(season)
                             handleQuickSelect(range.from, range.to)
                           }}
                         >
                           {inSeason ? 'Season to Date' : `${season.name} ${currentYear}`}
-                        </button>
+                        </Button>
                       )}
-                      <button
+                      <Button
                         type="button"
-                        className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                        variant="secondary"
+                        size="sm"
+                        className="justify-start"
                         onClick={() => {
                           const range = getPreviousSeasonDates(season)
                           handleQuickSelect(range.from, range.to)
                         }}
                       >
                         Last Season
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )
@@ -347,19 +354,23 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                 <div>
                   <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Year Periods</p>
                   <div className="grid grid-cols-2 gap-2">
-                    <button
+                    <Button
                       type="button"
-                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-start"
                       onClick={() => {
                         const today = new Date()
                         handleQuickSelect(formatDateISO(startOfYear(today)), formatDateISO(today))
                       }}
                     >
                       Year to Date
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-start"
                       onClick={() => {
                         const today = new Date()
                         const lastYear = subYears(today, 1)
@@ -370,10 +381,12 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                       }}
                     >
                       Last Year
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-start"
                       onClick={() => {
                         const today = new Date()
                         const currentMonth = getMonth(today)
@@ -386,10 +399,12 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                       title="Fiscal Year to Date (Oct 1 - Sep 30)"
                     >
                       Fiscal YTD
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg text-left cursor-pointer"
+                      variant="secondary"
+                      size="sm"
+                      className="justify-start"
                       onClick={() => {
                         const today = new Date()
                         const currentMonth = getMonth(today)
@@ -405,7 +420,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                       title="Previous Fiscal Year (Oct 1 - Sep 30)"
                     >
                       Last Fiscal Year
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}

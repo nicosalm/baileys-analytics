@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { billingClient } from '@/lib/stripe';
 import { useToast } from '@/contexts/toast';
-import { LoadingButton } from './LoadingButton';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { LoadingState } from './LoadingState';
 import { BRAND } from '@/constants';
 
@@ -84,13 +85,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
         <span className={`text-sm font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
           Monthly
         </span>
-        <button
-          onClick={() => setYearlyBilling(!yearlyBilling)}
-          aria-label="Toggle billing cycle"
-          className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 cursor-pointer"
-        >
-          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${yearlyBilling ? 'translate-x-6' : 'translate-x-1'}`} />
-        </button>
+        <Switch checked={yearlyBilling} onCheckedChange={setYearlyBilling} aria-label="Toggle billing cycle" />
         <span className={`text-sm font-medium ${yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
           Yearly
           <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -118,7 +113,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
           ))}
         </div>
 
-        <LoadingButton
+        <Button
           onClick={handleSelectPlan}
           disabled={!!currentPlan || loading}
           loading={loading}
@@ -130,7 +125,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
           }`}
         >
           {currentPlan ? 'Current Plan' : isTrialEligible ? 'Start $1 Trial' : 'Subscribe'}
-        </LoadingButton>
+        </Button>
 
         {isTrialEligible && (
           <p className="text-center text-xs text-gray-500 mt-4">

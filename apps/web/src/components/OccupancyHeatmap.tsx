@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useDailyOccupancy } from '@/hooks/use-api'
 import { cn, formatDateDisplay } from '@baileys/utils'
 import { ChevronLeft, ChevronRight, Calendar, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { LoadingState } from '@/components/LoadingState'
 import { useModal } from '@/contexts/modal'
 
@@ -121,13 +122,14 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
     <div className="space-y-3">
       {/* Navigation + Stats */}
       <div className="flex justify-between items-center">
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => setCurrentMonthIndex(i => Math.max(0, i - 1))}
           disabled={validIndex === 0}
-          className={cn("p-1.5 rounded-sm", validIndex === 0 && "opacity-50")}
         >
           <ChevronLeft className="w-4 h-4" />
-        </button>
+        </Button>
         <div className="flex items-center gap-6">
           <div className="text-center">
             <h4 className="text-sm font-semibold">{monthName} {year}</h4>
@@ -141,13 +143,14 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
             </div>
           )}
         </div>
-        <button
+        <Button
+          variant="ghost"
+          size="icon-xs"
           onClick={() => setCurrentMonthIndex(i => Math.min(monthsData.length - 1, i + 1))}
           disabled={validIndex === monthsData.length - 1}
-          className={cn("p-1.5 rounded-sm", validIndex === monthsData.length - 1 && "opacity-50")}
         >
           <ChevronRight className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
       {/* Calendar */}

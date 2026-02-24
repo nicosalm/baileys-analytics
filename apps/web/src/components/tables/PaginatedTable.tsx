@@ -1,6 +1,8 @@
 import React from 'react'
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Download, RefreshCw, BarChart3 } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 interface Column<T> {
   key: keyof T | string
@@ -114,13 +116,13 @@ export function PaginatedTable<T extends Record<string, any>>({
           <div className="flex items-center space-x-4">
             {enableSearch && (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
                   type="text"
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="pl-10"
                 />
               </div>
             )}
@@ -128,22 +130,24 @@ export function PaginatedTable<T extends Record<string, any>>({
 
           <div className="flex items-center space-x-2">
             {enableRefresh && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onRefresh}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                 title="Refresh"
               >
                 <RefreshCw className="w-4 h-4" />
-              </button>
+              </Button>
             )}
             {enableExport && (
-              <button
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={onExport}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
                 title="Export"
               >
                 <Download className="w-4 h-4" />
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -237,20 +241,22 @@ export function PaginatedTable<T extends Record<string, any>>({
               </div>
 
               <div className="flex items-center space-x-2">
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}
-                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronsLeft className="w-4 h-4" />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                </button>
+                </Button>
 
                 <div className="flex items-center space-x-1">
                   {[...Array(Math.min(5, totalPages))].map((_, i) => {
@@ -266,35 +272,34 @@ export function PaginatedTable<T extends Record<string, any>>({
                     }
 
                     return (
-                      <button
+                      <Button
                         key={i}
+                        variant={currentPage === pageNum ? 'default' : 'ghost'}
+                        size="sm"
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 rounded ${
-                          currentPage === pageNum
-                            ? 'bg-blue-600 text-white'
-                            : 'hover:bg-gray-100'
-                        }`}
                       >
                         {pageNum}
-                      </button>
+                      </Button>
                     )
                   })}
                 </div>
 
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
-                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronRight className="w-4 h-4" />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPage === totalPages}
-                  className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <ChevronsRight className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
           )}

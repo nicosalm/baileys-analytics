@@ -6,6 +6,13 @@ import { useTips } from '@/hooks/use-tips'
 import { createReportTemplate, updateReportTemplate } from '@/hooks/use-api'
 import { reportTemplateSchema, type ReportTemplate } from '@/schemas/reports'
 import { Calendar, Settings, Clock } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 
 interface ReportBuilderModalProps {
   template?: ReportTemplate
@@ -40,7 +47,6 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
   
   const isEditMode = !!(template?.id)
   
-  const [activeTab, setActiveTab] = useState<'config' | 'schedule'>('config')
   const [name, setName] = useState(template?.name || '')
   const [description, setDescription] = useState(template?.description || '')
   const [selectedModules, setSelectedModules] = useState<string[]>(template?.config?.modules || [])
@@ -139,288 +145,201 @@ export const ReportBuilderModal = ({ template }: ReportBuilderModalProps) => {
       subtitle="Set up what you want to see in your reports"
       size="xl"
     >
-      <div className="space-y-6">
-        {/* Tabs */}
-        <div className="border-b">
-          <nav className="flex space-x-6">
-            <button
-              onClick={() => setActiveTab('config')}
-              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
-                activeTab === 'config'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <div className="flex items-center">
-                <Settings className="w-4 h-4 mr-2" />
-                Configuration
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('schedule')}
-              className={`pb-2 border-b-2 transition-colors cursor-pointer ${
-                activeTab === 'schedule'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <div className="flex items-center">
-                <Calendar className="w-4 h-4 mr-2" />
-                Schedule
-              </div>
-            </button>
-          </nav>
-        </div>
+      <Tabs defaultValue="config" className="space-y-6">
+        <TabsList variant="line">
+          <TabsTrigger value="config">
+            <Settings className="w-4 h-4" />
+            Configuration
+          </TabsTrigger>
+          <TabsTrigger value="schedule">
+            <Calendar className="w-4 h-4" />
+            Schedule
+          </TabsTrigger>
+        </TabsList>
 
-        {activeTab === 'config' && (
-          <div className="space-y-6">
-            {/* Basic Info */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Report Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Monthly Financial Summary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description (optional)
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    rows={2}
-                    placeholder="Brief description of what this report contains"
-                  />
-                </div>
+        <TabsContent value="config" className="space-y-6">
+          {/* Basic Info */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+            <div className="space-y-4">
+              <div>
+                <Label className="mb-1">
+                  Report Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g., Monthly Financial Summary"
+                />
+              </div>
+              <div>
+                <Label className="mb-1">Description (optional)</Label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                  placeholder="Brief description of what this report contains"
+                />
               </div>
             </div>
+          </div>
 
-            {/* Modules */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">
-                Report Modules <span className="text-red-500">*</span>
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {moduleOptions.map(module => (
-                  <div
-                    key={module.value}
-                    onClick={() => toggleModule(module.value)}
-                    className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                      selectedModules.includes(module.value)
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="font-medium">{module.label}</div>
-                    <div className="text-xs text-gray-500 mt-1">{module.description}</div>
+          {/* Modules */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">
+              Report Modules <span className="text-red-500">*</span>
+            </h3>
+            <div className="grid grid-cols-2 gap-3">
+              {moduleOptions.map(module => (
+                <div
+                  key={module.value}
+                  onClick={() => toggleModule(module.value)}
+                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
+                    selectedModules.includes(module.value)
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="font-medium">{module.label}</div>
+                  <div className="text-xs text-gray-500 mt-1">{module.description}</div>
+                </div>
+              ))}
+            </div>
+            {selectedModules.length === 0 && (
+              <p className="text-sm text-red-500 mt-2">Please select at least one module</p>
+            )}
+          </div>
+
+          {/* Date Range */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Date Range</h3>
+            <div className="space-y-4">
+              <Select value={dateRange} onValueChange={setDateRange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {dateRangeOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {dateRange === 'custom' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="mb-1">From</Label>
+                    <Input
+                      type="date"
+                      value={customFrom}
+                      onChange={(e) => setCustomFrom(e.target.value)}
+                    />
                   </div>
-                ))}
-              </div>
-              {selectedModules.length === 0 && (
-                <p className="text-sm text-red-500 mt-2">Please select at least one module</p>
+                  <div>
+                    <Label className="mb-1">To</Label>
+                    <Input
+                      type="date"
+                      value={customTo}
+                      onChange={(e) => setCustomTo(e.target.value)}
+                    />
+                  </div>
+                </div>
               )}
             </div>
+          </div>
 
-            {/* Date Range */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Date Range</h3>
-              <div className="space-y-4">
-                <select
-                  value={dateRange}
-                  onChange={(e) => setDateRange(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {dateRangeOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                
-                {dateRange === 'custom' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        From
-                      </label>
-                      <input
-                        type="date"
-                        value={customFrom}
-                        onChange={(e) => setCustomFrom(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        To
-                      </label>
-                      <input
-                        type="date"
-                        value={customTo}
-                        onChange={(e) => setCustomTo(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-
-            {/* Options */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Report Options</h3>
-              <div className="space-y-3">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={includeCharts}
-                    onChange={(e) => setIncludeCharts(e.target.checked)}
-                    className="mr-3 rounded-sm"
-                  />
-                  <span>Include charts and visualizations</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={includeRawData}
-                    onChange={(e) => setIncludeRawData(e.target.checked)}
-                    className="mr-3 rounded-sm"
-                  />
-                  <span>Include raw data tables</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={includeSummary}
-                    onChange={(e) => setIncludeSummary(e.target.checked)}
-                    className="mr-3 rounded-sm"
-                  />
-                  <span>Include executive summary</span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={compareWithPrevious}
-                    onChange={(e) => setCompareWithPrevious(e.target.checked)}
-                    className="mr-3 rounded-sm"
-                  />
-                  <span>Compare with previous period</span>
-                </label>
-              </div>
+          {/* Options */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Report Options</h3>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3">
+                <Checkbox checked={includeCharts} onCheckedChange={(v) => setIncludeCharts(v === true)} />
+                <span>Include charts and visualizations</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <Checkbox checked={includeRawData} onCheckedChange={(v) => setIncludeRawData(v === true)} />
+                <span>Include raw data tables</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <Checkbox checked={includeSummary} onCheckedChange={(v) => setIncludeSummary(v === true)} />
+                <span>Include executive summary</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <Checkbox checked={compareWithPrevious} onCheckedChange={(v) => setCompareWithPrevious(v === true)} />
+                <span>Compare with previous period</span>
+              </label>
             </div>
           </div>
-        )}
+        </TabsContent>
 
-        {activeTab === 'schedule' && (
-          <div className="space-y-6">
-            {/* Enable Schedule */}
-            {showTips && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={scheduleEnabled}
-                    onChange={(e) => setScheduleEnabled(e.target.checked)}
-                    className="mr-3 rounded-sm"
-                  />
-                  <div>
-                    <div className="font-medium">Enable Automated Schedule</div>
-                    <div className="text-sm text-gray-600">Automatically generate and send this report</div>
-                  </div>
-                </label>
+        <TabsContent value="schedule" className="space-y-6">
+          {/* Enable Schedule */}
+          <div className={showTips ? "bg-blue-50 border border-blue-200 rounded-lg p-4" : "p-4"}>
+            <label className="flex items-center gap-3">
+              <Checkbox checked={scheduleEnabled} onCheckedChange={(v) => setScheduleEnabled(v === true)} />
+              <div>
+                <div className="font-medium">Enable Automated Schedule</div>
+                <div className="text-sm text-gray-600">Automatically generate and send this report</div>
               </div>
-            )}
-            {!showTips && (
-              <div className="p-4">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={scheduleEnabled}
-                    onChange={(e) => setScheduleEnabled(e.target.checked)}
-                    className="mr-3 rounded-sm"
-                  />
-                  <div>
-                    <div className="font-medium">Enable Automated Schedule</div>
-                    <div className="text-sm text-gray-600">Automatically generate and send this report</div>
-                  </div>
-                </label>
-              </div>
-            )}
-
-            {scheduleEnabled && (
-              <>
-                {/* Frequency */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Frequency
-                  </label>
-                  <select
-                    value={frequency}
-                    onChange={(e) => setFrequency(e.target.value as any)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="quarterly">Quarterly</option>
-                  </select>
-                </div>
-
-                {/* Time */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Time
-                  </label>
-                  <input
-                    type="time"
-                    value={scheduleTime}
-                    onChange={(e) => setScheduleTime(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-
-
-                {/* Next Run Info */}
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Next run will be scheduled after saving
-                  </div>
-                </div>
-              </>
-            )}
+            </label>
           </div>
-        )}
+
+          {scheduleEnabled && (
+            <>
+              {/* Frequency */}
+              <div>
+                <Label className="mb-2">Frequency</Label>
+                <Select value={frequency} onValueChange={(v) => setFrequency(v as any)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="quarterly">Quarterly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Time */}
+              <div>
+                <Label className="mb-2">Time</Label>
+                <Input
+                  type="time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                />
+              </div>
+
+              {/* Next Run Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Next run will be scheduled after saving
+                </div>
+              </div>
+            </>
+          )}
+        </TabsContent>
 
         {/* Actions */}
         <div className="flex justify-end space-x-3 pt-6 border-t">
-          <button
-            onClick={closeModal}
-            className="px-4 py-2 text-gray-700 hover:text-gray-900 cursor-pointer"
-            disabled={isSaving}
-          >
+          <Button variant="ghost" onClick={closeModal} disabled={isSaving}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSave}
-            disabled={isSaving || !name.trim() || selectedModules.length === 0}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!name.trim() || selectedModules.length === 0}
+            loading={isSaving}
+            loadingText={isSaving ? 'Saving...' : undefined}
           >
-            {isSaving ? 'Saving...' : (isEditMode ? 'Update Template' : 'Create Template')}
-          </button>
+            {isEditMode ? 'Update Template' : 'Create Template'}
+          </Button>
         </div>
-      </div>
+      </Tabs>
     </Modal>
   )
 }

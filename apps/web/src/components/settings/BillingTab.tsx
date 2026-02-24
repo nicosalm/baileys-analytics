@@ -6,7 +6,7 @@ import {
 import { LoadingState } from '@/components/LoadingState';
 import { billingClient } from '@/lib/stripe';
 import { PricingPlans } from '@/components/PricingPlans';
-import { LoadingButton } from '@/components/LoadingButton';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/contexts/toast';
 import { formatDateDisplay } from '@baileys/utils';
 
@@ -195,14 +195,14 @@ export const BillingTab = () => {
         </div>
 
         <div className="mt-4 pt-4 border-t border-gray-100">
-          <LoadingButton
+          <Button
             onClick={handleManageSubscription}
             loading={portalLoading}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium flex items-center gap-2"
           >
             <ExternalLink className="w-4 h-4" />
             Manage Subscription
-          </LoadingButton>
+          </Button>
         </div>
       </div>
 

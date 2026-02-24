@@ -2,6 +2,10 @@ import { useState, useMemo } from 'react'
 import { ChevronDown, ChevronRight, Calculator, TrendingUp, ArrowRight } from 'lucide-react'
 import { formatCurrency, formatPercentage, safeDivide } from '@baileys/utils'
 import { OccupancyByProperty } from '@/types/api'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface WhatIfCalculatorProps {
   byProperty: OccupancyByProperty[]
@@ -48,9 +52,10 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <button
+      <Button
+        variant="ghost"
         onClick={() => setExpanded(prev => !prev)}
-        className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between px-6 py-4 h-auto rounded-none"
       >
         <div className="flex items-center gap-2">
           {expanded
@@ -59,9 +64,9 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
           }
           <Calculator className="w-5 h-5 text-gray-600" />
           <span className="font-bold text-gray-900">What If?</span>
-          <span className="text-sm text-gray-500">RevPAN scenario calculator</span>
+          <span className="text-sm text-gray-500 font-normal">RevPAN scenario calculator</span>
         </div>
-      </button>
+      </Button>
 
       {expanded && (
         <div className="px-6 pb-6 pt-2 border-t border-gray-100">
@@ -69,19 +74,20 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
             {/* Left column — inputs */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Scope</label>
-                <select
-                  value={selectedPropertyId}
-                  onChange={e => handlePropertyChange(e.target.value)}
-                  className="w-full py-2 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="__portfolio__">All Properties (Portfolio)</option>
-                  {byProperty.map(p => (
-                    <option key={p.propertyId} value={p.propertyId}>
-                      {p.propertyName}
-                    </option>
-                  ))}
-                </select>
+                <Label className="mb-1">Scope</Label>
+                <Select value={selectedPropertyId} onValueChange={handlePropertyChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__portfolio__">All Properties (Portfolio)</SelectItem>
+                    {byProperty.map(p => (
+                      <SelectItem key={p.propertyId} value={p.propertyId}>
+                        {p.propertyName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex gap-4 text-sm">
@@ -100,18 +106,18 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <Label className="mb-1">
                   If open nights booked at
-                </label>
+                </Label>
                 <div className="relative w-48">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                  <input
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-10">$</span>
+                  <Input
                     type="text"
                     inputMode="decimal"
                     value={rateInput}
                     onChange={e => handleRateChange(e.target.value)}
                     placeholder={scope.weightedAvgRate > 0 ? scope.weightedAvgRate.toFixed(0) : '0'}
-                    className="w-full py-2 pl-7 pr-14 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-7 pr-14 text-sm"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/night</span>
                 </div>

@@ -14,6 +14,18 @@ import {
 } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
+import { Switch } from '@/components/ui/switch'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 const TaxManagementPanel = lazy(() => 
   import('@/components/settings/TaxManagementPanel').then(m => ({ default: m.TaxManagementPanel }))
@@ -108,18 +120,7 @@ const PreferencesTab = () => {
               <span className="text-sm font-medium text-gray-700">Tips & Hints</span>
               <p className="text-xs text-gray-500 mt-0.5">Show helpful tips throughout the dashboard</p>
             </div>
-            <button
-              onClick={handleToggleTips}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                showTips ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                  showTips ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            <Switch checked={showTips} onCheckedChange={handleToggleTips} />
           </div>
         </div>
       </div>
@@ -132,18 +133,7 @@ const PreferencesTab = () => {
               <span className="text-sm font-medium text-gray-700">Email Notifications</span>
               <p className="text-xs text-gray-500 mt-0.5">Receive updates about your account and syncs</p>
             </div>
-            <button
-              onClick={() => setNotifications(!notifications)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                notifications ? 'bg-blue-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                  notifications ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
+            <Switch checked={notifications} onCheckedChange={setNotifications} />
           </div>
         </div>
       </div>
@@ -168,22 +158,6 @@ export const Settings = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-
-  // Handle Escape key to close modals
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (changePasswordModalOpen && !isChangingPassword) {
-          setChangePasswordModalOpen(false)
-        } else if (changeEmailModalOpen && !isChangingEmail) {
-          setChangeEmailModalOpen(false)
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [changePasswordModalOpen, changeEmailModalOpen, isChangingPassword, isChangingEmail])
 
   // Handle checkout success/cancel from Stripe
   useEffect(() => {
@@ -330,13 +304,14 @@ export const Settings = () => {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <button
+              <Button
+                variant="ghost"
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
+                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden sm:inline">Logout</span>
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -428,154 +403,152 @@ export const Settings = () => {
 
       <Footer />
 
-      {changeEmailModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isChangingEmail) {
-              setChangeEmailModalOpen(false)
-            }
-          }}
-        >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Change Email Address</h3>
-            <p className="text-sm text-gray-600 mb-4">
+      <Dialog open={changeEmailModalOpen} onOpenChange={(open) => !isChangingEmail && setChangeEmailModalOpen(open)}>
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Change Email Address</DialogTitle>
+            <DialogDescription>
               A confirmation link will be sent to your new email address. Click the link to complete the change.
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Current Email
-                </label>
-                <input
-                  type="email"
-                  value={user.email}
-                  disabled
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Email
-                </label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !isChangingEmail && handleConfirmChangeEmail()}
-                  placeholder="your.new.email@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  autoFocus
-                  disabled={isChangingEmail}
-                />
-              </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="current-email" className="mb-2">
+                Current Email
+              </Label>
+              <Input
+                id="current-email"
+                type="email"
+                value={user.email}
+                disabled
+              />
             </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setChangeEmailModalOpen(false)}
+            <div>
+              <Label htmlFor="new-email" className="mb-2">
+                New Email
+              </Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !isChangingEmail && handleConfirmChangeEmail()}
+                placeholder="your.new.email@example.com"
+                autoFocus
                 disabled={isChangingEmail}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmChangeEmail}
-                disabled={isChangingEmail}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isChangingEmail ? 'Sending...' : 'Send Confirmation'}
-              </button>
+              />
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="flex gap-3 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setChangeEmailModalOpen(false)}
+              disabled={isChangingEmail}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmChangeEmail}
+              disabled={isChangingEmail}
+              loading={isChangingEmail}
+              loadingText="Sending..."
+              className="flex-1"
+            >
+              Send Confirmation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      {changePasswordModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !isChangingPassword) {
-              setChangePasswordModalOpen(false)
-            }
-          }}
-        >
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Change Password</h3>
-            <p className="text-sm text-gray-600 mb-4">
+      <Dialog open={changePasswordModalOpen} onOpenChange={(open) => !isChangingPassword && setChangePasswordModalOpen(open)}>
+        <DialogContent className="sm:max-w-md" showCloseButton={false}>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
               Enter your new password below. Must be at least 8 characters with uppercase, lowercase, and number.
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showNewPassword ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
-                    placeholder="Enter new password"
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    autoFocus
-                    disabled={isChangingPassword}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
-                    disabled={isChangingPassword}
-                    tabIndex={-1}
-                  >
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirm New Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
-                    placeholder="Confirm new password"
-                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isChangingPassword}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
-                    disabled={isChangingPassword}
-                    tabIndex={-1}
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="new-password" className="mb-2">
+                New Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
+                  placeholder="Enter new password"
+                  className="pr-10"
+                  autoFocus
+                  disabled={isChangingPassword}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={isChangingPassword}
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
               </div>
             </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => setChangePasswordModalOpen(false)}
-                disabled={isChangingPassword}
-                className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmChangePassword}
-                disabled={isChangingPassword}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isChangingPassword ? 'Changing...' : 'Change Password'}
-              </button>
+            <div>
+              <Label htmlFor="confirm-password" className="mb-2">
+                Confirm New Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
+                  placeholder="Confirm new password"
+                  className="pr-10"
+                  disabled={isChangingPassword}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={isChangingPassword}
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+          <DialogFooter className="flex gap-3 sm:flex-row">
+            <Button
+              variant="outline"
+              onClick={() => setChangePasswordModalOpen(false)}
+              disabled={isChangingPassword}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmChangePassword}
+              disabled={isChangingPassword}
+              loading={isChangingPassword}
+              loadingText="Changing..."
+              className="flex-1"
+            >
+              Change Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

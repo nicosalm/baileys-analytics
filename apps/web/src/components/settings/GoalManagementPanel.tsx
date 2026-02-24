@@ -4,6 +4,10 @@ import { DollarSign, Calendar, Percent, Users, TrendingUp, Clock, Target } from 
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import type { GoalFormData, GoalPeriod } from '@/types/goal'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 
 const METRIC_CATALOG = [
   { key: 'revenue', label: 'Total Revenue', icon: DollarSign, format: 'currency', placeholder: 'e.g. 50000' },
@@ -162,17 +166,15 @@ export const GoalManagementPanel: React.FC = () => {
                           <span className="text-sm text-gray-500">Target:</span>
                           <div className="relative">
                             {prefix && (
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{prefix}</span>
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-10">{prefix}</span>
                             )}
-                            <input
+                            <Input
                               type="text"
                               inputMode="decimal"
                               value={state.targetValue}
                               onChange={e => handleValueChange(metric.key, e.target.value)}
                               placeholder={metric.placeholder}
-                              className={`w-40 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm ${
-                                prefix ? 'pl-7 pr-3' : 'px-3'
-                              }`}
+                              className={`w-40 h-8 text-sm ${prefix ? 'pl-7' : ''} ${suffix ? 'pr-14' : ''}`}
                             />
                             {suffix && (
                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">{suffix}</span>
@@ -181,32 +183,25 @@ export const GoalManagementPanel: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-500">Period:</span>
-                          <select
-                            value={state.period}
-                            onChange={e => handlePeriodChange(metric.key, e.target.value as GoalPeriod)}
-                            className="py-1.5 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white cursor-pointer"
-                          >
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
-                          </select>
+                          <Select value={state.period} onValueChange={(v) => handlePeriodChange(metric.key, v as GoalPeriod)}>
+                            <SelectTrigger className="w-[120px] h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                              <SelectItem value="yearly">Yearly</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleToggle(metric.key)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    state.isEnabled ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                      state.isEnabled ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
+                <Switch
+                  checked={state.isEnabled}
+                  onCheckedChange={() => handleToggle(metric.key)}
+                />
               </div>
             </div>
           )
@@ -214,13 +209,13 @@ export const GoalManagementPanel: React.FC = () => {
       </div>
 
       <div className="flex justify-end">
-        <button
+        <Button
           onClick={handleSave}
-          disabled={isSaving}
-          className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          loading={isSaving}
+          loadingText="Saving..."
         >
-          {isSaving ? 'Saving...' : 'Save Goals'}
-        </button>
+          Save Goals
+        </Button>
       </div>
     </div>
   )

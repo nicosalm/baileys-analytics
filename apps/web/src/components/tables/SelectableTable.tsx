@@ -1,6 +1,15 @@
 import React from 'react'
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Download, RefreshCw, MoreHorizontal, BarChart3 } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '@/components/ui/dropdown-menu'
 
 interface Column<T> {
   key: keyof T | string
@@ -58,7 +67,6 @@ export function SelectableTable<T extends Record<string, any>>({
   const [searchTerm, setSearchTerm] = React.useState('')
   const [currentPage, setCurrentPage] = React.useState(1)
   const [selectedRows, setSelectedRows] = React.useState<Set<string>>(new Set())
-  const [showBulkMenu, setShowBulkMenu] = React.useState(false)
 
   const filteredData = React.useMemo(() => {
     if (!enableSearch || !searchTerm) return data
@@ -142,7 +150,6 @@ export function SelectableTable<T extends Record<string, any>>({
     if (onBulkAction) {
       onBulkAction(action, selectedRows)
       setSelectedRows(new Set())
-      setShowBulkMenu(false)
     }
   }
 
@@ -171,13 +178,13 @@ export function SelectableTable<T extends Record<string, any>>({
         <div className="flex items-center space-x-4">
           {enableSearch && (
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
                 type="text"
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="pl-10"
               />
             </div>
           )}
@@ -187,29 +194,25 @@ export function SelectableTable<T extends Record<string, any>>({
                 {selectedRows.size} selected
               </div>
               {bulkActions.length > 0 && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowBulkMenu(!showBulkMenu)}
-                    className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity cursor-pointer"
-                  >
-                    <span>Actions</span>
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
-                  {showBulkMenu && (
-                    <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 z-10">
-                      {bulkActions.map((action) => (
-                        <button
-                          key={action.action}
-                          onClick={() => handleBulkAction(action.action)}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-left hover:bg-gray-50 transition-all first:rounded-t-lg last:rounded-b-lg cursor-pointer"
-                        >
-                          {action.icon}
-                          <span>{action.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button>
+                      Actions
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {bulkActions.map((action) => (
+                      <DropdownMenuItem
+                        key={action.action}
+                        onClick={() => handleBulkAction(action.action)}
+                      >
+                        {action.icon}
+                        <span>{action.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </>
           )}
@@ -217,22 +220,24 @@ export function SelectableTable<T extends Record<string, any>>({
 
         <div className="flex items-center space-x-2">
           {enableRefresh && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onRefresh}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               title="Refresh"
             >
               <RefreshCw className="w-4 h-4" />
-            </button>
+            </Button>
           )}
           {enableExport && (
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={onExport}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               title="Export"
             >
               <Download className="w-4 h-4" />
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -243,16 +248,9 @@ export function SelectableTable<T extends Record<string, any>>({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 w-12">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    ref={input => {
-                      if (input) {
-                        input.indeterminate = !allSelected && someSelected
-                      }
-                    }}
-                    onChange={handleSelectAll}
-                    className="cursor-pointer"
+                  <Checkbox
+                    checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                    onCheckedChange={handleSelectAll}
                   />
                 </th>
                 {showRowNumbers && (
@@ -301,11 +299,9 @@ export function SelectableTable<T extends Record<string, any>>({
                     onClick={() => onRowClick?.(item, actualIndex)}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={isSelected}
-                        onChange={() => handleSelectRow(item)}
-                        className="cursor-pointer"
+                        onCheckedChange={() => handleSelectRow(item)}
                       />
                     </td>
                     {showRowNumbers && (
@@ -337,20 +333,22 @@ export function SelectableTable<T extends Record<string, any>>({
           </div>
 
           <div className="flex items-center space-x-2">
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setCurrentPage(1)}
               disabled={currentPage === 1}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronsLeft className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
               disabled={currentPage === 1}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
-            </button>
+            </Button>
 
             <div className="flex items-center space-x-1">
               {[...Array(Math.min(5, totalPages))].map((_, i) => {
@@ -366,35 +364,34 @@ export function SelectableTable<T extends Record<string, any>>({
                 }
 
                 return (
-                  <button
+                  <Button
                     key={i}
+                    variant={currentPage === pageNum ? 'default' : 'ghost'}
+                    size="sm"
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-1 rounded ${
-                      currentPage === pageNum
-                        ? 'bg-blue-600 text-white'
-                        : 'hover:bg-gray-100'
-                    }`}
                   >
                     {pageNum}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
 
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
               disabled={currentPage === totalPages}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setCurrentPage(totalPages)}
               disabled={currentPage === totalPages}
-              className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronsRight className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
       )}

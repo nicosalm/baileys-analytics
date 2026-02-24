@@ -16,6 +16,7 @@ import { BRAND } from '@/constants'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { InitialSyncModal } from '@/components/InitialSyncModal'
 import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
 
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -164,10 +165,10 @@ export const DashboardLayout = () => {
                 <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                 <span className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</span>
               </Link>
-              <button onClick={handleLogout} className="text-gray-600 hover:text-gray-800 flex items-center text-sm transition-all px-3 py-1.5 rounded-md hover:bg-gray-100 cursor-pointer">
-                <LogOut className="w-4 h-4 mr-1.5" />
+              <Button variant="ghost" onClick={handleLogout} className="text-gray-600 hover:text-gray-800 text-sm">
+                <LogOut className="w-4 h-4" />
                 Logout
-              </button>
+              </Button>
             </div>
           </div>
         </header>
@@ -212,12 +213,12 @@ export const DashboardLayout = () => {
                 </div>
               </div>
 
-              <button
+              <Button
                 onClick={handleConnect}
-                className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer`}
+                className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium`}
               >
                 Connect OwnerRez
-              </button>
+              </Button>
 
               <p className="text-center text-xs text-gray-500 mt-4">
                 We never see your OwnerRez password
@@ -271,14 +272,15 @@ export const DashboardLayout = () => {
                     >
                       <Settings className="w-5 h-5" />
                     </Link>
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={handleLogout}
-                      className="relative flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
+                      className="text-sm font-medium text-gray-600 hover:text-gray-900"
                       style={{ isolation: 'isolate' }}
                     >
                       <LogOut className="w-4 h-4" />
                       <span className="hidden sm:inline">Logout</span>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { Clock, ExternalLink } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface ReportHistoryModalProps {
   templateId: string
@@ -34,13 +35,10 @@ export const ReportHistoryModal = ({ templateId, templateName }: ReportHistoryMo
           <p className="text-sm text-gray-500 mb-6">
             Generate your first report to start tracking history.
           </p>
-          <button
-            onClick={handleGenerate}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 cursor-pointer"
-          >
-            <ExternalLink className="w-4 h-4 mr-2" />
+          <Button onClick={handleGenerate}>
+            <ExternalLink className="w-4 h-4" />
             Generate Report
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

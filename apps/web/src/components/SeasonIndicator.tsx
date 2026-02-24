@@ -1,6 +1,7 @@
 import React from 'react'
 import { useSeasons } from '@/hooks/use-api'
 import { Calendar, AlertCircle } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { cn, parseDate, getMonth, getDate } from '@baileys/utils'
 import type { Season } from '@/types/season'
 
@@ -78,9 +79,9 @@ export const SeasonIndicator: React.FC<{
       )}
       
       <div className="group relative">
-        <button className="p-1 hover:bg-gray-100 rounded cursor-pointer">
-          <AlertCircle className="w-4 h-4 text-gray-400" />
-        </button>
+        <Button variant="ghost" size="icon-xs" className="text-gray-400">
+          <AlertCircle className="w-4 h-4" />
+        </Button>
         <div className="absolute bottom-full mb-2 right-0 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
           <p className="mb-1">Active seasons filter your data to show only in-season bookings.</p>
           <p>Bookings tagged as "Blocked" are automatically excluded.</p>

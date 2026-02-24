@@ -9,6 +9,7 @@ import {
   RefreshCw, AlertCircle, Check, Link2, Link2Off, Webhook
 } from 'lucide-react'
 import { ConfirmModal } from '@/components/ConfirmModal'
+import { Button } from '@/components/ui/button'
 
 
 export const IntegrationsTab = () => {
@@ -106,22 +107,21 @@ export const IntegrationsTab = () => {
                     <Check className="w-4 h-4" />
                     Connected
                   </span>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => setDisconnectModalOpen(true)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                    className="text-gray-400 hover:text-red-600 hover:bg-red-50"
                     title="Disconnect OwnerRez"
                   >
                     <Link2Off className="w-5 h-5" />
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
-                  onClick={handleConnect}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
-                >
+                <Button onClick={handleConnect}>
                   <Link2 className="w-4 h-4" />
                   Connect
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -143,13 +143,10 @@ export const IntegrationsTab = () => {
 
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Manual Sync</h3>
                 <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={handleManualSync}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium cursor-pointer"
-                  >
+                  <Button onClick={handleManualSync}>
                     <RefreshCw className="w-4 h-4" />
                     Re-sync All Data (3 years)
-                  </button>
+                  </Button>
                   <p className="text-xs text-gray-500 w-full mt-2">
                     This will re-run the initial sync process, refreshing all properties and bookings from the last 3 years.
                   </p>
