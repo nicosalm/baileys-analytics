@@ -14,35 +14,6 @@ interface SimpleGaugeChartProps {
 
 const RADIAN = Math.PI / 180
 
-// Minimal needle component
-const renderNeedle = (value: number, data: any[], cx: number, cy: number, iR: number, oR: number) => {
-  const total = Math.max(data[0].value, 1)
-  const ang = 180.0 * (1 - value / total)
-  const length = (iR + 2 * oR) / 3
-  const sin = Math.sin(-RADIAN * ang)
-  const cos = Math.cos(-RADIAN * ang)
-  const r = 3
-  const x0 = cx
-  const y0 = cy
-  const xp = x0 + length * cos
-  const yp = y0 + length * sin
-
-  return (
-    <g>
-      {/* Main needle - thinner and cleaner */}
-      <path
-        d={`M${x0} ${y0} L${xp} ${yp}`}
-        stroke="#6B7280"
-        strokeWidth="1.5"
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* Smaller center dot */}
-      <circle cx={x0} cy={y0} r={r} fill="#6B7280" />
-    </g>
-  )
-}
-
 export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   value,
   min = 0,
@@ -83,6 +54,14 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
     }
   }
 
+  // Calculate needle geometry for SVG overlay
+  const needleAngle = 180 - (clampedValue / 100 * 180)
+  const radianAngle = needleAngle * RADIAN
+  const needleLength = (innerRadius + 2 * outerRadius) / 3
+  const needleX = cx + needleLength * Math.cos(-radianAngle)
+  const needleY = cy + needleLength * Math.sin(-radianAngle)
+  const chartHeight = height - 25
+
   return (
     <div
       style={{
@@ -94,7 +73,7 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
       onClick={onClick}
     >
       <div style={{ pointerEvents: onClick ? 'none' : 'auto' }}>
-        <PieChart width={width} height={height - 25}>
+        <PieChart width={width} height={chartHeight}>
           <Pie
             dataKey="value"
             startAngle={180}
@@ -111,9 +90,31 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
               <Cell key={`cell-${index}`} fill={entry.color} />
             ))}
           </Pie>
-          {renderNeedle(clampedValue, [{ value: 100 }], cx, cy, innerRadius, outerRadius)}
         </PieChart>
       </div>
+
+      {/* Needle rendered as SVG overlay so it appears above the pie */}
+      <svg
+        width={width}
+        height={chartHeight}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          pointerEvents: 'none'
+        }}
+      >
+        <line
+          x1={cx}
+          y1={cy}
+          x2={needleX}
+          y2={needleY}
+          stroke="#6B7280"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+        <circle cx={cx} cy={cy} r={3} fill="#6B7280" />
+      </svg>
       
       {/* Value label - positioned well below the gauge to avoid overlap */}
       <div
