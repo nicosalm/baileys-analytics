@@ -297,11 +297,11 @@ oauth.post('/disconnect', authMiddleware, async (c) => {
       .delete()
       .eq('tenant_id', tenantId)
       .eq('provider', 'ownerrez');
-    
+
     if (deleteError) {
       throw deleteError;
     }
-    
+
     const { error: tenantError } = await supabase
       .from('tenants')
       .update({
@@ -309,7 +309,7 @@ oauth.post('/disconnect', authMiddleware, async (c) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', tenantId);
-    
+
     return c.json({ success: true });
   } catch (error) {
     return c.json({ 

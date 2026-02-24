@@ -213,15 +213,15 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
       <div className="flex items-center justify-center space-x-3 text-xs pt-1 border-t">
         <span className="text-gray-600">Occupancy:</span>
         {[
-          { color: 'bg-gray-100', label: '0%' },
-          { color: 'bg-red-100', label: '<25%' },
-          { color: 'bg-yellow-100', label: '25-50%' },
-          { color: 'bg-green-100', label: '50-75%' },
-          { color: 'bg-green-300', label: '75-90%' },
-          { color: 'bg-green-500', label: '>90%' },
+          { color: 'bg-gray-50 border border-gray-200', label: '0%' },
+          { color: 'bg-red-50 border border-red-200', label: '<25%' },
+          { color: 'bg-amber-50 border border-amber-200', label: '25-50%' },
+          { color: 'bg-emerald-50 border border-emerald-200', label: '50-75%' },
+          { color: 'bg-emerald-100 border border-emerald-300', label: '75-90%' },
+          { color: 'bg-emerald-200 border border-emerald-400', label: '>90%' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center space-x-1">
-            <div className={`w-3 h-3 ${color} rounded-sm`} />
+            <div className={`w-4 h-4 ${color} rounded`} />
             <span>{label}</span>
           </div>
         ))}

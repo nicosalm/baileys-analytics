@@ -89,8 +89,8 @@ webhooks.post('/ownerrez', async (c) => {
 		.single();
 
 	if (!tenant) {
-		console.error(`[Webhook] No tenant found for OwnerRez user ID: ${payload.user_id}`);
-		return c.json({ error: 'Tenant not found' }, 404);
+		console.warn(`[Webhook] No tenant found for OwnerRez user ID: ${payload.user_id} — returning 200 to prevent subscription deactivation`);
+		return c.json({ status: 'ignored', reason: 'tenant_not_found' });
 	}
 
 	await supabase
@@ -303,7 +303,7 @@ async function handleBookingUpdate(
 			.upsert({
 				ownerrez_block_id: booking.id,
 				tenant_id: tenantId,
-				property_id: booking.property_id,
+				property_id: blockProperty.id,
 				arrival: booking.arrival,
 				departure: booking.departure,
 				type: booking.type || 'block',
@@ -655,7 +655,7 @@ async function handleEntityDelete(
 			await supabase
 				.from('properties')
 				.update({ active: false, deleted_at: new Date().toISOString() })
-				.eq('ownerrez_property_id', payload.entity_id)
+				.eq('ownerrez_id', payload.entity_id)
 				.eq('tenant_id', tenantId);
 			break;
 

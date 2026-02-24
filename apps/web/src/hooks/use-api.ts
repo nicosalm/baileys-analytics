@@ -53,7 +53,7 @@ export function useDashboardBatch(
 
     if (!fetchResult.success) throw new Error(fetchResult.error)
     return fetchResult.data
-  })
+  }, { refreshInterval: 120000 })
 
   // Normalize: if we have no data yet, always treat as loading regardless
   // of error state. This ensures the first load shows a spinner rather than
@@ -213,6 +213,14 @@ export function useTags() {
     if (!result.success) throw new Error(result.error)
     return result.data
   })
+}
+
+export function useWebhookHealth() {
+  return useSWR<any>('webhook-health', async () => {
+    const result = await api.request('/sync/health')
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  }, { refreshInterval: 60000 })
 }
 
 export function useSyncStatus() {
@@ -705,7 +713,7 @@ export function useBookingsForRange(from?: string, to?: string) {
     const result = await api.getBookings({ startDate: from!, endDate: to!, limit: '1000' })
     if (!result.success) throw new Error(result.error)
     return result.data
-  })
+  }, { refreshInterval: 120000 })
 }
 
 export function useTaxJurisdictions(propertyId?: string) {

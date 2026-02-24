@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
-import { useSyncStatus } from '@/hooks/use-api'
+import { useSyncStatus, useWebhookHealth } from '@/hooks/use-api'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import { useNavigate } from 'react-router-dom'
@@ -20,6 +20,7 @@ export const IntegrationsTab = () => {
   const [isDisconnecting, setIsDisconnecting] = useState(false)
 
   const { data: syncStatus, isLoading, mutate } = useSyncStatus()
+  const { data: webhookHealth } = useWebhookHealth()
 
   if (state.status === 'loading' || isLoading) {
     return <LoadingState />
@@ -134,11 +135,61 @@ export const IntegrationsTab = () => {
                     <Webhook className="w-4 h-4 text-green-600" />
                     <h3 className="text-lg font-semibold text-gray-900">Sync Status</h3>
                   </div>
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                    <p className="text-sm text-green-800">
-                      <span className="font-medium">✓ Real-time webhooks active</span> - Your data automatically syncs when changes occur in OwnerRez.
-                    </p>
-                  </div>
+                  {(() => {
+                    const hours = webhookHealth?.lastWebhookHoursAgo
+                    const hoursDisplay = hours != null ? (hours < 1 ? '<1 hour' : `${Math.round(hours)} hours`) : null
+
+                    if (hours != null && hours < 24) {
+                      return (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <p className="text-sm text-green-800">
+                            <span className="font-medium">✓ Real-time webhooks active</span> — last event {hoursDisplay} ago
+                          </p>
+                        </div>
+                      )
+                    }
+
+                    if (hours != null && hours < 72) {
+                      return (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-amber-800">
+                              <span className="font-medium">⚠ No webhooks received in {hoursDisplay}</span> — data may be stale
+                            </p>
+                            <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
+                              <RefreshCw className="w-3 h-3" />
+                              Re-sync
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (hours != null && hours >= 72) {
+                      return (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-red-800">
+                              <span className="font-medium">✗ Webhooks may be disconnected</span> — no events in {hoursDisplay}
+                            </p>
+                            <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
+                              <RefreshCw className="w-3 h-3" />
+                              Re-sync
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    // Loading or unknown state — show neutral/loading
+                    return (
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                        <p className="text-sm text-gray-600">
+                          <span className="font-medium">Checking webhook status...</span>
+                        </p>
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Manual Sync</h3>
