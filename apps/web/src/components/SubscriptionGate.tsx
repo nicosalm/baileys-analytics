@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import { billingClient } from '@/lib/stripe';
+import { useAuth } from '@/contexts/auth';
 import { PricingPlans } from './PricingPlans';
 import { LoadingState } from './LoadingState';
+import { Footer } from './Footer';
+import { Button } from '@/components/ui/button';
+import { BRAND } from '@/constants';
 
 interface SubscriptionGateProps {
   children: React.ReactNode;
@@ -13,6 +17,8 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
   const [subscriptionData, setSubscriptionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   // pages that don't require subscription
   const publicPaths = ['/settings', '/login', '/signup', '/forgot-password', '/reset-password'];
@@ -51,19 +57,41 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
 
   // allow access if exempt or has active subscription
   if (!isExempt && !hasActiveSubscription) {
+    const handleLogout = async () => {
+      await logout();
+      navigate('/');
+    };
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors mb-6">
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              Back to home
-            </Link>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Subscribe to continue</h2>
-            <p className="text-gray-600">Choose your billing cycle to get started.</p>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* header */}
+        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex justify-between items-center">
+              <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+                <span className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</span>
+              </Link>
+              <Button variant="ghost" onClick={handleLogout} className="text-gray-600 hover:text-gray-800 text-sm">
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
+            </div>
           </div>
-          <PricingPlans onPlanSelect={checkSubscription} />
+        </header>
+
+        {/* main content */}
+        <div className="flex-1 flex items-center justify-center py-12 px-4">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Get started</h2>
+              <p className="text-gray-600">Unlock your vacation rental analytics.</p>
+            </div>
+            <PricingPlans onPlanSelect={checkSubscription} />
+          </div>
         </div>
+
+        <Footer />
       </div>
     );
   }
