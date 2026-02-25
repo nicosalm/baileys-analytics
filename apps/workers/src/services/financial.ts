@@ -59,11 +59,20 @@ interface WeeklyRevenue {
   bookings: number;
 }
 
+export interface ChargeComposition {
+  taxes: number;
+  fees: number;
+  discounts: number;
+  other: number;
+  details: { type: string; description: string; total: number; count: number }[];
+}
+
 export interface PLData {
   metrics: FinancialMetrics;
   platforms: PlatformFinancials[];
   monthlyTrend: MonthlyTrend[];
   weeklyRevenue: WeeklyRevenue[];
+  chargeComposition?: ChargeComposition;
   previousPeriod?: {
     revenue: { gross: number; net: number; taxes: number; platformFees: number; hostFees: number; guestFees: number };
     performance: { netRevenueRate: number };
@@ -151,7 +160,7 @@ export async function getPLData(
     .from('bookings')
     .select(`
       *,
-      booking_charges(amount, type)
+      booking_charges(amount, type, description)
     `)
     .eq('tenant_id', tenantId)
     .lte('arrival', to)
@@ -312,6 +321,39 @@ export async function getPLData(
     feeRate: p.grossRevenue > 0 ? (p.fees / p.grossRevenue) * 100 : 0
   }));
 
+  // Build charge composition breakdown
+  const chargeDetailMap = new Map<string, { type: string; description: string; total: number; count: number }>();
+  let compositionTaxes = 0;
+  let compositionFees = 0;
+  let compositionDiscounts = 0;
+  let compositionOther = 0;
+
+  bookings.forEach(b => {
+    const charges = b.booking_charges || [];
+    charges.forEach((c: any) => {
+      const amount = c.amount || 0;
+      switch (c.type) {
+        case 'tax': compositionTaxes += amount; break;
+        case 'fee': compositionFees += amount; break;
+        case 'discount': compositionDiscounts += amount; break;
+        default: compositionOther += amount; break;
+      }
+      const key = `${c.type}:${c.description || c.type}`;
+      const existing = chargeDetailMap.get(key) || { type: c.type, description: c.description || c.type, total: 0, count: 0 };
+      existing.total += amount;
+      existing.count++;
+      chargeDetailMap.set(key, existing);
+    });
+  });
+
+  const chargeComposition: ChargeComposition = {
+    taxes: compositionTaxes,
+    fees: compositionFees,
+    discounts: compositionDiscounts,
+    other: compositionOther,
+    details: Array.from(chargeDetailMap.values()).sort((a, b) => b.total - a.total)
+  };
+
   const monthlyData = buildTrendData(bookings, from, to, useDaily, useWeekly);
   const weeklyData = buildWeeklyData(bookings);
 
@@ -350,7 +392,8 @@ export async function getPLData(
     },
     platforms,
     monthlyTrend: monthlyData,
-    weeklyRevenue: weeklyData
+    weeklyRevenue: weeklyData,
+    chargeComposition
   };
 }
 

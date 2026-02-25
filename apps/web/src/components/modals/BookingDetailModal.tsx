@@ -146,6 +146,29 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
                 <span className="font-medium">{formatCurrency(booking.host_service_fee)}</span>
               </div>
             )}
+            {data?.charges && data.charges.length > 0 && (
+              <>
+                <div className="pt-2 border-t">
+                  <div className="text-xs text-gray-500 font-medium mb-1.5">Itemized Charges</div>
+                  {data.charges.map((charge: any, i: number) => (
+                    <div key={charge.id || i} className="flex justify-between text-sm py-0.5">
+                      <span className="text-gray-600 flex items-center gap-1.5">
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          charge.type === 'tax' ? 'bg-red-400' :
+                          charge.type === 'fee' ? 'bg-amber-400' :
+                          charge.type === 'discount' ? 'bg-green-400' :
+                          'bg-gray-400'
+                        }`} />
+                        {charge.description || charge.type}
+                      </span>
+                      <span className={`font-medium ${charge.type === 'discount' ? 'text-green-600' : ''}`}>
+                        {charge.type === 'discount' ? '-' : ''}{formatCurrency(Math.abs(charge.amount))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="flex justify-between pt-2 border-t font-semibold">
               <span>Total Amount</span>
               <span className="text-green-600">{formatCurrency(booking?.total_amount)}</span>

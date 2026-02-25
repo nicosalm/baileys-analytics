@@ -11,11 +11,12 @@ export async function getOverviewData(
 	comparisonFrom?: string,
 	comparisonTo?: string
 ) {
-	const [currentMetrics, charts, alerts, recentActivity] = await Promise.all([
+	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([
 		getCurrentPeriodMetrics(supabase, tenantId, from, to, tagIds),
 		getChartsData(supabase, tenantId, from, to, tagIds),
 		getAlerts(supabase, tenantId, from, to),
-		getRecentActivity(supabase, tenantId)
+		getRecentActivity(supabase, tenantId),
+		getUpcomingBookings(supabase, tenantId)
 	]);
 
 	let previousMetrics = null;
@@ -30,6 +31,7 @@ export async function getOverviewData(
 		charts,
 		alerts,
 		recentActivity,
+		upcoming,
 		view: 'overview'
 	};
 }
@@ -493,6 +495,64 @@ async function getRecentActivity(
 			amount: b.total_amount
 		}
 	})) || [];
+}
+
+async function getUpcomingBookings(
+	supabase: SupabaseClient,
+	tenantId: string
+) {
+	const today = new Date().toISOString().split('T')[0];
+	const thirtyDaysOut = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+	const { data: bookings } = await supabase
+		.from('bookings')
+		.select(`
+			id,
+			guest_name,
+			arrival,
+			departure,
+			total_amount,
+			property_id,
+			properties!inner(name)
+		`)
+		.eq('tenant_id', tenantId)
+		.neq('status', 'canceled')
+		.or(`and(arrival.gte.${today},arrival.lte.${thirtyDaysOut}),and(departure.gte.${today},departure.lte.${thirtyDaysOut})`)
+		.order('arrival', { ascending: true })
+		.limit(50);
+
+	if (!bookings || bookings.length === 0) return [];
+
+	const todayDate = new Date(today);
+	const endOfToday = new Date(today);
+	endOfToday.setDate(endOfToday.getDate() + 1);
+	const endOfWeek = new Date(today);
+	endOfWeek.setDate(endOfWeek.getDate() + 7);
+	const endOfMonth = new Date(today);
+	endOfMonth.setDate(endOfMonth.getDate() + 30);
+
+	return bookings.map((b: any) => {
+		const arrivalDate = new Date(b.arrival);
+		const departureDate = new Date(b.departure);
+		const isCheckIn = arrivalDate >= todayDate;
+		const isCheckOut = departureDate >= todayDate && departureDate <= endOfMonth && arrivalDate < todayDate;
+
+		return {
+			id: b.id,
+			guestName: b.guest_name,
+			propertyName: b.properties?.name || 'Unknown',
+			arrival: b.arrival,
+			departure: b.departure,
+			amount: b.total_amount,
+			type: isCheckIn ? 'check-in' : 'check-out',
+			isToday: isCheckIn
+				? arrivalDate.toISOString().split('T')[0] === today
+				: departureDate.toISOString().split('T')[0] === today,
+			isThisWeek: isCheckIn
+				? arrivalDate < endOfWeek
+				: departureDate < endOfWeek,
+		};
+	});
 }
 
 function formatOverviewMetrics(current: any, previous: any = null) {

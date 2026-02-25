@@ -10,7 +10,7 @@ import {
 import type { DateRange } from '@/types/dashboard'
 import type { Season } from '@/types/season'
 
-export type ComparisonType = 'lastPeriod' | 'lastYear' | 'none'
+export type ComparisonType = 'lastPeriod' | 'lastYear' | 'custom' | 'none'
 
 export interface ComparisonResult {
   range?: DateRange
@@ -127,9 +127,13 @@ export function calculateComparisonRange(
 export function getComparisonLabel(
   comparisonType: ComparisonType,
   isSeasonActive: boolean,
-  options?: { yearOffset?: number, seasonName?: string, baseYear?: number }
+  options?: { yearOffset?: number, seasonName?: string, baseYear?: number, customLabel?: string }
 ): string {
   if (comparisonType === 'none') return 'No Comparison'
+
+  if (comparisonType === 'custom') {
+    return options?.customLabel || 'vs Custom Range'
+  }
 
   if (comparisonType === 'lastPeriod') {
     return isSeasonActive ? 'vs Previous Period' : 'vs Last Period'

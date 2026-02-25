@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import { useDashboardBatch, useGoalProgress, useSeasons } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
@@ -6,7 +6,8 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisp
 import {
   TrendingUp, TrendingDown,
   DollarSign, Users, Calendar, Clock,
-  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink
+  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink,
+  LogIn, LogOut
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
@@ -406,7 +407,10 @@ export const OverviewDashboard = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Your Business at a Glance</h2>
             <p className="text-gray-600 text-sm mt-1">
-              Everything you need to know about how your properties are doing
+              {filters.selectedTags.length > 0
+                ? `Filtered: ${filters.selectedTags.map(t => t.name).filter(Boolean).join(', ') || 'Selected tags'}`
+                : 'All Properties'
+              } — Everything you need to know about how your properties are doing
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -728,6 +732,17 @@ export const OverviewDashboard = () => {
             </Pie>
             <Tooltip content={<BookingSourceTooltip />} />
           </PieChart>
+          {(() => {
+            const unassigned = bookingSourceChartData.find((s: any) => s.source === 'Unassigned' || s.source === 'unassigned')
+            if (unassigned && unassigned.count > 0) {
+              return (
+                <p className="text-xs text-amber-600 text-center mt-1">
+                  {unassigned.count} booking{unassigned.count !== 1 ? 's' : ''} unassigned
+                </p>
+              )
+            }
+            return null
+          })()}
         </ChartWrapper>
       </div>
 
@@ -846,6 +861,93 @@ export const OverviewDashboard = () => {
         </div>
       </div>
 
+      {/* Upcoming Section */}
+      {data.upcoming && data.upcoming.length > 0 && (
+        <UpcomingSection upcoming={data.upcoming} />
+      )}
+
+    </div>
+  )
+}
+
+const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
+  const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'month'>('week')
+
+  const filtered = useMemo(() => {
+    switch (filter) {
+      case 'today':
+        return upcoming.filter((b: any) => b.isToday)
+      case 'week':
+        return upcoming.filter((b: any) => b.isThisWeek)
+      case 'month':
+        return upcoming
+      default:
+        return upcoming
+    }
+  }, [upcoming, filter])
+
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-blue-600" />
+          <h3 className="text-lg font-bold">Upcoming</h3>
+          <span className="text-xs text-gray-500">({filtered.length})</span>
+        </div>
+        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+          {[
+            { key: 'today' as const, label: 'Today' },
+            { key: 'week' as const, label: 'This Week' },
+            { key: 'month' as const, label: 'This Month' },
+          ].map(btn => (
+            <Button
+              key={btn.key}
+              variant="ghost"
+              size="sm"
+              onClick={() => setFilter(btn.key)}
+              className={filter === btn.key
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+              }
+            >
+              {btn.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2 max-h-64 overflow-y-auto">
+        {filtered.length > 0 ? (
+          filtered.map((booking: any) => (
+            <div key={booking.id} className="flex items-center justify-between py-2 border-b last:border-0">
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  booking.type === 'check-in' ? 'bg-green-100' : 'bg-orange-100'
+                }`}>
+                  {booking.type === 'check-in'
+                    ? <LogIn className="w-4 h-4 text-green-600" />
+                    : <LogOut className="w-4 h-4 text-orange-600" />
+                  }
+                </div>
+                <div>
+                  <div className="text-sm font-medium">{booking.guestName}</div>
+                  <div className="text-xs text-gray-500">
+                    {booking.propertyName} — {booking.type === 'check-in' ? 'Check-in' : 'Check-out'}{' '}
+                    {formatDateDisplay(new Date(booking.type === 'check-in' ? booking.arrival : booking.departure))}
+                  </div>
+                </div>
+              </div>
+              {booking.amount > 0 && (
+                <span className="text-sm font-medium text-green-600">{formatCurrency(booking.amount)}</span>
+              )}
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-6 text-gray-500">
+            <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No upcoming check-ins or check-outs {filter === 'today' ? 'today' : filter === 'week' ? 'this week' : 'this month'}</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

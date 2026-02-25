@@ -63,6 +63,8 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   const [compOpen, setCompOpen] = useState(false)
   const [customRangeOpen, setCustomRangeOpen] = useState(false)
   const [tempCustomRange, setTempCustomRange] = useState<DateRange>(value)
+  const [customCompRangeOpen, setCustomCompRangeOpen] = useState(false)
+  const [tempCustomCompRange, setTempCustomCompRange] = useState<DateRange>(value)
 
   // store onChange in ref to avoid dependency array issues
   const onChangeRef = useRef(onChange)
@@ -102,7 +104,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
   // Check if current comparison is still valid when date range changes
   useEffect(() => {
-    if (comparisonType !== 'none' && value.from && value.to) {
+    if (comparisonType !== 'none' && comparisonType !== 'custom' && value.from && value.to) {
       const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
       const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
       const comparisonResult = calculateComparisonRange(value, comparisonType, activeSeason, offset)
@@ -219,7 +221,10 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   const handlePeriodSelect = (option: PeriodOption) => {
     const range = option.getRange(activeSeasons)
 
-    if (comparisonType !== 'none') {
+    if (comparisonType === 'custom' && comparisonRange) {
+      // Keep existing custom comparison when changing period
+      onChange(range, comparisonRange, buildComparisonLabel(comparisonType, comparisonYearOffset, range.from))
+    } else if (comparisonType !== 'none') {
       const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
       const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
       const comparisonResult = calculateComparisonRange(range, comparisonType, activeSeason, offset)
@@ -524,9 +529,64 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                 </button>
               )
             })}
+            <div className="border-t my-1" />
+            <button
+              onClick={() => {
+                setTempCustomCompRange(value)
+                setCustomCompRangeOpen(true)
+                setCompOpen(false)
+              }}
+              className={cn(
+                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
+                comparisonType === 'custom'
+                  ? "bg-blue-50 text-blue-700"
+                  : "hover:bg-gray-100 text-gray-700"
+              )}
+            >
+              <span>Custom Comparison...</span>
+              {comparisonType === 'custom' && <Check className="w-4 h-4" />}
+            </button>
           </PopoverContent>
         </Popover>
       </div>
+
+      {/* Custom Comparison Range Modal */}
+      {customCompRangeOpen && (
+        <Modal
+          isOpen={customCompRangeOpen}
+          onClose={() => setCustomCompRangeOpen(false)}
+          title="Select Comparison Date Range"
+          size="xl"
+        >
+          <div>
+            <p className="text-sm text-gray-500 mb-4">Choose a date range to compare against your current selection.</p>
+            <InlineDateRangePicker
+              value={tempCustomCompRange}
+              onChange={setTempCustomCompRange}
+              maxDays={1825}
+              className="w-full"
+            />
+            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+              <Button variant="ghost" onClick={() => setCustomCompRangeOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  if (tempCustomCompRange.from && tempCustomCompRange.to) {
+                    setComparisonType('custom')
+                    const fromDate = parseDate(tempCustomCompRange.from)
+                    const toDate = parseDate(tempCustomCompRange.to)
+                    const label = `vs ${format(fromDate, 'MMM d')} – ${format(toDate, 'MMM d, yyyy')}`
+                    onChange(value, tempCustomCompRange, label)
+                  }
+                  setCustomCompRangeOpen(false)
+                }}
+                disabled={!tempCustomCompRange.from || !tempCustomCompRange.to}
+              >
+                Apply Comparison
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Custom Range Modal */}
       {customRangeOpen && (

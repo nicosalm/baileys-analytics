@@ -361,6 +361,57 @@ export const PLView: React.FC<PLViewProps> = ({
           </div>
         </div>
       
+      {/* Charge Composition Breakdown */}
+      {data?.chargeComposition && data.chargeComposition.details.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h4 className="font-semibold text-gray-900 mb-4">Revenue Component Breakdown</h4>
+          <p className="text-sm text-gray-500 mb-4">Itemized charges from booking data (taxes, fees, discounts)</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {data.chargeComposition.taxes > 0 && (
+              <div className="bg-red-50 rounded-lg p-3">
+                <div className="text-xs text-red-600 font-medium">Taxes</div>
+                <div className="text-lg font-bold text-red-700">{formatCurrency(data.chargeComposition.taxes)}</div>
+              </div>
+            )}
+            {data.chargeComposition.fees > 0 && (
+              <div className="bg-amber-50 rounded-lg p-3">
+                <div className="text-xs text-amber-600 font-medium">Fees</div>
+                <div className="text-lg font-bold text-amber-700">{formatCurrency(data.chargeComposition.fees)}</div>
+              </div>
+            )}
+            {data.chargeComposition.discounts > 0 && (
+              <div className="bg-green-50 rounded-lg p-3">
+                <div className="text-xs text-green-600 font-medium">Discounts</div>
+                <div className="text-lg font-bold text-green-700">-{formatCurrency(data.chargeComposition.discounts)}</div>
+              </div>
+            )}
+            {data.chargeComposition.other > 0 && (
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-xs text-gray-600 font-medium">Other</div>
+                <div className="text-lg font-bold text-gray-700">{formatCurrency(data.chargeComposition.other)}</div>
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            {data.chargeComposition.details.slice(0, 10).map((detail: any, i: number) => (
+              <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100 last:border-0">
+                <span className="text-gray-600 flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${
+                    detail.type === 'tax' ? 'bg-red-400' :
+                    detail.type === 'fee' ? 'bg-amber-400' :
+                    detail.type === 'discount' ? 'bg-green-400' :
+                    'bg-gray-400'
+                  }`} />
+                  {detail.description}
+                  <span className="text-xs text-gray-400">({detail.count} bookings)</span>
+                </span>
+                <span className="font-medium">{formatCurrency(detail.total)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {showTips && profitability.operatingMargin < 60 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
           <div className="flex items-start">

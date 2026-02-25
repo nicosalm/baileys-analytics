@@ -66,6 +66,75 @@ guests.get('/', cache({ ttl: 3600 }), async (c) => {
 	return c.json(currentData);
 });
 
+guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
+	const { startMonth, startDay, endMonth, endDay, yearsBack = '3' } = c.req.query();
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
+
+	if (!startMonth || !startDay || !endMonth || !endDay) {
+		return c.json({ error: 'startMonth, startDay, endMonth, endDay are required' }, 400);
+	}
+
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
+
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	const currentYear = new Date().getFullYear();
+	const numYears = Math.min(parseInt(yearsBack) || 3, 5);
+	const results: any[] = [];
+
+	for (let offset = 0; offset < numYears; offset++) {
+		const year = currentYear - offset;
+		const rangeFrom = `${year}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+		const rangeTo = `${year}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+
+		const { data: bookings } = await supabase
+			.from('bookings')
+			.select(`
+				id,
+				guest_name,
+				guest_email,
+				arrival,
+				departure,
+				total_amount,
+				platform,
+				property_id,
+				properties!inner(name)
+			`)
+			.eq('tenant_id', tenant.id)
+			.neq('status', 'canceled')
+			.lte('arrival', rangeTo)
+			.gte('departure', rangeFrom)
+			.order('arrival', { ascending: true });
+
+		results.push({
+			year,
+			from: rangeFrom,
+			to: rangeTo,
+			bookings: (bookings || []).map((b: any) => ({
+				id: b.id,
+				guestName: b.guest_name,
+				guestEmail: b.guest_email,
+				arrival: b.arrival,
+				departure: b.departure,
+				amount: b.total_amount,
+				platform: b.platform || 'Unassigned',
+				propertyName: b.properties?.name || 'Unknown'
+			})),
+			guestCount: new Set((bookings || []).map((b: any) => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase())).size,
+			totalRevenue: (bookings || []).reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0)
+		});
+	}
+
+	return c.json({ results });
+});
+
 guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 	const guestId = decodeURIComponent(c.req.param('guestId'));
 	const supabase = createSupabaseClient(c.env);
@@ -98,7 +167,8 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			guest_email,
 			guest_phone,
 			property_id,
-			ownerrez_booking_id
+			ownerrez_booking_id,
+			booking_charges(id, type, description, amount)
 		`)
 		.eq('tenant_id', tenant.id)
 		.neq('status', 'canceled');
@@ -192,7 +262,8 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) /
 				(1000 * 60 * 60 * 24)
 			) : 0,
-			ownerrezBookingId: b.ownerrez_booking_id
+			ownerrezBookingId: b.ownerrez_booking_id,
+			charges: (b as any).booking_charges || []
 		})),
 		spendingTrend
 	});

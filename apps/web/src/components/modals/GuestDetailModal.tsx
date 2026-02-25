@@ -1,8 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink } from 'lucide-react'
+import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronRight, ChevronDown } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -38,6 +38,110 @@ const GuestSpendingTooltip = ({ active, payload, label }: any) => {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
+  const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
+
+  return (
+    <div className="bg-white rounded-lg border overflow-hidden">
+      <div className="max-h-96 overflow-y-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 sticky top-0">
+            <tr>
+              <th className="text-left p-4 text-sm font-medium text-gray-700">Property</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
+              <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
+              <th className="p-4"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookingHistory.map((booking: any) => {
+              const hasCharges = booking.charges && booking.charges.length > 0
+              const isExpanded = expandedBooking === booking.id
+
+              return (
+                <>
+                  <tr
+                    key={booking.id}
+                    className={`border-t ${hasCharges ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                    onClick={() => hasCharges && setExpandedBooking(isExpanded ? null : booking.id)}
+                  >
+                    <td className="p-4">
+                      <div className="flex items-center gap-1.5">
+                        {hasCharges && (
+                          isExpanded
+                            ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            : <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        )}
+                        <div>
+                          <div className="font-medium text-gray-900">{booking.propertyName}</div>
+                          <div className="text-sm text-gray-500">{booking.nights} nights</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 text-sm">
+                      {formatDateDisplay(new Date(booking.arrival))}
+                    </td>
+                    <td className="p-4 text-sm">
+                      {formatDateDisplay(new Date(booking.departure))}
+                    </td>
+                    <td className="p-4 text-sm font-medium">
+                      {formatCurrency(booking.totalAmount)}
+                    </td>
+                    <td className="p-4">
+                      <StatusBadge status={booking.status} />
+                    </td>
+                    <td className="p-4">
+                      {booking.ownerrezBookingId && (
+                        <a
+                          href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Open in OwnerRez"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                    </td>
+                  </tr>
+                  {isExpanded && hasCharges && (
+                    <tr key={`${booking.id}-charges`} className="bg-gray-50">
+                      <td colSpan={6} className="px-8 py-3">
+                        <div className="text-xs font-medium text-gray-500 mb-2">Charge Breakdown</div>
+                        <div className="space-y-1">
+                          {booking.charges.map((charge: any, i: number) => (
+                            <div key={charge.id || i} className="flex justify-between text-sm">
+                              <span className="text-gray-600 flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  charge.type === 'tax' ? 'bg-red-400' :
+                                  charge.type === 'fee' ? 'bg-amber-400' :
+                                  charge.type === 'discount' ? 'bg-green-400' :
+                                  'bg-gray-400'
+                                }`} />
+                                {charge.description || charge.type}
+                              </span>
+                              <span className={`font-medium ${charge.type === 'discount' ? 'text-green-600' : ''}`}>
+                                {charge.type === 'discount' ? '-' : ''}{formatCurrency(Math.abs(charge.amount))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )
@@ -258,61 +362,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
           </TabsContent>
 
           <TabsContent value="bookings">
-            <div className="bg-white rounded-lg border overflow-hidden">
-              <div className="max-h-96 overflow-y-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Property</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
-                      <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
-                      <th className="p-4"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookingHistory.map((booking: any) => (
-                      <tr
-                        key={booking.id}
-                        className="border-t"
-                      >
-                        <td className="p-4">
-                          <div className="font-medium text-gray-900">{booking.propertyName}</div>
-                          <div className="text-sm text-gray-500">{booking.nights} nights</div>
-                        </td>
-                        <td className="p-4 text-sm">
-                          {formatDateDisplay(new Date(booking.arrival))}
-                        </td>
-                        <td className="p-4 text-sm">
-                          {formatDateDisplay(new Date(booking.departure))}
-                        </td>
-                        <td className="p-4 text-sm font-medium">
-                          {formatCurrency(booking.totalAmount)}
-                        </td>
-                        <td className="p-4">
-                          <StatusBadge status={booking.status} />
-                        </td>
-                        <td className="p-4">
-                          {booking.ownerrezBookingId && (
-                            <a
-                              href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-gray-400 hover:text-blue-600 transition-colors"
-                              title="Open in OwnerRez"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <BookingHistoryTable bookingHistory={bookingHistory} />
           </TabsContent>
         </Tabs>
         </div>

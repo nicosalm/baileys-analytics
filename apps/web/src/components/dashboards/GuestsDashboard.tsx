@@ -3,7 +3,8 @@ import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
-import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3 } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X } from 'lucide-react'
+import { api } from '@/lib/api'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
@@ -585,6 +586,8 @@ export const GuestsDashboard = () => {
                 </ChartWrapper>
             </div>
 
+            <RecurringDateSearch />
+
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-4 border-b border-gray-200">
                     <div className="flex justify-between items-center">
@@ -651,6 +654,132 @@ export const GuestsDashboard = () => {
                     emptyMessage="No guests found for the selected criteria"
                 />
             </div>
+        </div>
+    )
+}
+
+const RecurringDateSearch = () => {
+    const [isOpen, setIsOpen] = useState(false)
+    const [startMonth, setStartMonth] = useState('7')
+    const [startDay, setStartDay] = useState('1')
+    const [endMonth, setEndMonth] = useState('7')
+    const [endDay, setEndDay] = useState('7')
+    const [yearsBack, setYearsBack] = useState('3')
+    const [results, setResults] = useState<any[] | null>(null)
+    const [loading, setLoading] = useState(false)
+
+    const handleSearch = useCallback(async () => {
+        setLoading(true)
+        try {
+            const params = new URLSearchParams({
+                startMonth, startDay, endMonth, endDay, yearsBack
+            })
+            const result = await api.request(`/guests/recurring-search?${params}`) as any
+            if (result.success) {
+                setResults(result.data.results)
+            }
+        } catch {
+            // silently fail
+        } finally {
+            setLoading(false)
+        }
+    }, [startMonth, startDay, endMonth, endDay, yearsBack])
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+    if (!isOpen) {
+        return (
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsOpen(true)}
+                className="flex items-center gap-2"
+            >
+                <Search className="w-4 h-4" />
+                Search Across Years
+            </Button>
+        )
+    }
+
+    return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <Search className="w-5 h-5 text-blue-600" />
+                    <h3 className="text-lg font-bold">Search Across Years</h3>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => { setIsOpen(false); setResults(null) }}>
+                    <X className="w-4 h-4" />
+                </Button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Find guests who stayed during the same date window across multiple years (e.g., 4th of July guests for past 3 years)</p>
+            <div className="flex flex-wrap items-end gap-3 mb-4">
+                <div>
+                    <label className="text-xs text-gray-500 block mb-1">From</label>
+                    <div className="flex gap-1">
+                        <select value={startMonth} onChange={e => setStartMonth(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
+                            {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                        </select>
+                        <input type="number" min="1" max="31" value={startDay} onChange={e => setStartDay(e.target.value)} className="border rounded px-2 py-1.5 text-sm w-16" />
+                    </div>
+                </div>
+                <div>
+                    <label className="text-xs text-gray-500 block mb-1">To</label>
+                    <div className="flex gap-1">
+                        <select value={endMonth} onChange={e => setEndMonth(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
+                            {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                        </select>
+                        <input type="number" min="1" max="31" value={endDay} onChange={e => setEndDay(e.target.value)} className="border rounded px-2 py-1.5 text-sm w-16" />
+                    </div>
+                </div>
+                <div>
+                    <label className="text-xs text-gray-500 block mb-1">Years back</label>
+                    <select value={yearsBack} onChange={e => setYearsBack(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
+                        {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                </div>
+                <Button onClick={handleSearch} disabled={loading} size="sm">
+                    {loading ? 'Searching...' : 'Search'}
+                </Button>
+            </div>
+
+            {results && (
+                <div className="space-y-4">
+                    {results.map((yearData: any) => (
+                        <div key={yearData.year} className="border rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-semibold text-gray-900">{yearData.year}</h4>
+                                <div className="flex items-center gap-4 text-sm text-gray-500">
+                                    <span>{yearData.guestCount} guests</span>
+                                    <span>{yearData.bookings.length} bookings</span>
+                                    <span className="text-green-600 font-medium">{formatCurrency(yearData.totalRevenue)}</span>
+                                </div>
+                            </div>
+                            {yearData.bookings.length > 0 ? (
+                                <div className="space-y-1.5">
+                                    {yearData.bookings.map((b: any) => (
+                                        <div key={b.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-gray-100">
+                                            <div>
+                                                <span className="font-medium">{b.guestName}</span>
+                                                <span className="text-gray-400 mx-2">at</span>
+                                                <span className="text-gray-600">{b.propertyName}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-gray-500 text-xs">
+                                                    {formatDateDisplay(new Date(b.arrival))} - {formatDateDisplay(new Date(b.departure))}
+                                                </span>
+                                                <span className="font-medium text-green-600">{formatCurrency(b.amount)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-gray-400">No bookings in this period</p>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
