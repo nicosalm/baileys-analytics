@@ -194,7 +194,7 @@ export const GuestsDashboard = () => {
         { key: 'all' as const, label: 'All', handler: handleViewAll },
         { key: 'repeat' as const, label: 'Repeat', handler: handleViewRepeat },
         { key: 'new' as const, label: 'New', handler: handleViewNew },
-        { key: 'top' as const, label: 'Top 20%', handler: handleViewTop },
+        { key: 'top' as const, label: 'Top Spenders', handler: handleViewTop },
     ], [handleViewAll, handleViewRepeat, handleViewNew, handleViewTop])
 
     const handleSort = useCallback((column: string) => {
@@ -218,20 +218,9 @@ export const GuestsDashboard = () => {
             sortable: true,
             width: 250,
             render: (guest: GuestListItem) => {
-                const isRepeat = (guest.periodBookings || guest.bookingCount) > 1
-                const isNew = new Date(guest.firstVisit) >= new Date(filters.dateRange.from)
-
                 return (
                     <div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium">{guest.name}</span>
-                            {isRepeat && (
-                                <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded-md font-medium">Repeat</span>
-                            )}
-                            {isNew && (
-                                <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-md font-medium">New</span>
-                            )}
-                        </div>
+                        <div className="font-medium">{guest.name}</div>
                         {guest.email && <div className="text-sm text-gray-500 truncate">{guest.email}</div>}
                         {guest.phone && <div className="text-sm text-gray-500 truncate">{guest.phone}</div>}
                     </div>
@@ -438,8 +427,11 @@ export const GuestsDashboard = () => {
                     <div className="flex items-start">
                         <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
                         <div className="text-sm text-blue-800">
-                            <strong>Guest Analysis:</strong> Metrics show guests who had bookings in the selected period.
-                            Guest totals and spending reflect their activity during this timeframe only.
+                            <strong>Understanding Your Guests:</strong> All metrics reflect guests with bookings in the selected period.
+                            Use the <strong>filter buttons</strong> to segment by repeat, new, or top spenders,
+                            the <strong>source chart</strong> to see where guests come from,
+                            and <strong>Search Across Years</strong> to find returning guests for the same dates.
+                            Click any row to view a guest's full profile and booking history.
                         </div>
                     </div>
                 </div>
@@ -627,7 +619,7 @@ export const GuestsDashboard = () => {
                             {viewMode === 'all' && 'Showing all guests'}
                             {viewMode === 'repeat' && 'Showing returning guests (2+ lifetime stays)'}
                             {viewMode === 'new' && 'Showing first-time guests in this period'}
-                            {viewMode === 'top' && 'Showing top 20% of guests by spending in this period'}
+                            {viewMode === 'top' && 'Showing top 20% by revenue this period'}
                             {staysFilter !== 'any' && (
                                 <span>
                                     {viewMode !== 'all' ? ' ' : ''}
