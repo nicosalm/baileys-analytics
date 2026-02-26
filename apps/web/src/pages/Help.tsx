@@ -1,6 +1,10 @@
 import { DocsLayout } from '@/components/DocsLayout'
 import { Link } from 'react-router-dom'
 
+const SLink = ({ tab, children }: { tab: string; children: React.ReactNode }) => (
+  <Link to={`/settings?tab=${tab}`} className="text-blue-600 hover:text-blue-700">{children}</Link>
+)
+
 export const Help = () => {
   return (
     <DocsLayout>
@@ -37,29 +41,25 @@ export const Help = () => {
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How do I connect OwnerRez?</h3>
               <p className="text-gray-700 text-sm mb-2">
-                1. Go to <strong>Settings → Integrations</strong><br />
-                2. Click <strong>"Connect to OwnerRez"</strong><br />
-                3. Log in to your OwnerRez account and authorize the connection<br />
-                4. Wait 2-5 minutes for initial data sync to complete
+                Head to <SLink tab="integrations">Settings → Integrations</SLink> and click "Connect to OwnerRez." You'll log in to your OwnerRez account and
+                authorize the connection. The initial data sync takes a couple minutes after that.
               </p>
               <p className="text-gray-600 text-sm">
-                The connection uses OAuth, so we never see your OwnerRez password.
+                We use OAuth, so we never see your OwnerRez password.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How long does the first sync take?</h3>
               <p className="text-gray-700 text-sm">
-                Initial sync typically takes <strong>2-5 minutes</strong>. We import 3 years of historical bookings plus 1 year of future bookings.
-                You can watch the progress in real-time after connecting.
+                Usually 2-5 minutes. We pull in 3 years of historical bookings and 1 year of future bookings. You can watch the progress after connecting.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Is my data automatically updated?</h3>
               <p className="text-gray-700 text-sm">
-                After initial sync, Baileys Analytics uses webhooks to receive real-time updates from OwnerRez.
-                When you create, update, or cancel a booking in OwnerRez, it appears in your dashboard within seconds.
+                After the first sync, we use webhooks to get real-time updates from OwnerRez. When you create, update, or cancel a booking, it shows up on your dashboard within seconds.
               </p>
             </div>
           </div>
@@ -73,57 +73,54 @@ export const Help = () => {
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Why isn't my data showing?</h3>
               <p className="text-gray-700 text-sm mb-2">
-                Check these common issues:
+                A few things to check:
               </p>
               <ul className="text-gray-700 text-sm list-disc ml-6 space-y-1">
-                <li>Verify you're connected to OwnerRez (Settings → Integrations)</li>
-                <li>Check if initial sync completed successfully</li>
-                <li>Try manually re-syncing data from Settings → Integrations</li>
-                <li>Ensure your OwnerRez account has properties and bookings</li>
+                <li>Make sure you're connected to OwnerRez in <SLink tab="integrations">Settings → Integrations</SLink></li>
+                <li>Check if the initial sync finished</li>
+                <li>Try a manual re-sync from <SLink tab="integrations">Settings → Integrations</SLink></li>
+                <li>Make sure your OwnerRez account actually has properties and bookings</li>
               </ul>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Why is guest contact information missing?</h3>
               <p className="text-gray-700 text-sm">
-                OwnerRez stores guest contact info separately from bookings. Run <strong>Guest Details Sync</strong> from
-                Settings → Integrations to backfill missing email addresses and phone numbers.
+                OwnerRez stores guest contact info separately from bookings. Run a Guest Details Sync from {' '}
+                <SLink tab="integrations">Settings → Integrations</SLink> to backfill missing emails and phone numbers.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">What data do you sync from OwnerRez?</h3>
               <p className="text-gray-700 text-sm">
-                We sync properties, bookings, guests, tags, and blocks/unavailable periods. See our complete
+                Properties, bookings, guests, tags, and blocks. See the
                 <Link to="/docs/ownerrez-data" className="text-blue-600 hover:text-blue-700 ml-1">OwnerRez Data Guide</Link> for
-                a detailed breakdown.
+                a full breakdown.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How accurate is the dashboard data?</h3>
               <p className="text-gray-700 text-sm mb-2">
-                Dashboard data reflects what is available from the OwnerRez API. Bookings, guest details, property info, and charge breakdowns
-                are synced automatically and stay up to date via webhooks.
+                Bookings, guest details, property info, and charge breakdowns all come straight from the OwnerRez API and stay current via webhooks.
               </p>
               <p className="text-gray-700 text-sm">
-                However, some values are not available through the API and must be configured by you in <strong>Settings</strong>:
+                A few things aren't available through the API, so you'll need to set them up yourself:
               </p>
               <ul className="text-gray-700 text-sm list-disc ml-6 space-y-1 mt-2">
-                <li><strong>Platform fees</strong> (Airbnb, Vrbo, etc.) — configure in Settings → Tax & Fees</li>
-                <li><strong>Operating expenses</strong> (cleaning, maintenance, etc.) — enter manually</li>
-                <li><strong>Custom tax rates</strong> — configure in Settings → Tax & Fees</li>
+                <li>Platform fees (Airbnb, Vrbo, etc.) in <SLink tab="platform-fees">Settings → Platform Fees</SLink></li>
+                <li>Operating expenses like cleaning and maintenance in <SLink tab="expenses">Settings → Expenses</SLink></li>
               </ul>
               <p className="text-gray-600 text-sm mt-2">
-                The accuracy of net revenue, profit, and tax calculations depends on these values being set correctly.
+                Net revenue and profit calculations depend on these being set correctly.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How do I manually sync my data?</h3>
               <p className="text-gray-700 text-sm">
-                Go to <strong>Settings → Integrations</strong> and click <strong>"Re-sync All Data"</strong>. This refreshes
-                all properties and bookings from OwnerRez.
+                Go to <SLink tab="integrations">Settings → Integrations</SLink> and click "Re-sync All Data." This refreshes everything from OwnerRez.
               </p>
             </div>
           </div>
@@ -137,46 +134,38 @@ export const Help = () => {
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How much does Baileys Analytics cost?</h3>
               <p className="text-gray-700 text-sm mb-2">
-                <strong>Trial:</strong> $1 for the first 30 days<br />
-                <strong>After trial:</strong> $20/month or $192/year (20% discount)
-              </p>
-              <p className="text-gray-600 text-sm">
-                Includes unlimited properties, reports, and data exports.
+                The first 30 days are $1. After that, it's $20/month or $192/year (saves 20%). Includes unlimited properties, reports, and data exports.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How do I cancel my subscription?</h3>
               <p className="text-gray-700 text-sm mb-2">
-                1. Go to <strong>Settings → Billing</strong><br />
-                2. Click <strong>"Manage Subscription"</strong><br />
-                3. Click <strong>"Cancel Subscription"</strong> in the Stripe customer portal
+                Go to <SLink tab="billing">Settings → Billing</SLink>, click "Manage Subscription," then cancel from the Stripe customer portal.
               </p>
               <p className="text-gray-600 text-sm">
-                Your access continues until the end of your current billing period. You can cancel anytime.
+                You keep access until the end of your current billing period.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Can I switch between monthly and yearly billing?</h3>
               <p className="text-gray-700 text-sm">
-                Yes! Go to <strong>Settings → Billing</strong> and click <strong>"Manage Subscription"</strong> to change your billing cycle.
-                You'll get a prorated credit or charge based on the switch.
+                Go to <SLink tab="billing">Settings → Billing</SLink> and click "Manage Subscription" to change your billing cycle. You'll get a prorated credit or charge.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Do you offer refunds?</h3>
               <p className="text-gray-700 text-sm">
-                All payments are non-refundable. The 30-day $1 trial allows you to evaluate the full platform
-                before committing to regular pricing.
+                Payments are non-refundable. The $1 trial gives you 30 days to try everything before committing.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Are there any usage limits?</h3>
               <p className="text-gray-700 text-sm">
-                Your subscription includes unlimited properties, bookings, reports, and API calls.
+                No limits. Unlimited properties, bookings, reports, and API calls.
               </p>
             </div>
           </div>
@@ -188,34 +177,30 @@ export const Help = () => {
 
           <div className="space-y-6">
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">How do I configure tax rates?</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">How do I configure platform fees?</h3>
               <p className="text-gray-700 text-sm">
-                Go to <strong>Settings → Tax & Fees</strong> to add property tax rates and platform fees. This helps calculate accurate
-                net revenue after taxes and platform commissions.
+                Go to <SLink tab="platform-fees">Settings → Platform Fees</SLink>. Add your platform service fees per property so net revenue calculations are accurate.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How do seasons work?</h3>
               <p className="text-gray-700 text-sm">
-                Seasons let you filter data by custom date ranges (e.g., "Summer 2024", "Winter Ski Season"). Create seasons in
-                <strong> Settings → Seasons</strong>, then select them from the dashboard filter bar to analyze performance for specific periods.
+                Seasons let you define custom date ranges like "Summer 2024" or "Ski Season." Create them in <SLink tab="seasons">Settings → Seasons</SLink>, then use the dashboard filter bar to view performance for that period.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Can I export my data?</h3>
               <p className="text-gray-700 text-sm">
-                Yes! Use the <strong>Reports</strong> feature to generate PDF exports of your analytics. You can also export your
-                complete data as JSON from Settings → Account.
+                Use Reports to generate PDF exports of your analytics. You can also export everything as JSON from <SLink tab="account">Settings → Account</SLink>.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">What if I disconnect OwnerRez?</h3>
               <p className="text-gray-700 text-sm">
-                You can disconnect anytime from <strong>Settings → Integrations</strong>. Your existing data remains in Baileys Analytics,
-                but new bookings won't sync until you reconnect. We'll revoke our OAuth access to your OwnerRez account.
+                You can disconnect anytime from <SLink tab="integrations">Settings → Integrations</SLink>. Your existing data stays in Baileys Analytics, but new bookings won't sync until you reconnect. We revoke our OAuth access when you disconnect.
               </p>
             </div>
           </div>
@@ -229,29 +214,28 @@ export const Help = () => {
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Is my data secure?</h3>
               <p className="text-gray-700 text-sm mb-2">
-                Yes. We use enterprise-grade security:
+                Here's how we handle security:
               </p>
               <ul className="text-gray-700 text-sm list-disc ml-6 space-y-1">
-                <li>OAuth authentication (we never see your OwnerRez password)</li>
-                <li>All connections encrypted with HTTPS/TLS</li>
-                <li>Database hosted on Supabase (SOC 2 compliant)</li>
-                <li>Row-level security ensures your data is isolated from other users</li>
+                <li>We use OAuth to connect to OwnerRez, so we never see your password</li>
+                <li>All connections are encrypted with HTTPS</li>
+                <li>Data is hosted on Supabase, which is SOC 2 compliant</li>
+                <li>Row-level security keeps your data isolated from other users</li>
               </ul>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">How do I delete my account?</h3>
               <p className="text-gray-700 text-sm">
-                Go to <strong>Settings → Account</strong> and click <strong>"Delete Account"</strong>. This permanently deletes all your data,
-                cancels your subscription, and revokes OwnerRez access.
+                Go to <SLink tab="account">Settings → Account</SLink> and click "Delete Account." This permanently removes all your data, cancels your subscription, and revokes OwnerRez access.
               </p>
             </div>
 
             <div className="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-gray-900 mb-1">Where is my data stored?</h3>
               <p className="text-gray-700 text-sm">
-                Your data is stored in Supabase (PostgreSQL database) hosted in the United States. See our
-                <Link to="/privacy" className="text-blue-600 hover:text-blue-700 ml-1">Privacy Policy</Link> for complete details.
+                In a PostgreSQL database on Supabase, hosted in the United States. See our
+                <Link to="/privacy" className="text-blue-600 hover:text-blue-700 ml-1">Privacy Policy</Link> for details.
               </p>
             </div>
           </div>

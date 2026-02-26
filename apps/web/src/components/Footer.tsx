@@ -19,6 +19,12 @@ export const Footer = () => {
               to="/help"
               className="text-gray-600 hover:text-gray-900 transition-all font-medium"
             >
+              Docs
+            </Link>
+            <Link
+              to="/help"
+              className="text-gray-600 hover:text-gray-900 transition-all font-medium"
+            >
               Help
             </Link>
             <a

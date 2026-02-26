@@ -4,56 +4,54 @@ export const Privacy = () => {
   return (
     <DocsLayout>
       <div className="prose prose-gray max-w-none">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Privacy Policy</h1>
-        <p className="text-sm text-gray-500 mb-8">Effective Date: January 1, 2025</p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Privacy Policy</h1>
+          <p className="text-gray-500 text-sm">Effective January 1, 2025</p>
+        </div>
 
-        <div className="space-y-8 text-gray-700">
+        <div className="space-y-8">
           <section>
-            <p className="leading-relaxed">
-              At Baileys Analytics, we take your privacy seriously. This Privacy Policy explains how we collect, use,
-              disclose, and safeguard your information when you use our vacation rental analytics service.
+            <p className="text-gray-700 text-sm leading-relaxed">
+              This Privacy Policy explains how Baileys Analytics collects, uses,
+              discloses, and safeguards your information when you use our vacation rental analytics service.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Information We Collect</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Information We Collect</h2>
 
-            <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2">Account Information</h3>
-            <p className="leading-relaxed mb-3">When you create an account, we collect:</p>
-            <ul className="list-disc ml-6 space-y-1">
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">Account Information</h3>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">When you create an account, we collect:</p>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Email address</li>
-              <li>Password (encrypted)</li>
-              <li>Company name (optional)</li>
-              <li>Payment information (processed securely through our payment provider)</li>
+              <li>Payment information (processed securely through Stripe — we never see your card number)</li>
             </ul>
 
-            <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2">OwnerRez Data</h3>
-            <p className="leading-relaxed mb-3">When you connect your OwnerRez account, we access and store:</p>
-            <ul className="list-disc ml-6 space-y-1">
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">OwnerRez Data</h3>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">When you connect your OwnerRez account, we access and store:</p>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Property details (names, addresses, configurations)</li>
               <li>Booking information (dates, amounts, platforms)</li>
-              <li>Guest information (names, and if provided by you: email addresses, phone numbers)</li>
-              <li>Financial data (revenues, fees, taxes)</li>
-              <li>Platform-specific data (Airbnb, VRBO, direct bookings)</li>
+              <li>Guest information (names, and if provided: email addresses, phone numbers)</li>
+              <li>Financial data (revenues, fees)</li>
             </ul>
 
-            <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2">Usage Data</h3>
-            <p className="leading-relaxed mb-3">We automatically collect:</p>
-            <ul className="list-disc ml-6 space-y-1">
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">Usage Data</h3>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">We automatically collect:</p>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Log data (IP address, browser type, pages visited)</li>
               <li>Device information (operating system, device type)</li>
-              <li>Cookies and similar tracking technologies</li>
-              <li>Feature usage patterns and preferences</li>
+              <li>Cookies for authentication and preferences</li>
+              <li>Aggregated feature usage patterns</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">2. How We Use Your Information</h2>
-            <p className="leading-relaxed mb-3">We use your information to:</p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li>Provide and maintain our analytics service</li>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">2. How We Use Your Information</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">We use your information to:</p>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
+              <li>Provide and maintain the analytics service</li>
               <li>Generate reports, dashboards, and insights</li>
-              <li>Calculate taxes and financial metrics</li>
               <li>Send service-related communications</li>
               <li>Process payments and manage subscriptions</li>
               <li>Improve and develop new features</li>
@@ -63,114 +61,113 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">3. Data Storage and Security</h2>
-            <p className="leading-relaxed mb-3">
-              Your data is stored on secure servers in the United States. We implement industry-standard security measures including:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">3. Data Storage and Security</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              Your data is stored on Supabase servers in the United States. We use:
             </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li>Encryption of data in transit and at rest</li>
-              <li>Regular security audits and updates</li>
-              <li>Access controls and authentication</li>
-              <li>Isolated tenant data architecture</li>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
+              <li>Encryption in transit (HTTPS) and at rest</li>
+              <li>Row-level security to isolate each user's data</li>
+              <li>OAuth for OwnerRez connections (we never see your OwnerRez password)</li>
               <li>Regular automated backups</li>
             </ul>
-            <p className="leading-relaxed mt-3">
-              While we strive to protect your information, no method of transmission over the Internet is 100% secure.
+            <p className="text-gray-700 text-sm leading-relaxed mt-3">
+              No method of transmission over the Internet is 100% secure, but we take reasonable measures to protect your data.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">4. Information Sharing</h2>
-            <p className="leading-relaxed mb-3">
-              We do not sell, trade, or rent your personal information. We may share your information only in these circumstances:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">4. Information Sharing</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              We do not sell, trade, or rent your personal information. We may share information only in these cases:
             </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li><strong>With your consent:</strong> When you explicitly authorize us to share information</li>
-              <li><strong>Service providers:</strong> With trusted third parties who assist in operating our service (e.g., payment processors, hosting providers)</li>
-              <li><strong>Legal requirements:</strong> When required by law, subpoena, or legal process</li>
-              <li><strong>Protection of rights:</strong> To protect the rights, property, or safety of Baileys Analytics, our users, or the public</li>
-              <li><strong>Business transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
+              <li>With service providers who help operate the Service (Stripe for payments, Supabase for hosting)</li>
+              <li>When required by law, subpoena, or legal process</li>
+              <li>To protect the rights, property, or safety of Baileys Analytics, our users, or the public</li>
+              <li>In connection with a merger, acquisition, or sale of assets</li>
             </ul>
-            <p className="leading-relaxed mt-3">
+            <p className="text-gray-700 text-sm leading-relaxed mt-3">
               We never share your OwnerRez data or analytics with other users or competitors.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Your Rights and Choices</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">5. Your Rights</h2>
 
-            <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2">Access and Portability</h3>
-            <p className="leading-relaxed">
-              You can access and export your data at any time through the Service. We provide CSV export functionality
-              for all reports and data.
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">Access and Export</h3>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              You can access and export your data at any time. The Service supports JSON and PDF exports.
             </p>
 
-            <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2">Correction</h3>
-            <p className="leading-relaxed">
-              You can update your account information at any time through your account settings. Property and booking
-              data is synced from OwnerRez and should be corrected there.
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">Correction</h3>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              You can update your account information in Settings. Property and booking
+              data syncs from OwnerRez and should be corrected there.
             </p>
 
-            <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2">Deletion</h3>
-            <p className="leading-relaxed">
-              You can request deletion of your account and all associated data by contacting us. We will delete your
-              data within 30 days unless we are required by law to retain it.
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">Deletion</h3>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              You can delete your account and all associated data from Settings → Account. Data is removed
+              within 30 days unless we are required by law to retain it.
             </p>
 
-            <h3 className="text-lg font-medium text-gray-800 mt-4 mb-2">Communication Preferences</h3>
-            <p className="leading-relaxed">
-              You can opt out of promotional emails using the unsubscribe link in any email. Service-related
-              communications cannot be opted out of while you maintain an account.
+            <h3 className="text-sm font-semibold text-gray-900 mt-4 mb-2">Communications</h3>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              You can opt out of promotional emails using the unsubscribe link. Service-related
+              communications (billing, security) cannot be opted out of while you have an active account.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Cookies and Tracking</h2>
-            <p className="leading-relaxed mb-3">
-              We use cookies and similar technologies to:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">6. Cookies</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              We use cookies to:
             </p>
-            <ul className="list-disc ml-6 space-y-1">
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Keep you logged in</li>
               <li>Remember your preferences</li>
-              <li>Understand how you use our Service</li>
-              <li>Improve our Service</li>
+              <li>Understand how the Service is used</li>
             </ul>
-            <p className="leading-relaxed mt-3">
+            <p className="text-gray-700 text-sm leading-relaxed mt-3">
               You can control cookies through your browser settings, but disabling them may limit functionality.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Third-Party Services</h2>
-            <p className="leading-relaxed mb-3">
-              Our Service integrates with:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Third-Party Services</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              The Service integrates with:
             </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li><strong>OwnerRez:</strong> We access your data through their API under your authorization</li>
-              <li><strong>Payment processors:</strong> We use secure payment providers who have their own privacy policies</li>
-              <li><strong>Analytics tools:</strong> We may use tools to understand Service usage (in aggregate, not individual)</li>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
+              <li>OwnerRez for property and booking data (under your authorization)</li>
+              <li>Stripe for payment processing</li>
+              <li>Supabase for database hosting and authentication</li>
             </ul>
+            <p className="text-gray-700 text-sm leading-relaxed mt-3">
+              These providers have their own privacy policies governing how they handle your data.
+            </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">8. Data Retention</h2>
-            <p className="leading-relaxed mb-3">
-              We retain your data for as long as you maintain an active account. After account termination:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">8. Data Retention</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              We retain your data for as long as you have an active account. After account deletion:
             </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li>Account data is deleted after 30 days</li>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
+              <li>Account data is deleted within 30 days</li>
               <li>Backups may persist for up to 90 days</li>
               <li>Aggregated, anonymized data may be retained indefinitely</li>
-              <li>Data required for legal or tax purposes may be retained as required by law</li>
+              <li>Data required for legal purposes may be retained as required by law</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">9. California Privacy Rights</h2>
-            <p className="leading-relaxed mb-3">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">9. California Privacy Rights</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
               California residents have additional rights under CCPA:
             </p>
-            <ul className="list-disc ml-6 space-y-1">
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Right to know what personal information we collect</li>
               <li>Right to delete personal information</li>
               <li>Right to opt-out of sale (we do not sell personal information)</li>
@@ -179,43 +176,27 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Children's Privacy</h2>
-            <p className="leading-relaxed">
-              Our Service is not intended for children under 13. We do not knowingly collect information from
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">10. Children's Privacy</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              The Service is not intended for children under 13. We do not knowingly collect information from
               children under 13. If we discover such information, we will promptly delete it.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Changes to This Policy</h2>
-            <p className="leading-relaxed">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">11. Changes to This Policy</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
               We may update this Privacy Policy from time to time. We will notify you of material changes via
-              email or through the Service. Your continued use after changes constitutes acceptance.
+              email or through the Service. Continued use after changes constitutes acceptance.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Customer Support</h2>
-            <p className="leading-relaxed mb-3">
-              For customer service and general support:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">12. Contact</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              For questions about this Privacy Policy, email us
+              at <a href="mailto:support@baileysanalytics.com" className="text-blue-600 hover:text-blue-700">support@baileysanalytics.com</a>.
             </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li><strong>Email:</strong> support@baileysanalytics.com</li>
-              <li><strong>Response Time:</strong> Within 24-48 hours on business days</li>
-              <li><strong>Business Hours:</strong> Monday - Friday, 9 AM - 5 PM EST</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Contact Information</h2>
-            <p className="leading-relaxed mb-3">
-              For questions about this Privacy Policy or our privacy practices:
-            </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li><strong>Email:</strong> privacy@baileysanalytics.com</li>
-              <li><strong>Address:</strong> Baileys Analytics, LLC</li>
-
-            </ul>
           </section>
         </div>
       </div>

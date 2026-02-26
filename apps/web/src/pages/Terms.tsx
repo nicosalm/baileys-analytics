@@ -4,110 +4,106 @@ export const Terms = () => {
   return (
     <DocsLayout>
       <div className="prose prose-gray max-w-none">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Terms of Service</h1>
-        <p className="text-sm text-gray-500 mb-8">Effective Date: January 1, 2025</p>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-1">Terms of Service</h1>
+          <p className="text-gray-500 text-sm">Effective January 1, 2025</p>
+        </div>
 
-        <div className="space-y-8 text-gray-700">
+        <div className="space-y-8">
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">1. Agreement to Terms</h2>
-            <p className="leading-relaxed">
-              By accessing or using Baileys Analytics ("Service"), you agree to be bound by these Terms of Service ("Terms"). 
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">1. Agreement to Terms</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              By accessing or using Baileys Analytics ("Service"), you agree to be bound by these Terms of Service ("Terms").
               If you disagree with any part of these terms, you may not access the Service.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">2. Description of Service</h2>
-            <p className="leading-relaxed">
-              Baileys Analytics provides vacation rental analytics and reporting services by connecting to and analyzing data 
-              from your OwnerRez account. Our Service includes dashboards, financial reporting, tax calculations, guest analytics, 
-              and various data visualization tools.
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">2. Description of Service</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Baileys Analytics provides vacation rental analytics and reporting services by connecting to and analyzing data
+              from your OwnerRez account. The Service includes dashboards, financial reporting, guest analytics,
+              and data visualization tools.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">3. Account Registration</h2>
-            <p className="leading-relaxed">
-              To use our Service, you must create an account and provide accurate, complete, and current information. 
-              You are responsible for maintaining the confidentiality of your account credentials and for all activities 
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">3. Account Registration</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              To use the Service, you must create an account and provide accurate, complete, and current information.
+              You are responsible for maintaining the confidentiality of your account credentials and for all activities
               that occur under your account.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">4. OwnerRez Connection</h2>
-            <p className="leading-relaxed">
-              Our Service requires you to connect your OwnerRez account via OAuth. By connecting your account, you authorize 
-              Baileys Analytics to access and retrieve your property and booking data from OwnerRez for the purpose of providing 
-              analytics services. You can revoke this access at any time through your OwnerRez account settings.
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">4. OwnerRez Connection</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              The Service requires you to connect your OwnerRez account via OAuth. By connecting, you authorize
+              Baileys Analytics to access and retrieve your property and booking data from OwnerRez for the purpose of providing
+              analytics services. You can revoke this access at any time through your account settings.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">5. Data Usage and Storage</h2>
-            <p className="leading-relaxed mb-3">
-              We store and process your property and booking data to provide our analytics services. This includes:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">5. Data Usage and Storage</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              We store and process your property and booking data to provide analytics. This includes:
             </p>
-            <ul className="list-disc ml-6 space-y-1">
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Property information and configurations</li>
               <li>Booking details, revenues, and guest information</li>
               <li>Financial transactions and platform fees</li>
-              <li>Tax configurations and calculations</li>
             </ul>
-            <p className="leading-relaxed mt-3">
+            <p className="text-gray-700 text-sm leading-relaxed mt-3">
               Your data is isolated from other users and is only accessible through your authenticated account.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">6. Subscription and Payment</h2>
-            <p className="leading-relaxed mb-3">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">6. Subscription and Payment</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
               The Service is offered on a subscription basis:
             </p>
-            <ul className="list-disc ml-6 space-y-1 mb-3">
-              <li><strong>Trial Period:</strong> First 30 days for $1</li>
-              <li><strong>Monthly Subscription:</strong> $20/month after trial period</li>
-              <li><strong>Annual Subscription:</strong> $192/year ($16/month equivalent, 20% savings)</li>
-              <li><strong>Auto-Renewal:</strong> Subscriptions automatically renew unless cancelled before the renewal date</li>
-              <li><strong>No Refunds:</strong> All payments are non-refundable</li>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm mb-3">
+              <li>First 30 days for $1</li>
+              <li>$20/month after trial, or $192/year (20% savings)</li>
+              <li>Subscriptions automatically renew unless cancelled before the renewal date</li>
+              <li>All payments are non-refundable</li>
             </ul>
-            <p className="leading-relaxed">
-              <strong>Payment Processing:</strong> All payments are processed securely through Stripe. We do not store credit card information.
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Payments are processed through Stripe. We do not store credit card information.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">7. Cancellation Policy</h2>
-            <p className="leading-relaxed mb-3">
-              You may cancel your subscription at any time through your account settings or by contacting customer support.
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">7. Cancellation Policy</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              You may cancel your subscription at any time through your account settings or by contacting support.
             </p>
-            <ul className="list-disc ml-6 space-y-1">
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Cancellations take effect at the end of the current billing period</li>
-              <li>You will retain access to the Service until the end of your paid period</li>
-              <li>To cancel, navigate to Settings → Billing or email support@baileysanalytics.com</li>
+              <li>You retain access to the Service until the end of your paid period</li>
+              <li>To cancel, go to Settings → Billing or email support@baileysanalytics.com</li>
             </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">8. No Refunds Policy</h2>
-            <p className="leading-relaxed mb-3">
-              All payments are final and non-refundable. This includes the $1 trial period and all subsequent monthly charges.
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">8. No Refunds</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              All payments are final and non-refundable, including the $1 trial period.
             </p>
-            <p className="leading-relaxed mb-3">
-              <strong>Billing Disputes:</strong>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              For billing errors or unauthorized charges, contact us within 60 days. We will investigate and respond
+              within 5 business days. Legitimate billing errors will be corrected. Chargebacks initiated without
+              contacting us first may result in account suspension.
             </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li>For billing errors or unauthorized charges, contact us within 60 days of the charge</li>
-              <li>We will investigate and respond within 5 business days</li>
-              <li>Legitimate billing errors will be corrected</li>
-              <li>Chargebacks initiated without contacting us first may result in account suspension</li>
-            </ul>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">9. Acceptable Use</h2>
-            <p className="leading-relaxed mb-3">You agree not to:</p>
-            <ul className="list-disc ml-6 space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">9. Acceptable Use</h2>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">You agree not to:</p>
+            <ul className="list-disc ml-6 space-y-1 text-gray-700 text-sm">
               <li>Use the Service for any unlawful purpose</li>
               <li>Attempt to gain unauthorized access to any portion of the Service</li>
               <li>Interfere with or disrupt the Service or servers</li>
@@ -117,99 +113,83 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">10. Intellectual Property</h2>
-            <p className="leading-relaxed">
-              The Service and its original content, features, and functionality are owned by Baileys Analytics and are 
-              protected by international copyright, trademark, and other intellectual property laws. Your data remains 
-              your property.
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">10. Intellectual Property</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              The Service and its original content, features, and functionality are owned by Baileys Analytics and are
+              protected by copyright, trademark, and other intellectual property laws. Your data remains your property.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">11. Data Accuracy and Tax Disclaimer</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">11. Data Accuracy Disclaimer</h2>
             <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded">
-              <p className="leading-relaxed font-medium text-amber-900">
-                While we strive for accuracy, Baileys Analytics is an analytics and reporting tool. Tax calculations and 
-                financial reports are provided for informational purposes only. You should consult with qualified professionals 
-                for tax, legal, and financial advice. We are not responsible for any decisions made based on our reports.
+              <p className="text-sm leading-relaxed font-medium text-amber-900">
+                Baileys Analytics is an analytics and reporting tool. Financial reports are provided for informational
+                purposes only. You should consult with qualified professionals for tax, legal, and financial advice.
+                We are not responsible for decisions made based on our reports.
               </p>
             </div>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">12. Limitation of Liability</h2>
-            <p className="leading-relaxed">
-              TO THE MAXIMUM EXTENT PERMITTED BY LAW, BAILEYS ANALYTICS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, 
-              SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, USE, OR 
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">12. Limitation of Liability</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              TO THE MAXIMUM EXTENT PERMITTED BY LAW, BAILEYS ANALYTICS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL,
+              SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, USE, OR
               GOODWILL, ARISING OUT OF OR RELATED TO YOUR USE OF THE SERVICE.
             </p>
-            <p className="leading-relaxed mt-3">
+            <p className="text-gray-700 text-sm leading-relaxed mt-3">
               Our total liability shall not exceed the amount you paid us in the twelve months preceding the claim.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">13. Service Availability</h2>
-            <p className="leading-relaxed">
-              We strive to maintain high availability but do not guarantee uninterrupted access. The Service may be 
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">13. Service Availability</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              We strive to maintain high availability but do not guarantee uninterrupted access. The Service may be
               temporarily unavailable due to maintenance, updates, or factors beyond our control.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">14. Termination</h2>
-            <p className="leading-relaxed">
-              You may terminate your account at any time. We may suspend or terminate your account for violations of 
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">14. Termination</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              You may terminate your account at any time. We may suspend or terminate your account for violations of
               these Terms. Upon termination, your right to use the Service will cease immediately.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">15. Data Export and Deletion</h2>
-            <p className="leading-relaxed">
-              You can export your data at any time through the Service. Upon account termination, we will retain your 
-              data for 30 days to allow for export, after which it will be permanently deleted unless required by law 
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">15. Data Export and Deletion</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              You can export your data at any time through the Service as JSON or PDF. Upon account termination, we retain your
+              data for 30 days to allow for export, after which it is permanently deleted unless required by law
               to retain it longer.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">16. Changes to Terms</h2>
-            <p className="leading-relaxed">
-              We reserve the right to modify these Terms at any time. We will notify you of significant changes via 
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">16. Changes to Terms</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              We reserve the right to modify these Terms at any time. We will notify you of significant changes via
               email or through the Service. Continued use after changes constitutes acceptance of the new Terms.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">17. Governing Law</h2>
-            <p className="leading-relaxed">
-              These Terms shall be governed by and construed in accordance with the laws of the United States and the 
-              State of Delaware, without regard to its conflict of law provisions.
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">17. Governing Law</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              These Terms shall be governed by and construed in accordance with the laws of the United States and the
+              State of Wisconsin, without regard to its conflict of law provisions.
             </p>
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">18. Customer Support</h2>
-            <p className="leading-relaxed mb-3">
-              For customer service and support:
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">18. Contact</h2>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              For questions about these Terms or for support, email us
+              at <a href="mailto:support@baileysanalytics.com" className="text-blue-600 hover:text-blue-700">support@baileysanalytics.com</a>.
             </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li><strong>Email:</strong> support@baileysanalytics.com</li>
-              <li><strong>Response Time:</strong> Within 24-48 hours on business days</li>
-              <li><strong>Business Hours:</strong> Monday - Friday, 9 AM - 5 PM EST</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold text-gray-900 mb-3">19. Contact Information</h2>
-            <p className="leading-relaxed mb-3">
-              For legal inquiries about these Terms:
-            </p>
-            <ul className="list-disc ml-6 space-y-1">
-              <li><strong>Email:</strong> legal@baileysanalytics.com</li>
-              <li><strong>Address:</strong> Baileys Analytics, LLC</li>
-            </ul>
           </section>
         </div>
       </div>
