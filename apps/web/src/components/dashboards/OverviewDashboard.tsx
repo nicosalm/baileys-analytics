@@ -818,6 +818,11 @@ export const OverviewDashboard = () => {
                       <span className="text-xs text-gray-500">
                         {formatDateDisplay(new Date(activity.timestamp))}
                       </span>
+                      {activity.metadata?.arrival && activity.metadata?.departure && (
+                        <span className="text-xs text-gray-400">
+                          · Stay: {formatDateDisplay(new Date(activity.metadata.arrival))} – {formatDateDisplay(new Date(activity.metadata.departure))}
+                        </span>
+                      )}
                       {activity.platform && (
                         <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                           <span
