@@ -7,9 +7,6 @@ const PropertyDetailModal = lazy(() => import('./modals/PropertyDetailModal').th
 const GuestDetailModal = lazy(() => import('./modals/GuestDetailModal').then(m => ({ default: m.GuestDetailModal })))
 const PeriodDetailModal = lazy(() => import('./modals/PeriodDetailModal').then(m => ({ default: m.PeriodDetailModal })))
 const BookingDetailModal = lazy(() => import('./modals/BookingDetailModal').then(m => ({ default: m.BookingDetailModal })))
-const ReportBuilderModal = lazy(() => import('./modals/ReportBuilderModal').then(m => ({ default: m.ReportBuilderModal })))
-const ReportHistoryModal = lazy(() => import('./modals/ReportHistoryModal').then(m => ({ default: m.ReportHistoryModal })))
-
 // Tax-related modals (heavier, load on demand)
 const PlatformFeeEntryModal = lazy(() => import('./modals/PlatformFeeEntryModal').then(m => ({ default: m.PlatformFeeEntryModal })))
 const OperatingExpenseEntryModal = lazy(() => import('./modals/OperatingExpenseEntryModal').then(m => ({ default: m.OperatingExpenseEntryModal })))
@@ -73,21 +70,6 @@ export const ModalManager = () => {
           />
         )
       }
-    
-      case 'report-builder':
-        return (
-          <ReportBuilderModal
-            template={activeModal.template}
-          />
-        )
-    
-      case 'report-history':
-        return (
-          <ReportHistoryModal
-            templateId={activeModal.templateId}
-            templateName={activeModal.templateName}
-          />
-        )
     
       case 'platform-fee-entry':
         return (

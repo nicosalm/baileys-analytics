@@ -174,7 +174,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   const getActiveTabFromPath = (): DashboardTab => {
     const pathSegments = location.pathname.split('/')
     const tab = pathSegments[pathSegments.length - 1] as DashboardTab
-    const validTabs = ['overview', 'financial', 'occupancy', 'properties', 'guests', 'reports']
+    const validTabs = ['overview', 'financial', 'occupancy', 'properties', 'guests']
     if (tab && validTabs.includes(tab)) {
       return tab
     }

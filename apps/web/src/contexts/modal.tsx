@@ -7,10 +7,6 @@ export type ModalType =
   | { type: 'booking'; bookingId: string; guestName?: string }
   | { type: 'property-month'; propertyId: string; propertyName: string; month: string; year: string }
   | { type: 'financial-summary'; propertyId?: string; propertyName?: string }
-  | { type: 'report-builder'; template?: any }
-  | { type: 'report-preview'; templateId: string; templateName: string }
-  | { type: 'report-history'; templateId: string; templateName: string }
-  | { type: 'report-schedule'; templateId: string; templateName: string }
   | { type: 'platform-fee-entry'; propertyId: string; propertyName: string; month?: string; existingData?: any }
   | { type: 'operating-expense-entry'; propertyId: string; propertyName: string; month?: string }
   | null

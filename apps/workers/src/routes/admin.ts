@@ -267,7 +267,6 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
       { table: 'season_configurations', key: 'tenant_id', value: tenantId },
       { table: 'property_tax_configs', key: 'tenant_id', value: tenantId },
       { table: 'platform_fee_entries', key: 'tenant_id', value: tenantId },
-      { table: 'generated_reports', key: 'tenant_id', value: tenantId },
       { table: 'sync_status', key: 'tenant_id', value: tenantId },
       { table: 'webhook_events', key: 'tenant_id', value: tenantId },
       { table: 'billing_history', key: 'tenant_id', value: tenantId },

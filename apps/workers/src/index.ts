@@ -28,7 +28,6 @@ import { tags } from './routes/tags';
 import { tax } from './routes/tax';
 import { platformFees as platformFeesRoute } from './routes/platform-fees';
 import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses';
-import { reports } from './routes/reports';
 import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
 import { sync } from './routes/sync';
@@ -40,7 +39,6 @@ import { scheduled } from './scheduled';
 import { billing } from './routes/billing';
 import { account } from './routes/account';
 import { admin } from './routes/admin';
-import { dctzReport } from './routes/dctz-report';
 
 const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -704,7 +702,6 @@ const dashboardPaths = [
 	'/api/occupancy',
 	'/api/period-detail',
 	'/api/seasonal-analysis',
-	'/api/reports',
 	'/api/platform-fees',
 	'/api/tax',
 	'/api/dashboard-batch',
@@ -743,8 +740,6 @@ app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 6
 app.route('/api/billing', billing);
 app.route('/api/account', account);
 app.route('/api/admin', admin);
-app.route('/api/dctz', dctzReport);
-app.route('/api/reports', reports);
 app.route('/api/scheduler', scheduler);
 app.route('/api/validation', validation);
 app.route('/api/sync', sync);

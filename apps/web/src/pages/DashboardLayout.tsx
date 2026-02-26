@@ -1,13 +1,12 @@
 import { useAuth } from '@/contexts/auth'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, FileText, Shield, ArrowLeft } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft } from 'lucide-react'
 import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
 import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
 import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
 import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
 import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
-import { ReportsModule } from '@/components/ReportsModule'
 import { FilterBar } from '@/components/FilterBar'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
@@ -23,8 +22,7 @@ const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentT
   { id: 'financial', label: 'Financials', icon: DollarSign },
   { id: 'properties', label: 'Properties', icon: Home },
   { id: 'occupancy', label: 'Occupancy', icon: Calendar },
-  { id: 'guests', label: 'Guests', icon: Users },
-  { id: 'reports', label: 'Reports', icon: FileText }
+  { id: 'guests', label: 'Guests', icon: Users }
 ]
 
 const DashboardContent = () => {
@@ -42,8 +40,6 @@ const DashboardContent = () => {
         return <OccupancyDashboard />
       case 'guests':
         return <GuestsDashboard />
-      case 'reports':
-        return <ReportsModule />
       default:
         return <OverviewDashboard />
     }

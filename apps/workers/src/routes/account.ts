@@ -21,7 +21,6 @@ account.get('/export', authMiddleware, async (c) => {
       { data: seasons },
       { data: taxConfigs },
       { data: platformFees },
-      { data: reports },
       { data: subscription }
     ] = await Promise.all([
       supabase.from('tenants').select('*').eq('id', tenantId).single(),
@@ -31,7 +30,6 @@ account.get('/export', authMiddleware, async (c) => {
       supabase.from('season_configurations').select('*').eq('tenant_id', tenantId),
       supabase.from('property_tax_configs').select('*').eq('tenant_id', tenantId),
       supabase.from('platform_fee_entries').select('*').eq('tenant_id', tenantId),
-      supabase.from('generated_reports').select('*').eq('tenant_id', tenantId),
       supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).single()
     ]);
 
@@ -49,7 +47,6 @@ account.get('/export', authMiddleware, async (c) => {
       seasons,
       tax_configs: taxConfigs,
       platform_fees: platformFees,
-      reports,
       subscription,
       metadata: {
         total_properties: properties?.length || 0,
@@ -138,7 +135,6 @@ account.delete('/delete', authMiddleware, async (c) => {
       { table: 'season_configurations', key: 'tenant_id', value: tenantId },
       { table: 'property_tax_configs', key: 'tenant_id', value: tenantId },
       { table: 'platform_fee_entries', key: 'tenant_id', value: tenantId },
-      { table: 'generated_reports', key: 'tenant_id', value: tenantId },
       { table: 'sync_status', key: 'tenant_id', value: tenantId },
       { table: 'webhook_events', key: 'tenant_id', value: tenantId },
       { table: 'billing_history', key: 'tenant_id', value: tenantId },

@@ -23,7 +23,6 @@ export type DashboardTab =
   | 'properties'
   | 'occupancy'
   | 'guests'
-  | 'reports'
 
 export type PropertyMetrics = {
   propertyId: string

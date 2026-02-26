@@ -325,40 +325,6 @@ class ApiClient {
         return this.request(`/guests?${params}`)
     }
 
-    async getReportTemplates(): Promise<ApiResult<any>> {
-        return this.request('/reports/templates')
-    }
-
-    async getReportTemplate(id: string): Promise<ApiResult<any>> {
-        return this.request(`/reports/templates/${id}`)
-    }
-
-    async createReportTemplate(template: any): Promise<ApiResult<any>> {
-        return this.request('/reports/templates', {
-            method: 'POST',
-            body: JSON.stringify(template)
-        })
-    }
-
-    async updateReportTemplate(id: string, template: any): Promise<ApiResult<any>> {
-        return this.request(`/reports/templates/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(template)
-        })
-    }
-
-    async deleteReportTemplate(id: string): Promise<ApiResult<any>> {
-        return this.request(`/reports/templates/${id}`, {
-            method: 'DELETE'
-        })
-    }
-
-    async generateReport(templateId: string): Promise<ApiResult<any>> {
-        return this.request(`/reports/generate/${templateId}`, {
-            method: 'POST'
-        })
-    }
-
     async getPlatformFees(propertyId: string, month: string): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
         params.append('property', propertyId)
