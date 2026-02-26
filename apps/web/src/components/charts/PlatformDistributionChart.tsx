@@ -43,10 +43,8 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
 }) => {
   if (!data || data.length === 0) {
     return (
-      <ChartWrapper title={title} height={height}>
-        <div className="flex items-center justify-center h-full text-gray-500">
-          No platform data available
-        </div>
+      <ChartWrapper title={title} height={height} noData noDataMessage="No platform data available">
+        <div />
       </ChartWrapper>
     )
   }

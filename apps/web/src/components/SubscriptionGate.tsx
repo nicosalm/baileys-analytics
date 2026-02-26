@@ -33,8 +33,14 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
       const data = await billingClient.getSubscription();
       setSubscriptionData(data);
     } catch (error) {
-      // on error, assume no subscription to show pricing
-      setSubscriptionData(null);
+      // In dev mode, bypass subscription check if backend is unreachable
+      if (import.meta.env.DEV) {
+        console.warn('[SubscriptionGate] Backend unreachable — bypassing subscription check in dev mode');
+        setSubscriptionData({ isExempt: true });
+      } else {
+        // on error in production, assume no subscription to show pricing
+        setSubscriptionData(null);
+      }
     } finally {
       setLoading(false);
     }
