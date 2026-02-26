@@ -152,6 +152,7 @@ sync.post('/bookings', async (c) => {
 		// separate blocks and bookings for batch processing
 		const blocks = [];
 		const bookingData = [];
+		const bookingChargesMap = new Map<number, any[]>();
 
 		for (const booking of bookings) {
 			if (booking.is_block || booking.type === 'block') {
@@ -203,12 +204,16 @@ sync.post('/bookings', async (c) => {
 					canceled_utc: booking.canceled_utc || null,
 					updated_at: new Date().toISOString()
 				});
+
+				if (booking.charges && Array.isArray(booking.charges) && booking.charges.length > 0) {
+					bookingChargesMap.set(booking.id, booking.charges);
+				}
 			}
 		}
 
 		// batch upsert blocks and bookings
 		const operations = [];
-		
+
 		if (blocks.length > 0) {
 			operations.push(
 				supabase
@@ -232,6 +237,98 @@ sync.post('/bookings', async (c) => {
 		}
 
 		await Promise.all(operations);
+
+		// Re-enrich contact info from the guests table — the upsert above may
+		// have overwritten previously-enriched email/phone with null from the API.
+		if (bookingData.length > 0) {
+			const guestIdsNeedingContact = [...new Set(
+				bookingData
+					.filter(b => b.ownerrez_guest_id && (!b.guest_email || !b.guest_phone))
+					.map(b => b.ownerrez_guest_id)
+			)].filter(Boolean);
+
+			if (guestIdsNeedingContact.length > 0) {
+				const { data: guestsWithContact } = await supabase
+					.from('guests')
+					.select('ownerrez_guest_id, email, phone')
+					.eq('tenant_id', tenant.id)
+					.in('ownerrez_guest_id', guestIdsNeedingContact);
+
+				if (guestsWithContact && guestsWithContact.length > 0) {
+					const contactMap = new Map(
+						guestsWithContact
+							.filter(g => g.email || g.phone)
+							.map(g => [String(g.ownerrez_guest_id), g])
+					);
+
+					if (contactMap.size > 0) {
+						const { data: bookingsToFix } = await supabase
+							.from('bookings')
+							.select('id, ownerrez_guest_id, guest_email, guest_phone')
+							.eq('tenant_id', tenant.id)
+							.in('ownerrez_guest_id', [...contactMap.keys()])
+							.or('guest_email.is.null,guest_phone.is.null');
+
+						if (bookingsToFix) {
+							const fixes: PromiseLike<any>[] = [];
+							for (const b of bookingsToFix) {
+								const contact = b.ownerrez_guest_id && contactMap.get(String(b.ownerrez_guest_id));
+								if (!contact) continue;
+								const fields: any = {};
+								if (!b.guest_email && contact.email) fields.guest_email = contact.email;
+								if (!b.guest_phone && contact.phone) fields.guest_phone = contact.phone;
+								if (Object.keys(fields).length > 0) {
+									fixes.push(supabase.from('bookings').update(fields).eq('id', b.id));
+								}
+							}
+							for (let i = 0; i < fixes.length; i += 10) {
+								await Promise.all(fixes.slice(i, i + 10));
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Batch insert charges
+		if (bookingChargesMap.size > 0) {
+			const chargeOwnerrezIds = [...bookingChargesMap.keys()];
+			const { data: dbBookingsForCharges } = await supabase
+				.from('bookings')
+				.select('id, ownerrez_booking_id')
+				.eq('tenant_id', tenant.id)
+				.in('ownerrez_booking_id', chargeOwnerrezIds);
+
+			if (dbBookingsForCharges) {
+				const dbBookingIds = dbBookingsForCharges.map(b => b.id);
+				await supabase
+					.from('booking_charges')
+					.delete()
+					.in('booking_id', dbBookingIds);
+
+				const allCharges: any[] = [];
+				for (const dbBooking of dbBookingsForCharges) {
+					const charges = bookingChargesMap.get(Number(dbBooking.ownerrez_booking_id));
+					if (charges) {
+						for (let i = 0; i < charges.length; i++) {
+							allCharges.push({
+								booking_id: dbBooking.id,
+								type: charges[i].type,
+								amount: charges[i].amount,
+								description: charges[i].description,
+								position: i
+							});
+						}
+					}
+				}
+
+				const CHUNK_SIZE = 100;
+				for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
+					const chunk = allCharges.slice(i, i + CHUNK_SIZE);
+					await supabase.from('booking_charges').insert(chunk);
+				}
+			}
+		}
 
 		await supabase
 			.from('sync_status')
@@ -351,6 +448,8 @@ sync.post('/recovery', async (c) => {
 				endDate.toISOString().split('T')[0]
 			);
 
+			const recoveryChargesMap = new Map<number, any[]>();
+
 			for (const booking of bookings) {
 				if (booking.is_block || booking.type === 'block') {
 					await supabase
@@ -396,8 +495,93 @@ sync.post('/recovery', async (c) => {
 							onConflict: 'tenant_id,ownerrez_booking_id',
 							ignoreDuplicates: false
 						});
-					
+
+					if (booking.charges && Array.isArray(booking.charges) && booking.charges.length > 0) {
+						recoveryChargesMap.set(booking.id, booking.charges);
+					}
+
 					bookingCount++;
+				}
+			}
+
+			// Insert charges for this property's bookings
+			if (recoveryChargesMap.size > 0) {
+				const chargeOwnerrezIds = [...recoveryChargesMap.keys()];
+				const { data: dbBookingsForCharges } = await supabase
+					.from('bookings')
+					.select('id, ownerrez_booking_id')
+					.eq('tenant_id', tenant.id)
+					.in('ownerrez_booking_id', chargeOwnerrezIds);
+
+				if (dbBookingsForCharges) {
+					const dbBookingIds = dbBookingsForCharges.map(b => b.id);
+					await supabase
+						.from('booking_charges')
+						.delete()
+						.in('booking_id', dbBookingIds);
+
+					const allCharges: any[] = [];
+					for (const dbBooking of dbBookingsForCharges) {
+						const charges = recoveryChargesMap.get(Number(dbBooking.ownerrez_booking_id));
+						if (charges) {
+							for (let i = 0; i < charges.length; i++) {
+								allCharges.push({
+									booking_id: dbBooking.id,
+									type: charges[i].type,
+									amount: charges[i].amount,
+									description: charges[i].description,
+									position: i
+								});
+							}
+						}
+					}
+
+					const CHUNK_SIZE = 100;
+					for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
+						const chunk = allCharges.slice(i, i + CHUNK_SIZE);
+						await supabase.from('booking_charges').insert(chunk);
+					}
+				}
+			}
+
+			// Re-enrich contact info from guests table for this property's bookings
+			const { data: propertyBookingsToFix } = await supabase
+				.from('bookings')
+				.select('id, ownerrez_guest_id, guest_email, guest_phone')
+				.eq('tenant_id', tenant.id)
+				.eq('property_id', upsertedProperty.id)
+				.or('guest_email.is.null,guest_phone.is.null')
+				.not('ownerrez_guest_id', 'is', null);
+
+			if (propertyBookingsToFix && propertyBookingsToFix.length > 0) {
+				const guestIds = [...new Set(propertyBookingsToFix.map(b => String(b.ownerrez_guest_id)))];
+				const { data: guestsWithContact } = await supabase
+					.from('guests')
+					.select('ownerrez_guest_id, email, phone')
+					.eq('tenant_id', tenant.id)
+					.in('ownerrez_guest_id', guestIds);
+
+				if (guestsWithContact) {
+					const contactMap = new Map(
+						guestsWithContact
+							.filter(g => g.email || g.phone)
+							.map(g => [String(g.ownerrez_guest_id), g])
+					);
+
+					const fixes: PromiseLike<any>[] = [];
+					for (const b of propertyBookingsToFix) {
+						const contact = b.ownerrez_guest_id && contactMap.get(String(b.ownerrez_guest_id));
+						if (!contact) continue;
+						const fields: any = {};
+						if (!b.guest_email && contact.email) fields.guest_email = contact.email;
+						if (!b.guest_phone && contact.phone) fields.guest_phone = contact.phone;
+						if (Object.keys(fields).length > 0) {
+							fixes.push(supabase.from('bookings').update(fields).eq('id', b.id));
+						}
+					}
+					for (let i = 0; i < fixes.length; i += 10) {
+						await Promise.all(fixes.slice(i, i + 10));
+					}
 				}
 			}
 		}

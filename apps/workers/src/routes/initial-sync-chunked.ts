@@ -229,6 +229,8 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
     const allTagNames = new Set<string>();
     // Map ownerrez_booking_id -> tag names for linking after upsert
     const bookingTagMap = new Map<number, string[]>();
+    // Map ownerrez_booking_id -> charges from the API response
+    const bookingChargesMap = new Map<number, any[]>();
 
     for (const booking of bookings) {
       if (booking.is_block || booking.type === 'block') {
@@ -276,6 +278,11 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
           updated_at: new Date().toISOString()
         });
 
+        // Collect charges for batch processing
+        if (booking.charges && Array.isArray(booking.charges) && booking.charges.length > 0) {
+          bookingChargesMap.set(booking.id, booking.charges);
+        }
+
         // Collect tags for batch processing
         if (booking.tags && Array.isArray(booking.tags)) {
           const tagNames = booking.tags.map((t: any) => typeof t === 'string' ? t : (t.name || t));
@@ -305,6 +312,104 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
         .upsert(chunk, { onConflict: 'tenant_id,ownerrez_booking_id' });
       if (error) {
         console.error(`Failed to batch upsert bookings chunk ${i}:`, error);
+      }
+    }
+
+    // Re-enrich contact info from the guests table. The booking upsert above may
+    // have overwritten previously-enriched email/phone with null values from the API.
+    const { data: guestsWithContact } = await supabase
+      .from('guests')
+      .select('ownerrez_guest_id, email, phone')
+      .eq('tenant_id', tenantId)
+      .or('email.neq.,phone.neq.')
+      .not('email', 'is', null)
+      .limit(SUPABASE_MAX_ROWS);
+
+    if (guestsWithContact && guestsWithContact.length > 0) {
+      const ownerrezIds = allBookingData
+        .filter(b => b.ownerrez_guest_id && (!b.guest_email || !b.guest_phone))
+        .map(b => b.ownerrez_guest_id);
+
+      if (ownerrezIds.length > 0) {
+        const guestContactMap = new Map(
+          guestsWithContact.map(g => [String(g.ownerrez_guest_id), g])
+        );
+
+        const { data: bookingsToReEnrich } = await supabase
+          .from('bookings')
+          .select('id, ownerrez_guest_id, guest_email, guest_phone')
+          .eq('tenant_id', tenantId)
+          .eq('property_id', property.id)
+          .or('guest_email.is.null,guest_phone.is.null');
+
+        if (bookingsToReEnrich) {
+          const updates: PromiseLike<any>[] = [];
+          for (const booking of bookingsToReEnrich) {
+            const contact = booking.ownerrez_guest_id && guestContactMap.get(String(booking.ownerrez_guest_id));
+            if (!contact) continue;
+
+            const fields: any = {};
+            if (!booking.guest_email && contact.email) fields.guest_email = contact.email;
+            if (!booking.guest_phone && contact.phone) fields.guest_phone = contact.phone;
+            if (Object.keys(fields).length > 0) {
+              updates.push(
+                supabase.from('bookings').update(fields).eq('id', booking.id)
+              );
+            }
+          }
+          // Run in parallel batches of 10
+          for (let i = 0; i < updates.length; i += 10) {
+            await Promise.all(updates.slice(i, i + 10));
+          }
+        }
+      }
+    }
+
+    // Batch insert charges — need booking UUIDs from DB
+    if (bookingChargesMap.size > 0) {
+      const chargeOwnerrezIds = [...bookingChargesMap.keys()];
+      const { data: dbBookingsForCharges } = await supabase
+        .from('bookings')
+        .select('id, ownerrez_booking_id')
+        .eq('tenant_id', tenantId)
+        .in('ownerrez_booking_id', chargeOwnerrezIds);
+
+      if (dbBookingsForCharges) {
+        // Delete existing charges for these bookings first (idempotent re-sync)
+        const dbBookingIds = dbBookingsForCharges.map(b => b.id);
+        for (let i = 0; i < dbBookingIds.length; i += CHUNK_SIZE) {
+          const chunk = dbBookingIds.slice(i, i + CHUNK_SIZE);
+          await supabase
+            .from('booking_charges')
+            .delete()
+            .in('booking_id', chunk);
+        }
+
+        // Build all charge rows
+        const allCharges: any[] = [];
+        for (const dbBooking of dbBookingsForCharges) {
+          const charges = bookingChargesMap.get(Number(dbBooking.ownerrez_booking_id));
+          if (charges) {
+            for (let i = 0; i < charges.length; i++) {
+              allCharges.push({
+                booking_id: dbBooking.id,
+                type: charges[i].type,
+                amount: charges[i].amount,
+                description: charges[i].description,
+                position: i
+              });
+            }
+          }
+        }
+
+        // Insert in chunks
+        for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
+          const chunk = allCharges.slice(i, i + CHUNK_SIZE);
+          const { error } = await supabase.from('booking_charges').insert(chunk);
+          if (error) {
+            console.error(`Failed to batch insert charges chunk ${i}:`, error);
+          }
+        }
       }
     }
 
@@ -559,6 +664,182 @@ initialSyncChunked.post('/guests', async (c) => {
   } catch (error) {
     console.error('Failed to sync guests:', error);
     return c.json({ error: 'Failed to sync guests' }, 500);
+  }
+});
+
+// sync guest contact details individually for guests missing email/phone (step 4)
+// The OwnerRez guests list API doesn't always return email_addresses/phones,
+// so we fetch individual guest details for those missing contact info.
+// Processes a batch per call to stay within CF's 30-sec timeout.
+initialSyncChunked.post('/guest-contacts', async (c) => {
+  const supabase = createSupabaseClient(c.env);
+  const tenantId = c.get('tenantId');
+
+  const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
+  if (tokenResult.error) {
+    return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
+  }
+
+  const ownerRez = new OwnerRezService(tokenResult.accessToken);
+
+  try {
+    // Find bookings with guest IDs that are missing contact info
+    const { data: bookingsMissingContact } = await supabase
+      .from('bookings')
+      .select('ownerrez_guest_id')
+      .eq('tenant_id', tenantId)
+      .not('ownerrez_guest_id', 'is', null)
+      .or('guest_email.is.null,guest_phone.is.null')
+      .limit(SUPABASE_MAX_ROWS);
+
+    if (!bookingsMissingContact || bookingsMissingContact.length === 0) {
+      return c.json({ success: true, enriched: 0, remaining: 0 });
+    }
+
+    // Deduplicate guest IDs
+    const allGuestIds = [...new Set(
+      bookingsMissingContact
+        .map(b => b.ownerrez_guest_id)
+        .filter(Boolean)
+    )] as string[];
+
+    // Exclude guest IDs we've already individually fetched (their guests record
+    // will have 'addresses' in the data JSON, which the list API never includes).
+    // This prevents re-fetching guests that truly have no contact info in OwnerRez.
+    const { data: alreadyFetched } = await supabase
+      .from('guests')
+      .select('ownerrez_guest_id')
+      .eq('tenant_id', tenantId)
+      .in('ownerrez_guest_id', allGuestIds)
+      .not('data->addresses', 'is', null);
+
+    const alreadyFetchedSet = new Set(
+      (alreadyFetched || []).map(g => g.ownerrez_guest_id)
+    );
+    const uniqueGuestIds = allGuestIds.filter(id => !alreadyFetchedSet.has(id));
+
+    if (uniqueGuestIds.length === 0) {
+      return c.json({ success: true, enriched: 0, remaining: 0 });
+    }
+
+    // Process up to 30 guests per call (with parallelism of 5, ~6 batches * ~0.5s = ~3s API time)
+    const BATCH_LIMIT = 30;
+    const PARALLEL_SIZE = 5;
+    const guestIdsToProcess = uniqueGuestIds.slice(0, BATCH_LIMIT);
+    let enrichedCount = 0;
+
+    for (let i = 0; i < guestIdsToProcess.length; i += PARALLEL_SIZE) {
+      const batch = guestIdsToProcess.slice(i, i + PARALLEL_SIZE);
+
+      const results = await Promise.all(
+        batch.map(async (guestId) => {
+          try {
+            const guestDetail = await ownerRez.fetchGuestDetail(guestId);
+            if (!guestDetail) return { guestId, email: null, phone: null, guestDetail: null };
+
+            const email = guestDetail.email_addresses?.find((e: any) => e.is_default)?.address ||
+                         guestDetail.email_addresses?.[0]?.address;
+            const phone = guestDetail.phones?.find((p: any) => p.is_default)?.number ||
+                         guestDetail.phones?.[0]?.number;
+
+            return { guestId, email, phone, guestDetail };
+          } catch {
+            return { guestId, email: null, phone: null, guestDetail: null };
+          }
+        })
+      );
+
+      // For guests where the API call failed (404 / deleted guest), create a stub
+      // record so we don't retry them on the next call.
+      const failedGuestIds = results
+        .filter(r => !r.guestDetail)
+        .map(r => r.guestId);
+
+      if (failedGuestIds.length > 0) {
+        // Look up guest names from bookings for the stub records
+        const { data: stubBookings } = await supabase
+          .from('bookings')
+          .select('ownerrez_guest_id, guest_name')
+          .eq('tenant_id', tenantId)
+          .in('ownerrez_guest_id', failedGuestIds)
+          .limit(failedGuestIds.length);
+
+        const nameMap = new Map<string, string>();
+        (stubBookings || []).forEach((b: any) => {
+          if (b.ownerrez_guest_id && b.guest_name) {
+            nameMap.set(b.ownerrez_guest_id, b.guest_name);
+          }
+        });
+
+        const stubs = failedGuestIds.map(guestId => ({
+          ownerrez_guest_id: guestId,
+          tenant_id: tenantId,
+          full_name: nameMap.get(guestId) || undefined,
+          data: { addresses: [] }, // marker so alreadyFetched filter catches it
+          updated_at: new Date().toISOString()
+        }));
+
+        await supabase
+          .from('guests')
+          .upsert(stubs, { onConflict: 'tenant_id,ownerrez_guest_id' });
+      }
+
+      // Process results in parallel — upsert guests and update bookings concurrently
+      const resultOps = results
+        .filter(r => r.guestDetail)
+        .map(async (result) => {
+          const fullName = `${result.guestDetail.first_name || ''} ${result.guestDetail.last_name || ''}`.trim();
+
+          // Always upsert the guest record with the full detail data so we
+          // don't re-fetch this guest on the next call (the 'addresses' key
+          // in the detail response marks it as already individually fetched).
+          const guestUpsert = supabase
+            .from('guests')
+            .upsert({
+              ownerrez_guest_id: result.guestId,
+              tenant_id: tenantId,
+              first_name: result.guestDetail.first_name,
+              last_name: result.guestDetail.last_name,
+              full_name: fullName || undefined,
+              email: result.email || undefined,
+              phone: result.phone || undefined,
+              data: result.guestDetail,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'tenant_id,ownerrez_guest_id' });
+
+          // Update bookings if we found contact info
+          if (result.email || result.phone) {
+            const updateFields: any = {};
+            if (result.email) updateFields.guest_email = result.email;
+            if (result.phone) updateFields.guest_phone = result.phone;
+
+            const bookingUpdate = supabase
+              .from('bookings')
+              .update(updateFields)
+              .eq('tenant_id', tenantId)
+              .eq('ownerrez_guest_id', result.guestId)
+              .or('guest_email.is.null,guest_phone.is.null');
+
+            await Promise.all([guestUpsert, bookingUpdate]);
+          } else {
+            await guestUpsert;
+          }
+          return !!(result.email || result.phone);
+        });
+
+      const enrichResults = await Promise.all(resultOps);
+      enrichedCount += enrichResults.filter(Boolean).length;
+    }
+
+    return c.json({
+      success: true,
+      enriched: enrichedCount,
+      processed: guestIdsToProcess.length,
+      remaining: Math.max(0, uniqueGuestIds.length - BATCH_LIMIT)
+    });
+  } catch (error) {
+    console.error('Failed to sync guest contacts:', error);
+    return c.json({ error: 'Failed to sync guest contacts' }, 500);
   }
 });
 

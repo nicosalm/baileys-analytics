@@ -347,7 +347,7 @@ async function handleBookingUpdate(
 					.eq('tenant_id', tenantId)
 					.eq('ownerrez_guest_id', booking.guest.id.toString())
 					.single();
-				
+
 				if (existingGuest) {
 					guestEmail = guestEmail || existingGuest.email;
 					guestPhone = guestPhone || existingGuest.phone;
@@ -360,11 +360,33 @@ async function handleBookingUpdate(
 					.eq('tenant_id', tenantId)
 					.eq('full_name', guestName)
 					.single();
-				
+
 				if (existingGuest) {
 					guestEmail = guestEmail || existingGuest.email;
 					guestPhone = guestPhone || existingGuest.phone;
 				}
+			}
+		}
+
+		// Last resort: fetch individual guest detail from OwnerRez API
+		// The list/webhook payload often omits email_addresses/phones
+		if ((!guestEmail || !guestPhone) && booking.guest?.id && env) {
+			try {
+				const tokenResult = await getValidOwnerRezToken(env, tenantId);
+				if (!tokenResult.error) {
+					const ownerRez = new OwnerRezService(tokenResult.accessToken);
+					const guestDetail = await ownerRez.fetchGuestDetail(String(booking.guest.id));
+					if (guestDetail) {
+						const detailEmail = guestDetail.email_addresses?.find((e: any) => e.is_default)?.address ||
+							guestDetail.email_addresses?.[0]?.address;
+						const detailPhone = guestDetail.phones?.find((p: any) => p.is_default)?.number ||
+							guestDetail.phones?.[0]?.number;
+						guestEmail = guestEmail || detailEmail;
+						guestPhone = guestPhone || detailPhone;
+					}
+				}
+			} catch (error) {
+				console.error('Failed to fetch guest detail for contact info:', error);
 			}
 		}
 

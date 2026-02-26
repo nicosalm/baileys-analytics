@@ -147,6 +147,18 @@ export class OwnerRezService {
 		return await response.json();
 	}
 
+	async fetchGuestDetail(guestId: string): Promise<any> {
+		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests/${guestId}`, {
+			headers: this.getHeaders()
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to fetch guest detail: ${response.statusText}`);
+		}
+
+		return await response.json();
+	}
+
 	async fetchGuests(bookingIds: string[]): Promise<any[]> {
 		const params = new URLSearchParams();
 		params.append('include_tags', 'true');

@@ -7,7 +7,7 @@ import { CheckCircle, Home, Calendar, Users } from 'lucide-react'
 import { BRAND } from '@/constants'
 
 interface SyncProgress {
-  step: 'checking' | 'properties' | 'bookings' | 'guests' | 'complete'
+  step: 'checking' | 'properties' | 'bookings' | 'guests' | 'guest-contacts' | 'complete'
   currentProperty?: number
   totalProperties?: number
   propertiesLoaded?: number
@@ -162,6 +162,29 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         guestsLoaded: totalGuests
       }))
 
+      // Step 4b: Enrich guest contact details (non-blocking)
+      // Loops until all guests are processed, with a safety cap to prevent infinite loops
+      setProgress(prev => ({ ...prev, step: 'guest-contacts' }))
+      try {
+        let remaining = 1
+        let iterations = 0
+        const MAX_ITERATIONS = 20 // safety cap: 20 * 30 guests = 600 max
+        while (remaining > 0 && iterations < MAX_ITERATIONS) {
+          const contactResult = await withRetry(() =>
+            api.request<{
+              success: boolean
+              enriched: number
+              remaining: number
+            }>('/initial-sync-chunked/guest-contacts', { method: 'POST' })
+          )
+          if (!contactResult.success) break
+          remaining = contactResult.data.remaining
+          iterations++
+        }
+      } catch {
+        // Guest contact enrichment is supplementary - don't block completion
+      }
+
       // Step 5: Mark as complete
       await withRetry(() =>
         api.request('/initial-sync-chunked/complete', {
@@ -203,7 +226,8 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       const propertyProgress = ((progress.currentProperty || 0) / progress.totalProperties) * 45
       return 25 + propertyProgress
     }
-    if (progress.step === 'guests') return 85
+    if (progress.step === 'guests') return 80
+    if (progress.step === 'guest-contacts') return 90
     if (progress.step === 'complete') return 100
     return 0
   }
@@ -221,6 +245,8 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         return 'Syncing bookings...'
       case 'guests':
         return 'Syncing guest information and tags...'
+      case 'guest-contacts':
+        return 'Enriching guest contact details...'
       case 'complete':
         return 'Sync complete!'
       default:
