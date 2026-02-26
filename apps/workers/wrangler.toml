@@ -16,7 +16,7 @@ enabled = true
 
 [vars]
 FRONTEND_URL = "http://localhost:5173"
-ADMIN_EMAILS ="admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
+ADMIN_EMAILS ="nico@baileysanalytics.com,admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
 # DCTX widget access: see apps/workers/src/routes/dctz-report.ts and apps/web/src/components/dctz/constants.ts to add tenant id
 
 [env.production]
