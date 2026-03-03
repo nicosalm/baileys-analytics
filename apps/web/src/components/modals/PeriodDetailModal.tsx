@@ -235,7 +235,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                       </div>
                     </td>
                     <td className="p-4 text-sm">
-                      {formatDateDisplay(new Date(booking.arrival))} - {formatDateDisplay(new Date(booking.departure))}
+                      {formatDateDisplay(booking.arrival)} - {formatDateDisplay(booking.departure)}
                     </td>
                     <td className="p-4 font-medium">
                       {formatCurrency(booking.totalAmount)}

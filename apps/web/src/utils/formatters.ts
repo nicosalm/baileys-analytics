@@ -1,7 +1,8 @@
-import { 
-  formatCurrency as formatCurrencyBase, 
+import {
+  formatCurrency as formatCurrencyBase,
   formatCompactCurrency as formatCompactBase,
-  formatPercentage as formatPercentageBase 
+  formatPercentage as formatPercentageBase,
+  parseISO
 } from '@baileys/utils'
 
 export { formatCurrencyBase as formatCurrency, formatCompactBase as formatCompactCurrency }
@@ -26,20 +27,20 @@ export const formatNumber = (value: number): string => {
 }
 
 export const formatDateRange = (from: Date | string, to: Date | string): string => {
-  const fromDate = typeof from === 'string' ? new Date(from) : from
-  const toDate = typeof to === 'string' ? new Date(to) : to
-  
+  const fromDate = typeof from === 'string' ? parseISO(from) : from
+  const toDate = typeof to === 'string' ? parseISO(to) : to
+
   const formatter = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric'
   })
-  
+
   return `${formatter.format(fromDate)} - ${formatter.format(toDate)}`
 }
 
 export const formatMonthYear = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === 'string' ? parseISO(date) : date
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     year: 'numeric'
@@ -47,7 +48,7 @@ export const formatMonthYear = (date: Date | string): string => {
 }
 
 export const formatShortMonth = (date: Date | string): string => {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === 'string' ? parseISO(date) : date
   return new Intl.DateTimeFormat('en-US', {
     month: 'short'
   }).format(d)

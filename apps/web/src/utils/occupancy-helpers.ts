@@ -1,4 +1,5 @@
-// Helper function to aggregate daily occupancy data into weekly periods
+import { parseISO } from 'date-fns'
+
 export function aggregateDailyToWeekly(dailyData: Array<{
     date: string
     occupancyRate: number
@@ -22,8 +23,8 @@ export function aggregateDailyToWeekly(dailyData: Array<{
     }
     
     for (const day of dailyData) {
-        const dayDate = new Date(day.date)
-        const weekStart = new Date(currentWeek.startDate)
+        const dayDate = parseISO(day.date)
+        const weekStart = parseISO(currentWeek.startDate)
         const daysSinceStart = Math.floor((dayDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24))
         
         if (daysSinceStart >= 7) {

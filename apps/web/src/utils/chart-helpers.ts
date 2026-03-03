@@ -1,6 +1,6 @@
 import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from './formatters'
-import { differenceInDays } from 'date-fns'
+import { differenceInDays, parseISO } from 'date-fns'
 
 export interface ChartConfig {
   height?: number
@@ -79,13 +79,13 @@ export const transformToTimeSeries = (
   labelFormat: 'short' | 'full' = 'short'
 ): TimeSeriesData[] => {
   return data.map(item => {
-    const date = typeof item.date === 'string' ? new Date(item.date) : item.date
+    const date = typeof item.date === 'string' ? parseISO(item.date) : item.date
     const label = labelFormat === 'short'
       ? date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       : date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-    
+
     return {
-      date: date.toISOString().split('T')[0],
+      date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
       value: item.value,
       label
     }
@@ -115,7 +115,7 @@ export const groupByPeriod = (
   const grouped = new Map<string, { sum: number; count: number }>()
   
   data.forEach(item => {
-    const date = typeof item.date === 'string' ? new Date(item.date) : item.date
+    const date = typeof item.date === 'string' ? parseISO(item.date) : item.date
     let periodKey: string
     
     switch (period) {
@@ -240,8 +240,8 @@ export function detectGranularity(data: any[], dateField = 'month'): DateGranula
   if (firstDate.match(/^\d{4}-\d{2}-\d{2}$/) && data.length >= 2) {
     const secondDate = data[1][dateField];
     if (secondDate && secondDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      const date1 = new Date(firstDate);
-      const date2 = new Date(secondDate);
+      const date1 = parseISO(firstDate);
+      const date2 = parseISO(secondDate);
       // Use date-fns for consistent date difference calculation
       const diffDays = differenceInDays(date2, date1);
       

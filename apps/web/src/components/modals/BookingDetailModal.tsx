@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useBookingDetail } from '@/hooks/use-api'
-import { formatCurrency, formatDateDisplay, differenceInDays } from '@baileys/utils'
+import { formatCurrency, formatDateDisplay, differenceInDays, parseISO } from '@baileys/utils'
 import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin, ExternalLink } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -22,7 +22,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
   const subtitle = isLoading ? "Loading booking information..." :
                    error ? "Unable to load booking" :
                    `Booking #${booking?.platform_reservation_number || bookingId}`
-  const nights = booking ? differenceInDays(new Date(booking.departure), new Date(booking.arrival)) : 0
+  const nights = booking ? differenceInDays(parseISO(booking.departure), parseISO(booking.arrival)) : 0
 
   const handleGuestClick = useCallback(() => {
     if (booking) {
@@ -113,12 +113,12 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           <div className="grid grid-cols-3 gap-4">
             <div>
               <div className="text-xs text-gray-500">Check In</div>
-              <div className="font-semibold">{booking?.arrival ? formatDateDisplay(new Date(booking.arrival)) : '-'}</div>
+              <div className="font-semibold">{booking?.arrival ? formatDateDisplay(booking.arrival) : '-'}</div>
               <div className="text-sm text-gray-600">3:00 PM</div>
             </div>
             <div>
               <div className="text-xs text-gray-500">Check Out</div>
-              <div className="font-semibold">{booking?.departure ? formatDateDisplay(new Date(booking.departure)) : '-'}</div>
+              <div className="font-semibold">{booking?.departure ? formatDateDisplay(booking.departure) : '-'}</div>
               <div className="text-sm text-gray-600">11:00 AM</div>
             </div>
             <div>
@@ -203,7 +203,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             </div>
             <div>
               <span className="text-gray-600">Booked: </span>
-              <span className="font-medium">{booking?.booked_utc ? formatDateDisplay(new Date(booking.booked_utc)) : '-'}</span>
+              <span className="font-medium">{booking?.booked_utc ? formatDateDisplay(booking.booked_utc) : '-'}</span>
             </div>
           </div>
         </div>

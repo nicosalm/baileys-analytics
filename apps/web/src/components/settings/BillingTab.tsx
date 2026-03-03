@@ -170,7 +170,7 @@ export const BillingTab = () => {
             <div>
               <span className="text-gray-500">Renews</span>
               <p className="font-medium text-gray-900">
-                {formatDateDisplay(new Date(subscription.current_period_end))}
+                {formatDateDisplay(subscription.current_period_end)}
               </p>
             </div>
           )}
@@ -178,7 +178,7 @@ export const BillingTab = () => {
             <div>
               <span className="text-gray-500">Trial Ends</span>
               <p className="font-medium text-gray-900">
-                {formatDateDisplay(new Date(subscription.trial_end))}
+                {formatDateDisplay(subscription.trial_end)}
               </p>
             </div>
           )}
@@ -220,7 +220,7 @@ export const BillingTab = () => {
                     {formatPrice(payment.amount)}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {formatDateDisplay(new Date(payment.created_at))}
+                    {formatDateDisplay(payment.created_at)}
                   </p>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

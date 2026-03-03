@@ -124,7 +124,7 @@ export const BookingGapAlert = ({
                     {gap.propertyName} • {gap.gapDays} {gap.gapDays === 1 ? 'night' : 'nights'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {formatDateDisplay(new Date(gap.gapStart))} - {formatDateDisplay(new Date(gap.gapEnd))}
+                    {formatDateDisplay(gap.gapStart)} - {formatDateDisplay(gap.gapEnd)}
                     {gap.daysUntilGap <= 0
                       ? ' (Current)'
                       : gap.daysUntilGap === 1

@@ -424,7 +424,7 @@ function BookingRow({ entry, onClick, showProperty }: {
           <span className="text-sm font-medium text-gray-900 truncate">{entry.guestName}</span>
         </div>
         <div className="text-xs text-gray-500 mt-0.5">
-          {formatDateDisplay(new Date(entry.arrival))} &rarr; {formatDateDisplay(new Date(entry.departure))}
+          {formatDateDisplay(entry.arrival)} &rarr; {formatDateDisplay(entry.departure)}
           <span className="ml-2">{entry.nights} {entry.nights === 1 ? 'night' : 'nights'}</span>
         </div>
       </div>
@@ -453,7 +453,7 @@ function GapRow({ entry, showProperty }: {
             </span>
           </div>
           <div className="text-xs opacity-70">
-            {formatDateDisplay(new Date(entry.gapStart))} &rarr; {formatDateDisplay(new Date(entry.gapEnd))}
+            {formatDateDisplay(entry.gapStart)} &rarr; {formatDateDisplay(entry.gapEnd)}
           </div>
         </div>
       </div>

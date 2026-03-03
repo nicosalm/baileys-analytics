@@ -86,10 +86,10 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                       </div>
                     </td>
                     <td className="p-4 text-sm">
-                      {formatDateDisplay(new Date(booking.arrival))}
+                      {formatDateDisplay(booking.arrival)}
                     </td>
                     <td className="p-4 text-sm">
-                      {formatDateDisplay(new Date(booking.departure))}
+                      {formatDateDisplay(booking.departure)}
                     </td>
                     <td className="p-4 text-sm font-medium">
                       {formatCurrency(booking.totalAmount)}
@@ -261,8 +261,8 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                 </div>
               )}
               <div className="flex items-center space-x-4 text-sm text-gray-600">
-                {guest?.firstVisit && <span>First visit: {formatDateDisplay(new Date(guest.firstVisit))}</span>}
-                {guest?.lastVisit && <span>Last visit: {formatDateDisplay(new Date(guest.lastVisit))}</span>}
+                {guest?.firstVisit && <span>First visit: {formatDateDisplay(guest.firstVisit)}</span>}
+                {guest?.lastVisit && <span>Last visit: {formatDateDisplay(guest.lastVisit)}</span>}
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">

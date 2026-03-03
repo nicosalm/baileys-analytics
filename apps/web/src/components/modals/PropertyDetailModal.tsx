@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
-import { formatCurrency, formatPercentage, formatCompactCurrency } from '@baileys/utils'
+import { formatCurrency, formatPercentage, formatCompactCurrency, formatDateDisplay } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, BarChart3, ExternalLink } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -343,10 +343,10 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                           </div>
                         </td>
                         <td className="p-4 text-sm">
-                          {new Date(booking.arrival).toLocaleDateString()}
+                          {formatDateDisplay(booking.arrival)}
                         </td>
                         <td className="p-4 text-sm">
-                          {new Date(booking.departure).toLocaleDateString()}
+                          {formatDateDisplay(booking.departure)}
                         </td>
                         <td className="p-4 text-sm font-medium text-green-600">
                           {formatCurrency(booking.totalAmount)}

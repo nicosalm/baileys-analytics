@@ -816,11 +816,11 @@ export const OverviewDashboard = () => {
                     <p className="text-sm font-medium truncate">{activity.description}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-gray-500">
-                        {formatDateDisplay(new Date(activity.timestamp))}
+                        {formatDateDisplay(activity.timestamp)}
                       </span>
                       {activity.metadata?.arrival && activity.metadata?.departure && (
                         <span className="text-xs text-gray-400">
-                          · Stay: {formatDateDisplay(new Date(activity.metadata.arrival))} – {formatDateDisplay(new Date(activity.metadata.departure))}
+                          · Stay: {formatDateDisplay(activity.metadata.arrival)} – {formatDateDisplay(activity.metadata.departure)}
                         </span>
                       )}
                       {activity.platform && (
@@ -937,7 +937,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
                   <div className="text-sm font-medium">{booking.guestName}</div>
                   <div className="text-xs text-gray-500">
                     {booking.propertyName} — {booking.type === 'check-in' ? 'Check-in' : 'Check-out'}{' '}
-                    {formatDateDisplay(new Date(booking.type === 'check-in' ? booking.arrival : booking.departure))}
+                    {formatDateDisplay(booking.type === 'check-in' ? booking.arrival : booking.departure)}
                   </div>
                 </div>
               </div>

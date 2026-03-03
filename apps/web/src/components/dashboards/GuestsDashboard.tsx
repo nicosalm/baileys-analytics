@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
-import { formatCurrency, formatDateDisplay, formatPercentage } from '@baileys/utils'
+import { formatCurrency, formatDateDisplay, formatPercentage, parseISO } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
 import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -117,8 +117,8 @@ export const GuestsDashboard = () => {
                 break
             case 'new':
                 filtered = filtered.filter(g => {
-                    const firstVisit = new Date(g.firstVisit)
-                    const rangeStart = new Date(filters.dateRange.from)
+                    const firstVisit = parseISO(g.firstVisit)
+                    const rangeStart = parseISO(filters.dateRange.from)
                     return firstVisit >= rangeStart
                 })
                 break
@@ -166,7 +166,7 @@ export const GuestsDashboard = () => {
     const handleGuestClick = useCallback((guest: GuestListItem) => {
         const isTopSpender = topPerformers.spenders.some((g: GuestListItem) => g.id === guest.id)
         const isFrequent = topPerformers.frequent.some((g: GuestListItem) => g.id === guest.id)
-        const isNew = new Date(guest.firstVisit) >= new Date(dateRangeFromRef.current)
+        const isNew = parseISO(guest.firstVisit) >= parseISO(dateRangeFromRef.current)
 
         openModal({
             type: 'guest',
@@ -287,14 +287,14 @@ export const GuestsDashboard = () => {
             header: 'First Visit',
             sortable: true,
             width: 120,
-            render: (guest: GuestListItem) => formatDateDisplay(new Date(guest.firstVisit))
+            render: (guest: GuestListItem) => formatDateDisplay(guest.firstVisit)
         },
         {
             key: 'lastVisit',
             header: 'Last Visit',
             sortable: true,
             width: 120,
-            render: (guest: GuestListItem) => formatDateDisplay(new Date(guest.lastVisit))
+            render: (guest: GuestListItem) => formatDateDisplay(guest.lastVisit)
         },
         {
             key: 'tags',
@@ -758,7 +758,7 @@ const RecurringDateSearch = () => {
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <span className="text-gray-500 text-xs">
-                                                    {formatDateDisplay(new Date(b.arrival))} - {formatDateDisplay(new Date(b.departure))}
+                                                    {formatDateDisplay(b.arrival)} - {formatDateDisplay(b.departure)}
                                                 </span>
                                                 <span className="font-medium text-green-600">{formatCurrency(b.amount)}</span>
                                             </div>
