@@ -19,9 +19,9 @@ type ListEntry =
 const INACTIVE_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected']
 const TRUNCATION_LIMIT = 1000
 const GAP_SEVERITY_STYLES = {
-  critical: 'bg-red-50 border-l-red-400 text-red-700',
-  warning: 'bg-amber-50 border-l-amber-400 text-amber-700',
-  info: 'bg-blue-50 border-l-blue-300 text-blue-600',
+  critical: 'bg-danger-subtle border-l-danger text-danger-fg',
+  warning:  'bg-warning-subtle border-l-warning text-warning-fg',
+  info:     'bg-info-subtle border-l-info text-info-fg',
 } as const
 
 function toDateString(d: Date) {
@@ -249,7 +249,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
         empty={true}
         emptyMessage="No properties found"
         emptySubMessage="Properties will appear once bookings are synced"
-        emptyIcon={<Clock className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+        emptyIcon={<Clock className="w-12 h-12 text-muted-foreground opacity-50 mb-2" />}
         minHeight={300}
         className="py-12"
       >
@@ -262,7 +262,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
     <div className="space-y-3">
       {/* Truncation warning */}
       {isTruncated && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+        <div className="flex items-center gap-2 px-3 py-2 bg-warning-subtle border border-warning/30 rounded-lg text-sm text-warning-fg">
           <Info className="w-4 h-4 shrink-0" />
           Showing first {TRUNCATION_LIMIT.toLocaleString()} bookings. Try a shorter look-ahead for complete results.
         </div>
@@ -272,12 +272,12 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           {/* Group toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setGroupBy('property')}
-              className={groupBy === 'property' ? 'bg-white text-gray-900 shadow-sm hover:bg-white' : 'text-gray-600'}
+              className={groupBy === 'property' ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}
             >
               By Property
             </Button>
@@ -285,20 +285,20 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
               variant="ghost"
               size="sm"
               onClick={() => setGroupBy('time')}
-              className={groupBy === 'time' ? 'bg-white text-gray-900 shadow-sm hover:bg-white' : 'text-gray-600'}
+              className={groupBy === 'time' ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}
             >
               By Time
             </Button>
           </div>
           {/* Look-ahead selector */}
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
             {([30, 60, 90] as LookAhead[]).map(days => (
               <Button
                 key={days}
                 variant="ghost"
                 size="sm"
                 onClick={() => setLookAhead(days)}
-                className={lookAhead === days ? 'bg-white text-gray-900 shadow-sm hover:bg-white' : 'text-gray-600'}
+                className={lookAhead === days ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}
               >
                 {days}d
               </Button>
@@ -306,13 +306,13 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
           </div>
         </div>
         {groupBy === 'property' && (
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-md">
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 bg-muted p-0.5 rounded-md">
               <Button
                 variant="ghost"
                 size="xs"
                 onClick={() => setSortBy('name')}
-                className={sortBy === 'name' ? 'bg-white text-gray-900 font-medium shadow-sm hover:bg-white' : 'text-gray-600'}
+                className={sortBy === 'name' ? 'bg-background text-foreground font-medium shadow-sm hover:bg-background' : 'text-muted-foreground'}
               >
                 A-Z
               </Button>
@@ -320,14 +320,14 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                 variant="ghost"
                 size="xs"
                 onClick={() => setSortBy('occupancy')}
-                className={sortBy === 'occupancy' ? 'bg-white text-gray-900 font-medium shadow-sm hover:bg-white' : 'text-gray-600'}
+                className={sortBy === 'occupancy' ? 'bg-background text-foreground font-medium shadow-sm hover:bg-background' : 'text-muted-foreground'}
               >
                 Occupancy ▲
               </Button>
             </div>
-            <Button variant="link" size="sm" onClick={expandAll} className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto">Expand all</Button>
+            <Button variant="link" size="sm" onClick={expandAll} className="text-xs text-muted-foreground hover:text-foreground p-0 h-auto">Expand all</Button>
             <span>|</span>
-            <Button variant="link" size="sm" onClick={collapseAll} className="text-xs text-gray-500 hover:text-gray-700 p-0 h-auto">Collapse all</Button>
+            <Button variant="link" size="sm" onClick={collapseAll} className="text-xs text-muted-foreground hover:text-foreground p-0 h-auto">Collapse all</Button>
           </div>
         )}
       </div>
@@ -340,41 +340,41 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
             const occupancyPct = Math.round(group.occupancyRate * 100)
 
             return (
-              <div key={group.propertyId} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div key={group.propertyId} className="border border-border rounded-lg overflow-hidden">
                 {/* Property header */}
                 <button
                   onClick={() => toggleProperty(group.propertyId)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     {isExpanded
-                      ? <ChevronDown className="w-4 h-4 text-gray-500" />
-                      : <ChevronRight className="w-4 h-4 text-gray-500" />
+                      ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      : <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     }
-                    <span className="font-medium text-sm text-gray-900">{group.name}</span>
+                    <span className="font-medium text-sm text-foreground">{group.name}</span>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>{group.bookingCount} {group.bookingCount === 1 ? 'booking' : 'bookings'}</span>
                     <span>{group.bookedNights} / {group.totalNights} nights</span>
                     {group.gapCount > 0 && (
-                      <span className="text-amber-600">{group.gapCount} {group.gapCount === 1 ? 'gap' : 'gaps'}</span>
+                      <span className="text-warning">{group.gapCount} {group.gapCount === 1 ? 'gap' : 'gaps'}</span>
                     )}
                     <span className={`font-semibold ${
-                      occupancyPct >= 70 ? 'text-green-600' :
-                      occupancyPct >= 50 ? 'text-yellow-600' :
-                      'text-red-600'
+                      occupancyPct >= 70 ? 'text-success' :
+                      occupancyPct >= 50 ? 'text-warning' :
+                      'text-danger'
                     }`}>
                       {occupancyPct}%
                     </span>
                     {group.avgNightlyRate > 0 && (
-                      <span className="text-gray-400">~{formatCurrency(group.avgNightlyRate)}/night</span>
+                      <span className="text-muted-foreground/70">~{formatCurrency(group.avgNightlyRate)}/night</span>
                     )}
                   </div>
                 </button>
 
                 {/* Entries */}
                 {isExpanded && (
-                  <div className="divide-y divide-gray-100">
+                  <div className="divide-y divide-border">
                     {group.entries.map((entry, idx) =>
                       entry.type === 'booking' ? (
                         <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} />
@@ -392,7 +392,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
 
       {/* By Time view */}
       {groupBy === 'time' && (
-        <div className="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+        <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
           {chronologicalEntries.map((entry, idx) =>
             entry.type === 'booking' ? (
               <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} showProperty />
@@ -413,22 +413,22 @@ function BookingRow({ entry, onClick, showProperty }: {
 }) {
   return (
     <div
-      className="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-colors"
+      className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
       onClick={() => onClick(entry.id, entry.guestName)}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           {showProperty && (
-            <span className="text-xs text-gray-400 shrink-0">{entry.propertyName}</span>
+            <span className="text-xs text-muted-foreground/70 shrink-0">{entry.propertyName}</span>
           )}
-          <span className="text-sm font-medium text-gray-900 truncate">{entry.guestName}</span>
+          <span className="text-sm font-medium text-foreground truncate">{entry.guestName}</span>
         </div>
-        <div className="text-xs text-gray-500 mt-0.5">
+        <div className="text-xs text-muted-foreground mt-0.5">
           {formatDateDisplay(entry.arrival)} &rarr; {formatDateDisplay(entry.departure)}
           <span className="ml-2">{entry.nights} {entry.nights === 1 ? 'night' : 'nights'}</span>
         </div>
       </div>
-      <div className="text-sm font-medium text-gray-700 shrink-0 ml-4">
+      <div className="text-sm font-medium text-foreground shrink-0 ml-4">
         {entry.amount > 0 ? formatCurrency(entry.amount) : ''}
       </div>
     </div>

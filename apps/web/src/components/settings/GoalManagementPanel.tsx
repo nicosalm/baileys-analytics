@@ -122,37 +122,37 @@ export const GoalManagementPanel: React.FC = () => {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-700">Failed to load goals: {error.message}</p>
+      <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4">
+        <p className="text-danger-fg">Failed to load goals: {error.message}</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-card rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">Goals</h2>
-            <p className="text-gray-600 text-sm">
+            <h2 className="text-xl font-semibold text-foreground mb-1">Goals</h2>
+            <p className="text-muted-foreground text-sm">
               Set targets for the metrics that matter most to your business. Enabled goals appear on your Overview dashboard.
             </p>
           </div>
-          <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-            <Target className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 bg-info-subtle rounded-lg flex items-center justify-center">
+            <Target className="w-5 h-5 text-info" />
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="flex items-center gap-4 px-4 py-2 border-b bg-gray-50 text-xs font-medium text-gray-500">
+      <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
+        <div className="flex items-center gap-4 px-4 py-2 border-b bg-muted text-xs font-medium text-muted-foreground">
           <span className="w-44">Goal</span>
           <span className="w-36">Target</span>
           <span className="w-28">Period</span>
           <span className="ml-auto">Enabled</span>
         </div>
 
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-border/60">
           {METRIC_CATALOG.map((metric) => {
             const state = goalState[metric.key]
             const Icon = metric.icon
@@ -161,14 +161,14 @@ export const GoalManagementPanel: React.FC = () => {
             return (
               <div key={metric.key} className="flex items-center gap-4 px-4 py-3">
                 <div className="flex items-center gap-2 w-44 shrink-0">
-                  <Icon className={`w-4 h-4 shrink-0 ${state.isEnabled ? 'text-blue-600' : 'text-gray-300'}`} />
-                  <span className={`text-sm font-medium ${state.isEnabled ? 'text-gray-900' : 'text-gray-400'}`}>
+                  <Icon className={`w-4 h-4 shrink-0 ${state.isEnabled ? 'text-info' : 'text-muted-foreground/50'}`} />
+                  <span className={`text-sm font-medium ${state.isEnabled ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {metric.label}
                   </span>
                 </div>
 
                 <div className="relative w-36">
-                  {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 z-10">{prefix}</span>}
+                  {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground z-10">{prefix}</span>}
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -178,7 +178,7 @@ export const GoalManagementPanel: React.FC = () => {
                     disabled={!state.isEnabled}
                     className={`h-8 text-sm ${prefix ? 'pl-6' : ''} ${suffix ? 'pr-10' : ''}`}
                   />
-                  {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">{suffix}</span>}
+                  {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{suffix}</span>}
                 </div>
 
                 <Select

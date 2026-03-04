@@ -249,10 +249,10 @@ export const AuthCallback = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
       <div className="max-w-md w-full px-8">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-card rounded-xl shadow-sm border p-8">
           <div className="flex items-center justify-center mb-6">
             <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-            <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 
           {status === 'loading' && (
@@ -263,23 +263,23 @@ export const AuthCallback = () => {
 
           {status === 'success' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-success" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Success</h2>
-              <p className="text-gray-600">{message}</p>
+              <h2 className="text-xl font-bold text-foreground mb-2">Success</h2>
+              <p className="text-muted-foreground">{message}</p>
             </div>
           )}
 
           {status === 'error' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="w-8 h-8 text-red-600" />
+              <div className="w-16 h-16 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8 text-danger" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Authentication Error</h2>
-              <p className="text-gray-600 mb-2">{message}</p>
-              <p className="text-sm text-gray-500 mb-4">Redirecting...</p>
-              <Link to="/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <h2 className="text-xl font-bold text-foreground mb-2">Authentication Error</h2>
+              <p className="text-muted-foreground mb-2">{message}</p>
+              <p className="text-sm text-muted-foreground mb-4">Redirecting...</p>
+              <Link to="/login" className="text-sm text-primary hover:text-primary/80 font-medium">
                 Go to login →
               </Link>
             </div>

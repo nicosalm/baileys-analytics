@@ -218,11 +218,11 @@ export const FinancialDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Financial Center</h2>
-            <p className="text-gray-600 text-sm mt-1">
+            <h2 className="text-2xl font-bold text-foreground">Financial Center</h2>
+            <p className="text-muted-foreground text-sm mt-1">
               Track your vacation rental income, expenses, and profitability
             </p>
           </div>
@@ -230,14 +230,14 @@ export const FinancialDashboard = () => {
             {financialData?.metrics && (
               <>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500">Net Revenue</div>
-                  <div className="text-lg font-bold text-green-600">
+                  <div className="text-xs text-muted-foreground">Net Revenue</div>
+                  <div className="text-lg font-bold text-success">
                     {formatCompactCurrency(financialData.metrics.revenue?.net || 0)}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500">Gross Revenue</div>
-                  <div className="text-lg font-bold text-gray-900">
+                  <div className="text-xs text-muted-foreground">Gross Revenue</div>
+                  <div className="text-lg font-bold text-foreground">
                     {formatCompactCurrency(financialData.metrics.revenue?.gross || 0)}
                   </div>
                 </div>
@@ -247,9 +247,9 @@ export const FinancialDashboard = () => {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Financial Analysis</h3>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-card rounded-lg shadow-sm border border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border">
+          <h3 className="text-lg font-semibold text-foreground">Financial Analysis</h3>
           <TabsList>
             <TabsTrigger value="pl">P&L View</TabsTrigger>
             <TabsTrigger value="revenue_analysis">Revenue</TabsTrigger>

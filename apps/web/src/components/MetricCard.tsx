@@ -46,15 +46,14 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   onClick,
   className
 }) => {
-  // Color schemes
   const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-green-50 text-green-600',
-    purple: 'bg-purple-50 text-purple-600',
-    orange: 'bg-orange-50 text-orange-600',
-    red: 'bg-red-50 text-red-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    gray: 'bg-gray-50 text-gray-600'
+    blue:   'bg-info-subtle text-info-fg',
+    green:  'bg-success-subtle text-success-fg',
+    purple: 'bg-purple-subtle text-purple-fg',
+    orange: 'bg-orange-subtle text-orange-fg',
+    red:    'bg-danger-subtle text-danger-fg',
+    yellow: 'bg-warning-subtle text-warning-fg',
+    gray:   'bg-muted text-muted-foreground'
   }
 
   const sizeClasses = {
@@ -124,11 +123,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   if (loading) {
     return (
       <div className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center",
+        "bg-card rounded-lg shadow-sm border border-border flex items-center justify-center",
         currentSize.padding,
         className
       )}>
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -136,11 +135,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   if (error) {
     return (
       <div className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-200",
+        "bg-card rounded-lg shadow-sm border border-border",
         currentSize.padding,
         className
       )}>
-        <div className="text-red-500 text-sm">{error}</div>
+        <div className="text-danger text-sm">{error}</div>
       </div>
     )
   }
@@ -148,8 +147,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div 
       className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-200 transition-all",
-        onClick && "cursor-pointer hover:bg-gray-50/50",
+        "bg-card rounded-lg shadow-sm border border-border transition-all",
+        onClick && "cursor-pointer hover:bg-muted/30",
         currentSize.padding,
         className
       )}
@@ -169,8 +168,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <div className={cn(
             "flex items-center font-medium",
             currentSize.sub,
-            trend.value === 0 ? 'text-gray-500' :
-            trendDirection ? 'text-green-600' : 'text-red-600'
+            trend.value === 0 ? 'text-muted-foreground' :
+            trendDirection ? 'text-success' : 'text-danger'
           )}>
             {trend.value === 0 ? (
               <Minus className="w-4 h-4" />
@@ -181,7 +180,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             )}
             <span>{Math.abs(trend.value).toFixed(1)}%</span>
             {trend.period && (
-              <span className="text-gray-500 ml-1 font-normal">
+              <span className="text-muted-foreground ml-1 font-normal">
                 {trend.period}
               </span>
             )}
@@ -195,13 +194,13 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       </div>
 
       {/* Label with tooltip */}
-      <div className={cn("text-gray-600 mt-1 flex items-center gap-1", currentSize.label)}>
+      <div className={cn("text-muted-foreground mt-1 flex items-center gap-1", currentSize.label)}>
         {label}
         {tooltip && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="top">
                 {tooltip}
@@ -213,7 +212,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Subtitle or subValue */}
       {(subtitle || subValue) && (
-        <div className={cn("text-gray-500 mt-1", currentSize.sub)}>
+        <div className={cn("text-muted-foreground mt-1", currentSize.sub)}>
           {subtitle || subValue}
         </div>
       )}
@@ -221,23 +220,23 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {/* Target progress bar */}
       {target && targetProgress !== null && (
         <div className="mt-3">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <div className="flex justify-between text-xs text-muted-foreground mb-1">
             <span>{target.label || 'Target'}</span>
             <span>{formatValue(target.value)}</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-muted rounded-full h-2">
             <div
               className={cn(
                 "h-2 rounded-full transition-all",
-                targetProgress >= 100 ? 'bg-green-500' : 
-                targetProgress >= 75 ? 'bg-blue-500' : 
-                targetProgress >= 50 ? 'bg-yellow-500' : 
-                'bg-red-500'
+                targetProgress >= 100 ? 'bg-success' :
+                targetProgress >= 75  ? 'bg-info' :
+                targetProgress >= 50  ? 'bg-warning' :
+                'bg-danger'
               )}
               style={{ width: `${targetProgress}%` }}
             />
           </div>
-          <div className="text-xs text-gray-500 mt-1 text-right">
+          <div className="text-xs text-muted-foreground mt-1 text-right">
             {targetProgress.toFixed(0)}% of target
           </div>
         </div>

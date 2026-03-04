@@ -46,25 +46,19 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   }
 
   const heightValue = typeof height === 'number' ? `${height}px` : height
+  const baseCard = cn('bg-card rounded-lg shadow-sm border border-border', paddingClasses[padding], className)
 
   if (loading) {
     return (
-      <div className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-200",
-        paddingClasses[padding],
-        className
-      )}>
+      <div className={baseCard}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Icon className="w-5 h-5 mr-2 text-gray-600" />
+            <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
             <h3 className="text-lg font-bold">{title}</h3>
           </div>
         </div>
-        <div 
-          className="flex items-center justify-center"
-          style={{ height: heightValue }}
-        >
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        <div className="flex items-center justify-center" style={{ height: heightValue }}>
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/70" />
         </div>
       </div>
     )
@@ -72,19 +66,15 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
 
   if (error) {
     return (
-      <div className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-200",
-        paddingClasses[padding],
-        className
-      )}>
+      <div className={baseCard}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Icon className="w-5 h-5 mr-2 text-gray-600" />
+            <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
             <h3 className="text-lg font-bold">{title}</h3>
           </div>
         </div>
-        <div 
-          className="flex flex-col items-center justify-center text-red-500"
+        <div
+          className="flex flex-col items-center justify-center text-danger"
           style={{ height: heightValue }}
         >
           <AlertCircle className="w-8 h-8 mb-2" />
@@ -97,20 +87,16 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
 
   if (noData) {
     return (
-      <div className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-200",
-        paddingClasses[padding],
-        className
-      )}>
+      <div className={baseCard}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Icon className="w-5 h-5 mr-2 text-gray-600" />
+            <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
             <h3 className="text-lg font-bold">{title}</h3>
           </div>
           {actions}
         </div>
-        <div 
-          className="flex flex-col items-center justify-center text-gray-500"
+        <div
+          className="flex flex-col items-center justify-center text-muted-foreground"
           style={{ height: heightValue }}
         >
           <BarChart3 className="w-12 h-12 mb-2 opacity-50" />
@@ -121,39 +107,29 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   }
 
   return (
-    <div 
-      className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-200",
-        paddingClasses[padding],
-        className
-      )}
-      title={tooltip}
-    >
-      {/* Header */}
+    <div className={baseCard} title={tooltip}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
-          <Icon className="w-5 h-5 mr-2 text-gray-600" />
+          <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
           <div>
             <h3 className="text-lg font-bold">{title}</h3>
             {subtitle && (
-              <p className="text-sm text-gray-600">{subtitle}</p>
+              <p className="text-sm text-muted-foreground">{subtitle}</p>
             )}
           </div>
         </div>
         {actions}
       </div>
 
-      {/* Info banner if provided */}
       {info && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-3 mb-4">
           <div className="flex items-start">
-            <Info className="w-4 h-4 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">{info}</div>
+            <Info className="w-4 h-4 text-info mr-2 mt-0.5" />
+            <div className="text-sm text-info-fg">{info}</div>
           </div>
         </div>
       )}
 
-      {/* Chart container */}
       <ChartErrorBoundary chartName={title} height={typeof height === 'number' ? height : 300}>
         {responsive ? (
           <div style={{ height: heightValue }}>
@@ -176,19 +152,19 @@ export const MiniChartWrapper: React.FC<{
   height?: number
   loading?: boolean
   className?: string
-}> = ({ 
-  children, 
-  height = 60, 
+}> = ({
+  children,
+  height = 60,
   loading = false,
-  className 
+  className
 }) => {
   if (loading) {
     return (
-      <div 
+      <div
         className={cn("flex items-center justify-center", className)}
         style={{ height: `${height}px` }}
       >
-        <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/70" />
       </div>
     )
   }

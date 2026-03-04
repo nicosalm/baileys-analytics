@@ -52,22 +52,22 @@ export const ForgotPassword = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
         <div className="max-w-md w-full px-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-card rounded-xl shadow-sm border p-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-success" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
-              <p className="text-gray-600 mb-4">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h2>
+              <p className="text-muted-foreground mb-4">
                 We've sent a password reset link to
               </p>
-              <p className="font-medium text-gray-900 mb-6">{email}</p>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="font-medium text-foreground mb-6">{email}</p>
+              <p className="text-sm text-muted-foreground mb-6">
                 Click the link in the email to reset your password. If you don't see it, check your spam folder.
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                className="inline-flex items-center text-sm text-primary hover:text-primary/80 font-medium transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to login
@@ -83,7 +83,7 @@ export const ForgotPassword = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
       <div className="max-w-md w-full px-8">
         <div className="mb-8">
-          <Link to="/login" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors">
+          <Link to="/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to login
           </Link>
@@ -92,12 +92,12 @@ export const ForgotPassword = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="flex items-center mb-6">
             <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-            <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Reset your password</h2>
-            <p className="text-gray-600 text-sm">
+            <h2 className="text-xl font-bold text-foreground mb-2">Reset your password</h2>
+            <p className="text-muted-foreground text-sm">
               Enter your email address and we'll send you a link to reset your password.
             </p>
           </div>
@@ -121,7 +121,7 @@ export const ForgotPassword = () => {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}

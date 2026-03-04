@@ -7,11 +7,11 @@ interface LoadingStateProps {
   inline?: boolean
 }
 
-export const LoadingState = ({ 
-  message, 
+export const LoadingState = ({
+  message,
   size = 'md',
   fullScreen = false,
-  inline = false 
+  inline = false
 }: LoadingStateProps) => {
   const sizeClasses = {
     sm: 'w-4 h-4',
@@ -27,9 +27,9 @@ export const LoadingState = ({
 
   const content = (
     <div className="flex flex-col items-center justify-center gap-3">
-      <Loader2 className={`animate-spin text-blue-600 ${sizeClasses[size]}`} />
+      <Loader2 className={`animate-spin text-primary ${sizeClasses[size]}`} />
       {message && (
-        <p className={`text-gray-600 ${textSizes[size]}`}>{message}</p>
+        <p className={`text-muted-foreground ${textSizes[size]}`}>{message}</p>
       )}
     </div>
   )

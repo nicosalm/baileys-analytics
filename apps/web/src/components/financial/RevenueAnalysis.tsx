@@ -133,10 +133,10 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
     <div className="space-y-6">
       {/* Info Banner */}
       {showTips && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+        <div className="bg-success-subtle border border-success/30 rounded-lg p-4">
           <div className="flex items-start">
-            <Info className="w-5 h-5 text-green-600 mr-2 mt-0.5" />
-            <div className="text-sm text-green-800">
+            <Info className="w-5 h-5 text-success mr-2 mt-0.5" />
+            <div className="text-sm text-success-fg">
               <strong>Revenue Analysis:</strong> Deep dive into your revenue streams, trends, and property performance
             </div>
           </div>
@@ -152,7 +152,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && analysis.previousRevenue
-            ? <>{comparisonLabel ? `vs ${comparisonLabel}` : 'vs Previous Period'}: {formatCurrency(analysis.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparisonLabel ? `vs ${comparisonLabel}` : 'vs Previous Period'}: {formatCurrency(analysis.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `Monthly avg: ${formatCurrency(analysis.avgMonthlyRevenue)} | ${analysis.monthlyData.length} months`}
           trend={analysis.revenueGrowth !== 0 ? {
             value: analysis.revenueGrowth,
@@ -166,7 +166,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
           format="currency"
           color="blue"
           subValue={comparisonMode !== 'none' && analysis.previousAvgMonthlyRevenue > 0
-            ? <>{comparisonLabel ? `vs ${comparisonLabel}` : 'vs Previous Period'}: {formatCurrency(analysis.previousAvgMonthlyRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparisonLabel ? `vs ${comparisonLabel}` : 'vs Previous Period'}: {formatCurrency(analysis.previousAvgMonthlyRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${analysis.monthlyData.length} months | Best: ${formatCurrency(Math.max(...analysis.monthlyData.map((m: any) => m.revenue || 0)))}`}
           trend={comparisonMode !== 'none' && analysis.avgMonthlyGrowth !== 0 ? {
             value: analysis.avgMonthlyGrowth,
@@ -218,22 +218,22 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       
       {/* Property Performance Tables */}
       {analysis.topProperties.length === 0 && analysis.bottomProperties.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center text-gray-500">
+        <div className="bg-muted/40 border rounded-lg p-6 text-center text-muted-foreground">
           <Info className="w-12 h-12 mx-auto mb-2 opacity-50" />
           <p className="text-sm font-medium">No property data available for the selected period</p>
-          <p className="text-xs text-gray-400 mt-1">Select a different date range or check your property sync status</p>
+          <p className="text-xs text-muted-foreground mt-1">Select a different date range or check your property sync status</p>
         </div>
       ) : (
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Top Performers */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-card rounded-lg shadow-sm border p-4">
           <div className="flex items-start justify-between mb-3">
             <h3 className="text-lg font-semibold flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-green-600" />
+              <TrendingUp className="w-5 h-5 mr-2 text-success" />
               Top Performing Properties
             </h3>
             <div className="group relative">
-              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help" />
               <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <p className="font-semibold mb-1">Top Performers</p>
                 <p className="mb-2">Properties with the highest revenue in the selected period.</p>
@@ -272,14 +272,14 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
         </div>
 
         {/* Properties Needing Attention */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-card rounded-lg shadow-sm border p-4">
           <div className="flex items-start justify-between mb-3">
             <h3 className="text-lg font-semibold flex items-center">
-              <ArrowDown className="w-5 h-5 mr-2 text-yellow-600" />
+              <ArrowDown className="w-5 h-5 mr-2 text-warning" />
               Properties Needing Attention
             </h3>
             <div className="group relative">
-              <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+              <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help" />
               <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <p className="font-semibold mb-1">Underperforming Properties</p>
                 <p className="mb-2">Properties with the lowest revenue in the selected period.</p>

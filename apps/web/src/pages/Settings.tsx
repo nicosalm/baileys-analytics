@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/auth'
 import { useState, useEffect, lazy, Suspense, ComponentType, useCallback } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useTips } from '@/hooks/use-tips'
+import { useTheme } from '@/contexts/theme'
 import { LoadingState } from '@/components/LoadingState'
 import {
   Calendar, Calculator,
@@ -100,9 +101,16 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
   }
 ]
 
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'system', label: 'System' },
+  { value: 'dark', label: 'Dark' },
+] as const
+
 const PreferencesTab = () => {
   const { showTips, toggleTips } = useTips()
   const { addToast } = useToast()
+  const { theme, setTheme } = useTheme()
   const [notifications, setNotifications] = useState(true)
 
   const handleToggleTips = () => {
@@ -112,26 +120,51 @@ const PreferencesTab = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Display Preferences</h3>
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Appearance</h3>
+        <div className="flex justify-between items-center">
+          <div>
+            <span className="text-sm font-medium text-foreground">Color theme</span>
+            <p className="text-xs text-muted-foreground mt-0.5">Choose light, dark, or follow your OS setting</p>
+          </div>
+          <div className="flex rounded-lg border border-border overflow-hidden">
+            {THEME_OPTIONS.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setTheme(value)}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
+                  theme === value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Display Preferences</h3>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-sm font-medium text-gray-700">Tips & Hints</span>
-              <p className="text-xs text-gray-500 mt-0.5">Show helpful tips throughout the dashboard</p>
+              <span className="text-sm font-medium text-foreground">Tips & Hints</span>
+              <p className="text-xs text-muted-foreground mt-0.5">Show helpful tips throughout the dashboard</p>
             </div>
             <Switch checked={showTips} onCheckedChange={handleToggleTips} />
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h3>
+      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-4">Notifications</h3>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-sm font-medium text-gray-700">Email Notifications</span>
-              <p className="text-xs text-gray-500 mt-0.5">Receive updates about your account and syncs</p>
+              <span className="text-sm font-medium text-foreground">Email Notifications</span>
+              <p className="text-xs text-muted-foreground mt-0.5">Receive updates about your account and syncs</p>
             </div>
             <Switch checked={notifications} onCheckedChange={setNotifications} />
           </div>
@@ -285,29 +318,29 @@ export const Settings = () => {
   }, [logout])
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <Link to="/dashboard/overview" className="flex items-center hover:opacity-80 transition-opacity">
                 <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                 <div className="ml-3">
-                  <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
+                  <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
                 </div>
               </Link>
             </div>
             <div className="flex items-center gap-2">
               <Link
                 to="/dashboard/overview"
-                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <Button
                 variant="ghost"
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
               >
                 <LogOut className="w-4 h-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -319,8 +352,8 @@ export const Settings = () => {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Settings</h1>
-          <p className="text-gray-600 text-sm">Manage your account settings and preferences</p>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Settings</h1>
+          <p className="text-muted-foreground text-sm">Manage your account settings and preferences</p>
         </div>
 
         {/* mobile tab bar */}
@@ -332,8 +365,8 @@ export const Settings = () => {
                 onClick={() => handleTabChange(id)}
                 className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer ${
                   activeTab === id
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-transparent'
+                    ? 'bg-primary/10 text-primary border border-primary/30'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -342,7 +375,7 @@ export const Settings = () => {
             ))}
             <button
               onClick={handleSendFeedback}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap text-gray-600 hover:text-gray-900 hover:bg-gray-50 border border-transparent transition-all cursor-pointer"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent transition-all cursor-pointer"
             >
               <MessageSquare className="w-4 h-4" />
               Feedback
@@ -353,15 +386,15 @@ export const Settings = () => {
         <div className="flex gap-6">
           {/* desktop sidebar */}
           <div className="hidden md:block w-64 flex-shrink-0">
-            <nav className="space-y-1 bg-white/50 backdrop-blur-sm rounded-lg p-2 border border-gray-200">
+            <nav className="space-y-1 bg-card/50 backdrop-blur-sm rounded-lg p-2 border border-border">
               {tabConfig.map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => handleTabChange(id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
                     activeTab === id
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -370,10 +403,10 @@ export const Settings = () => {
               ))}
             </nav>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="mt-6 pt-6 border-t border-border">
               <button
                 onClick={handleSendFeedback}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-all cursor-pointer"
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all cursor-pointer"
               >
                 <MessageSquare className="w-4 h-4" />
                 Send Feedback
@@ -491,7 +524,7 @@ export const Settings = () => {
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   disabled={isChangingPassword}
                   tabIndex={-1}
                 >
@@ -519,7 +552,7 @@ export const Settings = () => {
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   disabled={isChangingPassword}
                   tabIndex={-1}
                 >

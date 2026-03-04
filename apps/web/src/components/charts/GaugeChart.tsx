@@ -1,5 +1,6 @@
 import React from 'react'
 import { PieChart, Pie, Cell } from 'recharts'
+import { resolveToken } from '@/lib/theme'
 
 interface GaugeChartProps {
   value: number
@@ -24,9 +25,9 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
   min = 0,
   max = 100,
   segments = [
-    { threshold: 33, color: '#EF4444', label: 'Low' },
-    { threshold: 66, color: '#F59E0B', label: 'Medium' },
-    { threshold: 100, color: '#10B981', label: 'High' }
+    { threshold: 33,  color: resolveToken('--danger'),  label: 'Low' },
+    { threshold: 66,  color: resolveToken('--warning'), label: 'Medium' },
+    { threshold: 100, color: resolveToken('--success'), label: 'High' }
   ],
   width = 260,
   height = 140,
@@ -123,7 +124,7 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
           {...pieProps}
           innerRadius={innerRadius}
           outerRadius={outerRadius}
-          fill="#8884d8"
+          fill={resolveToken('--chart-series-5')}
           stroke="none"
           isAnimationActive={false}
         >
@@ -187,7 +188,7 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
           y1={cy}
           x2={needleX}
           y2={needleY}
-          stroke="#6B7280"
+          stroke={resolveToken('--muted-foreground')}
           strokeWidth="2.5"
           strokeLinecap="round"
           opacity="0.8"
@@ -198,15 +199,15 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
           y1={cy}
           x2={needleX}
           y2={needleY}
-          stroke="#9CA3AF"
+          stroke={resolveToken('--chart-reference')}
           strokeWidth="1"
           strokeLinecap="round"
           opacity="0.6"
         />
-        
-        {/* Center pin - smaller and semi-transparent */}
-        <circle cx={cx} cy={cy} r={4} fill="#6B7280" fillOpacity={0.5} />
-        <circle cx={cx} cy={cy} r={2.5} fill="#9CA3AF" fillOpacity={0.6} />
+
+        {/* Center pin */}
+        <circle cx={cx} cy={cy} r={4} fill={resolveToken('--muted-foreground')} fillOpacity={0.5} />
+        <circle cx={cx} cy={cy} r={2.5} fill={resolveToken('--chart-reference')} fillOpacity={0.6} />
       </svg>
       
       {/* Value display */}
@@ -219,9 +220,9 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
           height: 40
         }}
       >
-        <span className="text-xl font-bold text-gray-900">{format(value)}</span>
+        <span className="text-xl font-bold text-foreground">{format(value)}</span>
         {currentPerformance && (
-          <span className="text-xs text-gray-600 font-medium mt-0.5">{currentPerformance}</span>
+          <span className="text-xs text-muted-foreground font-medium mt-0.5">{currentPerformance}</span>
         )}
       </div>
       
@@ -229,17 +230,17 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
       {showMinMax && (
         <>
           <div 
-            className="absolute text-xs text-gray-500 font-medium" 
-            style={{ 
+            className="absolute text-xs text-muted-foreground font-medium"
+            style={{
               left: 15,
               bottom: 20
             }}
           >
             {format(min)}
           </div>
-          <div 
-            className="absolute text-xs text-gray-500 font-medium" 
-            style={{ 
+          <div
+            className="absolute text-xs text-muted-foreground font-medium"
+            style={{
               right: 15,
               bottom: 20
             }}
@@ -251,7 +252,7 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
       
       {/* Optional label */}
       {label && (
-        <div className="text-xs text-gray-600 text-center font-medium">
+        <div className="text-xs text-muted-foreground text-center font-medium">
           {label}
         </div>
       )}

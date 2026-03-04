@@ -58,34 +58,34 @@ export const SeasonIndicator: React.FC<{
   return (
     <div className={cn("flex items-center gap-2", className)}>
       {overlappingSeasons.length > 0 ? (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg text-sm">
-          <Calendar className="w-4 h-4 text-green-600" />
-          <span className="text-green-700 font-medium">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-success-subtle border border-success/30 rounded-lg text-sm">
+          <Calendar className="w-4 h-4 text-success" />
+          <span className="text-success-fg font-medium">
             {overlappingSeasons.map(s => s.name).join(', ')}
           </span>
           {isPartiallyOutside && (
             <span title="Date range extends beyond season boundaries">
-              <AlertCircle className="w-4 h-4 text-amber-500 ml-1" />
+              <AlertCircle className="w-4 h-4 text-warning ml-1" />
             </span>
           )}
         </div>
       ) : (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg text-sm">
-          <AlertCircle className="w-4 h-4 text-amber-600" />
-          <span className="text-amber-700">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-warning-subtle border border-warning/30 rounded-lg text-sm">
+          <AlertCircle className="w-4 h-4 text-warning" />
+          <span className="text-warning-fg">
             Outside defined seasons
           </span>
         </div>
       )}
       
       <div className="group relative">
-        <Button variant="ghost" size="icon-xs" className="text-gray-400">
+        <Button variant="ghost" size="icon-xs" className="text-muted-foreground">
           <AlertCircle className="w-4 h-4" />
         </Button>
-        <div className="absolute bottom-full mb-2 right-0 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+        <div className="absolute bottom-full mb-2 right-0 w-64 p-3 bg-foreground/90 text-background text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
           <p className="mb-1">Active seasons filter your data to show only in-season bookings.</p>
           <p>Bookings tagged as "Blocked" are automatically excluded.</p>
-          <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-gray-900"></div>
+          <div className="absolute bottom-0 right-4 transform translate-y-1/2 rotate-45 w-2 h-2 bg-foreground/90"></div>
         </div>
       </div>
     </div>

@@ -19,36 +19,36 @@ const CashFlowChartTooltip = ({ active, payload, label }: any) => {
   const netFlow = data.inflow - data.outflow
 
   return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+    <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
       <p className="font-semibold text-sm mb-2">{label}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.success }} />
-            <span className="text-gray-600">Inflow:</span>
+            <span className="text-muted-foreground">Inflow:</span>
           </div>
           <span className="font-medium">{formatCurrency(data.inflow)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.danger }} />
-            <span className="text-gray-600">Outflow:</span>
+            <span className="text-muted-foreground">Outflow:</span>
           </div>
           <span className="font-medium">{formatCurrency(data.outflow)}</span>
         </div>
-        <div className="pt-1 mt-1 border-t border-gray-200">
+        <div className="pt-1 mt-1 border-t border-border">
           <div className="flex justify-between gap-4">
-            <span className="text-gray-600">Net Flow:</span>
-            <span className={`font-medium ${netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(netFlow)}</span>
+            <span className="text-muted-foreground">Net Flow:</span>
+            <span className={`font-medium ${netFlow >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(netFlow)}</span>
           </div>
           {data.inflow > 0 && (
             <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Retained:</span>
+              <span className="text-muted-foreground">Retained:</span>
               <span className="font-medium">{((netFlow / data.inflow) * 100).toFixed(1)}%</span>
             </div>
           )}
         </div>
-        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view details</p>
+        <p className="text-muted-foreground pt-1 mt-1 border-t border-border">Click to view details</p>
       </div>
     </div>
   )
@@ -172,7 +172,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
     <div className="space-y-6">
       {/* Info Banner */}
       {showTips && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <div className="bg-purple-subtle border border-purple-fg/30 rounded-lg p-4">
           <div className="flex items-start">
             <Info className="w-5 h-5 text-purple-600 mr-2 mt-0.5" />
             <div className="text-sm text-purple-800">
@@ -191,7 +191,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousInflow > 0
-            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousInflow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousInflow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${cashFlowData.monthlyData.length} months | Avg: ${formatCurrency(cashFlowData.totalInflow / Math.max(cashFlowData.monthlyData.length, 1))}`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.inflowGrowth !== 0 ? {
             value: cashFlowData.comparison.inflowGrowth,
@@ -205,7 +205,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color="red"
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousOutflow > 0
-            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousOutflow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousOutflow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow | Fees: ${formatCurrency(cashFlowData.totalFees)} + Tax: ${formatCurrency(cashFlowData.totalTaxes)}${cashFlowData.totalOperatingExpenses > 0 ? ` + Expenses: ${formatCurrency(cashFlowData.totalOperatingExpenses)}` : ''}`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.outflowGrowth !== 0 ? {
             value: cashFlowData.comparison.outflowGrowth,
@@ -219,7 +219,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color={cashFlowData.netCashFlow > 0 ? 'green' : 'red'}
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousNetFlow !== 0
-            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousNetFlow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousNetFlow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(cashFlowData.flowRatio, 1)} retained | ${cashFlowData.netCashFlow > 0 ? 'Positive' : 'Negative'} flow`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.netFlowGrowth !== 0 ? {
             value: cashFlowData.comparison.netFlowGrowth,
@@ -233,7 +233,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color="blue"
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousAvgMonthlyFlow !== 0
-            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousAvgMonthlyFlow)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousAvgMonthlyFlow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `Per month | ${cashFlowData.avgMonthlyFlow > 0 ? 'Profitable' : 'Loss'}`}
           trend={comparisonMode !== 'none' && cashFlowData.comparison.avgMonthlyFlowGrowth !== 0 ? {
             value: cashFlowData.comparison.avgMonthlyFlowGrowth,
@@ -282,21 +282,21 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       
       {/* Cash Flow Health Indicator */}
       <div className={`rounded-lg p-4 ${
-        cashFlowData.flowRatio > 70 ? 'bg-green-50 border-green-200' :
-        cashFlowData.flowRatio > 50 ? 'bg-yellow-50 border-yellow-200' :
-        'bg-red-50 border-red-200'
+        cashFlowData.flowRatio > 70 ? 'bg-success-subtle border-success/30' :
+        cashFlowData.flowRatio > 50 ? 'bg-warning-subtle border-warning/30' :
+        'bg-danger-subtle border-danger/30'
       } border`}>
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="font-semibold text-gray-900">Cash Flow Health</h4>
-            <p className="text-sm text-gray-600 mt-1">
+            <h4 className="font-semibold text-foreground">Cash Flow Health</h4>
+            <p className="text-sm text-muted-foreground mt-1">
               You're retaining {formatPercentage(cashFlowData.flowRatio, 1)} of your revenue after fees, taxes, and expenses
             </p>
           </div>
           <div className={`text-3xl font-bold ${
-            cashFlowData.flowRatio > 70 ? 'text-green-600' :
-            cashFlowData.flowRatio > 50 ? 'text-yellow-600' :
-            'text-red-600'
+            cashFlowData.flowRatio > 70 ? 'text-success' :
+            cashFlowData.flowRatio > 50 ? 'text-warning' :
+            'text-danger'
           }`}>
             {formatPercentage(cashFlowData.flowRatio, 1)}
           </div>

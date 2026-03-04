@@ -14,7 +14,7 @@ import { ChartWrapper } from '@/components/ChartWrapper'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { StateWrapper } from '@/components/StateWrapper'
 import { formatPercentage, minBy } from '@baileys/utils'
-import { METRIC_COLORS } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 import { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
 
@@ -24,42 +24,42 @@ const OccupancyChartTooltip = ({ active, payload, label }: any) => {
   const emptyNights = data.availableNights - data.bookedNights
 
   return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+    <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
       <p className="font-semibold text-sm mb-2">{label}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.occupancy }} />
-            <span className="text-gray-600">Occupancy:</span>
+            <span className="text-muted-foreground">Occupancy:</span>
           </div>
           <span className="font-medium">{data.rate.toFixed(1)}%</span>
         </div>
         {data.previousRate !== undefined && (
           <div className="flex justify-between gap-4">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-slate-400" />
-              <span className="text-gray-600">Previous:</span>
+              <div className="w-3 h-3 rounded-sm bg-chart-comparison" />
+              <span className="text-muted-foreground">Previous:</span>
             </div>
             <span className="font-medium">{data.previousRate.toFixed(1)}%</span>
           </div>
         )}
-        <div className="pt-1 mt-1 border-t border-gray-200 space-y-1">
+        <div className="pt-1 mt-1 border-t border-border space-y-1">
           <div className="flex justify-between gap-4">
-            <span className="text-gray-600">Booked:</span>
+            <span className="text-muted-foreground">Booked:</span>
             <span className="font-medium">{data.bookedNights.toLocaleString()} nights</span>
           </div>
           <div className="flex justify-between gap-4">
-            <span className="text-gray-600">Available:</span>
+            <span className="text-muted-foreground">Available:</span>
             <span className="font-medium">{data.availableNights.toLocaleString()} nights</span>
           </div>
           {emptyNights > 0 && (
             <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Empty:</span>
-              <span className="font-medium text-amber-600">{emptyNights.toLocaleString()} nights</span>
+              <span className="text-muted-foreground">Empty:</span>
+              <span className="font-medium text-warning">{emptyNights.toLocaleString()} nights</span>
             </div>
           )}
         </div>
-        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view details</p>
+        <p className="text-muted-foreground/70 pt-1 mt-1 border-t border-border">Click to view details</p>
       </div>
     </div>
   )
@@ -221,7 +221,7 @@ export const OccupancyDashboard = () => {
         loadingMessage="Loading occupancy data..."
         emptyMessage="No occupancy data available"
         emptySubMessage="Occupancy data will appear once bookings are synced"
-        emptyIcon={<Percent className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+        emptyIcon={<Percent className="w-12 h-12 text-muted-foreground opacity-50 mb-2" />}
         onRetry={() => window.location.reload()}
         minHeight={400}
         className="py-12"
@@ -248,24 +248,24 @@ export const OccupancyDashboard = () => {
   return (
     <div className="space-y-6">
       
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">How Busy Are Your Properties?</h2>
-            <p className="text-gray-600 text-sm mt-1">
+            <h2 className="text-2xl font-bold text-foreground">How Busy Are Your Properties?</h2>
+            <p className="text-muted-foreground text-sm mt-1">
               Track when your properties are booked and identify opportunities to fill empty nights
             </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <div className="text-xs text-gray-500">Current Occupancy</div>
-              <div className="text-lg font-bold text-blue-600">
+              <div className="text-xs text-muted-foreground">Current Occupancy</div>
+              <div className="text-lg font-bold text-info">
                 {formatPercentage(currentData.overall * 100, 1)}
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-gray-500">Booked Nights</div>
-              <div className="text-lg font-bold text-gray-900">
+              <div className="text-xs text-muted-foreground">Booked Nights</div>
+              <div className="text-lg font-bold text-foreground">
                 {currentData.bookedNights.toLocaleString()}
               </div>
             </div>
@@ -274,10 +274,10 @@ export const OccupancyDashboard = () => {
       </div>
 
       {showTips && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
           <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
+            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+            <div className="text-sm text-info-fg">
               <strong>Understanding Your Numbers:</strong> Occupancy shows what percentage of available nights were booked.
               Higher percentages mean fewer empty nights. Use the <strong>What If calculator</strong> to estimate revenue from unbooked nights,
               the <strong>timeline view</strong> to spot booking gaps, and the <strong>trend chart</strong> to track patterns over time.
@@ -294,7 +294,7 @@ export const OccupancyDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
-            ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 1)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
           }
           trend={comparisonMode !== 'none' && previousData?.overall !== undefined ? {
@@ -312,7 +312,7 @@ export const OccupancyDashboard = () => {
           format="number"
           tooltip="Total nights booked across all properties"
           subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
-            ? <>vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
           }
           trend={comparisonMode !== 'none' && previousData?.bookedNights !== undefined ? {
@@ -330,7 +330,7 @@ export const OccupancyDashboard = () => {
           format="number"
           tooltip="Total nights available for booking"
           subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
-            ? <>vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
           }
           trend={comparisonMode !== 'none' && previousData?.availableNights !== undefined ? {
@@ -353,7 +353,7 @@ export const OccupancyDashboard = () => {
                 const deviation = (lowestPeriod.rate * 100) - occupancyGoal
                 const isAbove = deviation >= 0
                 return (
-                  <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isAbove ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isAbove ? 'text-success' : 'text-danger'}`}>
                     {isAbove ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                     {Math.abs(deviation).toFixed(1)}% {isAbove ? 'above' : 'below'} goal
                   </span>
@@ -368,25 +368,25 @@ export const OccupancyDashboard = () => {
 
       <WhatIfCalculator byProperty={currentData.byProperty} />
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-lg font-bold flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-gray-600" />
+              <Calendar className="w-5 h-5 mr-2 text-muted-foreground" />
               {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {calendarView === 'calendar'
                 ? 'Click any day to see booking details'
                 : 'Upcoming bookings and gaps to fill'}
             </p>
           </div>
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setCalendarView('list')}
-              className={calendarView === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}
+              className={calendarView === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
             >
               <List className="w-4 h-4" />
               Timeline
@@ -395,7 +395,7 @@ export const OccupancyDashboard = () => {
               variant="ghost"
               size="sm"
               onClick={() => setCalendarView('calendar')}
-              className={calendarView === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'}
+              className={calendarView === 'calendar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
             >
               <Calendar className="w-4 h-4" />
               Calendar
@@ -447,13 +447,13 @@ export const OccupancyDashboard = () => {
               {occupancyGoal !== null && (
                 <ReferenceLine
                   y={occupancyGoal}
-                  stroke="#6366f1"
+                  stroke={CHART_INFRA.goal}
                   strokeDasharray="6 4"
                   strokeWidth={1.5}
                   label={{
                     value: `⬥ Goal: ${occupancyGoal}%`,
                     position: 'insideTopLeft',
-                    fill: '#6366f1',
+                    fill: CHART_INFRA.goal,
                     fontSize: 12,
                     fontWeight: 600,
                     offset: 4
@@ -474,10 +474,10 @@ export const OccupancyDashboard = () => {
                 <Line
                   type="monotone"
                   dataKey="previousRate"
-                  stroke="#94a3b8"
+                  stroke={CHART_INFRA.comparison}
                   strokeWidth={2}
                   strokeDasharray="5 5"
-                  dot={{ fill: '#94a3b8', r: 4 }}
+                  dot={{ fill: CHART_INFRA.comparison, r: 4 }}
                   name={comparisonLabel || 'Previous Period'}
                 />
               )}
@@ -485,11 +485,11 @@ export const OccupancyDashboard = () => {
           </ChartWrapper>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">Property Occupancy</h3>
             {currentData.byProperty.length > 5 && (
-              <span className="text-xs text-gray-500">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
+              <span className="text-xs text-muted-foreground">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
             )}
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
@@ -502,23 +502,23 @@ export const OccupancyDashboard = () => {
                 return (
                   <div
                     key={property.propertyId}
-                    className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-gray-50 cursor-pointer px-2 -mx-2 rounded transition-colors"
+                    className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-muted/50 cursor-pointer px-2 -mx-2 rounded transition-colors"
                     onClick={() => handlePropertyClick(property)}
                   >
                     <div className="flex-1 min-w-0 mr-3">
                       <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>
-                      <p className="text-xs text-gray-500">{property.bookedNights}/{property.availableNights} nights</p>
+                      <p className="text-xs text-muted-foreground">{property.bookedNights}/{property.availableNights} nights</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className={`text-sm font-semibold ${
-                        occupancyPercent >= 70 ? 'text-green-600' :
-                        occupancyPercent >= 50 ? 'text-yellow-600' :
-                        'text-red-600'
+                        occupancyPercent >= 70 ? 'text-success' :
+                        occupancyPercent >= 50 ? 'text-warning' :
+                        'text-danger'
                       }`}>
                         {formatPercentage(occupancyPercent, 1)}
                       </span>
                       {comparisonMode !== 'none' && prevOccupancy !== null && (
-                        <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-green-600' : occupancyPercent < prevOccupancy ? 'text-red-600' : 'text-gray-500'}`}>
+                        <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-success' : occupancyPercent < prevOccupancy ? 'text-danger' : 'text-muted-foreground'}`}>
                           {occupancyPercent > prevOccupancy ? (
                             <TrendingUp className="w-3 h-3" />
                           ) : occupancyPercent < prevOccupancy ? (
@@ -532,10 +532,10 @@ export const OccupancyDashboard = () => {
                 )
               })
             ) : (
-              <div className="text-center text-gray-500 py-8">
+              <div className="text-center text-muted-foreground py-8">
                 <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p className="text-sm font-medium">No property data available</p>
-                <p className="text-xs text-gray-400 mt-1">Data will appear once bookings are synced</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Data will appear once bookings are synced</p>
               </div>
             )}
           </div>

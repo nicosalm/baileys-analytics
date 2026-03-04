@@ -35,22 +35,22 @@ export const TaxQuickConfigWidget = () => {
   
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="bg-card rounded-lg shadow-sm border p-4">
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-          <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+          <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+          <div className="h-8 bg-muted rounded w-1/2"></div>
         </div>
       </div>
     )
   }
   
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-card rounded-lg shadow-sm border">
       <div className="p-4">
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center">
-            <Calculator className="w-5 h-5 text-gray-600 mr-2" />
-            <h3 className="font-semibold text-gray-900">Tax Configuration</h3>
+            <Calculator className="w-5 h-5 text-muted-foreground mr-2" />
+            <h3 className="font-semibold text-foreground">Tax Configuration</h3>
           </div>
           <Button
             variant="link"
@@ -65,23 +65,23 @@ export const TaxQuickConfigWidget = () => {
         {/* Progress Bar */}
         <div className="mb-3">
           <div className="flex justify-between items-center mb-1">
-            <span className="text-sm text-gray-600">Setup Progress</span>
+            <span className="text-sm text-muted-foreground">Setup Progress</span>
             <span className={`text-sm font-medium
-              ${statusColor === 'green' ? 'text-green-600' : ''}
-              ${statusColor === 'blue' ? 'text-blue-600' : ''}
-              ${statusColor === 'yellow' ? 'text-yellow-600' : ''}
-              ${statusColor === 'red' ? 'text-red-600' : ''}
+              ${statusColor === 'green' ? 'text-success' : ''}
+              ${statusColor === 'blue' ? 'text-info' : ''}
+              ${statusColor === 'yellow' ? 'text-warning' : ''}
+              ${statusColor === 'red' ? 'text-danger' : ''}
             `}>
               {completionPercentage}%
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
+          <div className="w-full bg-border rounded-full h-2">
+            <div
               className={`h-2 rounded-full transition-all duration-500
-                ${statusColor === 'green' ? 'bg-green-500' : ''}
-                ${statusColor === 'blue' ? 'bg-blue-500' : ''}
-                ${statusColor === 'yellow' ? 'bg-yellow-500' : ''}
-                ${statusColor === 'red' ? 'bg-red-500' : ''}
+                ${statusColor === 'green' ? 'bg-success' : ''}
+                ${statusColor === 'blue' ? 'bg-info' : ''}
+                ${statusColor === 'yellow' ? 'bg-warning' : ''}
+                ${statusColor === 'red' ? 'bg-danger' : ''}
               `}
               style={{ width: `${completionPercentage}%` }}
             />
@@ -90,15 +90,15 @@ export const TaxQuickConfigWidget = () => {
         
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="bg-gray-50 rounded-sm p-2">
-            <p className="text-xs text-gray-600">Properties</p>
-            <p className="text-lg font-semibold text-gray-900">
+          <div className="bg-muted/40 rounded-sm p-2">
+            <p className="text-xs text-muted-foreground">Properties</p>
+            <p className="text-lg font-semibold text-foreground">
               {configuredProperties}/{totalProperties}
             </p>
           </div>
-          <div className="bg-gray-50 rounded-sm p-2">
-            <p className="text-xs text-gray-600">Needs Action</p>
-            <p className="text-lg font-semibold text-yellow-600">
+          <div className="bg-muted/40 rounded-sm p-2">
+            <p className="text-xs text-muted-foreground">Needs Action</p>
+            <p className="text-lg font-semibold text-warning">
               {missingConfigs.length + missingFees.length + partialFees.length}
             </p>
           </div>
@@ -108,13 +108,13 @@ export const TaxQuickConfigWidget = () => {
         {missingFees.length > 0 || partialFees.length > 0 ? (
           <Button
             onClick={() => navigate('/settings?tab=platform-fees')}
-            className="w-full bg-yellow-600 hover:bg-yellow-700"
+            className="w-full bg-warning hover:bg-warning/90"
           >
             <Plus className="w-4 h-4" />
             {missingFees.length > 0 ? 'Add Platform Fees' : 'Complete Fee Data'}
           </Button>
         ) : (
-          <div className="flex items-center justify-center py-2 text-green-600 bg-green-50 rounded-sm">
+          <div className="flex items-center justify-center py-2 text-success bg-success-subtle rounded-sm">
             <Check className="w-4 h-4 mr-1" />
             <span className="text-sm font-medium">All Configured!</span>
           </div>
@@ -123,10 +123,10 @@ export const TaxQuickConfigWidget = () => {
         
         {/* Platform Fees Reminder */}
         {(missingFees.length > 0 || partialFees.length > 0) && missingConfigs.length === 0 && (
-          <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-sm">
+          <div className="mt-3 p-2 bg-warning-subtle border border-warning/30 rounded-sm">
             <div className="flex items-start">
-              <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5" />
-              <div className="text-xs text-yellow-800">
+              <AlertCircle className="w-4 h-4 text-warning mr-2 mt-0.5" />
+              <div className="text-xs text-warning-fg">
                 {missingFees.length > 0 && (
                   <>
                     <p className="font-medium">Platform fees missing</p>

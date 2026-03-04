@@ -135,6 +135,66 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* domain tokens — change values here to retheme the entire dashboard */
+@theme inline {
+  /* semantic status: success / warning / danger / info */
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-fg: var(--success-fg);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-fg: var(--warning-fg);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-fg: var(--danger-fg);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-fg: var(--info-fg);
+
+  /* extra icon accent colors for MetricCard */
+  --color-purple-subtle: var(--purple-subtle);
+  --color-purple-fg: var(--purple-fg);
+  --color-orange-subtle: var(--orange-subtle);
+  --color-orange-fg: var(--orange-fg);
+
+  /* occupancy heatmap scale (6 levels: empty → excellent) */
+  --color-occ-low: var(--occ-low);
+  --color-occ-low-border: var(--occ-low-border);
+  --color-occ-fair: var(--occ-fair);
+  --color-occ-fair-border: var(--occ-fair-border);
+  --color-occ-good: var(--occ-good);
+  --color-occ-good-border: var(--occ-good-border);
+  --color-occ-great: var(--occ-great);
+  --color-occ-great-border: var(--occ-great-border);
+  --color-occ-excellent: var(--occ-excellent);
+  --color-occ-excellent-border: var(--occ-excellent-border);
+
+  /* chart infrastructure (also usable as utilities in legend dots etc.) */
+  --color-chart-reference: var(--chart-reference);
+  --color-chart-goal: var(--chart-goal);
+  --color-chart-comparison: var(--chart-comparison);
+
+  /* metric series colors (chart lines/bars and legend swatches) */
+  --color-metric-revenue: var(--metric-revenue);
+  --color-metric-occupancy: var(--metric-occupancy);
+  --color-metric-bookings: var(--metric-bookings);
+  --color-metric-expenses: var(--metric-expenses);
+  --color-metric-profit: var(--metric-profit);
+  --color-metric-tax: var(--metric-tax);
+
+  /* chart series palette — rotating colors for multi-series charts and tags */
+  --color-chart-series-1: var(--chart-series-1);
+  --color-chart-series-2: var(--chart-series-2);
+  --color-chart-series-3: var(--chart-series-3);
+  --color-chart-series-4: var(--chart-series-4);
+  --color-chart-series-5: var(--chart-series-5);
+  --color-chart-series-6: var(--chart-series-6);
+  --color-chart-series-7: var(--chart-series-7);
+  --color-chart-series-8: var(--chart-series-8);
+  --color-chart-series-9: var(--chart-series-9);
+  --color-chart-series-10: var(--chart-series-10);
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -168,6 +228,63 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* semantic status */
+  --success: oklch(0.696 0.167 162.5);
+  --success-subtle: oklch(0.982 0.04 163.0);
+  --success-fg: oklch(0.369 0.11 163.0);
+  --warning: oklch(0.795 0.184 78.0);
+  --warning-subtle: oklch(0.987 0.026 102.2);
+  --warning-fg: oklch(0.449 0.115 78.0);
+  --danger: oklch(0.637 0.237 25.3);
+  --danger-subtle: oklch(0.97 0.026 17.6);
+  --danger-fg: oklch(0.432 0.177 25.0);
+  --info: oklch(0.623 0.214 259.8);
+  --info-subtle: oklch(0.97 0.026 264.5);
+  --info-fg: oklch(0.453 0.161 264.0);
+
+  /* extra icon accents */
+  --purple-subtle: oklch(0.969 0.021 294.0);
+  --purple-fg: oklch(0.44 0.191 293.0);
+  --orange-subtle: oklch(0.985 0.021 51.0);
+  --orange-fg: oklch(0.467 0.152 45.0);
+
+  /* occupancy heatmap scale */
+  --occ-low: oklch(0.97 0.026 17.6);
+  --occ-low-border: oklch(0.883 0.106 17.1);
+  --occ-fair: oklch(0.987 0.026 102.2);
+  --occ-fair-border: oklch(0.932 0.113 91.5);
+  --occ-good: oklch(0.982 0.04 163.0);
+  --occ-good-border: oklch(0.936 0.1 163.0);
+  --occ-great: oklch(0.96 0.06 163.0);
+  --occ-great-border: oklch(0.889 0.145 162.0);
+  --occ-excellent: oklch(0.936 0.1 163.0);
+  --occ-excellent-border: oklch(0.84 0.175 162.0);
+
+  /* chart infrastructure */
+  --chart-reference: oklch(0.707 0.023 264.0);
+  --chart-goal: oklch(0.585 0.233 277.1);
+  --chart-comparison: oklch(0.704 0.04 264.0);
+
+  /* metric series colors */
+  --metric-revenue: oklch(0.623 0.214 259.8);
+  --metric-occupancy: oklch(0.696 0.167 162.5);
+  --metric-bookings: oklch(0.795 0.184 78.0);
+  --metric-expenses: oklch(0.606 0.25 292.7);
+  --metric-profit: oklch(0.704 0.14 195.0);
+  --metric-tax: oklch(0.637 0.237 25.3);
+
+  /* chart series palette */
+  --chart-series-1: oklch(0.623 0.214 259.8);
+  --chart-series-2: oklch(0.696 0.17 162.5);
+  --chart-series-3: oklch(0.769 0.188 70.08);
+  --chart-series-4: oklch(0.628 0.245 27.3);
+  --chart-series-5: oklch(0.606 0.25 292.7);
+  --chart-series-6: oklch(0.656 0.241 354.3);
+  --chart-series-7: oklch(0.704 0.14 195.0);
+  --chart-series-8: oklch(0.705 0.213 47.6);
+  --chart-series-9: oklch(0.742 0.157 218.6);
+  --chart-series-10: oklch(0.779 0.223 128.1);
 }
 
 .dark {
@@ -202,4 +319,61 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* semantic status */
+  --success: oklch(0.72 0.17 162.5);
+  --success-subtle: oklch(0.24 0.05 163.0);
+  --success-fg: oklch(0.82 0.14 163.0);
+  --warning: oklch(0.79 0.18 78.0);
+  --warning-subtle: oklch(0.24 0.05 89.0);
+  --warning-fg: oklch(0.85 0.15 78.0);
+  --danger: oklch(0.65 0.22 25.3);
+  --danger-subtle: oklch(0.24 0.06 17.6);
+  --danger-fg: oklch(0.82 0.18 25.0);
+  --info: oklch(0.65 0.21 259.8);
+  --info-subtle: oklch(0.22 0.05 264.0);
+  --info-fg: oklch(0.82 0.17 264.0);
+
+  /* extra icon accents */
+  --purple-subtle: oklch(0.22 0.04 294.0);
+  --purple-fg: oklch(0.82 0.18 293.0);
+  --orange-subtle: oklch(0.22 0.04 51.0);
+  --orange-fg: oklch(0.82 0.14 45.0);
+
+  /* occupancy heatmap scale */
+  --occ-low: oklch(0.27 0.07 17.6);
+  --occ-low-border: oklch(0.45 0.17 17.1);
+  --occ-fair: oklch(0.27 0.07 89.0);
+  --occ-fair-border: oklch(0.48 0.17 89.0);
+  --occ-good: oklch(0.27 0.07 163.0);
+  --occ-good-border: oklch(0.48 0.15 163.0);
+  --occ-great: oklch(0.33 0.09 163.0);
+  --occ-great-border: oklch(0.54 0.19 162.0);
+  --occ-excellent: oklch(0.40 0.12 163.0);
+  --occ-excellent-border: oklch(0.60 0.22 162.0);
+
+  /* chart infrastructure */
+  --chart-reference: oklch(0.60 0.03 264.0);
+  --chart-goal: oklch(0.64 0.23 277.1);
+  --chart-comparison: oklch(0.66 0.05 264.0);
+
+  /* metric series colors */
+  --metric-revenue: oklch(0.66 0.21 259.8);
+  --metric-occupancy: oklch(0.72 0.17 162.5);
+  --metric-bookings: oklch(0.79 0.18 78.0);
+  --metric-expenses: oklch(0.65 0.26 292.7);
+  --metric-profit: oklch(0.72 0.14 195.0);
+  --metric-tax: oklch(0.65 0.22 25.3);
+
+  /* chart series palette */
+  --chart-series-1: oklch(0.66 0.21 259.8);
+  --chart-series-2: oklch(0.72 0.17 162.5);
+  --chart-series-3: oklch(0.79 0.18 70.08);
+  --chart-series-4: oklch(0.65 0.24 27.3);
+  --chart-series-5: oklch(0.65 0.26 303.9);
+  --chart-series-6: oklch(0.70 0.24 354.3);
+  --chart-series-7: oklch(0.72 0.14 195.0);
+  --chart-series-8: oklch(0.74 0.21 47.6);
+  --chart-series-9: oklch(0.77 0.16 218.6);
+  --chart-series-10: oklch(0.80 0.22 128.1);
 }

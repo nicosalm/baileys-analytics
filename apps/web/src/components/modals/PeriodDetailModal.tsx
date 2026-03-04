@@ -95,10 +95,10 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
         <div className="space-y-6">
         {/* Info Banner */}
         {showTips && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
             <div className="flex items-start">
-              <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-              <div className="text-sm text-blue-800">
+              <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+              <div className="text-sm text-info-fg">
                 <strong>{granularity === 'daily' ? 'Daily' : granularity === 'weekly' ? 'Weekly' : 'Monthly'} Summary:</strong> See how {displayName} performed across all your properties. 
                 Click any property or guest name for more details.
               </div>
@@ -109,29 +109,29 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
         {/* Key Metrics */}
         {data?.metrics && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg border">
-              <div className="flex items-center text-sm text-gray-600 mb-1">
+            <div className="bg-card p-4 rounded-lg border">
+              <div className="flex items-center text-sm text-muted-foreground mb-1">
                 <DollarSign className="w-4 h-4 mr-1" />
                 Total Revenue
               </div>
               <div className="text-2xl font-bold">{formatCurrency(data?.metrics?.revenue || 0)}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <div className="flex items-center text-sm text-gray-600 mb-1">
+            <div className="bg-card p-4 rounded-lg border">
+              <div className="flex items-center text-sm text-muted-foreground mb-1">
                 <Calendar className="w-4 h-4 mr-1" />
                 Total Bookings
               </div>
               <div className="text-2xl font-bold">{data?.metrics?.bookings || 0}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <div className="flex items-center text-sm text-gray-600 mb-1">
+            <div className="bg-card p-4 rounded-lg border">
+              <div className="flex items-center text-sm text-muted-foreground mb-1">
                 <Home className="w-4 h-4 mr-1" />
                 Occupancy Rate
               </div>
               <div className="text-2xl font-bold">{formatPercentage((data?.metrics?.occupancyRate || 0) * 100, 1)}</div>
             </div>
-            <div className="bg-white p-4 rounded-lg border">
-              <div className="flex items-center text-sm text-gray-600 mb-1">
+            <div className="bg-card p-4 rounded-lg border">
+              <div className="flex items-center text-sm text-muted-foreground mb-1">
                 <TrendingUp className="w-4 h-4 mr-1" />
                 Average Rate
               </div>
@@ -142,30 +142,30 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
 
         {/* Financial Summary */}
         {data?.costs && (data.costs.platformFees > 0 || data.costs.taxes > 0 || data.costs.operatingExpenses > 0) && (
-          <div className="bg-white rounded-lg border p-4">
+          <div className="bg-card rounded-lg border p-4">
             <h3 className="font-semibold mb-3">Financial Summary</h3>
             <div className="space-y-2">
               {data.costs.platformFees > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Platform Fees</span>
-                  <span className="font-medium text-red-600">-{formatCurrency(data.costs.platformFees)}</span>
+                  <span className="text-muted-foreground">Platform Fees</span>
+                  <span className="font-medium text-danger">-{formatCurrency(data.costs.platformFees)}</span>
                 </div>
               )}
               {data.costs.taxes > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Taxes</span>
-                  <span className="font-medium text-red-600">-{formatCurrency(data.costs.taxes)}</span>
+                  <span className="text-muted-foreground">Taxes</span>
+                  <span className="font-medium text-danger">-{formatCurrency(data.costs.taxes)}</span>
                 </div>
               )}
               {data.costs.operatingExpenses > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Operating Expenses</span>
-                  <span className="font-medium text-red-600">-{formatCurrency(data.costs.operatingExpenses)}</span>
+                  <span className="text-muted-foreground">Operating Expenses</span>
+                  <span className="font-medium text-danger">-{formatCurrency(data.costs.operatingExpenses)}</span>
                 </div>
               )}
               <div className="flex justify-between pt-2 border-t font-semibold">
                 <span>Net Revenue</span>
-                <span className={data.costs.netRevenue >= 0 ? 'text-green-600' : 'text-red-600'}>
+                <span className={data.costs.netRevenue >= 0 ? 'text-success' : 'text-danger'}>
                   {formatCurrency(data.costs.netRevenue)}
                 </span>
               </div>
@@ -174,7 +174,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
         )}
 
         {/* Top Properties */}
-        <div className="bg-white rounded-lg border">
+        <div className="bg-card rounded-lg border">
           <div className="p-4 border-b">
             <h3 className="font-semibold">Top Properties This {granularity === 'daily' ? 'Day' : granularity === 'weekly' ? 'Week' : 'Month'}</h3>
           </div>
@@ -182,17 +182,17 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
             {data?.topProperties?.slice(0, 5).map((property: any) => (
               <div
                 key={property.propertyId}
-                className="p-4 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
+                className="p-4 hover:bg-muted/40 cursor-pointer flex justify-between items-center"
                 onClick={() => handlePropertyClick(property.propertyId, property.propertyName)}
               >
                 <div>
                   <div className="font-medium">{property.propertyName}</div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {property.bookings} bookings • {formatPercentage(property.occupancyRate * 100, 1)} occupancy
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-semibold text-green-600">{formatCurrency(property.revenue)}</div>
+                  <div className="font-semibold text-success">{formatCurrency(property.revenue)}</div>
                 </div>
               </div>
             ))}
@@ -200,29 +200,29 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
         </div>
 
         {/* Bookings List */}
-        <div className="bg-white rounded-lg border">
+        <div className="bg-card rounded-lg border">
           <div className="p-4 border-b">
             <h3 className="font-semibold">Active Bookings on {displayName}</h3>
           </div>
           <div className="max-h-96 overflow-y-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 sticky top-0">
+              <thead className="bg-muted/40 sticky top-0">
                 <tr>
-                  <th className="text-left p-4 text-sm font-medium text-gray-700">Guest</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-700">Property</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-700">Dates</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
-                  <th className="text-left p-4 text-sm font-medium text-gray-700 w-10"></th>
+                  <th className="text-left p-4 text-sm font-medium text-foreground">Guest</th>
+                  <th className="text-left p-4 text-sm font-medium text-foreground">Property</th>
+                  <th className="text-left p-4 text-sm font-medium text-foreground">Dates</th>
+                  <th className="text-left p-4 text-sm font-medium text-foreground">Amount</th>
+                  <th className="text-left p-4 text-sm font-medium text-foreground w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {data?.bookings?.map((booking: any) => (
-                  <tr key={booking.id} className="border-t hover:bg-gray-50">
+                  <tr key={booking.id} className="border-t hover:bg-muted/40">
                     <td
                       className="p-4 cursor-pointer"
                       onClick={() => handleGuestClick(booking.guestId, booking.guestName)}
                     >
-                      <div className="font-medium text-blue-600 hover:underline">
+                      <div className="font-medium text-primary hover:underline">
                         {booking.guestName}
                       </div>
                     </td>
@@ -230,7 +230,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                       className="p-4 cursor-pointer"
                       onClick={() => handlePropertyClick(booking.propertyId, booking.propertyName)}
                     >
-                      <div className="text-blue-600 hover:underline">
+                      <div className="text-primary hover:underline">
                         {booking.propertyName}
                       </div>
                     </td>
@@ -246,7 +246,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                           href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                          className="text-muted-foreground hover:text-primary transition-colors"
                           title="Open in OwnerRez"
                           onClick={(e) => e.stopPropagation()}
                         >

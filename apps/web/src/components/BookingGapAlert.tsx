@@ -30,9 +30,9 @@ export const BookingGapAlert = ({
 
   if (isLoading) {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6 animate-pulse shadow-sm">
-        <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
-        <div className="h-4 bg-gray-100 rounded w-1/2"></div>
+      <div className="bg-card rounded-lg border border-border p-6 animate-pulse shadow-sm">
+        <div className="h-5 bg-muted rounded w-1/3 mb-3"></div>
+        <div className="h-4 bg-muted/50 rounded w-1/2"></div>
       </div>
     )
   }
@@ -53,29 +53,29 @@ export const BookingGapAlert = ({
   
   const getSeverityStyles = (severity: BookingGap['severity']) => {
     switch (severity) {
-      case 'critical': 
+      case 'critical':
         return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          text: 'text-red-700',
-          icon: 'text-red-600',
-          badge: 'bg-red-100 text-red-700'
+          bg: 'bg-danger-subtle',
+          border: 'border-danger/30',
+          text: 'text-danger-fg',
+          icon: 'text-danger',
+          badge: 'bg-danger-subtle text-danger-fg'
         }
-      case 'warning': 
+      case 'warning':
         return {
-          bg: 'bg-yellow-50',
-          border: 'border-yellow-200',
-          text: 'text-yellow-700',
-          icon: 'text-yellow-600',
-          badge: 'bg-yellow-100 text-yellow-700'
+          bg: 'bg-warning-subtle',
+          border: 'border-warning/30',
+          text: 'text-warning-fg',
+          icon: 'text-warning',
+          badge: 'bg-warning-subtle text-warning-fg'
         }
-      case 'info': 
+      case 'info':
         return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          text: 'text-blue-700',
-          icon: 'text-blue-600',
-          badge: 'bg-blue-100 text-blue-700'
+          bg: 'bg-info-subtle',
+          border: 'border-info/30',
+          text: 'text-info-fg',
+          icon: 'text-info',
+          badge: 'bg-info-subtle text-info-fg'
         }
     }
   }
@@ -84,7 +84,7 @@ export const BookingGapAlert = ({
   const alertStyles = getSeverityStyles(alertSeverity)
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-bold">Booking Gaps</h3>
         <div className="flex items-center gap-3">
@@ -93,7 +93,7 @@ export const BookingGapAlert = ({
               {urgentGaps} Urgent
             </span>
           )}
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-muted-foreground">
             {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}
           </span>
         </div>
@@ -123,7 +123,7 @@ export const BookingGapAlert = ({
                   <p className="text-sm font-medium truncate">
                     {gap.propertyName} • {gap.gapDays} {gap.gapDays === 1 ? 'night' : 'nights'}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {formatDateDisplay(gap.gapStart)} - {formatDateDisplay(gap.gapEnd)}
                     {gap.daysUntilGap <= 0
                       ? ' (Current)'
@@ -135,7 +135,7 @@ export const BookingGapAlert = ({
                 </div>
               </div>
               {gap.estimatedRevenueLoss > 0 && (
-                <div className="text-xs text-gray-500 shrink-0 ml-2">
+                <div className="text-xs text-muted-foreground shrink-0 ml-2">
                   ~{formatCurrency(gap.estimatedRevenueLoss)}
                 </div>
               )}

@@ -13,7 +13,8 @@ import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
-import { getPlatformColor, getTagColor } from '@/lib/theme'
+import { useTheme } from '@/contexts/theme'
+import { getPlatformColor, getTagColor, resolveToken } from '@/lib/theme'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
@@ -27,21 +28,21 @@ const GuestSourceTooltip = ({ active, payload }: any) => {
         const total = data.totalGuests || 0
         const percent = total > 0 ? ((data.count / total) * 100).toFixed(1) : '0.0'
         return (
-            <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+            <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
                 <p className="font-semibold text-sm mb-2">{data.source}</p>
                 <div className="space-y-1 text-xs">
                     <p className="flex justify-between gap-4">
-                        <span className="text-gray-600">Guests:</span>
+                        <span className="text-muted-foreground">Guests:</span>
                         <span className="font-medium">{data.count}</span>
                     </p>
                     <p className="flex justify-between gap-4">
-                        <span className="text-gray-600">Share:</span>
+                        <span className="text-muted-foreground">Share:</span>
                         <span className="font-medium">{percent}%</span>
                     </p>
                     {data.revenue !== undefined && data.revenue > 0 && (
                         <p className="flex justify-between gap-4">
-                            <span className="text-gray-600">Revenue:</span>
-                            <span className="font-medium text-green-600">{formatCurrency(data.revenue)}</span>
+                            <span className="text-muted-foreground">Revenue:</span>
+                            <span className="font-medium text-success">{formatCurrency(data.revenue)}</span>
                         </p>
                     )}
                 </div>
@@ -55,6 +56,7 @@ export const GuestsDashboard = () => {
     const { openModal } = useModal()
     const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
     const { showTips } = useTips()
+    const { resolvedTheme } = useTheme()
     const comparisonDateRange = useComparisonDateRange()
 
     const tagIds = useTagIds()
@@ -221,8 +223,8 @@ export const GuestsDashboard = () => {
                 return (
                     <div>
                         <div className="font-medium">{guest.name}</div>
-                        {guest.email && <div className="text-sm text-gray-500 truncate">{guest.email}</div>}
-                        {guest.phone && <div className="text-sm text-gray-500 truncate">{guest.phone}</div>}
+                        {guest.email && <div className="text-sm text-muted-foreground truncate">{guest.email}</div>}
+                        {guest.phone && <div className="text-sm text-muted-foreground truncate">{guest.phone}</div>}
                     </div>
                 )
             }
@@ -235,7 +237,7 @@ export const GuestsDashboard = () => {
             render: (guest: GuestListItem) => (
                 <div>
                     <span className="font-medium">{guest.periodBookings || 0}</span>
-                    <span className="text-xs text-gray-500 ml-1">
+                    <span className="text-xs text-muted-foreground ml-1">
                         of {guest.bookingCount} total
                     </span>
                 </div>
@@ -253,22 +255,22 @@ export const GuestsDashboard = () => {
                     <div>
                         <div className="flex items-center gap-2">
                             <div className="flex-1">
-                                <div className="w-full bg-gray-200 rounded-full h-1.5">
-                                    <div 
+                                <div className="w-full bg-border rounded-full h-1.5">
+                                    <div
                                         className={`h-1.5 rounded-full ${
-                                            spentPercentage > 66 ? 'bg-green-500' :
-                                            spentPercentage > 33 ? 'bg-yellow-500' : 
-                                            'bg-gray-400'
+                                            spentPercentage > 66 ? 'bg-success' :
+                                            spentPercentage > 33 ? 'bg-warning' :
+                                            'bg-muted-foreground'
                                         }`}
                                         style={{ width: `${spentPercentage}%` }}
                                     />
                                 </div>
                             </div>
-                            <span className="font-medium text-green-600 text-sm">
+                            <span className="font-medium text-success text-sm">
                                 {formatCurrency(guest.periodSpent || 0)}
                             </span>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
+                        <div className="text-xs text-muted-foreground mt-0.5">
                             Lifetime: {formatCurrency(guest.totalSpent)}
                         </div>
                     </div>
@@ -318,7 +320,7 @@ export const GuestsDashboard = () => {
             totalGuests,
             color: getPlatformColor(source.source, index)
         }))
-    }, [data?.metrics?.guestsBySource])
+    }, [data?.metrics?.guestsBySource, resolvedTheme])
 
     const tagDistribution = useMemo(() => {
         if (data?.metrics?.tagDistribution && data.metrics.tagDistribution.length > 0) {
@@ -355,7 +357,7 @@ export const GuestsDashboard = () => {
                 size: tag.count || 0,
                 value: tag.count || 0,
                 color: getTagColor(tag)
-            })) || [], [tagDistribution])
+            })) || [], [tagDistribution, resolvedTheme])
 
     // memoized pie chart totals
     const sourceChartTotal = useMemo(() =>
@@ -385,7 +387,7 @@ export const GuestsDashboard = () => {
                 loadingMessage="Loading guest analytics..."
                 emptyMessage="No guest data available"
                 emptySubMessage="Guest data will appear once bookings are synced"
-                emptyIcon={<Users className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
+                emptyIcon={<Users className="w-12 h-12 text-muted-foreground/50 mb-2" />}
                 onRetry={() => window.location.reload()}
                 minHeight={400}
                 className="py-12"
@@ -397,24 +399,24 @@ export const GuestsDashboard = () => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="bg-card rounded-xl border border-border p-6">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900">Guest Analytics</h2>
-                        <p className="text-gray-600 text-sm mt-1">
+                        <h2 className="text-2xl font-bold text-foreground">Guest Analytics</h2>
+                        <p className="text-muted-foreground text-sm mt-1">
                             Understand your guests and their booking patterns
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="text-right">
-                            <div className="text-xs text-gray-500">Total Guests</div>
-                            <div className="text-lg font-bold text-blue-600">
+                            <div className="text-xs text-muted-foreground">Total Guests</div>
+                            <div className="text-lg font-bold text-primary">
                                 {data.metrics.totalGuests.toLocaleString()}
                             </div>
                         </div>
                         <div className="text-right">
-                            <div className="text-xs text-gray-500">Repeat Rate</div>
-                            <div className="text-lg font-bold text-gray-900">
+                            <div className="text-xs text-muted-foreground">Repeat Rate</div>
+                            <div className="text-lg font-bold text-foreground">
                                 {formatPercentage(data.metrics.repeatRate * 100, 1)}
                             </div>
                         </div>
@@ -423,10 +425,10 @@ export const GuestsDashboard = () => {
             </div>
 
             {showTips && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
                     <div className="flex items-start">
-                        <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-                        <div className="text-sm text-blue-800">
+                        <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+                        <div className="text-sm text-info-fg">
                             <strong>Understanding Your Guests:</strong> All metrics reflect guests with bookings in the selected period.
                             Use the <strong>filter buttons</strong> to segment by repeat, new, or top spenders,
                             the <strong>source chart</strong> to see where guests come from,
@@ -445,7 +447,7 @@ export const GuestsDashboard = () => {
                     format="number"
                     tooltip="Total unique guests who have stayed"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonLabel}: {previousData.metrics.totalGuests}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {previousData.metrics.totalGuests}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : "In selected period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
@@ -463,7 +465,7 @@ export const GuestsDashboard = () => {
                     format="percent"
                     tooltip="Percentage of returning guests"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : `${data.metrics.repeatGuests} returning guests`
                     }
                     color="green"
@@ -481,7 +483,7 @@ export const GuestsDashboard = () => {
                     format="custom"
                     tooltip="Average length of stay per booking"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonLabel}: {previousData.metrics.avgStayLength.toFixed(1)} nights{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {previousData.metrics.avgStayLength.toFixed(1)} nights{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : "Per booking"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics ? {
@@ -498,7 +500,7 @@ export const GuestsDashboard = () => {
                     value={data.metrics.avgSpend}
                     format="currency"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
-                        ? <>vs {comparisonLabel}: {formatCurrency(previousData.metrics.avgSpend)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+                        ? <>vs {comparisonLabel}: {formatCurrency(previousData.metrics.avgSpend)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : "Per guest this period"
                     }
                     trend={comparisonMode !== 'none' && previousData?.metrics && previousData.metrics.avgSpend > 0 ? {
@@ -526,7 +528,7 @@ export const GuestsDashboard = () => {
                             labelLine={false}
                             label={pieChartLabel}
                             outerRadius={80}
-                            fill="#8884d8"
+                            fill={resolveToken('--chart-series-5')}
                             dataKey="count"
                         >
                             {sourceChartData.map((entry: GuestSourceData & {color: string}, index: number) => (
@@ -555,13 +557,13 @@ export const GuestsDashboard = () => {
                                 <div key={tag.name} className="flex items-center gap-3">
                                     <div className="flex-1">
                                         <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm font-medium text-gray-700">{tag.name}</span>
+                                            <span className="text-sm font-medium text-foreground">{tag.name}</span>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-sm font-medium text-gray-900">{tag.value} guests</span>
-                                                <span className="text-xs text-gray-500">({overallPercent}%)</span>
+                                                <span className="text-sm font-medium text-foreground">{tag.value} guests</span>
+                                                <span className="text-xs text-muted-foreground">({overallPercent}%)</span>
                                             </div>
                                         </div>
-                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div className="w-full bg-muted rounded-full h-2">
                                             <div 
                                                 className="h-2 rounded-full transition-all"
                                                 style={{ 
@@ -580,8 +582,8 @@ export const GuestsDashboard = () => {
 
             <RecurringDateSearch />
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <div className="p-4 border-b border-gray-200">
+            <div className="bg-card rounded-lg shadow-sm border border-border">
+                <div className="p-4 border-b border-border">
                     <div className="flex justify-between items-center">
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
                         <div className="flex items-center gap-3">
@@ -596,7 +598,7 @@ export const GuestsDashboard = () => {
                                     <SelectItem value="4+">4+ stays</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                            <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
                                 {viewModes.map((mode) => (
                                     <Button
                                         key={mode.key}
@@ -604,8 +606,8 @@ export const GuestsDashboard = () => {
                                         size="sm"
                                         onClick={mode.handler}
                                         className={viewMode === mode.key
-                                            ? 'bg-white text-gray-900 shadow-sm'
-                                            : 'text-gray-600 hover:text-gray-900'
+                                            ? 'bg-card text-foreground shadow-sm'
+                                            : 'text-muted-foreground hover:text-foreground'
                                         }
                                     >
                                         {mode.label}
@@ -615,7 +617,7 @@ export const GuestsDashboard = () => {
                         </div>
                     </div>
                     {(viewMode !== 'all' || staysFilter !== 'any') && (
-                        <div className="mt-2 text-xs text-gray-500">
+                        <div className="mt-2 text-xs text-muted-foreground">
                             {viewMode === 'all' && 'Showing all guests'}
                             {viewMode === 'repeat' && 'Showing returning guests (2+ lifetime stays)'}
                             {viewMode === 'new' && 'Showing first-time guests in this period'}
@@ -694,20 +696,20 @@ const RecurringDateSearch = () => {
     }
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <Search className="w-5 h-5 text-blue-600" />
+                    <Search className="w-5 h-5 text-primary" />
                     <h3 className="text-lg font-bold">Search Across Years</h3>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => { setIsOpen(false); setResults(null) }}>
                     <X className="w-4 h-4" />
                 </Button>
             </div>
-            <p className="text-sm text-gray-500 mb-4">Find guests who stayed during the same date window across multiple years (e.g., 4th of July guests for past 3 years)</p>
+            <p className="text-sm text-muted-foreground mb-4">Find guests who stayed during the same date window across multiple years (e.g., 4th of July guests for past 3 years)</p>
             <div className="flex flex-wrap items-end gap-3 mb-4">
                 <div>
-                    <label className="text-xs text-gray-500 block mb-1">From</label>
+                    <label className="text-xs text-muted-foreground block mb-1">From</label>
                     <div className="flex gap-1">
                         <select value={startMonth} onChange={e => setStartMonth(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
                             {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
@@ -716,7 +718,7 @@ const RecurringDateSearch = () => {
                     </div>
                 </div>
                 <div>
-                    <label className="text-xs text-gray-500 block mb-1">To</label>
+                    <label className="text-xs text-muted-foreground block mb-1">To</label>
                     <div className="flex gap-1">
                         <select value={endMonth} onChange={e => setEndMonth(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
                             {months.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
@@ -725,7 +727,7 @@ const RecurringDateSearch = () => {
                     </div>
                 </div>
                 <div>
-                    <label className="text-xs text-gray-500 block mb-1">Years back</label>
+                    <label className="text-xs text-muted-foreground block mb-1">Years back</label>
                     <select value={yearsBack} onChange={e => setYearsBack(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
                         {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
@@ -740,33 +742,33 @@ const RecurringDateSearch = () => {
                     {results.map((yearData: any) => (
                         <div key={yearData.year} className="border rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-semibold text-gray-900">{yearData.year}</h4>
-                                <div className="flex items-center gap-4 text-sm text-gray-500">
+                                <h4 className="font-semibold text-foreground">{yearData.year}</h4>
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                                     <span>{yearData.guestCount} guests</span>
                                     <span>{yearData.bookings.length} bookings</span>
-                                    <span className="text-green-600 font-medium">{formatCurrency(yearData.totalRevenue)}</span>
+                                    <span className="text-success font-medium">{formatCurrency(yearData.totalRevenue)}</span>
                                 </div>
                             </div>
                             {yearData.bookings.length > 0 ? (
                                 <div className="space-y-1.5">
                                     {yearData.bookings.map((b: any) => (
-                                        <div key={b.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-gray-100">
+                                        <div key={b.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-border">
                                             <div>
                                                 <span className="font-medium">{b.guestName}</span>
-                                                <span className="text-gray-400 mx-2">at</span>
-                                                <span className="text-gray-600">{b.propertyName}</span>
+                                                <span className="text-muted-foreground/60 mx-2">at</span>
+                                                <span className="text-muted-foreground">{b.propertyName}</span>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-gray-500 text-xs">
+                                                <span className="text-muted-foreground text-xs">
                                                     {formatDateDisplay(b.arrival)} - {formatDateDisplay(b.departure)}
                                                 </span>
-                                                <span className="font-medium text-green-600">{formatCurrency(b.amount)}</span>
+                                                <span className="font-medium text-success">{formatCurrency(b.amount)}</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-sm text-gray-400">No bookings in this period</p>
+                                <p className="text-sm text-muted-foreground/70">No bookings in this period</p>
                             )}
                         </div>
                     ))}

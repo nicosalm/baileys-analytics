@@ -42,7 +42,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   skeletonRows = 3
 }) => {
   const heightValue = typeof minHeight === 'number' ? `${minHeight}px` : minHeight
-  
+
   const containerClasses = cn(
     centered && 'flex flex-col items-center justify-center',
     className
@@ -52,27 +52,27 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
     if (loadingStyle === 'spinner') {
       return (
         <div className={containerClasses} style={{ minHeight: heightValue }}>
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/70" />
           {loadingMessage && (
-            <p className="text-sm text-gray-600 mt-2">{loadingMessage}</p>
+            <p className="text-sm text-muted-foreground mt-2">{loadingMessage}</p>
           )}
         </div>
       )
     }
-    
+
     if (loadingStyle === 'skeleton') {
       return (
         <div className={className} style={{ minHeight: heightValue }}>
           {Array.from({ length: skeletonRows }).map((_, i) => (
             <div key={i} className="animate-pulse mb-4">
-              <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              <div className="h-4 bg-muted rounded w-full mb-2"></div>
+              <div className="h-4 bg-muted rounded w-3/4"></div>
             </div>
           ))}
         </div>
       )
     }
-    
+
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
         <LoadingState message={loadingMessage} />
@@ -81,14 +81,14 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   }
 
   if (error) {
-    const errorMsg = errorMessage || 
+    const errorMsg = errorMessage ||
       (error instanceof Error ? error.message : String(error))
-    
+
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
-        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <p className="text-gray-900 font-medium mb-1">Something went wrong</p>
-        <p className="text-sm text-gray-600 mb-4">{errorMsg}</p>
+        <AlertCircle className="w-12 h-12 text-danger mb-4" />
+        <p className="text-foreground font-medium mb-1">Something went wrong</p>
+        <p className="text-sm text-muted-foreground mb-4">{errorMsg}</p>
         {onRetry && (
           <Button onClick={onRetry}>
             <RefreshCw className="w-4 h-4" />
@@ -102,10 +102,10 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   if (empty) {
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
-        {emptyIcon || <Database className="w-12 h-12 text-gray-500 opacity-50 mb-2" />}
-        <p className="text-sm font-medium text-gray-500">{emptyMessage}</p>
+        {emptyIcon || <Database className="w-12 h-12 text-muted-foreground/50 mb-2" />}
+        <p className="text-sm font-medium text-muted-foreground">{emptyMessage}</p>
         {emptySubMessage && (
-          <p className="text-xs text-gray-400 mt-1">{emptySubMessage}</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">{emptySubMessage}</p>
         )}
         {onRetry && (
           <Button onClick={onRetry} className="mt-4">
@@ -130,10 +130,10 @@ export const CardStateWrapper: React.FC<StateWrapperProps & {
   ...props
 }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6">
+    <div className="bg-card rounded-lg shadow-sm p-6">
       {title && (
         <div className="flex items-center mb-4">
-          {Icon && <Icon className="w-5 h-5 mr-2 text-gray-600" />}
+          {Icon && <Icon className="w-5 h-5 mr-2 text-muted-foreground" />}
           <h3 className="text-lg font-bold">{title}</h3>
         </div>
       )}
@@ -156,7 +156,7 @@ export const SectionStateWrapper: React.FC<StateWrapperProps & {
       <div>
         <h2 className="text-2xl font-bold">{title}</h2>
         {description && (
-          <p className="text-gray-600 text-sm mt-1">{description}</p>
+          <p className="text-muted-foreground text-sm mt-1">{description}</p>
         )}
       </div>
       <StateWrapper {...props} />

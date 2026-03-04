@@ -84,28 +84,28 @@ export const PlatformFeeCard = ({
       }
       minHeight={120}
     >
-      <div className={`bg-white p-4 rounded-lg shadow-sm border transition-colors ${
-        hasData ? 'border-green-200 bg-green-50/30' : 'border-gray-200'
+      <div className={`bg-card p-4 rounded-lg shadow-sm border transition-colors ${
+        hasData ? 'border-success/30 bg-success-subtle/30' : ''
       }`}>
         <div className="flex justify-between items-start mb-3">
           <div>
-            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
               <DollarSign className="w-4 h-4" />
               Platform Fees - {formatMonth(month)}
               {hasData && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-subtle text-success-fg">
                   <CheckCircle className="w-3 h-3 mr-1" />
                   Configured
                 </span>
               )}
             </h3>
-            <p className="text-sm text-gray-600 mt-1">{propertyName}</p>
+            <p className="text-sm text-muted-foreground mt-1">{propertyName}</p>
           </div>
           <Button
             variant="ghost"
             size="icon-xs"
             onClick={handleAddFees}
-            className={hasData ? 'text-gray-400 hover:text-gray-600' : 'text-blue-600 hover:text-blue-700'}
+            className={hasData ? 'text-muted-foreground hover:text-foreground' : 'text-info hover:text-info'}
             title={hasData ? 'Add another platform' : 'Add platform fees'}
           >
             <Plus className="w-4 h-4" />
@@ -117,20 +117,20 @@ export const PlatformFeeCard = ({
             {/* Summary */}
             <div className="grid grid-cols-3 gap-3 mb-3">
               <div>
-                <p className="text-xs text-gray-500">Guest Fees</p>
-                <p className="font-semibold text-gray-900">
+                <p className="text-xs text-muted-foreground">Guest Fees</p>
+                <p className="font-semibold text-foreground">
                   {formatCurrency(totals.guestFees)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Host Fees</p>
-                <p className="font-semibold text-gray-900">
+                <p className="text-xs text-muted-foreground">Host Fees</p>
+                <p className="font-semibold text-foreground">
                   {formatCurrency(totals.hostFees)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Platform Tax</p>
-                <p className="font-semibold text-green-600">
+                <p className="text-xs text-muted-foreground">Platform Tax</p>
+                <p className="font-semibold text-success">
                   {formatCurrency(totals.platformTax)}
                 </p>
               </div>
@@ -142,7 +142,7 @@ export const PlatformFeeCard = ({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="w-full justify-start text-sm text-gray-600 hover:text-gray-900 font-medium px-0"
+                className="w-full justify-start text-sm text-muted-foreground hover:text-foreground font-medium px-0"
               >
                 {isExpanded ? 'Hide' : 'Show'} platform breakdown
                 {isExpanded ? (
@@ -157,14 +157,14 @@ export const PlatformFeeCard = ({
                   {fees.map((fee: any) => (
                     <div 
                       key={fee.platform}
-                      className="flex justify-between items-center p-2 bg-gray-50 rounded-lg"
+                      className="flex justify-between items-center p-2 bg-muted/40 rounded-lg"
                     >
                       <div className="flex items-center">
                         <span className="font-medium text-sm capitalize">
                           {fee.platform}
                         </span>
                         {fee.platformRemitsTax && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded">
+                          <span className="ml-2 px-1.5 py-0.5 bg-success-subtle text-success-fg text-xs rounded">
                             Remits tax
                           </span>
                         )}
@@ -175,7 +175,7 @@ export const PlatformFeeCard = ({
                             {formatCurrency(fee.guestServiceFee + fee.hostServiceFee)}
                           </p>
                           {fee.platformTaxRemitted > 0 && (
-                            <p className="text-xs text-green-600">
+                            <p className="text-xs text-success">
                               Tax: {formatCurrency(fee.platformTaxRemitted)}
                             </p>
                           )}
@@ -184,7 +184,7 @@ export const PlatformFeeCard = ({
                           variant="ghost"
                           size="icon-xs"
                           onClick={() => handleEditFee(fee.platform)}
-                          className="text-gray-400 hover:text-gray-600"
+                          className="text-muted-foreground hover:text-foreground"
                         >
                           <Edit2 className="w-3 h-3" />
                         </Button>
@@ -197,10 +197,10 @@ export const PlatformFeeCard = ({
             
             {/* Warning if fees affect tax calculation */}
             {totalFees > 0 && (
-              <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="mt-3 p-2 bg-warning-subtle border border-warning/30 rounded-lg">
                 <div className="flex items-start">
-                  <AlertCircle className="w-4 h-4 text-yellow-600 mr-2 mt-0.5" />
-                  <div className="text-xs text-yellow-800">
+                  <AlertCircle className="w-4 h-4 text-warning mr-2 mt-0.5" />
+                  <div className="text-xs text-warning-fg">
                     <p className="font-medium">Tax Impact</p>
                     <p className="mt-0.5">
                       Platform fees of {formatCurrency(totalFees)} are included in tax calculations.
@@ -215,8 +215,8 @@ export const PlatformFeeCard = ({
           </>
         ) : (
           <div className="py-4 text-center">
-            <AlertCircle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">No platform fees entered</p>
+            <AlertCircle className="w-8 h-8 text-warning mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No platform fees entered</p>
             <Button
               onClick={handleAddFees}
               size="sm"

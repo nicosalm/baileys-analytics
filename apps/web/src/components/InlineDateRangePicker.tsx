@@ -204,12 +204,12 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
   }, [activeSeasons])
 
   return (
-    <div className={cn("bg-white rounded-lg", className)}>
+    <div className={cn("bg-card rounded-lg", className)}>
       {/* Season Notice */}
       {activeSeasons.length > 0 && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-green-800">
+        <div className="mb-4 p-3 bg-success-subtle border border-success/30 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-success-fg">
             <p className="font-medium mb-1">Season Filter Active</p>
             <p className="text-xs">Only dates within {activeSeasons.map(s => s.name).join(', ')} can be selected.</p>
           </div>
@@ -222,7 +222,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
           <div className="flex items-center justify-between mb-4">
             <button
               type="button"
-              className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
+              className="p-2 hover:bg-muted rounded-lg cursor-pointer"
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
             >
               <ChevronLeft className="w-5 h-5" />
@@ -232,7 +232,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
             </span>
             <button
               type="button"
-              className="p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
+              className="p-2 hover:bg-muted rounded-lg cursor-pointer"
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
               disabled={maxDate && currentMonth >= maxDate}
             >
@@ -243,7 +243,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
           {/* Day headers */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-              <div key={day} className="text-sm text-center text-gray-500 font-medium py-2">
+              <div key={day} className="text-sm text-center text-muted-foreground font-medium py-2">
                 {day}
               </div>
             ))}
@@ -268,17 +268,17 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   title={isOutOfSeason ? "Outside active seasons" : undefined}
                   className={cn(
                     "p-3 text-sm rounded-lg transition-colors relative",
-                    !isCurrentMonth && "text-gray-300",
-                    isCurrentMonth && !isDisabled && "hover:bg-gray-100 cursor-pointer",
-                    isDisabled && !isOutOfSeason && "text-gray-300 cursor-not-allowed",
-                    isOutOfSeason && "text-gray-400 cursor-not-allowed bg-gray-50",
-                    isInRange && !isOutOfSeason && "bg-blue-100 cursor-pointer",
-                    (isStart || isEnd) && "bg-blue-500 text-white hover:bg-blue-600 cursor-pointer"
+                    !isCurrentMonth && "text-muted-foreground/50",
+                    isCurrentMonth && !isDisabled && "hover:bg-muted cursor-pointer",
+                    isDisabled && !isOutOfSeason && "text-muted-foreground/50 cursor-not-allowed",
+                    isOutOfSeason && "text-muted-foreground cursor-not-allowed bg-muted/40",
+                    isInRange && !isOutOfSeason && "bg-primary/15 cursor-pointer",
+                    (isStart || isEnd) && "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                   )}
                 >
                   {date.getDate()}
                   {isOutOfSeason && isCurrentMonth && (
-                    <span className="absolute inset-0 bg-gray-100 opacity-50 rounded-lg pointer-events-none" />
+                    <span className="absolute inset-0 bg-muted opacity-50 rounded-lg pointer-events-none" />
                   )}
                 </button>
               )
@@ -289,11 +289,11 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
         {/* Quick Select & Info */}
         <div>
           <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Select</h3>
+            <h3 className="text-sm font-medium text-foreground mb-3">Quick Select</h3>
             <div className="space-y-3">
               {commonPeriods.length > 0 && (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Common Periods</p>
+                  <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Common Periods</p>
                   <div className="grid grid-cols-2 gap-2">
                     {commonPeriods.map(period => (
                       <Button
@@ -319,7 +319,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
 
                 return (
                   <div>
-                    <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Season Periods</p>
+                    <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Season Periods</p>
                     <div className="grid grid-cols-2 gap-2">
                       {seasonStarted && (
                         <Button
@@ -352,7 +352,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                 )
               })() : (
                 <div>
-                  <p className="text-xs text-gray-500 mb-2 font-medium uppercase">Year Periods</p>
+                  <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Year Periods</p>
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       type="button"
@@ -429,17 +429,17 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
 
           {/* Selected range display */}
           {localRange.from && (
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Selected Range</h3>
-              <div className="text-sm text-gray-900">
+            <div className="p-4 bg-primary/10 rounded-lg">
+              <h3 className="text-sm font-medium text-foreground mb-2">Selected Range</h3>
+              <div className="text-sm text-foreground">
                 {localRange.to ? (
                   <>
                     <div>{formatDateDisplay(localRange.from)} - {formatDateDisplay(localRange.to)}</div>
-                    <div className="text-gray-500 mt-1">{dayCount} days</div>
+                    <div className="text-muted-foreground mt-1">{dayCount} days</div>
                   </>
                 ) : (
                   <div>
-                    <div className="text-gray-600">Click another date to complete the range</div>
+                    <div className="text-muted-foreground">Click another date to complete the range</div>
                     <div className="mt-1">Start: {formatDateDisplay(localRange.from)}</div>
                   </div>
                 )}
@@ -448,9 +448,9 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
           )}
 
           {!localRange.from && (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">How to select</h3>
-              <p className="text-sm text-gray-600">
+            <div className="p-4 bg-muted/50 rounded-lg">
+              <h3 className="text-sm font-medium text-foreground mb-2">How to select</h3>
+              <p className="text-sm text-muted-foreground">
                 Click a date to start your range, then click another date to complete it.
               </p>
             </div>

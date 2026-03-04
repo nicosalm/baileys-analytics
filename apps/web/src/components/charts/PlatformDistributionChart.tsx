@@ -1,7 +1,7 @@
 import React from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { getPlatformColor } from '@/lib/theme'
+import { getPlatformColor, resolveToken } from '@/lib/theme'
 import { formatCurrency } from '@baileys/utils'
 
 interface PlatformDistributionChartProps {
@@ -18,15 +18,15 @@ const PlatformDistTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
     return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{data.name}</p>
         <div className="space-y-1 text-xs">
           <p className="flex justify-between gap-4">
-            <span className="text-gray-600">Revenue:</span>
-            <span className="font-medium text-green-600">{formatCurrency(data.revenue)}</span>
+            <span className="text-muted-foreground">Revenue:</span>
+            <span className="font-medium text-success">{formatCurrency(data.revenue)}</span>
           </p>
           <p className="flex justify-between gap-4">
-            <span className="text-gray-600">Share:</span>
+            <span className="text-muted-foreground">Share:</span>
             <span className="font-medium">{data.percentage?.toFixed(1) || '0.0'}%</span>
           </p>
         </div>
@@ -69,7 +69,7 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
               return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
             }}
             outerRadius={80}
-            fill="#8884d8"
+            fill={resolveToken('--chart-series-5')}
             dataKey="value"
           >
             {chartData.map((entry, index) => (

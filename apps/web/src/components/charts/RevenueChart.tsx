@@ -1,7 +1,7 @@
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { METRIC_COLORS } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
 import { formatCurrency } from '@/utils/formatters'
 
@@ -28,53 +28,53 @@ const RevenueChartTooltip = ({ active, payload, label, showProfit, showCompariso
   const data = payload[0].payload
 
   return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+    <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
       <p className="font-semibold text-sm mb-2">{label}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
-            <span className="text-gray-600">Revenue:</span>
+            <span className="text-muted-foreground">Revenue:</span>
           </div>
           <span className="font-medium">{formatCurrency(data.revenue)}</span>
         </div>
         {showComparison && data.previousRevenue !== undefined && (
           <div className="flex justify-between gap-4">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm bg-slate-400" />
-              <span className="text-gray-600">{comparisonLabel || 'Previous'}:</span>
+              <div className="w-3 h-3 rounded-sm bg-chart-comparison" />
+              <span className="text-muted-foreground">{comparisonLabel || 'Previous'}:</span>
             </div>
             <span className="font-medium">{formatCurrency(data.previousRevenue)}</span>
           </div>
         )}
         {showProfit && data.profit !== undefined && (
           <>
-            <div className="pt-1 mt-1 border-t border-gray-200" />
+            <div className="pt-1 mt-1 border-t border-border" />
             <div className="flex justify-between gap-4">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.profit }} />
-                <span className="text-gray-600">Profit:</span>
+                <span className="text-muted-foreground">Profit:</span>
               </div>
-              <span className={`font-medium ${data.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(data.profit)}</span>
+              <span className={`font-medium ${data.profit >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(data.profit)}</span>
             </div>
             {data.revenue > 0 && (
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Margin:</span>
+                <span className="text-muted-foreground">Margin:</span>
                 <span className="font-medium">{((data.profit / data.revenue) * 100).toFixed(1)}%</span>
               </div>
             )}
             {showComparison && data.previousProfit !== undefined && (
               <div className="flex justify-between gap-4">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 rounded-sm bg-slate-300" />
-                  <span className="text-gray-600">{comparisonLabel || 'Previous'}:</span>
+                  <div className="w-3 h-3 rounded-sm bg-chart-comparison/70" />
+                  <span className="text-muted-foreground">{comparisonLabel || 'Previous'}:</span>
                 </div>
                 <span className="font-medium">{formatCurrency(data.previousProfit)}</span>
               </div>
             )}
           </>
         )}
-        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view details</p>
+        <p className="text-muted-foreground pt-1 mt-1 border-t border-border">Click to view details</p>
       </div>
     </div>
   )
@@ -94,7 +94,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   if (!data || data.length === 0) {
     return (
       <ChartWrapper title={title} height={height}>
-        <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="flex items-center justify-center h-full text-muted-foreground">
           No data available
         </div>
       </ChartWrapper>
@@ -158,7 +158,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
               <Line
                 type="monotone"
                 dataKey="previousRevenue"
-                stroke="#94a3b8"
+                stroke={CHART_INFRA.comparison}
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 dot={false}
@@ -168,7 +168,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
                 <Line
                   type="monotone"
                   dataKey="previousProfit"
-                  stroke="#cbd5e1"
+                  stroke={CHART_INFRA.comparison}
                   strokeWidth={2}
                   strokeDasharray="3 3"
                   dot={false}
@@ -180,13 +180,13 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           {revenueGoal != null && (
             <ReferenceLine
               y={revenueGoal}
-              stroke="#6366f1"
+              stroke={CHART_INFRA.goal}
               strokeDasharray="6 4"
               strokeWidth={1.5}
               label={{
                 value: `⬥ Goal: ${formatCurrency(revenueGoal)}`,
                 position: 'insideTopLeft',
-                fill: '#6366f1',
+                fill: CHART_INFRA.goal,
                 fontSize: 12,
                 fontWeight: 600,
                 offset: 4

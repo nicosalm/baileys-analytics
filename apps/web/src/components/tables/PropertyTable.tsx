@@ -16,11 +16,11 @@ interface SortIconProps {
 
 const SortIcon = memo(({ field, currentField, direction }: SortIconProps) => {
   if (currentField !== field) {
-    return <ArrowUpDown className="w-3 h-3 text-gray-400" />
+    return <ArrowUpDown className="w-3 h-3 text-muted-foreground/70" />
   }
   return direction === 'asc'
-    ? <ChevronUp className="w-3 h-3 text-blue-600" />
-    : <ChevronDown className="w-3 h-3 text-blue-600" />
+    ? <ChevronUp className="w-3 h-3 text-primary" />
+    : <ChevronDown className="w-3 h-3 text-primary" />
 })
 
 SortIcon.displayName = 'SortIcon'
@@ -106,13 +106,13 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
   }, [properties, previousProperties, sortField, sortDirection])
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-muted/50 border-b border-border">
             <tr>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('name')}
               >
                 <div className="flex items-center gap-1">
@@ -121,7 +121,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('revenue')}
               >
                 <div className="flex items-center gap-1">
@@ -130,7 +130,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('revpan')}
               >
                 <div className="flex items-center gap-1">
@@ -139,7 +139,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('bookings')}
               >
                 <div className="flex items-center gap-1">
@@ -148,7 +148,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                 </div>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('occupancy')}
               >
                 <div className="flex items-center gap-1">
@@ -158,7 +158,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
               </th>
               {comparisonMode !== 'none' && (
                 <th
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
                   onClick={() => handleSort('trend')}
                 >
                   <div className="flex items-center gap-1">
@@ -169,7 +169,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
               )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-card divide-y divide-border">
             {sortedProperties.map((property) => {
               const previousProperty = previousProperties?.find(p => p.propertyId === property.propertyId)
               const trend = getTrend(property.revenue, previousProperty?.revenue)
@@ -178,72 +178,72 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
               return (
                 <tr
                   key={property.propertyId}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="hover:bg-muted/50 cursor-pointer transition-colors"
                   onClick={() => handlePropertyClick(property)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-foreground">
                       {property.propertyName}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-semibold text-gray-900">
+                    <div className="text-sm font-semibold text-foreground">
                       {formatCurrency(property.revenue)}
                     </div>
                     {comparisonMode !== 'none' && previousProperty && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         vs {formatCompactCurrency(previousProperty.revenue)}
                       </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-foreground">
                       {formatCurrency(property.revenue / Math.max(property.availableNights, 1))}
                     </div>
                     {comparisonMode !== 'none' && previousProperty && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         vs {formatCompactCurrency(previousProperty.revenue / Math.max(previousProperty.availableNights, 1))}
                       </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                    <div className="text-sm text-foreground">
                       {property.bookings}
                     </div>
                     {comparisonMode !== 'none' && previousProperty && (
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         vs {previousProperty.bookings}
                       </div>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <div className="w-16 bg-gray-200 rounded-full h-2">
+                      <div className="w-16 bg-muted rounded-full h-2">
                         <div
                           className={`h-2 rounded-full ${
-                            property.occupancyRate >= 0.7 ? 'bg-green-500' :
-                            property.occupancyRate >= 0.5 ? 'bg-yellow-500' :
-                            'bg-red-500'
+                            property.occupancyRate >= 0.7 ? 'bg-success' :
+                            property.occupancyRate >= 0.5 ? 'bg-warning' :
+                            'bg-danger'
                           }`}
                           style={{ width: `${property.occupancyRate * 100}%` }}
                         />
                       </div>
                       <span className={`text-sm font-medium ${
-                        property.occupancyRate >= 0.7 ? 'text-green-600' :
-                        property.occupancyRate >= 0.5 ? 'text-yellow-600' :
-                        'text-red-600'
+                        property.occupancyRate >= 0.7 ? 'text-success' :
+                        property.occupancyRate >= 0.5 ? 'text-warning' :
+                        'text-danger'
                       }`}>
                         {formatPercentage(property.occupancyRate * 100, 1)}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-muted-foreground mt-1">
                       {property.bookedNights}/{property.availableNights} nights
                     </div>
                   </td>
                   {comparisonMode !== 'none' && (
                     <td className="px-6 py-4 whitespace-nowrap">
                       {previousProperty ? (
-                        <div className={`flex items-center gap-1 ${isPositive ? 'text-green-600' : trend < 0 ? 'text-red-600' : 'text-gray-500'}`}>
+                        <div className={`flex items-center gap-1 ${isPositive ? 'text-success' : trend < 0 ? 'text-danger' : 'text-muted-foreground'}`}>
                           {isPositive ? (
                             <TrendingUp className="w-4 h-4" />
                           ) : trend < 0 ? (
@@ -254,7 +254,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                           </span>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">—</span>
+                        <span className="text-sm text-muted-foreground/70">—</span>
                       )}
                     </td>
                   )}

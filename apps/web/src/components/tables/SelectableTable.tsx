@@ -162,8 +162,8 @@ export function SelectableTable<T extends Record<string, any>>({
 
   if (!loading && paginatedData.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <BarChart3 className="w-12 h-12 text-gray-300 mb-4" />
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <BarChart3 className="w-12 h-12 text-muted-foreground/50 mb-4" />
         <div className="text-lg font-medium">{emptyMessage}</div>
         {enableSearch && searchTerm && (
           <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>
@@ -174,7 +174,7 @@ export function SelectableTable<T extends Record<string, any>>({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
+      <div className="flex items-center justify-between bg-card p-4 rounded-lg shadow-sm">
         <div className="flex items-center space-x-4">
           {enableSearch && (
             <div className="relative">
@@ -190,7 +190,7 @@ export function SelectableTable<T extends Record<string, any>>({
           )}
           {selectedRows.size > 0 && (
             <>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 {selectedRows.size} selected
               </div>
               {bulkActions.length > 0 && (
@@ -242,10 +242,10 @@ export function SelectableTable<T extends Record<string, any>>({
         </div>
       </div>
 
-      <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+      <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
               <tr>
                 <th className="px-4 py-3 w-12">
                   <Checkbox
@@ -254,15 +254,15 @@ export function SelectableTable<T extends Record<string, any>>({
                   />
                 </th>
                 {showRowNumbers && (
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">
                     #
                   </th>
                 )}
                 {columns.map((column) => (
                   <th
                     key={String(column.key)}
-                    className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                      column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
+                    className={`px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider ${
+                      column.sortable ? 'cursor-pointer hover:bg-muted' : ''
                     }`}
                     style={{ width: column.width }}
                     onClick={() => column.sortable && handleSort(String(column.key))}
@@ -283,7 +283,7 @@ export function SelectableTable<T extends Record<string, any>>({
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-border">
               {paginatedData.map((item, index) => {
                 const actualIndex = (currentPage - 1) * pageSize + index
                 const rowId = getRowId(item)
@@ -293,9 +293,9 @@ export function SelectableTable<T extends Record<string, any>>({
                 return (
                   <tr
                     key={rowId}
-                    className={`hover:bg-gray-50 transition-all ${
+                    className={`hover:bg-muted/50 transition-all ${
                       onRowClick ? 'cursor-pointer' : ''
-                    } ${isSelected ? 'bg-blue-50' : ''} ${customClassName}`}
+                    } ${isSelected ? 'bg-primary/10' : ''} ${customClassName}`}
                     onClick={() => onRowClick?.(item, actualIndex)}
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -305,14 +305,14 @@ export function SelectableTable<T extends Record<string, any>>({
                       />
                     </td>
                     {showRowNumbers && (
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {actualIndex + 1}
                       </td>
                     )}
                     {columns.map((column) => (
                       <td
                         key={`${rowId}-${String(column.key)}`}
-                        className="px-4 py-3 text-sm text-gray-900"
+                        className="px-4 py-3 text-sm text-foreground"
                         style={{ width: column.width }}
                       >
                         {getCellValue(item, column)}
@@ -327,7 +327,7 @@ export function SelectableTable<T extends Record<string, any>>({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex items-center justify-between bg-card p-4 rounded-lg shadow-sm">
           <div className="text-sm text-gray-600">
             Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} results
           </div>

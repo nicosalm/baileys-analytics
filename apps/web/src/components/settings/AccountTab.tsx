@@ -89,17 +89,17 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
   return (
     <div className="space-y-6">
       {/* account info */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Information</h2>
+      <div className="bg-card rounded-lg shadow-sm border p-6">
+        <h2 className="text-xl font-semibold text-foreground mb-4">Account Information</h2>
 
         <div className="space-y-3">
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">Email</span>
-            <span className="text-sm font-medium text-gray-900">{user.email}</span>
+          <div className="flex justify-between items-center py-2 border-b border-border/60">
+            <span className="text-sm text-muted-foreground">Email</span>
+            <span className="text-sm font-medium text-foreground">{user.email}</span>
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">Account Created</span>
-            <span className="text-sm font-medium text-gray-900">
+          <div className="flex justify-between items-center py-2 border-b border-border/60">
+            <span className="text-sm text-muted-foreground">Account Created</span>
+            <span className="text-sm font-medium text-foreground">
               {new Date(user.created_at).toLocaleDateString()}
             </span>
           </div>
@@ -108,8 +108,8 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
 
       {/* security */}
       {(onChangeEmail || onChangePassword) && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Security</h2>
+        <div className="bg-card rounded-lg shadow-sm border p-6">
+          <h2 className="text-xl font-semibold text-foreground mb-4">Security</h2>
           <div className="space-y-3">
             {onChangeEmail && (
               <Button
@@ -142,19 +142,19 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       )}
 
       {/* data export */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-card rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Export Your Data</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className="text-xl font-semibold text-foreground mb-2">Export Your Data</h2>
+            <p className="text-sm text-muted-foreground">
               Download all your data as a JSON file. Includes properties, bookings, guests, and all settings.
             </p>
           </div>
-          <Download className="w-6 h-6 text-blue-600" />
+          <Download className="w-6 h-6 text-info" />
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-          <p className="text-sm text-blue-800">
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-4 mb-4">
+          <p className="text-sm text-info-fg">
             You can access and export all your personal data at any time.
           </p>
         </div>
@@ -166,22 +166,22 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       </div>
 
       {/* danger zone */}
-      <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
+      <div className="bg-card rounded-lg shadow-sm border border-danger/30 p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-red-900 mb-2">Danger Zone</h2>
-            <p className="text-sm text-gray-600">
+            <h2 className="text-xl font-semibold text-danger-fg mb-2">Danger Zone</h2>
+            <p className="text-sm text-muted-foreground">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>
           </div>
-          <AlertTriangle className="w-6 h-6 text-red-600" />
+          <AlertTriangle className="w-6 h-6 text-danger" />
         </div>
 
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-          <p className="text-sm text-red-800 mb-2">
+        <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4 mb-4">
+          <p className="text-sm text-danger-fg mb-2">
             <strong>Warning:</strong> Deleting your account will:
           </p>
-          <ul className="text-sm text-red-700 list-disc ml-6 space-y-1">
+          <ul className="text-sm text-danger-fg list-disc ml-6 space-y-1">
             <li>Permanently delete all properties, bookings, and guest data</li>
             <li>Cancel your subscription and stop all billing</li>
             <li>Revoke access to your OwnerRez account</li>
@@ -211,11 +211,11 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm text-red-800 mb-2">
+          <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4">
+            <p className="text-sm text-danger-fg mb-2">
               <strong>Warning:</strong> This will permanently delete:
             </p>
-            <ul className="text-sm text-red-700 list-disc ml-6 space-y-1">
+            <ul className="text-sm text-danger-fg list-disc ml-6 space-y-1">
               <li>All properties, bookings, and guest data</li>
               <li>Your subscription and billing</li>
               <li>All reports and settings</li>

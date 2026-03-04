@@ -35,21 +35,21 @@ const PropertyExpenseRow = ({ property, month, onManageExpenses }: PropertyExpen
   return (
     <div
       key={property.id}
-      className={`bg-white rounded-lg shadow-sm border transition-colors ${
+      className={`bg-card rounded-lg shadow-sm border transition-colors ${
         hasData
-          ? 'border-green-200 hover:bg-gray-50/50'
-          : 'border-gray-200 hover:bg-gray-50/50'
+          ? 'border-success/30 hover:bg-muted/30'
+          : 'border-border hover:bg-muted/30'
       }`}
     >
       <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Building2 className="w-5 h-5 text-gray-500" />
+            <Building2 className="w-5 h-5 text-muted-foreground" />
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-medium text-gray-900">{property.name}</h4>
+                <h4 className="text-sm font-medium text-foreground">{property.name}</h4>
                 {hasData && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-subtle text-success-fg">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     {formatCurrency(totalExpenses)}
                   </span>
@@ -61,7 +61,7 @@ const PropertyExpenseRow = ({ property, month, onManageExpenses }: PropertyExpen
           <div className="flex items-center gap-2">
             <Button
               onClick={() => onManageExpenses(property.id, property.name)}
-              className={hasData ? 'bg-green-600 hover:bg-green-600/90' : ''}
+              className={hasData ? 'bg-success hover:bg-success/90' : ''}
               size="sm"
               title="Track monthly operating expenses"
             >
@@ -98,29 +98,29 @@ export const ExpenseManagementPanel = () => {
   return (
     <div className="space-y-6">
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-card rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Operating Expenses</h2>
-            <p className="text-gray-600 text-sm">
+            <h2 className="text-xl font-semibold text-foreground mb-2">Operating Expenses</h2>
+            <p className="text-muted-foreground text-sm">
               Track cleaning, management, utilities, and other operating costs per property
             </p>
           </div>
-          <div className="bg-gray-50 rounded-lg px-4 py-3">
-            <div className="text-2xl font-bold text-blue-600">
+          <div className="bg-muted/40 rounded-lg px-4 py-3">
+            <div className="text-2xl font-bold text-info">
               {properties?.length || 0}
             </div>
-            <div className="text-xs text-gray-500 mt-1">Properties</div>
+            <div className="text-xs text-muted-foreground mt-1">Properties</div>
           </div>
         </div>
       </div>
 
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Properties</h3>
+        <h3 className="text-lg font-semibold text-foreground">Properties</h3>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600">Expense Period:</span>
+          <span className="text-sm text-muted-foreground">Expense Period:</span>
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
+            <Calendar className="w-4 h-4 text-muted-foreground" />
             <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
               <SelectTrigger className="w-44 h-8 text-sm">
                 <SelectValue />

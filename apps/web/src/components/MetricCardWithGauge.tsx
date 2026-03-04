@@ -31,12 +31,12 @@ interface MetricCardWithGaugeProps {
 }
 
 const colorClasses = {
-  blue: 'text-blue-600 bg-blue-100',
-  green: 'text-green-600 bg-green-100',
-  red: 'text-red-600 bg-red-100',
-  yellow: 'text-yellow-600 bg-yellow-100',
+  blue: 'text-primary bg-primary/10',
+  green: 'text-success bg-success-subtle',
+  red: 'text-danger bg-danger-subtle',
+  yellow: 'text-warning bg-warning-subtle',
   purple: 'text-purple-600 bg-purple-100',
-  gray: 'text-gray-600 bg-gray-100',
+  gray: 'text-muted-foreground bg-muted',
   orange: 'text-orange-600 bg-orange-100'
 }
 
@@ -70,7 +70,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
 
   return (
     <div 
-      className={`bg-white p-4 rounded-lg shadow-sm border border-gray-200 ${onClick ? 'cursor-pointer hover:bg-gray-50/50 transition-colors' : ''}`} 
+      className={`bg-card p-4 rounded-lg shadow-sm border border-border ${onClick ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
       title={tooltip}
       onClick={onClick}
     >
@@ -78,7 +78,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
         <div className={`p-1.5 rounded-lg ${colorClasses[color]}`}>
           <Icon className="w-3.5 h-3.5" />
         </div>
-        <div className="text-xs font-medium text-gray-600">{label}</div>
+        <div className="text-xs font-medium text-muted-foreground">{label}</div>
       </div>
       
       {gauge?.enabled && !isNaN(numericValue) ? (
@@ -93,18 +93,18 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
             onClick={onClick}
           />
           {trend && (
-            <div className={`text-xs mt-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`text-xs mt-1 ${trend.isPositive ? 'text-success' : 'text-danger'}`}>
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value).toFixed(1)}%
             </div>
           )}
         </div>
       ) : (
         <div>
-          <div className="text-xl font-bold text-gray-900">
+          <div className="text-xl font-bold text-foreground">
             {formatValue(value, true)}
           </div>
           {trend && (
-            <div className={`text-xs mt-1 ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+            <div className={`text-xs mt-1 ${trend.isPositive ? 'text-success' : 'text-danger'}`}>
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value).toFixed(1)}%
             </div>
           )}
@@ -112,7 +112,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
       )}
       
       {subValue && (
-        <div className="text-xs text-gray-500 mt-2">{subValue}</div>
+        <div className="text-xs text-muted-foreground mt-2">{subValue}</div>
       )}
     </div>
   )

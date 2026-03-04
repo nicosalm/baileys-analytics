@@ -51,10 +51,10 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
         <div className="space-y-6">
         {/* Info Banner */}
         {showTips && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
             <div className="flex items-start">
-              <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-              <div className="text-sm text-blue-800">
+              <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+              <div className="text-sm text-info-fg">
                 <strong>Booking Details:</strong> Complete information about this reservation.
                 Click the guest name to view their profile.
               </div>
@@ -64,39 +64,39 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
 
         {/* Status */}
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">Booking Status</div>
+          <div className="text-sm text-muted-foreground">Booking Status</div>
           <StatusBadge status={booking?.status} />
         </div>
 
         {/* Guest & Property Info */}
         <div className="grid md:grid-cols-2 gap-4">
           <div
-            className="bg-gray-50 p-4 rounded-lg cursor-pointer hover:bg-gray-100"
+            className="bg-muted/40 p-4 rounded-lg cursor-pointer hover:bg-muted"
             onClick={handleGuestClick}
           >
-            <div className="flex items-center text-sm text-gray-600 mb-2">
+            <div className="flex items-center text-sm text-muted-foreground mb-2">
               <User className="w-4 h-4 mr-1" />
               Guest
             </div>
-            <div className="font-semibold text-blue-600 hover:underline">{booking?.guest_name}</div>
+            <div className="font-semibold text-primary hover:underline">{booking?.guest_name}</div>
             {booking?.guest_email && (
-              <div className="text-sm text-gray-500">{booking.guest_email}</div>
+              <div className="text-sm text-muted-foreground">{booking.guest_email}</div>
             )}
             {booking?.guest_phone && (
-              <div className="text-sm text-gray-500">{booking.guest_phone}</div>
+              <div className="text-sm text-muted-foreground">{booking.guest_phone}</div>
             )}
           </div>
 
           <div
-            className="bg-gray-50 p-4 rounded-lg"
+            className="bg-muted/40 p-4 rounded-lg"
           >
-            <div className="flex items-center text-sm text-gray-600 mb-2">
+            <div className="flex items-center text-sm text-muted-foreground mb-2">
               <Home className="w-4 h-4 mr-1" />
               Property
             </div>
-            <div className="font-semibold text-gray-900">{booking?.property_name}</div>
+            <div className="font-semibold text-foreground">{booking?.property_name}</div>
             {booking?.property_address && (
-              <div className="text-sm text-gray-500 flex items-start">
+              <div className="text-sm text-muted-foreground flex items-start">
                 <MapPin className="w-3 h-3 mr-1 mt-0.5" />
                 {booking.property_address}
               </div>
@@ -105,63 +105,63 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
         </div>
 
         {/* Dates & Duration */}
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center text-sm text-gray-600 mb-3">
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center text-sm text-muted-foreground mb-3">
             <Calendar className="w-4 h-4 mr-1" />
             Stay Dates
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <div className="text-xs text-gray-500">Check In</div>
+              <div className="text-xs text-muted-foreground">Check In</div>
               <div className="font-semibold">{booking?.arrival ? formatDateDisplay(booking.arrival) : '-'}</div>
-              <div className="text-sm text-gray-600">3:00 PM</div>
+              <div className="text-sm text-muted-foreground">3:00 PM</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Check Out</div>
+              <div className="text-xs text-muted-foreground">Check Out</div>
               <div className="font-semibold">{booking?.departure ? formatDateDisplay(booking.departure) : '-'}</div>
-              <div className="text-sm text-gray-600">11:00 AM</div>
+              <div className="text-sm text-muted-foreground">11:00 AM</div>
             </div>
             <div>
-              <div className="text-xs text-gray-500">Duration</div>
+              <div className="text-xs text-muted-foreground">Duration</div>
               <div className="font-semibold">{nights} nights</div>
-              <div className="text-sm text-gray-600">{(booking?.adults || 0) + (booking?.children || 0) || 1} guests</div>
+              <div className="text-sm text-muted-foreground">{(booking?.adults || 0) + (booking?.children || 0) || 1} guests</div>
             </div>
           </div>
         </div>
 
         {/* Financial Details */}
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center text-sm text-gray-600 mb-3">
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center text-sm text-muted-foreground mb-3">
             <DollarSign className="w-4 h-4 mr-1" />
             Payment Details
           </div>
           <div className="space-y-2">
             <div className="flex justify-between">
-              <span className="text-gray-600">Nightly Rate</span>
+              <span className="text-muted-foreground">Nightly Rate</span>
               <span className="font-medium">{formatCurrency(booking?.avgNightlyRate || (nights > 0 ? (booking?.total_amount || 0) / nights : 0))}</span>
             </div>
             {booking?.host_service_fee > 0 && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Host Service Fee</span>
+                <span className="text-muted-foreground">Host Service Fee</span>
                 <span className="font-medium">{formatCurrency(booking.host_service_fee)}</span>
               </div>
             )}
             {data?.charges && data.charges.length > 0 && (
               <>
                 <div className="pt-2 border-t">
-                  <div className="text-xs text-gray-500 font-medium mb-1.5">Itemized Charges</div>
+                  <div className="text-xs text-muted-foreground font-medium mb-1.5">Itemized Charges</div>
                   {data.charges.map((charge: any, i: number) => (
                     <div key={charge.id || i} className="flex justify-between text-sm py-0.5">
-                      <span className="text-gray-600 flex items-center gap-1.5">
+                      <span className="text-muted-foreground flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          charge.type === 'tax' ? 'bg-red-400' :
-                          charge.type === 'fee' ? 'bg-amber-400' :
-                          charge.type === 'discount' ? 'bg-green-400' :
-                          'bg-gray-400'
+                          charge.type === 'tax' ? 'bg-danger' :
+                          charge.type === 'fee' ? 'bg-warning' :
+                          charge.type === 'discount' ? 'bg-success' :
+                          'bg-muted-foreground'
                         }`} />
                         {charge.description || charge.type}
                       </span>
-                      <span className={`font-medium ${charge.type === 'discount' ? 'text-green-600' : ''}`}>
+                      <span className={`font-medium ${charge.type === 'discount' ? 'text-success' : ''}`}>
                         {charge.type === 'discount' ? '-' : ''}{formatCurrency(Math.abs(charge.amount))}
                       </span>
                     </div>
@@ -171,14 +171,14 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             )}
             <div className="flex justify-between pt-2 border-t font-semibold">
               <span>Total Amount</span>
-              <span className="text-green-600">{formatCurrency(booking?.total_amount)}</span>
+              <span className="text-success">{formatCurrency(booking?.total_amount)}</span>
             </div>
           </div>
         </div>
 
         {/* Booking Source */}
-        <div className="bg-white border rounded-lg p-4">
-          <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+        <div className="bg-card border rounded-lg p-4">
+          <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
             <div className="flex items-center">
               <CreditCard className="w-4 h-4 mr-1" />
               Booking Information
@@ -188,7 +188,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
                 href={`https://app.ownerrez.com/bookings/${booking.ownerrez_booking_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-600 transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                 title="Open in OwnerRez"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -198,11 +198,11 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           </div>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Platform: </span>
+              <span className="text-muted-foreground">Platform: </span>
               <span className="font-medium">{booking?.platform || 'Unassigned'}</span>
             </div>
             <div>
-              <span className="text-gray-600">Booked: </span>
+              <span className="text-muted-foreground">Booked: </span>
               <span className="font-medium">{booking?.booked_utc ? formatDateDisplay(booking.booked_utc) : '-'}</span>
             </div>
           </div>
@@ -210,8 +210,8 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
 
         {/* Notes */}
         {booking?.notes && (
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="text-sm text-gray-600 mb-2">Special Notes</div>
+          <div className="bg-muted/40 rounded-lg p-4">
+            <div className="text-sm text-muted-foreground mb-2">Special Notes</div>
             <div className="text-sm">{booking.notes}</div>
           </div>
         )}

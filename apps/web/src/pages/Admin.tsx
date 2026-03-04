@@ -154,30 +154,30 @@ export const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+    <div className="min-h-screen flex flex-col bg-background">
+      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
               <div className="ml-3">
-                <h1 className="text-xl font-semibold text-gray-900">Admin Panel</h1>
-                <p className="text-xs text-gray-500 -mt-0.5">System management</p>
+                <h1 className="text-xl font-semibold text-foreground">Admin Panel</h1>
+                <p className="text-xs text-muted-foreground -mt-0.5">System management</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-500 hidden sm:inline">{state.user?.email}</span>
-              <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+              <span className="text-sm text-muted-foreground hidden sm:inline">{state.user?.email}</span>
+              <div className="flex items-center gap-2 pl-3 border-l">
                 <Link
                   to="/dashboard/overview"
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                   title="Back to Dashboard"
                 >
                   <LayoutDashboard className="w-5 h-5" />
                 </Link>
                 <Link
                   to="/settings"
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                   title="Settings"
                 >
                   <Settings className="w-5 h-5" />
@@ -196,46 +196,46 @@ export const Admin = () => {
         {/* metrics */}
         {metrics && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-card rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-2">
-                <Users className="w-5 h-5 text-blue-600" />
-                <span className="text-2xl font-bold text-gray-900">{metrics.totalUsers}</span>
+                <Users className="w-5 h-5 text-info" />
+                <span className="text-2xl font-bold text-foreground">{metrics.totalUsers}</span>
               </div>
-              <p className="text-sm text-gray-600">Total Users</p>
+              <p className="text-sm text-muted-foreground">Total Users</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-card rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-2xl font-bold text-gray-900">{metrics.activeSubscriptions}</span>
+                <TrendingUp className="w-5 h-5 text-success" />
+                <span className="text-2xl font-bold text-foreground">{metrics.activeSubscriptions}</span>
               </div>
-              <p className="text-sm text-gray-600">Active Subscriptions</p>
+              <p className="text-sm text-muted-foreground">Active Subscriptions</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-card rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-2">
                 <DollarSign className="w-5 h-5 text-purple-600" />
-                <span className="text-2xl font-bold text-gray-900">${metrics.mrr}</span>
+                <span className="text-2xl font-bold text-foreground">${metrics.mrr}</span>
               </div>
-              <p className="text-sm text-gray-600">MRR</p>
+              <p className="text-sm text-muted-foreground">MRR</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-card rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-2">
                 <Database className="w-5 h-5 text-orange-600" />
-                <span className="text-2xl font-bold text-gray-900">{metrics.totalBookings.toLocaleString()}</span>
+                <span className="text-2xl font-bold text-foreground">{metrics.totalBookings.toLocaleString()}</span>
               </div>
-              <p className="text-sm text-gray-600">Total Bookings</p>
+              <p className="text-sm text-muted-foreground">Total Bookings</p>
             </div>
           </div>
         )}
 
         {/* users table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
+        <div className="bg-card rounded-lg shadow-sm border">
+          <div className="p-6 border-b">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">Users</h2>
-              <div className="text-sm text-gray-500">{users.length} total users</div>
+              <h2 className="text-xl font-semibold text-foreground">Users</h2>
+              <div className="text-sm text-muted-foreground">{users.length} total users</div>
             </div>
 
             {/* search */}
@@ -253,45 +253,45 @@ export const Admin = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/40 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Plan</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-card divide-y divide-border">
                 {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                  <tr key={user.id} className="hover:bg-muted/40">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{user.email}</div>
+                      <div className="text-sm font-medium text-foreground">{user.email}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {user.subscription_exempt ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-success-subtle text-success-fg">
                           Exempt
                         </span>
                       ) : user.subscription?.status === 'active' ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-success-subtle text-success-fg">
                           Active
                         </span>
                       ) : user.subscription?.status === 'trialing' ? (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-info-subtle text-info-fg">
                           Trial
                         </span>
                       ) : (
-                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                        <span className="px-2 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">
                           Inactive
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {user.subscription?.billing_cycle === 'yearly' ? 'Yearly' :
                        user.subscription?.billing_cycle === 'monthly' ? 'Monthly' : '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {new Date(user.created_at).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -332,8 +332,8 @@ export const Admin = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
+              <div className="w-10 h-10 bg-danger-subtle rounded-full flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-danger" />
               </div>
               <div>
                 <AlertDialogTitle>Delete Account</AlertDialogTitle>
@@ -344,11 +344,11 @@ export const Admin = () => {
             </div>
           </AlertDialogHeader>
 
-          <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-            <p className="text-sm text-red-800">
+          <div className="p-3 bg-danger-subtle rounded-lg border border-danger/30">
+            <p className="text-sm text-danger-fg">
               This action cannot be undone. All data will be permanently deleted including:
             </p>
-            <ul className="text-sm text-red-700 mt-2 list-disc list-inside">
+            <ul className="text-sm text-danger-fg mt-2 list-disc list-inside">
               <li>All properties, bookings, and guests</li>
               <li>Subscription and billing history</li>
               <li>OwnerRez connection</li>
@@ -358,7 +358,7 @@ export const Admin = () => {
 
           <div>
             <Label className="mb-2">
-              Type <span className="font-mono bg-gray-100 px-1 rounded">DELETE</span> to confirm
+              Type <span className="font-mono bg-muted px-1 rounded">DELETE</span> to confirm
             </Label>
             <Input
               value={deleteConfirmText}

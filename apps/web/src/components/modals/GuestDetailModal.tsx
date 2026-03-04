@@ -16,24 +16,24 @@ const GuestSpendingTooltip = ({ active, payload, label }: any) => {
   const data = payload[0].payload
 
   return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+    <div className="bg-card p-3 rounded-lg shadow-lg border">
       <p className="font-semibold text-sm mb-2">{label}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.revenue }} />
-            <span className="text-gray-600">Spent:</span>
+            <span className="text-muted-foreground">Spent:</span>
           </div>
           <span className="font-medium">{formatCurrency(data.amount)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-600">Bookings:</span>
+          <span className="text-muted-foreground">Bookings:</span>
           <span className="font-medium">{data.bookings}</span>
         </div>
         {data.bookings > 0 && (
-          <div className="pt-1 mt-1 border-t border-gray-200">
+          <div className="pt-1 mt-1 border-t border-border">
             <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Avg per booking:</span>
+              <span className="text-muted-foreground">Avg per booking:</span>
               <span className="font-medium">{formatCurrency(data.amount / data.bookings)}</span>
             </div>
           </div>
@@ -47,16 +47,16 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
 
   return (
-    <div className="bg-white rounded-lg border overflow-hidden">
+    <div className="bg-card rounded-lg border overflow-hidden">
       <div className="max-h-96 overflow-y-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 sticky top-0">
+          <thead className="bg-muted/40 sticky top-0">
             <tr>
-              <th className="text-left p-4 text-sm font-medium text-gray-700">Property</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-700">Check In</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-700">Check Out</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-700">Amount</th>
-              <th className="text-left p-4 text-sm font-medium text-gray-700">Status</th>
+              <th className="text-left p-4 text-sm font-medium text-foreground">Property</th>
+              <th className="text-left p-4 text-sm font-medium text-foreground">Check In</th>
+              <th className="text-left p-4 text-sm font-medium text-foreground">Check Out</th>
+              <th className="text-left p-4 text-sm font-medium text-foreground">Amount</th>
+              <th className="text-left p-4 text-sm font-medium text-foreground">Status</th>
               <th className="p-4"></th>
             </tr>
           </thead>
@@ -69,19 +69,19 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                 <>
                   <tr
                     key={booking.id}
-                    className={`border-t ${hasCharges ? 'cursor-pointer hover:bg-gray-50' : ''}`}
+                    className={`border-t ${hasCharges ? 'cursor-pointer hover:bg-muted/40' : ''}`}
                     onClick={() => hasCharges && setExpandedBooking(isExpanded ? null : booking.id)}
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
                         {hasCharges && (
                           isExpanded
-                            ? <ChevronDown className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                            : <ChevronRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                            ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                            : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                         )}
                         <div>
-                          <div className="font-medium text-gray-900">{booking.propertyName}</div>
-                          <div className="text-sm text-gray-500">{booking.nights} nights</div>
+                          <div className="font-medium text-foreground">{booking.propertyName}</div>
+                          <div className="text-sm text-muted-foreground">{booking.nights} nights</div>
                         </div>
                       </div>
                     </td>
@@ -103,7 +103,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                           href={`https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-gray-400 hover:text-blue-600 transition-colors"
+                          className="text-muted-foreground hover:text-primary transition-colors"
                           title="Open in OwnerRez"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -113,22 +113,22 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                     </td>
                   </tr>
                   {isExpanded && hasCharges && (
-                    <tr key={`${booking.id}-charges`} className="bg-gray-50">
+                    <tr key={`${booking.id}-charges`} className="bg-muted/40">
                       <td colSpan={6} className="px-8 py-3">
-                        <div className="text-xs font-medium text-gray-500 mb-2">Charge Breakdown</div>
+                        <div className="text-xs font-medium text-muted-foreground mb-2">Charge Breakdown</div>
                         <div className="space-y-1">
                           {booking.charges.map((charge: any, i: number) => (
                             <div key={charge.id || i} className="flex justify-between text-sm">
-                              <span className="text-gray-600 flex items-center gap-1.5">
+                              <span className="text-muted-foreground flex items-center gap-1.5">
                                 <span className={`w-1.5 h-1.5 rounded-full ${
-                                  charge.type === 'tax' ? 'bg-red-400' :
-                                  charge.type === 'fee' ? 'bg-amber-400' :
-                                  charge.type === 'discount' ? 'bg-green-400' :
-                                  'bg-gray-400'
+                                  charge.type === 'tax' ? 'bg-danger' :
+                                  charge.type === 'fee' ? 'bg-warning' :
+                                  charge.type === 'discount' ? 'bg-success' :
+                                  'bg-muted-foreground'
                                 }`} />
                                 {charge.description || charge.type}
                               </span>
-                              <span className={`font-medium ${charge.type === 'discount' ? 'text-green-600' : ''}`}>
+                              <span className={`font-medium ${charge.type === 'discount' ? 'text-success' : ''}`}>
                                 {charge.type === 'discount' ? '-' : ''}{formatCurrency(Math.abs(charge.amount))}
                               </span>
                             </div>
@@ -177,7 +177,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         size="lg"
       >
         <div className="text-center py-12">
-          <p className="text-gray-600">Something went wrong. Please try again.</p>
+          <p className="text-muted-foreground">Something went wrong. Please try again.</p>
         </div>
       </Modal>
     )
@@ -226,10 +226,10 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         <div className="space-y-6">
         {/* Info Banner */}
         {showTips && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
             <div className="flex items-start">
-              <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-              <div className="text-sm text-blue-800">
+              <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+              <div className="text-sm text-info-fg">
                 <strong>Guest Profile:</strong> View this guest's complete booking history and spending patterns.
               </div>
             </div>
@@ -237,30 +237,30 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         )}
 
         {/* Guest Info Card */}
-        <div className="bg-gray-50 rounded-lg p-6">
+        <div className="bg-muted/40 rounded-lg p-6">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center mb-2">
-                <User className="w-5 h-5 mr-2 text-gray-600" />
+                <User className="w-5 h-5 mr-2 text-muted-foreground" />
                 <h3 className="text-lg font-bold">{guest?.name || guestName}</h3>
               </div>
               {guest?.email && (
-                <div className="flex items-center text-sm text-gray-600 mb-2">
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
                   <Mail className="w-4 h-4 mr-1" />
-                  <a href={`mailto:${guest.email}`} className="text-blue-600 hover:underline">
+                  <a href={`mailto:${guest.email}`} className="text-primary hover:underline">
                     {guest.email}
                   </a>
                 </div>
               )}
               {guest?.phone && (
-                <div className="flex items-center text-sm text-gray-600 mb-2">
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
                   <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
                   {guest.phone}
                 </div>
               )}
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 {guest?.firstVisit && <span>First visit: {formatDateDisplay(guest.firstVisit)}</span>}
                 {guest?.lastVisit && <span>Last visit: {formatDateDisplay(guest.lastVisit)}</span>}
               </div>
@@ -268,25 +268,25 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
             <div className="flex flex-col items-end gap-2">
               {/* Performance Badges */}
               {performanceData?.isTopSpender && (
-                <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                <span className="inline-flex items-center px-3 py-1 bg-success-subtle text-success-fg text-sm rounded-full">
                   <DollarSign className="w-4 h-4 mr-1" />
                   Top Spender
                 </span>
               )}
               {performanceData?.isFrequent && !performanceData?.isTopSpender && (
-                <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                <span className="inline-flex items-center px-3 py-1 bg-info-subtle text-info-fg text-sm rounded-full">
                   <Star className="w-4 h-4 mr-1" />
                   Frequent Guest
                 </span>
               )}
               {performanceData?.isNew && !performanceData?.isTopSpender && !performanceData?.isFrequent && (
-                <span className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-full">
+                <span className="inline-flex items-center px-3 py-1 bg-purple-subtle text-purple-fg text-sm rounded-full">
                   <Award className="w-4 h-4 mr-1" />
                   New Guest
                 </span>
               )}
               {guest?.isRepeat && !performanceData?.isNew && (
-                <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-800 text-sm rounded-full">
+                <span className="inline-flex items-center px-3 py-1 bg-muted text-muted-foreground text-sm rounded-full">
                   <Star className="w-4 h-4 mr-1" />
                   Returning Guest
                 </span>
@@ -297,29 +297,29 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
 
         {/* Key Metrics */}
         <div className="grid grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
+          <div className="bg-card p-4 rounded-lg border">
+            <div className="flex items-center text-sm text-muted-foreground mb-1">
               <Calendar className="w-4 h-4 mr-1" />
               Total Stays
             </div>
             <div className="text-2xl font-bold">{bookingHistory.length}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
+          <div className="bg-card p-4 rounded-lg border">
+            <div className="flex items-center text-sm text-muted-foreground mb-1">
               <DollarSign className="w-4 h-4 mr-1" />
               Total Spent
             </div>
             <div className="text-2xl font-bold">{formatCurrency(totalSpent)}</div>
           </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
+          <div className="bg-card p-4 rounded-lg border">
+            <div className="flex items-center text-sm text-muted-foreground mb-1">
               <Home className="w-4 h-4 mr-1" />
               Average Stay
             </div>
             <div className="text-2xl font-bold">{avgStayLength.toFixed(1)} nights</div>
           </div>
-          <div className="bg-white p-4 rounded-lg border">
-            <div className="flex items-center text-sm text-gray-600 mb-1">
+          <div className="bg-card p-4 rounded-lg border">
+            <div className="flex items-center text-sm text-muted-foreground mb-1">
               <TrendingUp className="w-4 h-4 mr-1" />
               Average Per Stay
             </div>
@@ -338,7 +338,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
 
           <TabsContent value="overview">
             {chartData.length > 0 && (
-              <div className="bg-white p-6 rounded-lg border">
+              <div className="bg-card p-6 rounded-lg border">
                 <h3 className="text-lg font-bold mb-4">Spending Over Time</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">

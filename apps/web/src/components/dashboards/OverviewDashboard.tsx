@@ -16,7 +16,8 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend, ReferenceLine } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
-import { getPlatformColor } from '@/lib/theme'
+import { useTheme } from '@/contexts/theme'
+import { getPlatformColor, getChartColor, CHART_INFRA, resolveToken } from '@/lib/theme'
 import { getMonthlyGoalValue } from '@/utils/goals'
 import { Button } from '@/components/ui/button'
 import { useNavigate, Link } from 'react-router-dom'
@@ -46,15 +47,15 @@ const formatGoalValue = (value: number, format: string) => {
 }
 
 const getProgressColor = (pct: number) => {
-  if (pct >= 80) return 'bg-green-500'
-  if (pct >= 50) return 'bg-yellow-500'
-  return 'bg-red-500'
+  if (pct >= 80) return 'bg-success'
+  if (pct >= 50) return 'bg-warning'
+  return 'bg-danger'
 }
 
 const getProgressBgColor = (pct: number) => {
-  if (pct >= 80) return 'bg-green-100'
-  if (pct >= 50) return 'bg-yellow-100'
-  return 'bg-red-100'
+  if (pct >= 80) return 'bg-success-subtle'
+  if (pct >= 50) return 'bg-warning-subtle'
+  return 'bg-danger-subtle'
 }
 
 // extracted tooltip component to module scope
@@ -64,21 +65,21 @@ const BookingSourceTooltip = ({ active, payload }: any) => {
     const total = payload[0].payload?.totalBookings || 0
     const percent = total > 0 ? ((data.count / total) * 100).toFixed(1) : '0.0'
     return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{data.source}</p>
         <div className="space-y-1 text-xs">
           <p className="flex justify-between gap-4">
-            <span className="text-gray-600">Bookings:</span>
+            <span className="text-muted-foreground">Bookings:</span>
             <span className="font-medium">{data.count}</span>
           </p>
           <p className="flex justify-between gap-4">
-            <span className="text-gray-600">Share:</span>
+            <span className="text-muted-foreground">Share:</span>
             <span className="font-medium">{percent}%</span>
           </p>
           {data.revenue !== undefined && (
             <p className="flex justify-between gap-4">
-              <span className="text-gray-600">Revenue:</span>
-              <span className="font-medium text-green-600">{formatCurrency(data.revenue)}</span>
+              <span className="text-muted-foreground">Revenue:</span>
+              <span className="font-medium text-success">{formatCurrency(data.revenue)}</span>
             </p>
           )}
         </div>
@@ -92,22 +93,22 @@ const RevenueChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0)
     return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{label}</p>
         <div className="space-y-1 text-xs">
           {payload.slice().reverse().map((entry: any, index: number) => (
             <div key={index} className="flex justify-between gap-4">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
-                <span className="text-gray-600">{entry.name}:</span>
+                <span className="text-muted-foreground">{entry.name}:</span>
               </div>
               <span className="font-medium">{formatCompactCurrency(entry.value)}</span>
             </div>
           ))}
-          <div className="pt-1 mt-1 border-t border-gray-200">
+          <div className="pt-1 mt-1 border-t border-border">
             <div className="flex justify-between gap-4 font-semibold">
               <span>Total:</span>
-              <span className="text-green-600">{formatCompactCurrency(total)}</span>
+              <span className="text-success">{formatCompactCurrency(total)}</span>
             </div>
           </div>
         </div>
@@ -122,6 +123,7 @@ export const OverviewDashboard = () => {
   const { filters, comparisonRange, comparisonMode, comparisonLabel, updateDateRange } = useDashboard()
   const { showTips } = useTips()
   const { openModal } = useModal()
+  const { resolvedTheme } = useTheme()
   const tagIds = useTagIds()
   const comparisonDateRange = useComparisonDateRange()
   const navigate = useNavigate()
@@ -305,7 +307,7 @@ export const OverviewDashboard = () => {
           ...properties
         }
       })
-  }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total])
+  }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total, resolvedTheme])
 
   const revenueChartAreas = useMemo(() => {
     if (!charts?.topProperties) return []
@@ -320,8 +322,8 @@ export const OverviewDashboard = () => {
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
     const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
-    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
-    const otherColor = '#9CA3AF'
+    const colors = Array.from({ length: 10 }, (_, i) => getChartColor(i))
+    const otherColor = CHART_INFRA.reference
 
     const areas = []
 
@@ -359,7 +361,7 @@ export const OverviewDashboard = () => {
     }
 
     return areas
-  }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total])
+  }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total, resolvedTheme])
 
   const enabledGoals = useMemo(() => {
     if (!goalProgressData) return []
@@ -402,11 +404,11 @@ export const OverviewDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Your Business at a Glance</h2>
-            <p className="text-gray-600 text-sm mt-1">
+            <h2 className="text-2xl font-bold text-foreground">Your Business at a Glance</h2>
+            <p className="text-muted-foreground text-sm mt-1">
               {filters.selectedTags.length > 0
                 ? `Filtered: ${filters.selectedTags.map(t => t.name).filter(Boolean).join(', ') || 'Selected tags'}`
                 : 'All Properties'
@@ -414,8 +416,8 @@ export const OverviewDashboard = () => {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-              <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-success-subtle text-success-fg border border-success/30">
+              <span className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></span>
               Live Data
             </span>
           </div>
@@ -423,10 +425,10 @@ export const OverviewDashboard = () => {
       </div>
 
       {showTips && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
           <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
+            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+            <div className="text-sm text-info-fg">
               <strong>Quick Start:</strong> Click any metric card to dive deeper into that area.
               Green arrows mean improvement and red arrows mean decline compared to your selected comparison period. All numbers reflect your selected date range.
             </div>
@@ -435,11 +437,11 @@ export const OverviewDashboard = () => {
       )}
 
       {showEmptyNudge && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <div className="bg-warning-subtle border border-warning/30 rounded-lg p-4">
           <div className="flex items-start">
-            <AlertCircle className="w-5 h-5 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-warning mr-2 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <p className="text-sm text-amber-800">
+              <p className="text-sm text-warning-fg">
                 <strong>No data in this date range.</strong>{' '}
                 Your bookings may fall outside the current period — try a different range.
               </p>
@@ -448,7 +450,7 @@ export const OverviewDashboard = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleViewLastYear}
-                  className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 text-xs"
+                  className="bg-warning-subtle text-warning-fg hover:bg-warning/20 border-warning/40 text-xs"
                 >
                   <Calendar className="w-3.5 h-3.5" />
                   View Last Year
@@ -457,7 +459,7 @@ export const OverviewDashboard = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleLast12Months}
-                  className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 text-xs"
+                  className="bg-warning-subtle text-warning-fg hover:bg-warning/20 border-warning/40 text-xs"
                 >
                   <Clock className="w-3.5 h-3.5" />
                   Last 12 Months
@@ -467,7 +469,7 @@ export const OverviewDashboard = () => {
                     variant="outline"
                     size="sm"
                     asChild
-                    className="bg-amber-100 text-amber-800 hover:bg-amber-200 border-amber-300 text-xs"
+                    className="bg-warning-subtle text-warning-fg hover:bg-warning/20 border-warning/40 text-xs"
                   >
                     <Link to="/settings?tab=seasons">
                       <Settings className="w-3.5 h-3.5" />
@@ -489,7 +491,7 @@ export const OverviewDashboard = () => {
           format="currency"
           tooltip="Total revenue from all bookings in selected period"
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
-            ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)}`
           }
           trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
@@ -504,13 +506,13 @@ export const OverviewDashboard = () => {
               Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5 :
               Math.max(metrics.revenue.current * 2, 1000),
             segments: comparisonMode !== 'none' && metrics.revenue.previous ? [
-              { threshold: metrics.revenue.previous * 0.8 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
-              { threshold: metrics.revenue.previous * 1.0 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
-              { threshold: 100, color: '#10B981', label: 'Above' }
+              { threshold: metrics.revenue.previous * 0.8 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: resolveToken('--danger'),  label: 'Below' },
+              { threshold: metrics.revenue.previous * 1.0 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: resolveToken('--warning'), label: 'Target' },
+              { threshold: 100, color: resolveToken('--success'), label: 'Above' }
             ] : [
-              { threshold: 30, color: '#EF4444', label: 'Low' },
-              { threshold: 60, color: '#F59E0B', label: 'Medium' },
-              { threshold: 100, color: '#10B981', label: 'High' }
+              { threshold: 30,  color: resolveToken('--danger'),  label: 'Low' },
+              { threshold: 60,  color: resolveToken('--warning'), label: 'Medium' },
+              { threshold: 100, color: resolveToken('--success'), label: 'High' }
             ],
             target: metrics.revenue.previous
           }}
@@ -524,7 +526,7 @@ export const OverviewDashboard = () => {
           format="number"
           tooltip="Total number of confirmed bookings"
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
-            ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
           }
           trend={comparisonMode !== 'none' && metrics.bookings.previous !== undefined ? {
@@ -539,13 +541,13 @@ export const OverviewDashboard = () => {
               Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5 :
               Math.max(metrics.bookings.current * 2, 10),
             segments: comparisonMode !== 'none' && metrics.bookings.previous ? [
-              { threshold: metrics.bookings.previous * 0.8 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
-              { threshold: metrics.bookings.previous * 1.0 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
-              { threshold: 100, color: '#10B981', label: 'Above' }
+              { threshold: metrics.bookings.previous * 0.8 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: resolveToken('--danger'), label: 'Below' },
+              { threshold: metrics.bookings.previous * 1.0 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: resolveToken('--warning'), label: 'Target' },
+              { threshold: 100, color: resolveToken('--success'), label: 'Above' }
             ] : [
-              { threshold: 30, color: '#EF4444', label: 'Low' },
-              { threshold: 60, color: '#F59E0B', label: 'Medium' },
-              { threshold: 100, color: '#10B981', label: 'High' }
+              { threshold: 30,  color: resolveToken('--danger'),  label: 'Low' },
+              { threshold: 60,  color: resolveToken('--warning'), label: 'Medium' },
+              { threshold: 100, color: resolveToken('--success'), label: 'High' }
             ],
             target: metrics.bookings.previous
           }}
@@ -559,7 +561,7 @@ export const OverviewDashboard = () => {
           format="percent"
           tooltip="Percentage of available nights booked"
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
-            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average`
           }
           trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
@@ -572,9 +574,9 @@ export const OverviewDashboard = () => {
             min: 0,
             max: 100,
             segments: [
-              { threshold: 50, color: '#EF4444', label: 'Low' },
-              { threshold: 75, color: '#F59E0B', label: 'Good' },
-              { threshold: 100, color: '#10B981', label: 'Excellent' }
+              { threshold: 50,  color: resolveToken('--danger'),  label: 'Low' },
+              { threshold: 75,  color: resolveToken('--warning'), label: 'Good' },
+              { threshold: 100, color: resolveToken('--success'), label: 'Excellent' }
             ],
             target: metrics.occupancy.previous
           }}
@@ -588,7 +590,7 @@ export const OverviewDashboard = () => {
           format="number"
           tooltip="Total unique guests who have stayed"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
-            ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
           }
           trend={comparisonMode !== 'none' && metrics.guests.growth !== undefined ? {
@@ -603,13 +605,13 @@ export const OverviewDashboard = () => {
               Math.max(metrics.guests.total, metrics.guests.previous) * 1.5 :
               Math.max(metrics.guests.total * 2, 10),
             segments: comparisonMode !== 'none' && metrics.guests.previous ? [
-              { threshold: metrics.guests.previous * 0.8 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: '#EF4444', label: 'Below' },
-              { threshold: metrics.guests.previous * 1.0 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: '#F59E0B', label: 'Target' },
-              { threshold: 100, color: '#10B981', label: 'Above' }
+              { threshold: metrics.guests.previous * 0.8 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: resolveToken('--danger'), label: 'Below' },
+              { threshold: metrics.guests.previous * 1.0 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: resolveToken('--warning'), label: 'Target' },
+              { threshold: 100, color: resolveToken('--success'), label: 'Above' }
             ] : [
-              { threshold: 30, color: '#EF4444', label: 'Low' },
-              { threshold: 60, color: '#F59E0B', label: 'Medium' },
-              { threshold: 100, color: '#10B981', label: 'High' }
+              { threshold: 30,  color: resolveToken('--danger'),  label: 'Low' },
+              { threshold: 60,  color: resolveToken('--warning'), label: 'Medium' },
+              { threshold: 100, color: resolveToken('--success'), label: 'High' }
             ],
             target: metrics.guests.previous
           }}
@@ -669,15 +671,15 @@ export const OverviewDashboard = () => {
           height={300}
         >
           <AreaChart data={revenueChartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
             <XAxis
               dataKey="week"
-              stroke="#6B7280"
+              stroke={CHART_INFRA.axis}
               tick={{ fontSize: 11 }}
             />
             <YAxis
               tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`}
-              stroke="#6B7280"
+              stroke={CHART_INFRA.axis}
               tick={{ fontSize: 11 }}
             />
             <Tooltip content={<RevenueChartTooltip />} />
@@ -689,13 +691,13 @@ export const OverviewDashboard = () => {
             {revenueGoal != null && (
               <ReferenceLine
                 y={revenueGoal}
-                stroke="#6366f1"
+                stroke={CHART_INFRA.goal}
                 strokeDasharray="6 4"
                 strokeWidth={1.5}
                 label={{
                   value: `⬥ Goal: ${formatCompactCurrency(revenueGoal)}`,
                   position: 'insideTopLeft',
-                  fill: '#6366f1',
+                  fill: CHART_INFRA.goal,
                   fontSize: 12,
                   fontWeight: 600,
                   offset: 4
@@ -723,7 +725,7 @@ export const OverviewDashboard = () => {
                 return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
               }}
               outerRadius={80}
-              fill="#8884d8"
+              fill={resolveToken('--chart-series-5')}
               dataKey="count"
             >
               {charts.bookingsBySource.map((entry: any, index: any) => (
@@ -736,7 +738,7 @@ export const OverviewDashboard = () => {
             const unassigned = bookingSourceChartData.find((s: any) => s.source === 'Unassigned' || s.source === 'unassigned')
             if (unassigned && unassigned.count > 0) {
               return (
-                <p className="text-xs text-amber-600 text-center mt-1">
+                <p className="text-xs text-warning text-center mt-1">
                   {unassigned.count} booking{unassigned.count !== 1 ? 's' : ''} unassigned
                 </p>
               )
@@ -747,14 +749,14 @@ export const OverviewDashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-blue-600" />
+              <Target className="w-5 h-5 text-info" />
               <h3 className="text-lg font-bold">Your Goals</h3>
             </div>
             {enabledGoals.length > 0 && (
-              <Link to="/settings?tab=goals" className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+              <Link to="/settings?tab=goals" className="text-xs text-info hover:text-info-fg flex items-center gap-1">
                 <Settings className="w-3 h-3" />
                 Edit
               </Link>
@@ -768,11 +770,11 @@ export const OverviewDashboard = () => {
                   <div key={goal.metricKey} className="py-2 border-b last:border-0">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm font-medium text-gray-700">{goal.config.label}</span>
-                        <span className="text-xs text-gray-400">({goal.periodLabel})</span>
+                        <Icon className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">{goal.config.label}</span>
+                        <span className="text-xs text-muted-foreground/70">({goal.periodLabel})</span>
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {formatGoalValue(goal.current, goal.config.format)} / {formatGoalValue(goal.target, goal.config.format)}
                       </span>
                     </div>
@@ -786,10 +788,10 @@ export const OverviewDashboard = () => {
                 )
               })
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 <Target className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p className="text-sm font-medium">No goals set yet</p>
-                <Link to="/settings?tab=goals" className="text-xs text-blue-600 hover:text-blue-800 mt-1 inline-block">
+                <Link to="/settings?tab=goals" className="text-xs text-info hover:text-info-fg mt-1 inline-block">
                   Set goals in Settings to track your progress
                 </Link>
               </div>
@@ -797,10 +799,10 @@ export const OverviewDashboard = () => {
           </div>
         </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-bold">What's New</h3>
-            <span className="text-xs text-gray-500">Recent bookings</span>
+            <span className="text-xs text-muted-foreground">Recent bookings</span>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
             {recentActivity && recentActivity.length > 0 ? (
@@ -808,23 +810,23 @@ export const OverviewDashboard = () => {
                 <div
                   key={activity.id}
                   className={`flex items-center justify-between py-2 border-b last:border-0 ${
-                    activity.bookingId ? 'hover:bg-gray-50 px-2 -mx-2 rounded transition-colors cursor-pointer' : ''
+                    activity.bookingId ? 'hover:bg-muted/50 px-2 -mx-2 rounded transition-colors cursor-pointer' : ''
                   }`}
                   onClick={() => handleActivityClick(activity)}
                 >
                   <div className="flex-1 min-w-0 mr-2">
                     <p className="text-sm font-medium truncate">{activity.description}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         {formatDateDisplay(activity.timestamp)}
                       </span>
                       {activity.metadata?.arrival && activity.metadata?.departure && (
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-muted-foreground/70">
                           · Stay: {formatDateDisplay(activity.metadata.arrival)} – {formatDateDisplay(activity.metadata.departure)}
                         </span>
                       )}
                       {activity.platform && (
-                        <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                           <span
                             className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ backgroundColor: getPlatformColor(activity.platform) }}
@@ -836,7 +838,7 @@ export const OverviewDashboard = () => {
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {activity.value && (
-                      <div className="text-sm font-medium text-green-600">
+                      <div className="text-sm font-medium text-success">
                         {formatCurrency(activity.value)}
                       </div>
                     )}
@@ -845,7 +847,7 @@ export const OverviewDashboard = () => {
                         href={`https://app.ownerrez.com/bookings/${activity.ownerrezBookingId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                        className="text-muted-foreground/70 hover:text-info transition-colors"
                         title="Open in OwnerRez"
                         onClick={(e) => e.stopPropagation()}
                       >
@@ -856,10 +858,10 @@ export const OverviewDashboard = () => {
                 </div>
               ))
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
                 <p className="text-sm font-medium">No recent activity</p>
-                <p className="text-xs mt-1 text-gray-400">Check back later for updates</p>
+                <p className="text-xs mt-1 text-muted-foreground/70">Check back later for updates</p>
               </div>
             )}
           </div>
@@ -892,14 +894,14 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
   }, [upcoming, filter])
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-blue-600" />
+          <Calendar className="w-5 h-5 text-info" />
           <h3 className="text-lg font-bold">Upcoming</h3>
-          <span className="text-xs text-gray-500">({filtered.length})</span>
+          <span className="text-xs text-muted-foreground">({filtered.length})</span>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-lg">
+        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
           {[
             { key: 'today' as const, label: 'Today' },
             { key: 'week' as const, label: 'This Week' },
@@ -911,8 +913,8 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
               size="sm"
               onClick={() => setFilter(btn.key)}
               className={filter === btn.key
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
               }
             >
               {btn.label}
@@ -926,28 +928,28 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
             <div key={booking.id} className="flex items-center justify-between py-2 border-b last:border-0">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  booking.type === 'check-in' ? 'bg-green-100' : 'bg-orange-100'
+                  booking.type === 'check-in' ? 'bg-success-subtle' : 'bg-orange-subtle'
                 }`}>
                   {booking.type === 'check-in'
-                    ? <LogIn className="w-4 h-4 text-green-600" />
-                    : <LogOut className="w-4 h-4 text-orange-600" />
+                    ? <LogIn className="w-4 h-4 text-success" />
+                    : <LogOut className="w-4 h-4 text-orange-fg" />
                   }
                 </div>
                 <div>
                   <div className="text-sm font-medium">{booking.guestName}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     {booking.propertyName} — {booking.type === 'check-in' ? 'Check-in' : 'Check-out'}{' '}
                     {formatDateDisplay(booking.type === 'check-in' ? booking.arrival : booking.departure)}
                   </div>
                 </div>
               </div>
               {booking.amount > 0 && (
-                <span className="text-sm font-medium text-green-600">{formatCurrency(booking.amount)}</span>
+                <span className="text-sm font-medium text-success">{formatCurrency(booking.amount)}</span>
               )}
             </div>
           ))
         ) : (
-          <div className="text-center py-6 text-gray-500">
+          <div className="text-center py-6 text-muted-foreground">
             <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No upcoming check-ins or check-outs {filter === 'today' ? 'today' : filter === 'week' ? 'this week' : 'this month'}</p>
           </div>

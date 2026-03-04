@@ -123,11 +123,11 @@ export const getPasswordStrength = (password: string): PasswordStrength => {
   if (score < 0) score = 0
 
   const strengthMap: Record<number, { label: PasswordStrength['label']; color: string }> = {
-    0: { label: 'Very Weak', color: 'text-red-600 bg-red-100' },
-    1: { label: 'Weak', color: 'text-orange-600 bg-orange-100' },
-    2: { label: 'Fair', color: 'text-yellow-600 bg-yellow-100' },
-    3: { label: 'Good', color: 'text-blue-600 bg-blue-100' },
-    4: { label: 'Strong', color: 'text-green-600 bg-green-100' }
+    0: { label: 'Very Weak', color: 'text-danger-fg bg-danger-subtle' },
+    1: { label: 'Weak',      color: 'text-warning-fg bg-warning-subtle' },
+    2: { label: 'Fair',      color: 'text-warning-fg bg-warning-subtle' },
+    3: { label: 'Good',      color: 'text-info-fg bg-info-subtle' },
+    4: { label: 'Strong',    color: 'text-success-fg bg-success-subtle' }
   }
 
   return {

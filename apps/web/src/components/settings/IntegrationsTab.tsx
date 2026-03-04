@@ -85,7 +85,7 @@ export const IntegrationsTab = () => {
   return (
     <div className="space-y-6">
       {/* ownerrez integration card */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
         <div className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-start gap-4">
@@ -95,8 +95,8 @@ export const IntegrationsTab = () => {
                 className="w-12 h-12"
               />
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">OwnerRez</h2>
-                <p className="text-gray-600 text-sm">
+                <h2 className="text-xl font-semibold text-foreground mb-2">OwnerRez</h2>
+                <p className="text-muted-foreground text-sm">
                   Connect your OwnerRez account to sync properties, bookings, and guest data with real-time webhook updates
                 </p>
               </div>
@@ -104,7 +104,7 @@ export const IntegrationsTab = () => {
             <div className="flex items-center gap-2">
               {isConnected ? (
                 <>
-                  <span className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm font-medium">
+                  <span className="flex items-center gap-1.5 px-3 py-1 bg-success-subtle text-success-fg rounded-full text-sm font-medium">
                     <Check className="w-4 h-4" />
                     Connected
                   </span>
@@ -112,7 +112,7 @@ export const IntegrationsTab = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setDisconnectModalOpen(true)}
-                    className="text-gray-400 hover:text-red-600 hover:bg-red-50"
+                    className="text-muted-foreground hover:text-danger hover:bg-danger-subtle"
                     title="Disconnect OwnerRez"
                   >
                     <Link2Off className="w-5 h-5" />
@@ -129,11 +129,11 @@ export const IntegrationsTab = () => {
 
           {isConnected && syncStatus && (
             <>
-              <div className="border-t border-gray-200 pt-6">
+              <div className="border-t pt-6">
                 <div className="mb-6">
                   <div className="flex items-center gap-2 mb-2">
-                    <Webhook className="w-4 h-4 text-green-600" />
-                    <h3 className="text-lg font-semibold text-gray-900">Sync Status</h3>
+                    <Webhook className="w-4 h-4 text-success" />
+                    <h3 className="text-lg font-semibold text-foreground">Sync Status</h3>
                   </div>
                   {(() => {
                     const hours = webhookHealth?.lastWebhookHoursAgo
@@ -141,8 +141,8 @@ export const IntegrationsTab = () => {
 
                     if (hours != null && hours < 24) {
                       return (
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                          <p className="text-sm text-green-800">
+                        <div className="bg-success-subtle border border-success/30 rounded-lg p-3">
+                          <p className="text-sm text-success-fg">
                             <span className="font-medium">✓ Real-time webhooks active</span> — last event {hoursDisplay} ago
                           </p>
                         </div>
@@ -151,9 +151,9 @@ export const IntegrationsTab = () => {
 
                     if (hours != null && hours < 72) {
                       return (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                        <div className="bg-warning-subtle border border-warning/30 rounded-lg p-3">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm text-amber-800">
+                            <p className="text-sm text-warning-fg">
                               <span className="font-medium">⚠ No webhooks received in {hoursDisplay}</span> — data may be stale
                             </p>
                             <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
@@ -167,9 +167,9 @@ export const IntegrationsTab = () => {
 
                     if (hours != null && hours >= 72) {
                       return (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                        <div className="bg-danger-subtle border border-danger/30 rounded-lg p-3">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm text-red-800">
+                            <p className="text-sm text-danger-fg">
                               <span className="font-medium">✗ Webhooks may be disconnected</span> — no events in {hoursDisplay}
                             </p>
                             <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
@@ -183,8 +183,8 @@ export const IntegrationsTab = () => {
 
                     // Loading or unknown state — show neutral/loading
                     return (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                        <p className="text-sm text-gray-600">
+                      <div className="bg-muted/40 border rounded-lg p-3">
+                        <p className="text-sm text-muted-foreground">
                           <span className="font-medium">Checking webhook status...</span>
                         </p>
                       </div>
@@ -192,16 +192,16 @@ export const IntegrationsTab = () => {
                   })()}
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Manual Sync</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Manual Sync</h3>
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={handleManualSync}>
                     <RefreshCw className="w-4 h-4" />
                     Re-sync All Data (3 years)
                   </Button>
-                  <p className="text-xs text-gray-500 w-full mt-2">
+                  <p className="text-xs text-muted-foreground w-full mt-2">
                     This will re-run the initial sync process, refreshing all properties and bookings from the last 3 years.
                   </p>
-                  <p className="text-xs text-gray-400 w-full mt-4">
+                  <p className="text-xs text-muted-foreground/50 w-full mt-4">
                     Dashboard data reflects what is available from the OwnerRez API. Items not provided by the API — such as platform fees, operating expenses, and custom tax rates — must be configured manually in Settings.
                   </p>
                 </div>
@@ -210,15 +210,15 @@ export const IntegrationsTab = () => {
           )}
 
           {!isConnected && (
-            <div className="border-t border-gray-200 pt-6">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="border-t pt-6">
+              <div className="bg-warning-subtle border border-warning/30 rounded-lg p-4">
                 <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm text-amber-800 font-medium mb-1">
+                    <p className="text-sm text-warning-fg font-medium mb-1">
                       Connection Required
                     </p>
-                    <p className="text-sm text-amber-700">
+                    <p className="text-sm text-warning-fg">
                       Connect your OwnerRez account to start syncing property and booking data.
                       Initial connection will sync 3 years of historical data and enable real-time webhook updates.
                     </p>

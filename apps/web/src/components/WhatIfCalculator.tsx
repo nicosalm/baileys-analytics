@@ -51,7 +51,7 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
   if (byProperty.length === 0) return null
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-card rounded-lg shadow-sm border border-border">
       <Button
         variant="ghost"
         onClick={() => setExpanded(prev => !prev)}
@@ -59,17 +59,17 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
       >
         <div className="flex items-center gap-2">
           {expanded
-            ? <ChevronDown className="w-4 h-4 text-gray-500" />
-            : <ChevronRight className="w-4 h-4 text-gray-500" />
+            ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            : <ChevronRight className="w-4 h-4 text-muted-foreground" />
           }
-          <Calculator className="w-5 h-5 text-gray-600" />
-          <span className="font-bold text-gray-900">What If?</span>
-          <span className="text-sm text-gray-500 font-normal">RevPAN scenario calculator</span>
+          <Calculator className="w-5 h-5 text-muted-foreground" />
+          <span className="font-bold text-foreground">What If?</span>
+          <span className="text-sm text-muted-foreground font-normal">RevPAN scenario calculator</span>
         </div>
       </Button>
 
       {expanded && (
-        <div className="px-6 pb-6 pt-2 border-t border-gray-100">
+        <div className="px-6 pb-6 pt-2 border-t border-border">
           <div className="grid md:grid-cols-2 gap-6">
             {/* Left column — inputs */}
             <div className="space-y-4">
@@ -92,15 +92,15 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
 
               <div className="flex gap-4 text-sm">
                 <div>
-                  <span className="text-gray-500">Open nights</span>
+                  <span className="text-muted-foreground">Open nights</span>
                   <p className="font-semibold">{scope.openNights}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Current occupancy</span>
+                  <span className="text-muted-foreground">Current occupancy</span>
                   <p className="font-semibold">{formatPercentage(scope.currentOccupancy * 100)}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Current RevPAN</span>
+                  <span className="text-muted-foreground">Current RevPAN</span>
                   <p className="font-semibold">{formatCurrency(scope.currentRevPAN)}</p>
                 </div>
               </div>
@@ -110,7 +110,7 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
                   If open nights booked at
                 </Label>
                 <div className="relative w-48">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-10">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm z-10">$</span>
                   <Input
                     type="text"
                     inputMode="decimal"
@@ -119,25 +119,25 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
                     placeholder={scope.weightedAvgRate > 0 ? scope.weightedAvgRate.toFixed(0) : '0'}
                     className="pl-7 pr-14 text-sm"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">/night</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">/night</span>
                 </div>
               </div>
             </div>
 
             {/* Right column — results */}
-            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                 <TrendingUp className="w-4 h-4" />
                 RevPAN Impact
               </h4>
 
               <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-gray-900">{formatCurrency(scope.currentRevPAN)}</span>
-                <ArrowRight className="w-4 h-4 text-gray-400" />
-                <span className="text-lg font-bold text-gray-900">{formatCurrency(projectedRevPAN)}</span>
+                <span className="text-lg font-bold text-foreground">{formatCurrency(scope.currentRevPAN)}</span>
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                <span className="text-lg font-bold text-foreground">{formatCurrency(projectedRevPAN)}</span>
                 {inputRate > 0 && (
                   <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${
-                    revPANChangePct >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    revPANChangePct >= 0 ? 'bg-success-subtle text-success-fg' : 'bg-danger-subtle text-danger-fg'
                   }`}>
                     {revPANChangePct >= 0 ? '+' : ''}{formatPercentage(revPANChangePct)}
                   </span>
@@ -145,16 +145,16 @@ export const WhatIfCalculator = ({ byProperty }: WhatIfCalculatorProps) => {
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Additional revenue</span>
-                <span className="text-sm font-semibold text-gray-900">{formatCurrency(additionalRevenue)}</span>
+                <span className="text-sm text-muted-foreground">Additional revenue</span>
+                <span className="text-sm font-semibold text-foreground">{formatCurrency(additionalRevenue)}</span>
               </div>
 
-              <div className="border-t border-gray-200 pt-2 flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-700">New total revenue</span>
-                <span className="text-lg font-bold text-gray-900">{formatCurrency(newTotalRevenue)}</span>
+              <div className="border-t border-border pt-2 flex justify-between items-center">
+                <span className="text-sm font-medium text-foreground">New total revenue</span>
+                <span className="text-lg font-bold text-foreground">{formatCurrency(newTotalRevenue)}</span>
               </div>
 
-              <p className="text-xs text-gray-400 pt-1">
+              <p className="text-xs text-muted-foreground pt-1">
                 {scope.openNights} open night{scope.openNights !== 1 ? 's' : ''} × {formatCurrency(inputRate)}/night
                 {selectedPropertyId === '__portfolio__' ? ' across all properties' : ''}
               </p>

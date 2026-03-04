@@ -181,14 +181,14 @@ export const PLView: React.FC<PLViewProps> = ({
   return (
     <div className="space-y-6">
       {showTips && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
           <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
+            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+            <div className="text-sm text-info-fg">
               <strong>P&L Summary:</strong> Revenue → Platform Fees → Operating Expenses → Taxes → Net Revenue.{' '}
               {revenue.operatingExpenses.total > 0
                 ? `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
-                : <>Configure <Link to="/settings?tab=platform-fees" className="underline hover:text-blue-900">Platform Fees</Link> and <Link to="/settings?tab=expenses" className="underline hover:text-blue-900">Expenses</Link> in Settings for a complete picture.</>}
+                : <>Configure <Link to="/settings?tab=platform-fees" className="underline hover:text-info-fg">Platform Fees</Link> and <Link to="/settings?tab=expenses" className="underline hover:text-info-fg">Expenses</Link> in Settings for a complete picture.</>}
             </div>
           </div>
         </div>
@@ -203,7 +203,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Total revenue from all bookings in selected period"
           color="blue"
           subValue={comparisonMode !== 'none' && comparison.previousRevenue > 0
-            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${platforms.length} platform${platforms.length !== 1 ? 's' : ''}`}
           trend={comparisonMode !== 'none' && comparison.previousRevenue > 0 ? {
             value: comparison.revenueGrowth,
@@ -218,7 +218,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Platform fees plus operating expenses"
           color="orange"
           subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
-            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `Fees: ${formatCurrency(revenue.platformFees)}${revenue.operatingExpenses.total > 0 ? ` | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}` : ''}`}
           trend={comparisonMode !== 'none' && comparison.costsGrowth !== 0 ? {
             value: comparison.costsGrowth,
@@ -233,7 +233,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Taxes collected on bookings"
           color="yellow"
           subValue={comparisonMode !== 'none' && comparison.previousTaxes > 0
-            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : revenue.gross > 0 ? `${formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} effective rate` : '0% effective rate'}
           trend={comparisonMode !== 'none' && comparison.taxesGrowth !== 0 ? {
             value: comparison.taxesGrowth,
@@ -248,7 +248,7 @@ export const PLView: React.FC<PLViewProps> = ({
           tooltip="Revenue after fees, expenses, and taxes"
           color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
           subValue={comparisonMode !== 'none' && comparison.previousOperatingProfit > 0
-            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousOperatingProfit)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousOperatingProfit)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(profitability.operatingMargin, 1)} margin${revenue.operatingExpenses.total === 0 ? ' (excl. expenses)' : ''}`}
           trend={comparisonMode !== 'none' && comparison.operatingProfitGrowth !== 0 ? {
             value: comparison.operatingProfitGrowth,
@@ -281,56 +281,56 @@ export const PLView: React.FC<PLViewProps> = ({
               title="Revenue by Platform"
             />
           </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <h4 className="font-semibold text-gray-900 mb-3">Cost Breakdown</h4>
+          <div className="bg-card rounded-lg shadow-sm border p-4">
+            <h4 className="font-semibold text-foreground mb-3">Cost Breakdown</h4>
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">Platform Fees</span>
+                  <span className="text-sm font-medium text-foreground">Platform Fees</span>
                   <div className="text-right">
                     <p className="font-semibold">{formatCurrency(revenue.platformFees)}</p>
-                    <p className="text-xs text-gray-500">{formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue</p>
+                    <p className="text-xs text-muted-foreground">{formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue</p>
                   </div>
                 </div>
                 {(revenue.hostFees > 0 || revenue.guestFees > 0) && (
-                  <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-gray-200 pl-3">
+                  <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-border pl-3">
                     {revenue.hostFees > 0 && (
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">Host Service Fees</span>
-                        <span className="text-xs font-medium text-gray-600">{formatCurrency(revenue.hostFees)}</span>
+                        <span className="text-xs text-muted-foreground">Host Service Fees</span>
+                        <span className="text-xs font-medium text-muted-foreground">{formatCurrency(revenue.hostFees)}</span>
                       </div>
                     )}
                     {revenue.guestFees > 0 && (
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-gray-500">Guest Service Fees</span>
-                        <span className="text-xs font-medium text-gray-600">{formatCurrency(revenue.guestFees)}</span>
+                        <span className="text-xs text-muted-foreground">Guest Service Fees</span>
+                        <span className="text-xs font-medium text-muted-foreground">{formatCurrency(revenue.guestFees)}</span>
                       </div>
                     )}
                   </div>
                 )}
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Taxes</span>
+                <span className="text-sm text-muted-foreground">Taxes</span>
                 <div className="text-right">
                   <p className="font-semibold">{formatCurrency(revenue.taxes)}</p>
-                  <p className="text-xs text-gray-500">{formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} of revenue</p>
+                  <p className="text-xs text-muted-foreground">{formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} of revenue</p>
                 </div>
               </div>
               {revenue.operatingExpenses.total > 0 && (
                 <div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-gray-700">Operating Expenses</span>
+                    <span className="text-sm font-medium text-foreground">Operating Expenses</span>
                     <div className="text-right">
                       <p className="font-semibold">{formatCurrency(revenue.operatingExpenses.total)}</p>
-                      <p className="text-xs text-gray-500">{formatPercentage((revenue.operatingExpenses.total / revenue.gross) * 100, 1)} of revenue</p>
+                      <p className="text-xs text-muted-foreground">{formatPercentage((revenue.operatingExpenses.total / revenue.gross) * 100, 1)} of revenue</p>
                     </div>
                   </div>
                   {Object.keys(revenue.operatingExpenses.byCategory).length > 0 && (
-                    <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-gray-200 pl-3">
+                    <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-border pl-3">
                       {Object.entries(revenue.operatingExpenses.byCategory).map(([category, amount]) => (
                         <div key={category} className="flex justify-between items-center">
-                          <span className="text-xs text-gray-500 capitalize">{category}</span>
-                          <span className="text-xs font-medium text-gray-600">{formatCurrency(amount as number)}</span>
+                          <span className="text-xs text-muted-foreground capitalize">{category}</span>
+                          <span className="text-xs font-medium text-muted-foreground">{formatCurrency(amount as number)}</span>
                         </div>
                       ))}
                     </div>
@@ -339,20 +339,20 @@ export const PLView: React.FC<PLViewProps> = ({
               )}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-900">Total Costs</span>
+                  <span className="text-sm font-medium text-foreground">Total Costs</span>
                   <div className="text-right">
-                    <p className="font-bold text-red-600">{formatCurrency(revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total)}</p>
-                    <p className="text-xs text-gray-500">{formatPercentage(((revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total) / revenue.gross) * 100, 1)} of revenue</p>
+                    <p className="font-bold text-danger">{formatCurrency(revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total)}</p>
+                    <p className="text-xs text-muted-foreground">{formatPercentage(((revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total) / revenue.gross) * 100, 1)} of revenue</p>
                   </div>
                 </div>
               </div>
               {revenue.operatingExpenses.total > 0 && (
-                <div className="border-t-2 border-green-200 pt-3 mt-1 bg-green-50 -mx-4 px-4 py-3 rounded-b-lg">
+                <div className="border-t-2 border-success/30 pt-3 mt-1 bg-success-subtle -mx-4 px-4 py-3 rounded-b-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-green-900">Operating Profit</span>
+                    <span className="text-sm font-bold text-success-fg">Operating Profit</span>
                     <div className="text-right">
-                      <p className="font-bold text-lg text-green-700">{formatCurrency(revenue.operatingProfit)}</p>
-                      <p className="text-xs text-green-600">{formatPercentage((revenue.operatingProfit / revenue.gross) * 100, 1)} margin</p>
+                      <p className="font-bold text-lg text-success-fg">{formatCurrency(revenue.operatingProfit)}</p>
+                      <p className="text-xs text-success">{formatPercentage((revenue.operatingProfit / revenue.gross) * 100, 1)} margin</p>
                     </div>
                   </div>
                 </div>
@@ -363,47 +363,47 @@ export const PLView: React.FC<PLViewProps> = ({
       
       {/* Charge Composition Breakdown */}
       {data?.chargeComposition && data.chargeComposition.details.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h4 className="font-semibold text-gray-900 mb-4">Revenue Component Breakdown</h4>
-          <p className="text-sm text-gray-500 mb-4">Itemized charges from booking data (taxes, fees, discounts)</p>
+        <div className="bg-card rounded-lg shadow-sm border p-6">
+          <h4 className="font-semibold text-foreground mb-4">Revenue Component Breakdown</h4>
+          <p className="text-sm text-muted-foreground mb-4">Itemized charges from booking data (taxes, fees, discounts)</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {data.chargeComposition.taxes > 0 && (
-              <div className="bg-red-50 rounded-lg p-3">
-                <div className="text-xs text-red-600 font-medium">Taxes</div>
-                <div className="text-lg font-bold text-red-700">{formatCurrency(data.chargeComposition.taxes)}</div>
+              <div className="bg-danger-subtle rounded-lg p-3">
+                <div className="text-xs text-danger font-medium">Taxes</div>
+                <div className="text-lg font-bold text-danger-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
               </div>
             )}
             {data.chargeComposition.fees > 0 && (
-              <div className="bg-amber-50 rounded-lg p-3">
-                <div className="text-xs text-amber-600 font-medium">Fees</div>
-                <div className="text-lg font-bold text-amber-700">{formatCurrency(data.chargeComposition.fees)}</div>
+              <div className="bg-warning-subtle rounded-lg p-3">
+                <div className="text-xs text-warning font-medium">Fees</div>
+                <div className="text-lg font-bold text-warning-fg">{formatCurrency(data.chargeComposition.fees)}</div>
               </div>
             )}
             {data.chargeComposition.discounts > 0 && (
-              <div className="bg-green-50 rounded-lg p-3">
-                <div className="text-xs text-green-600 font-medium">Discounts</div>
-                <div className="text-lg font-bold text-green-700">-{formatCurrency(data.chargeComposition.discounts)}</div>
+              <div className="bg-success-subtle rounded-lg p-3">
+                <div className="text-xs text-success font-medium">Discounts</div>
+                <div className="text-lg font-bold text-success-fg">-{formatCurrency(data.chargeComposition.discounts)}</div>
               </div>
             )}
             {data.chargeComposition.other > 0 && (
-              <div className="bg-gray-50 rounded-lg p-3">
-                <div className="text-xs text-gray-600 font-medium">Other</div>
-                <div className="text-lg font-bold text-gray-700">{formatCurrency(data.chargeComposition.other)}</div>
+              <div className="bg-muted/40 rounded-lg p-3">
+                <div className="text-xs text-muted-foreground font-medium">Other</div>
+                <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.other)}</div>
               </div>
             )}
           </div>
           <div className="space-y-2">
             {data.chargeComposition.details.slice(0, 10).map((detail: any, i: number) => (
-              <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-gray-100 last:border-0">
-                <span className="text-gray-600 flex items-center gap-2">
+              <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0">
+                <span className="text-muted-foreground flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${
-                    detail.type === 'tax' ? 'bg-red-400' :
-                    detail.type === 'fee' ? 'bg-amber-400' :
-                    detail.type === 'discount' ? 'bg-green-400' :
-                    'bg-gray-400'
+                    detail.type === 'tax' ? 'bg-danger' :
+                    detail.type === 'fee' ? 'bg-warning' :
+                    detail.type === 'discount' ? 'bg-success' :
+                    'bg-muted-foreground'
                   }`} />
                   {detail.description}
-                  <span className="text-xs text-gray-400">({detail.count} bookings)</span>
+                  <span className="text-xs text-muted-foreground">({detail.count} bookings)</span>
                 </span>
                 <span className="font-medium">{formatCurrency(detail.total)}</span>
               </div>
@@ -413,10 +413,10 @@ export const PLView: React.FC<PLViewProps> = ({
       )}
 
       {showTips && profitability.operatingMargin < 60 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-warning-subtle border border-warning/30 rounded-lg p-4">
           <div className="flex items-start">
-            <TrendingDown className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
-            <div className="text-sm text-yellow-800">
+            <TrendingDown className="w-5 h-5 text-warning mr-2 mt-0.5" />
+            <div className="text-sm text-warning-fg">
               <strong>Optimization Opportunity:</strong> Your operating margin is {formatPercentage(profitability.operatingMargin, 1)}.
               Consider reviewing platform fees and exploring direct booking options to retain more revenue.
             </div>

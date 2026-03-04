@@ -1,4 +1,4 @@
-import { CHART_COLORS, METRIC_COLORS } from '@/lib/theme'
+import { getChartColor, METRIC_COLORS } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from './formatters'
 import { differenceInDays, parseISO } from 'date-fns'
 
@@ -38,12 +38,10 @@ export const tooltipFormatters = {
 }
 
 export const getMetricColor = (metric: keyof typeof METRIC_COLORS): string => {
-  return METRIC_COLORS[metric] || CHART_COLORS[0]
+  return METRIC_COLORS[metric] || getChartColor(0)
 }
 
-export const getChartColor = (index: number): string => {
-  return CHART_COLORS[index % CHART_COLORS.length]
-}
+export { getChartColor }
 
 export interface PieChartData {
   name: string

@@ -178,7 +178,7 @@ export const OperatingExpenseEntryModal = ({
                 </Select>
 
                 <div className="relative w-32">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
                   <Input
                     type="number"
                     min="0"
@@ -205,7 +205,7 @@ export const OperatingExpenseEntryModal = ({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeExpenseRow(index)}
-                    className="text-gray-400 hover:text-red-600 hover:bg-red-50"
+                    className="text-muted-foreground hover:text-danger hover:bg-danger-subtle"
                     title="Remove expense"
                   >
                     <X className="w-5 h-5" />
@@ -229,12 +229,12 @@ export const OperatingExpenseEntryModal = ({
         </div>
 
         {totalExpenses > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
             <div className="flex justify-between items-center">
-              <span className="font-medium text-blue-900">Total Operating Expenses:</span>
-              <span className="text-xl font-bold text-blue-900">{formatCurrency(totalExpenses)}</span>
+              <span className="font-medium text-info-fg">Total Operating Expenses:</span>
+              <span className="text-xl font-bold text-info-fg">{formatCurrency(totalExpenses)}</span>
             </div>
-            <p className="text-xs text-blue-700 mt-2">
+            <p className="text-xs text-info-fg mt-2">
               These expenses will be subtracted from Net Revenue to calculate Operating Profit
             </p>
           </div>

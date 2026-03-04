@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { PropertyMetrics } from '@/types/api'
-import { METRIC_COLORS } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 
 // Pick a clean tick interval for ~5 ticks across the given range
 function niceStep(range: number): number {
@@ -21,28 +21,28 @@ const ScatterTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
     return (
-      <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+      <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{data.name}</p>
         {data.isZeroData ? (
-          <div className="text-xs text-gray-500 italic">
+          <div className="text-xs text-muted-foreground italic">
             No booking data for selected period
           </div>
         ) : (
           <div className="space-y-1 text-xs">
             <p className="flex justify-between gap-4">
-              <span className="text-gray-600">Occupancy:</span>
+              <span className="text-muted-foreground">Occupancy:</span>
               <span className="font-medium">{formatPercentage(data.property.occupancyRate * 100, 1)}</span>
             </p>
             <p className="flex justify-between gap-4">
-              <span className="text-gray-600">Revenue:</span>
-              <span className="font-medium text-green-600">{formatCurrency(data.property.revenue)}</span>
+              <span className="text-muted-foreground">Revenue:</span>
+              <span className="font-medium text-success">{formatCurrency(data.property.revenue)}</span>
             </p>
             <p className="flex justify-between gap-4">
-              <span className="text-gray-600">Bookings:</span>
+              <span className="text-muted-foreground">Bookings:</span>
               <span className="font-medium">{data.property.bookings || 0}</span>
             </p>
             <p className="flex justify-between gap-4">
-              <span className="text-gray-600">Avg Rate:</span>
+              <span className="text-muted-foreground">Avg Rate:</span>
               <span className="font-medium">{formatCurrency(data.avgNightlyRate)}</span>
             </p>
           </div>
@@ -146,20 +146,11 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
   
   const getPointColor = (point: any) => {
     const { avgOccupancy, avgRevenue } = scatterData
-    
-    if (point.isZeroData) {
-      return '#9CA3AF'
-    }
-    
-    if (point.x >= avgOccupancy && point.y >= avgRevenue) {
-      return '#10B981'
-    } else if (point.x >= avgOccupancy && point.y < avgRevenue) {
-      return '#F59E0B'
-    } else if (point.x < avgOccupancy && point.y >= avgRevenue) {
-      return '#3B82F6'
-    } else {
-      return '#EF4444'
-    }
+    if (point.isZeroData) return CHART_INFRA.reference
+    if (point.x >= avgOccupancy && point.y >= avgRevenue) return resolveToken('--success')
+    if (point.x >= avgOccupancy && point.y < avgRevenue)  return resolveToken('--warning')
+    if (point.x < avgOccupancy  && point.y >= avgRevenue) return resolveToken('--info')
+    return resolveToken('--danger')
   }
   
   const handleClick = (data: any) => {
@@ -171,7 +162,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
   
   if (scatterData.data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex items-center justify-center h-full text-muted-foreground">
         <div className="text-center">
           <p className="text-sm">No property data available</p>
           <p className="text-xs mt-1">Select a date range with booking data</p>
@@ -187,7 +178,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
         onClick={handleClick}
         style={{ cursor: onPropertyClick ? 'pointer' : 'default' }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+        <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
         <XAxis
           type="number"
           dataKey="x"
@@ -195,7 +186,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
           domain={scatterData.xDomain}
           tickFormatter={(value) => `${value}%`}
           label={{ value: 'Occupancy Rate (%)', position: 'insideBottom', offset: -5 }}
-          stroke="#6B7280"
+          stroke={CHART_INFRA.axis}
         />
         <YAxis
           type="number"
@@ -204,7 +195,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
           domain={scatterData.yDomain}
           tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
           label={{ value: 'Revenue', angle: -90, position: 'insideLeft' }}
-          stroke="#6B7280"
+          stroke={CHART_INFRA.axis}
         />
         <Tooltip
           content={<ScatterTooltip />}
@@ -214,7 +205,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
         {scatterData.avgOccupancy > 0 && (
           <ReferenceLine
             x={scatterData.avgOccupancy}
-            stroke="#9CA3AF"
+            stroke={CHART_INFRA.reference}
             strokeDasharray="5 5"
             label={{ value: 'Avg', position: 'top' }}
           />
@@ -222,7 +213,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
         {scatterData.avgRevenue > 0 && (
           <ReferenceLine
             y={scatterData.avgRevenue}
-            stroke="#9CA3AF"
+            stroke={CHART_INFRA.reference}
             strokeDasharray="5 5"
             label={{ value: 'Avg', position: 'right' }}
           />
@@ -249,25 +240,25 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
 export const PerformanceQuadrantLegend: React.FC = () => {
   return (
     <div className="flex flex-wrap gap-2 justify-center text-xs mt-3 px-4">
-      <div className="flex items-center gap-1.5 bg-green-50 px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-green-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">High Occupancy & Revenue</span>
+      <div className="flex items-center gap-1.5 bg-success-subtle px-2 py-1 rounded">
+        <div className="w-2.5 h-2.5 bg-success rounded-full"></div>
+        <span className="text-foreground text-[11px] font-medium">High Occupancy & Revenue</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-blue-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">High Revenue, Low Occupancy</span>
+      <div className="flex items-center gap-1.5 bg-info-subtle px-2 py-1 rounded">
+        <div className="w-2.5 h-2.5 bg-info rounded-full"></div>
+        <span className="text-foreground text-[11px] font-medium">High Revenue, Low Occupancy</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-yellow-50 px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-yellow-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">High Occupancy, Low Revenue</span>
+      <div className="flex items-center gap-1.5 bg-warning-subtle px-2 py-1 rounded">
+        <div className="w-2.5 h-2.5 bg-warning rounded-full"></div>
+        <span className="text-foreground text-[11px] font-medium">High Occupancy, Low Revenue</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-red-50 px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">Low Occupancy & Revenue</span>
+      <div className="flex items-center gap-1.5 bg-danger-subtle px-2 py-1 rounded">
+        <div className="w-2.5 h-2.5 bg-danger rounded-full"></div>
+        <span className="text-foreground text-[11px] font-medium">Low Occupancy & Revenue</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-gray-50 px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>
-        <span className="text-gray-700 text-[11px] font-medium">No Bookings</span>
+      <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded">
+        <div className="w-2.5 h-2.5 bg-chart-reference rounded-full"></div>
+        <span className="text-foreground text-[11px] font-medium">No Bookings</span>
       </div>
     </div>
   )

@@ -88,12 +88,12 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   }, [currentMonthDays])
 
   const getColor = (rate: number) => {
-    if (rate === 0) return 'bg-gray-50 border border-gray-200'
-    if (rate < 0.25) return 'bg-red-50 border border-red-200 hover:bg-red-100'
-    if (rate < 0.5) return 'bg-amber-50 border border-amber-200 hover:bg-amber-100'
-    if (rate < 0.75) return 'bg-emerald-50 border border-emerald-200 hover:bg-emerald-100'
-    if (rate < 0.9) return 'bg-emerald-100 border border-emerald-300 hover:bg-emerald-200'
-    return 'bg-emerald-200 border border-emerald-400 hover:bg-emerald-300'
+    if (rate === 0)    return 'bg-muted/40 border border-border'
+    if (rate < 0.25)   return 'bg-occ-low border border-occ-low-border hover:bg-occ-fair'
+    if (rate < 0.5)    return 'bg-occ-fair border border-occ-fair-border hover:bg-occ-good'
+    if (rate < 0.75)   return 'bg-occ-good border border-occ-good-border hover:bg-occ-great'
+    if (rate < 0.9)    return 'bg-occ-great border border-occ-great-border hover:bg-occ-excellent'
+    return 'bg-occ-excellent border border-occ-excellent-border hover:bg-success/40'
   }
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -105,16 +105,16 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   if (loading) return <LoadingState message="Loading heatmap..." />
   if (error) return (
     <div className="text-center py-8">
-      <AlertCircle className="w-12 h-12 text-red-500 opacity-50 mx-auto mb-2" />
-      <p className="text-sm font-medium text-gray-500">Error loading heatmap</p>
-      <p className="text-xs text-gray-400 mt-1">{error.message}</p>
+      <AlertCircle className="w-12 h-12 text-danger opacity-50 mx-auto mb-2" />
+      <p className="text-sm font-medium text-muted-foreground">Error loading heatmap</p>
+      <p className="text-xs text-muted-foreground/70 mt-1">{error.message}</p>
     </div>
   )
   if (!monthsData.length) return (
-    <div className="text-center py-8 text-gray-500">
+    <div className="text-center py-8 text-muted-foreground">
       <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
       <p className="text-sm font-medium">No occupancy data available</p>
-      <p className="text-xs text-gray-400 mt-1">Data will appear once bookings are synced</p>
+      <p className="text-xs text-muted-foreground/70 mt-1">Data will appear once bookings are synced</p>
     </div>
   )
 
@@ -133,13 +133,13 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
         <div className="flex items-center gap-6">
           <div className="text-center">
             <h4 className="text-sm font-semibold">{monthName} {year}</h4>
-            <p className="text-xs text-gray-500">{validIndex + 1} of {monthsData.length}</p>
+            <p className="text-xs text-muted-foreground">{validIndex + 1} of {monthsData.length}</p>
           </div>
           {monthStats && (
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <span><span className="font-semibold text-gray-900">{monthStats.avgOccupancy}%</span> avg</span>
-              <span><span className="font-semibold text-gray-900">{monthStats.totalBooked}</span> booked</span>
-              <span><span className="font-semibold text-gray-900">{monthStats.utilizationRate}%</span> used</span>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span><span className="font-semibold text-foreground">{monthStats.avgOccupancy}%</span> avg</span>
+              <span><span className="font-semibold text-foreground">{monthStats.totalBooked}</span> booked</span>
+              <span><span className="font-semibold text-foreground">{monthStats.utilizationRate}%</span> used</span>
             </div>
           )}
         </div>
@@ -157,7 +157,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
       <div>
         <div className="grid grid-cols-7 gap-1 mb-1">
           {dayNames.map(day => (
-            <div key={day} className="text-xs text-gray-500 text-center">{day}</div>
+            <div key={day} className="text-xs text-muted-foreground text-center">{day}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-0.5">
@@ -189,17 +189,17 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
                   <>
                     <span className="font-medium">{parseInt(day.date.split('-')[2])}</span>
                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 hidden group-hover:block z-30 pointer-events-none">
-                      <div className="bg-gray-900 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
+                      <div className="bg-foreground/90 text-background text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
                         <div className="font-semibold">{(() => {
                           const [y, m, d] = day.date.split('-')
                           const localDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
                           return formatDateDisplay(localDate)
                         })()}</div>
                         <div>{Math.round(day.occupancyRate * 100)}% occupied</div>
-                        <div className="text-gray-300">{day.bookedProperties} of {day.totalProperties} props</div>
-                        <div className="text-gray-400 mt-1 border-t border-gray-700 pt-1">Click to view details</div>
+                        <div className="opacity-70">{day.bookedProperties} of {day.totalProperties} props</div>
+                        <div className="opacity-50 mt-1 border-t border-background/20 pt-1">Click to view details</div>
                       </div>
-                      <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-1 w-2 h-2 bg-gray-900 rotate-45"></div>
+                      <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-1 w-2 h-2 bg-foreground/90 rotate-45"></div>
                     </div>
                   </>
                 )}
@@ -211,14 +211,14 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
 
       {/* Legend */}
       <div className="flex items-center justify-center space-x-3 text-xs pt-1 border-t">
-        <span className="text-gray-600">Occupancy:</span>
+        <span className="text-muted-foreground">Occupancy:</span>
         {[
-          { color: 'bg-gray-50 border border-gray-200', label: '0%' },
-          { color: 'bg-red-50 border border-red-200', label: '<25%' },
-          { color: 'bg-amber-50 border border-amber-200', label: '25-50%' },
-          { color: 'bg-emerald-50 border border-emerald-200', label: '50-75%' },
-          { color: 'bg-emerald-100 border border-emerald-300', label: '75-90%' },
-          { color: 'bg-emerald-200 border border-emerald-400', label: '>90%' },
+          { color: 'bg-muted/40 border border-border',                     label: '0%' },
+          { color: 'bg-occ-low border border-occ-low-border',               label: '<25%' },
+          { color: 'bg-occ-fair border border-occ-fair-border',             label: '25-50%' },
+          { color: 'bg-occ-good border border-occ-good-border',             label: '50-75%' },
+          { color: 'bg-occ-great border border-occ-great-border',           label: '75-90%' },
+          { color: 'bg-occ-excellent border border-occ-excellent-border',   label: '>90%' },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center space-x-1">
             <div className={`w-4 h-4 ${color} rounded`} />

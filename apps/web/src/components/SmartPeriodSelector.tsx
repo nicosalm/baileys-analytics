@@ -307,25 +307,25 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               variant="outline"
               className={cn(
                 "flex items-center gap-2 px-3 md:px-4 py-2 cursor-pointer",
-                "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
-                dateOpen && "ring-2 ring-blue-600 border-blue-600",
-                seasonStatus === 'in-season' && "border-green-600 bg-green-50/50",
-                seasonStatus === 'pre-season' && "border-blue-600 bg-blue-50/50",
-                seasonStatus === 'post-season' && "border-gray-400 bg-gray-50/50"
+                "hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80",
+                dateOpen && "ring-2 ring-primary border-primary",
+                seasonStatus === 'in-season' && "border-success bg-primary/5",
+                seasonStatus === 'pre-season' && "border-primary bg-primary/5",
+                seasonStatus === 'post-season' && "border-border bg-muted/50"
               )}
             >
               <Calendar className={cn(
                 "w-4 h-4 flex-shrink-0",
-                seasonStatus === 'in-season' && "text-green-600",
-                seasonStatus === 'pre-season' && "text-blue-600",
-                seasonStatus === 'post-season' && "text-gray-500",
-                !seasonStatus && "text-gray-500"
+                seasonStatus === 'in-season' && "text-success",
+                seasonStatus === 'pre-season' && "text-primary",
+                seasonStatus === 'post-season' && "text-muted-foreground",
+                !seasonStatus && "text-muted-foreground"
               )} />
               <span className="truncate">
                 {formatRangeDisplay()}
               </span>
               <ChevronDown className={cn(
-                "w-4 h-4 text-gray-500 transition-transform flex-shrink-0",
+                "w-4 h-4 text-muted-foreground transition-transform flex-shrink-0",
                 dateOpen && "rotate-180"
               )} />
             </Button>
@@ -335,18 +335,18 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             {seasonStatus && activeSeasons.length > 0 && (
               <div className={cn(
                 "px-3 py-2 border-b",
-                seasonStatus === 'pre-season' && "bg-blue-50",
-                seasonStatus === 'in-season' && "bg-green-50",
-                seasonStatus === 'post-season' && "bg-gray-50"
+                seasonStatus === 'pre-season' && "bg-primary/10",
+                seasonStatus === 'in-season' && "bg-success-subtle",
+                seasonStatus === 'post-season' && "bg-muted/50"
               )}>
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-2 h-2 rounded-full",
-                    seasonStatus === 'pre-season' && "bg-blue-500",
-                    seasonStatus === 'in-season' && "bg-green-500",
-                    seasonStatus === 'post-season' && "bg-gray-400"
+                    seasonStatus === 'pre-season' && "bg-primary",
+                    seasonStatus === 'in-season' && "bg-success",
+                    seasonStatus === 'post-season' && "bg-muted-foreground/70"
                   )} />
-                  <span className="text-xs font-medium text-gray-700">
+                  <span className="text-xs font-medium text-foreground/80">
                     {seasonStatus === 'pre-season' && `${activeSeasons[0].name} starts ${months[activeSeasons[0].startMonth - 1]} ${activeSeasons[0].startDay}`}
                     {seasonStatus === 'in-season' && `Currently in ${activeSeasons[0].name}`}
                     {seasonStatus === 'post-season' && `${activeSeasons[0].name} ended ${months[activeSeasons[0].endMonth - 1]} ${activeSeasons[0].endDay}`}
@@ -357,7 +357,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
             {/* Period options */}
             <div className="p-2">
-              <div className="text-xs font-medium text-gray-500 px-2 py-1 uppercase">
+              <div className="text-xs font-medium text-muted-foreground px-2 py-1 uppercase">
                 Quick Periods
               </div>
               {periodOptions.map(option => {
@@ -371,8 +371,8 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                     className={cn(
                       "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
                       isSelected
-                        ? "bg-blue-50 text-blue-700"
-                        : "hover:bg-gray-100 text-gray-700"
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-muted text-foreground/80"
                     )}
                   >
                     <span>{option.label}</span>
@@ -388,7 +388,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                     setCustomRangeOpen(true)
                     setDateOpen(false)
                   }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-100 text-gray-700 cursor-pointer"
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted text-foreground/80 cursor-pointer"
                 >
                   Custom Range...
                 </button>
@@ -407,14 +407,14 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               variant="outline"
               className={cn(
                 "flex items-center gap-2 px-3 md:px-4 py-2 cursor-pointer w-full sm:w-auto",
-                "hover:bg-gray-50 transition-all text-sm font-medium text-gray-700",
-                compOpen && "ring-2 ring-blue-600 border-blue-600",
-                comparisonType !== 'none' && "border-blue-600 bg-blue-50/50"
+                "hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80",
+                compOpen && "ring-2 ring-primary border-primary",
+                comparisonType !== 'none' && "border-primary bg-primary/5"
               )}
             >
               <GitCompare className={cn(
                 "w-4 h-4 flex-shrink-0",
-                comparisonType !== 'none' ? "text-blue-600" : "text-gray-500"
+                comparisonType !== 'none' ? "text-primary" : "text-muted-foreground"
               )} />
               <span className="truncate">
                 {getComparisonLabel(comparisonType, activeSeasons.length > 0, {
@@ -423,11 +423,11 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   baseYear: value.from ? getYear(parseDate(value.from)) : undefined
                 })}
                 {comparisonRangeLabel && (
-                  <span className="text-gray-400 font-normal"> ({comparisonRangeLabel})</span>
+                  <span className="text-muted-foreground/70 font-normal"> ({comparisonRangeLabel})</span>
                 )}
               </span>
               <ChevronDown className={cn(
-                "w-4 h-4 text-gray-500 transition-transform flex-shrink-0",
+                "w-4 h-4 text-muted-foreground transition-transform flex-shrink-0",
                 compOpen && "rotate-180"
               )} />
             </Button>
@@ -444,8 +444,8 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               className={cn(
                 "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
                 comparisonType === 'none'
-                  ? "bg-blue-50 text-blue-700"
-                  : "hover:bg-gray-100 text-gray-700"
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-muted text-foreground/80"
               )}
             >
               <span>No Comparison</span>
@@ -474,10 +474,10 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   className={cn(
                     "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
                     isDisabled
-                      ? "opacity-50 cursor-not-allowed text-gray-400"
+                      ? "opacity-50 cursor-not-allowed text-muted-foreground/70"
                       : comparisonType === 'lastPeriod'
-                        ? "bg-blue-50 text-blue-700 cursor-pointer"
-                        : "hover:bg-gray-100 text-gray-700 cursor-pointer"
+                        ? "bg-primary/10 text-primary cursor-pointer"
+                        : "hover:bg-muted text-foreground/80 cursor-pointer"
                   )}
                   title={isDisabled ? "No data available in previous period for selected season" : undefined}
                 >
@@ -518,10 +518,10 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   className={cn(
                     "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
                     isDisabled
-                      ? "opacity-50 cursor-not-allowed text-gray-400"
+                      ? "opacity-50 cursor-not-allowed text-muted-foreground/70"
                       : isSelected
-                        ? "bg-blue-50 text-blue-700 cursor-pointer"
-                        : "hover:bg-gray-100 text-gray-700 cursor-pointer"
+                        ? "bg-primary/10 text-primary cursor-pointer"
+                        : "hover:bg-muted text-foreground/80 cursor-pointer"
                   )}
                 >
                   <span>{label}</span>
@@ -539,8 +539,8 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               className={cn(
                 "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
                 comparisonType === 'custom'
-                  ? "bg-blue-50 text-blue-700"
-                  : "hover:bg-gray-100 text-gray-700"
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-muted text-foreground/80"
               )}
             >
               <span>Custom Comparison...</span>
@@ -559,7 +559,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           size="xl"
         >
           <div>
-            <p className="text-sm text-gray-500 mb-4">Choose a date range to compare against your current selection.</p>
+            <p className="text-sm text-muted-foreground mb-4">Choose a date range to compare against your current selection.</p>
             <InlineDateRangePicker
               value={tempCustomCompRange}
               onChange={setTempCustomCompRange}

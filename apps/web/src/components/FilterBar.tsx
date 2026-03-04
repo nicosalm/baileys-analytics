@@ -23,8 +23,8 @@ const TagButton = memo(({ tag, isSelected, onToggle }: TagButtonProps) => (
     className={cn(
       "w-full justify-start px-3 py-2 h-auto text-sm",
       isSelected
-        ? "bg-blue-50 text-blue-700 font-medium"
-        : "text-gray-700"
+        ? "bg-primary/10 text-primary font-medium"
+        : "text-foreground"
     )}
   >
     <div className="flex items-center gap-2">
@@ -53,7 +53,7 @@ export const FilterBar: React.FC = () => {
   const hasActiveFilters = filters.selectedTags.length > 0
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 relative z-30">
+    <div className="bg-background/80 backdrop-blur-sm border-b border-border relative z-30">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-3">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
@@ -68,8 +68,8 @@ export const FilterBar: React.FC = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    "text-sm font-medium text-gray-700",
-                    filters.selectedTags.length > 0 && "border-blue-600 bg-blue-50/50"
+                    "text-sm font-medium",
+                    filters.selectedTags.length > 0 && "border-primary bg-primary/5"
                   )}
                 >
                   <Filter className="w-4 h-4" />
@@ -84,9 +84,9 @@ export const FilterBar: React.FC = () => {
               </PopoverTrigger>
               <PopoverContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto p-2">
                 {isTagsLoading ? (
-                  <div className="text-center py-4 text-gray-500">Loading tags...</div>
+                  <div className="text-center py-4 text-muted-foreground">Loading tags...</div>
                 ) : availableTags.length === 0 ? (
-                  <div className="text-center py-4 text-gray-500">No tags available</div>
+                  <div className="text-center py-4 text-muted-foreground">No tags available</div>
                 ) : (
                   <div className="space-y-1">
                     {availableTags.map((tag: any) => (
@@ -122,7 +122,7 @@ export const FilterBar: React.FC = () => {
                 variant="ghost"
                 size="sm"
                 onClick={clearFilters}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-muted-foreground hover:text-foreground"
               >
                 <X className="w-4 h-4" />
                 Clear Tags

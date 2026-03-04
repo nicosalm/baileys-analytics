@@ -117,8 +117,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
       if (level === 'page') {
         return (
-          <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full bg-white shadow-lg rounded-lg p-8">
+          <div className="min-h-screen flex items-center justify-center bg-background">
+            <div className="max-w-md w-full bg-card shadow-lg rounded-lg p-8">
               <div className="flex flex-col items-center text-center">
                 <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                   <AlertTriangle className="w-8 h-8 text-red-600" />

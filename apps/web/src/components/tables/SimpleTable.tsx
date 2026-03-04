@@ -88,8 +88,8 @@ export function SimpleTable<T extends Record<string, any>>({
 
   if (!loading && filteredData.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-        <BarChart3 className="w-12 h-12 text-gray-300 mb-4" />
+      <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
+        <BarChart3 className="w-12 h-12 text-muted-foreground/50 mb-4" />
         <div className="text-lg font-medium">{emptyMessage}</div>
         {enableSearch && searchTerm && (
           <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>
@@ -101,7 +101,7 @@ export function SimpleTable<T extends Record<string, any>>({
   return (
     <div className="space-y-4">
       {enableSearch && (
-        <div className="flex items-center bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex items-center bg-card p-4 rounded-lg shadow-sm border border-border">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -115,21 +115,21 @@ export function SimpleTable<T extends Record<string, any>>({
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
               <tr>
                 {showRowNumbers && (
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">
                     #
                   </th>
                 )}
                 {columns.map((column) => (
                   <th
                     key={String(column.key)}
-                    className={`px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
-                      column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
+                    className={`px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider ${
+                      column.sortable ? 'cursor-pointer hover:bg-muted' : ''
                     }`}
                     style={{ width: column.width }}
                     onClick={() => column.sortable && handleSort(String(column.key))}
@@ -150,7 +150,7 @@ export function SimpleTable<T extends Record<string, any>>({
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-card divide-y divide-border">
               {filteredData.map((item, index) => {
                 const rowId = getRowId ? getRowId(item) : index.toString()
                 const customClassName = rowClassName ? rowClassName(item, index) : ''
@@ -158,20 +158,20 @@ export function SimpleTable<T extends Record<string, any>>({
                 return (
                   <tr
                     key={rowId}
-                    className={`hover:bg-gray-50 transition-all ${
+                    className={`hover:bg-muted/50 transition-all ${
                       onRowClick ? 'cursor-pointer' : ''
                     } ${customClassName}`}
                     onClick={() => onRowClick?.(item, index)}
                   >
                     {showRowNumbers && (
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-4 py-3 text-sm text-muted-foreground">
                         {index + 1}
                       </td>
                     )}
                     {columns.map((column) => (
                       <td
                         key={`${rowId}-${String(column.key)}`}
-                        className="px-4 py-3 text-sm text-gray-900"
+                        className="px-4 py-3 text-sm text-foreground"
                         style={{ width: column.width }}
                       >
                         {getCellValue(item, column)}

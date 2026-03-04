@@ -198,7 +198,7 @@ export const PlatformFeeEntryModal = ({
                 </Select>
 
                 <div className="relative w-32">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
                   <Input
                     type="number"
                     min="0"
@@ -217,7 +217,7 @@ export const PlatformFeeEntryModal = ({
                     variant="ghost"
                     size="icon"
                     onClick={() => removePlatformRow(index)}
-                    className="text-gray-400 hover:text-red-600 hover:bg-red-50"
+                    className="text-muted-foreground hover:text-danger hover:bg-danger-subtle"
                     title="Remove platform"
                   >
                     <X className="w-5 h-5" />
@@ -239,20 +239,20 @@ export const PlatformFeeEntryModal = ({
         </div>
 
         {totalFees > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
             <div className="flex justify-between items-center">
-              <span className="font-medium text-blue-900">Total Platform Fees:</span>
-              <span className="text-xl font-bold text-blue-900">{formatCurrency(totalFees)}</span>
+              <span className="font-medium text-info-fg">Total Platform Fees:</span>
+              <span className="text-xl font-bold text-info-fg">{formatCurrency(totalFees)}</span>
             </div>
-            <p className="text-xs text-blue-700 mt-2">
+            <p className="text-xs text-info-fg mt-2">
               These fees will be included in your financial calculations
             </p>
           </div>
         )}
 
-        <details className="text-sm text-gray-500">
-          <summary className="cursor-pointer hover:text-gray-700">Where to find these fees</summary>
-          <ul className="mt-2 space-y-1 ml-4 list-disc text-gray-600">
+        <details className="text-sm text-muted-foreground">
+          <summary className="cursor-pointer hover:text-foreground">Where to find these fees</summary>
+          <ul className="mt-2 space-y-1 ml-4 list-disc text-muted-foreground">
             <li>Airbnb: Earnings → Transaction History</li>
             <li>Vrbo: Performance → Payouts</li>
             <li>Booking.com: Extranet → Finance</li>

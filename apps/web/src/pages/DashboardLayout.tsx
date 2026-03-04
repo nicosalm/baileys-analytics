@@ -73,7 +73,7 @@ const DashboardTabs = () => {
   const displayActiveTab = activeTab
 
   return (
-    <div className="bg-white/90 backdrop-blur-sm border-b border-gray-200">
+    <div className="bg-background/90 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto">
         <nav className="flex gap-1 px-4 md:px-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
           {tabConfig.map(({ id, label, icon: Icon }) => (
@@ -83,8 +83,8 @@ const DashboardTabs = () => {
               className={`
                 py-3 px-3 md:px-4 border-b-2 font-medium text-sm flex items-center transition-all whitespace-nowrap
                 ${displayActiveTab === id
-                  ? 'border-blue-600 text-blue-600 bg-blue-50/30'
-                  : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50/50'
+                  ? 'border-primary text-primary bg-primary/5'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }
               `}
               aria-current={displayActiveTab === id ? 'page' : undefined}
@@ -152,16 +152,16 @@ export const DashboardLayout = () => {
     }
 
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         {/* header */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
+        <header className="bg-background/80 backdrop-blur-sm border-b border-border">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
               <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
                 <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-                <span className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</span>
+                <span className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</span>
               </Link>
-              <Button variant="ghost" onClick={handleLogout} className="text-gray-600 hover:text-gray-800 text-sm">
+              <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-foreground text-sm">
                 <LogOut className="w-4 h-4" />
                 Logout
               </Button>
@@ -173,15 +173,15 @@ export const DashboardLayout = () => {
         <div className="flex-1 flex items-center justify-center py-12 px-4">
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
-              <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors mb-6">
+              <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to home
               </Link>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Connect Your OwnerRez Account</h2>
-              <p className="text-gray-600">Link your account to start syncing your property data.</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Connect Your OwnerRez Account</h2>
+              <p className="text-muted-foreground">Link your account to start syncing your property data.</p>
             </div>
 
-            <div className="bg-white rounded-2xl border-2 border-blue-500 p-8">
+            <div className="bg-card rounded-2xl border-2 border-primary p-8">
               <img
                 src="/logos/ownerrez-app-icon.png"
                 alt="OwnerRez"
@@ -189,21 +189,21 @@ export const DashboardLayout = () => {
               />
 
               <div className="space-y-3 mb-8">
-                <div className="flex items-center text-sm text-gray-700">
-                  <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="w-2 h-2 bg-green-500 rounded-full" />
+                <div className="flex items-center text-sm text-foreground">
+                  <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <span className="w-2 h-2 bg-success rounded-full" />
                   </span>
                   Sync 3 years of booking history
                 </div>
-                <div className="flex items-center text-sm text-gray-700">
-                  <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="w-2 h-2 bg-green-500 rounded-full" />
+                <div className="flex items-center text-sm text-foreground">
+                  <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <span className="w-2 h-2 bg-success rounded-full" />
                   </span>
                   Real-time property and guest updates
                 </div>
-                <div className="flex items-center text-sm text-gray-700">
-                  <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="w-2 h-2 bg-green-500 rounded-full" />
+                <div className="flex items-center text-sm text-foreground">
+                  <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <span className="w-2 h-2 bg-success rounded-full" />
                   </span>
                   Secure OAuth connection
                 </div>
@@ -216,7 +216,7 @@ export const DashboardLayout = () => {
                 Connect OwnerRez
               </Button>
 
-              <p className="text-center text-xs text-gray-500 mt-4">
+              <p className="text-center text-xs text-muted-foreground mt-4">
                 We never see your OwnerRez password
               </p>
             </div>
@@ -237,25 +237,25 @@ export const DashboardLayout = () => {
           }}
         />
       )}
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50 flex flex-col">
-          <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-50">
+      <div className="min-h-screen bg-background flex flex-col">
+          <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center">
                   <div className="flex items-center">
                     <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                     <div className="ml-3">
-                      <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
+                      <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-500 hidden sm:inline">{user.email}</span>
-                  <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+                  <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
+                  <div className="flex items-center gap-2 pl-3 border-l border-border">
                     {isAdmin && (
                       <Link
                         to="/admin"
-                        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                         title="Admin Panel"
                       >
                         <Shield className="w-5 h-5" />
@@ -263,7 +263,7 @@ export const DashboardLayout = () => {
                     )}
                     <Link
                       to="/settings"
-                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all"
+                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                       title="Settings"
                     >
                       <Settings className="w-5 h-5" />
@@ -271,7 +271,7 @@ export const DashboardLayout = () => {
                     <Button
                       variant="ghost"
                       onClick={handleLogout}
-                      className="text-sm font-medium text-gray-600 hover:text-gray-900"
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground"
                       style={{ isolation: 'isolate' }}
                     >
                       <LogOut className="w-4 h-4" />

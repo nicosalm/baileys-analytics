@@ -10,13 +10,13 @@ const TaxChartTooltip = ({ active, payload, label }: any) => {
   const data = payload[0].payload
 
   return (
-    <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+    <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
       <p className="font-semibold text-sm mb-2">{label}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.tax }} />
-            <span className="text-gray-600">Total Tax:</span>
+            <span className="text-muted-foreground">Total Tax:</span>
           </div>
           <span className="font-medium">{formatCurrency(data.totalTax)}</span>
         </div>
@@ -24,7 +24,7 @@ const TaxChartTooltip = ({ active, payload, label }: any) => {
           <div className="flex justify-between gap-4">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.primary }} />
-              <span className="text-gray-600">Owner Remitted:</span>
+              <span className="text-muted-foreground">Owner Remitted:</span>
             </div>
             <span className="font-medium">{formatCurrency(data.ownerRemitted)}</span>
           </div>
@@ -33,20 +33,20 @@ const TaxChartTooltip = ({ active, payload, label }: any) => {
           <div className="flex justify-between gap-4">
             <div className="flex items-center gap-1">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.success }} />
-              <span className="text-gray-600">Platform Remitted:</span>
+              <span className="text-muted-foreground">Platform Remitted:</span>
             </div>
             <span className="font-medium">{formatCurrency(data.platformRemitted)}</span>
           </div>
         )}
         {data.ownerRemitted !== undefined && data.platformRemitted !== undefined && (
-          <div className="pt-1 mt-1 border-t border-gray-200">
+          <div className="pt-1 mt-1 border-t border-border">
             <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Your responsibility:</span>
-              <span className="font-medium text-amber-600">{formatCurrency(data.ownerRemitted)}</span>
+              <span className="text-muted-foreground">Your responsibility:</span>
+              <span className="font-medium text-warning">{formatCurrency(data.ownerRemitted)}</span>
             </div>
           </div>
         )}
-        <p className="text-gray-400 pt-1 mt-1 border-t border-gray-200">Click to view details</p>
+        <p className="text-muted-foreground/70 pt-1 mt-1 border-t border-border">Click to view details</p>
       </div>
     </div>
   )
@@ -73,7 +73,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
   if (!data || data.length === 0) {
     return (
       <ChartWrapper title={title} height={height}>
-        <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="flex items-center justify-center h-full text-muted-foreground">
           No tax data available
         </div>
       </ChartWrapper>

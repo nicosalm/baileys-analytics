@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { SWRConfig } from 'swr'
 import { swrConfig } from '@/hooks/swr-config'
 import { AuthProvider } from '@/contexts/auth'
+import { ThemeProvider } from '@/contexts/theme'
 import { Toaster } from '@/components/ui/sonner'
 import { DashboardProvider } from '@/contexts/dashboard'
 import { ModalProvider } from '@/contexts/modal'
@@ -31,9 +32,10 @@ const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ de
 export const App = () => {
   return (
     <ErrorBoundary level="page">
-      <SWRConfig value={swrConfig}>
-        <BrowserRouter>
-          <AuthProvider>
+      <ThemeProvider>
+        <SWRConfig value={swrConfig}>
+          <BrowserRouter>
+            <AuthProvider>
             <Toaster position="bottom-right" richColors />
             <Suspense fallback={<LoadingState fullScreen />}>
               <Routes>
@@ -78,9 +80,10 @@ export const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-        </AuthProvider>
-      </BrowserRouter>
-    </SWRConfig>
+            </AuthProvider>
+          </BrowserRouter>
+        </SWRConfig>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

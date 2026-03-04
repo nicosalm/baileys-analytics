@@ -137,10 +137,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
     <div className="space-y-6">
       {/* Info Banner */}
       {showTips && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
           <div className="flex items-start">
-            <Info className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
-            <div className="text-sm text-blue-800">
+            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+            <div className="text-sm text-info-fg">
               <strong>Tax Tracking:</strong> Monitors occupancy taxes collected from guests that you'll need to pay to local authorities
             </div>
           </div>
@@ -164,7 +164,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           format="currency"
           color="green"
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
-            ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
           tooltip="Total tax liability including platform fees"
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
@@ -179,7 +179,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           format="currency"
           color="blue"
           subValue={comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0
-            ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}{comparisonDateRange && <span className="block text-xs text-gray-400 mt-0.5">{comparisonDateRange}</span>}</>
+            ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : "Your responsibility"}
           tooltip="Tax amount you need to pay directly"
           trend={comparisonMode !== 'none' && taxData.comparison.ownerRemittedGrowth !== 0 ? {
@@ -223,14 +223,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         />
         
         {/* Property Tax Details Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
+        <div className="bg-card rounded-lg shadow-sm border">
+          <div className="p-4 border-b">
             <div>
-              <h3 className="font-semibold text-gray-900 flex items-center">
+              <h3 className="font-semibold text-foreground flex items-center">
                 <Building className="w-4 h-4 mr-2" />
                 Tax by Property
               </h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 {taxData.propertyCount} {taxData.propertyCount === 1 ? 'property' : 'properties'} with tax data
               </p>
             </div>
@@ -267,9 +267,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
                 header: 'Status',
                 render: (row: any) => (
                   <span className={`px-2 py-1 text-xs rounded-full ${
-                    row.status === 'configured' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-yellow-100 text-yellow-800'
+                    row.status === 'configured'
+                      ? 'bg-success-subtle text-success-fg'
+                      : 'bg-warning-subtle text-warning-fg'
                   }`}>
                     {row.status === 'configured' ? 'Configured' : 'Needs Setup'}
                   </span>
@@ -283,10 +283,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       
       {/* Tax Rate Alert */}
       {showTips && taxData.effectiveTaxRate > 15 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="bg-warning-subtle border border-warning/30 rounded-lg p-4">
           <div className="flex items-start">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" />
-            <div className="text-sm text-yellow-800">
+            <AlertTriangle className="w-5 h-5 text-warning mr-2 mt-0.5" />
+            <div className="text-sm text-warning-fg">
               <strong>High Tax Rate:</strong> Your effective tax rate is {formatPercentage(taxData.effectiveTaxRate, 2)}. 
               Consider reviewing your tax settings and jurisdictions to ensure accuracy.
             </div>

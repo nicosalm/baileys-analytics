@@ -1,6 +1,7 @@
 import React from 'react'
 import { PieChart, Pie, Cell } from 'recharts'
 import { formatCompactCurrency } from '@baileys/utils'
+import { GAUGE_COLORS, resolveToken } from '@/lib/theme'
 
 interface SimpleGaugeChartProps {
   value: number
@@ -27,11 +28,10 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   const normalizedValue = (max - min) > 0 ? ((value - min) / (max - min)) * 100 : 0
   const clampedValue = Math.min(Math.max(normalizedValue, 0), 100)
   
-  // Create gauge data with dashboard-consistent colors (using Tailwind palette)
   const gaugeData = [
-    { name: 'Low', value: 33.33, color: '#FCA5A5' },     // red-300
-    { name: 'Medium', value: 33.33, color: '#FCD34D' },  // amber-300
-    { name: 'High', value: 33.34, color: '#86EFAC' }     // green-300
+    { name: 'Low',    value: 33.33, color: GAUGE_COLORS.low },
+    { name: 'Medium', value: 33.33, color: GAUGE_COLORS.medium },
+    { name: 'High',   value: 33.34, color: GAUGE_COLORS.high }
   ]
 
   const cx = width / 2
@@ -83,7 +83,7 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
             cy={cy}
             innerRadius={innerRadius}
             outerRadius={outerRadius}
-            fill="#8884d8"
+            fill={resolveToken('--chart-series-5')}
             stroke="none"
           >
             {gaugeData.map((entry, index) => (
@@ -109,11 +109,11 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
           y1={cy}
           x2={needleX}
           y2={needleY}
-          stroke="#6B7280"
+          stroke={resolveToken('--muted-foreground')}
           strokeWidth="1.5"
           strokeLinecap="round"
         />
-        <circle cx={cx} cy={cy} r={3} fill="#6B7280" />
+        <circle cx={cx} cy={cy} r={3} fill={resolveToken('--muted-foreground')} />
       </svg>
       
       {/* Value label - positioned well below the gauge to avoid overlap */}
@@ -125,7 +125,7 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
           transform: 'translateX(-50%)',
           fontSize: '22px',
           fontWeight: 'bold',
-          color: '#111827',
+          color: resolveToken('--foreground'),
           textAlign: 'center',
           pointerEvents: 'none',
           zIndex: 10
@@ -141,7 +141,7 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
           left: cx - outerRadius - 20,
           top: cy + 2,
           fontSize: '11px',
-          color: '#6B7280',
+          color: resolveToken('--muted-foreground'),
           fontWeight: '400',
           pointerEvents: 'none',
           zIndex: 10
@@ -157,7 +157,7 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
           right: cx - outerRadius - 20,
           top: cy + 2,
           fontSize: '11px',
-          color: '#6B7280',
+          color: resolveToken('--muted-foreground'),
           fontWeight: '400',
           pointerEvents: 'none',
           zIndex: 10
