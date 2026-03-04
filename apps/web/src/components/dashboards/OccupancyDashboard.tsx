@@ -248,29 +248,11 @@ export const OccupancyDashboard = () => {
   return (
     <div className="space-y-6">
       
-      <div className="bg-card rounded-xl border border-border p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">How Busy Are Your Properties?</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              Track when your properties are booked and identify opportunities to fill empty nights
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Current Occupancy</div>
-              <div className="text-lg font-bold text-info">
-                {formatPercentage(currentData.overall * 100, 1)}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Booked Nights</div>
-              <div className="text-lg font-bold text-foreground">
-                {currentData.bookedNights.toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="bg-card rounded-xl border border-border p-4">
+        <h2 className="text-lg font-semibold text-foreground">How Busy Are Your Properties?</h2>
+        <p className="text-muted-foreground text-sm mt-1">
+          Track when your properties are booked and identify opportunities to fill empty nights
+        </p>
       </div>
 
       {showTips && (
@@ -366,7 +348,7 @@ export const OccupancyDashboard = () => {
         />
       </div>
 
-      <WhatIfCalculator byProperty={currentData.byProperty} />
+      <WhatIfCalculator byProperty={currentData.byProperty} dateRange={filters.dateRange} />
 
       <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
         <div className="flex items-center justify-between mb-4">
@@ -429,18 +411,22 @@ export const OccupancyDashboard = () => {
             height={360}
           >
             <LineChart data={chartData} onClick={handlePeriodClick} style={{ cursor: 'pointer' }}>
-              <CartesianGrid strokeDasharray="3 3" />
+              <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
               <XAxis
                 dataKey="month"
                 angle={xAxisConfig.angle}
                 textAnchor={xAxisConfig.textAnchor}
                 height={xAxisConfig.height}
                 interval={xAxisConfig.interval}
+                stroke={CHART_INFRA.axis}
+                tick={{ fill: CHART_INFRA.axis }}
               />
               <YAxis
                 tickFormatter={(value: number) => `${Math.round(value)}%`}
                 domain={[0, 100]}
                 allowDataOverflow
+                stroke={CHART_INFRA.axis}
+                tick={{ fill: CHART_INFRA.axis }}
               />
               <Tooltip content={<OccupancyChartTooltip />} />
               {comparisonMode !== 'none' && previousData && <Legend />}

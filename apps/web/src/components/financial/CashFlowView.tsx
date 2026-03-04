@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
-import { METRIC_COLORS } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import { useDashboard } from '@/contexts/dashboard'
 
 const CashFlowChartTooltip = ({ active, payload, label }: any) => {
@@ -254,9 +254,9 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             }}
             style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis tickFormatter={chartFormatters.currency} />
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+            <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+            <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
             <Tooltip content={<CashFlowChartTooltip />} />
             <Area
               type="monotone"

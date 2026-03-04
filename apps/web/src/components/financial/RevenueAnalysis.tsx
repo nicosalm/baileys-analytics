@@ -234,10 +234,10 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             </h3>
             <div className="group relative">
               <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help" />
-              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-popover text-popover-foreground border border-border text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <p className="font-semibold mb-1">Top Performers</p>
                 <p className="mb-2">Properties with the highest revenue in the selected period.</p>
-                <p className="text-gray-300">💡 Tip: Study what makes these properties successful and apply similar strategies to underperforming properties.</p>
+                <p className="text-muted-foreground">Tip: Study what makes these properties successful and apply similar strategies to underperforming properties.</p>
               </div>
             </div>
           </div>
@@ -280,11 +280,11 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             </h3>
             <div className="group relative">
               <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help" />
-              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-popover text-popover-foreground border border-border text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <p className="font-semibold mb-1">Underperforming Properties</p>
                 <p className="mb-2">Properties with the lowest revenue in the selected period.</p>
-                <p className="text-gray-300">🚀 Actions to consider:</p>
-                <ul className="text-gray-300 ml-2 mt-1">
+                <p className="text-muted-foreground">Actions to consider:</p>
+                <ul className="text-muted-foreground ml-2 mt-1">
                   <li>• Review pricing strategy</li>
                   <li>• Improve listing photos/description</li>
                   <li>• Check guest reviews for issues</li>

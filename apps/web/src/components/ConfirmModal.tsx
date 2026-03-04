@@ -34,9 +34,9 @@ export const ConfirmModal = ({
   isLoading = false,
 }: ConfirmModalProps) => {
   const icons = {
-    danger: <AlertCircle className="w-5 h-5 text-red-600" />,
-    warning: <AlertTriangle className="w-5 h-5 text-yellow-600" />,
-    info: <Info className="w-5 h-5 text-blue-600" />,
+    danger: <AlertCircle className="w-5 h-5 text-danger" />,
+    warning: <AlertTriangle className="w-5 h-5 text-warning" />,
+    info: <Info className="w-5 h-5 text-info" />,
   }
 
   const buttonVariantMap = {

@@ -126,9 +126,9 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           }}
           style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis tickFormatter={chartFormatters.currency} />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+          <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+          <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
           <Tooltip content={<RevenueChartTooltip showProfit={showProfit} showComparison={showComparison} comparisonLabel={comparisonLabel} />} />
           <Legend />
           <Line

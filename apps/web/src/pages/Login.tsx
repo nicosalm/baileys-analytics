@@ -101,12 +101,12 @@ export const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex">
+    <div className="min-h-screen bg-background flex">
       {/* Left side - Login Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
         <div className="max-w-md w-full mx-auto">
           {/* Back to home link */}
-          <Link to="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-all mb-8">
+          <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-all mb-8">
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to home
           </Link>
@@ -114,13 +114,13 @@ export const Login = () => {
           {/* Logo */}
           <div className="flex items-center mb-8">
             <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-            <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back</h2>
-            <p className="text-gray-600">Enter your credentials to access your dashboard</p>
+            <h2 className="text-3xl font-bold text-foreground mb-2">Welcome back</h2>
+            <p className="text-muted-foreground">Enter your credentials to access your dashboard</p>
           </div>
 
           {/* Login form */}
@@ -166,7 +166,7 @@ export const Login = () => {
             </div>
 
             <div className="flex justify-end">
-              <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+              <Link to="/forgot-password" className="text-sm text-primary hover:text-primary/90 font-medium">
                 Forgot password?
               </Link>
             </div>
@@ -186,7 +186,7 @@ export const Login = () => {
                 <Separator />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-muted-foreground">OR CONTINUE WITH</span>
+                <span className="px-2 bg-background text-muted-foreground">OR CONTINUE WITH</span>
               </div>
             </div>
 
@@ -226,9 +226,9 @@ export const Login = () => {
           </form>
 
           {/* Sign up link */}
-          <p className="mt-8 text-center text-gray-600">
+          <p className="mt-8 text-center text-muted-foreground">
             Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-700">
+            <Link to="/signup" className="font-medium text-primary hover:text-primary/90">
               Start your $1 trial
             </Link>
           </p>

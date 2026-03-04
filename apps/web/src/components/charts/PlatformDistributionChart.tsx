@@ -64,13 +64,13 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
             cy="50%"
             labelLine={false}
             label={(entry: any) => {
-              const percent = ((entry.value / data.reduce((sum, item) => sum + item.revenue, 0)) * 100).toFixed(0)
+              const percent = ((entry.percent || 0) * 100).toFixed(0)
               const name = entry.name.length > 18 ? entry.name.substring(0, 18) + '...' : entry.name
               return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
             }}
-            outerRadius={80}
-            fill={resolveToken('--chart-series-5')}
+            outerRadius="70%"
             dataKey="value"
+            stroke={resolveToken('--card')}
           >
             {chartData.map((entry, index) => (
               <Cell

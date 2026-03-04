@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
-import { METRIC_COLORS, getChartColor, resolveToken } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA, getChartColor, resolveToken } from '@/lib/theme'
 
 interface PropertyDetailModalProps {
   propertyId: string
@@ -297,10 +297,10 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={monthlyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} />
-                      <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+                      <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+                      <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+                      <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
                       <Tooltip content={<PropertyPerformanceTooltip />} />
                       <Line yAxisId="left" type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} name="Revenue" strokeWidth={2} />
                       <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} name="Occupancy" strokeWidth={2} />
@@ -376,9 +376,9 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                           cy="50%"
                           labelLine={false}
                           label={pieChartLabel}
-                          outerRadius={80}
-                          fill={resolveToken('--chart-series-5')}
+                          outerRadius="70%"
                           dataKey="revenue"
+                          stroke={resolveToken('--card')}
                         >
                           {platformData.map((entry: any, index: number) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />

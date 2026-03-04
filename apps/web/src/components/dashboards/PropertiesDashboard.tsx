@@ -114,28 +114,17 @@ export const PropertiesDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl border border-border p-6">
+      <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Your Properties at a Glance</h2>
+            <h2 className="text-lg font-semibold text-foreground">Your Properties at a Glance</h2>
             <p className="text-muted-foreground text-sm mt-1">
               See how each property is performing and compare them side by side
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Total Revenue</div>
-              <div className="text-lg font-bold text-success">
-                {formatCompactCurrency(totalRevenue)}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-muted-foreground">Properties</div>
-              <div className="text-lg font-bold text-foreground">
-                {validProperties.length}
-              </div>
-            </div>
-          </div>
+          <span className="text-sm font-medium text-muted-foreground">
+            {validProperties.length} {validProperties.length === 1 ? 'property' : 'properties'}
+          </span>
         </div>
       </div>
 

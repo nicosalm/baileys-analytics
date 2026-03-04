@@ -13,7 +13,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend, ReferenceLine } from 'recharts'
+import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend, ReferenceLine, ResponsiveContainer } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { useTheme } from '@/contexts/theme'
@@ -404,10 +404,10 @@ export const OverviewDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl border border-border p-6">
+      <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Your Business at a Glance</h2>
+            <h2 className="text-lg font-semibold text-foreground">Your Business at a Glance</h2>
             <p className="text-muted-foreground text-sm mt-1">
               {filters.selectedTags.length > 0
                 ? `Filtered: ${filters.selectedTags.map(t => t.name).filter(Boolean).join(', ') || 'Selected tags'}`
@@ -713,27 +713,29 @@ export const OverviewDashboard = () => {
           height={280}
           noData={charts.bookingsBySource.length === 0}
         >
-          <PieChart width={360} height={240}>
-            <Pie
-              data={bookingSourceChartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={(entry: any) => {
-                const percent = ((entry.percent || 0) * 100).toFixed(0)
-                const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
-                return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
-              }}
-              outerRadius={80}
-              fill={resolveToken('--chart-series-5')}
-              dataKey="count"
-            >
-              {charts.bookingsBySource.map((entry: any, index: any) => (
-                <Cell key={`cell-${index}`} fill={getPlatformColor(entry.source, index)} />
-              ))}
-            </Pie>
-            <Tooltip content={<BookingSourceTooltip />} />
-          </PieChart>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={bookingSourceChartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={(entry: any) => {
+                  const percent = ((entry.percent || 0) * 100).toFixed(0)
+                  const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
+                  return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
+                }}
+                outerRadius="70%"
+                dataKey="count"
+                stroke={resolveToken('--card')}
+              >
+                {charts.bookingsBySource.map((entry: any, index: any) => (
+                  <Cell key={`cell-${index}`} fill={getPlatformColor(entry.source, index)} />
+                ))}
+              </Pie>
+              <Tooltip content={<BookingSourceTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
           {(() => {
             const unassigned = bookingSourceChartData.find((s: any) => s.source === 'Unassigned' || s.source === 'unassigned')
             if (unassigned && unassigned.count > 0) {

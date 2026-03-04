@@ -18,7 +18,7 @@ import { getPlatformColor, getTagColor, resolveToken } from '@/lib/theme'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
-    PieChart, Pie, Cell, Tooltip
+    PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from 'recharts'
 
 
@@ -399,29 +399,11 @@ export const GuestsDashboard = () => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-card rounded-xl border border-border p-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-foreground">Guest Analytics</h2>
-                        <p className="text-muted-foreground text-sm mt-1">
-                            Understand your guests and their booking patterns
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <div className="text-right">
-                            <div className="text-xs text-muted-foreground">Total Guests</div>
-                            <div className="text-lg font-bold text-primary">
-                                {data.metrics.totalGuests.toLocaleString()}
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-xs text-muted-foreground">Repeat Rate</div>
-                            <div className="text-lg font-bold text-foreground">
-                                {formatPercentage(data.metrics.repeatRate * 100, 1)}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div className="bg-card rounded-xl border border-border p-4">
+                <h2 className="text-lg font-semibold text-foreground">Guest Analytics</h2>
+                <p className="text-muted-foreground text-sm mt-1">
+                    Understand your guests and their booking patterns
+                </p>
             </div>
 
             {showTips && (
@@ -520,23 +502,25 @@ export const GuestsDashboard = () => {
                     height={280}
                     noData={sourceChartData.length === 0}
                 >
-                    <PieChart width={360} height={240}>
-                        <Pie
-                            data={sourceChartData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={pieChartLabel}
-                            outerRadius={80}
-                            fill={resolveToken('--chart-series-5')}
-                            dataKey="count"
-                        >
-                            {sourceChartData.map((entry: GuestSourceData & {color: string}, index: number) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                        </Pie>
-                        <Tooltip content={<GuestSourceTooltip />} />
-                    </PieChart>
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={sourceChartData}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                label={pieChartLabel}
+                                outerRadius="70%"
+                                dataKey="count"
+                                stroke={resolveToken('--card')}
+                            >
+                                {sourceChartData.map((entry: GuestSourceData & {color: string}, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                            </Pie>
+                            <Tooltip content={<GuestSourceTooltip />} />
+                        </PieChart>
+                    </ResponsiveContainer>
                 </ChartWrapper>
 
                 <ChartWrapper
@@ -653,6 +637,7 @@ export const GuestsDashboard = () => {
 }
 
 const RecurringDateSearch = () => {
+    const { openModal } = useModal()
     const [isOpen, setIsOpen] = useState(false)
     const [startMonth, setStartMonth] = useState('7')
     const [startDay, setStartDay] = useState('1')
@@ -754,7 +739,12 @@ const RecurringDateSearch = () => {
                                     {yearData.bookings.map((b: any) => (
                                         <div key={b.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-border">
                                             <div>
-                                                <span className="font-medium">{b.guestName}</span>
+                                                <button
+                                                    onClick={() => openModal({ type: 'booking', bookingId: b.id, guestName: b.guestName })}
+                                                    className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
+                                                >
+                                                    {b.guestName}
+                                                </button>
                                                 <span className="text-muted-foreground/60 mx-2">at</span>
                                                 <span className="text-muted-foreground">{b.propertyName}</span>
                                             </div>

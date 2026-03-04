@@ -82,27 +82,27 @@ export const Signup = () => {
   // Show success message if signup was successful
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md w-full px-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                <Mail className="w-8 h-8 text-success" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Check Your Email</h2>
-              <p className="text-gray-600 mb-4">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h2>
+              <p className="text-muted-foreground mb-4">
                 We've sent a confirmation link to:
               </p>
-              <p className="font-medium text-gray-900 mb-6">{email}</p>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="font-medium text-foreground mb-6">{email}</p>
+              <p className="text-sm text-muted-foreground mb-6">
                 Please click the link in the email to confirm your account and get started.
               </p>
-              <p className="text-sm text-gray-500 mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 Didn't receive the email? Check your spam folder or wait a few minutes.
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors"
+                className="inline-flex items-center text-sm text-primary hover:text-primary/90 font-medium transition-colors"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Back to login
@@ -115,12 +115,12 @@ export const Signup = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex">
+    <div className="min-h-screen bg-background flex">
       {/* Left side - Signup Form */}
       <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
         <div className="max-w-md w-full mx-auto">
           {/* Back to home link */}
-          <Link to="/" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-all mb-8">
+          <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-all mb-8">
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to home
           </Link>
@@ -128,13 +128,13 @@ export const Signup = () => {
           {/* Logo */}
           <div className="flex items-center mb-8">
             <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-            <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Start your $1 trial</h2>
-            <p className="text-gray-600">30 days full access for just $1. Then $20/month.</p>
+            <h2 className="text-3xl font-bold text-foreground mb-2">Start your $1 trial</h2>
+            <p className="text-muted-foreground">30 days full access for just $1. Then $20/month.</p>
           </div>
 
           {/* Signup form */}
@@ -178,7 +178,7 @@ export const Signup = () => {
                 </Button>
               </div>
               {password && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="mt-3 p-3 bg-muted/40 rounded-lg border border-border">
                   <PasswordRequirements password={password} />
                 </div>
               )}
@@ -209,13 +209,13 @@ export const Signup = () => {
               </div>
             </div>
 
-            <p className="text-sm text-gray-500 text-center">
+            <p className="text-sm text-muted-foreground text-center">
               By clicking to continue, you agree to our{' '}
-              <Link to="/terms" className="text-blue-600 hover:text-blue-700">
+              <Link to="/terms" className="text-primary hover:text-primary/90">
                 Terms of Service
               </Link>{' '}
               and{' '}
-              <Link to="/privacy" className="text-blue-600 hover:text-blue-700">
+              <Link to="/privacy" className="text-primary hover:text-primary/90">
                 Privacy Policy
               </Link>
             </p>
@@ -235,7 +235,7 @@ export const Signup = () => {
                 <Separator />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-muted-foreground">OR CONTINUE WITH</span>
+                <span className="px-2 bg-background text-muted-foreground">OR CONTINUE WITH</span>
               </div>
             </div>
 
@@ -275,9 +275,9 @@ export const Signup = () => {
           </form>
 
           {/* Sign in link */}
-          <p className="mt-8 text-center text-gray-600">
+          <p className="mt-8 text-center text-muted-foreground">
             Already have an account?{' '}
-            <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700">
+            <Link to="/login" className="font-medium text-primary hover:text-primary/90">
               Sign in
             </Link>
           </p>

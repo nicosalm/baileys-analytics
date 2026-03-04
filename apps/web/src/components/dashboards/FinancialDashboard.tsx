@@ -218,10 +218,10 @@ export const FinancialDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl border border-border p-6">
+      <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Financial Center</h2>
+            <h2 className="text-lg font-semibold text-foreground">Financial Center</h2>
             <p className="text-muted-foreground text-sm mt-1">
               Track your vacation rental income, expenses, and profitability
             </p>

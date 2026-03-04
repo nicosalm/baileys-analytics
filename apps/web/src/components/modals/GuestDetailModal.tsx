@@ -9,14 +9,14 @@ import { Modal } from '@/components/Modal'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useTips } from '@/hooks/use-tips'
-import { METRIC_COLORS } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 
 const GuestSpendingTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
   const data = payload[0].payload
 
   return (
-    <div className="bg-card p-3 rounded-lg shadow-lg border">
+    <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
       <p className="font-semibold text-sm mb-2">{label}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
@@ -50,7 +50,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
     <div className="bg-card rounded-lg border overflow-hidden">
       <div className="max-h-96 overflow-y-auto">
         <table className="w-full">
-          <thead className="bg-muted/40 sticky top-0">
+          <thead className="bg-muted sticky top-0">
             <tr>
               <th className="text-left p-4 text-sm font-medium text-foreground">Property</th>
               <th className="text-left p-4 text-sm font-medium text-foreground">Check In</th>
@@ -343,9 +343,9 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+                      <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+                      <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
                       <Tooltip content={<GuestSpendingTooltip />} />
                       <Line
                         type="monotone"

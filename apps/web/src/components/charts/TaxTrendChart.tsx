@@ -1,7 +1,7 @@
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { METRIC_COLORS } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
 import { formatCurrency } from '@/utils/formatters'
 
@@ -107,9 +107,9 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
           }}
           style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="month" />
-          <YAxis tickFormatter={chartFormatters.currency} />
+          <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+          <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+          <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
           <Tooltip content={<TaxChartTooltip />} />
           <Line
             type="monotone"
