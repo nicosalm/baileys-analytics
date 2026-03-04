@@ -23,25 +23,25 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen flex flex-col bg-background">
       {/* header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             {/* logo */}
             <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
               <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
               <div className="ml-3 flex items-center">
-                <h1 className="text-xl font-semibold text-gray-900">{BRAND.name}</h1>
-                <ChevronRight className="hidden sm:block w-4 h-4 mx-1.5 text-gray-400" />
-                <span className="hidden sm:block text-sm font-medium text-gray-500">Docs</span>
+                <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
+                <ChevronRight className="hidden sm:block w-4 h-4 mx-1.5 text-muted-foreground" />
+                <span className="hidden sm:block text-sm font-medium text-muted-foreground">Docs</span>
               </div>
             </Link>
 
             {/* back to home */}
             <Link
               to="/"
-              className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-all flex items-center gap-1 px-3 py-1.5 hover:bg-gray-100 rounded-lg"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-1 px-3 py-1.5 hover:bg-muted rounded-lg"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to home
@@ -55,7 +55,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
           {/* sidebar navigation */}
           <aside className="md:col-span-1">
             <nav className="space-y-1">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                 Documentation
               </h3>
               {docPages.map(({ path, label, icon: Icon }) => {
@@ -67,8 +67,8 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
                     className={`
                       flex items-center px-3 py-2 text-sm rounded-lg transition-all
                       ${isActive
-                        ? 'bg-blue-50 text-blue-700 font-medium'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        ? 'bg-info-subtle text-info-fg font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                       }
                     `}
                   >
@@ -79,7 +79,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
               })}
 
               <div className="pt-4 mt-4 md:pt-6 md:mt-6 border-t">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Legal
                 </h3>
                 {legalPages.map(({ path, label, icon: Icon }) => {
@@ -91,8 +91,8 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
                       className={`
                         flex items-center px-3 py-2 text-sm rounded-lg transition-all
                         ${isActive
-                          ? 'bg-blue-50 text-blue-700 font-medium'
-                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                          ? 'bg-info-subtle text-info-fg font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                         }
                       `}
                     >
@@ -104,21 +104,21 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
               </div>
 
               <div className="pt-4 mt-4 md:pt-6 md:mt-6 border-t">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Resources
                 </h3>
                 <a
                   href="https://status.baileysanalytics.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all"
+                  className="flex items-center px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-lg transition-all"
                 >
                   System Status
                   <ChevronRight className="w-3 h-3 ml-auto" />
                 </a>
                 <a
                   href="mailto:support@baileysanalytics.com"
-                  className="flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-all"
+                  className="flex items-center px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 rounded-lg transition-all"
                 >
                   Contact Support
                   <ChevronRight className="w-3 h-3 ml-auto" />
@@ -129,7 +129,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
 
           {/* main content */}
           <main className="md:col-span-3">
-            <div className="bg-white rounded-xl border border-gray-200 p-6 md:p-8">
+            <div className="bg-card rounded-xl border p-6 md:p-8">
               {children}
             </div>
           </main>

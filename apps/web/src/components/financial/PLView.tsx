@@ -364,29 +364,29 @@ export const PLView: React.FC<PLViewProps> = ({
       {/* Charge Composition Breakdown */}
       {data?.chargeComposition && data.chargeComposition.details.length > 0 && (
         <div className="bg-card rounded-lg shadow-sm border p-6">
-          <h4 className="font-semibold text-foreground mb-4">Revenue Component Breakdown</h4>
-          <p className="text-sm text-muted-foreground mb-4">Itemized charges from booking data (taxes, fees, discounts)</p>
+          <h4 className="font-semibold text-foreground mb-1">Booking Charge Composition</h4>
+          <p className="text-sm text-muted-foreground mb-4">Itemized charges from booking data, excluding base rent</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
             {data.chargeComposition.taxes > 0 && (
-              <div className="bg-danger-subtle rounded-lg p-3">
-                <div className="text-xs text-danger font-medium">Taxes</div>
-                <div className="text-lg font-bold text-danger-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
+              <div className="bg-info-subtle rounded-lg p-3">
+                <div className="text-xs text-info font-medium">Taxes</div>
+                <div className="text-lg font-bold text-info-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
               </div>
             )}
             {data.chargeComposition.fees > 0 && (
-              <div className="bg-warning-subtle rounded-lg p-3">
-                <div className="text-xs text-warning font-medium">Fees</div>
-                <div className="text-lg font-bold text-warning-fg">{formatCurrency(data.chargeComposition.fees)}</div>
+              <div className="bg-purple-subtle rounded-lg p-3">
+                <div className="text-xs text-purple-fg font-medium">Booking Fees</div>
+                <div className="text-lg font-bold text-purple-fg">{formatCurrency(data.chargeComposition.fees)}</div>
               </div>
             )}
             {data.chargeComposition.discounts > 0 && (
-              <div className="bg-success-subtle rounded-lg p-3">
-                <div className="text-xs text-success font-medium">Discounts</div>
-                <div className="text-lg font-bold text-success-fg">-{formatCurrency(data.chargeComposition.discounts)}</div>
+              <div className="bg-muted/40 rounded-lg p-3">
+                <div className="text-xs text-muted-foreground font-medium">Discounts</div>
+                <div className="text-lg font-bold text-foreground">-{formatCurrency(data.chargeComposition.discounts)}</div>
               </div>
             )}
             {data.chargeComposition.other > 0 && (
-              <div className="bg-muted/40 rounded-lg p-3">
+              <div className="bg-muted/30 rounded-lg p-3">
                 <div className="text-xs text-muted-foreground font-medium">Other</div>
                 <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.other)}</div>
               </div>
@@ -397,17 +397,24 @@ export const PLView: React.FC<PLViewProps> = ({
               <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0">
                 <span className="text-muted-foreground flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${
-                    detail.type === 'tax' ? 'bg-danger' :
-                    detail.type === 'fee' ? 'bg-warning' :
-                    detail.type === 'discount' ? 'bg-success' :
+                    detail.type === 'tax' ? 'bg-info' :
+                    detail.type === 'fee' ? 'bg-purple-fg' :
+                    detail.type === 'discount' ? 'bg-muted-foreground' :
                     'bg-muted-foreground'
                   }`} />
                   {detail.description}
-                  <span className="text-xs text-muted-foreground">({detail.count} bookings)</span>
+                  <span className="text-xs text-muted-foreground">({detail.count} {detail.count === 1 ? 'booking' : 'bookings'})</span>
                 </span>
-                <span className="font-medium">{formatCurrency(detail.total)}</span>
+                <span className="font-medium">
+                  {detail.type === 'discount' ? '-' : ''}{formatCurrency(detail.total)}
+                </span>
               </div>
             ))}
+            {data.chargeComposition.details.length > 10 && (
+              <p className="text-xs text-muted-foreground pt-1">
+                and {data.chargeComposition.details.length - 10} more charge {data.chargeComposition.details.length - 10 === 1 ? 'type' : 'types'}
+              </p>
+            )}
           </div>
         </div>
       )}

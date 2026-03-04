@@ -84,13 +84,13 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
     <div className={PLANS.length === 1 ? 'max-w-md mx-auto' : 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto'}>
       {/* billing toggle */}
       <div className={`flex justify-center items-center gap-4 mb-6 ${PLANS.length > 1 ? 'col-span-full' : ''}`}>
-        <span className={`text-sm font-medium ${!yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
+        <span className={`text-sm font-medium ${!yearlyBilling ? 'text-foreground' : 'text-muted-foreground'}`}>
           Monthly
         </span>
         <Switch checked={yearlyBilling} onCheckedChange={setYearlyBilling} aria-label="Toggle billing cycle" />
-        <span className={`text-sm font-medium flex items-center gap-1.5 ${yearlyBilling ? 'text-gray-900' : 'text-gray-500'}`}>
+        <span className={`text-sm font-medium flex items-center gap-1.5 ${yearlyBilling ? 'text-foreground' : 'text-muted-foreground'}`}>
           Yearly
-          <Badge variant="secondary" className="bg-green-100 text-green-700">
+          <Badge variant="secondary" className="bg-success-subtle text-success-fg">
             Save 20%
           </Badge>
         </span>
@@ -100,20 +100,20 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
         const price = yearlyBilling ? plan.yearlyMonthly : plan.monthlyPrice;
 
         return (
-          <div key={plan.id} className="bg-white rounded-2xl border-2 border-blue-500 p-8">
+          <div key={plan.id} className="bg-card rounded-2xl border-2 border-primary p-8">
             <div className="text-center mb-6">
-              <div className="text-4xl md:text-5xl font-bold text-gray-900 mb-1">
-                ${price}<span className="text-xl text-gray-500 font-normal">/mo</span>
+              <div className="text-4xl md:text-5xl font-bold text-foreground mb-1">
+                ${price}<span className="text-xl text-muted-foreground font-normal">/mo</span>
               </div>
-              {yearlyBilling && <p className="text-sm text-green-600">${plan.yearlyPrice}/year, save ${plan.monthlyPrice * 12 - plan.yearlyPrice}</p>}
-              {!yearlyBilling && <p className="text-sm text-gray-500">Billed monthly</p>}
+              {yearlyBilling && <p className="text-sm text-success">${plan.yearlyPrice}/year, save ${plan.monthlyPrice * 12 - plan.yearlyPrice}</p>}
+              {!yearlyBilling && <p className="text-sm text-muted-foreground">Billed monthly</p>}
             </div>
 
             <div className="space-y-2 mb-8">
               {plan.features.map((feature, index) => (
                 <div key={index} className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-green-500 mr-3 flex-shrink-0" />
-                  <span className="text-sm text-gray-700">{feature}</span>
+                  <CheckCircle className="w-4 h-4 text-success mr-3 flex-shrink-0" />
+                  <span className="text-sm text-foreground">{feature}</span>
                 </div>
               ))}
             </div>
@@ -125,7 +125,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
               loadingText="Processing..."
               className={`w-full py-3 text-center rounded-lg font-medium transition-opacity cursor-pointer ${
                 currentPlan
-                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                  ? 'bg-muted text-muted-foreground cursor-not-allowed'
                   : `${BRAND.buttonGradient} text-white hover:opacity-90`
               }`}
             >
@@ -133,7 +133,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
             </Button>
 
             {isTrialEligible && (
-              <p className="text-center text-xs text-gray-500 mt-4">
+              <p className="text-center text-xs text-muted-foreground mt-4">
                 $1 for 30 days, then {yearlyBilling ? `$${plan.yearlyPrice}/year` : `$${plan.monthlyPrice}/month`}
               </p>
             )}

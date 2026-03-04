@@ -9,15 +9,15 @@ interface ChartErrorBoundaryProps {
 }
 
 const ChartErrorFallback: FC<{ chartName?: string; height?: number }> = ({ chartName, height = 320 }) => (
-  <div 
-    className="flex flex-col items-center justify-center bg-gray-50 rounded-lg border border-gray-200"
+  <div
+    className="flex flex-col items-center justify-center bg-muted/50 rounded-lg border"
     style={{ height: `${height}px` }}
   >
-    <AlertTriangle className="w-8 h-8 text-gray-400 mb-2" />
-    <p className="text-sm text-gray-600">
+    <AlertTriangle className="w-8 h-8 text-muted-foreground mb-2" />
+    <p className="text-sm text-muted-foreground">
       {chartName ? `Unable to load ${chartName}` : 'Unable to load chart'}
     </p>
-    <p className="text-xs text-gray-500 mt-1">
+    <p className="text-xs text-muted-foreground mt-1">
       Please try refreshing the page
     </p>
   </div>

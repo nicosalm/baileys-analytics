@@ -257,9 +257,9 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
   if (error) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-xl p-8 max-w-md w-full mx-4">
-          <h2 className="text-xl font-bold text-red-600 mb-4">Sync Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
+        <div className="bg-card rounded-xl shadow-xl p-8 max-w-md w-full mx-4">
+          <h2 className="text-xl font-bold text-danger mb-4">Sync Error</h2>
+          <p className="text-muted-foreground mb-6">{error}</p>
           <Button
             onClick={() => navigate('/dashboard/settings')}
             className="w-full"
@@ -272,23 +272,23 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-white to-blue-50 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-xl shadow-xl p-8 max-w-lg w-full mx-4">
+    <div className="fixed inset-0 bg-background z-50 flex items-center justify-center">
+      <div className="bg-card rounded-xl shadow-xl p-8 max-w-lg w-full mx-4">
         <div className="text-center">
           <div className="flex flex-col items-center mb-6">
             <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-12 h-12 mb-3" />
             {progress.step === 'complete' ? (
-              <CheckCircle className="w-6 h-6 text-green-500" />
+              <CheckCircle className="w-6 h-6 text-success" />
             ) : (
               <LoadingState size="sm" />
             )}
           </div>
           
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
             {progress.step === 'complete' ? 'Welcome to Baileys!' : 'Setting Up Your Dashboard'}
           </h2>
           
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted-foreground mb-6">
             {progress.step === 'complete' 
               ? 'Your data has been synced successfully.'
               : 'We\'re importing your historical data from OwnerRez. This will only take a moment.'}
@@ -296,13 +296,13 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           
           {/* Progress Bar */}
           <div className="mb-6">
-            <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div className="bg-muted rounded-full h-2 overflow-hidden">
               <div 
                 className={`h-full ${BRAND.buttonGradient} transition-all duration-500`}
                 style={{ width: `${getProgressPercentage()}%` }}
               />
             </div>
-            <p className="text-sm text-gray-500 mt-2">{getStatusMessage()}</p>
+            <p className="text-sm text-muted-foreground mt-2">{getStatusMessage()}</p>
           </div>
           
           {/* Stats */}
@@ -314,48 +314,48 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
               {progress.propertiesLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
-                    <Home className="w-5 h-5 text-blue-600" />
+                    <Home className="w-5 h-5 text-info" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-foreground">
                     {progress.propertiesLoaded}
                   </div>
-                  <div className="text-xs text-gray-500">Properties</div>
+                  <div className="text-xs text-muted-foreground">Properties</div>
                 </div>
               )}
               
               {progress.bookingsLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
-                    <Calendar className="w-5 h-5 text-green-600" />
+                    <Calendar className="w-5 h-5 text-success" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-foreground">
                     {progress.bookingsLoaded}
                   </div>
-                  <div className="text-xs text-gray-500">Bookings</div>
+                  <div className="text-xs text-muted-foreground">Bookings</div>
                 </div>
               )}
               
               {progress.blocksLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
-                    <Calendar className="w-5 h-5 text-purple-600" />
+                    <Calendar className="w-5 h-5 text-purple-fg" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-foreground">
                     {progress.blocksLoaded}
                   </div>
-                  <div className="text-xs text-gray-500">Blocks</div>
+                  <div className="text-xs text-muted-foreground">Blocks</div>
                 </div>
               )}
               
               {progress.guestsLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
-                    <Users className="w-5 h-5 text-orange-600" />
+                    <Users className="w-5 h-5 text-orange-fg" />
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">
+                  <div className="text-2xl font-bold text-foreground">
                     {progress.guestsLoaded}
                   </div>
-                  <div className="text-xs text-gray-500">Guests</div>
+                  <div className="text-xs text-muted-foreground">Guests</div>
                 </div>
               )}
             </div>

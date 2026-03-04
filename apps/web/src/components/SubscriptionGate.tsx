@@ -69,16 +69,16 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
     };
 
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-background flex flex-col">
         {/* header */}
-        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-200">
+        <header className="bg-background/80 backdrop-blur-sm border-b">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
               <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
                 <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-                <span className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</span>
+                <span className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</span>
               </Link>
-              <Button variant="ghost" onClick={handleLogout} className="text-gray-600 hover:text-gray-800 text-sm">
+              <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-foreground text-sm">
                 <LogOut className="w-4 h-4" />
                 Logout
               </Button>
@@ -90,8 +90,8 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
         <div className="flex-1 flex items-center justify-center py-12 px-4">
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Get started</h2>
-              <p className="text-gray-600">Unlock your vacation rental analytics.</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Get started</h2>
+              <p className="text-muted-foreground">Unlock your vacation rental analytics.</p>
             </div>
             <PricingPlans onPlanSelect={checkSubscription} />
           </div>

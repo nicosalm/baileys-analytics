@@ -247,7 +247,7 @@ export const AuthCallback = () => {
   }, [handleError, navigate])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="max-w-md w-full px-8">
         <div className="bg-card rounded-xl shadow-sm border p-8">
           <div className="flex items-center justify-center mb-6">

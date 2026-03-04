@@ -111,15 +111,15 @@ export const ResetPassword = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md w-full px-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-card rounded-xl shadow-sm border p-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600" />
+              <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-success" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Successfully</h2>
-              <p className="text-gray-600">Redirecting to login...</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Password Reset Successfully</h2>
+              <p className="text-muted-foreground">Redirecting to login...</p>
             </div>
           </div>
         </div>
@@ -130,7 +130,7 @@ export const ResetPassword = () => {
   // show loading state while checking token
   if (checkingToken) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Button loading loadingText="Verifying reset link..." className="" />
         </div>
@@ -141,18 +141,18 @@ export const ResetPassword = () => {
   // show error if token is invalid
   if (tokenValid === false) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md w-full px-8">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+          <div className="bg-card rounded-xl shadow-sm border p-8">
             <div className="text-center">
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-8 h-8 text-red-600" />
+              <div className="w-16 h-16 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-danger" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Invalid Reset Link</h2>
-              <p className="text-gray-600 mb-6">{error}</p>
+              <h2 className="text-xl font-bold text-foreground mb-2">Invalid Reset Link</h2>
+              <p className="text-muted-foreground mb-6">{error}</p>
               <Link
                 to="/forgot-password"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+                className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
               >
                 Request New Link
               </Link>
@@ -164,24 +164,24 @@ export const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="max-w-md w-full px-8">
         <div className="mb-8">
-          <Link to="/login" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors">
+          <Link to="/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to login
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-card rounded-xl shadow-sm border p-8">
           <div className="flex items-center mb-6">
             <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-            <h1 className="text-xl font-semibold text-gray-900 ml-3">{BRAND.name}</h1>
+            <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 
           <div className="mb-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Create new password</h2>
-            <p className="text-gray-600 text-sm">
+            <h2 className="text-xl font-bold text-foreground mb-2">Create new password</h2>
+            <p className="text-muted-foreground text-sm">
               Choose a strong password to secure your account.
             </p>
           </div>
@@ -213,7 +213,7 @@ export const ResetPassword = () => {
                 </Button>
               </div>
               {password && (
-                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
                   <PasswordRequirements password={password} />
                 </div>
               )}
@@ -247,7 +247,7 @@ export const ResetPassword = () => {
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}

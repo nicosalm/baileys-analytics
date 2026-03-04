@@ -35,9 +35,9 @@ const colorClasses = {
   green: 'text-success bg-success-subtle',
   red: 'text-danger bg-danger-subtle',
   yellow: 'text-warning bg-warning-subtle',
-  purple: 'text-purple-600 bg-purple-100',
+  purple: 'text-purple-fg bg-purple-subtle',
   gray: 'text-muted-foreground bg-muted',
-  orange: 'text-orange-600 bg-orange-100'
+  orange: 'text-orange-fg bg-orange-subtle'
 }
 
 export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({

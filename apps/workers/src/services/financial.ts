@@ -322,7 +322,8 @@ export async function getPLData(
   }));
 
   // Build charge composition breakdown
-  const chargeDetailMap = new Map<string, { type: string; description: string; total: number; count: number }>();
+  // 'rent' is the base lodging amount already captured in total_amount — exclude it here
+  const chargeDetailMap = new Map<string, { type: string; description: string; total: number; bookingIds: Set<string> }>();
   let compositionTaxes = 0;
   let compositionFees = 0;
   let compositionDiscounts = 0;
@@ -331,6 +332,7 @@ export async function getPLData(
   bookings.forEach(b => {
     const charges = b.booking_charges || [];
     charges.forEach((c: any) => {
+      if (c.type === 'rent') return;
       const amount = c.amount || 0;
       switch (c.type) {
         case 'tax': compositionTaxes += amount; break;
@@ -339,9 +341,9 @@ export async function getPLData(
         default: compositionOther += amount; break;
       }
       const key = `${c.type}:${c.description || c.type}`;
-      const existing = chargeDetailMap.get(key) || { type: c.type, description: c.description || c.type, total: 0, count: 0 };
+      const existing = chargeDetailMap.get(key) || { type: c.type, description: c.description || c.type, total: 0, bookingIds: new Set<string>() };
       existing.total += amount;
-      existing.count++;
+      existing.bookingIds.add(b.id);
       chargeDetailMap.set(key, existing);
     });
   });
@@ -351,7 +353,9 @@ export async function getPLData(
     fees: compositionFees,
     discounts: compositionDiscounts,
     other: compositionOther,
-    details: Array.from(chargeDetailMap.values()).sort((a, b) => b.total - a.total)
+    details: Array.from(chargeDetailMap.values())
+      .map(({ bookingIds, ...rest }) => ({ ...rest, count: bookingIds.size }))
+      .sort((a, b) => b.total - a.total)
   };
 
   const monthlyData = buildTrendData(bookings, from, to, useDaily, useWeekly);

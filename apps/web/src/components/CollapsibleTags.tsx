@@ -20,7 +20,7 @@ export const CollapsibleTags: React.FC<CollapsibleTagsProps> = ({
   onTagClick
 }) => {
   if (!tags || tags.length === 0) {
-    return <span className="text-gray-400 text-xs">No tags</span>
+    return <span className="text-muted-foreground text-xs">No tags</span>
   }
 
   const visibleTags = tags.slice(0, maxVisible)
@@ -46,13 +46,13 @@ export const CollapsibleTags: React.FC<CollapsibleTagsProps> = ({
           <PopoverTrigger asChild>
             <button
               onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors border border-gray-200 cursor-pointer`}
+              className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/80 transition-colors border border-border cursor-pointer`}
             >
               +{hiddenCount} more
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto max-w-md p-3">
-            <div className="text-xs font-medium text-gray-700 mb-2">
+            <div className="text-xs font-medium text-foreground mb-2">
               All tags ({tags.length})
             </div>
             <div className="flex flex-wrap gap-1 overflow-y-auto" style={{ maxHeight: '250px' }}>

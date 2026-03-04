@@ -214,7 +214,7 @@ export const Admin = () => {
 
             <div className="bg-card rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-2">
-                <DollarSign className="w-5 h-5 text-purple-600" />
+                <DollarSign className="w-5 h-5 text-purple-fg" />
                 <span className="text-2xl font-bold text-foreground">${metrics.mrr}</span>
               </div>
               <p className="text-sm text-muted-foreground">MRR</p>
@@ -222,7 +222,7 @@ export const Admin = () => {
 
             <div className="bg-card rounded-lg shadow-sm border p-6">
               <div className="flex items-center justify-between mb-2">
-                <Database className="w-5 h-5 text-orange-600" />
+                <Database className="w-5 h-5 text-orange-fg" />
                 <span className="text-2xl font-bold text-foreground">{metrics.totalBookings.toLocaleString()}</span>
               </div>
               <p className="text-sm text-muted-foreground">Total Bookings</p>

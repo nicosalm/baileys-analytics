@@ -50,7 +50,7 @@ export const ForgotPassword = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="max-w-md w-full px-8">
           <div className="bg-card rounded-xl shadow-sm border p-8">
             <div className="text-center">
@@ -80,7 +80,7 @@ export const ForgotPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="max-w-md w-full px-8">
         <div className="mb-8">
           <Link to="/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -89,7 +89,7 @@ export const ForgotPassword = () => {
           </Link>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-card rounded-xl shadow-sm border p-8">
           <div className="flex items-center mb-6">
             <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>

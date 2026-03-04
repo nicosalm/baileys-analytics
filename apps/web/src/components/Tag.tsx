@@ -33,7 +33,7 @@ export const Tag: React.FC<TagProps> = ({
     <span
       className={`inline-flex items-center rounded-full border ${sizeClasses} ${
         onClick ? 'cursor-pointer hover:opacity-80' : ''
-      } ${selected ? 'ring-2 ring-offset-1 ring-blue-400' : ''}`}
+      } ${selected ? 'ring-2 ring-offset-1 ring-info' : ''}`}
       style={styles}
       onClick={onClick}
     >
@@ -88,7 +88,7 @@ export const TagList: React.FC<TagListProps> = ({
         />
       ))}
       {remainingCount > 0 && (
-        <span className={`${size === 'sm' ? 'text-xs' : 'text-sm'} text-gray-500`}>
+        <span className={`${size === 'sm' ? 'text-xs' : 'text-sm'} text-muted-foreground`}>
           +{remainingCount}
         </span>
       )}
