@@ -220,7 +220,9 @@ export class StripeService {
         .join('');
 
       // constant-time comparison
-      if (computedSignature !== expectedSignature) {
+      const sigA = encoder.encode(computedSignature);
+      const sigB = encoder.encode(expectedSignature);
+      if (sigA.byteLength !== sigB.byteLength || !crypto.subtle.timingSafeEqual(sigA, sigB)) {
         throw new Error('Signature mismatch');
       }
 
@@ -240,7 +242,7 @@ export class StripeService {
 
     // Check for duplicate events (idempotency)
     const { data: existingEvent } = await this.supabase
-      .from('webhook_events')
+      .from('stripe_webhook_events')
       .select('id, processed')
       .eq('stripe_event_id', event.id)
       .single();
@@ -251,7 +253,7 @@ export class StripeService {
 
     // Record the event
     await this.supabase
-      .from('webhook_events')
+      .from('stripe_webhook_events')
       .upsert({
         stripe_event_id: event.id,
         event_type: event.type,
@@ -263,38 +265,41 @@ export class StripeService {
 
     try {
       // handle different event types
+      let eventTenantId: string | null = null;
+
       switch (event.type) {
       case 'checkout.session.completed':
-        await this.handleCheckoutComplete(event.data.object as Stripe.Checkout.Session);
+        eventTenantId = await this.handleCheckoutComplete(event.data.object as Stripe.Checkout.Session);
         break;
 
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await this.handleSubscriptionUpdate(event.data.object as Stripe.Subscription);
+        eventTenantId = await this.handleSubscriptionUpdate(event.data.object as Stripe.Subscription);
         break;
 
       case 'customer.subscription.deleted':
-        await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        eventTenantId = await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
         break;
 
       case 'invoice.payment_succeeded':
-        await this.handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+        eventTenantId = await this.handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
         break;
 
       case 'invoice.payment_failed':
-        await this.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
+        eventTenantId = await this.handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
         break;
 
       default:
         break;
     }
 
-    // Mark event as processed
+    // mark event as processed (with tenant_id for data cleanup)
     await this.supabase
-      .from('webhook_events')
+      .from('stripe_webhook_events')
       .update({
         processed: true,
-        processed_at: new Date().toISOString()
+        processed_at: new Date().toISOString(),
+        ...(eventTenantId ? { tenant_id: eventTenantId } : {})
       })
       .eq('stripe_event_id', event.id);
 
@@ -303,7 +308,7 @@ export class StripeService {
       // Record processing error
       console.error(`Error processing webhook ${event.id}:`, error);
       await this.supabase
-        .from('webhook_events')
+        .from('stripe_webhook_events')
         .update({
           processing_error: error instanceof Error ? error.message : 'Unknown error'
         })
@@ -313,15 +318,26 @@ export class StripeService {
     }
   }
 
-  private async handleCheckoutComplete(session: Stripe.Checkout.Session) {
+  private async handleCheckoutComplete(session: Stripe.Checkout.Session): Promise<string | null> {
     const tenantId = session.metadata?.tenant_id;
-    if (!tenantId) return;
+    if (!tenantId) return null;
 
+    // sync subscription records as a fallback in case customer.subscription.created is delayed
+    if (session.subscription) {
+      try {
+        const subscription = await this.stripe.subscriptions.retrieve(session.subscription as string);
+        await this.handleSubscriptionUpdate(subscription);
+      } catch (err) {
+        console.error('Failed to sync subscription from checkout session:', err);
+      }
+    }
+
+    return tenantId;
   }
 
-  private async handleSubscriptionUpdate(subscription: Stripe.Subscription) {
+  private async handleSubscriptionUpdate(subscription: Stripe.Subscription): Promise<string | null> {
     const tenantId = subscription.metadata?.tenant_id;
-    if (!tenantId) return;
+    if (!tenantId) return null;
 
     // determine billing cycle from price interval
     const priceId = subscription.items.data[0]?.price.id;
@@ -368,18 +384,19 @@ export class StripeService {
     // atomically set first_subscription_at only if it's still NULL
     // this prevents race conditions from concurrent webhooks
     if (!tenant?.first_subscription_at) {
-      const { error: updateError } = await this.supabase
+      await this.supabase
         .from('tenants')
         .update({ first_subscription_at: new Date().toISOString() })
         .eq('id', tenantId)
         .is('first_subscription_at', null);
-
     }
+
+    return tenantId;
   }
 
-  private async handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<string | null> {
     const tenantId = subscription.metadata?.tenant_id;
-    if (!tenantId) return;
+    if (!tenantId) return null;
 
     // update subscription status
     await this.supabase
@@ -399,9 +416,11 @@ export class StripeService {
         subscription_ends_at: subscription.ended_at ? new Date(subscription.ended_at * 1000).toISOString() : new Date().toISOString()
       })
       .eq('id', tenantId);
+
+    return tenantId;
   }
 
-  private async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  private async handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<string | null> {
     const customerId = invoice.customer as string;
 
     // get tenant from customer
@@ -411,7 +430,7 @@ export class StripeService {
       .eq('stripe_customer_id', customerId)
       .single();
 
-    if (!customer?.tenant_id) return;
+    if (!customer?.tenant_id) return null;
 
     // record payment in billing history
     await this.supabase
@@ -427,9 +446,11 @@ export class StripeService {
         invoice_pdf: invoice.invoice_pdf,
         paid_at: new Date().toISOString()
       });
+
+    return customer.tenant_id;
   }
 
-  private async handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  private async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<string | null> {
     const customerId = invoice.customer as string;
 
     // get tenant from customer
@@ -439,7 +460,7 @@ export class StripeService {
       .eq('stripe_customer_id', customerId)
       .single();
 
-    if (!customer?.tenant_id) return;
+    if (!customer?.tenant_id) return null;
 
     // record failed payment
     await this.supabase
@@ -461,6 +482,8 @@ export class StripeService {
         subscription_status: 'past_due'
       })
       .eq('id', customer.tenant_id);
+
+    return customer.tenant_id;
   }
 
   // get usage metrics for current period
