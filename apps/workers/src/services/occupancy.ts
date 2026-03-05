@@ -78,20 +78,20 @@ async function fetchOverallOccupancy(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('*')
+    .select('property_id, arrival, departure')
     .eq('tenant_id', tenantId)
     .in('property_id', propertyIds)
     .lte('arrival', to)
     .gte('departure', from)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
-  
+
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
       .select('booking_id')
       .in('tag_id', tagIds);
-    
+
     if (taggedBookings && taggedBookings.length > 0) {
       const bookingIds = taggedBookings.map(tb => tb.booking_id);
       bookingsQuery = bookingsQuery.in('id', bookingIds);
@@ -99,9 +99,9 @@ async function fetchOverallOccupancy(
       return { bookedNights: 0, availableNights: totalAvailableNights };
     }
   }
-  
+
   const { data: bookings } = await bookingsQuery;
-  
+
   const countedPropertyDays = new Set<string>();
   if (bookings) {
     const periodStart = new Date(from);
@@ -142,7 +142,7 @@ async function fetchPropertyOccupancy(
   
   const { data: properties } = await supabase
     .from('properties')
-    .select('*')
+    .select('id, name')
     .eq('tenant_id', tenantId)
     .eq('active', true);
 
@@ -160,7 +160,7 @@ async function fetchPropertyOccupancy(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('*')
+    .select('property_id, arrival, departure, total_amount')
     .eq('tenant_id', tenantId)
     .in('property_id', propertyIds)
     .lte('arrival', to)
@@ -257,7 +257,7 @@ async function fetchMonthlyOccupancy(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('*')
+    .select('property_id, arrival, departure')
     .eq('tenant_id', tenantId)
     .in('property_id', propertyIds)
     .lte('arrival', to)
@@ -412,7 +412,7 @@ async function fetchDailyOccupancy(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('*')
+    .select('property_id, arrival, departure')
     .eq('tenant_id', tenantId)
     .in('property_id', propertyIds)
     .lte('arrival', to)
@@ -529,7 +529,7 @@ export async function detectBookingGaps(
   // fetch properties
   const { data: properties } = await supabase
     .from('properties')
-    .select('id, name, active')
+    .select('id, name')
     .eq('tenant_id', tenantId);
 
   if (!properties || properties.length === 0) {

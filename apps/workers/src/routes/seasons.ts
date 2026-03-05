@@ -111,6 +111,9 @@ seasons.post('/', clearCache('GET:'), async (c) => {
 		updatedAt: season.updated_at
 	} : null;
 	
+	const { invalidateDashboardCache } = await import('../utils/cache');
+	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 	return c.json(formattedSeason, 201);
 });
 
@@ -164,6 +167,9 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 	
+	const { invalidateDashboardCache } = await import('../utils/cache');
+	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 	const formattedSeason = season ? {
 		id: season.id,
 		name: season.name,
@@ -176,7 +182,7 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 		createdAt: season.created_at,
 		updatedAt: season.updated_at
 	} : null;
-	
+
 	return c.json(formattedSeason);
 });
 
@@ -218,6 +224,9 @@ seasons.patch('/:id', clearCache('GET:'), async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 	
+	const { invalidateDashboardCache } = await import('../utils/cache');
+	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 	const formattedSeason = season ? {
 		id: season.id,
 		name: season.name,
@@ -230,7 +239,7 @@ seasons.patch('/:id', clearCache('GET:'), async (c) => {
 		createdAt: season.created_at,
 		updatedAt: season.updated_at
 	} : null;
-	
+
 	return c.json(formattedSeason);
 });
 
@@ -252,7 +261,10 @@ seasons.delete('/:id', clearCache('GET:'), async (c) => {
 	if (error) {
 		return c.json({ error: error.message }, 500);
 	}
-	
+
+	const { invalidateDashboardCache } = await import('../utils/cache');
+	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 	return c.json({ success: true });
 });
 

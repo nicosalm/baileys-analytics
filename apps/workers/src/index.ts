@@ -682,10 +682,9 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 			data = { error: 'Invalid view' };
 	}
 
-	// cache the result if kv is available
 	if (c.env.CACHE) {
 		await c.env.CACHE.put(cacheKey, JSON.stringify(data), {
-			expirationTtl: 300
+			expirationTtl: 1800
 		});
 	}
 

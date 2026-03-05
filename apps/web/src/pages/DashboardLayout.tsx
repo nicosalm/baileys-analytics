@@ -2,19 +2,22 @@ import { useAuth } from '@/contexts/auth'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
 import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft } from 'lucide-react'
-import { OverviewDashboard } from '@/components/dashboards/OverviewDashboard'
-import { PropertiesDashboard } from '@/components/dashboards/PropertiesDashboard'
-import { OccupancyDashboard } from '@/components/dashboards/OccupancyDashboard'
-import { GuestsDashboard } from '@/components/dashboards/GuestsDashboard'
-import { FinancialDashboard } from '@/components/dashboards/FinancialDashboard'
+import { lazy, Suspense, useState, useEffect } from 'react'
+
+const OverviewDashboard = lazy(() => import('@/components/dashboards/OverviewDashboard').then(m => ({ default: m.OverviewDashboard })))
+const FinancialDashboard = lazy(() => import('@/components/dashboards/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })))
+const PropertiesDashboard = lazy(() => import('@/components/dashboards/PropertiesDashboard').then(m => ({ default: m.PropertiesDashboard })))
+const OccupancyDashboard = lazy(() => import('@/components/dashboards/OccupancyDashboard').then(m => ({ default: m.OccupancyDashboard })))
+const GuestsDashboard = lazy(() => import('@/components/dashboards/GuestsDashboard').then(m => ({ default: m.GuestsDashboard })))
+
 import { FilterBar } from '@/components/FilterBar'
+import { LoadingState } from '@/components/LoadingState'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { InitialSyncModal } from '@/components/InitialSyncModal'
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -53,7 +56,9 @@ const DashboardContent = () => {
         console.error(`Dashboard error in ${activeTab} tab:`, error, errorInfo)
       }}
     >
-      {renderContent()}
+      <Suspense fallback={<LoadingState />}>
+        {renderContent()}
+      </Suspense>
     </ErrorBoundary>
   )
 }

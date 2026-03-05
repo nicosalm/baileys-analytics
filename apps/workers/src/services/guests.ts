@@ -95,7 +95,7 @@ export async function getGuestsData(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('*')
+    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
@@ -164,7 +164,7 @@ export async function getGuestsData(
 
   const { data: allBookings } = await supabase
     .from('bookings')
-    .select('*')
+    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
@@ -331,7 +331,7 @@ export async function getGuestsData(
 
   const { data: tags } = await supabase
     .from('tags')
-    .select('*')
+    .select('id, name, color')
     .eq('tenant_id', tenantId);
 
   const tagMap = new Map<string, { id: string; name: string; color?: string }>();

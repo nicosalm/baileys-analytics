@@ -1,6 +1,38 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { getActiveSeasons, buildBookingFilters } from './seasons';
 import { SUPABASE_MAX_ROWS } from '../constants';
+
+async function fetchBookings(
+	supabase: SupabaseClient,
+	tenantId: string,
+	from: string,
+	to: string,
+	tagIds: string[] = []
+) {
+	let query = supabase
+		.from('bookings')
+		.select('id, total_amount, arrival, departure, guest_email, guest_name, platform, property_id')
+		.eq('tenant_id', tenantId)
+		.lte('arrival', to)
+		.gte('departure', from)
+		.neq('status', 'canceled')
+		.limit(SUPABASE_MAX_ROWS);
+
+	if (tagIds.length > 0) {
+		const { data: taggedBookings } = await supabase
+			.from('booking_tags')
+			.select('booking_id')
+			.in('tag_id', tagIds);
+
+		if (taggedBookings && taggedBookings.length > 0) {
+			query = query.in('id', taggedBookings.map(tb => tb.booking_id));
+		} else {
+			return [];
+		}
+	}
+
+	const { data } = await query;
+	return data || [];
+}
 
 export async function getOverviewData(
 	supabase: SupabaseClient,
@@ -11,17 +43,32 @@ export async function getOverviewData(
 	comparisonFrom?: string,
 	comparisonTo?: string
 ) {
+	const { data: properties } = await supabase
+		.from('properties')
+		.select('id, name')
+		.eq('tenant_id', tenantId)
+		.eq('active', true);
+
+	const sharedProperties = properties || [];
+
+	const currentBookings = await fetchBookings(supabase, tenantId, from, to, tagIds);
+	const comparisonBookings = comparisonFrom && comparisonTo
+		? await fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds)
+		: null;
+
 	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([
-		getCurrentPeriodMetrics(supabase, tenantId, from, to, tagIds),
-		getChartsData(supabase, tenantId, from, to, tagIds),
+		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties),
+		getChartsData(currentBookings, sharedProperties, from, to),
 		getAlerts(supabase, tenantId, from, to),
 		getRecentActivity(supabase, tenantId),
 		getUpcomingBookings(supabase, tenantId)
 	]);
 
 	let previousMetrics = null;
-	if (comparisonFrom && comparisonTo) {
-		previousMetrics = await getCurrentPeriodMetrics(supabase, tenantId, comparisonFrom, comparisonTo, tagIds);
+	if (comparisonBookings) {
+		previousMetrics = await getCurrentPeriodMetrics(
+			supabase, tenantId, comparisonFrom!, comparisonTo!, comparisonBookings, sharedProperties
+		);
 	}
 
 	const metrics = formatOverviewMetrics(currentMetrics, previousMetrics);
@@ -41,40 +88,10 @@ async function getCurrentPeriodMetrics(
 	tenantId: string,
 	from: string,
 	to: string,
-	tagIds: string[] = []
+	bookings: any[],
+	properties: any[]
 ) {
-	const seasons = await getActiveSeasons(supabase, tenantId);
-	const bookingFilters = buildBookingFilters(seasons, 'b');
-	const hasTagFilter = tagIds.length > 0;
-
-	let bookingsQuery = supabase
-		.from('bookings')
-		.select('*')
-		.eq('tenant_id', tenantId)
-		.lte('arrival', to)
-		.gte('departure', from)
-		.neq('status', 'canceled')
-		.limit(SUPABASE_MAX_ROWS);
-
-	if (hasTagFilter) {
-		const { data: taggedBookings } = await supabase
-			.from('booking_tags')
-			.select('booking_id')
-			.in('tag_id', tagIds);
-
-		if (taggedBookings) {
-			const bookingIds = taggedBookings.map(tb => tb.booking_id);
-			bookingsQuery = bookingsQuery.in('id', bookingIds);
-		}
-	}
-
-	const { data: bookings } = await bookingsQuery;
-
-	const { data: properties, count: propertyCount } = await supabase
-		.from('properties')
-		.select('*', { count: 'exact' })
-		.eq('tenant_id', tenantId)
-		.eq('active', true);
+	const propertyCount = properties.length;
 
 	const { count: canceledCount } = await supabase
 		.from('bookings')
@@ -84,20 +101,18 @@ async function getCurrentPeriodMetrics(
 		.gte('departure', from)
 		.eq('status', 'canceled');
 
-	const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-	const totalBookings = bookings?.length || 0;
+	const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+	const totalBookings = bookings.length;
 	const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 	const platformFees = totalRevenue * 0.03;
 	const netRevenue = totalRevenue - platformFees;
 	let totalNights = 0;
-	if (bookings && bookings.length > 0) {
-		bookings.forEach(b => {
-			const nights = Math.ceil(
-				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
-			);
-			totalNights += nights;
-		});
-	}
+	bookings.forEach(b => {
+		const nights = Math.ceil(
+			(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
+		);
+		totalNights += nights;
+	});
 	const avgNights = totalBookings > 0 ? totalNights / totalBookings : 0;
 
 	const startDate = new Date(from);
@@ -106,10 +121,10 @@ async function getCurrentPeriodMetrics(
 	const totalPossibleNights = totalDays * (propertyCount || 1);
 	const occupancyRate = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
 
-	const uniqueGuests = new Set(bookings?.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean));
+	const uniqueGuests = new Set(bookings.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
 
-	// Calculate repeat guest rate by checking historical bookings before the current period
+	// repeat guest rate: check historical bookings before the current period
 	const { data: historicalBookings } = await supabase
 		.from('bookings')
 		.select('guest_email, guest_name')
@@ -136,7 +151,7 @@ async function getCurrentPeriodMetrics(
 	const cancellationRate = totalWithCanceled > 0 ? ((canceledCount || 0) / totalWithCanceled) * 100 : 0;
 
 	const today = new Date().toISOString().split('T')[0];
-	const upcomingBookings = bookings?.filter(b => b.arrival >= today).length || 0;
+	const upcomingBookings = bookings.filter(b => b.arrival >= today).length;
 
 	return {
 		revenue: totalRevenue,
@@ -155,53 +170,21 @@ async function getCurrentPeriodMetrics(
 	};
 }
 
-async function getChartsData(
-	supabase: SupabaseClient,
-	tenantId: string,
+function getChartsData(
+	bookings: any[],
+	properties: any[],
 	from: string,
-	to: string,
-	tagIds: string[] = []
+	to: string
 ) {
-	const seasons = await getActiveSeasons(supabase, tenantId);
-	const hasTagFilter = tagIds.length > 0;
-
 	const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
 	const revenueUseDaily = daysDiff <= 30;
 	const revenueUseWeekly = daysDiff > 30 && daysDiff <= 180;
 
-	let bookingsQuery = supabase
-		.from('bookings')
-		.select('*')
-		.eq('tenant_id', tenantId)
-		.lte('arrival', to)
-		.gte('departure', from)
-		.neq('status', 'canceled')
-		.limit(SUPABASE_MAX_ROWS);
-
-	if (hasTagFilter) {
-		const { data: taggedBookings } = await supabase
-			.from('booking_tags')
-			.select('booking_id')
-			.in('tag_id', tagIds);
-
-		if (taggedBookings) {
-			const bookingIds = taggedBookings.map(tb => tb.booking_id);
-			bookingsQuery = bookingsQuery.in('id', bookingIds);
-		}
-	}
-
-	const { data: bookings } = await bookingsQuery;
-
-	const { data: properties } = await supabase
-		.from('properties')
-		.select('id, name')
-		.eq('tenant_id', tenantId);
-
-	const revenueData = buildRevenueChartData(bookings || [], from, to, revenueUseDaily, revenueUseWeekly);
+	const revenueData = buildRevenueChartData(bookings, from, to, revenueUseDaily, revenueUseWeekly);
 
 	const propertyRevenue = new Map();
-	bookings?.forEach(b => {
-		const property = properties?.find(p => p.id === b.property_id);
+	bookings.forEach(b => {
+		const property = properties.find(p => p.id === b.property_id);
 		if (property) {
 			const current = propertyRevenue.get(property.name) || { name: property.name, revenue: 0, bookings: 0 };
 			current.revenue += b.total_amount || 0;
@@ -215,7 +198,7 @@ async function getChartsData(
 		.slice(0, 5);
 
 	const sourceMap = new Map<string, { count: number; revenue: number }>();
-	bookings?.forEach(b => {
+	bookings.forEach(b => {
 		const source = b.platform || 'Unassigned';
 		const existing = sourceMap.get(source) || { count: 0, revenue: 0 };
 		existing.count++;
@@ -227,10 +210,10 @@ async function getChartsData(
 		.map(([source, data]) => ({ source, count: data.count, revenue: data.revenue }))
 		.sort((a, b) => b.count - a.count);
 
-	const occupancyData = buildOccupancyChartData(bookings || [], properties || [], from, to, daysDiff <= 60);
+	const occupancyData = buildOccupancyChartData(bookings, properties, from, to, daysDiff <= 60);
 
 	return {
-		revenueLastWeek: revenueData, // Frontend expects this name, but it's actually the selected date range
+		revenueLastWeek: revenueData,
 		topProperties,
 		bookingsBySource,
 		occupancyTrend: occupancyData
@@ -396,7 +379,7 @@ async function getAlerts(
 	
 	const { data: upcomingBookings } = await supabase
 		.from('bookings')
-		.select('*')
+		.select('arrival, departure')
 		.eq('tenant_id', tenantId)
 		.gte('arrival', today.toISOString().split('T')[0])
 		.lte('arrival', thirtyDaysFromNow.toISOString().split('T')[0])

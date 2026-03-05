@@ -93,6 +93,9 @@ goals.put('/', async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 
+	const { invalidateDashboardCache } = await import('../utils/cache');
+	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 	const formatted = (upserted || []).map(g => ({
 		id: g.id,
 		metricKey: g.metric_key,

@@ -77,7 +77,7 @@ export async function setCachedData(
 	cache: KVNamespace | undefined,
 	key: string,
 	data: any,
-	ttl: number = 300
+	ttl: number = 1800
 ): Promise<void> {
 	if (!cache) return;
 

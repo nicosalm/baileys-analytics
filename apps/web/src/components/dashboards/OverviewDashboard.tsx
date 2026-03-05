@@ -149,7 +149,7 @@ export const OverviewDashboard = () => {
   const { data: goalProgressData } = useGoalProgress()
   const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
 
-  const { data, error, isLoading } = useDashboardBatch(
+  const { data, error, isLoading, isStale } = useDashboardBatch(
     'overview',
     filters.dateRange.from,
     filters.dateRange.to,
@@ -403,7 +403,7 @@ export const OverviewDashboard = () => {
   const actualUpcoming = parseInt(metrics.bookings.upcoming) || 0
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 transition-opacity duration-200 ${isStale ? 'opacity-60' : ''}`}>
       <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between">
           <div>

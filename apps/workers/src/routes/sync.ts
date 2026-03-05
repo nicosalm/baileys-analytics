@@ -81,6 +81,9 @@ sync.post('/properties', async (c) => {
 				records_synced: properties.length
 			}, { onConflict: 'tenant_id,sync_type' });
 
+		const { invalidateDashboardCache } = await import('../utils/cache');
+		await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 		return c.json({
 			success: true,
 			propertiesSynced: properties.length
@@ -349,6 +352,9 @@ sync.post('/bookings', async (c) => {
 				records_synced: bookings.length
 			}, { onConflict: 'tenant_id,sync_type' });
 
+		const { invalidateDashboardCache } = await import('../utils/cache');
+		await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 		return c.json({
 			success: true,
 			bookingsSynced: bookings.length
@@ -610,6 +616,9 @@ sync.post('/recovery', async (c) => {
 				records_synced: bookingCount
 			});
 
+		const { invalidateDashboardCache } = await import('../utils/cache');
+		await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
 		return c.json({
 			success: true,
 			type: 'recovery',
@@ -728,6 +737,9 @@ sync.post('/guest-details', async (c) => {
 			await new Promise(resolve => setTimeout(resolve, 1000));
 		}
 	}
+
+	const { invalidateDashboardCache } = await import('../utils/cache');
+	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
 
 	return c.json({
 		status: 'success',

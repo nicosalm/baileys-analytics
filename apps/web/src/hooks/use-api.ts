@@ -52,80 +52,20 @@ export function useDashboardBatch(
 
     if (!fetchResult.success) throw new Error(fetchResult.error)
     return fetchResult.data
-  }, { refreshInterval: 120000 })
+  }, { refreshInterval: 120000, keepPreviousData: true })
 
-  // Normalize: if we have no data yet, always treat as loading regardless
-  // of error state. This ensures the first load shows a spinner rather than
-  // an error boundary (e.g. from Cloudflare Worker cold-start failures).
-  // Errors only surface if a subsequent request also fails (persistent error).
+  // first load with no error: show loading. retries exhausted: show error.
+  // has data + revalidating: show stale data with opacity indicator.
+  // has data + revalidation error: suppress error, keep showing data.
+  const hasData = !!result.data
   return {
     ...result,
-    isLoading: result.isLoading || !result.data,
-    error: result.data ? result.error : undefined,
+    isLoading: result.isLoading || (!hasData && !result.error),
+    isStale: hasData && result.isValidating,
+    error: !hasData ? result.error : undefined,
   }
 }
 
-export function useFinancial(
-  from?: string, 
-  to?: string, 
-  tagIds?: string[],
-  comparisonFrom?: string,
-  comparisonTo?: string
-) {
-  const validFrom = from && isValidDateString(from) ? from : undefined
-  const validTo = to && isValidDateString(to) ? to : undefined
-  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
-  const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
-  const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
-
-  const key = (validFrom || validTo || validTagIds)
-    ? createCacheKey('financial', validFrom, validTo, validTagIds, validCompFrom, validCompTo)
-    : null
-  return useSWR<any>(key, async () => {
-    if (!key) return null
-    const params = new URLSearchParams()
-    if (validFrom) params.append('from', validFrom)
-    if (validTo) params.append('to', validTo)
-    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
-    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
-    if (validCompTo) params.append('comparisonTo', validCompTo)
-    
-    const endpoint = params.toString() ? `/financial?${params}` : '/financial'
-    const result = await api.request(endpoint)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
-}
-
-export function useOccupancy(
-  from?: string, 
-  to?: string, 
-  tagIds?: string[],
-  comparisonFrom?: string,
-  comparisonTo?: string
-) {
-  const validFrom = from && isValidDateString(from) ? from : undefined
-  const validTo = to && isValidDateString(to) ? to : undefined
-  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
-  const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
-  const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
-  
-  const key = validFrom || validTo || validTagIds ? ['/occupancy', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
-  return useSWR<any>(key, async () => {
-    if (!key) return null
-    const params = new URLSearchParams()
-    if (validFrom) params.append('from', validFrom)
-    if (validTo) params.append('to', validTo)
-    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
-    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
-    if (validCompTo) params.append('comparisonTo', validCompTo)
-    
-    const endpoint = params.toString() ? `/occupancy?${params}` : '/occupancy'
-    const result = await api.request(endpoint)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
-}
 
 export function usePropertyMetrics(
   from?: string, 
@@ -158,45 +98,6 @@ export function usePropertyMetrics(
   })
 }
 
-export function useGuests(
-  from?: string, 
-  to?: string, 
-  tagIds?: string[],
-  comparisonFrom?: string,
-  comparisonTo?: string
-) {
-  // Validate inputs
-  const validFrom = from && isValidDateString(from) ? from : undefined
-  const validTo = to && isValidDateString(to) ? to : undefined
-  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
-  const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
-  const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
-  
-  const key = validFrom || validTo || validTagIds ? ['/guests', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
-  return useSWR<any>(key, async () => {
-    if (!key) return null
-    const params = new URLSearchParams()
-    if (validFrom) params.append('from', validFrom)
-    if (validTo) params.append('to', validTo)
-    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
-    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
-    if (validCompTo) params.append('comparisonTo', validCompTo)
-    
-    const endpoint = params.toString() ? `/guests?${params}` : '/guests'
-    const result = await api.request(endpoint)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
-}
-
-export function useSeasonalAnalysis(year?: number) {
-  const key = year ? ['/seasonal-analysis', year] : '/seasonal-analysis'
-  return useSWR<any>(key, async () => {
-    const result = await api.getSeasonalAnalysis(year)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
-}
 
 export function useProperties() {
   return useSWR<any>('/properties', async () => {
@@ -356,29 +257,6 @@ export function useDailyOccupancy(from?: string, to?: string, tagIds?: string[])
       return result.data
     }
   )
-}
-
-export function useOverview(
-  from?: string, 
-  to?: string, 
-  tagIds?: string[],
-  comparisonFrom?: string,
-  comparisonTo?: string
-) {
-  const params = new URLSearchParams()
-  if (from) params.append('from', from)
-  if (to) params.append('to', to)
-  if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
-  if (comparisonFrom) params.append('comparisonFrom', comparisonFrom)
-  if (comparisonTo) params.append('comparisonTo', comparisonTo)
-  
-  const key = params.toString() ? `/overview?${params}` : '/overview'
-  
-  return useSWR<any>(key, async () => {
-    const result = await api.request(key)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
 }
 
 // Operating Expenses hooks

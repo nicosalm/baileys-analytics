@@ -140,6 +140,9 @@ tags.post('/', async (c) => {
       throw error;
     }
 
+    const { invalidateDashboardCache } = await import('../utils/cache');
+    await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
     return c.json({
       id: data.id,
       name: data.name,
@@ -185,6 +188,9 @@ tags.put('/:id', async (c) => {
       return c.json({ error: 'Tag not found' }, 404);
     }
 
+    const { invalidateDashboardCache } = await import('../utils/cache');
+    await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
     return c.json({
       id: data.id,
       name: data.name,
@@ -213,10 +219,13 @@ tags.delete('/:id', async (c) => {
       throw error;
     }
 
+    const { invalidateDashboardCache } = await import('../utils/cache');
+    await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+
     return c.json({ success: true });
   } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to delete tag' 
+    return c.json({
+      error: error instanceof Error ? error.message : 'Failed to delete tag'
     }, 500);
   }
 });

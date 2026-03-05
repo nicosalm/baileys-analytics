@@ -22,7 +22,7 @@ export async function getPropertyMetrics(
 
   const { data: properties } = await supabase
     .from('properties')
-    .select('*')
+    .select('id, name')
     .eq('tenant_id', tenantId)
     .eq('active', true);
 
@@ -51,7 +51,7 @@ export async function getPropertyMetrics(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('*')
+    .select('id, property_id, arrival, departure, total_amount')
     .eq('tenant_id', tenantId)
     .lte('arrival', to)
     .gte('departure', from)
