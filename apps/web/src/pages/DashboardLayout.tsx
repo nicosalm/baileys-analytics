@@ -76,8 +76,6 @@ const DashboardTabs = () => {
     navigate(newPath)
   }
 
-  const displayActiveTab = activeTab
-
   return (
     <div className="bg-background/90 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto">
@@ -88,12 +86,12 @@ const DashboardTabs = () => {
               onClick={() => handleTabClick(id)}
               className={`
                 py-3 px-3 md:px-4 border-b-2 font-medium text-sm flex items-center transition-all whitespace-nowrap cursor-pointer
-                ${displayActiveTab === id
+                ${activeTab === id
                   ? 'border-primary text-primary bg-primary/5'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
                 }
               `}
-              aria-current={displayActiveTab === id ? 'page' : undefined}
+              aria-current={activeTab === id ? 'page' : undefined}
             >
               <Icon className="w-4 h-4 mr-1.5 md:mr-2" />
               {label}

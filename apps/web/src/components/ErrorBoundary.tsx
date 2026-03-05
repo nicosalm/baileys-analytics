@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react'
+import { Component, ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -7,7 +7,6 @@ interface Props {
   fallback?: ReactNode
   onError?: (error: Error, errorInfo: ErrorInfo) => void
   resetKeys?: Array<string | number>
-  resetOnPropsChange?: boolean
   isolate?: boolean
   level?: 'page' | 'section' | 'component'
 }
@@ -68,22 +67,18 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidUpdate(prevProps: Props) {
-    const { resetKeys, resetOnPropsChange } = this.props
+    const { resetKeys } = this.props
     const { hasError } = this.state
-    
+
     if (hasError && resetKeys && prevProps.resetKeys) {
       const hasResetKeyChanged = resetKeys.some(
         (key, idx) => key !== this.previousResetKeys[idx]
       )
-      
+
       if (hasResetKeyChanged) {
         this.resetErrorBoundary()
         this.previousResetKeys = resetKeys
       }
-    }
-    
-    if (hasError && resetOnPropsChange && prevProps.children !== this.props.children) {
-      this.resetErrorBoundary()
     }
   }
 
@@ -231,19 +226,4 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return children
   }
-}
-
-export function withErrorBoundary<P extends object>(
-  Component: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<Props, 'children'>
-) {
-  const WrappedComponent = (props: P) => (
-    <ErrorBoundary {...errorBoundaryProps}>
-      <Component {...props} />
-    </ErrorBoundary>
-  )
-  
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`
-  
-  return WrappedComponent
 }

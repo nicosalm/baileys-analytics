@@ -3,17 +3,6 @@ import { api } from '@/lib/api'
 import type { Season, SeasonFormData } from '@/types/season'
 import type { Goal, GoalFormData, GoalProgress } from '@/types/goal'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
-import { measurePerformance } from '@/utils/performance'
-
-// helper to create stable SWR cache keys from parameters
-const createCacheKey = (prefix: string, ...parts: (string | string[] | undefined)[]) => {
-  const serialized = parts.map(p => {
-    if (p === undefined) return ''
-    if (Array.isArray(p)) return p.join(',')
-    return p
-  }).join('|')
-  return serialized ? `${prefix}:${serialized}` : null
-}
 
 // New batch endpoint hook for dashboards
 export function useDashboardBatch(
@@ -31,7 +20,7 @@ export function useDashboardBatch(
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
 
   const key = (validFrom || validTo)
-    ? createCacheKey('dashboard-batch', view, validFrom, validTo, validTagIds, validCompFrom, validCompTo)
+    ? `dashboard-batch:${[view, validFrom, validTo, validTagIds?.join(','), validCompFrom, validCompTo].filter(Boolean).join('|')}`
     : null
 
   const result = useSWR<any>(key, async () => {
@@ -43,15 +32,9 @@ export function useDashboardBatch(
     if (validCompFrom) params.append('comparisonFrom', validCompFrom)
     if (validCompTo) params.append('comparisonTo', validCompTo)
 
-    const endpoint = `/dashboard-batch?${params}`
-    const fetchResult = await measurePerformance(
-      () => api.request(endpoint),
-      `dashboard-batch-${view}`,
-      (res: any) => res.success && res.data?._cached === true
-    )
-
-    if (!fetchResult.success) throw new Error(fetchResult.error)
-    return fetchResult.data
+    const result = await api.request(`/dashboard-batch?${params}`)
+    if (!result.success) throw new Error(result.error)
+    return result.data
   }, { refreshInterval: 120000, keepPreviousData: true })
 
   // first load with no error: show loading. retries exhausted: show error.
@@ -452,7 +435,7 @@ export async function savePropertyTaxConfig(data: any): Promise<void> {
 
 // Tax Jurisdictions hook
 export function useBookingsForRange(from?: string, to?: string) {
-  const key = from && to ? createCacheKey('bookings-range', from, to) : null
+  const key = from && to ? `bookings-range:${from}|${to}` : null
   return useSWR<any[]>(key, async () => {
     const result = await api.getBookings({ startDate: from!, endDate: to!, limit: '1000' })
     if (!result.success) throw new Error(result.error)
