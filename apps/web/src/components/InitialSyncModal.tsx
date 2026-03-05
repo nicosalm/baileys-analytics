@@ -298,7 +298,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           <div className="mb-6">
             <div className="bg-muted rounded-full h-2 overflow-hidden">
               <div 
-                className={`h-full ${BRAND.buttonGradient} transition-all duration-500`}
+                className="h-full bg-primary transition-all duration-500"
                 style={{ width: `${getProgressPercentage()}%` }}
               />
             </div>

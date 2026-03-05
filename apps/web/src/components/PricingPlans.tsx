@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { LoadingState } from './LoadingState';
-import { BRAND } from '@/constants';
+
 
 interface PricingPlansProps {
   currentPlan?: string;
@@ -126,7 +126,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
               className={`w-full py-3 text-center rounded-lg font-medium transition-opacity cursor-pointer ${
                 currentPlan
                   ? 'bg-muted text-muted-foreground cursor-not-allowed'
-                  : `${BRAND.buttonGradient} text-white hover:opacity-90`
+                  : 'bg-primary text-primary-foreground hover:opacity-90'
               }`}
             >
               {currentPlan ? 'Current Plan' : isTrialEligible ? 'Start $1 Trial' : 'Subscribe'}

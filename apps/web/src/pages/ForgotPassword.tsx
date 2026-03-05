@@ -130,7 +130,7 @@ export const ForgotPassword = () => {
               type="submit"
               loading={loading}
               loadingText="Sending..."
-              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:opacity-90 transition-opacity`}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity"
             >
               Send reset link
             </Button>

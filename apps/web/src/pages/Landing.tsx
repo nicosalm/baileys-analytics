@@ -52,7 +52,7 @@ export const Landing = () => {
                   >
                     Logout
                   </Button>
-                  <Link to="/dashboard/overview" className={`px-4 py-2 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium text-sm`}>
+                  <Link to="/dashboard/overview" className={`px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm`}>
                     Dashboard
                   </Link>
                 </>
@@ -61,7 +61,7 @@ export const Landing = () => {
                   <Link to="/login" className="hidden sm:block px-4 py-2 text-muted-foreground hover:text-foreground font-medium transition-colors text-sm">
                     Log in
                   </Link>
-                  <Link to="/signup" className={`px-4 py-2 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium text-sm`}>
+                  <Link to="/signup" className={`px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm`}>
                     Start Trial
                   </Link>
                 </>
@@ -90,7 +90,7 @@ export const Landing = () => {
 
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-              <Link to="/signup" className={`group px-6 py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center`}>
+              <Link to="/signup" className={`group px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center`}>
                 Start Your $1 Trial
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
               </Link>
@@ -283,7 +283,7 @@ export const Landing = () => {
                 </div>
               </div>
 
-              <Link to="/signup" className={`block w-full py-3 text-center ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium`}>
+              <Link to="/signup" className={`block w-full py-3 text-center bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium`}>
                 Start $1 Trial
               </Link>
 
@@ -297,7 +297,7 @@ export const Landing = () => {
           <div className="text-center mt-16 md:mt-24">
             <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-4">Ready to see your real numbers?</h3>
             {!isAuthenticated && (
-              <Link to="/signup" className={`inline-flex items-center px-6 py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium hover:opacity-90 transition-opacity`}>
+              <Link to="/signup" className={`inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity`}>
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>

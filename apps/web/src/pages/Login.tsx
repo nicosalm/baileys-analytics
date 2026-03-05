@@ -175,7 +175,7 @@ export const Login = () => {
               type="submit"
               loading={loading}
               loadingText="Signing in..."
-              className={`w-full py-3 ${BRAND.buttonGradient} text-white rounded-lg font-medium cursor-pointer hover:opacity-90 transition-opacity`}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium cursor-pointer hover:opacity-90 transition-opacity"
             >
               Sign in
             </Button>
@@ -236,13 +236,13 @@ export const Login = () => {
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 to-blue-700 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
         {/* Floating shapes */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary-foreground/10 rounded-full mix-blend-multiply filter blur-xl animate-blob" />
+        <div className="absolute top-40 right-10 w-72 h-72 bg-primary-foreground/8 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000" />
+        <div className="absolute bottom-20 left-20 w-72 h-72 bg-primary-foreground/6 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000" />
 
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
+        <div className="relative z-10 flex flex-col justify-center px-16 text-primary-foreground">
           <h3 className="text-4xl font-bold mb-6">Analytics for Your OwnerRez Data</h3>
           <p className="text-lg opacity-90 mb-8">
             Track revenue, occupancy, and guest metrics across all your properties.
@@ -251,15 +251,15 @@ export const Login = () => {
           {/* Feature highlights */}
           <div className="space-y-4">
             <div className="flex items-start">
-              <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
+              <div className="w-2 h-2 bg-primary-foreground rounded-full mt-2 mr-3 flex-shrink-0" />
               <p className="opacity-90">6 specialized dashboards</p>
             </div>
             <div className="flex items-start">
-              <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
+              <div className="w-2 h-2 bg-primary-foreground rounded-full mt-2 mr-3 flex-shrink-0" />
               <p className="opacity-90">Platform fee tracking for taxes</p>
             </div>
             <div className="flex items-start">
-              <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
+              <div className="w-2 h-2 bg-primary-foreground rounded-full mt-2 mr-3 flex-shrink-0" />
               <p className="opacity-90">Cross-property comparison</p>
             </div>
           </div>

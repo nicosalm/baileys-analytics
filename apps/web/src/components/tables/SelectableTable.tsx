@@ -328,7 +328,7 @@ export function SelectableTable<T extends Record<string, any>>({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between bg-card p-4 rounded-lg shadow-sm">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} results
           </div>
 

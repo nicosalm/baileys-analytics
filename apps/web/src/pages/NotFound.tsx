@@ -20,7 +20,7 @@ export const NotFound = () => {
             </Link>
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
-                <Link to="/dashboard/overview" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium`}>
+                <Link to="/dashboard/overview" className={`px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium`}>
                   Open Dashboard
                 </Link>
               ) : (
@@ -28,7 +28,7 @@ export const NotFound = () => {
                   <Link to="/login" className="px-5 py-2.5 text-foreground/80 hover:text-foreground font-medium transition-colors hover:bg-muted/70 rounded-lg">
                     Login
                   </Link>
-                  <Link to="/signup" className={`px-5 py-2.5 ${BRAND.buttonGradient} text-white rounded-lg hover:opacity-90 transition-opacity font-medium`}>
+                  <Link to="/signup" className={`px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium`}>
                     Start Free Trial
                   </Link>
                 </>
