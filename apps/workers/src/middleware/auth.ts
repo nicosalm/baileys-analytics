@@ -18,13 +18,27 @@ export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { us
 	}
 
 	c.set('user', user);
-	
+
+	// anonymous users map to the demo tenant
+	if (user.is_anonymous) {
+		const { data: demoTenant } = await supabase
+			.from('tenants')
+			.select('id')
+			.eq('email', 'demo@baileysanalytics.com')
+			.maybeSingle();
+
+		if (demoTenant) {
+			c.set('tenantId', demoTenant.id);
+		}
+		return next();
+	}
+
 	const { data: tenant } = await supabase
 		.from('tenants')
 		.select('id')
 		.eq('user_id', user.id)
 		.maybeSingle();
-	
+
 	if (tenant) {
 		c.set('tenantId', tenant.id);
 	} else {
@@ -38,7 +52,7 @@ export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { us
 			})
 			.select('id')
 			.single();
-			
+
 		if (newTenant) {
 			c.set('tenantId', newTenant.id);
 		}

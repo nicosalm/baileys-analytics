@@ -19,3 +19,14 @@ export const ProtectedRoute = () => {
 
   return <Outlet />
 }
+
+// redirects demo users to dashboard — used for settings/admin routes
+export const NoDemoRoute = ({ children }: { children: React.ReactNode }) => {
+  const { state } = useAuth()
+
+  if (state.status === 'authenticated' && state.user.isDemo) {
+    return <Navigate to="/dashboard/overview" replace />
+  }
+
+  return <>{children}</>
+}

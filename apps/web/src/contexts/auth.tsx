@@ -15,6 +15,7 @@ type AuthContextValue = {
   signup: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   signInWithGoogle: () => Promise<boolean>
   signInWithMicrosoft: () => Promise<boolean>
+  signInAsDemo: () => Promise<boolean>
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<boolean>
   updatePassword: (newPassword: string) => Promise<boolean>
@@ -178,6 +179,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     api.setAccessToken(session.access_token)
 
+    // anonymous users get demo mode — skip tenant creation and ownerrez checks
+    const isAnonymous = session.user.is_anonymous === true
+
+    if (isAnonymous) {
+      const appUser: AppUser = {
+        ...session.user,
+        hasOwnerRezConnection: true,
+        tenantId: 'demo',
+        isOAuthUser: false,
+        companyName: 'Lakeshore Retreats',
+        isDemo: true,
+      }
+
+      setState({ status: 'authenticated', user: appUser, session })
+      return true
+    }
+
     // Helper: race a promise against a timeout, returning fallback on timeout
     const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
       Promise.race([
@@ -213,6 +231,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       tenantId: tenantResult?.id || session.user.user_metadata?.tenant_id,
       isOAuthUser: isOAuthUser(session.user.identities),
       companyName: tenantResult?.companyName || null,
+      isDemo: false,
     }
 
     setState({
@@ -302,6 +321,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       })
       return !error
+    } catch {
+      return false
+    }
+  }
+
+  const signInAsDemo = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously()
+      if (error || !data.session) return false
+      return await processSession(data.session)
     } catch {
       return false
     }
@@ -533,7 +562,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []) // removed processSession from deps to prevent re-runs
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, logout, resetPassword, updatePassword, updateEmail, refreshUser, setOwnerRezConnected, setCompanyName }}>
+    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, signInAsDemo, logout, resetPassword, updatePassword, updateEmail, refreshUser, setOwnerRezConnected, setCompanyName }}>
       {children}
     </AuthContext.Provider>
   )

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { authMiddleware } from './middleware/auth';
 import { subscriptionMiddleware } from './middleware/subscription';
+import { demoGuard } from './middleware/demo-guard';
 import { rateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
 
@@ -717,6 +718,39 @@ const dashboardPaths = [
 dashboardPaths.forEach(path => {
 	app.use(`${path}/*`, subscriptionMiddleware);
 	app.use(path, subscriptionMiddleware);
+});
+
+// block write operations for demo users
+const demoBlockedPaths = [
+	'/api/manual-sync',
+	'/api/sync-guest-details',
+	'/api/sync',
+	'/api/initial-sync-chunked',
+	'/api/oauth',
+	'/api/account',
+	'/api/scheduler',
+];
+demoBlockedPaths.forEach(path => {
+	app.use(path, authMiddleware, demoGuard);
+	app.use(`${path}/*`, authMiddleware, demoGuard);
+});
+
+// block POST/PUT/DELETE on data routes for demo users (allow GET)
+const demoReadOnlyPaths = [
+	'/api/tags',
+	'/api/seasons',
+	'/api/goals',
+	'/api/operating-expenses',
+	'/api/expense-templates',
+	'/api/tax',
+];
+demoReadOnlyPaths.forEach(path => {
+	app.post(path, authMiddleware, demoGuard);
+	app.put(path, authMiddleware, demoGuard);
+	app.delete(path, authMiddleware, demoGuard);
+	app.post(`${path}/*`, authMiddleware, demoGuard);
+	app.put(`${path}/*`, authMiddleware, demoGuard);
+	app.delete(`${path}/*`, authMiddleware, demoGuard);
 });
 
 app.route('/api/properties', properties);

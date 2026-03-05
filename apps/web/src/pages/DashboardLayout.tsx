@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/auth'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft, Eye } from 'lucide-react'
 import { lazy, Suspense, useState, useEffect } from 'react'
 
 const OverviewDashboard = lazy(() => import('@/components/dashboards/OverviewDashboard').then(m => ({ default: m.OverviewDashboard })))
@@ -142,6 +142,7 @@ export const DashboardLayout = () => {
   if (state.status !== 'authenticated') return null
 
   const { user } = state
+  const isDemo = user.isDemo === true
 
   const handleLogout = async () => {
     await logout()
@@ -258,34 +259,60 @@ export const DashboardLayout = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
-                  <div className="flex items-center gap-2 pl-3 border-l border-border">
-                    {isAdmin && (
+                  {isDemo ? (
+                    <div className="flex items-center gap-2">
+                      <span className="hidden sm:inline text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                        <Eye className="w-3.5 h-3.5" />
+                        Demo Mode
+                      </span>
                       <Link
-                        to="/admin"
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-                        title="Admin Panel"
+                        to="/signup"
+                        className="px-4 py-1.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
                       >
-                        <Shield className="w-5 h-5" />
+                        Sign Up
                       </Link>
-                    )}
-                    <Link
-                      to="/settings"
-                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-                      title="Settings"
-                    >
-                      <Settings className="w-5 h-5" />
-                    </Link>
-                    <Button
-                      variant="ghost"
-                      onClick={handleLogout}
-                      className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                      style={{ isolation: 'isolate' }}
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span className="hidden sm:inline">Logout</span>
-                    </Button>
-                  </div>
+                      <Button
+                        variant="ghost"
+                        onClick={handleLogout}
+                        className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                        style={{ isolation: 'isolate' }}
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span className="hidden sm:inline">Exit</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
+                      <div className="flex items-center gap-2 pl-3 border-l border-border">
+                        {isAdmin && (
+                          <Link
+                            to="/admin"
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
+                            title="Admin Panel"
+                          >
+                            <Shield className="w-5 h-5" />
+                          </Link>
+                        )}
+                        <Link
+                          to="/settings"
+                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
+                          title="Settings"
+                        >
+                          <Settings className="w-5 h-5" />
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          onClick={handleLogout}
+                          className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                          style={{ isolation: 'isolate' }}
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span className="hidden sm:inline">Logout</span>
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

@@ -26,6 +26,12 @@ export const subscriptionMiddleware = async (c: Context<{ Bindings: Env; Variabl
     return next();
   }
 
+  // anonymous/demo users bypass subscription checks
+  const user = c.get('user');
+  if (user?.is_anonymous) {
+    return next();
+  }
+
   // get tenant id from context (set by auth middleware)
   const tenantId = c.get('tenantId');
 

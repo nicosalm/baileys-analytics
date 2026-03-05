@@ -18,7 +18,12 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
   const [loading, setLoading] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, state } = useAuth();
+
+  // demo users bypass subscription gate entirely
+  if (state.status === 'authenticated' && state.user.isDemo) {
+    return <>{children}</>;
+  }
 
   // pages that don't require subscription
   const publicPaths = ['/settings', '/login', '/signup', '/forgot-password', '/reset-password'];

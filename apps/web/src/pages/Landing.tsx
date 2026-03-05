@@ -6,15 +6,18 @@ import {
   Shield, Zap, Lock, Building2, Calendar, DollarSign
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { useInView } from '@/hooks'
 import { Switch } from '@/components/ui/switch'
 
 export const Landing = () => {
-  const { state, logout } = useAuth()
+  const { state, logout, signInAsDemo } = useAuth()
   const isAuthenticated = state.status === 'authenticated'
+  const navigate = useNavigate()
   const [yearlyBilling, setYearlyBilling] = useState(true)
   const [scrolled, setScrolled] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
 
   const feature1 = useInView()
   const feature2 = useInView()
@@ -32,6 +35,14 @@ export const Landing = () => {
 
   const handleLogout = useCallback(() => logout(), [logout])
   const handleToggleBilling = useCallback(() => setYearlyBilling(prev => !prev), [])
+  const handleTryDemo = useCallback(async () => {
+    setDemoLoading(true)
+    const success = await signInAsDemo()
+    if (success) {
+      navigate('/dashboard/overview')
+    }
+    setDemoLoading(false)
+  }, [signInAsDemo, navigate])
 
   return (
     <div className="dark min-h-screen flex flex-col">
@@ -106,9 +117,13 @@ export const Landing = () => {
                 Start Your $1 Trial
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
               </Link>
-              <a href="#how-it-works" className="px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm">
-                See how it works
-              </a>
+              <button
+                onClick={handleTryDemo}
+                disabled={demoLoading}
+                className="px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50"
+              >
+                {demoLoading ? 'Loading...' : 'Try the Demo'}
+              </button>
             </div>
           )}
 

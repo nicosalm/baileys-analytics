@@ -11,7 +11,7 @@ import { BRAND } from '@/constants'
 export const Login = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { login, signInWithGoogle, signInWithMicrosoft, state } = useAuth()
+  const { login, signInWithGoogle, signInWithMicrosoft, signInAsDemo, state } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,6 +19,7 @@ export const Login = () => {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [microsoftLoading, setMicrosoftLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
   const hasShownSuccessToast = useRef(false)
   const hasShownOAuthSuccess = useRef(false)
 
@@ -97,6 +98,15 @@ export const Login = () => {
     if (!success) {
       setMicrosoftLoading(false)
       addToast('error', 'Failed to initiate Microsoft sign-in. Please try again.')
+    }
+  }
+
+  const handleTryDemo = async () => {
+    setDemoLoading(true)
+    const success = await signInAsDemo()
+    if (!success) {
+      setDemoLoading(false)
+      addToast('error', 'Failed to start demo. Please try again.')
     }
   }
 
@@ -225,8 +235,19 @@ export const Login = () => {
             </div>
           </form>
 
+          {/* Demo link */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={handleTryDemo}
+              disabled={demoLoading}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            >
+              {demoLoading ? 'Loading demo...' : 'Or explore the demo with sample data'}
+            </button>
+          </div>
+
           {/* Sign up link */}
-          <p className="mt-8 text-center text-muted-foreground">
+          <p className="mt-4 text-center text-muted-foreground">
             Don't have an account?{' '}
             <Link to="/signup" className="font-medium text-primary hover:text-primary/90">
               Start your $1 trial
