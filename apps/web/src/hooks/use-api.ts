@@ -90,12 +90,12 @@ export function usePropertyMetrics(
     if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
     if (validCompFrom) params.append('comparisonFrom', validCompFrom)
     if (validCompTo) params.append('comparisonTo', validCompTo)
-    
+
     const endpoint = params.toString() ? `/properties/metrics?${params}` : '/properties/metrics'
     const result = await api.request(endpoint)
     if (!result.success) throw new Error(result.error)
     return result.data
-  })
+  }, { keepPreviousData: true })
 }
 
 
@@ -255,7 +255,8 @@ export function useDailyOccupancy(from?: string, to?: string, tagIds?: string[])
       const result = await api.request(`/occupancy/daily?${params}`)
       if (!result.success) throw new Error(result.error)
       return result.data
-    }
+    },
+    { keepPreviousData: true }
   )
 }
 
@@ -379,7 +380,7 @@ export function useSeasons() {
     const result = await api.getSeasons()
     if (!result.success) throw new Error(result.error)
     return result.data || []
-  })
+  }, { keepPreviousData: true })
 }
 
 export async function createSeason(data: SeasonFormData) {
@@ -427,7 +428,7 @@ export function useGoalProgress() {
     const result = await api.getGoalProgress()
     if (!result.success) throw new Error(result.error)
     return result.data || []
-  })
+  }, { keepPreviousData: true })
 }
 
 export async function saveGoals(goals: GoalFormData[]) {
@@ -456,7 +457,7 @@ export function useBookingsForRange(from?: string, to?: string) {
     const result = await api.getBookings({ startDate: from!, endDate: to!, limit: '1000' })
     if (!result.success) throw new Error(result.error)
     return result.data
-  }, { refreshInterval: 120000 })
+  }, { refreshInterval: 120000, keepPreviousData: true })
 }
 
 export function useTaxJurisdictions(propertyId?: string) {
