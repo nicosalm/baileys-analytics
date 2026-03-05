@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import { BRAND } from '@/constants'
 
 const FILLS = ['#dbeafe', '#60a5fa', '#3b82f6', '#1e3a8a']
+const POSITIONS: [number, number][] = [[0, 0], [500, 0], [0, 500], [500, 500]]
 
 const TRANSFORMS = [
   ['translate(0,0)', 'translate(100%,0)', 'translate(100%,100%)', 'translate(0,100%)'],
@@ -11,26 +12,34 @@ const TRANSFORMS = [
 ]
 
 export const LogoCube = ({ className = 'w-9 h-9' }: { className?: string }) => {
-  const [step, setStep] = useState(0)
-  const interval = useRef<number | null>(null)
+  const rectsRef = useRef<(SVGRectElement | null)[]>([])
+  const intervalRef = useRef<number | null>(null)
 
   const handleMouseEnter = useCallback(() => {
-    setStep(1)
-    interval.current = window.setInterval(() => {
-      setStep(s => (s + 1) % 4)
+    let step = 1
+    rectsRef.current.forEach((rect, i) => {
+      if (rect) rect.style.transform = TRANSFORMS[i][1]
+    })
+    intervalRef.current = window.setInterval(() => {
+      step = (step + 1) % 4
+      rectsRef.current.forEach((rect, i) => {
+        if (rect) rect.style.transform = TRANSFORMS[i][step]
+      })
     }, 900)
   }, [])
 
   const handleMouseLeave = useCallback(() => {
-    if (interval.current) {
-      clearInterval(interval.current)
-      interval.current = null
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
     }
-    setStep(0)
+    rectsRef.current.forEach(rect => {
+      if (rect) rect.style.transform = 'translate(0,0)'
+    })
   }, [])
 
   useEffect(() => {
-    return () => { if (interval.current) clearInterval(interval.current) }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [])
 
   return (
@@ -44,15 +53,15 @@ export const LogoCube = ({ className = 'w-9 h-9' }: { className?: string }) => {
       {FILLS.map((fill, i) => (
         <rect
           key={i}
-          x={i % 2 === 1 ? 500 : 0}
-          y={i >= 2 ? 500 : 0}
+          ref={el => { rectsRef.current[i] = el }}
+          x={POSITIONS[i][0]}
+          y={POSITIONS[i][1]}
           width="500"
           height="500"
           fill={fill}
           style={{
-            transformBox: 'fill-box' as const,
+            transformBox: 'fill-box',
             transition: 'transform 0.7s cubic-bezier(0.25, 0.1, 0.25, 1)',
-            transform: TRANSFORMS[i][step],
           }}
         />
       ))}
