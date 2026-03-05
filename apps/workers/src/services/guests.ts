@@ -1,6 +1,14 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 
+export interface FeePlatformBreakdown {
+  platform: string;
+  otaFees: number;
+  ccFees: number;
+  totalFees: number;
+  bookingCount: number;
+}
+
 export interface GuestMetrics {
   totalGuests: number;
   repeatGuests: number;
@@ -10,6 +18,10 @@ export interface GuestMetrics {
   topSpenders: GuestListItem[];
   guestsBySource: GuestSourceData[];
   tagDistribution: TagDistribution[];
+  totalOtaFees: number;
+  totalCcFees: number;
+  directSavingsOpportunity: number;
+  feesByPlatform: FeePlatformBreakdown[];
 }
 
 export interface GuestListItem {
@@ -110,7 +122,11 @@ export async function getGuestsData(
           avgSpend: 0,
           topSpenders: [],
           guestsBySource: [],
-          tagDistribution: []
+          tagDistribution: [],
+          totalOtaFees: 0,
+          totalCcFees: 0,
+          directSavingsOpportunity: 0,
+          feesByPlatform: []
         },
         guests: []
       };
@@ -129,7 +145,11 @@ export async function getGuestsData(
         avgSpend: 0,
         topSpenders: [],
         guestsBySource: [],
-        tagDistribution: []
+        tagDistribution: [],
+        totalOtaFees: 0,
+        totalCcFees: 0,
+        directSavingsOpportunity: 0,
+        feesByPlatform: []
       },
       guests: []
     };
@@ -417,6 +437,51 @@ export async function getGuestsData(
     })
     .sort((a, b) => b.count - a.count);
 
+  // aggregate fee leakage: OTA fees (from booking field) + CC fees (from booking_charges)
+  let totalOtaFees = 0;
+  const platformFeeMap = new Map<string, FeePlatformBreakdown>();
+
+  for (const booking of filteredPeriodBookings) {
+    const otaFee = (booking as any).guest_listing_site_fee || 0;
+    totalOtaFees += otaFee;
+
+    const platform = normalizePlatform(booking.platform);
+    if (!platformFeeMap.has(platform)) {
+      platformFeeMap.set(platform, { platform, otaFees: 0, ccFees: 0, totalFees: 0, bookingCount: 0 });
+    }
+    const pf = platformFeeMap.get(platform)!;
+    pf.otaFees += otaFee;
+    pf.bookingCount += 1;
+  }
+
+  // fetch CC charges for the period bookings
+  let totalCcFees = 0;
+  if (bookingIds.length > 0) {
+    const { data: ccCharges } = await supabase
+      .from('booking_charges')
+      .select('booking_id, amount')
+      .in('booking_id', bookingIds)
+      .ilike('description', '%credit card%');
+
+    if (ccCharges) {
+      const bookingPlatformMap = new Map(filteredPeriodBookings.map(b => [b.id, normalizePlatform(b.platform)]));
+      for (const charge of ccCharges) {
+        totalCcFees += charge.amount || 0;
+        const platform = bookingPlatformMap.get(charge.booking_id) || 'Unknown';
+        if (platformFeeMap.has(platform)) {
+          platformFeeMap.get(platform)!.ccFees += charge.amount || 0;
+        }
+      }
+    }
+  }
+
+  const feesByPlatform: FeePlatformBreakdown[] = Array.from(platformFeeMap.values())
+    .map(pf => ({ ...pf, totalFees: pf.otaFees + pf.ccFees }))
+    .filter(pf => pf.totalFees > 0)
+    .sort((a, b) => b.totalFees - a.totalFees);
+
+  const directSavingsOpportunity = totalOtaFees + totalCcFees;
+
   return {
     metrics: {
       totalGuests,
@@ -426,7 +491,11 @@ export async function getGuestsData(
       avgSpend,
       topSpenders,
       guestsBySource,
-      tagDistribution
+      tagDistribution,
+      totalOtaFees,
+      totalCcFees,
+      directSavingsOpportunity,
+      feesByPlatform
     },
     guests: guestsList.slice(0, 100)
   };

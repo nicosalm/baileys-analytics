@@ -7,8 +7,7 @@ export type ModalType =
   | { type: 'booking'; bookingId: string; guestName?: string }
   | { type: 'property-month'; propertyId: string; propertyName: string; month: string; year: string }
   | { type: 'financial-summary'; propertyId?: string; propertyName?: string }
-  | { type: 'platform-fee-entry'; propertyId: string; propertyName: string; month?: string; existingData?: any }
-  | { type: 'operating-expense-entry'; propertyId: string; propertyName: string; month?: string }
+  | { type: 'operating-expense-entry'; propertyId: string; propertyName: string; month?: string; templateData?: { category: string; amount: number; description?: string }[] }
   | null
 
 interface ModalContextType {

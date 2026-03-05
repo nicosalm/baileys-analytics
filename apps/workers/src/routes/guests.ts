@@ -161,6 +161,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			arrival,
 			departure,
 			total_amount,
+			guest_listing_site_fee,
 			platform,
 			status,
 			guest_name,
@@ -168,7 +169,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			guest_phone,
 			property_id,
 			ownerrez_booking_id,
-			booking_charges(id, type, description, amount)
+			booking_charges(id, type, description, amount, position)
 		`)
 		.eq('tenant_id', tenant.id)
 		.neq('status', 'canceled');
@@ -198,11 +199,13 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 	
 	let totalNights = 0;
 	let totalRevenue = 0;
+	let totalListingSiteFees = 0;
 	const propertySet = new Set<string>();
 	const platformSet = new Set<string>();
-	
+
 	bookings.forEach(booking => {
 		totalRevenue += booking.total_amount || 0;
+		totalListingSiteFees += (booking as any).guest_listing_site_fee || 0;
 		propertySet.add(booking.property_id);
 		platformSet.add(booking.platform || 'Unassigned');
 		
@@ -239,6 +242,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			phone: bookings[0].guest_phone,
 			totalBookings: bookings.length,
 			totalSpent: totalRevenue,
+			totalListingSiteFees,
 			avgStayLength,
 			avgNightlyRate,
 			properties: Array.from(propertySet).map(id => ({
@@ -256,6 +260,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			propertyId: b.property_id,
 			propertyName: propertyMap.get(b.property_id) || 'Unknown Property',
 			totalAmount: b.total_amount,
+			guestListingSiteFee: b.guest_listing_site_fee || 0,
 			platform: b.platform || 'Unassigned',
 			status: b.status,
 			nights: b.arrival && b.departure ? Math.ceil(

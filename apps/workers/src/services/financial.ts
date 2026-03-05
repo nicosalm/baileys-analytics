@@ -2,7 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { getActiveSeasons } from './seasons';
 import { TaxCalculator } from './tax-calculator';
 import { SUPABASE_MAX_ROWS } from '../constants';
-import { buildYearMonthFilter } from '../utils/date-filters';
+import { getExpensesWithTemplateFallback } from './expense-utils';
 
 interface FinancialMetrics {
   revenue: {
@@ -180,22 +180,8 @@ export async function getPLData(
     }
   }
 
-  // get year/month range for platform_guest_fees query
-  const fromDate = new Date(from);
-  const toDate = new Date(to);
-  const fromYear = fromDate.getFullYear();
-  const fromMonth = fromDate.getMonth() + 1;
-  const toYear = toDate.getFullYear();
-  const toMonth = toDate.getMonth() + 1;
-
-  const [bookingsResult, guestFeesResult, propertiesResult, upcomingResult, operatingExpensesResult] = await Promise.all([
+  const [bookingsResult, propertiesResult, upcomingResult] = await Promise.all([
     bookingsQuery,
-    supabase
-      .from('platform_guest_fees')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
-      .limit(SUPABASE_MAX_ROWS),
     supabase
       .from('properties')
       .select('*')
@@ -207,28 +193,21 @@ export async function getPLData(
       .eq('tenant_id', tenantId)
       .gte('arrival', new Date().toISOString().split('T')[0])
       .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS),
-    supabase
-      .from('operating_expenses')
-      .select('category, amount')
-      .eq('tenant_id', tenantId)
-      .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
       .limit(SUPABASE_MAX_ROWS)
   ]);
 
   const bookings = bookingsResult.data || [];
-  const guestFees = guestFeesResult.data || [];
   const properties = propertiesResult.data || [];
   const upcomingBookings = upcomingResult.data || [];
-  const operatingExpensesList = operatingExpensesResult.data || [];
+
+  const propertyIds = properties.map((p: any) => p.id);
+  const operatingExpensesList = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds);
 
   const grossRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
-  // host fees from bookings (captured from ownerrez)
+  // host fees (actual, from ownerrez) and guest fees (estimated at sync time, ~13-15%)
   const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
-
-  // guest fees from manual entry
-  const totalGuestFees = guestFees.reduce((sum, gf) => sum + (gf.amount || 0), 0);
+  const totalGuestFees = bookings.reduce((sum, b) => sum + (b.guest_listing_site_fee || 0), 0);
 
   const totalPlatformFees = totalHostFees + totalGuestFees;
 
@@ -304,15 +283,6 @@ export async function getPLData(
     existing.grossRevenue += b.total_amount || 0;
     existing.bookingCount++;
     platformBreakdown.set(platform, existing);
-  });
-
-  // add guest fees to platform breakdown
-  guestFees.forEach((gf: any) => {
-    const platform = gf.platform || 'Unknown';
-    const existing = platformBreakdown.get(platform);
-    if (existing) {
-      existing.fees += gf.amount || 0;
-    }
   });
 
   const platforms = Array.from(platformBreakdown.values()).map(p => ({
@@ -436,19 +406,8 @@ export async function getRevenueData(
     }
   }
 
-  const [bookingsResult, platformFeesResult] = await Promise.all([
-    bookingsQuery,
-    supabase
-      .from('platform_fee_entries')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .gte('month', from.substring(0, 7))
-      .lte('month', to.substring(0, 7))
-      .limit(SUPABASE_MAX_ROWS)
-  ]);
-
-  const bookings = bookingsResult.data || [];
-  const platformFees = platformFeesResult.data || [];
+  const { data: bookingsData } = await bookingsQuery;
+  const bookings = bookingsData || [];
 
   const gross = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
@@ -457,8 +416,8 @@ export async function getRevenueData(
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
 
-  const fees = platformFees.reduce((sum, pf) =>
-    sum + (pf.guest_service_fee || 0) + (pf.host_service_fee || 0), 0
+  const fees = bookings.reduce((sum, b) =>
+    sum + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0
   );
 
   const net = gross - taxes - fees;
@@ -479,29 +438,21 @@ export async function getRevenueData(
   const lastYearFrom = from.replace(/\d{4}/, lastYear.toString());
   const lastYearTo = to.replace(/\d{4}/, lastYear.toString());
 
-  const [lastYearBookingsResult, lastYearFeesResult] = await Promise.all([
-    supabase
-      .from('bookings')
-      .select(`
-        total_amount,
-        booking_charges(amount, type)
-      `)
-      .eq('tenant_id', tenantId)
-      .lte('arrival', lastYearTo)
-      .gte('departure', lastYearFrom)
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS),
-    supabase
-      .from('platform_fee_entries')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .gte('month', lastYearFrom.substring(0, 7))
-      .lte('month', lastYearTo.substring(0, 7))
-      .limit(SUPABASE_MAX_ROWS)
-  ]);
+  const { data: lastYearBookingsData } = await supabase
+    .from('bookings')
+    .select(`
+      total_amount,
+      host_service_fee,
+      guest_listing_site_fee,
+      booking_charges(amount, type)
+    `)
+    .eq('tenant_id', tenantId)
+    .lte('arrival', lastYearTo)
+    .gte('departure', lastYearFrom)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
 
-  const lastYearBookings = lastYearBookingsResult.data || [];
-  const lastYearPlatformFees = lastYearFeesResult.data || [];
+  const lastYearBookings = lastYearBookingsData || [];
 
   const lastYearGross = lastYearBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
@@ -510,8 +461,8 @@ export async function getRevenueData(
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
 
-  const lastYearFees = lastYearPlatformFees.reduce((sum, pf) =>
-    sum + (pf.guest_service_fee || 0) + (pf.host_service_fee || 0), 0
+  const lastYearFees = lastYearBookings.reduce((sum, b) =>
+    sum + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0
   );
 
   const lastYearNet = lastYearGross - lastYearTaxes - lastYearFees;
@@ -640,15 +591,8 @@ export async function getTaxData(
     }
   }
 
-  const [bookingsResult, platformFeesResult, taxConfigResult] = await Promise.all([
+  const [bookingsResult, taxConfigResult] = await Promise.all([
     bookingsQuery,
-    supabase
-      .from('platform_fee_entries')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .gte('month', from.substring(0, 7))
-      .lte('month', to.substring(0, 7))
-      .limit(SUPABASE_MAX_ROWS),
     supabase
       .from('property_tax_configs')
       .select('*')
@@ -657,7 +601,7 @@ export async function getTaxData(
   ]);
 
   const bookings = bookingsResult.data || [];
-  const platformFees = platformFeesResult.data || [];
+  const platformFees: any[] = [];
   const taxConfigs = taxConfigResult.data || [];
 
   const totalRent = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);

@@ -20,8 +20,8 @@ account.get('/export', authMiddleware, async (c) => {
       { data: guests },
       { data: seasons },
       { data: taxConfigs },
-      { data: platformFees },
-      { data: subscription }
+      { data: subscription },
+      { data: expenseTemplates }
     ] = await Promise.all([
       supabase.from('tenants').select('*').eq('id', tenantId).single(),
       supabase.from('properties').select('*').eq('tenant_id', tenantId),
@@ -29,8 +29,8 @@ account.get('/export', authMiddleware, async (c) => {
       supabase.from('guests').select('*').eq('tenant_id', tenantId),
       supabase.from('season_configurations').select('*').eq('tenant_id', tenantId),
       supabase.from('property_tax_configs').select('*').eq('tenant_id', tenantId),
-      supabase.from('platform_fee_entries').select('*').eq('tenant_id', tenantId),
-      supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).single()
+      supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).single(),
+      supabase.from('expense_templates').select('*').eq('tenant_id', tenantId)
     ]);
 
     const exportData = {
@@ -46,8 +46,8 @@ account.get('/export', authMiddleware, async (c) => {
       guests,
       seasons,
       tax_configs: taxConfigs,
-      platform_fees: platformFees,
       subscription,
+      expense_templates: expenseTemplates,
       metadata: {
         total_properties: properties?.length || 0,
         total_bookings: bookings?.length || 0,
@@ -123,6 +123,7 @@ account.delete('/delete', authMiddleware, async (c) => {
     // 3. delete all tenant data (cascade deletes should handle related tables)
     // order matters due to foreign key constraints
     const tablesToDelete = [
+      { table: 'expense_templates', key: 'tenant_id', value: tenantId },
       { table: 'booking_charges', key: 'tenant_id', value: tenantId },
       { table: 'booking_tags', key: 'tenant_id', value: tenantId },
       { table: 'property_tags', key: 'tenant_id', value: tenantId },

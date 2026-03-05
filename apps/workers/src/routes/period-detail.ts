@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
-import { buildYearMonthFilter } from '../utils/date-filters';
+import { getExpensesWithTemplateFallback } from '../services/expense-utils';
 
 const periodDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -53,6 +53,7 @@ periodDetail.get('/', async (c) => {
         platform,
         property_id,
         host_service_fee,
+        guest_listing_site_fee,
         ownerrez_booking_id
       `)
       .eq('tenant_id', tenantId)
@@ -76,37 +77,18 @@ periodDetail.get('/', async (c) => {
       }
     }
 
-    // Parse year/month for fee and expense queries
-    const fromDate = new Date(startDate);
-    const toDate = new Date(endDate);
-    const fromYear = fromDate.getFullYear();
-    const fromMonth = fromDate.getMonth() + 1;
-    const toYear = toDate.getFullYear();
-    const toMonth = toDate.getMonth() + 1;
-
-    const [bookingsData, platformFeesData, operatingExpensesData] = await Promise.all([
+    const [bookingsData, expensesList] = await Promise.all([
       bookingsQuery,
-      supabase
-        .from('platform_guest_fees')
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
-        .limit(SUPABASE_MAX_ROWS),
-      supabase
-        .from('operating_expenses')
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
-        .limit(SUPABASE_MAX_ROWS)
+      getExpensesWithTemplateFallback(supabase, tenantId, startDate, endDate, propertyIds)
     ]);
 
     if (bookingsData.error) throw bookingsData.error;
 
     const bookings = bookingsData.data || [];
 
-    // Calculate costs
-    const totalPlatformFees = (platformFeesData.data || []).reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
-    const totalOperatingExpenses = (operatingExpensesData.data || []).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+    // Calculate costs from booking-level fee columns
+    const totalGuestFees = bookings.reduce((sum, b) => sum + (b.guest_listing_site_fee || 0), 0);
+    const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     // Query booking_charges for tax amounts on these bookings
     let totalTaxes = 0;
@@ -121,9 +103,8 @@ periodDetail.get('/', async (c) => {
       totalTaxes = (charges || []).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
     }
 
-    // Also sum host_service_fee from bookings
     const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
-    const combinedPlatformFees = totalPlatformFees + totalHostFees;
+    const combinedPlatformFees = totalGuestFees + totalHostFees;
     
     const propertyMap = new Map<string, string>();
     properties.forEach(p => propertyMap.set(p.id, p.name));

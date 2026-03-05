@@ -3,7 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
-import { normalizeBookingStatus, SUPABASE_MAX_ROWS } from '../constants';
+import { normalizeBookingStatus, SUPABASE_MAX_ROWS, estimateGuestListingSiteFee } from '../constants';
 
 const initialSyncChunked = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -259,6 +259,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
                           booking.guest?.phone ||
                           booking.guest_phone;
 
+        const platform = booking.source || booking.listing_site || 'Unassigned';
         allBookingData.push({
           tenant_id: tenantId,
           property_id: property.id,
@@ -270,8 +271,9 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
           arrival: booking.arrival,
           departure: booking.departure,
           total_amount: booking.total_amount || 0,
+          guest_listing_site_fee: estimateGuestListingSiteFee(platform, booking.total_amount || 0),
           status: normalizeBookingStatus(booking.status),
-          platform: booking.source || booking.listing_site || 'Unassigned',
+          platform,
           adults: booking.adults || 0,
           children: booking.children || 0,
           booked_utc: booking.booked_utc || booking.created_utc,
@@ -365,9 +367,9 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       }
     }
 
-    // Batch insert charges — need booking UUIDs from DB
+    // Upsert charges — idempotent, safe under concurrent syncs
     if (bookingChargesMap.size > 0) {
-      const chargeOwnerrezIds = [...bookingChargesMap.keys()];
+      const chargeOwnerrezIds = [...bookingChargesMap.keys()].map(String);
       const { data: dbBookingsForCharges } = await supabase
         .from('bookings')
         .select('id, ownerrez_booking_id')
@@ -375,41 +377,41 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
         .in('ownerrez_booking_id', chargeOwnerrezIds);
 
       if (dbBookingsForCharges) {
-        // Delete existing charges for these bookings first (idempotent re-sync)
-        const dbBookingIds = dbBookingsForCharges.map(b => b.id);
-        for (let i = 0; i < dbBookingIds.length; i += CHUNK_SIZE) {
-          const chunk = dbBookingIds.slice(i, i + CHUNK_SIZE);
-          await supabase
-            .from('booking_charges')
-            .delete()
-            .in('booking_id', chunk);
-        }
-
-        // Build all charge rows
         const allCharges: any[] = [];
+        const staleDeletes: any[] = [];
+
         for (const dbBooking of dbBookingsForCharges) {
           const charges = bookingChargesMap.get(Number(dbBooking.ownerrez_booking_id));
-          if (charges) {
-            for (let i = 0; i < charges.length; i++) {
-              allCharges.push({
-                booking_id: dbBooking.id,
-                type: charges[i].type,
-                amount: charges[i].amount,
-                description: charges[i].description,
-                position: i
-              });
-            }
+          if (!charges) continue;
+          for (let i = 0; i < charges.length; i++) {
+            allCharges.push({
+              booking_id: dbBooking.id,
+              type: charges[i].type,
+              amount: charges[i].amount,
+              description: charges[i].description,
+              position: i
+            });
           }
+          staleDeletes.push(
+            supabase.from('booking_charges')
+              .delete()
+              .eq('booking_id', dbBooking.id)
+              .gte('position', charges.length)
+          );
         }
 
-        // Insert in chunks
+        // Upsert in chunks
         for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
           const chunk = allCharges.slice(i, i + CHUNK_SIZE);
-          const { error } = await supabase.from('booking_charges').insert(chunk);
+          const { error } = await supabase.from('booking_charges').upsert(chunk, {
+            onConflict: 'booking_id,position',
+            ignoreDuplicates: false
+          });
           if (error) {
-            console.error(`Failed to batch insert charges chunk ${i}:`, error);
+            console.error(`Failed to upsert charges chunk ${i}:`, error);
           }
         }
+        await Promise.all(staleDeletes);
       }
     }
 

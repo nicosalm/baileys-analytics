@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react'
-import { formatCurrency, formatCompactCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
+import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
@@ -21,9 +21,9 @@ export const PropertiesDashboard = () => {
   const { openModal } = useModal()
   const comparisonDateRange = useComparisonDateRange()
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
-  
+
   const tagIds = useTagIds()
-  
+
   const { data, error, isLoading } = useDashboardBatch(
     'properties',
     filters.dateRange.from,
@@ -35,7 +35,7 @@ export const PropertiesDashboard = () => {
 
   let properties = []
   let previousProperties = null
-  
+
   if (Array.isArray(data)) {
     properties = data
   } else if (data) {
@@ -45,10 +45,10 @@ export const PropertiesDashboard = () => {
 
   useErrorToast(error, 'Failed to load property metrics')
 
-  const validProperties = Array.isArray(properties) 
+  const validProperties = Array.isArray(properties)
     ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
     : [] as PropertyMetrics[]
-  
+
   const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN } = useMemo(() => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
     const totalRev = sumBy(validProperties, (p: PropertyMetrics) => p.revenue)

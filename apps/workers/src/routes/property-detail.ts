@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
-import { buildYearMonthFilter } from '../utils/date-filters';
+import { getExpensesWithTemplateFallback } from '../services/expense-utils';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -44,7 +44,8 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         guest_email,
         status,
         platform,
-        host_service_fee
+        host_service_fee,
+        guest_listing_site_fee
       `)
       .eq('property_id', propertyId)
       .lte('arrival', to)
@@ -65,39 +66,18 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       }
     }
     
-    // Parse year/month for fee and expense queries
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
-    const fromYear = fromDate.getFullYear();
-    const fromMonth = fromDate.getMonth() + 1;
-    const toYear = toDate.getFullYear();
-    const toMonth = toDate.getMonth() + 1;
-
-    const [bookingsResult, platformFeesResult, operatingExpensesResult] = await Promise.all([
+    const [bookingsResult, expensesList] = await Promise.all([
       bookingsQuery,
-      supabase
-        .from('platform_guest_fees')
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .eq('property_id', propertyId)
-        .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
-        .limit(SUPABASE_MAX_ROWS),
-      supabase
-        .from('operating_expenses')
-        .select('amount')
-        .eq('tenant_id', tenantId)
-        .eq('property_id', propertyId)
-        .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
-        .limit(SUPABASE_MAX_ROWS)
+      getExpensesWithTemplateFallback(supabase, tenantId, from, to, [propertyId], propertyId)
     ]);
 
     const { data: bookings, error: bookingsError } = bookingsResult;
 
     if (bookingsError) throw bookingsError;
 
-    // Calculate cost totals
-    const totalGuestPlatformFees = (platformFeesResult.data || []).reduce((sum, f) => sum + (parseFloat(f.amount) || 0), 0);
-    const totalOperatingExpenses = (operatingExpensesResult.data || []).reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
+    // Calculate cost totals from booking-level fee columns
+    const totalGuestPlatformFees = (bookings || []).reduce((sum, b) => sum + (b.guest_listing_site_fee || 0), 0);
+    const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
     const totalHostFees = (bookings || []).reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
 
     // Query booking_charges for tax amounts

@@ -249,6 +249,7 @@ export type Database = {
           departure: string
           guest_email: string | null
           guest_name: string | null
+          guest_listing_site_fee: number | null
           guest_phone: string | null
           host_service_fee: number | null
           id: string
@@ -273,6 +274,7 @@ export type Database = {
           created_at?: string | null
           departure: string
           guest_email?: string | null
+          guest_listing_site_fee?: number | null
           guest_name?: string | null
           guest_phone?: string | null
           host_service_fee?: number | null
@@ -298,6 +300,7 @@ export type Database = {
           created_at?: string | null
           departure?: string
           guest_email?: string | null
+          guest_listing_site_fee?: number | null
           guest_name?: string | null
           guest_phone?: string | null
           host_service_fee?: number | null

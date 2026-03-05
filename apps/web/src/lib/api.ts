@@ -325,26 +325,6 @@ class ApiClient {
         return this.request(`/guests?${params}`)
     }
 
-    async getPlatformFees(propertyId: string, month: string): Promise<ApiResult<any>> {
-        const params = new URLSearchParams()
-        params.append('property', propertyId)
-        params.append('month', month)
-        return this.request(`/platform-fees?${params}`)
-    }
-
-    async savePlatformFee(data: any): Promise<ApiResult<any>> {
-        return this.request('/platform-fees', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
-
-    async deletePlatformFee(id: string): Promise<ApiResult<any>> {
-        return this.request(`/platform-fees/${id}`, {
-            method: 'DELETE'
-        })
-    }
-
     async getOperatingExpenses(propertyId?: string, month?: string): Promise<ApiResult<any>> {
         const params = new URLSearchParams()
         if (propertyId) params.append('property', propertyId)
@@ -369,6 +349,19 @@ class ApiClient {
     async deleteOperatingExpense(id: string): Promise<ApiResult<any>> {
         return this.request(`/operating-expenses/${id}`, {
             method: 'DELETE'
+        })
+    }
+
+    async getExpenseTemplates(propertyId?: string): Promise<ApiResult<any>> {
+        const params = new URLSearchParams()
+        if (propertyId) params.append('property', propertyId)
+        return this.request(`/expense-templates?${params}`)
+    }
+
+    async saveExpenseTemplates(data: any): Promise<ApiResult<any>> {
+        return this.request('/expense-templates/bulk', {
+            method: 'POST',
+            body: JSON.stringify(data)
         })
     }
 

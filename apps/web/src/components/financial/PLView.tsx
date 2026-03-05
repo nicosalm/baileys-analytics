@@ -188,7 +188,7 @@ export const PLView: React.FC<PLViewProps> = ({
               <strong>P&L Summary:</strong> Revenue → Platform Fees → Operating Expenses → Taxes → Net Revenue.{' '}
               {revenue.operatingExpenses.total > 0
                 ? `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
-                : <>Configure <Link to="/settings?tab=platform-fees" className="underline hover:text-info-fg">Platform Fees</Link> and <Link to="/settings?tab=expenses" className="underline hover:text-info-fg">Expenses</Link> in Settings for a complete picture.</>}
+                : <>Configure <Link to="/settings?tab=expenses" className="underline hover:text-info-fg">Expenses</Link> in Settings for a complete picture.</>}
             </div>
           </div>
         </div>
@@ -302,7 +302,7 @@ export const PLView: React.FC<PLViewProps> = ({
                     )}
                     {revenue.guestFees > 0 && (
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-muted-foreground">Guest Service Fees</span>
+                        <span className="text-xs text-muted-foreground">Guest Service Fees (Est.)</span>
                         <span className="text-xs font-medium text-muted-foreground">{formatCurrency(revenue.guestFees)}</span>
                       </div>
                     )}

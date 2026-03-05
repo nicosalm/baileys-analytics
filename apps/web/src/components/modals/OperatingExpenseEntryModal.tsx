@@ -14,6 +14,7 @@ interface OperatingExpenseEntryModalProps {
   propertyId: string
   propertyName: string
   month?: string
+  templateData?: { category: string; amount: number; description?: string }[]
 }
 
 interface ExpenseRow {
@@ -49,6 +50,7 @@ export const OperatingExpenseEntryModal = ({
   propertyId,
   propertyName,
   month: initialMonth,
+  templateData,
 }: OperatingExpenseEntryModalProps) => {
   const { closeModal } = useModal()
   const { addToast } = useToast()
@@ -66,6 +68,14 @@ export const OperatingExpenseEntryModal = ({
           category: exp.category,
           amount: parseFloat(exp.amount) || 0,
           description: exp.description || ''
+        }))
+      )
+    } else if (templateData && templateData.length > 0) {
+      setExpenseRows(
+        templateData.map(t => ({
+          category: t.category,
+          amount: t.amount,
+          description: t.description || ''
         }))
       )
     } else {

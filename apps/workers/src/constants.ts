@@ -33,3 +33,22 @@ export function normalizeBookingStatus(status: string | undefined | null): strin
   if (lower === 'cancelled') return 'canceled';
   return lower;
 }
+
+// platform service fee rates charged to the guest by the OTA (estimates pending OR API exposure)
+const PLATFORM_GUEST_FEE_RATES: Record<string, number> = {
+  vrbo: 0.13,
+  airbnb: 0.15,
+};
+
+/**
+ * Estimate the guest-facing OTA service fee for a booking.
+ * Returns 0 for direct bookings; uses known platform rates otherwise.
+ */
+export function estimateGuestListingSiteFee(platform: string | null | undefined, totalAmount: number): number {
+  if (!platform || !totalAmount) return 0;
+  const key = platform.toLowerCase().replace(/[^a-z]/g, '');
+  for (const [name, rate] of Object.entries(PLATFORM_GUEST_FEE_RATES)) {
+    if (key.includes(name)) return Math.round(totalAmount * rate * 100) / 100;
+  }
+  return 0;
+}

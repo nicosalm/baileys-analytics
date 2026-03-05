@@ -66,11 +66,10 @@ export const OwnerRezDataGuide = () => {
             These aren't available through the OwnerRez API, so you'll set them up yourself:
           </p>
           <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
-            <li>Platform fees for Airbnb, Vrbo, Booking.com, etc. in <SLink tab="platform-fees">Settings → Platform Fees</SLink></li>
             <li>Operating expenses like cleaning and maintenance in <SLink tab="expenses">Settings → Expenses</SLink></li>
           </ul>
           <p className="text-muted-foreground text-sm mt-4">
-            Net revenue and profit calculations depend on these being set correctly.
+            Platform fees are sourced automatically from your OwnerRez booking data. Net revenue calculations depend on operating expenses being set correctly.
           </p>
         </section>
 

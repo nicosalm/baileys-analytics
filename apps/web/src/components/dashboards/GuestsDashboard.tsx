@@ -3,7 +3,7 @@ import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage, parseISO } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
-import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X, Sparkles } from 'lucide-react'
 import { api } from '@/lib/api'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -493,6 +493,56 @@ export const GuestsDashboard = () => {
                     color="orange"
                 />
             </div>
+
+            {/* Direct Booking Opportunity */}
+            {(data.metrics.directSavingsOpportunity > 0) && (
+                <div className="bg-card rounded-lg shadow-sm border border-border p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Sparkles className="w-5 h-5 text-success" />
+                        <div>
+                            <h3 className="text-lg font-bold">Direct Booking Opportunity</h3>
+                            <p className="text-sm text-muted-foreground">
+                                Fees paid to OTAs and credit card processors this period — money that could stay with guests (and you)
+                            </p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                        <div className="bg-muted/40 rounded-lg p-4 text-center">
+                            <div className="text-2xl font-bold text-warning">{formatCurrency(data.metrics.totalOtaFees)}</div>
+                            <div className="text-sm text-muted-foreground mt-1">OTA service fees (est.)</div>
+                            <div className="text-xs text-muted-foreground">Vrbo ~13%, Airbnb ~15%</div>
+                        </div>
+                        <div className="bg-muted/40 rounded-lg p-4 text-center">
+                            <div className="text-2xl font-bold text-danger">{formatCurrency(data.metrics.totalCcFees)}</div>
+                            <div className="text-sm text-muted-foreground mt-1">Credit card fees</div>
+                            <div className="text-xs text-muted-foreground">Charged on direct bookings</div>
+                        </div>
+                        <div className="bg-success-subtle rounded-lg p-4 text-center border border-success/30">
+                            <div className="text-2xl font-bold text-success-fg">{formatCurrency(data.metrics.directSavingsOpportunity)}</div>
+                            <div className="text-sm text-success-fg/80 mt-1">Total avoidable fees</div>
+                            <div className="text-xs text-success-fg/70">Book direct via Zelle</div>
+                        </div>
+                    </div>
+                    {data.metrics.feesByPlatform.length > 0 && (
+                        <div className="space-y-2">
+                            <div className="text-xs font-medium text-muted-foreground mb-2">By platform</div>
+                            {data.metrics.feesByPlatform.map((pf: any) => (
+                                <div key={pf.platform} className="flex items-center gap-3">
+                                    <div className="w-28 text-sm text-muted-foreground truncate">{pf.platform}</div>
+                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-warning rounded-full transition-all"
+                                            style={{ width: `${Math.min(100, (pf.totalFees / data.metrics.directSavingsOpportunity) * 100)}%` }}
+                                        />
+                                    </div>
+                                    <div className="text-sm font-medium w-24 text-right">{formatCurrency(pf.totalFees)}</div>
+                                    <div className="text-xs text-muted-foreground w-20 text-right">{pf.bookingCount} bookings</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="grid lg:grid-cols-2 gap-6">
                 <ChartWrapper

@@ -381,33 +381,6 @@ export function useOverview(
   })
 }
 
-// Platform Fee hooks
-export function usePlatformFees(propertyId: string, month: string) {
-  const key = propertyId && month ? ['/platform-fees', propertyId, month] : null
-  return useSWR(key, async () => {
-    if (!propertyId || !month) return []
-    const result = await api.getPlatformFees(propertyId, month)
-    if (!result.success) throw new Error(result.error)
-    const data = result.data?.data || result.data || []
-    return Array.isArray(data) ? data : []
-  }, {
-    revalidateOnMount: true,
-    revalidateOnFocus: true,
-    dedupingInterval: 0
-  })
-}
-
-export async function savePlatformFee(data: any): Promise<void> {
-  const result = await api.savePlatformFee(data)
-  if (!result.success) {
-    throw new Error(result.error)
-  }
-  // Invalidate cache
-  await globalMutate((key: any) =>
-    Array.isArray(key) && key[0] === '/platform-fees'
-  )
-}
-
 // Operating Expenses hooks
 export function useOperatingExpenses(propertyId?: string, month?: string) {
   const key = month ? ['/operating-expenses', propertyId || 'all', month] : null
@@ -459,6 +432,25 @@ export async function deleteOperatingExpense(id: string): Promise<void> {
   await globalMutate((key: any) =>
     Array.isArray(key) && key[0] === '/operating-expenses'
   )
+  await globalMutate((key: any) =>
+    typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
+  )
+}
+
+// Expense Templates hooks
+export function useExpenseTemplates(propertyId?: string) {
+  const key = ['/expense-templates', propertyId || 'all']
+  return useSWR(key, async () => {
+    const result = await api.getExpenseTemplates(propertyId)
+    if (!result.success) throw new Error(result.error)
+    return result.data?.data || []
+  }, { revalidateOnMount: true, dedupingInterval: 0 })
+}
+
+export async function saveExpenseTemplates(data: any): Promise<void> {
+  const result = await api.saveExpenseTemplates(data)
+  if (!result.success) throw new Error(result.error)
+  await globalMutate((key: any) => Array.isArray(key) && key[0] === '/expense-templates')
   await globalMutate((key: any) =>
     typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )

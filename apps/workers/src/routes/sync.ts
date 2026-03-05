@@ -6,6 +6,7 @@ import { strictRateLimit } from '../middleware/rate-limit';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
+import { estimateGuestListingSiteFee } from '../constants';
 
 const sync = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
@@ -182,6 +183,7 @@ sync.post('/bookings', async (c) => {
 					booking.guest?.phone ||
 					booking.guest_phone;
 
+				const platform = booking.source || booking.listing_site || 'Unassigned';
 				bookingData.push({
 					tenant_id: tenant.id,
 					property_id: property.id,
@@ -193,8 +195,9 @@ sync.post('/bookings', async (c) => {
 					arrival: booking.arrival,
 					departure: booking.departure,
 					total_amount: booking.total_amount || 0,
+					guest_listing_site_fee: estimateGuestListingSiteFee(platform, booking.total_amount || 0),
 					status: booking.status,
-					platform: booking.source || booking.listing_site || 'Unassigned',
+					platform,
 					platform_reservation_number: booking.custom_source_id || booking.external_id,
 					adults: booking.adults || 0,
 					children: booking.children || 0,
@@ -290,9 +293,9 @@ sync.post('/bookings', async (c) => {
 			}
 		}
 
-		// Batch insert charges
+		// Upsert charges — idempotent, safe under concurrent syncs
 		if (bookingChargesMap.size > 0) {
-			const chargeOwnerrezIds = [...bookingChargesMap.keys()];
+			const chargeOwnerrezIds = [...bookingChargesMap.keys()].map(String);
 			const { data: dbBookingsForCharges } = await supabase
 				.from('bookings')
 				.select('id, ownerrez_booking_id')
@@ -300,33 +303,39 @@ sync.post('/bookings', async (c) => {
 				.in('ownerrez_booking_id', chargeOwnerrezIds);
 
 			if (dbBookingsForCharges) {
-				const dbBookingIds = dbBookingsForCharges.map(b => b.id);
-				await supabase
-					.from('booking_charges')
-					.delete()
-					.in('booking_id', dbBookingIds);
-
 				const allCharges: any[] = [];
+				const staleDeletes: any[] = [];
+
 				for (const dbBooking of dbBookingsForCharges) {
 					const charges = bookingChargesMap.get(Number(dbBooking.ownerrez_booking_id));
-					if (charges) {
-						for (let i = 0; i < charges.length; i++) {
-							allCharges.push({
-								booking_id: dbBooking.id,
-								type: charges[i].type,
-								amount: charges[i].amount,
-								description: charges[i].description,
-								position: i
-							});
-						}
+					if (!charges) continue;
+					for (let i = 0; i < charges.length; i++) {
+						allCharges.push({
+							booking_id: dbBooking.id,
+							type: charges[i].type,
+							amount: charges[i].amount,
+							description: charges[i].description,
+							position: i
+						});
 					}
+					// remove any charges beyond the current count (e.g. if OR removed one)
+					staleDeletes.push(
+						supabase.from('booking_charges')
+							.delete()
+							.eq('booking_id', dbBooking.id)
+							.gte('position', charges.length)
+					);
 				}
 
 				const CHUNK_SIZE = 100;
 				for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
 					const chunk = allCharges.slice(i, i + CHUNK_SIZE);
-					await supabase.from('booking_charges').insert(chunk);
+					await supabase.from('booking_charges').upsert(chunk, {
+						onConflict: 'booking_id,position',
+						ignoreDuplicates: false
+					});
 				}
+				await Promise.all(staleDeletes);
 			}
 		}
 
@@ -504,9 +513,9 @@ sync.post('/recovery', async (c) => {
 				}
 			}
 
-			// Insert charges for this property's bookings
+			// Upsert charges for this property's bookings
 			if (recoveryChargesMap.size > 0) {
-				const chargeOwnerrezIds = [...recoveryChargesMap.keys()];
+				const chargeOwnerrezIds = [...recoveryChargesMap.keys()].map(String);
 				const { data: dbBookingsForCharges } = await supabase
 					.from('bookings')
 					.select('id, ownerrez_booking_id')
@@ -514,33 +523,38 @@ sync.post('/recovery', async (c) => {
 					.in('ownerrez_booking_id', chargeOwnerrezIds);
 
 				if (dbBookingsForCharges) {
-					const dbBookingIds = dbBookingsForCharges.map(b => b.id);
-					await supabase
-						.from('booking_charges')
-						.delete()
-						.in('booking_id', dbBookingIds);
-
 					const allCharges: any[] = [];
+					const staleDeletes: any[] = [];
+
 					for (const dbBooking of dbBookingsForCharges) {
 						const charges = recoveryChargesMap.get(Number(dbBooking.ownerrez_booking_id));
-						if (charges) {
-							for (let i = 0; i < charges.length; i++) {
-								allCharges.push({
-									booking_id: dbBooking.id,
-									type: charges[i].type,
-									amount: charges[i].amount,
-									description: charges[i].description,
-									position: i
-								});
-							}
+						if (!charges) continue;
+						for (let i = 0; i < charges.length; i++) {
+							allCharges.push({
+								booking_id: dbBooking.id,
+								type: charges[i].type,
+								amount: charges[i].amount,
+								description: charges[i].description,
+								position: i
+							});
 						}
+						staleDeletes.push(
+							supabase.from('booking_charges')
+								.delete()
+								.eq('booking_id', dbBooking.id)
+								.gte('position', charges.length)
+						);
 					}
 
 					const CHUNK_SIZE = 100;
 					for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
 						const chunk = allCharges.slice(i, i + CHUNK_SIZE);
-						await supabase.from('booking_charges').insert(chunk);
+						await supabase.from('booking_charges').upsert(chunk, {
+							onConflict: 'booking_id,position',
+							ignoreDuplicates: false
+						});
 					}
+					await Promise.all(staleDeletes);
 				}
 			}
 

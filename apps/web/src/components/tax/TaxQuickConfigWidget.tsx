@@ -2,7 +2,6 @@ import { usePropertyTaxStatus } from '@/hooks/use-api'
 import { useNavigate } from 'react-router-dom'
 import {
   Calculator,
-  AlertCircle,
   Check,
   Plus
 } from 'lucide-react'
@@ -17,8 +16,6 @@ export const TaxQuickConfigWidget = () => {
   const totalProperties = taxStatus.length
   const configuredProperties = taxStatus.filter((p: any) => p.hasConfig).length
   const missingConfigs = taxStatus.filter((p: any) => !p.hasConfig)
-  const missingFees = taxStatus.filter((p: any) => p.feeStatus === 'none')
-  const partialFees = taxStatus.filter((p: any) => p.feeStatus === 'partial')
   
   const completionPercentage = totalProperties > 0 
     ? Math.round((configuredProperties / totalProperties) * 100)
@@ -55,7 +52,7 @@ export const TaxQuickConfigWidget = () => {
           <Button
             variant="link"
             size="sm"
-            onClick={() => navigate('/settings?tab=platform-fees')}
+            onClick={() => navigate('/settings?tab=expenses')}
             className="p-0 h-auto"
           >
             Manage →
@@ -99,52 +96,24 @@ export const TaxQuickConfigWidget = () => {
           <div className="bg-muted/40 rounded-sm p-2">
             <p className="text-xs text-muted-foreground">Needs Action</p>
             <p className="text-lg font-semibold text-warning">
-              {missingConfigs.length + missingFees.length + partialFees.length}
+              {missingConfigs.length}
             </p>
           </div>
         </div>
         
         {/* Action Buttons */}
-        {missingFees.length > 0 || partialFees.length > 0 ? (
+        {missingConfigs.length > 0 ? (
           <Button
-            onClick={() => navigate('/settings?tab=platform-fees')}
+            onClick={() => navigate('/settings?tab=expenses')}
             className="w-full bg-warning hover:bg-warning/90"
           >
             <Plus className="w-4 h-4" />
-            {missingFees.length > 0 ? 'Add Platform Fees' : 'Complete Fee Data'}
+            Configure Tax Settings
           </Button>
         ) : (
           <div className="flex items-center justify-center py-2 text-success bg-success-subtle rounded-sm">
             <Check className="w-4 h-4 mr-1" />
             <span className="text-sm font-medium">All Configured!</span>
-          </div>
-        )}
-        
-        
-        {/* Platform Fees Reminder */}
-        {(missingFees.length > 0 || partialFees.length > 0) && missingConfigs.length === 0 && (
-          <div className="mt-3 p-2 bg-warning-subtle border border-warning/30 rounded-sm">
-            <div className="flex items-start">
-              <AlertCircle className="w-4 h-4 text-warning mr-2 mt-0.5" />
-              <div className="text-xs text-warning-fg">
-                {missingFees.length > 0 && (
-                  <>
-                    <p className="font-medium">Platform fees missing</p>
-                    <p className="mt-0.5">
-                      {missingFees.length} {missingFees.length === 1 ? 'property needs' : 'properties need'} fee data
-                    </p>
-                  </>
-                )}
-                {partialFees.length > 0 && (
-                  <>
-                    <p className="font-medium">{missingFees.length > 0 ? 'Also: ' : ''}Incomplete fee data</p>
-                    <p className="mt-0.5">
-                      {partialFees.length} {partialFees.length === 1 ? 'property has' : 'properties have'} missing months
-                    </p>
-                  </>
-                )}
-              </div>
-            </div>
           </div>
         )}
       </div>

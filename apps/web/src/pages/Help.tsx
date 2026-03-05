@@ -109,11 +109,10 @@ export const Help = () => {
                 A few things aren't available through the API, so you'll need to set them up yourself:
               </p>
               <ul className="text-foreground text-sm list-disc ml-6 space-y-1 mt-2">
-                <li>Platform fees (Airbnb, Vrbo, etc.) in <SLink tab="platform-fees">Settings → Platform Fees</SLink></li>
                 <li>Operating expenses like cleaning and maintenance in <SLink tab="expenses">Settings → Expenses</SLink></li>
               </ul>
               <p className="text-muted-foreground text-sm mt-2">
-                Net revenue and profit calculations depend on these being set correctly.
+                Platform fees are sourced automatically from your OwnerRez booking data. Net revenue calculations depend on operating expenses being set correctly.
               </p>
             </div>
 
@@ -177,9 +176,9 @@ export const Help = () => {
 
           <div className="space-y-6">
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">How do I configure platform fees?</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-1">How are platform fees calculated?</h3>
               <p className="text-foreground text-sm">
-                Go to <SLink tab="platform-fees">Settings → Platform Fees</SLink>. Add your platform service fees per property so net revenue calculations are accurate.
+                Platform fees are pulled automatically from your OwnerRez booking data. Host service fees are exact values from OwnerRez; guest service fees are estimated at sync time (~13–15% depending on platform).
               </p>
             </div>
 

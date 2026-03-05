@@ -35,39 +35,46 @@ financial.get('/', async (c) => {
 	
 	const { data: bookings } = await supabase
 		.from('bookings')
-		.select('total_amount, arrival, platform')
+		.select('total_amount, arrival, platform, guest_listing_site_fee, host_service_fee')
 		.eq('tenant_id', tenant.id)
 		.gte('arrival', startDate)
 		.lte('arrival', endDate)
 		.neq('status', 'canceled');
-	
+
 	const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-	const platformFees = totalRevenue * 0.03;
+	const guestFees = bookings?.reduce((s, b) => s + (b.guest_listing_site_fee || 0), 0) || 0;
+	const hostFees = bookings?.reduce((s, b) => s + (b.host_service_fee || 0), 0) || 0;
+	const platformFees = guestFees + hostFees;
 	const tax = totalRevenue * 0.08;
-	
+
 	const metrics = {
 		revenue: totalRevenue,
 		expenses: platformFees,
 		tax: tax,
 		netIncome: totalRevenue - platformFees - tax
 	};
-	
+
+	const feesBreakdown = { guestFees, hostFees, guestFeesEstimated: true };
+
 	if (comparisonFrom && comparisonTo) {
 		const { data: compBookings } = await supabase
 			.from('bookings')
-			.select('total_amount')
+			.select('total_amount, guest_listing_site_fee, host_service_fee')
 			.eq('tenant_id', tenant.id)
 			.gte('arrival', comparisonFrom)
 			.lte('arrival', comparisonTo)
 			.neq('status', 'canceled');
-		
+
 		const compRevenue = compBookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-		const compFees = compRevenue * 0.03;
+		const compGuestFees = compBookings?.reduce((s, b) => s + (b.guest_listing_site_fee || 0), 0) || 0;
+		const compHostFees = compBookings?.reduce((s, b) => s + (b.host_service_fee || 0), 0) || 0;
+		const compFees = compGuestFees + compHostFees;
 		const compTax = compRevenue * 0.08;
-		
+
 		return c.json({
 			pl: {
 				metrics,
+				feesBreakdown,
 				previous: {
 					revenue: compRevenue,
 					expenses: compFees,
@@ -77,10 +84,11 @@ financial.get('/', async (c) => {
 			}
 		});
 	}
-	
+
 	return c.json({
 		pl: {
-			metrics
+			metrics,
+			feesBreakdown
 		}
 	});
 });
@@ -191,54 +199,6 @@ financial.get('/tax-remittance', async (c) => {
 	const schedule = await taxService.getRemittanceSchedule(tenant.id);
 	
 	return c.json({ schedule });
-});
-
-financial.get('/platform-fees', async (c) => {
-	const { startDate, endDate } = c.req.query();
-	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-	
-	let query = supabase
-		.from('platform_fee_entries')
-		.select('*')
-		.eq('tenant_id', tenant.id)
-		.order('date', { ascending: false });
-	
-	if (startDate) {
-		query = query.gte('date', startDate);
-	}
-	
-	if (endDate) {
-		query = query.lte('date', endDate);
-	}
-	
-	const { data: fees } = await query;
-	
-	const totalFees = fees?.reduce((sum, f) => sum + (f.amount || 0), 0) || 0;
-	const feesByPlatform: Record<string, number> = {};
-	
-	fees?.forEach(fee => {
-		if (fee.platform) {
-			feesByPlatform[fee.platform] = (feesByPlatform[fee.platform] || 0) + (fee.amount || 0);
-		}
-	});
-	
-	return c.json({
-		totalFees,
-		feeCount: fees?.length || 0,
-		feesByPlatform,
-		fees: fees || []
-	});
 });
 
 export { financial };

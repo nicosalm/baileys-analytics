@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, Fragment } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronRight, ChevronDown } from 'lucide-react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronRight, ChevronDown, Sparkles } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -43,12 +43,108 @@ const GuestSpendingTooltip = ({ active, payload, label }: any) => {
   )
 }
 
+function categorizeCharges(charges: any[]) {
+  const isSurcharge = (c: any) => c.type === 'surcharge' || c.type === 'surcharge_other'
+  const rent = charges.filter(c => c.type === 'rent')
+  const ccFees = charges.filter(c => isSurcharge(c) && c.description?.toLowerCase().includes('credit card'))
+  const surcharges = charges.filter(c => isSurcharge(c) && !c.description?.toLowerCase().includes('credit card'))
+  const taxes = charges.filter(c => c.type === 'tax')
+  const discounts = charges.filter(c => c.type === 'discount')
+  return { rent, surcharges, taxes, ccFees, discounts }
+}
+
+function sumCharges(charges: any[]) {
+  return charges.reduce((s, c) => s + (c.amount || 0), 0)
+}
+
+const BookingFeeBreakdown = ({ booking }: { booking: any }) => {
+  const charges: any[] = booking.charges || []
+  const { rent, surcharges, taxes, ccFees, discounts } = categorizeCharges(charges)
+  const otaFee = booking.guestListingSiteFee || 0
+  const ccFeeTotal = sumCharges(ccFees)
+  const directSavings = otaFee + ccFeeTotal
+  const totalGuestPaid = (booking.totalAmount || 0) + otaFee
+
+  return (
+    <div className="space-y-3">
+      {/* host-side charges */}
+      <div className="space-y-1">
+        {rent.map((c, i) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Rent</span>
+            <span className="font-medium">{formatCurrency(c.amount)}</span>
+          </div>
+        ))}
+        {surcharges.map((c, i) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{c.description || 'Surcharge'}</span>
+            <span className="font-medium">{formatCurrency(c.amount)}</span>
+          </div>
+        ))}
+        {discounts.map((c, i) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{c.description || 'Discount'}</span>
+            <span className="font-medium text-success">-{formatCurrency(Math.abs(c.amount))}</span>
+          </div>
+        ))}
+        {taxes.map((c, i) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{c.description || 'Tax'}</span>
+            <span className="font-medium">{formatCurrency(c.amount)}</span>
+          </div>
+        ))}
+        {ccFees.map((c, i) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{c.description || 'Credit card fee'}</span>
+            <span className="font-medium">{formatCurrency(c.amount)}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* host total divider */}
+      <div className="flex justify-between text-sm font-semibold border-t pt-2">
+        <span>Host total</span>
+        <span>{formatCurrency(booking.totalAmount)}</span>
+      </div>
+
+      {/* OTA fee */}
+      {otaFee > 0 && (
+        <>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{booking.platform} service fee <span className="text-xs">(est.)</span></span>
+            <span className="font-medium text-warning">{formatCurrency(otaFee)}</span>
+          </div>
+          <div className="flex justify-between text-sm font-semibold border-t pt-2">
+            <span>Guest paid (total)</span>
+            <span>{formatCurrency(totalGuestPaid)}</span>
+          </div>
+        </>
+      )}
+
+      {/* direct booking savings callout */}
+      {directSavings > 0 && (
+        <div className="bg-success-subtle border border-success/30 rounded-md px-3 py-2 flex items-start gap-2 mt-1">
+          <Sparkles className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+          <div className="text-xs text-success-fg">
+            <span className="font-semibold">Direct booking saves {formatCurrency(directSavings)}</span>
+            {otaFee > 0 && ccFeeTotal > 0
+              ? ` — eliminates the ${booking.platform} fee (${formatCurrency(otaFee)}) and credit card fee (${formatCurrency(ccFeeTotal)}) when paying via Zelle.`
+              : otaFee > 0
+              ? ` — eliminates the ${booking.platform} service fee when booking direct.`
+              : ` — eliminates the credit card fee when paying via Zelle.`}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
 
   return (
     <div className="bg-card rounded-lg border overflow-hidden">
-      <div className="max-h-96 overflow-y-auto">
+      <div className="max-h-[500px] overflow-y-auto">
         <table className="w-full">
           <thead className="bg-muted sticky top-0">
             <tr>
@@ -66,7 +162,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
               const isExpanded = expandedBooking === booking.id
 
               return (
-                <>
+                <Fragment key={booking.id}>
                   <tr
                     key={booking.id}
                     className={`border-t ${hasCharges ? 'cursor-pointer hover:bg-muted/40' : ''}`}
@@ -81,7 +177,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                         )}
                         <div>
                           <div className="font-medium text-foreground">{booking.propertyName}</div>
-                          <div className="text-sm text-muted-foreground">{booking.nights} nights</div>
+                          <div className="text-sm text-muted-foreground">{booking.nights} nights · {booking.platform}</div>
                         </div>
                       </div>
                     </td>
@@ -93,6 +189,11 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                     </td>
                     <td className="p-4 text-sm font-medium">
                       {formatCurrency(booking.totalAmount)}
+                      {booking.guestListingSiteFee > 0 && (
+                        <div className="text-xs text-muted-foreground font-normal">
+                          +{formatCurrency(booking.guestListingSiteFee)} OTA fee (est.)
+                        </div>
+                      )}
                     </td>
                     <td className="p-4">
                       <StatusBadge status={booking.status} />
@@ -113,36 +214,116 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                     </td>
                   </tr>
                   {isExpanded && hasCharges && (
-                    <tr key={`${booking.id}-charges`} className="bg-muted/40">
-                      <td colSpan={6} className="px-8 py-3">
-                        <div className="text-xs font-medium text-muted-foreground mb-2">Charge Breakdown</div>
-                        <div className="space-y-1">
-                          {booking.charges.map((charge: any, i: number) => (
-                            <div key={charge.id || i} className="flex justify-between text-sm">
-                              <span className="text-muted-foreground flex items-center gap-1.5">
-                                <span className={`w-1.5 h-1.5 rounded-full ${
-                                  charge.type === 'tax' ? 'bg-danger' :
-                                  charge.type === 'fee' ? 'bg-warning' :
-                                  charge.type === 'discount' ? 'bg-success' :
-                                  'bg-muted-foreground'
-                                }`} />
-                                {charge.description || charge.type}
-                              </span>
-                              <span className={`font-medium ${charge.type === 'discount' ? 'text-success' : ''}`}>
-                                {charge.type === 'discount' ? '-' : ''}{formatCurrency(Math.abs(charge.amount))}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                    <tr className="bg-muted/40">
+                      <td colSpan={6} className="px-8 py-4">
+                        <BookingFeeBreakdown booking={booking} />
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               )
             })}
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+const FEE_PIE_COLORS = {
+  rent: '#6366f1',
+  surcharges: '#8b5cf6',
+  taxes: '#f59e0b',
+  ccFees: '#ef4444',
+  otaFees: '#f97316',
+}
+
+const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: any, guestName: string }) => {
+  const { rent, surcharges, taxes, ccFees, otaFees, directSavings } = feeAnalysis
+  const total = rent + surcharges + taxes + ccFees + otaFees
+
+  const pieData = [
+    { name: 'Rent', value: rent, color: FEE_PIE_COLORS.rent },
+    { name: 'Surcharges', value: surcharges, color: FEE_PIE_COLORS.surcharges },
+    { name: 'Taxes', value: taxes, color: FEE_PIE_COLORS.taxes },
+    { name: 'Credit card fee', value: ccFees, color: FEE_PIE_COLORS.ccFees },
+    { name: 'OTA service fee (est.)', value: otaFees, color: FEE_PIE_COLORS.otaFees },
+  ].filter(d => d.value > 0)
+
+  if (total === 0) {
+    return (
+      <div className="bg-card p-6 rounded-lg border text-center text-muted-foreground">
+        No charge breakdown available for this guest.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-card p-6 rounded-lg border">
+        <h3 className="text-lg font-bold mb-1">Where {guestName}'s money went</h3>
+        <p className="text-sm text-muted-foreground mb-4">Across all stays</p>
+        <div className="flex gap-8 items-center">
+          <div className="h-56 flex-shrink-0" style={{ width: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={88}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {pieData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value) => formatCurrency(value as number)} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex-1 space-y-2">
+            {pieData.map((item, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-muted-foreground">{item.name}</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-medium">{formatCurrency(item.value)}</span>
+                  <span className="text-muted-foreground text-xs ml-1">({((item.value / total) * 100).toFixed(0)}%)</span>
+                </div>
+              </div>
+            ))}
+            <div className="border-t pt-2 flex justify-between text-sm font-semibold">
+              <span>Total (incl. OTA fees)</span>
+              <span>{formatCurrency(total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {directSavings > 0 && (
+        <div className="bg-success-subtle border border-success/30 rounded-lg p-4">
+          <div className="flex items-start gap-2">
+            <Sparkles className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-success-fg">
+                Direct booking opportunity: {formatCurrency(directSavings)} in savings
+              </p>
+              <p className="text-sm text-success-fg/80 mt-1">
+                {guestName} paid {formatCurrency(otaFees + ccFees)} in avoidable fees across all stays —
+                {otaFees > 0 && ` ${formatCurrency(otaFees)} to the OTA`}
+                {otaFees > 0 && ccFees > 0 && ' and'}
+                {ccFees > 0 && ` ${formatCurrency(ccFees)} in credit card processing`}.
+                Booking direct via Zelle eliminates both.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -205,6 +386,21 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
       bookings: item.bookings
     }))
   , [spendingTrend])
+
+  // aggregate fee breakdown across all bookings
+  const feeAnalysis = useMemo(() => {
+    let rent = 0, surcharges = 0, taxes = 0, ccFees = 0, otaFees = 0
+    for (const b of bookingHistory) {
+      const cats = categorizeCharges(b.charges || [])
+      rent += sumCharges(cats.rent)
+      surcharges += sumCharges(cats.surcharges)
+      taxes += sumCharges(cats.taxes)
+      ccFees += sumCharges(cats.ccFees)
+      otaFees += b.guestListingSiteFee || 0
+    }
+    const directSavings = otaFees + ccFees
+    return { rent, surcharges, taxes, ccFees, otaFees, directSavings }
+  }, [bookingHistory])
 
   return (
     <Modal
@@ -333,6 +529,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         <Tabs defaultValue="overview">
           <TabsList variant="line">
             <TabsTrigger value="overview">Spending Pattern</TabsTrigger>
+            <TabsTrigger value="fees">Fee Analysis</TabsTrigger>
             <TabsTrigger value="bookings">Booking History ({bookingHistory.length})</TabsTrigger>
           </TabsList>
 
@@ -359,6 +556,10 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="fees">
+            <FeeAnalysisTab feeAnalysis={feeAnalysis} guestName={guest?.name || guestName} />
           </TabsContent>
 
           <TabsContent value="bookings">

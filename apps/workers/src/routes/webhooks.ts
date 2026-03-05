@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
-import { normalizeBookingStatus } from '../constants';
+import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 
 const webhookPayloadSchema = z.object({
 	id: z.union([z.string(), z.number()]),
@@ -390,6 +390,7 @@ async function handleBookingUpdate(
 			}
 		}
 
+		const platform = booking.source || booking.listing_site || 'Unassigned';
 		const bookingData = {
 			tenant_id: tenantId,
 			property_id: property.id,
@@ -401,9 +402,10 @@ async function handleBookingUpdate(
 			arrival: booking.arrival,
 			departure: booking.departure,
 			total_amount: booking.total_amount || 0,
+			guest_listing_site_fee: estimateGuestListingSiteFee(platform, booking.total_amount || 0),
 			host_service_fee: booking.total_host_fees || 0,
 			status: normalizedStatus,
-			platform: booking.source || booking.listing_site || 'Unassigned',
+			platform,
 			platform_reservation_number: booking.custom_source_id || booking.external_id,
 			adults: booking.adults || 0,
 			children: booking.children || 0,
@@ -496,13 +498,6 @@ async function handleBookingUpdate(
 							.single();
 
 						if (existingBooking) {
-							// Delete existing charges
-							await supabase
-								.from('booking_charges')
-								.delete()
-								.eq('booking_id', existingBooking.id);
-
-							// Insert new charges
 							const charges = fullBooking.charges.map((charge: any, index: number) => ({
 								booking_id: existingBooking.id,
 								type: charge.type,
@@ -512,8 +507,16 @@ async function handleBookingUpdate(
 							}));
 
 							if (charges.length > 0) {
-								await supabase.from('booking_charges').insert(charges);
+								await supabase.from('booking_charges').upsert(charges, {
+									onConflict: 'booking_id,position',
+									ignoreDuplicates: false
+								});
 							}
+							// remove any charges beyond the current count
+							await supabase.from('booking_charges')
+								.delete()
+								.eq('booking_id', existingBooking.id)
+								.gte('position', fullBooking.charges.length);
 						}
 					}
 				}

@@ -27,7 +27,8 @@ import { goals } from './routes/goals';
 import { tags } from './routes/tags';
 import { tax } from './routes/tax';
 import { platformFees as platformFeesRoute } from './routes/platform-fees';
-import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses';
+import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses'
+import { expenseTemplates as expenseTemplatesRoute } from './routes/expense-templates';
 import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
 import { sync } from './routes/sync';
@@ -709,7 +710,8 @@ const dashboardPaths = [
 	'/api/sync-guest-details',
 	'/api/seasons',
 	'/api/goals',
-	'/api/tags'
+	'/api/tags',
+	'/api/expense-templates'
 ];
 
 // apply subscription check to dashboard routes
@@ -733,6 +735,7 @@ app.route('/api/tags', tags);
 app.route('/api/tax', tax);
 app.route('/api/platform-fees', platformFeesRoute);
 app.route('/api/operating-expenses', operatingExpensesRoute);
+app.route('/api/expense-templates', expenseTemplatesRoute);
 
 // rate limit billing checkout to prevent abuse
 app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));

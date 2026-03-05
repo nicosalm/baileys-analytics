@@ -7,7 +7,7 @@ import { useTips } from '@/hooks/use-tips'
 import { useTheme } from '@/contexts/theme'
 import { LoadingState } from '@/components/LoadingState'
 import {
-  Calendar, Calculator,
+  Calendar,
   LogOut,
   Palette, CreditCard, Link2,
   Lock, MessageSquare, ArrowLeft,
@@ -27,10 +27,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-
-const TaxManagementPanel = lazy(() => 
-  import('@/components/settings/TaxManagementPanel').then(m => ({ default: m.TaxManagementPanel }))
-)
 
 const SeasonManagementPanel = lazy(() => 
   import('@/components/settings/SeasonManagementPanel').then(m => ({ default: m.SeasonManagementPanel }))
@@ -56,7 +52,7 @@ const GoalManagementPanel = lazy(() =>
   import('@/components/settings/GoalManagementPanel').then(m => ({ default: m.GoalManagementPanel }))
 )
 
-type SettingsTab = 'account' | 'preferences' | 'goals' | 'integrations' | 'billing' | 'platform-fees' | 'seasons' | 'expenses'
+type SettingsTab = 'account' | 'preferences' | 'goals' | 'integrations' | 'billing' | 'seasons' | 'expenses'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   {
@@ -73,11 +69,6 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
     id: 'goals',
     label: 'Goals',
     icon: Target
-  },
-  {
-    id: 'platform-fees',
-    label: 'Platform Fees',
-    icon: Calculator
   },
   {
     id: 'expenses',
@@ -426,7 +417,6 @@ export const Settings = () => {
               {activeTab === 'goals' && <GoalManagementPanel />}
               {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'billing' && <BillingTab />}
-              {activeTab === 'platform-fees' && <TaxManagementPanel />}
               {activeTab === 'expenses' && <ExpenseManagementPanel />}
               {activeTab === 'seasons' && <SeasonManagementPanel />}
             </Suspense>
