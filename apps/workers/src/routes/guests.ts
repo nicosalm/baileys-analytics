@@ -3,23 +3,17 @@ import { authMiddleware } from '../middleware/auth';
 import { cache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
 
-const guests = new Hono<{ Bindings: Env; Variables: { user: any } }>();
+const guests = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
 guests.use('/*', authMiddleware);
 
 guests.get('/', cache({ ttl: 3600 }), async (c) => {
 	const { from, to, tags, comparisonFrom, comparisonTo } = c.req.query();
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
-		return c.json({ 
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
+		return c.json({
 			guests: [],
 			metrics: {
 				totalGuests: 0,
@@ -42,7 +36,7 @@ guests.get('/', cache({ ttl: 3600 }), async (c) => {
 	
 	const currentData = await getGuestsData(
 		supabase,
-		tenant.id,
+		tenantId,
 		startDate,
 		endDate,
 		tagIds
@@ -51,7 +45,7 @@ guests.get('/', cache({ ttl: 3600 }), async (c) => {
 	if (comparisonFrom && comparisonTo) {
 		const previousData = await getGuestsData(
 			supabase,
-			tenant.id,
+			tenantId,
 			comparisonFrom,
 			comparisonTo,
 			tagIds
@@ -69,19 +63,13 @@ guests.get('/', cache({ ttl: 3600 }), async (c) => {
 guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 	const { startMonth, startDay, endMonth, endDay, yearsBack = '3' } = c.req.query();
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 
 	if (!startMonth || !startDay || !endMonth || !endDay) {
 		return c.json({ error: 'startMonth, startDay, endMonth, endDay are required' }, 400);
 	}
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
@@ -107,7 +95,7 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 				property_id,
 				properties!inner(name)
 			`)
-			.eq('tenant_id', tenant.id)
+			.eq('tenant_id', tenantId)
 			.neq('status', 'canceled')
 			.lte('arrival', rangeTo)
 			.gte('departure', rangeFrom)
@@ -138,15 +126,9 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 	const guestId = decodeURIComponent(c.req.param('guestId'));
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
-	
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-	
-	if (!tenant) {
+	const tenantId = c.get('tenantId');
+
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
@@ -171,7 +153,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			ownerrez_booking_id,
 			booking_charges(id, type, description, amount, position)
 		`)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.neq('status', 'canceled');
 	
 	if (email) {

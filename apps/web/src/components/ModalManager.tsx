@@ -87,7 +87,7 @@ export const ModalManager = () => {
   return (
     <Suspense fallback={
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-        <div className="bg-white rounded-lg p-8">
+        <div className="bg-background rounded-lg p-8">
           <LoadingState />
         </div>
       </div>

@@ -261,25 +261,23 @@ export const DashboardLayout = () => {
                 <div className="flex items-center gap-3">
                   {isDemo ? (
                     <div className="flex items-center gap-2">
-                      <span className="hidden sm:inline text-xs text-muted-foreground bg-muted px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5" />
-                        Demo Mode
+                      <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2.5 py-1.5 rounded-md whitespace-nowrap">
+                        <Eye className="w-3.5 h-3.5 shrink-0" />
+                        Demo
                       </span>
                       <Link
                         to="/signup"
-                        className="px-4 py-1.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:opacity-90 transition-opacity"
+                        className="px-4 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
                       >
                         Sign Up
                       </Link>
-                      <Button
-                        variant="ghost"
+                      <button
                         onClick={handleLogout}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                        style={{ isolation: 'isolate' }}
+                        className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
+                        title="Exit demo"
                       >
                         <LogOut className="w-4 h-4" />
-                        <span className="hidden sm:inline">Exit</span>
-                      </Button>
+                      </button>
                     </div>
                   ) : (
                     <>
