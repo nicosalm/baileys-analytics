@@ -61,7 +61,7 @@ export const GuestsDashboard = () => {
 
     const tagIds = useTagIds()
 
-    const { data: rawData, error, isLoading, isStale } = useDashboardBatch(
+    const { data: rawData, error, isLoading } = useDashboardBatch(
         'guests',
         filters.dateRange.from,
         filters.dateRange.to,
@@ -396,7 +396,7 @@ export const GuestsDashboard = () => {
     }
 
     return (
-        <div className={`space-y-6 transition-opacity duration-200 ${isStale ? 'opacity-60' : ''}`}>
+        <div className="space-y-6">
             <div className="bg-card rounded-xl border border-border p-4">
                 <h2 className="text-lg font-semibold text-foreground">Guest Analytics</h2>
                 <p className="text-muted-foreground text-sm mt-1">

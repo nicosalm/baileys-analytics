@@ -20,7 +20,7 @@ export const FinancialDashboard = () => {
   
   const tagIds = useTagIds()
   
-  const { data, error, isLoading, isStale } = useDashboardBatch(
+  const { data, error, isLoading } = useDashboardBatch(
     'financial',
     filters.dateRange.from,
     filters.dateRange.to,
@@ -217,7 +217,7 @@ export const FinancialDashboard = () => {
   }
 
   return (
-    <div className={`space-y-6 transition-opacity duration-200 ${isStale ? 'opacity-60' : ''}`}>
+    <div className="space-y-6">
       <div className="bg-card rounded-xl border border-border p-4">
         <div className="flex items-center justify-between">
           <div>

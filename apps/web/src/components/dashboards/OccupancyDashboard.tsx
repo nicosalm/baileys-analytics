@@ -78,7 +78,7 @@ export const OccupancyDashboard = () => {
     return goal ? goal.targetValue : null
   }, [goalProgressData])
 
-  const { data, error, isLoading, isStale } = useDashboardBatch(
+  const { data, error, isLoading } = useDashboardBatch(
     'occupancy',
     filters.dateRange.from,
     filters.dateRange.to,
@@ -246,7 +246,7 @@ export const OccupancyDashboard = () => {
   const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1, bookedNights: 0, availableNights: 0 }
 
   return (
-    <div className={`space-y-6 transition-opacity duration-200 ${isStale ? 'opacity-60' : ''}`}>
+    <div className="space-y-6">
 
       <div className="bg-card rounded-xl border border-border p-4">
         <h2 className="text-lg font-semibold text-foreground">How Busy Are Your Properties?</h2>
