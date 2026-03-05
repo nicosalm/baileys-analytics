@@ -112,7 +112,8 @@ const PreferencesTab = () => {
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Appearance</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-1">Appearance</h3>
+        <p className="text-sm text-muted-foreground mb-4">Pick a look that works for you</p>
         <div className="flex justify-between items-center">
           <div>
             <span className="text-sm font-medium text-foreground">Color theme</span>
@@ -137,7 +138,8 @@ const PreferencesTab = () => {
       </div>
 
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Display Preferences</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-1">Display Preferences</h3>
+        <p className="text-sm text-muted-foreground mb-4">Control what shows up on your dashboard</p>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
@@ -150,7 +152,8 @@ const PreferencesTab = () => {
       </div>
 
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Notifications</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-1">Notifications</h3>
+        <p className="text-sm text-muted-foreground mb-4">Choose how you'd like to hear from us</p>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <div>
@@ -318,6 +321,9 @@ export const Settings = () => {
                 <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                 <div className="ml-3">
                   <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
+                  {user.companyName && (
+                    <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>
+                  )}
                 </div>
               </Link>
             </div>

@@ -166,7 +166,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
-          tooltip="Total occupancy tax collected in selected period"
+          tooltip="Total occupancy and lodging tax collected on all bookings"
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
             value: taxData.comparison.taxGrowth,
             isPositive: taxData.comparison.taxGrowth > 0  // Keep standard: up arrow for increases
@@ -181,7 +181,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : "Your responsibility"}
-          tooltip="Tax you are responsible for remitting to authorities"
+          tooltip="The portion of tax you need to file and pay to local authorities yourself"
           trend={comparisonMode !== 'none' && taxData.comparison.ownerRemittedGrowth !== 0 ? {
             value: taxData.comparison.ownerRemittedGrowth,
             isPositive: taxData.comparison.ownerRemittedGrowth > 0
@@ -194,7 +194,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           format="currency"
           color="green"
           subValue="Paid by platforms"
-          tooltip="Tax paid directly by booking platforms"
+          tooltip="Tax that Airbnb, VRBO, etc. collect and remit on your behalf"
         />
         <MetricCard
           icon={Home}
@@ -203,7 +203,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           format="number"
           color="yellow"
           subValue="Being tracked"
-          tooltip="Number of properties with tax data"
+          tooltip="Properties that have tax jurisdiction configurations set up"
         />
       </div>
       

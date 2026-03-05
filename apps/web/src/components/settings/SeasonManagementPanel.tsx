@@ -298,7 +298,7 @@ export const SeasonManagementPanel: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-1">Season Management</h3>
             <p className="text-muted-foreground text-sm">
-              Define seasons to filter analytics by booking periods
+              Create seasons to slice your analytics by time of year
             </p>
           </div>
           {!isAddingNew && !editingSeasonId && (
@@ -326,7 +326,7 @@ export const SeasonManagementPanel: React.FC = () => {
             <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
               <Calendar className="w-4 h-4 text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">No active season — showing all data</p>
+            <p className="text-sm text-muted-foreground">No active season, showing all data</p>
           </div>
         )}
       </div>

@@ -260,9 +260,9 @@ export const OccupancyDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Understanding Your Numbers:</strong> Occupancy shows what percentage of available nights were booked.
-              Higher percentages mean fewer empty nights. Use the <strong>What If calculator</strong> to estimate revenue from unbooked nights,
-              the <strong>timeline view</strong> to spot booking gaps, and the <strong>trend chart</strong> to track patterns over time.
+              <strong>Understanding Your Numbers:</strong> Occupancy is the share of available nights that were booked.
+              Higher = fewer empty nights. Use the What If calculator to estimate revenue from gaps,
+              the timeline to spot open stretches, and the trend chart to see how occupancy moves over time.
             </div>
           </div>
         </div>
@@ -274,7 +274,7 @@ export const OccupancyDashboard = () => {
           label="Occupancy Rate"
           value={currentData.overall * 100}
           format="percent"
-          tooltip="Percentage of available nights booked"
+          tooltip="Share of available nights that were booked across all properties"
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
@@ -292,7 +292,7 @@ export const OccupancyDashboard = () => {
           label="Booked Nights"
           value={currentData.bookedNights}
           format="number"
-          tooltip="Total nights booked across all properties"
+          tooltip="Sum of all booked nights across every property in this period"
           subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
             ? <>vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
@@ -310,7 +310,7 @@ export const OccupancyDashboard = () => {
           label="Available Nights"
           value={currentData.availableNights}
           format="number"
-          tooltip="Total nights available for booking"
+          tooltip="Total calendar nights across all properties, minus owner blocks"
           subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
             ? <>vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
@@ -330,7 +330,7 @@ export const OccupancyDashboard = () => {
           format="custom"
           subValue={
             <>
-              {formatPeriodDisplay(lowestPeriod.month)} — {formatPercentage(lowestPeriod.rate * 100, 1)} booked
+              {formatPeriodDisplay(lowestPeriod.month)} · {formatPercentage(lowestPeriod.rate * 100, 1)} booked
               {occupancyGoal !== null && (() => {
                 const deviation = (lowestPeriod.rate * 100) - occupancyGoal
                 const isAbove = deviation >= 0
@@ -343,7 +343,7 @@ export const OccupancyDashboard = () => {
               })()}
             </>
           }
-          tooltip={`${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'} with the most open nights${occupancyGoal !== null ? ` (goal: ${occupancyGoal}%)` : ''}`}
+          tooltip={`The ${dataGranularity === 'Daily' ? 'day' : dataGranularity === 'Weekly' ? 'week' : 'month'} with the most unbooked nights${occupancyGoal !== null ? ` (your goal is ${occupancyGoal}%)` : ''}`}
           color="yellow"
         />
       </div>

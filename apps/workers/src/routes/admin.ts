@@ -99,6 +99,7 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
       .select(`
         id,
         email,
+        company_name,
         created_at,
         subscription_status,
         subscription_exempt,

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Download, Trash2, AlertTriangle, Lock, MessageSquare, ChevronRight } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Download, Trash2, AlertTriangle, Lock, MessageSquare, ChevronRight, Check } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
@@ -14,18 +14,50 @@ interface AccountTabProps {
 }
 
 export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps) => {
-  const { state, logout } = useAuth()
+  const { state, logout, setCompanyName } = useAuth()
   const { addToast } = useToast()
   const [exportLoading, setExportLoading] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [companyNameInput, setCompanyNameInput] = useState('')
+  const [companyNameSaving, setCompanyNameSaving] = useState(false)
 
-  if (state.status !== 'authenticated') {
+  const user = state.status === 'authenticated' ? state.user : null
+
+  useEffect(() => {
+    if (user?.companyName) {
+      setCompanyNameInput(user.companyName)
+    }
+  }, [user?.companyName])
+
+  if (!user) {
     return null
   }
 
-  const { user } = state
+  const handleSaveCompanyName = async () => {
+    const trimmed = companyNameInput.trim()
+    if (trimmed === (user.companyName || '')) return
+
+    try {
+      setCompanyNameSaving(true)
+      const result = await api.request<{ company_name: string | null }>('/account/company-name', {
+        method: 'PATCH',
+        body: JSON.stringify({ company_name: trimmed || null })
+      })
+
+      if (result.success) {
+        setCompanyName(result.data?.company_name ?? null)
+        addToast('success', 'Company name updated')
+      } else {
+        addToast('error', result.error || 'Failed to update company name')
+      }
+    } catch {
+      addToast('error', 'Failed to update company name')
+    } finally {
+      setCompanyNameSaving(false)
+    }
+  }
 
   const handleExportData = async () => {
     try {
@@ -90,7 +122,8 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
     <div className="space-y-6">
       {/* account info */}
       <div className="bg-card rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Account Information</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-1">Account Information</h3>
+        <p className="text-sm text-muted-foreground mb-4">Your account details at a glance</p>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-border/60">
@@ -106,10 +139,42 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
         </div>
       </div>
 
+      {/* company name */}
+      <div className="bg-card rounded-lg shadow-sm border p-6">
+        <h3 className="text-lg font-semibold text-foreground mb-1">Company Name</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Shows up in the dashboard header alongside Baileys Analytics
+        </p>
+
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <Label htmlFor="company-name" className="sr-only">Company Name</Label>
+            <Input
+              id="company-name"
+              value={companyNameInput}
+              onChange={(e) => setCompanyNameInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSaveCompanyName()}
+              placeholder="e.g. Lakeside Rentals"
+              maxLength={100}
+              disabled={companyNameSaving}
+            />
+          </div>
+          <Button
+            onClick={handleSaveCompanyName}
+            loading={companyNameSaving}
+            disabled={companyNameInput.trim() === (user.companyName || '')}
+          >
+            <Check className="w-4 h-4" />
+            Save
+          </Button>
+        </div>
+      </div>
+
       {/* security */}
       {(onChangeEmail || onChangePassword) && (
         <div className="bg-card rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Security</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-1">Security</h3>
+          <p className="text-sm text-muted-foreground mb-4">Update your email or password</p>
           <div className="space-y-3">
             {onChangeEmail && (
               <Button
@@ -143,21 +208,10 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
 
       {/* data export */}
       <div className="bg-card rounded-lg shadow-sm border p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Export Your Data</h3>
-            <p className="text-sm text-muted-foreground">
-              Download all your data as a JSON file. Includes properties, bookings, guests, and all settings.
-            </p>
-          </div>
-          <Download className="w-6 h-6 text-info" />
-        </div>
-
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4 mb-4">
-          <p className="text-sm text-info-fg">
-            You can access and export all your personal data at any time.
-          </p>
-        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-1">Export Your Data</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Download everything as JSON: properties, bookings, guests, and settings
+        </p>
 
         <Button onClick={handleExportData} loading={exportLoading}>
           <Download className="w-4 h-4" />
@@ -167,15 +221,13 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
 
       {/* danger zone */}
       <div className="bg-card rounded-lg shadow-sm border border-danger/30 p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-danger-fg mb-2">Danger Zone</h3>
-            <p className="text-sm text-muted-foreground">
-              Permanently delete your account and all associated data. This action cannot be undone.
-            </p>
-          </div>
-          <AlertTriangle className="w-6 h-6 text-danger" />
+        <div className="flex items-start justify-between mb-1">
+          <h3 className="text-lg font-semibold text-danger-fg">Danger Zone</h3>
+          <AlertTriangle className="w-5 h-5 text-danger" />
         </div>
+        <p className="text-sm text-muted-foreground mb-4">
+          Once deleted, your account and all its data are gone for good
+        </p>
 
         <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4 mb-4">
           <p className="text-sm text-danger-fg mb-2">

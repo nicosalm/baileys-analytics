@@ -200,7 +200,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Total Revenue"
           value={revenue.gross}
           format="currency"
-          tooltip="Total revenue from all bookings in selected period"
+          tooltip="Gross booking revenue before any deductions"
           color="blue"
           subValue={comparisonMode !== 'none' && comparison.previousRevenue > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -215,7 +215,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Expenses & Platform Fees"
           value={revenue.totalCosts}
           format="currency"
-          tooltip="Platform fees plus operating expenses"
+          tooltip="Platform fees (Airbnb, VRBO, etc.) plus your monthly operating expenses"
           color="orange"
           subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -230,7 +230,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Taxes"
           value={revenue.taxes}
           format="currency"
-          tooltip="Taxes collected on bookings"
+          tooltip="Occupancy and lodging taxes collected on bookings"
           color="yellow"
           subValue={comparisonMode !== 'none' && comparison.previousTaxes > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -245,7 +245,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Net Revenue"
           value={revenue.operatingProfit}
           format="currency"
-          tooltip="Revenue after fees, expenses, and taxes"
+          tooltip="What you keep after platform fees, operating expenses, and taxes"
           color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
           subValue={comparisonMode !== 'none' && comparison.previousOperatingProfit > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousOperatingProfit)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>

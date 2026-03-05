@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  Receipt, ExternalLink,
+  ExternalLink,
   AlertCircle, CheckCircle
 } from 'lucide-react';
 import { LoadingState } from '@/components/LoadingState';
@@ -204,10 +204,7 @@ export const BillingTab = () => {
 
       {/* billing history */}
       <div className="bg-card rounded-lg shadow-sm border p-5">
-        <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-          <Receipt className="w-5 h-5" />
-          Recent Payments
-        </h3>
+        <h3 className="text-lg font-semibold text-foreground mb-3">Recent Payments</h3>
         {billingHistory.length > 0 ? (
           <div className="space-y-2">
             {billingHistory.slice(0, 5).map((payment) => (

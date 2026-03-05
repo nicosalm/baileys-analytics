@@ -412,7 +412,7 @@ export const OverviewDashboard = () => {
               {filters.selectedTags.length > 0
                 ? `Filtered: ${filters.selectedTags.map(t => t.name).filter(Boolean).join(', ') || 'Selected tags'}`
                 : 'All Properties'
-              } — Everything you need to know about how your properties are doing
+              } · How your properties are performing right now
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -429,8 +429,8 @@ export const OverviewDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Quick Start:</strong> Click the top metric cards to dive into that area.
-              Green arrows show growth and red arrows show decline versus your comparison period. All numbers reflect your selected date range.
+              <strong>Quick Start:</strong> Click any metric card to jump to that section.
+              Green arrows mean growth, red means decline vs. your comparison period. Everything reflects your selected date range.
             </div>
           </div>
         </div>
@@ -443,7 +443,7 @@ export const OverviewDashboard = () => {
             <div className="flex-1">
               <p className="text-sm text-warning-fg">
                 <strong>No data in this date range.</strong>{' '}
-                Your bookings may fall outside the current period — try a different range.
+                Your bookings may fall outside the current period. Try a different range.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Button
@@ -489,7 +489,7 @@ export const OverviewDashboard = () => {
           label="Total Revenue"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
-          tooltip="Total revenue from all bookings in selected period"
+          tooltip="Gross booking revenue across all properties for this period"
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)}`
@@ -524,7 +524,7 @@ export const OverviewDashboard = () => {
           label="Total Bookings"
           value={metrics.bookings.current}
           format="number"
-          tooltip="Confirmed bookings in selected period"
+          tooltip="Number of confirmed reservations in this period"
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
@@ -559,7 +559,7 @@ export const OverviewDashboard = () => {
           label="Occupancy Rate"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
-          tooltip="Percentage of available nights booked"
+          tooltip="Share of available nights that were booked across all properties"
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average`
@@ -588,7 +588,7 @@ export const OverviewDashboard = () => {
           label="Total Guests"
           value={metrics.guests.total}
           format="number"
-          tooltip="Unique guests with bookings in selected period"
+          tooltip="Unique guests who had a booking in this period"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
@@ -629,7 +629,7 @@ export const OverviewDashboard = () => {
           subValue="Per reservation"
           size="sm"
           color="gray"
-          tooltip="Average revenue per booking"
+          tooltip="Total revenue divided by number of bookings"
         />
         <MetricCard
           icon={Calendar}
@@ -639,7 +639,7 @@ export const OverviewDashboard = () => {
           subValue="Per booking"
           size="sm"
           color="gray"
-          tooltip="Average length of stay per booking"
+          tooltip="How many nights the average guest stays per reservation"
         />
         <MetricCard
           icon={TrendingUp}
@@ -649,13 +649,13 @@ export const OverviewDashboard = () => {
           subValue={metrics.guests.total > 0 ? 'Return rate' : 'No data yet'}
           size="sm"
           color="gray"
-          tooltip="Percentage of guests who have booked more than once"
+          tooltip="Share of guests who have booked with you more than once"
         />
         <MetricCard
           icon={TrendingDown}
           label="Cancellation Rate"
           value={Number(metrics.bookings.cancellationRate || 0)}
-          tooltip="Percentage of bookings canceled in selected period"
+          tooltip="Share of bookings that were canceled during this period"
           format="percent"
           subValue="This period"
           size="sm"
@@ -754,7 +754,7 @@ export const OverviewDashboard = () => {
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-info" />
+              <Target className="w-5 h-5 text-muted-foreground" />
               <h3 className="text-lg font-bold">Your Goals</h3>
             </div>
             {enabledGoals.length > 0 && (
@@ -899,7 +899,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
     <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-info" />
+          <Calendar className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-lg font-bold">Upcoming</h3>
           <span className="text-xs text-muted-foreground">({filtered.length})</span>
         </div>
@@ -940,7 +940,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
                 <div>
                   <div className="text-sm font-medium">{booking.guestName}</div>
                   <div className="text-xs text-muted-foreground">
-                    {booking.propertyName} — {booking.type === 'check-in' ? 'Check-in' : 'Check-out'}{' '}
+                    {booking.propertyName} · {booking.type === 'check-in' ? 'Check-in' : 'Check-out'}{' '}
                     {formatDateDisplay(booking.type === 'check-in' ? booking.arrival : booking.departure)}
                   </div>
                 </div>

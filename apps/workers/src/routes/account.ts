@@ -5,6 +5,47 @@ import { authMiddleware } from '../middleware/auth';
 
 const account = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
+// get company name
+account.get('/company-name', authMiddleware, async (c) => {
+  const tenantId = c.get('tenantId');
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+
+  const { data, error } = await supabase
+    .from('tenants')
+    .select('company_name')
+    .eq('id', tenantId)
+    .single();
+
+  if (error) return c.json({ error: 'Failed to get company name' }, 500);
+  return c.json({ company_name: data?.company_name || null });
+});
+
+// update company name
+account.patch('/company-name', authMiddleware, async (c) => {
+  const tenantId = c.get('tenantId');
+  const body = await c.req.json();
+  const companyName = body.company_name;
+
+  if (companyName !== null && typeof companyName !== 'string') {
+    return c.json({ error: 'company_name must be a string or null' }, 400);
+  }
+
+  const trimmed = companyName?.trim() || null;
+  if (trimmed && trimmed.length > 100) {
+    return c.json({ error: 'Company name must be 100 characters or fewer' }, 400);
+  }
+
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+
+  const { error } = await supabase
+    .from('tenants')
+    .update({ company_name: trimmed, updated_at: new Date().toISOString() })
+    .eq('id', tenantId);
+
+  if (error) return c.json({ error: 'Failed to update company name' }, 500);
+  return c.json({ success: true, company_name: trimmed });
+});
+
 // export all user data
 account.get('/export', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');

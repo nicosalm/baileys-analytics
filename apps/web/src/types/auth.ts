@@ -4,6 +4,7 @@ export interface AppUser extends SupabaseUser {
   hasOwnerRezConnection?: boolean
   tenantId?: string
   isOAuthUser?: boolean
+  companyName?: string | null
 }
 
 export interface AuthSession {

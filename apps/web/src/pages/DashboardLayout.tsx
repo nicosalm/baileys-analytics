@@ -251,6 +251,9 @@ export const DashboardLayout = () => {
                     <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
                     <div className="ml-3">
                       <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
+                      {user.companyName && (
+                        <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -21,6 +21,7 @@ type AuthContextValue = {
   updateEmail: (newEmail: string) => Promise<boolean>
   refreshUser: () => Promise<void>
   setOwnerRezConnected: () => void
+  setCompanyName: (name: string | null) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -109,19 +110,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  const ensureTenantExists = async (userId: string, email: string | undefined): Promise<string | null> => {
+  const ensureTenantExists = async (userId: string, email: string | undefined): Promise<{ id: string; companyName: string | null } | null> => {
     if (!email) return null
 
     try {
       // check if tenant exists
       const { data: existingTenant } = await supabase
         .from('tenants')
-        .select('id')
+        .select('id, company_name')
         .eq('user_id', userId)
         .maybeSingle()
 
       if (existingTenant) {
-        return existingTenant.id
+        return { id: existingTenant.id, companyName: existingTenant.company_name }
       }
 
       // create tenant if it doesn't exist
@@ -139,18 +140,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // maybe it was created by another process, try to fetch again
         const { data: retryTenant } = await supabase
           .from('tenants')
-          .select('id')
+          .select('id, company_name')
           .eq('user_id', userId)
           .maybeSingle()
 
         if (retryTenant) {
-          return retryTenant.id
+          return { id: retryTenant.id, companyName: retryTenant.company_name }
         }
 
         return null
       }
 
-      return newTenant?.id || null
+      return newTenant ? { id: newTenant.id, companyName: null } : null
     } catch (err) {
       return null
     }
@@ -185,7 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ])
 
     // ensure tenant exists with retry logic (10s timeout — use null if it hangs)
-    const tenantId = await withTimeout(
+    const tenantResult = await withTimeout(
       retryWithBackoff(
         () => ensureTenantExists(session.user.id, session.user.email),
         'ensureTenantExists',
@@ -209,8 +210,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const appUser: AppUser = {
       ...session.user,
       hasOwnerRezConnection,
-      tenantId: tenantId || session.user.user_metadata?.tenant_id,
-      isOAuthUser: isOAuthUser(session.user.identities)
+      tenantId: tenantResult?.id || session.user.user_metadata?.tenant_id,
+      isOAuthUser: isOAuthUser(session.user.identities),
+      companyName: tenantResult?.companyName || null,
     }
 
     setState({
@@ -390,6 +392,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
+  const setCompanyName = useCallback((name: string | null) => {
+    setState(prevState => {
+      if (prevState.status === 'authenticated') {
+        return {
+          ...prevState,
+          user: {
+            ...prevState.user,
+            companyName: name
+          }
+        }
+      }
+      return prevState
+    })
+  }, [])
+
   // directly update hasOwnerRezConnection state after oauth success
   // this avoids race conditions from polling the database
   const setOwnerRezConnected = useCallback(() => {
@@ -516,7 +533,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []) // removed processSession from deps to prevent re-runs
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, logout, resetPassword, updatePassword, updateEmail, refreshUser, setOwnerRezConnected }}>
+    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, logout, resetPassword, updatePassword, updateEmail, refreshUser, setOwnerRezConnected, setCompanyName }}>
       {children}
     </AuthContext.Provider>
   )

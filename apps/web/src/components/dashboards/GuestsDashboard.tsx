@@ -409,11 +409,10 @@ export const GuestsDashboard = () => {
                     <div className="flex items-start">
                         <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
                         <div className="text-sm text-info-fg">
-                            <strong>Understanding Your Guests:</strong> All metrics reflect guests with bookings in the selected period.
-                            Use the <strong>filter buttons</strong> to segment by repeat, new, or top spenders,
-                            the <strong>source chart</strong> to see where guests come from,
-                            and <strong>Search Across Years</strong> to find returning guests for the same dates.
-                            Click any row to view a guest's full profile and booking history.
+                            <strong>Understanding Your Guests:</strong> All numbers are scoped to guests with bookings in the selected period.
+                            Filter by repeat, new, or top spenders. Use the source chart to see where guests book from
+                            and Search Across Years to find returnees for the same dates.
+                            Click any row for their full profile and booking history.
                         </div>
                     </div>
                 </div>
@@ -425,7 +424,7 @@ export const GuestsDashboard = () => {
                     label="Total Guests"
                     value={data.metrics.totalGuests}
                     format="number"
-                    tooltip="Unique guests with bookings in selected period"
+                    tooltip="Unique guests who had a booking in this period"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? <>vs {comparisonLabel}: {previousData.metrics.totalGuests}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : "In selected period"
@@ -443,7 +442,7 @@ export const GuestsDashboard = () => {
                     label="Repeat Rate"
                     value={data.metrics.repeatRate * 100}
                     format="percent"
-                    tooltip="Percentage of guests who have booked more than once"
+                    tooltip="Share of guests who have booked with you more than once"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : `${data.metrics.repeatGuests} returning guests`
@@ -461,7 +460,7 @@ export const GuestsDashboard = () => {
                     label="Average Stay"
                     value={`${data.metrics.avgStayLength.toFixed(1)} nights`}
                     format="custom"
-                    tooltip="Average length of stay per booking"
+                    tooltip="How many nights the average guest stays per reservation"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? <>vs {comparisonLabel}: {previousData.metrics.avgStayLength.toFixed(1)} nights{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : "Per booking"
@@ -487,7 +486,7 @@ export const GuestsDashboard = () => {
                         value: ((data.metrics.avgSpend - previousData.metrics.avgSpend) / previousData.metrics.avgSpend) * 100,
                         isPositive: data.metrics.avgSpend > previousData.metrics.avgSpend
                     } : undefined}
-                    tooltip="Average spending per guest in selected period"
+                    tooltip="Total revenue divided by number of unique guests this period"
                     color="orange"
                 />
             </div>
@@ -496,11 +495,11 @@ export const GuestsDashboard = () => {
             {(data.metrics.directSavingsOpportunity > 0) && (
                 <div className="bg-card rounded-lg shadow-sm border border-border p-6">
                     <div className="flex items-center gap-2 mb-4">
-                        <Sparkles className="w-5 h-5 text-success" />
+                        <Sparkles className="w-5 h-5 text-muted-foreground" />
                         <div>
                             <h3 className="text-lg font-bold">Direct Booking Opportunity</h3>
                             <p className="text-sm text-muted-foreground">
-                                Fees paid to OTAs and credit card processors this period — money that could stay with guests (and you)
+                                Fees paid to OTAs and credit card processors this period that could stay with guests (and you) via direct bookings
                             </p>
                         </div>
                     </div>

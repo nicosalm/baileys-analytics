@@ -6,7 +6,7 @@ import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import { useNavigate } from 'react-router-dom'
 import {
-  RefreshCw, AlertCircle, Check, Link2, Link2Off, Webhook
+  RefreshCw, AlertCircle, Check, Link2, Link2Off
 } from 'lucide-react'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { Button } from '@/components/ui/button'
@@ -92,12 +92,12 @@ export const IntegrationsTab = () => {
               <img
                 src="/logos/ownerrez-app-icon.png"
                 alt="OwnerRez"
-                className="w-12 h-12"
+                className="w-12 h-12 rounded-lg"
               />
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">OwnerRez</h3>
                 <p className="text-muted-foreground text-sm">
-                  Connect your OwnerRez account to sync properties, bookings, and guest data with real-time webhook updates
+                  Syncs your properties, bookings, and guests. Stays up to date via webhooks.
                 </p>
               </div>
             </div>
@@ -131,10 +131,7 @@ export const IntegrationsTab = () => {
             <>
               <div className="border-t pt-6">
                 <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Webhook className="w-4 h-4 text-success" />
-                    <h3 className="text-lg font-semibold text-foreground">Sync Status</h3>
-                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Sync Status</h3>
                   {(() => {
                     const hours = webhookHealth?.lastWebhookHoursAgo
                     const hoursDisplay = hours != null ? (hours < 1 ? '<1 hour' : `${Math.round(hours)} hours`) : null
@@ -143,7 +140,7 @@ export const IntegrationsTab = () => {
                       return (
                         <div className="bg-success-subtle border border-success/30 rounded-lg p-3">
                           <p className="text-sm text-success-fg">
-                            <span className="font-medium">✓ Real-time webhooks active</span> — last event {hoursDisplay} ago
+                            <span className="font-medium">✓ Real-time webhooks active</span> · last event {hoursDisplay} ago
                           </p>
                         </div>
                       )
@@ -154,7 +151,7 @@ export const IntegrationsTab = () => {
                         <div className="bg-warning-subtle border border-warning/30 rounded-lg p-3">
                           <div className="flex items-center justify-between">
                             <p className="text-sm text-warning-fg">
-                              <span className="font-medium">⚠ No webhooks received in {hoursDisplay}</span> — data may be stale
+                              <span className="font-medium">⚠ No webhooks received in {hoursDisplay}</span> · data may be stale
                             </p>
                             <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
                               <RefreshCw className="w-3 h-3" />
@@ -170,7 +167,7 @@ export const IntegrationsTab = () => {
                         <div className="bg-danger-subtle border border-danger/30 rounded-lg p-3">
                           <div className="flex items-center justify-between">
                             <p className="text-sm text-danger-fg">
-                              <span className="font-medium">✗ Webhooks may be disconnected</span> — no events in {hoursDisplay}
+                              <span className="font-medium">✗ Webhooks may be disconnected</span> · no events in {hoursDisplay}
                             </p>
                             <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
                               <RefreshCw className="w-3 h-3" />

@@ -1674,6 +1674,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          company_name: string | null
           created_at: string | null
           email: string
           first_subscription_at: string | null
@@ -1689,6 +1690,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          company_name?: string | null
           created_at?: string | null
           email: string
           first_subscription_at?: string | null
@@ -1704,6 +1706,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          company_name?: string | null
           created_at?: string | null
           email?: string
           first_subscription_at?: string | null

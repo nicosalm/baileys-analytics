@@ -32,6 +32,7 @@ interface AdminMetrics {
 interface AdminUser {
   id: string
   email: string
+  company_name?: string | null
   created_at: string
   subscription_status?: string
   subscription_exempt: boolean
@@ -252,9 +253,11 @@ export const Admin = () => {
     }
   }
 
-  const filteredUsers = users.filter(user =>
-    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUsers = users.filter(user => {
+    const term = searchTerm.toLowerCase()
+    return user.email?.toLowerCase().includes(term) ||
+           user.company_name?.toLowerCase().includes(term)
+  })
 
   const handleLogout = async () => {
     await logout()
@@ -324,7 +327,7 @@ export const Admin = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-card rounded-lg shadow-sm border p-5">
               <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-info" />
+                <Users className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">Total Users</span>
               </div>
               <span className="text-2xl font-bold text-foreground">{metrics.totalUsers}</span>
@@ -332,7 +335,7 @@ export const Admin = () => {
 
             <div className="bg-card rounded-lg shadow-sm border p-5">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-success" />
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">Active Subs</span>
               </div>
               <span className="text-2xl font-bold text-foreground">{metrics.activeSubscriptions}</span>
@@ -340,7 +343,7 @@ export const Admin = () => {
 
             <div className="bg-card rounded-lg shadow-sm border p-5">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-4 h-4 text-purple-fg" />
+                <DollarSign className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">MRR</span>
               </div>
               <span className="text-2xl font-bold text-foreground">${metrics.mrr}</span>
@@ -348,7 +351,7 @@ export const Admin = () => {
 
             <div className="bg-card rounded-lg shadow-sm border p-5">
               <div className="flex items-center gap-2 mb-2">
-                <UserPlus className="w-4 h-4 text-warning" />
+                <UserPlus className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">Signups (7d)</span>
               </div>
               <span className="text-2xl font-bold text-foreground">{metrics.recentSignups}</span>
@@ -356,7 +359,7 @@ export const Admin = () => {
 
             <div className="bg-card rounded-lg shadow-sm border p-5">
               <div className="flex items-center gap-2 mb-2">
-                <Building2 className="w-4 h-4 text-info" />
+                <Building2 className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">Properties</span>
               </div>
               <span className="text-2xl font-bold text-foreground">{metrics.totalProperties}</span>
@@ -364,7 +367,7 @@ export const Admin = () => {
 
             <div className="bg-card rounded-lg shadow-sm border p-5">
               <div className="flex items-center gap-2 mb-2">
-                <CalendarDays className="w-4 h-4 text-success" />
+                <CalendarDays className="w-4 h-4 text-muted-foreground" />
                 <span className="text-xs text-muted-foreground">Bookings</span>
               </div>
               <span className="text-2xl font-bold text-foreground">{metrics.totalBookings.toLocaleString()}</span>
@@ -423,7 +426,7 @@ export const Admin = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search by email..."
+                placeholder="Search by email or company..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -435,22 +438,23 @@ export const Admin = () => {
             <table className="w-full table-fixed">
               <thead className="bg-muted/40 border-b">
                 <tr>
-                  <th className="w-[30%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
-                  <th className="w-[12%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                  <th className="w-[10%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Plan</th>
-                  <th className="w-[10%] px-5 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">OwnerRez</th>
-                  <th className="w-[15%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Joined</th>
-                  <th className="w-[23%] px-5 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                  <th className="w-[25%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
+                  <th className="w-[15%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Company</th>
+                  <th className="w-[10%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="w-[8%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Plan</th>
+                  <th className="w-[8%] px-5 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">OwnerRez</th>
+                  <th className="w-[12%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Joined</th>
+                  <th className="w-[22%] px-5 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredUsers.map((user) => (
                   <tr key={user.id}>
-                    <td colSpan={6} className="p-0">
+                    <td colSpan={7} className="p-0">
                       <table className="w-full table-fixed">
                         <tbody>
                           <tr className="hover:bg-muted/30 transition-colors">
-                            <td className="w-[30%] px-5 py-3">
+                            <td className="w-[25%] px-5 py-3">
                               <button
                                 onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
                                 className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-full"
@@ -459,24 +463,27 @@ export const Admin = () => {
                                 <span className="truncate">{user.email}</span>
                               </button>
                             </td>
-                            <td className="w-[12%] px-5 py-3">
+                            <td className="w-[15%] px-5 py-3 hidden lg:table-cell text-sm text-muted-foreground truncate">
+                              {user.company_name || <span className="text-muted-foreground/50">-</span>}
+                            </td>
+                            <td className="w-[10%] px-5 py-3">
                               <StatusBadge status={user.subscription?.status} exempt={user.subscription_exempt} />
                             </td>
-                            <td className="w-[10%] px-5 py-3 hidden md:table-cell text-sm text-muted-foreground">
+                            <td className="w-[8%] px-5 py-3 hidden md:table-cell text-sm text-muted-foreground">
                               {user.subscription?.billing_cycle === 'yearly' ? 'Yearly' :
                                user.subscription?.billing_cycle === 'monthly' ? 'Monthly' : '-'}
                             </td>
-                            <td className="w-[10%] px-5 py-3 hidden md:table-cell text-center">
+                            <td className="w-[8%] px-5 py-3 hidden md:table-cell text-center">
                               {user.ownerrez_connected ? (
                                 <span title="Connected"><Link2 className="w-4 h-4 text-success inline-block" /></span>
                               ) : (
                                 <span title="Not connected"><Link2Off className="w-4 h-4 text-muted-foreground inline-block" /></span>
                               )}
                             </td>
-                            <td className="w-[15%] px-5 py-3 hidden lg:table-cell text-sm text-muted-foreground tabular-nums">
+                            <td className="w-[12%] px-5 py-3 hidden lg:table-cell text-sm text-muted-foreground tabular-nums">
                               {new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' })}
                             </td>
-                            <td className="w-[23%] px-5 py-3 text-right">
+                            <td className="w-[22%] px-5 py-3 text-right">
                               <div className="flex items-center justify-end gap-1.5">
                                 <Button
                                   variant="ghost"
@@ -510,7 +517,7 @@ export const Admin = () => {
                           </tr>
                           {expandedUser === user.id && (
                             <tr>
-                              <td colSpan={6}>
+                              <td colSpan={7}>
                                 <UserDetailPanel userId={user.id} onClose={() => setExpandedUser(null)} />
                               </td>
                             </tr>
@@ -522,7 +529,7 @@ export const Admin = () => {
                 ))}
                 {filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-5 py-8 text-center text-sm text-muted-foreground">
+                    <td colSpan={7} className="px-5 py-8 text-center text-sm text-muted-foreground">
                       {searchTerm ? 'No users match your search' : 'No users found'}
                     </td>
                   </tr>

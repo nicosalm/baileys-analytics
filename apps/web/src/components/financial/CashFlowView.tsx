@@ -176,7 +176,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-purple-600 mr-2 mt-0.5" />
             <div className="text-sm text-purple-800">
-              <strong>Cash Flow:</strong> Track money coming in (revenue) versus money going out (fees, taxes, expenses) to understand your liquidity
+              <strong>Cash Flow:</strong> Money in (booking revenue) vs. money out (platform fees, taxes, expenses). Helps you see how much you actually keep each month.
             </div>
           </div>
         </div>

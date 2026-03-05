@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useGoals, saveGoals } from '@/hooks/use-api'
-import { DollarSign, Calendar, Percent, Users, TrendingUp, Clock, Target } from 'lucide-react'
+import { DollarSign, Calendar, Percent, Users, TrendingUp, Clock } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import type { GoalFormData, GoalPeriod } from '@/types/goal'
@@ -135,11 +135,8 @@ export const GoalManagementPanel: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-1">Goals</h3>
             <p className="text-muted-foreground text-sm">
-              Set targets for the metrics that matter most to your business. Enabled goals appear on your Overview dashboard.
+              Pick the metrics you care about and set targets. They'll show up on your Overview.
             </p>
-          </div>
-          <div className="w-10 h-10 bg-info-subtle rounded-lg flex items-center justify-center">
-            <Target className="w-5 h-5 text-info" />
           </div>
         </div>
       </div>

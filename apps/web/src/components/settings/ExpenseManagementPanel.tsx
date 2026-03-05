@@ -121,7 +121,7 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
               {hasTemplate ? (
                 <p className="text-xs text-muted-foreground mt-0.5">{formatCurrency(savedTotal)}/mo</p>
               ) : (
-                <p className="text-xs text-muted-foreground mt-0.5">No template — expenses default to $0</p>
+                <p className="text-xs text-muted-foreground mt-0.5">No template set, expenses default to $0</p>
               )}
             </div>
           </div>
@@ -332,7 +332,7 @@ export const ExpenseManagementPanel = () => {
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Operating Expenses</h3>
             <p className="text-muted-foreground text-sm">
-              Set monthly templates to auto-fill expenses, or add overrides for months that differ
+              Set up monthly templates, then override individual months when costs change
             </p>
           </div>
           <div className="bg-muted/40 rounded-lg px-4 py-3">
