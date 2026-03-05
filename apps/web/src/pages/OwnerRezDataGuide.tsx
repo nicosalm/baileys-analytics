@@ -11,19 +11,23 @@ export const OwnerRezDataGuide = () => {
       <div className="prose prose-gray max-w-none">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-1">OwnerRez Data Guide</h1>
-          <p className="text-muted-foreground text-sm">What we sync, how updates work, and what you need to configure yourself</p>
+          <p className="text-muted-foreground text-sm">What is synced, how updates work, and what requires manual configuration.</p>
         </div>
 
         {/* what we sync */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">What We Sync</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Synced Data</h2>
+
+          <p className="text-muted-foreground text-sm mb-4">
+            The following data is imported from your OwnerRez account and kept current via webhooks.
+          </p>
 
           <div className="space-y-6">
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-2">Properties</h3>
               <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
                 <li>Name, address, bedrooms, bathrooms, max guests</li>
-                <li>Location data including GPS coordinates</li>
+                <li>GPS coordinates</li>
                 <li>Active/inactive status</li>
                 <li>Property tags</li>
               </ul>
@@ -33,7 +37,7 @@ export const OwnerRezDataGuide = () => {
               <h3 className="text-sm font-semibold text-foreground mb-2">Bookings</h3>
               <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
                 <li>Dates, guest count, and status</li>
-                <li>Financial data including charge breakdowns</li>
+                <li>Charge breakdowns and financial data</li>
                 <li>Guest name, email, and phone</li>
                 <li>Booking source (Airbnb, Vrbo, Direct, etc.)</li>
                 <li>Platform reservation numbers</li>
@@ -44,7 +48,7 @@ export const OwnerRezDataGuide = () => {
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-2">Guests</h3>
               <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
-                <li>Contact info and tags</li>
+                <li>Contact information and tags</li>
                 <li>Booking history and repeat guest tracking</li>
               </ul>
             </div>
@@ -61,15 +65,15 @@ export const OwnerRezDataGuide = () => {
 
         {/* what we don't sync */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">What You'll Need to Configure</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Manual Configuration</h2>
           <p className="text-muted-foreground text-sm mb-4">
-            These aren't available through the OwnerRez API, so you'll set them up yourself:
+            The following data is not available through the OwnerRez API and must be entered manually:
           </p>
           <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
-            <li>Operating expenses like cleaning and maintenance in <SLink tab="expenses">Settings → Expenses</SLink></li>
+            <li>Operating expenses (cleaning, maintenance, etc.) in <SLink tab="expenses">Settings → Expenses</SLink></li>
           </ul>
           <p className="text-muted-foreground text-sm mt-4">
-            Platform fees are sourced automatically from your OwnerRez booking data. Net revenue calculations depend on operating expenses being set correctly.
+            Platform fees are imported from OwnerRez booking data automatically. Net revenue calculations require operating expenses to be configured.
           </p>
         </section>
 
@@ -78,16 +82,16 @@ export const OwnerRezDataGuide = () => {
           <h2 className="text-lg font-semibold text-foreground mb-4">Real-Time Updates</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
-            We use OwnerRez webhooks to keep your dashboard current. When something changes in OwnerRez, it shows up here automatically.
+            OwnerRez webhooks push changes to Baileys Analytics as they happen. No action is required on your part.
           </p>
 
-          <h3 className="text-sm font-semibold text-foreground mb-2">What updates automatically</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-2">Events that trigger automatic updates</h3>
           <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
-            <li>New bookings appear when confirmed in OwnerRez</li>
-            <li>Date changes and guest info edits sync over</li>
-            <li>Cancellations are reflected on your dashboard</li>
-            <li>Property name, status, and tag changes come through</li>
-            <li>Guest info updates apply to their associated bookings</li>
+            <li>New bookings confirmed in OwnerRez</li>
+            <li>Date changes and guest info edits</li>
+            <li>Cancellations</li>
+            <li>Property name, status, and tag changes</li>
+            <li>Guest contact info updates</li>
           </ul>
         </section>
 
@@ -96,11 +100,11 @@ export const OwnerRezDataGuide = () => {
           <h2 className="text-lg font-semibold text-foreground mb-4">Initial Sync</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
-            When you first connect, we pull in 3 years of historical bookings and 1 year of future bookings. This usually takes 2-5 minutes.
+            On first connection, the system imports 3 years of historical bookings and 1 year of future bookings. This typically takes 2 to 5 minutes.
           </p>
 
           <p className="text-muted-foreground text-sm">
-            After that, everything stays up to date via webhooks.
+            All subsequent updates are handled by webhooks.
           </p>
         </section>
 
@@ -109,16 +113,16 @@ export const OwnerRezDataGuide = () => {
           <h2 className="text-lg font-semibold text-foreground mb-4">Manual Sync</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
-            Webhooks handle most updates, but you can also sync manually from <SLink tab="integrations">Settings → Integrations</SLink>:
+            Webhooks handle most updates automatically. If needed, you can trigger a manual sync from <SLink tab="integrations">Settings → Integrations</SLink>:
           </p>
 
           <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
-            <li>Re-sync All Data refreshes all properties and bookings</li>
-            <li>Guest Details Sync backfills missing contact info</li>
+            <li><strong>Re-sync All Data</strong> re-imports all properties and bookings</li>
+            <li><strong>Guest Details Sync</strong> backfills missing contact information</li>
           </ul>
 
           <p className="text-muted-foreground text-sm mt-4">
-            You shouldn't need to do this often. It's there if something looks off.
+            Manual syncing is rarely needed. Use it if data appears stale or incomplete.
           </p>
         </section>
 
@@ -127,11 +131,11 @@ export const OwnerRezDataGuide = () => {
           <h2 className="text-lg font-semibold text-foreground mb-4">Security & Privacy</h2>
 
           <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
-            <li>We connect via OAuth. We never store your OwnerRez password.</li>
+            <li>Connection uses OAuth. Your OwnerRez password is never stored.</li>
             <li>All data transfers are encrypted over HTTPS.</li>
-            <li>Your data is isolated from other users with row-level security.</li>
+            <li>Row-level security isolates your data from other accounts.</li>
             <li>Webhooks are authenticated to prevent unauthorized access.</li>
-            <li>You can disconnect anytime from <SLink tab="integrations">Settings → Integrations</SLink>.</li>
+            <li>You can disconnect at any time from <SLink tab="integrations">Settings → Integrations</SLink>.</li>
           </ul>
         </section>
 
@@ -143,28 +147,28 @@ export const OwnerRezDataGuide = () => {
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1">No data showing</h3>
               <p className="text-muted-foreground text-sm">
-                Check your connection status in <SLink tab="integrations">Settings → Integrations</SLink>. If it's disconnected, reconnect and wait for the initial sync to finish.
+                Check your connection status in <SLink tab="integrations">Settings → Integrations</SLink>. If disconnected, reconnect and allow the initial sync to complete.
               </p>
             </div>
 
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1">Missing guest contact info</h3>
               <p className="text-muted-foreground text-sm">
-                Run a Guest Details Sync from <SLink tab="integrations">Settings → Integrations</SLink>. OwnerRez sometimes stores guest info separately from bookings.
+                Run a Guest Details Sync from <SLink tab="integrations">Settings → Integrations</SLink>. OwnerRez stores guest contact details separately from booking records.
               </p>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-1">Data seems outdated</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-1">Data appears outdated</h3>
               <p className="text-muted-foreground text-sm">
-                Check webhook status in <SLink tab="integrations">Settings → Integrations</SLink>. If webhooks aren't working, use "Re-sync All Data" to refresh.
+                Check webhook status in <SLink tab="integrations">Settings → Integrations</SLink>. If webhooks are inactive, use "Re-sync All Data" to refresh.
               </p>
             </div>
           </div>
 
           <div className="mt-6 pt-6 border-t">
             <p className="text-muted-foreground text-sm">
-              Need help? Reach us at <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">support@baileysanalytics.com</a> or
+              Questions? Contact us at <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">support@baileysanalytics.com</a> or
               visit the <Link to="/help" className="text-primary hover:text-primary/80">Help Center</Link>.
             </p>
           </div>

@@ -23,6 +23,7 @@ const Terms = lazy(() => import('@/pages/Terms').then(m => ({ default: m.Terms }
 const Privacy = lazy(() => import('@/pages/Privacy').then(m => ({ default: m.Privacy })))
 const Help = lazy(() => import('@/pages/Help').then(m => ({ default: m.Help })))
 const OwnerRezDataGuide = lazy(() => import('@/pages/OwnerRezDataGuide').then(m => ({ default: m.OwnerRezDataGuide })))
+const ApiDocs = lazy(() => import('@/pages/ApiDocs').then(m => ({ default: m.ApiDocs })))
 const Admin = lazy(() => import('@/pages/Admin').then(m => ({ default: m.Admin })))
 const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })))
 const AuthCallback = lazy(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallback })))
@@ -56,6 +57,7 @@ export const App = () => {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/help" element={<Help />} />
               <Route path="/docs/ownerrez-data" element={<OwnerRezDataGuide />} />
+              <Route path="/docs/api" element={<ApiDocs />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
 

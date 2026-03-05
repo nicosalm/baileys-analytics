@@ -11,7 +11,7 @@ export const Help = () => {
       <div className="prose prose-gray max-w-none">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-foreground mb-1">Help & FAQ</h1>
-          <p className="text-muted-foreground text-sm">Common questions and quick answers</p>
+          <p className="text-muted-foreground text-sm">Answers to common questions about Baileys Analytics.</p>
         </div>
 
         {/* quick links */}
@@ -19,13 +19,13 @@ export const Help = () => {
           <h2 className="text-sm font-medium text-info-fg mb-2 mt-0">Quick Links</h2>
           <div className="grid md:grid-cols-2 gap-1.5">
             <Link to="/docs/ownerrez-data" className="text-primary hover:text-primary/80 text-sm">
-              → What data we sync from OwnerRez
+              → OwnerRez Data Guide
             </Link>
-            <Link to="/settings" className="text-primary hover:text-primary/80 text-sm">
-              → Manage your subscription
+            <Link to="/docs/api" className="text-primary hover:text-primary/80 text-sm">
+              → Data API
             </Link>
             <a href="https://status.baileysanalytics.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 text-sm">
-              → System status page
+              → System status
             </a>
             <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80 text-sm">
               → Contact support
@@ -40,26 +40,25 @@ export const Help = () => {
           <div className="space-y-6">
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How do I connect OwnerRez?</h3>
-              <p className="text-foreground text-sm mb-2">
-                Head to <SLink tab="integrations">Settings → Integrations</SLink> and click "Connect to OwnerRez." You'll log in to your OwnerRez account and
-                authorize the connection. The initial data sync takes a couple minutes after that.
+              <p className="text-muted-foreground text-sm mb-2">
+                Open <SLink tab="integrations">Settings → Integrations</SLink> and click "Connect to OwnerRez." You will be redirected to OwnerRez to authorize the connection. The initial data sync begins immediately after.
               </p>
               <p className="text-muted-foreground text-sm">
-                We use OAuth, so we never see your OwnerRez password.
+                The connection uses OAuth. Your OwnerRez password is never shared with Baileys Analytics.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How long does the first sync take?</h3>
-              <p className="text-foreground text-sm">
-                Usually 2-5 minutes. We pull in 3 years of historical bookings and 1 year of future bookings. You can watch the progress after connecting.
+              <p className="text-muted-foreground text-sm">
+                Typically 2 to 5 minutes. The sync imports 3 years of historical bookings and 1 year of future bookings. Progress is visible on the dashboard during the process.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Is my data automatically updated?</h3>
-              <p className="text-foreground text-sm">
-                After the first sync, we use webhooks to get real-time updates from OwnerRez. When you create, update, or cancel a booking, it shows up on your dashboard within seconds.
+              <h3 className="text-sm font-semibold text-foreground mb-1">Is my data updated automatically?</h3>
+              <p className="text-muted-foreground text-sm">
+                Yes. After the initial sync, OwnerRez webhooks push updates in real time. Booking changes, cancellations, and property edits appear on your dashboard within seconds.
               </p>
             </div>
           </div>
@@ -71,29 +70,31 @@ export const Help = () => {
 
           <div className="space-y-6">
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Why isn't my data showing?</h3>
-              <p className="text-foreground text-sm mb-2">
-                A few things to check:
+              <h3 className="text-sm font-semibold text-foreground mb-1">No data is showing on my dashboard.</h3>
+              <p className="text-muted-foreground text-sm mb-2">
+                Verify the following:
               </p>
-              <ul className="text-foreground text-sm list-disc ml-6 space-y-1">
-                <li>Make sure you're connected to OwnerRez in <SLink tab="integrations">Settings → Integrations</SLink></li>
-                <li>Check if the initial sync finished</li>
-                <li>Try a manual re-sync from <SLink tab="integrations">Settings → Integrations</SLink></li>
-                <li>Make sure your OwnerRez account actually has properties and bookings</li>
+              <ul className="text-muted-foreground text-sm list-disc ml-6 space-y-1">
+                <li>OwnerRez is connected in <SLink tab="integrations">Settings → Integrations</SLink></li>
+                <li>The initial sync has completed</li>
+                <li>Your OwnerRez account has at least one property and booking</li>
               </ul>
+              <p className="text-muted-foreground text-sm mt-2">
+                If the issue persists, try a manual re-sync from <SLink tab="integrations">Settings → Integrations</SLink>.
+              </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Why is guest contact information missing?</h3>
-              <p className="text-foreground text-sm">
-                OwnerRez stores guest contact info separately from bookings. Run a Guest Details Sync from {' '}
+              <h3 className="text-sm font-semibold text-foreground mb-1">Guest contact information is missing.</h3>
+              <p className="text-muted-foreground text-sm">
+                OwnerRez stores guest contact details separately from bookings. Run a Guest Details Sync from {' '}
                 <SLink tab="integrations">Settings → Integrations</SLink> to backfill missing emails and phone numbers.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">What data do you sync from OwnerRez?</h3>
-              <p className="text-foreground text-sm">
+              <h3 className="text-sm font-semibold text-foreground mb-1">What data is synced from OwnerRez?</h3>
+              <p className="text-muted-foreground text-sm">
                 Properties, bookings, guests, tags, and blocks. See the
                 <Link to="/docs/ownerrez-data" className="text-primary hover:text-primary/80 ml-1">OwnerRez Data Guide</Link> for
                 a full breakdown.
@@ -102,24 +103,24 @@ export const Help = () => {
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How accurate is the dashboard data?</h3>
-              <p className="text-foreground text-sm mb-2">
-                Bookings, guest details, property info, and charge breakdowns all come straight from the OwnerRez API and stay current via webhooks.
+              <p className="text-muted-foreground text-sm mb-2">
+                Bookings, guest details, property info, and charge breakdowns are sourced directly from the OwnerRez API and kept current via webhooks.
               </p>
-              <p className="text-foreground text-sm">
-                A few things aren't available through the API, so you'll need to set them up yourself:
+              <p className="text-muted-foreground text-sm">
+                Some data is not available through the OwnerRez API and must be configured manually:
               </p>
-              <ul className="text-foreground text-sm list-disc ml-6 space-y-1 mt-2">
-                <li>Operating expenses like cleaning and maintenance in <SLink tab="expenses">Settings → Expenses</SLink></li>
+              <ul className="text-muted-foreground text-sm list-disc ml-6 space-y-1 mt-2">
+                <li>Operating expenses (cleaning, maintenance, etc.) in <SLink tab="expenses">Settings → Expenses</SLink></li>
               </ul>
               <p className="text-muted-foreground text-sm mt-2">
-                Platform fees are sourced automatically from your OwnerRez booking data. Net revenue calculations depend on operating expenses being set correctly.
+                Platform fees are pulled from OwnerRez booking data automatically. Net revenue calculations require operating expenses to be set correctly.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How do I manually sync my data?</h3>
-              <p className="text-foreground text-sm">
-                Go to <SLink tab="integrations">Settings → Integrations</SLink> and click "Re-sync All Data." This refreshes everything from OwnerRez.
+              <p className="text-muted-foreground text-sm">
+                Open <SLink tab="integrations">Settings → Integrations</SLink> and click "Re-sync All Data." This re-imports all properties and bookings from OwnerRez.
               </p>
             </div>
           </div>
@@ -132,39 +133,39 @@ export const Help = () => {
           <div className="space-y-6">
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How much does Baileys Analytics cost?</h3>
-              <p className="text-foreground text-sm mb-2">
-                The first 30 days are $1. After that, it's $20/month or $192/year (saves 20%). Includes unlimited properties, reports, and data exports.
+              <p className="text-muted-foreground text-sm">
+                The first 30 days are $1. After that, pricing is $20/month or $192/year (20% discount). All plans include unlimited properties, reports, and data exports.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How do I cancel my subscription?</h3>
-              <p className="text-foreground text-sm mb-2">
-                Go to <SLink tab="billing">Settings → Billing</SLink>, click "Manage Subscription," then cancel from the Stripe customer portal.
+              <p className="text-muted-foreground text-sm mb-2">
+                Open <SLink tab="billing">Settings → Billing</SLink>, click "Manage Subscription," and cancel from the Stripe customer portal.
               </p>
               <p className="text-muted-foreground text-sm">
-                You keep access until the end of your current billing period.
+                Access continues until the end of your current billing period.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Can I switch between monthly and yearly billing?</h3>
-              <p className="text-foreground text-sm">
-                Go to <SLink tab="billing">Settings → Billing</SLink> and click "Manage Subscription" to change your billing cycle. You'll get a prorated credit or charge.
+              <p className="text-muted-foreground text-sm">
+                Yes. Open <SLink tab="billing">Settings → Billing</SLink> and click "Manage Subscription" to change your billing cycle. The difference is prorated automatically.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Do you offer refunds?</h3>
-              <p className="text-foreground text-sm">
-                Payments are non-refundable. The $1 trial gives you 30 days to try everything before committing.
+              <p className="text-muted-foreground text-sm">
+                Payments are non-refundable. The $1 trial provides 30 days of full access before committing to a subscription.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Are there any usage limits?</h3>
-              <p className="text-foreground text-sm">
-                No limits. Unlimited properties, bookings, reports, and API calls.
+              <h3 className="text-sm font-semibold text-foreground mb-1">Are there usage limits?</h3>
+              <p className="text-muted-foreground text-sm">
+                No. All plans include unlimited properties, bookings, reports, and API access.
               </p>
             </div>
           </div>
@@ -177,29 +178,29 @@ export const Help = () => {
           <div className="space-y-6">
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How are platform fees calculated?</h3>
-              <p className="text-foreground text-sm">
-                Platform fees are pulled automatically from your OwnerRez booking data. Host service fees are exact values from OwnerRez; guest service fees are estimated at sync time (~13–15% depending on platform).
+              <p className="text-muted-foreground text-sm">
+                Platform fees are pulled from your OwnerRez booking data. Host service fees are exact values from OwnerRez. Guest service fees are estimated during sync (approximately 13 to 15% depending on the platform).
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How do seasons work?</h3>
-              <p className="text-foreground text-sm">
-                Seasons let you define custom date ranges like "Summer 2024" or "Ski Season." Create them in <SLink tab="seasons">Settings → Seasons</SLink>, then use the dashboard filter bar to view performance for that period.
+              <p className="text-muted-foreground text-sm">
+                Seasons are custom date ranges (e.g., "Summer 2024" or "Ski Season") that you define in <SLink tab="seasons">Settings → Seasons</SLink>. Once created, they appear in the dashboard filter bar for viewing performance over that period.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Can I export my data?</h3>
-              <p className="text-foreground text-sm">
-                Use Reports to generate PDF exports of your analytics. You can also export everything as JSON from <SLink tab="account">Settings → Account</SLink>.
+              <p className="text-muted-foreground text-sm">
+                Yes. Use Reports to generate PDF exports, or export all data as JSON from <SLink tab="account">Settings → Account</SLink>. You can also query data programmatically through the <Link to="/docs/api" className="text-primary hover:text-primary/80">Data API</Link>.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">What if I disconnect OwnerRez?</h3>
-              <p className="text-foreground text-sm">
-                You can disconnect anytime from <SLink tab="integrations">Settings → Integrations</SLink>. Your existing data stays in Baileys Analytics, but new bookings won't sync until you reconnect. We revoke our OAuth access when you disconnect.
+              <h3 className="text-sm font-semibold text-foreground mb-1">What happens if I disconnect OwnerRez?</h3>
+              <p className="text-muted-foreground text-sm">
+                Disconnecting stops future syncs but does not delete existing data. New bookings will not appear until you reconnect. OAuth access is revoked immediately on disconnect.
               </p>
             </div>
           </div>
@@ -211,29 +212,26 @@ export const Help = () => {
 
           <div className="space-y-6">
             <div className="pb-4 border-b last:border-0 last:pb-0">
-              <h3 className="text-sm font-semibold text-foreground mb-1">Is my data secure?</h3>
-              <p className="text-foreground text-sm mb-2">
-                Here's how we handle security:
-              </p>
-              <ul className="text-foreground text-sm list-disc ml-6 space-y-1">
-                <li>We use OAuth to connect to OwnerRez, so we never see your password</li>
-                <li>All connections are encrypted with HTTPS</li>
-                <li>Data is hosted on Supabase, which is SOC 2 compliant</li>
-                <li>Row-level security keeps your data isolated from other users</li>
+              <h3 className="text-sm font-semibold text-foreground mb-1">How is my data protected?</h3>
+              <ul className="text-muted-foreground text-sm list-disc ml-6 space-y-1">
+                <li>OwnerRez connection uses OAuth. Your OwnerRez password is never stored.</li>
+                <li>All data is transferred over HTTPS.</li>
+                <li>Data is hosted on Supabase (SOC 2 compliant).</li>
+                <li>Row-level security isolates your data from other accounts.</li>
               </ul>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How do I delete my account?</h3>
-              <p className="text-foreground text-sm">
-                Go to <SLink tab="account">Settings → Account</SLink> and click "Delete Account." This permanently removes all your data, cancels your subscription, and revokes OwnerRez access.
+              <p className="text-muted-foreground text-sm">
+                Open <SLink tab="account">Settings → Account</SLink> and click "Delete Account." This permanently removes all data, cancels your subscription, and revokes OwnerRez access.
               </p>
             </div>
 
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Where is my data stored?</h3>
-              <p className="text-foreground text-sm">
-                In a PostgreSQL database on Supabase, hosted in the United States. See our
+              <p className="text-muted-foreground text-sm">
+                PostgreSQL on Supabase, hosted in the United States. See the
                 <Link to="/privacy" className="text-primary hover:text-primary/80 ml-1">Privacy Policy</Link> for details.
               </p>
             </div>
@@ -242,9 +240,9 @@ export const Help = () => {
 
         {/* contact */}
         <section className="pt-6 border-t">
-          <h2 className="text-lg font-semibold text-foreground mb-3">Still Need Help?</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-3">Contact</h2>
           <p className="text-muted-foreground text-sm mb-4">
-            Can't find what you're looking for?
+            Question not answered above? Reach out directly.
           </p>
           <div className="flex flex-col sm:flex-row gap-2">
             <a
@@ -257,9 +255,9 @@ export const Help = () => {
               href="https://status.baileysanalytics.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center px-4 py-2 bg-card border text-foreground text-sm rounded-lg hover:bg-muted/40 transition-colors"
+              className="inline-flex items-center justify-center px-4 py-2 bg-card border text-muted-foreground text-sm rounded-lg hover:bg-muted/40 transition-colors"
             >
-              Check System Status
+              System Status
             </a>
           </div>
         </section>
