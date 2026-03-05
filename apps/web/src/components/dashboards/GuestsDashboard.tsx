@@ -675,7 +675,7 @@ export const GuestsDashboard = () => {
                     onSort={handleSort}
                     onRowClick={handleGuestClick}
                     getRowId={(guest) => guest.id}
-                    pageSize={20}
+                    pageSize={10}
                     enableSearch={true}
                     searchKeys={['name', 'email']}
                     showRowNumbers={true}

@@ -55,6 +55,7 @@ export function PaginatedTable<T extends Record<string, any>>({
 }: PaginatedTableProps<T>) {
   const [searchTerm, setSearchTerm] = React.useState('')
   const [currentPage, setCurrentPage] = React.useState(1)
+  const [goToInput, setGoToInput] = React.useState('')
 
   const filteredData = React.useMemo(() => {
     if (!enableSearch || !searchTerm) return data
@@ -300,6 +301,27 @@ export function PaginatedTable<T extends Record<string, any>>({
                 >
                   <ChevronsRight className="w-4 h-4" />
                 </Button>
+
+                <div className="flex items-center space-x-1 ml-2 border-l pl-3">
+                  <span className="text-sm text-muted-foreground">Go to</span>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    value={goToInput}
+                    onChange={(e) => setGoToInput(e.target.value.replace(/\D/g, ''))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const page = parseInt(goToInput)
+                        if (!isNaN(page) && page >= 1 && page <= totalPages) {
+                          setCurrentPage(page)
+                          setGoToInput('')
+                        }
+                      }
+                    }}
+                    className="w-14 h-8 text-sm"
+                    placeholder={String(currentPage)}
+                  />
+                </div>
               </div>
             </div>
           )}
