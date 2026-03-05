@@ -107,24 +107,7 @@ export const AuthCallback = () => {
         return
       }
 
-      // No code - check if there's an access_token in hash (implicit flow)
-      const accessToken = hashParams.get('access_token')
-      if (accessToken) {
-        try {
-          const { data, error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: hashParams.get('refresh_token') || '',
-          })
-          if (!error && data.session) {
-            handleSuccess(type)
-            return
-          }
-        } catch {
-          // setSession failed, fall through to existing session check
-        }
-      }
-
-      // No code and no access_token - check for existing session with timeout
+      // No code - check for existing session with timeout
       try {
         const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) =>

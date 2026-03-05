@@ -13,7 +13,12 @@ export const useStatus = () => {
     }
 
     const controller = new AbortController()
-    fetch('https://updown.io/api/checks?api-key=***REMOVED***', {
+    const statusApiKey = import.meta.env.VITE_UPDOWN_API_KEY
+    if (!statusApiKey) {
+      setStatus('unavailable')
+      return
+    }
+    fetch(`https://updown.io/api/checks?api-key=${statusApiKey}`, {
       signal: controller.signal,
     })
       .then(res => res.json())

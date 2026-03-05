@@ -2,7 +2,7 @@ import { DocsLayout } from '@/components/DocsLayout'
 import { useState, useMemo } from 'react'
 import { Check, Copy, Braces } from 'lucide-react'
 
-const SUPABASE_URL = 'https://ojpmtekljijcurgzrses.supabase.co'
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 const CodeBlock = ({ children, label }: { children: string; label?: string }) => {

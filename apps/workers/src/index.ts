@@ -773,6 +773,14 @@ app.route('/api/expense-templates', expenseTemplatesRoute);
 // rate limit billing checkout to prevent abuse
 app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));
 
+// rate limit expensive sync operations
+app.use('/api/manual-sync', rateLimit({ max: 5, windowMs: 300000 }));
+app.use('/api/sync-guest-details', rateLimit({ max: 5, windowMs: 300000 }));
+app.use('/api/initial-sync-chunked/*', rateLimit({ max: 5, windowMs: 300000 }));
+
+// rate limit destructive account operations
+app.use('/api/account/delete', rateLimit({ max: 3, windowMs: 300000 }));
+
 app.route('/api/billing', billing);
 app.route('/api/account', account);
 app.route('/api/admin', admin);

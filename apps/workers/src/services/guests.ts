@@ -321,12 +321,35 @@ export async function getGuestsData(
 
   let guestRecords: any[] = [];
   if (uniqueGuestNames.size > 0 || uniqueGuestEmails.size > 0) {
-    const { data: guests } = await supabase
-      .from('guests')
-      .select('id, full_name, email, guest_tags(tag_id)')
-      .eq('tenant_id', tenantId)
-      .or(`full_name.in.(${Array.from(uniqueGuestNames).join(',')}),email.in.(${Array.from(uniqueGuestEmails).join(',')})`);
-    guestRecords = guests || [];
+    // query guests in batches using .in() to avoid filter injection from
+    // guest names/emails that contain commas or postgrest syntax
+    const names = Array.from(uniqueGuestNames);
+    const emails = Array.from(uniqueGuestEmails);
+
+    const [nameResults, emailResults] = await Promise.all([
+      names.length > 0
+        ? supabase
+            .from('guests')
+            .select('id, full_name, email, guest_tags(tag_id)')
+            .eq('tenant_id', tenantId)
+            .in('full_name', names)
+        : { data: [] },
+      emails.length > 0
+        ? supabase
+            .from('guests')
+            .select('id, full_name, email, guest_tags(tag_id)')
+            .eq('tenant_id', tenantId)
+            .in('email', emails)
+        : { data: [] },
+    ]);
+
+    const seen = new Set<string>();
+    for (const g of [...(nameResults.data || []), ...(emailResults.data || [])]) {
+      if (!seen.has(g.id)) {
+        seen.add(g.id);
+        guestRecords.push(g);
+      }
+    }
   }
 
   const { data: tags } = await supabase

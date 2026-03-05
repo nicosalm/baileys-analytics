@@ -110,7 +110,11 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
       .range((page - 1) * limit, page * limit - 1);
 
     if (search) {
-      query = query.or(`email.ilike.%${search}%`);
+      // sanitize search input to prevent postgrest filter injection
+      const sanitized = search.replace(/[^a-zA-Z0-9@._\-+\s]/g, '');
+      if (sanitized) {
+        query = query.ilike('email', `%${sanitized}%`);
+      }
     }
 
     const { data: users, error } = await query;

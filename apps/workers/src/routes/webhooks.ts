@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createSupabaseClient } from '../services/supabase';
+import { authMiddleware } from '../middleware/auth';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
@@ -33,15 +34,21 @@ type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
 
 const webhooks = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
-webhooks.get('/status', async (c) => {
+webhooks.get('/status', authMiddleware, async (c) => {
+	const tenantId = c.get('tenantId');
+	if (!tenantId) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
 	const supabase = createSupabaseClient(c.env);
-	
+
 	const { data: recentEvents, error } = await supabase
 		.from('webhook_events')
-		.select('*')
+		.select('id, action, entity_type, processed, created_at')
+		.eq('tenant_id', tenantId)
 		.order('created_at', { ascending: false })
 		.limit(10);
-	
+
 	return c.json({
 		status: 'active',
 		endpoint: '/api/webhooks/ownerrez',

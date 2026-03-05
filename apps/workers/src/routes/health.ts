@@ -39,23 +39,6 @@ health.get('/', async (c) => {
 	return c.json(checks, allHealthy ? 200 : 503);
 });
 
-health.get('/metrics', async (c) => {
-	const supabase = createSupabaseClient(c.env);
-	
-	const [tenants, properties, bookings] = await Promise.all([
-		supabase.from('tenants').select('id', { count: 'exact', head: true }),
-		supabase.from('properties').select('id', { count: 'exact', head: true }),
-		supabase.from('bookings').select('id', { count: 'exact', head: true })
-	]);
-	
-	return c.json({
-		counts: {
-			tenants: tenants.count || 0,
-			properties: properties.count || 0,
-			bookings: bookings.count || 0
-		},
-		timestamp: new Date().toISOString()
-	});
-});
+// removed: unauthenticated metrics endpoint leaked aggregate business data
 
 export { health };
