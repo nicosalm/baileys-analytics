@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
+import { LogoCube } from '@/components/LogoCube'
 import { Switch } from '@/components/ui/switch'
 import {
   Dialog,
@@ -317,8 +318,8 @@ export const Settings = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <Link to="/dashboard/overview" className="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+              <Link to="/dashboard/overview" className="flex items-center">
+                <LogoCube />
                 <div className="ml-3">
                   <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
                   {user.companyName && (

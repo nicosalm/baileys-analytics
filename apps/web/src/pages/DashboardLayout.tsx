@@ -19,6 +19,7 @@ import { BRAND } from '@/constants'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { InitialSyncModal } from '@/components/InitialSyncModal'
 import { Button } from '@/components/ui/button'
+import { LogoCube } from '@/components/LogoCube'
 
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -163,8 +164,8 @@ export const DashboardLayout = () => {
         <header className="bg-background/80 backdrop-blur-sm border-b border-border">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
-              <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+              <Link to="/" className="flex items-center">
+                <LogoCube />
                 <span className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</span>
               </Link>
               <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-foreground text-sm">
@@ -247,17 +248,15 @@ export const DashboardLayout = () => {
           <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
               <div className="flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="flex items-center">
-                    <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-                    <div className="ml-3">
-                      <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
-                      {user.companyName && (
-                        <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>
-                      )}
-                    </div>
+                <Link to="/" className="flex items-center">
+                  <LogoCube />
+                  <div className="ml-3">
+                    <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
+                    {user.companyName && (
+                      <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>
+                    )}
                   </div>
-                </div>
+                </Link>
                 <div className="flex items-center gap-3">
                   {isDemo ? (
                     <div className="flex items-center gap-2">

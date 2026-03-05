@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { useStatus } from '@/hooks'
 import { useCallback } from 'react'
+import { LogoCube } from '@/components/LogoCube'
 
 const StatusIndicator = () => {
   const status = useStatus()
@@ -67,10 +68,10 @@ export const Footer = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
           {/* brand */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-3">
-              <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-7 h-7" />
+            <Link to="/" onClick={() => handleSamePageClick('/')} className="flex items-center gap-2 mb-3">
+              <LogoCube className="w-7 h-7" />
               <span className="font-semibold text-foreground">{BRAND.name}</span>
-            </div>
+            </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-2">{BRAND.tagline}</p>
             <p className="text-sm text-muted-foreground">Made with 🧀 in Wisconsin</p>
           </div>

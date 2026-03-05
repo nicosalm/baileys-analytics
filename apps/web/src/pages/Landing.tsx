@@ -6,10 +6,11 @@ import {
   Shield, Zap, Lock, Building2, Calendar, DollarSign
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { useInView } from '@/hooks'
 import { Switch } from '@/components/ui/switch'
+import { LogoCube } from '@/components/LogoCube'
 
 export const Landing = () => {
   const { state, logout, signInAsDemo } = useAuth()
@@ -33,6 +34,14 @@ export const Landing = () => {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const location = useLocation()
+
+  const handleLogoClick = useCallback(() => {
+    if (location.pathname === '/') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [location.pathname])
+
   const handleLogout = useCallback(() => logout(), [logout])
   const handleToggleBilling = useCallback(() => setYearlyBilling(prev => !prev), [])
   const handleTryDemo = useCallback(async () => {
@@ -45,7 +54,7 @@ export const Landing = () => {
   }, [signInAsDemo, navigate])
 
   return (
-    <div className="dark min-h-screen flex flex-col">
+    <div className="dark min-h-screen flex flex-col bg-[oklch(0.12_0.02_265)]">
       {/* nav — light text on dark hero */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
@@ -55,10 +64,10 @@ export const Landing = () => {
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-6">
-              <div className="flex items-center">
-                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+              <Link to="/" className="flex items-center" onClick={handleLogoClick}>
+                <LogoCube />
                 <span className="text-xl font-semibold text-white ml-3">{BRAND.name}</span>
-              </div>
+              </Link>
               <div className="hidden md:flex items-center gap-5">
                 <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Features</a>
                 <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Pricing</a>
@@ -73,7 +82,7 @@ export const Landing = () => {
                   >
                     Logout
                   </button>
-                  <Link to="/dashboard/overview" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm btn-hover">
+                  <Link to="/dashboard/overview" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
                     Dashboard
                   </Link>
                 </>
@@ -82,7 +91,7 @@ export const Landing = () => {
                   <Link to="/login" className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm">
                     Log in
                   </Link>
-                  <Link to="/signup" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm btn-hover">
+                  <Link to="/signup" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
                     Start Trial
                   </Link>
                 </>
@@ -113,7 +122,7 @@ export const Landing = () => {
 
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-              <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all flex items-center btn-hover">
+              <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all flex items-center">
                 Start Your $1 Trial
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
@@ -366,7 +375,7 @@ export const Landing = () => {
                   ))}
                 </div>
 
-                <Link to="/signup" className="block w-full py-3 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all font-medium btn-hover">
+                <Link to="/signup" className="block w-full py-3 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all font-medium">
                   Start $1 Trial
                 </Link>
 
@@ -390,7 +399,7 @@ export const Landing = () => {
           <h2 className="text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
           {!isAuthenticated && (
             <div className="mt-6 flex flex-col items-center gap-4">
-              <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all text-lg btn-hover">
+              <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all text-lg">
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
