@@ -1,4 +1,4 @@
 export const BRAND = {
   name: 'Baileys Analytics',
-  tagline: 'Vacation rental analytics that actually make sense',
+  tagline: 'Financial clarity for short-term rentals',
 } as const;

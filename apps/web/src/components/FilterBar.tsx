@@ -7,7 +7,6 @@ import { cn } from '@baileys/utils'
 import { getTagColor } from '@/lib/theme'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { Tag as TagPill } from '@/components/Tag'
 import type { Tag } from '@/types/dashboard'
 
 interface TagButtonProps {
@@ -68,7 +67,7 @@ export const FilterBar: React.FC = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    "text-sm font-medium",
+                    "text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all",
                     filters.selectedTags.length > 0 && "border-primary bg-primary/5"
                   )}
                 >
@@ -105,12 +104,22 @@ export const FilterBar: React.FC = () => {
             {filters.selectedTags.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap">
                 {filters.selectedTags.map((tag) => (
-                  <TagPill
+                  <span
                     key={tag.id}
-                    tag={tag}
-                    size="sm"
-                    onRemove={() => toggleTag(tag)}
-                  />
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full border border-border bg-background text-foreground/80"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: getTagColor(tag) }}
+                    />
+                    {tag.name}
+                    <button
+                      onClick={() => toggleTag(tag)}
+                      className="ml-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
                 ))}
               </div>
             )}

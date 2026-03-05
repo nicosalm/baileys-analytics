@@ -93,6 +93,40 @@
     transform: translateY(-4px);
     box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
   }
+
+  .status-pulse {
+    animation: status-pulse 2s ease-in-out infinite;
+  }
+
+  .btn-hover {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn-hover:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@keyframes status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* landing page dark sections */
+.landing-hero {
+  background:
+    radial-gradient(ellipse 80% 60% at 15% 20%, oklch(0.25 0.12 280 / 0.6), transparent 70%),
+    radial-gradient(ellipse 50% 50% at 85% 75%, oklch(0.20 0.08 255 / 0.5), transparent 50%),
+    radial-gradient(ellipse 40% 40% at 90% 10%, oklch(0.18 0.06 240 / 0.4), transparent 40%),
+    oklch(0.12 0.02 265);
+}
+
+.landing-section-primary {
+  background: oklch(0.12 0.02 265);
+}
+
+.landing-section-secondary {
+  background: oklch(0.15 0.02 265);
 }
 
 @theme inline {

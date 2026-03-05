@@ -83,7 +83,7 @@ account.delete('/delete', authMiddleware, async (c) => {
         if (customer?.stripe_customer_id) {
           // cancel subscription via stripe
           const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-            apiVersion: '2025-09-30.clover',
+            apiVersion: '2025-10-29.clover',
             httpClient: Stripe.createFetchHttpClient()
           });
 

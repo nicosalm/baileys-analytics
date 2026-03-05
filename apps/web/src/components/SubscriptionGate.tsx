@@ -91,7 +91,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
           <div className="w-full max-w-md">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-foreground mb-2">Get started</h2>
-              <p className="text-muted-foreground">Unlock your vacation rental analytics.</p>
+              <p className="text-muted-foreground">Unlock financial clarity for your rentals.</p>
             </div>
             <PricingPlans onPlanSelect={checkSubscription} />
           </div>

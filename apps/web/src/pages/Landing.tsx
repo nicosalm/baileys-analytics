@@ -3,12 +3,11 @@ import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
 import {
   ArrowRight, CheckCircle,
-  DollarSign, BarChart2, TrendingUp, Shield, Zap, Lock
+  Shield, Zap, Lock, Building2, Calendar, DollarSign
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import { BRAND } from '@/constants'
 import { useInView } from '@/hooks'
-import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 
 export const Landing = () => {
@@ -17,9 +16,13 @@ export const Landing = () => {
   const [yearlyBilling, setYearlyBilling] = useState(true)
   const [scrolled, setScrolled] = useState(false)
 
-  const features = useInView()
+  const feature1 = useInView()
+  const feature2 = useInView()
+  const feature3 = useInView()
   const howItWorks = useInView()
+  const quote = useInView()
   const pricing = useInView()
+  const bottomCta = useInView()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -31,37 +34,44 @@ export const Landing = () => {
   const handleToggleBilling = useCallback(() => setYearlyBilling(prev => !prev), [])
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* nav */}
+    <div className="dark min-h-screen flex flex-col">
+      {/* nav — light text on dark hero */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-background/90 backdrop-blur-md shadow-sm' : 'bg-transparent'
+        scrolled
+          ? 'bg-[oklch(0.12_0.02_265/0.85)] backdrop-blur-md shadow-sm border-b border-white/5'
+          : 'bg-transparent'
       }`}>
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
-              <span className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</span>
+            <div className="flex items-center gap-6">
+              <div className="flex items-center">
+                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+                <span className="text-xl font-semibold text-white ml-3">{BRAND.name}</span>
+              </div>
+              <div className="hidden md:flex items-center gap-5">
+                <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors">Features</a>
+                <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors">Pricing</a>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
                 <>
-                  <Button
-                    variant="ghost"
+                  <button
                     onClick={handleLogout}
-                    className="hidden sm:block text-muted-foreground hover:text-foreground text-sm"
+                    className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm"
                   >
                     Logout
-                  </Button>
-                  <Link to="/dashboard/overview" className={`px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm`}>
+                  </button>
+                  <Link to="/dashboard/overview" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm btn-hover">
                     Dashboard
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="hidden sm:block px-4 py-2 text-muted-foreground hover:text-foreground font-medium transition-colors text-sm">
+                  <Link to="/login" className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm">
                     Log in
                   </Link>
-                  <Link to="/signup" className={`px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm`}>
+                  <Link to="/signup" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm btn-hover">
                     Start Trial
                   </Link>
                 </>
@@ -71,68 +81,62 @@ export const Landing = () => {
         </div>
       </nav>
 
-      {/* hero */}
-      <section className="relative min-h-screen flex items-center justify-center bg-background pt-20">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-24 md:py-32 text-center">
-          <div className="flex items-center justify-center gap-1 mb-6">
-            <span className="text-sm font-medium text-muted-foreground">Built for</span>
-            <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5" />
-            <span className="text-sm font-medium text-muted-foreground">users</span>
+      {/* hero — dark atmospheric gradient */}
+      <section className="landing-hero relative min-h-screen flex items-center justify-center pt-20">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-24 md:py-32 text-center relative z-10">
+          <div className="flex items-center justify-center gap-1.5 mb-6">
+            <span className="text-sm font-medium text-white/60">Built for</span>
+            <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5 brightness-0 invert opacity-70" />
+            <span className="text-sm font-medium text-white/60">users</span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-6 tracking-tight">
-            Analytics for OwnerRez
+          <p className="text-sm text-white/50 mb-4">For OwnerRez hosts managing 2+ properties</p>
+
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-[1.1]">
+            Know your real numbers.
           </h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Pull in booking data from OwnerRez. See revenue and occupancy breakdowns in minutes.
+          <p className="text-lg md:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed">
+            Pull in booking data from OwnerRez. See revenue, occupancy, and profit breakdowns in minutes.
           </p>
 
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-              <Link to="/signup" className={`group px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center`}>
+              <Link to="/signup" className="group px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all flex items-center btn-hover">
                 Start Your $1 Trial
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
               </Link>
+              <a href="#how-it-works" className="px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm">
+                See how it works
+              </a>
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-white/40">
             30 days for $1, then $20/month. Cancel anytime.
           </p>
 
-          {/* video demo */}
+          {/* hero image */}
           <div className="mt-16 md:mt-24">
             <div className="relative max-w-4xl mx-auto">
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-3xl blur-2xl opacity-60" />
-              <div className="relative bg-card rounded-2xl shadow-2xl overflow-hidden ring-1 ring-border">
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                >
-                  <source src="/demo.mp4" type="video/mp4" />
-                  <div className="aspect-video bg-muted flex items-center justify-center">
-                    <p className="text-muted-foreground">Dashboard preview</p>
-                  </div>
-                </video>
+              <div className="absolute -inset-4 bg-gradient-to-r from-[oklch(0.45_0.12_280/0.3)] to-[oklch(0.40_0.10_255/0.2)] rounded-3xl blur-3xl" />
+              <div className="relative bg-[oklch(0.18_0.02_265)] rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10 aspect-video flex items-center justify-center">
+                <p className="text-white/30 text-sm">Dashboard screenshot</p>
               </div>
             </div>
 
             {/* trust strip */}
-            <div className="flex flex-wrap justify-center gap-6 md:gap-10 mt-10 text-sm text-muted-foreground">
+            <div className="flex flex-wrap justify-center gap-6 md:gap-10 mt-10 text-sm text-white/40">
               <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-muted-foreground" />
+                <Shield className="w-4 h-4" />
                 <span>Secure OAuth</span>
               </div>
               <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-muted-foreground" />
+                <Lock className="w-4 h-4" />
                 <span>Data encrypted</span>
               </div>
               <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-muted-foreground" />
+                <Zap className="w-4 h-4" />
                 <span>Cancel anytime</span>
               </div>
             </div>
@@ -140,94 +144,160 @@ export const Landing = () => {
         </div>
       </section>
 
-      {/* features */}
-      <section className="py-24 md:py-32 bg-background">
+      {/* feature 1 — revenue breakdown (secondary bg) */}
+      <section id="features" className="landing-section-secondary py-28 md:py-36">
         <div
-          ref={features.ref}
-          className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${
-            features.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          ref={feature1.ref}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature1.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">What you'll see</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">Clear answers to the questions that actually matter for your business.</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-            <div className="bg-muted/50 rounded-2xl p-6 md:p-8 border hover-lift">
-              <div className="w-10 h-10 bg-info-subtle rounded-xl flex items-center justify-center mb-5">
-                <DollarSign className="w-5 h-5 text-info" />
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+            <div>
+              <div className="w-10 h-10 bg-[oklch(0.45_0.12_280/0.2)] rounded-xl flex items-center justify-center mb-5">
+                <DollarSign className="w-5 h-5 text-[oklch(0.78_0.08_265)]" />
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">See where your money goes</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
+              <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+                See where your money actually goes
+              </h2>
+              <p className="text-white/60 leading-relaxed text-lg">
                 Track platform fees, cleaning costs, and taxes by property. Know your real margins, not just gross revenue.
               </p>
             </div>
-
-            <div className={`bg-muted/50 rounded-2xl p-6 md:p-8 border hover-lift transition-all duration-700 ${
-              features.isInView ? 'opacity-100 translate-y-0 delay-100' : 'opacity-0 translate-y-8'
-            }`} style={{ transitionDelay: features.isInView ? '100ms' : '0ms' }}>
-              <div className="w-10 h-10 bg-info-subtle rounded-xl flex items-center justify-center mb-5">
-                <BarChart2 className="w-5 h-5 text-info" />
+            <div className="relative">
+              <div className="absolute -inset-4 bg-gradient-to-br from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
+              <div className="relative bg-[oklch(0.18_0.02_265)] rounded-2xl ring-1 ring-white/10 aspect-[4/3] flex items-center justify-center">
+                <p className="text-white/30 text-sm">Financial dashboard screenshot</p>
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Compare properties side by side</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Sort by occupancy, revenue, or profit. Find your best performers and the ones dragging down your portfolio.
-              </p>
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div className={`bg-muted/50 rounded-2xl p-6 md:p-8 border hover-lift transition-all duration-700 ${
-              features.isInView ? 'opacity-100 translate-y-0 delay-200' : 'opacity-0 translate-y-8'
-            }`} style={{ transitionDelay: features.isInView ? '200ms' : '0ms' }}>
-              <div className="w-10 h-10 bg-info-subtle rounded-xl flex items-center justify-center mb-5">
-                <TrendingUp className="w-5 h-5 text-info" />
+      {/* feature 2 — property comparison (primary bg) */}
+      <section className="landing-section-primary py-28 md:py-36">
+        <div
+          ref={feature2.ref}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature2.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+            <div className="relative md:order-1">
+              <div className="absolute -inset-4 bg-gradient-to-bl from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
+              <div className="relative bg-[oklch(0.22_0.02_265)] rounded-2xl ring-1 ring-white/10 aspect-[4/3] flex items-center justify-center">
+                <p className="text-white/30 text-sm">Properties comparison screenshot</p>
               </div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Spot trends before they cost you</h3>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                See seasonal patterns, repeat guest rates, and year-over-year comparisons. Make pricing decisions with real data.
+            </div>
+            <div className="md:order-2">
+              <div className="w-10 h-10 bg-[oklch(0.45_0.12_280/0.2)] rounded-xl flex items-center justify-center mb-5">
+                <Building2 className="w-5 h-5 text-[oklch(0.78_0.08_265)]" />
+              </div>
+              <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+                Find your best and worst performers
+              </h2>
+              <p className="text-white/60 leading-relaxed text-lg">
+                Sort by occupancy, revenue, or profit. Compare properties side by side and know which ones are pulling their weight.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* how it works */}
-      <section className="py-20 md:py-28 bg-muted/30">
+      {/* feature 3 — occupancy heatmap (secondary bg) */}
+      <section className="landing-section-secondary py-28 md:py-36">
+        <div
+          ref={feature3.ref}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature3.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+            <div>
+              <div className="w-10 h-10 bg-[oklch(0.45_0.12_280/0.2)] rounded-xl flex items-center justify-center mb-5">
+                <Calendar className="w-5 h-5 text-[oklch(0.78_0.08_265)]" />
+              </div>
+              <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+                Spot gaps before they cost you
+              </h2>
+              <p className="text-white/60 leading-relaxed text-lg">
+                Visualize booked vs. available nights. See seasonal patterns and year-over-year trends at a glance.
+              </p>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-4 bg-gradient-to-br from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
+              <div className="relative bg-[oklch(0.18_0.02_265)] rounded-2xl ring-1 ring-white/10 aspect-[4/3] flex items-center justify-center">
+                <p className="text-white/30 text-sm">Occupancy heatmap screenshot</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* how it works (primary bg) */}
+      <section id="how-it-works" className="landing-section-primary py-28 md:py-36">
         <div
           ref={howItWorks.ref}
           className={`max-w-4xl mx-auto px-4 md:px-6 transition-all duration-700 ${
             howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          <div className="text-center mb-10 md:mb-14">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Up and running in 5 minutes</h2>
-            <p className="text-muted-foreground">No spreadsheets. No manual entry. Just connect and go.</p>
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-semibold text-white mb-3">Up and running in 5 minutes</h2>
+            <p className="text-white/50">No spreadsheets. No manual entry. Just connect and go.</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 md:gap-6">
-            <div className="text-center md:text-left">
-              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto md:mx-0 mb-4">1</div>
-              <h3 className="font-semibold text-foreground mb-1">Connect OwnerRez</h3>
-              <p className="text-sm text-muted-foreground">Click, authorize, done. We use OAuth so we never see your password.</p>
+          <div className="grid md:grid-cols-3 gap-8 md:gap-6 relative">
+            {/* connector line (desktop) */}
+            <div className="hidden md:block absolute top-5 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-white/10 via-white/20 to-white/10" />
+
+            <div className={`text-center transition-all duration-700 ${
+              howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}>
+              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">1</div>
+              <h3 className="font-semibold text-white mb-1">Connect OwnerRez</h3>
+              <p className="text-sm text-white/50">Click, authorize, done. We use OAuth so we never see your password.</p>
             </div>
 
-            <div className="text-center md:text-left">
-              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto md:mx-0 mb-4">2</div>
-              <h3 className="font-semibold text-foreground mb-1">Data syncs automatically</h3>
-              <p className="text-sm text-muted-foreground">We pull 3 years of bookings, properties, and guests. Takes about 2 minutes.</p>
+            <div className={`text-center transition-all duration-700 ${
+              howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`} style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}>
+              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">2</div>
+              <h3 className="font-semibold text-white mb-1">Data syncs automatically</h3>
+              <p className="text-sm text-white/50">We pull 3 years of bookings, properties, and guests. Takes about 2 minutes.</p>
             </div>
 
-            <div className="text-center md:text-left">
-              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto md:mx-0 mb-4">3</div>
-              <h3 className="font-semibold text-foreground mb-1">Start exploring</h3>
-              <p className="text-sm text-muted-foreground">Your dashboards are ready. Filter by date, property, or tag. Export reports anytime.</p>
+            <div className={`text-center transition-all duration-700 ${
+              howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`} style={{ transitionDelay: howItWorks.isInView ? '200ms' : '0ms' }}>
+              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">3</div>
+              <h3 className="font-semibold text-white mb-1">Start exploring</h3>
+              <p className="text-sm text-white/50">Your dashboards are ready. Filter by date, property, or tag. Export reports anytime.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* pricing */}
-      <section className="py-24 md:py-32 bg-background">
+      {/* jerry's quote (secondary bg) */}
+      <section className="landing-section-secondary py-20 md:py-28">
+        <div
+          ref={quote.ref}
+          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${
+            quote.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          <blockquote className="text-xl md:text-2xl text-white/80 leading-relaxed font-medium italic">
+            "OwnerRez is great at managing my properties and bookings. I just needed a deeper analytics layer on top of it. So we built one. Now I check my numbers every morning."
+          </blockquote>
+          <p className="mt-6 text-sm text-white/40">
+            — Jerry, co-founder & property manager
+          </p>
+          <p className="mt-1 text-xs text-white/20">(quote pending approval)</p>
+        </div>
+      </section>
+
+      {/* pricing (primary bg) */}
+      <section id="pricing" className="landing-section-primary py-28 md:py-36">
         <div
           ref={pricing.ref}
           className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${
@@ -235,74 +305,83 @@ export const Landing = () => {
           }`}
         >
           <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">One plan, one price</h2>
-            <p className="text-muted-foreground">Everything you need. No tiers, no upsells.</p>
+            <h2 className="text-3xl md:text-4xl font-semibold text-white mb-3">One plan, one price</h2>
+            <p className="text-white/50">Everything you need. No tiers, no upsells.</p>
           </div>
 
           <div className="flex justify-center items-center gap-4 mb-10">
-            <span className={`text-sm font-medium ${!yearlyBilling ? 'text-foreground' : 'text-muted-foreground'}`}>Monthly</span>
+            <span className={`text-sm font-medium ${!yearlyBilling ? 'text-white' : 'text-white/50'}`}>Monthly</span>
             <Switch
               checked={yearlyBilling}
               onCheckedChange={handleToggleBilling}
               aria-label="Toggle billing cycle"
             />
-            <span className={`text-sm font-medium ${yearlyBilling ? 'text-foreground' : 'text-muted-foreground'}`}>
+            <span className={`text-sm font-medium ${yearlyBilling ? 'text-white' : 'text-white/50'}`}>
               Yearly
-              <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-subtle text-success-fg">
+              <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success">
                 Save 20%
               </span>
             </span>
           </div>
 
           <div className="max-w-md mx-auto">
-            <div className="bg-card rounded-2xl border-2 border-primary p-8 md:p-10">
-              <div className="text-center mb-6">
-                <div className="text-4xl md:text-5xl font-bold text-foreground mb-1">
-                  ${yearlyBilling ? '16' : '20'}<span className="text-xl text-muted-foreground font-normal">/mo</span>
+            <div className="relative">
+              {/* gradient border glow */}
+              <div className="absolute -inset-px bg-gradient-to-b from-[oklch(0.78_0.08_265)] to-[oklch(0.45_0.12_280)] rounded-2xl" />
+              <div className="relative bg-[oklch(0.16_0.02_265)] rounded-2xl p-8 md:p-10">
+                <div className="text-center mb-6">
+                  <div className="text-4xl md:text-5xl font-bold text-white mb-1">
+                    ${yearlyBilling ? '16' : '20'}<span className="text-xl text-white/40 font-normal">/mo</span>
+                  </div>
+                  {yearlyBilling && <p className="text-sm text-success">$192/year, save $48</p>}
+                  {!yearlyBilling && <p className="text-sm text-white/40">Billed monthly</p>}
                 </div>
-                {yearlyBilling && <p className="text-sm text-success">$192/year, save $48</p>}
-                {!yearlyBilling && <p className="text-sm text-muted-foreground">Billed monthly</p>}
+
+                <div className="space-y-3 mb-8">
+                  {[
+                    'Full OwnerRez sync (3 years of data)',
+                    '5 dashboards with filtering',
+                    'Exportable PDF reports',
+                    'Cancel anytime',
+                  ].map(item => (
+                    <div key={item} className="flex items-center">
+                      <CheckCircle className="w-4 h-4 text-success mr-3 flex-shrink-0" />
+                      <span className="text-sm text-white/80">{item}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Link to="/signup" className="block w-full py-3 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all font-medium btn-hover">
+                  Start $1 Trial
+                </Link>
+
+                <p className="text-center text-xs text-white/30 mt-4">
+                  $1 for 30 days, then {yearlyBilling ? '$192/year' : '$20/month'}. Cancel anytime.
+                </p>
               </div>
-
-              <div className="space-y-3 mb-8">
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-success mr-3 flex-shrink-0" />
-                  <span className="text-sm text-foreground">Full OwnerRez sync (3 years of data)</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-success mr-3 flex-shrink-0" />
-                  <span className="text-sm text-foreground">6 dashboards with filtering</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-success mr-3 flex-shrink-0" />
-                  <span className="text-sm text-foreground">Exportable PDF reports</span>
-                </div>
-                <div className="flex items-center">
-                  <CheckCircle className="w-4 h-4 text-success mr-3 flex-shrink-0" />
-                  <span className="text-sm text-foreground">Cancel anytime</span>
-                </div>
-              </div>
-
-              <Link to="/signup" className={`block w-full py-3 text-center bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium`}>
-                Start $1 Trial
-              </Link>
-
-              <p className="text-center text-xs text-muted-foreground mt-4">
-                $1 for 30 days, then {yearlyBilling ? '$192/year' : '$20/month'}
-              </p>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* closing cta */}
-          <div className="text-center mt-16 md:mt-24">
-            <h3 className="text-2xl md:text-3xl font-bold text-foreground mb-4">Ready to see your real numbers?</h3>
-            {!isAuthenticated && (
-              <Link to="/signup" className={`inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity`}>
+      {/* bottom cta (secondary bg) */}
+      <section className="landing-section-secondary py-20 md:py-28">
+        <div
+          ref={bottomCta.ref}
+          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${
+            bottomCta.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
+        >
+          <h2 className="text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
+          {!isAuthenticated && (
+            <div className="mt-6 flex flex-col items-center gap-4">
+              <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all text-lg btn-hover">
                 Get Started
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
-            )}
-          </div>
+              <p className="text-sm text-white/30">$1 for 30 days. No risk.</p>
+            </div>
+          )}
         </div>
       </section>
 

@@ -235,7 +235,7 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
 
         if (customer?.stripe_customer_id) {
           const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-            apiVersion: '2025-09-30.clover',
+            apiVersion: '2025-10-29.clover',
             httpClient: Stripe.createFetchHttpClient()
           });
 
@@ -323,6 +323,39 @@ admin.get('/errors', authMiddleware, adminMiddleware, async (c) => {
   } catch (error) {
     console.error('Failed to get errors:', error);
     return c.json({ error: 'Failed to get errors' }, 500);
+  }
+});
+
+// impersonate user — generate a magic link to log in as them
+admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, async (c) => {
+  const tenantId = c.req.param('tenantId');
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+
+  try {
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('email')
+      .eq('id', tenantId)
+      .single();
+
+    if (!tenant?.email) {
+      return c.json({ error: 'Tenant not found' }, 404);
+    }
+
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: tenant.email,
+    });
+
+    if (error || !data?.properties?.action_link) {
+      console.error('Failed to generate impersonation link:', error);
+      return c.json({ error: 'Failed to generate link' }, 500);
+    }
+
+    return c.json({ url: data.properties.action_link });
+  } catch (error) {
+    console.error('Failed to impersonate user:', error);
+    return c.json({ error: 'Failed to impersonate' }, 500);
   }
 });
 

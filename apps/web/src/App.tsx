@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { SWRConfig } from 'swr'
 import { swrConfig } from '@/hooks/swr-config'
 import { AuthProvider } from '@/contexts/auth'
@@ -29,6 +29,14 @@ const AuthCallback = lazy(() => import('@/pages/AuthCallback').then(m => ({ defa
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
 
+const ScrollToTop = () => {
+  const { pathname, hash } = useLocation()
+  useEffect(() => {
+    if (!hash) window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [pathname, hash])
+  return null
+}
+
 export const App = () => {
   return (
     <ErrorBoundary level="page">
@@ -36,6 +44,7 @@ export const App = () => {
         <SWRConfig value={swrConfig}>
           <BrowserRouter>
             <AuthProvider>
+            <ScrollToTop />
             <Toaster position="bottom-right" richColors />
             <Suspense fallback={<LoadingState fullScreen />}>
               <Routes>

@@ -8,7 +8,7 @@ export class StripeService {
 
   constructor(env: Env, supabase: SupabaseClient) {
     this.stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-      apiVersion: '2025-09-30.clover',
+      apiVersion: '2025-10-29.clover',
       httpClient: Stripe.createFetchHttpClient()
     });
     this.supabase = supabase;
