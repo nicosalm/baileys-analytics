@@ -144,7 +144,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
 
   return (
     <div className="bg-card rounded-lg border overflow-hidden">
-      <div className="max-h-[500px] overflow-y-auto">
+      <div className="max-h-[500px] overflow-y-auto pr-2">
         <table className="w-full">
           <thead className="bg-muted sticky top-0">
             <tr>
@@ -526,12 +526,16 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="overview">
+        <Tabs defaultValue="bookings">
           <TabsList variant="line">
+            <TabsTrigger value="bookings">Booking History ({bookingHistory.length})</TabsTrigger>
             <TabsTrigger value="overview">Spending Pattern</TabsTrigger>
             <TabsTrigger value="fees">Fee Analysis</TabsTrigger>
-            <TabsTrigger value="bookings">Booking History ({bookingHistory.length})</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="bookings">
+            <BookingHistoryTable bookingHistory={bookingHistory} />
+          </TabsContent>
 
           <TabsContent value="overview">
             {chartData.length > 0 && (
@@ -560,10 +564,6 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
 
           <TabsContent value="fees">
             <FeeAnalysisTab feeAnalysis={feeAnalysis} guestName={guest?.name || guestName} />
-          </TabsContent>
-
-          <TabsContent value="bookings">
-            <BookingHistoryTable bookingHistory={bookingHistory} />
           </TabsContent>
         </Tabs>
         </div>

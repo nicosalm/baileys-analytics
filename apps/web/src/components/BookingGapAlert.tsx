@@ -99,7 +99,7 @@ export const BookingGapAlert = ({
         </div>
       </div>
 
-      <div className="space-y-3 max-h-80 overflow-y-auto">
+      <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
         {displayGaps.map((gap) => {
           const styles = getSeverityStyles(gap.severity)
           const icon = gap.severity === 'critical' ? (

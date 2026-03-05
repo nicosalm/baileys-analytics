@@ -31,7 +31,7 @@ export const CollapsibleTags: React.FC<CollapsibleTagsProps> = ({
     : 'px-3 py-1 text-sm'
 
   return (
-    <div className="flex items-center gap-1 relative">
+    <div className="flex items-center gap-1 relative flex-nowrap min-w-0">
       {visibleTags.map((tag) => (
         <Tag
           key={tag.id}
@@ -55,7 +55,7 @@ export const CollapsibleTags: React.FC<CollapsibleTagsProps> = ({
             <div className="text-xs font-medium text-foreground mb-2">
               All tags ({tags.length})
             </div>
-            <div className="flex flex-wrap gap-1 overflow-y-auto" style={{ maxHeight: '250px' }}>
+            <div className="flex flex-wrap gap-1 overflow-y-auto pr-2" style={{ maxHeight: '250px' }}>
               {tags.map((tag) => (
                 <Tag
                   key={tag.id}

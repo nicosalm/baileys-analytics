@@ -42,7 +42,7 @@ export const Modal = ({
             <DialogDescription>{subtitle}</DialogDescription>
           )}
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pr-2">
           {children}
         </div>
       </DialogContent>

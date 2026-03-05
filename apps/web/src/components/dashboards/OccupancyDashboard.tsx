@@ -478,7 +478,7 @@ export const OccupancyDashboard = () => {
               <span className="text-xs text-muted-foreground">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
             )}
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden">
+          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
             {sortedProperties.length > 0 ? (
               sortedProperties.map((property: OccupancyByProperty) => {
                 const occupancyPercent = property.rate * 100

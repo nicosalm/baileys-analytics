@@ -82,7 +82,7 @@ export const FilterBar: React.FC = () => {
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto p-2">
+              <PopoverContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3">
                 {isTagsLoading ? (
                   <div className="text-center py-4 text-muted-foreground">Loading tags...</div>
                 ) : availableTags.length === 0 ? (

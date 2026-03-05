@@ -204,7 +204,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
           <div className="p-4 border-b">
             <h3 className="font-semibold">Active Bookings on {displayName}</h3>
           </div>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto pr-2">
             <table className="w-full">
               <thead className="bg-muted/40 sticky top-0">
                 <tr>

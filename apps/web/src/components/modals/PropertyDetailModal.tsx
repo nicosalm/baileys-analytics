@@ -316,7 +316,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
               <div className="p-4 border-b border-border">
                 <h3 className="font-semibold">Recent Bookings</h3>
               </div>
-              <div className="max-h-96 overflow-y-auto">
+              <div className="max-h-96 overflow-y-auto pr-2">
                 <table className="w-full">
                   <thead className="bg-muted sticky top-0">
                     <tr>

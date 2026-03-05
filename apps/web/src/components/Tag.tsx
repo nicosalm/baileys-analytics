@@ -31,13 +31,13 @@ export const Tag: React.FC<TagProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border ${sizeClasses} ${
+      className={`inline-flex items-center rounded-full border whitespace-nowrap max-w-[150px] ${sizeClasses} ${
         onClick ? 'cursor-pointer hover:opacity-80' : ''
       } ${selected ? 'ring-2 ring-offset-1 ring-info' : ''}`}
       style={styles}
       onClick={onClick}
     >
-      {tag.name}
+      <span className="truncate">{tag.name}</span>
       {onRemove && (
         <button
           onClick={(e) => {

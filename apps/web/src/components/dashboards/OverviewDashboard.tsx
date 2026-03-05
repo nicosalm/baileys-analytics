@@ -764,7 +764,7 @@ export const OverviewDashboard = () => {
               </Link>
             )}
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto">
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
             {enabledGoals.length > 0 ? (
               enabledGoals.map(goal => {
                 const Icon = goal.config.icon
@@ -924,7 +924,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
           ))}
         </div>
       </div>
-      <div className="space-y-2 max-h-64 overflow-y-auto">
+      <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
         {filtered.length > 0 ? (
           filtered.map((booking: any) => (
             <div key={booking.id} className="flex items-center justify-between py-2 border-b last:border-0">

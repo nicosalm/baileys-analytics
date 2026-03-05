@@ -57,6 +57,7 @@
   html {
     font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
     scroll-behavior: smooth;
+    scrollbar-gutter: stable;
   }
   * {
     @apply border-border outline-ring/50;

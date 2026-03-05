@@ -252,23 +252,21 @@ export const GuestsDashboard = () => {
                 const spentPercentage = maxSpent > 0 ? ((guest.periodSpent || 0) / maxSpent) * 100 : 0
 
                 return (
-                    <div>
+                    <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                            <div className="flex-1">
-                                <div className="w-full bg-border rounded-full h-1.5">
-                                    <div
-                                        className={`h-1.5 rounded-full ${
-                                            spentPercentage > 66 ? 'bg-success' :
-                                            spentPercentage > 33 ? 'bg-warning' :
-                                            'bg-muted-foreground'
-                                        }`}
-                                        style={{ width: `${spentPercentage}%` }}
-                                    />
-                                </div>
-                            </div>
-                            <span className="font-medium text-success text-sm">
+                            <span className="font-medium text-success text-sm whitespace-nowrap">
                                 {formatCurrency(guest.periodSpent || 0)}
                             </span>
+                        </div>
+                        <div className="w-full bg-border rounded-full h-1.5 mt-1">
+                            <div
+                                className={`h-1.5 rounded-full ${
+                                    spentPercentage > 66 ? 'bg-success' :
+                                    spentPercentage > 33 ? 'bg-warning' :
+                                    'bg-muted-foreground'
+                                }`}
+                                style={{ width: `${spentPercentage}%` }}
+                            />
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                             Lifetime: {formatCurrency(guest.totalSpent)}
@@ -310,7 +308,7 @@ export const GuestsDashboard = () => {
                 />
             )
         }
-    ], [maxSpent, topPerformers, dateRangeFromRef])
+    ], [maxSpent])
 
     const sourceChartData = useMemo(() => {
         const sources = data?.metrics?.guestsBySource || []
@@ -617,41 +615,39 @@ export const GuestsDashboard = () => {
             <RecurringDateSearch />
 
             <div className="bg-card rounded-lg shadow-sm border border-border">
-                <div className="p-4 border-b border-border">
-                    <div className="flex justify-between items-center">
+                <div className="p-4 border-b border-border space-y-3">
+                    <div className="flex items-center justify-between">
                         <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
-                        <div className="flex items-center gap-3">
-                            <Select value={staysFilter} onValueChange={handleStaysFilter}>
-                                <SelectTrigger className="w-[130px] h-8 text-sm">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="any">Any stays</SelectItem>
-                                    <SelectItem value="1">1 stay</SelectItem>
-                                    <SelectItem value="2-3">2-3 stays</SelectItem>
-                                    <SelectItem value="4+">4+ stays</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
-                                {viewModes.map((mode) => (
-                                    <Button
-                                        key={mode.key}
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={mode.handler}
-                                        className={viewMode === mode.key
-                                            ? 'bg-card text-foreground shadow-sm'
-                                            : 'text-muted-foreground hover:text-foreground'
-                                        }
-                                    >
-                                        {mode.label}
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
+                        <Select value={staysFilter} onValueChange={handleStaysFilter}>
+                            <SelectTrigger className="w-[130px] h-8 text-sm">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="any">Any stays</SelectItem>
+                                <SelectItem value="1">1 stay</SelectItem>
+                                <SelectItem value="2-3">2-3 stays</SelectItem>
+                                <SelectItem value="4+">4+ stays</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex items-center gap-2 bg-muted p-1 rounded-lg w-fit">
+                        {viewModes.map((mode) => (
+                            <Button
+                                key={mode.key}
+                                variant="ghost"
+                                size="sm"
+                                onClick={mode.handler}
+                                className={viewMode === mode.key
+                                    ? 'bg-card text-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                }
+                            >
+                                {mode.label}
+                            </Button>
+                        ))}
                     </div>
                     {(viewMode !== 'all' || staysFilter !== 'any') && (
-                        <div className="mt-2 text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                             {viewMode === 'all' && 'Showing all guests'}
                             {viewMode === 'repeat' && 'Showing returning guests (2+ lifetime stays)'}
                             {viewMode === 'new' && 'Showing first-time guests in this period'}
