@@ -113,9 +113,9 @@ export const Landing = () => {
 
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-              <Link to="/signup" className="group px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all flex items-center btn-hover">
+              <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all flex items-center btn-hover">
                 Start Your $1 Trial
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-0.5 transition-transform" />
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
               <button
                 onClick={handleTryDemo}
