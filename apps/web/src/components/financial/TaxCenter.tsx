@@ -141,7 +141,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Tax Tracking:</strong> Monitors occupancy taxes collected from guests that you'll need to pay to local authorities
+              <strong>Tax Tracking:</strong> Occupancy taxes collected from guests in the selected period. Includes both what you remit and what platforms remit on your behalf.
             </div>
           </div>
         </div>
@@ -166,7 +166,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
-          tooltip="Total tax liability including platform fees"
+          tooltip="Total occupancy tax collected in selected period"
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
             value: taxData.comparison.taxGrowth,
             isPositive: taxData.comparison.taxGrowth > 0  // Keep standard: up arrow for increases
@@ -181,7 +181,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : "Your responsibility"}
-          tooltip="Tax amount you need to pay directly"
+          tooltip="Tax you are responsible for remitting to authorities"
           trend={comparisonMode !== 'none' && taxData.comparison.ownerRemittedGrowth !== 0 ? {
             value: taxData.comparison.ownerRemittedGrowth,
             isPositive: taxData.comparison.ownerRemittedGrowth > 0

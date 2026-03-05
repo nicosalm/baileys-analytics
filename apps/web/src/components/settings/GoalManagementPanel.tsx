@@ -133,7 +133,7 @@ export const GoalManagementPanel: React.FC = () => {
       <div className="bg-card rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-1">Goals</h2>
+            <h3 className="text-lg font-semibold text-foreground mb-1">Goals</h3>
             <p className="text-muted-foreground text-sm">
               Set targets for the metrics that matter most to your business. Enabled goals appear on your Overview dashboard.
             </p>

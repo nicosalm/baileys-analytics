@@ -90,7 +90,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
     <div className="space-y-6">
       {/* account info */}
       <div className="bg-card rounded-lg shadow-sm border p-6">
-        <h2 className="text-xl font-semibold text-foreground mb-4">Account Information</h2>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Account Information</h3>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-border/60">
@@ -109,7 +109,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       {/* security */}
       {(onChangeEmail || onChangePassword) && (
         <div className="bg-card rounded-lg shadow-sm border p-6">
-          <h2 className="text-xl font-semibold text-foreground mb-4">Security</h2>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Security</h3>
           <div className="space-y-3">
             {onChangeEmail && (
               <Button
@@ -145,7 +145,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       <div className="bg-card rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Export Your Data</h2>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Export Your Data</h3>
             <p className="text-sm text-muted-foreground">
               Download all your data as a JSON file. Includes properties, bookings, guests, and all settings.
             </p>
@@ -169,7 +169,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       <div className="bg-card rounded-lg shadow-sm border border-danger/30 p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-danger-fg mb-2">Danger Zone</h2>
+            <h3 className="text-lg font-semibold text-danger-fg mb-2">Danger Zone</h3>
             <p className="text-sm text-muted-foreground">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>

@@ -194,7 +194,7 @@ export const PropertiesDashboard = () => {
           label="Total Bookings"
           value={totalBookings}
           format="number"
-          tooltip="Total number of confirmed bookings"
+          tooltip="Confirmed bookings in selected period"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0
             ? <>vs {comparisonLabel}: {prevTotalBookings}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"

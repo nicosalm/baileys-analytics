@@ -95,7 +95,7 @@ export const IntegrationsTab = () => {
                 className="w-12 h-12"
               />
               <div>
-                <h2 className="text-xl font-semibold text-foreground mb-2">OwnerRez</h2>
+                <h3 className="text-lg font-semibold text-foreground mb-2">OwnerRez</h3>
                 <p className="text-muted-foreground text-sm">
                   Connect your OwnerRez account to sync properties, bookings, and guest data with real-time webhook updates
                 </p>
@@ -202,7 +202,7 @@ export const IntegrationsTab = () => {
                     This will re-run the initial sync process, refreshing all properties and bookings from the last 3 years.
                   </p>
                   <p className="text-xs text-muted-foreground/50 w-full mt-4">
-                    Dashboard data reflects what is available from the OwnerRez API. Items not provided by the API — such as platform fees, operating expenses, and custom tax rates — must be configured manually in Settings.
+                    Revenue, bookings, guests, and host service fees are synced from OwnerRez. Guest-facing OTA fees are estimated automatically (Airbnb ~15%, VRBO ~13%). Operating expenses, tax jurisdictions, and platform remittance rules must be configured manually in Settings.
                   </p>
                 </div>
               </div>

@@ -330,7 +330,7 @@ export const ExpenseManagementPanel = () => {
       <div className="bg-card rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-foreground mb-2">Operating Expenses</h2>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Operating Expenses</h3>
             <p className="text-muted-foreground text-sm">
               Set monthly templates to auto-fill expenses, or add overrides for months that differ
             </p>

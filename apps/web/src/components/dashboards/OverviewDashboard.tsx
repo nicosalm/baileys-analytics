@@ -429,8 +429,8 @@ export const OverviewDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Quick Start:</strong> Click any metric card to dive deeper into that area.
-              Green arrows mean improvement and red arrows mean decline compared to your selected comparison period. All numbers reflect your selected date range.
+              <strong>Quick Start:</strong> Click the top metric cards to dive into that area.
+              Green arrows show growth and red arrows show decline versus your comparison period. All numbers reflect your selected date range.
             </div>
           </div>
         </div>
@@ -524,7 +524,7 @@ export const OverviewDashboard = () => {
           label="Total Bookings"
           value={metrics.bookings.current}
           format="number"
-          tooltip="Total number of confirmed bookings"
+          tooltip="Confirmed bookings in selected period"
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
@@ -588,7 +588,7 @@ export const OverviewDashboard = () => {
           label="Total Guests"
           value={metrics.guests.total}
           format="number"
-          tooltip="Total unique guests who have stayed"
+          tooltip="Unique guests with bookings in selected period"
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
@@ -649,13 +649,13 @@ export const OverviewDashboard = () => {
           subValue={metrics.guests.total > 0 ? 'Return rate' : 'No data yet'}
           size="sm"
           color="gray"
-          tooltip="Percentage of returning guests"
+          tooltip="Percentage of guests who have booked more than once"
         />
         <MetricCard
           icon={TrendingDown}
           label="Cancellation Rate"
           value={Number(metrics.bookings.cancellationRate || 0)}
-          tooltip="Percentage of bookings canceled"
+          tooltip="Percentage of bookings canceled in selected period"
           format="percent"
           subValue="This period"
           size="sm"

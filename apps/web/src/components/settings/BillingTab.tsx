@@ -145,7 +145,7 @@ export const BillingTab = () => {
       <div className="bg-card rounded-lg shadow-sm border p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-foreground mb-2">Current Plan</h2>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Current Plan</h3>
             <div className="flex items-center gap-2">
               <span className="px-2.5 py-0.5 rounded-full text-sm font-medium bg-info-subtle text-info-fg">
                 Baileys Analytics
