@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { PasswordRequirements } from '@/components/PasswordRequirements'
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
+import { LogoCube } from '@/components/LogoCube'
 import { validatePassword } from '@/utils/password'
 
 export const Signup = () => {
@@ -127,7 +128,7 @@ export const Signup = () => {
 
           {/* Logo */}
           <div className="flex items-center mb-8">
-            <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+            <LogoCube />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 

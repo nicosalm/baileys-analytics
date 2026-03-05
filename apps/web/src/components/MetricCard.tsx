@@ -3,6 +3,7 @@ import { ArrowUpRight, ArrowDownRight, Minus, Info, Loader2 } from 'lucide-react
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
 import { cn } from '@baileys/utils'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
+import { useCountUp } from '@/hooks/use-count-up'
 
 export interface MetricCardProps {
   icon: React.ComponentType<{ className?: string }>
@@ -190,7 +191,10 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Main value */}
       <div className={cn("font-bold", currentSize.value)}>
-        {formatValue(value)}
+        {typeof value === 'number'
+          ? <AnimatedValue value={value} format={format} formatValue={formatValue} />
+          : formatValue(value)
+        }
       </div>
 
       {/* Label with tooltip */}
@@ -243,6 +247,15 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       )}
     </div>
   )
+}
+
+const AnimatedValue: React.FC<{
+  value: number
+  format: MetricCardProps['format']
+  formatValue: (val: number | string) => string
+}> = ({ value, formatValue }) => {
+  const animated = useCountUp(value)
+  return <>{formatValue(animated)}</>
 }
 
 // Export a simplified version for backwards compatibility

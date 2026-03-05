@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
 import { ArrowLeft } from 'lucide-react'
 import { BRAND } from '@/constants'
+import { LogoCube } from '@/components/LogoCube'
 
 export const NotFound = () => {
   const { state } = useAuth()
@@ -14,8 +15,8 @@ export const NotFound = () => {
       <header className="bg-background/80 backdrop-blur-sm border-b">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
-            <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+            <Link to="/" className="flex items-center">
+              <LogoCube />
               <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
             </Link>
             <div className="flex items-center gap-3">

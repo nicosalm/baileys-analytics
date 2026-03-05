@@ -9,7 +9,7 @@ import {
   Shield, Link2, Link2Off, AlertCircle, UserPlus, Building2, CalendarDays,
   ExternalLink
 } from 'lucide-react'
-import { BRAND } from '@/constants'
+import { LogoCube } from '@/components/LogoCube'
 import { Footer } from '@/components/Footer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -274,7 +274,7 @@ export const Admin = () => {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+              <LogoCube />
               <div className="ml-3">
                 <h1 className="text-xl font-semibold text-foreground">Admin Panel</h1>
                 <p className="text-xs text-muted-foreground -mt-0.5">System management</p>

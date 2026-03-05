@@ -3,6 +3,7 @@ import { cn } from '@baileys/utils'
 import { Loader2, AlertCircle, BarChart3, Info } from 'lucide-react'
 import { ResponsiveContainer } from 'recharts'
 import { ChartErrorBoundary } from './ChartErrorBoundary'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 
 export interface ChartWrapperProps {
   title: string
@@ -99,7 +100,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
           className="flex flex-col items-center justify-center text-muted-foreground"
           style={{ height: heightValue }}
         >
-          <BarChart3 className="w-12 h-12 mb-2 opacity-50" />
+          <EmptyQuadrants className="w-12 h-12 mb-2" />
           <p className="text-sm font-medium">{noDataMessage}</p>
         </div>
       </div>

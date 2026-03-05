@@ -122,7 +122,7 @@ export const Landing = () => {
 
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
-              <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all flex items-center">
+              <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center">
                 Start Your $1 Trial
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
@@ -375,7 +375,7 @@ export const Landing = () => {
                   ))}
                 </div>
 
-                <Link to="/signup" className="block w-full py-3 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-all font-medium">
+                <Link to="/signup" className="block w-full py-3 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium">
                   Start $1 Trial
                 </Link>
 
@@ -399,7 +399,7 @@ export const Landing = () => {
           <h2 className="text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
           {!isAuthenticated && (
             <div className="mt-6 flex flex-col items-center gap-4">
-              <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-all text-lg">
+              <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg">
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>

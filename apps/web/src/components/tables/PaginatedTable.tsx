@@ -1,8 +1,9 @@
 import React from 'react'
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Download, RefreshCw, BarChart3 } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Search, Download, RefreshCw } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 
 interface Column<T> {
   key: keyof T | string
@@ -155,7 +156,7 @@ export function PaginatedTable<T extends Record<string, any>>({
 
       {!loading && paginatedData.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground border rounded-lg bg-card">
-          <BarChart3 className="w-12 h-12 text-muted-foreground/50 mb-4" />
+          <EmptyQuadrants className="w-12 h-12 mb-4" />
           <div className="text-lg font-medium">{emptyMessage}</div>
           {enableSearch && searchTerm && (
             <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>

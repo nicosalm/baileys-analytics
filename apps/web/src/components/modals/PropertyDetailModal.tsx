@@ -2,7 +2,8 @@ import { useMemo, useCallback } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency, formatDateDisplay } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, BarChart3, ExternalLink } from 'lucide-react'
+import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, ExternalLink } from 'lucide-react'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { MetricCard } from '@/components/MetricCard'
@@ -390,7 +391,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <BarChart3 className="w-12 h-12 text-muted-foreground/40 mx-auto mb-2" />
+                    <EmptyQuadrants className="w-12 h-12 mx-auto mb-2" />
                     <p className="text-muted-foreground">No platform data available</p>
                   </div>
                 )}

@@ -65,7 +65,7 @@ export const Footer = () => {
   return (
     <footer className="bg-background border-t border-border mt-auto">
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-12 md:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-10 md:gap-10">
           {/* brand */}
           <div className="col-span-2 md:col-span-1">
             <Link to="/" onClick={() => handleSamePageClick('/')} className="flex items-center gap-2 mb-3">
@@ -90,10 +90,18 @@ export const Footer = () => {
           <div>
             <h4 className="font-semibold text-foreground text-sm mb-3">Resources</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/help" onClick={() => handleSamePageClick('/help')} className={linkClass}>Docs</Link></li>
-              <li><Link to="/docs/api" onClick={() => handleSamePageClick('/docs/api')} className={linkClass}>API</Link></li>
               <li><Link to="/help" onClick={() => handleSamePageClick('/help')} className={linkClass}>Help</Link></li>
+              <li><Link to="/docs/ownerrez-data" onClick={() => handleSamePageClick('/docs/ownerrez-data')} className={linkClass}>Data Guide</Link></li>
               <li><a href="mailto:support@baileysanalytics.com" className={linkClass}>Support</a></li>
+            </ul>
+          </div>
+
+          {/* developers */}
+          <div>
+            <h4 className="font-semibold text-foreground text-sm mb-3">Developers</h4>
+            <ul className="space-y-2 text-sm">
+              <li><Link to="/docs/api" onClick={() => handleSamePageClick('/docs/api')} className={linkClass}>API</Link></li>
+              <li><Link to="/branding" onClick={() => handleSamePageClick('/branding')} className={linkClass}>Brand</Link></li>
             </ul>
           </div>
 

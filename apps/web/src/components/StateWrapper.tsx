@@ -1,8 +1,9 @@
 import React from 'react'
 import { cn } from '@baileys/utils'
-import { Loader2, AlertCircle, Database, RefreshCw } from 'lucide-react'
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { LoadingState } from './LoadingState'
 import { Button } from '@/components/ui/button'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 
 export interface StateWrapperProps {
   loading?: boolean
@@ -102,7 +103,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   if (empty) {
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
-        {emptyIcon || <Database className="w-12 h-12 text-muted-foreground/50 mb-2" />}
+        {emptyIcon || <EmptyQuadrants className="w-12 h-12 mb-2" />}
         <p className="text-sm font-medium text-muted-foreground">{emptyMessage}</p>
         {emptySubMessage && (
           <p className="text-xs text-muted-foreground/70 mt-1">{emptySubMessage}</p>

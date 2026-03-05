@@ -1,7 +1,8 @@
 import React from 'react'
-import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Download, RefreshCw, MoreHorizontal, BarChart3 } from 'lucide-react'
+import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Download, RefreshCw, MoreHorizontal } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { Checkbox } from '@/components/ui/checkbox'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import {
@@ -163,7 +164,7 @@ export function SelectableTable<T extends Record<string, any>>({
   if (!loading && paginatedData.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <BarChart3 className="w-12 h-12 text-muted-foreground/50 mb-4" />
+        <EmptyQuadrants className="w-12 h-12 mb-4" />
         <div className="text-lg font-medium">{emptyMessage}</div>
         {enableSearch && searchTerm && (
           <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>

@@ -28,6 +28,7 @@ const Admin = lazy(() => import('@/pages/Admin').then(m => ({ default: m.Admin }
 const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.NotFound })))
 const AuthCallback = lazy(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallback })))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })))
+const Branding = lazy(() => import('@/pages/Branding').then(m => ({ default: m.Branding })))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
 
 const ScrollToTop = () => {
@@ -60,6 +61,7 @@ export const App = () => {
               <Route path="/docs/api" element={<ApiDocs />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/branding" element={<Branding />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Navigate to="/dashboard/overview" replace />} />

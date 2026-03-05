@@ -8,6 +8,7 @@ import { LoadingState } from './LoadingState';
 import { Footer } from './Footer';
 import { Button } from '@/components/ui/button';
 import { BRAND } from '@/constants';
+import { LogoCube } from '@/components/LogoCube';
 
 interface SubscriptionGateProps {
   children: React.ReactNode;
@@ -79,8 +80,8 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
         <header className="bg-background/80 backdrop-blur-sm border-b">
           <div className="max-w-7xl mx-auto px-6 py-4">
             <div className="flex justify-between items-center">
-              <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
-                <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+              <Link to="/" className="flex items-center">
+                <LogoCube />
                 <span className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</span>
               </Link>
               <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-foreground text-sm">

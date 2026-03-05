@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BRAND } from '@/constants'
+import { LogoCube } from '@/components/LogoCube'
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('')
@@ -91,7 +92,7 @@ export const ForgotPassword = () => {
 
         <div className="bg-card rounded-xl shadow-sm border p-8">
           <div className="flex items-center mb-6">
-            <img src="/baileysanalytics.svg" alt={BRAND.name} className="w-9 h-9" />
+            <LogoCube />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 
