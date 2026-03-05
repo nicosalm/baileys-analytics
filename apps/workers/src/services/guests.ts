@@ -75,7 +75,10 @@ function normalizePlatform(platform: string | null): string {
   if (normalized.includes('airbnb')) return 'Airbnb';
   if (normalized.includes('vrbo') || normalized.includes('homeaway')) return 'VRBO';
   if (normalized.includes('booking')) return 'Booking.com';
-  if (normalized.includes('direct')) return 'Direct';
+  if (normalized.includes('google')) return 'Google Vacation Rentals';
+  if (normalized.includes('hopper')) return 'Hopper';
+  if (normalized.includes('hometogo')) return 'HomeToGo';
+  if (normalized.includes('direct') || normalized.includes('owner') || normalized.includes('website')) return 'Direct';
 
   return platform;
 }

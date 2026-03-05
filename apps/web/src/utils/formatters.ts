@@ -56,12 +56,16 @@ export const formatShortMonth = (date: Date | string): string => {
 
 export const normalizePlatformName = (platform: string | null): string => {
   if (!platform || platform === '') return 'Unassigned'
-  
+
   const lower = platform.toLowerCase()
   if (lower.includes('airbnb')) return 'Airbnb'
   if (lower.includes('vrbo') || lower.includes('homeaway')) return 'VRBO'
-  if (lower.includes('booking.com')) return 'Booking.com'
-  
+  if (lower.includes('booking')) return 'Booking.com'
+  if (lower.includes('google')) return 'Google Vacation Rentals'
+  if (lower.includes('hopper')) return 'Hopper'
+  if (lower.includes('hometogo')) return 'HomeToGo'
+  if (lower.includes('direct') || lower.includes('owner') || lower.includes('website')) return 'Direct'
+
   return platform
 }
 

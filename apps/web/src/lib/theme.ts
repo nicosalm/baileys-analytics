@@ -100,6 +100,9 @@ export const PLATFORM_COLORS: Record<string, string> = {
   'airbnb': '#FF5A5F',
   'vrbo': '#0061A7',
   'booking.com': '#003580',
+  'google vacation rentals': '#4285F4',
+  'hopper': '#8B5CF6',
+  'hometogo': '#F97316',
   'direct': '#22C55E',
   'other': '#6B7280'
 } as const
