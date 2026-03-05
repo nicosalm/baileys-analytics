@@ -40,12 +40,12 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
     return Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b))
   }, [data])
   
-  // Set initial month to the most recent month when data loads
+  // reset to last month whenever data changes
   useEffect(() => {
-    if (currentMonthIndex === -1 && monthsData.length > 0) {
+    if (monthsData.length > 0) {
       setCurrentMonthIndex(monthsData.length - 1)
     }
-  }, [monthsData.length, currentMonthIndex])
+  }, [monthsData])
 
   // Ensure currentMonthIndex is valid
   const validIndex = currentMonthIndex === -1 || currentMonthIndex >= monthsData.length 

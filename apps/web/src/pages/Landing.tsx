@@ -60,8 +60,8 @@ export const Landing = () => {
                 <span className="text-xl font-semibold text-white ml-3">{BRAND.name}</span>
               </div>
               <div className="hidden md:flex items-center gap-5">
-                <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors">Features</a>
-                <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors">Pricing</a>
+                <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Features</a>
+                <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Pricing</a>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -69,7 +69,7 @@ export const Landing = () => {
                 <>
                   <button
                     onClick={handleLogout}
-                    className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm"
+                    className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm cursor-pointer"
                   >
                     Logout
                   </button>
@@ -120,7 +120,7 @@ export const Landing = () => {
               <button
                 onClick={handleTryDemo}
                 disabled={demoLoading}
-                className="px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50"
+                className="px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50 cursor-pointer"
               >
                 {demoLoading ? 'Loading...' : 'Try the Demo'}
               </button>
@@ -135,8 +135,8 @@ export const Landing = () => {
           <div className="mt-16 md:mt-24">
             <div className="relative max-w-4xl mx-auto">
               <div className="absolute -inset-4 bg-gradient-to-r from-[oklch(0.45_0.12_280/0.3)] to-[oklch(0.40_0.10_255/0.2)] rounded-3xl blur-3xl" />
-              <div className="relative bg-[oklch(0.18_0.02_265)] rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10 aspect-video flex items-center justify-center">
-                <p className="text-white/30 text-sm">Dashboard screenshot</p>
+              <div className="relative rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10">
+                <img src="/demo/demo1.jpeg" alt="Baileys Analytics dashboard overview" className="w-full" />
               </div>
             </div>
 
@@ -181,8 +181,8 @@ export const Landing = () => {
             </div>
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-br from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
-              <div className="relative bg-[oklch(0.18_0.02_265)] rounded-2xl ring-1 ring-white/10 aspect-[4/3] flex items-center justify-center">
-                <p className="text-white/30 text-sm">Financial dashboard screenshot</p>
+              <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
+                <img src="/demo/demo2.jpeg" alt="Financial breakdown dashboard" className="w-full" />
               </div>
             </div>
           </div>
@@ -200,8 +200,8 @@ export const Landing = () => {
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="relative md:order-1">
               <div className="absolute -inset-4 bg-gradient-to-bl from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
-              <div className="relative bg-[oklch(0.22_0.02_265)] rounded-2xl ring-1 ring-white/10 aspect-[4/3] flex items-center justify-center">
-                <p className="text-white/30 text-sm">Properties comparison screenshot</p>
+              <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
+                <img src="/demo/demo3.jpeg" alt="Property comparison dashboard" className="w-full" />
               </div>
             </div>
             <div className="md:order-2">
@@ -241,8 +241,8 @@ export const Landing = () => {
             </div>
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-br from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
-              <div className="relative bg-[oklch(0.18_0.02_265)] rounded-2xl ring-1 ring-white/10 aspect-[4/3] flex items-center justify-center">
-                <p className="text-white/30 text-sm">Occupancy heatmap screenshot</p>
+              <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
+                <img src="/demo/demo4.jpeg" alt="Occupancy heatmap dashboard" className="w-full" />
               </div>
             </div>
           </div>

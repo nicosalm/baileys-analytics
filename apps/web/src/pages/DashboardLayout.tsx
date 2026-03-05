@@ -86,7 +86,7 @@ const DashboardTabs = () => {
               key={id}
               onClick={() => handleTabClick(id)}
               className={`
-                py-3 px-3 md:px-4 border-b-2 font-medium text-sm flex items-center transition-all whitespace-nowrap
+                py-3 px-3 md:px-4 border-b-2 font-medium text-sm flex items-center transition-all whitespace-nowrap cursor-pointer
                 ${displayActiveTab === id
                   ? 'border-primary text-primary bg-primary/5'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
@@ -273,7 +273,7 @@ export const DashboardLayout = () => {
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
+                        className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                         title="Exit demo"
                       >
                         <LogOut className="w-4 h-4" />

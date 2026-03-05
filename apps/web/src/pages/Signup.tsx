@@ -285,47 +285,47 @@ export const Signup = () => {
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden">
         {/* Floating shapes */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary-foreground/10 rounded-full mix-blend-multiply filter blur-xl animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-primary-foreground/8 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-primary-foreground/6 rounded-full mix-blend-multiply filter blur-xl animate-blob animation-delay-4000" />
+        <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
+        <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
+        <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
 
-        <div className="relative z-10 flex flex-col justify-center px-16 text-primary-foreground">
+        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <h3 className="text-4xl font-bold mb-6">What Happens After You Sign Up</h3>
-          <p className="text-lg opacity-90 mb-8">
+          <p className="text-lg text-white/80 mb-8">
             You'll be up and running in under 5 minutes.
           </p>
 
           {/* Feature list */}
           <div className="space-y-6">
             <div className="flex items-start">
-              <div className="w-8 h-8 bg-primary-foreground/20 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">1</div>
+              <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">1</div>
               <div>
                 <h4 className="font-semibold mb-1">Connect OwnerRez (30 seconds)</h4>
-                <p className="opacity-90 text-sm">Secure OAuth connection - we never see your password</p>
+                <p className="text-white/80 text-sm">Secure OAuth connection - we never see your password</p>
               </div>
             </div>
             <div className="flex items-start">
-              <div className="w-8 h-8 bg-primary-foreground/20 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">2</div>
+              <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">2</div>
               <div>
                 <h4 className="font-semibold mb-1">Automatic sync (~2 minutes)</h4>
-                <p className="opacity-90 text-sm">We pull 3 years of bookings, properties, and guest data</p>
+                <p className="text-white/80 text-sm">We pull 3 years of bookings, properties, and guest data</p>
               </div>
             </div>
             <div className="flex items-start">
-              <div className="w-8 h-8 bg-primary-foreground/20 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">3</div>
+              <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">3</div>
               <div>
                 <h4 className="font-semibold mb-1">See your insights instantly</h4>
-                <p className="opacity-90 text-sm">6 dashboards with your actual revenue, occupancy, and guest data</p>
+                <p className="text-white/80 text-sm">6 dashboards with your actual revenue, occupancy, and guest data</p>
               </div>
             </div>
           </div>
 
           {/* Trust badge */}
-          <div className="mt-12 pt-8 border-t border-primary-foreground/20">
-            <p className="text-sm opacity-90 mb-2">Cancel anytime from settings • No hassle</p>
-            <p className="text-sm opacity-75">Made with 🧀 in Wisconsin</p>
+          <div className="mt-12 pt-8 border-t border-white/15">
+            <p className="text-sm text-white/80 mb-2">Cancel anytime from settings - No hassle</p>
+            <p className="text-sm text-white/60">Made with cheese in Wisconsin</p>
           </div>
         </div>
       </div>
