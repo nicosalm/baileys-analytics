@@ -201,7 +201,7 @@ export const Landing = () => {
             <div className="relative md:order-1">
               <div className="absolute -inset-4 bg-gradient-to-bl from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
-                <img src="/demo/demo3.jpeg" alt="Property comparison dashboard" className="w-full" />
+                <img src="/demo/demo3.jpeg" alt="Property comparison dashboard" className="w-full scale-105" />
               </div>
             </div>
             <div className="md:order-2">
@@ -242,7 +242,7 @@ export const Landing = () => {
             <div className="relative">
               <div className="absolute -inset-4 bg-gradient-to-br from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
-                <img src="/demo/demo4.jpeg" alt="Occupancy heatmap dashboard" className="w-full" />
+                <img src="/demo/demo4.jpeg" alt="Occupancy heatmap dashboard" className="w-full scale-105" />
               </div>
             </div>
           </div>
