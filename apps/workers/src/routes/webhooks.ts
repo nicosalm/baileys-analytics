@@ -34,7 +34,16 @@ type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
 
 const webhooks = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
-webhooks.get('/status', authMiddleware, async (c) => {
+// public health check (no auth) — used by updown.io monitoring
+webhooks.get('/status', async (c) => {
+	return c.json({
+		status: 'active',
+		endpoint: '/api/webhooks/ownerrez',
+	});
+});
+
+// authenticated status with recent events
+webhooks.get('/status/detail', authMiddleware, async (c) => {
 	const tenantId = c.get('tenantId');
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
