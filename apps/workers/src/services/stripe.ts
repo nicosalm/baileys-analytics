@@ -279,6 +279,14 @@ export class StripeService {
     const tenantId = subscription.metadata?.tenant_id;
     if (!tenantId) return null;
 
+    // bail out if tenant was deleted (e.g. admin delete triggered the cancellation)
+    const { data: tenantExists } = await this.supabase
+      .from('tenants')
+      .select('id')
+      .eq('id', tenantId)
+      .single();
+    if (!tenantExists) return tenantId;
+
     // determine billing cycle from price interval
     const priceId = subscription.items.data[0]?.price.id;
     const interval = subscription.items.data[0]?.price.recurring?.interval;
@@ -337,6 +345,14 @@ export class StripeService {
   private async handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<string | null> {
     const tenantId = subscription.metadata?.tenant_id;
     if (!tenantId) return null;
+
+    // bail out if tenant was deleted
+    const { data: tenantExists } = await this.supabase
+      .from('tenants')
+      .select('id')
+      .eq('id', tenantId)
+      .single();
+    if (!tenantExists) return tenantId;
 
     // update subscription status
     await this.supabase
