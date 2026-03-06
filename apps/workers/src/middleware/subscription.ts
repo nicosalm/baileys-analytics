@@ -89,6 +89,7 @@ export const subscriptionMiddleware = async (c: Context<{ Bindings: Env; Variabl
   }
 
   // check if subscription is active
+  // stripe manages lifecycle transitions via webhooks — we trust the status field
   if (!ACTIVE_STATUSES.includes(subscription.status)) {
     return c.json({
       error: 'Subscription is not active',
@@ -96,32 +97,6 @@ export const subscriptionMiddleware = async (c: Context<{ Bindings: Env; Variabl
       status: subscription.status,
       redirectTo: '/settings?tab=billing'
     }, 403);
-  }
-
-  // check if subscription period has ended
-  if (subscription.current_period_end) {
-    const periodEnd = new Date(subscription.current_period_end);
-    if (periodEnd < new Date()) {
-      return c.json({
-        error: 'Subscription has expired',
-        code: 'SUBSCRIPTION_EXPIRED',
-        expiredAt: subscription.current_period_end,
-        redirectTo: '/settings?tab=billing'
-      }, 403);
-    }
-  }
-
-  // check if trial has ended
-  if (subscription.status === 'trialing' && subscription.trial_end) {
-    const trialEnd = new Date(subscription.trial_end);
-    if (trialEnd < new Date()) {
-      return c.json({
-        error: 'Trial period has ended',
-        code: 'TRIAL_EXPIRED',
-        trialEndedAt: subscription.trial_end,
-        redirectTo: '/settings?tab=billing'
-      }, 403);
-    }
   }
 
   // subscription is valid, continue
