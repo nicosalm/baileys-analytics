@@ -2,7 +2,7 @@ import { useMemo, useState, Fragment } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronRight, ChevronDown, Sparkles } from 'lucide-react'
+import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronDown, Sparkles } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -171,9 +171,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
                         {hasCharges && (
-                          isExpanded
-                            ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                            : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                          <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${isExpanded ? '' : '-rotate-90'}`} />
                         )}
                         <div>
                           <div className="font-medium text-foreground">{booking.propertyName}</div>

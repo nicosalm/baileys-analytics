@@ -6,7 +6,7 @@ import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import {
   Users, DollarSign, TrendingUp, Search, Trash2, AlertTriangle,
-  Settings, LogOut, LayoutDashboard, RefreshCw, ChevronDown, ChevronUp,
+  Settings, LogOut, LayoutDashboard, RefreshCw, ChevronDown,
   Shield, Link2, Link2Off, AlertCircle, UserPlus, Building2, CalendarDays,
   ExternalLink, Megaphone, Plus, Pencil, Eye, EyeOff
 } from 'lucide-react'
@@ -560,7 +560,7 @@ export const Admin = () => {
                                 onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
                                 className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-full"
                               >
-                                {expandedUser === user.id ? <ChevronUp className="w-3.5 h-3.5 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />}
+                                <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${expandedUser === user.id ? 'rotate-180' : ''}`} />
                                 <span className="truncate">{user.email}</span>
                               </button>
                             </td>
