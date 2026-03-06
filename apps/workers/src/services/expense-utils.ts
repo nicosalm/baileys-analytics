@@ -9,7 +9,7 @@ export async function getExpensesWithTemplateFallback(
   to: string,
   propertyIds: string[],
   propertyFilter?: string
-): Promise<{ category: string; amount: number }[]> {
+): Promise<{ property_id: string; category: string; amount: number }[]> {
   if (propertyIds.length === 0) return []
 
   const fromDate = new Date(from)
@@ -54,7 +54,7 @@ export async function getExpensesWithTemplateFallback(
   })
 
   // generate fallback entries for months without explicit entries
-  const fallback: { category: string; amount: number }[] = []
+  const fallback: { property_id: string; category: string; amount: number }[] = []
   for (let year = fromYear; year <= toYear; year++) {
     const monthStart = year === fromYear ? fromMonth : 1
     const monthEnd = year === toYear ? toMonth : 12
@@ -64,7 +64,7 @@ export async function getExpensesWithTemplateFallback(
         if (!explicitKeys.has(key)) {
           const propTemplates = templatesByProperty.get(propertyId)
           if (propTemplates) {
-            fallback.push(...propTemplates)
+            fallback.push(...propTemplates.map(t => ({ ...t, property_id: propertyId })))
           }
         }
       }
@@ -72,7 +72,7 @@ export async function getExpensesWithTemplateFallback(
   }
 
   return [
-    ...expenses.map((e: any) => ({ category: e.category, amount: parseFloat(e.amount) || 0 })),
+    ...expenses.map((e: any) => ({ property_id: e.property_id, category: e.category, amount: parseFloat(e.amount) || 0 })),
     ...fallback
   ]
 }

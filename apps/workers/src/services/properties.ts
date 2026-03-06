@@ -288,11 +288,11 @@ export async function getPropertyProfitability(
     }
   }
 
-  // operating expenses per property
+  // operating expenses per property (single query for all properties)
+  const allExpenses = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds);
   const expensesByProperty = new Map<string, number>();
-  for (const propId of propertyIds) {
-    const expenses = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds, propId);
-    expensesByProperty.set(propId, expenses.reduce((sum, e) => sum + e.amount, 0));
+  for (const e of allExpenses) {
+    expensesByProperty.set(e.property_id, (expensesByProperty.get(e.property_id) || 0) + e.amount);
   }
 
   return properties.map(p => {

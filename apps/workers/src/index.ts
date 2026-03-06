@@ -8,7 +8,6 @@ import { timeout } from './middleware/timeout';
 
 import { createSupabaseClient } from './services/supabase';
 import { getValidOwnerRezToken } from './services/ownerrez-token';
-import { DashboardService } from './services/dashboard';
 import { getOverviewData } from './services/overview';
 import { getPLData, getRevenueData, getCashflowData, getTaxData } from './services/financial';
 import { getPropertiesData } from './services/properties';
@@ -18,7 +17,6 @@ import { properties } from './routes/properties';
 import { propertyDetail } from './routes/property-detail';
 import { bookings } from './routes/bookings';
 import { guests } from './routes/guests';
-import { overview } from './routes/overview';
 import { financial } from './routes/financial';
 import { occupancy } from './routes/occupancy';
 import { periodDetail } from './routes/period-detail';
@@ -702,7 +700,6 @@ const dashboardPaths = [
 	'/api/property',
 	'/api/bookings',
 	'/api/guests',
-	'/api/overview',
 	'/api/financial',
 	'/api/occupancy',
 	'/api/period-detail',
@@ -761,7 +758,6 @@ app.route('/api/properties', properties);
 app.route('/api/property', propertyDetail);
 app.route('/api/bookings', bookings);
 app.route('/api/guests', guests);
-app.route('/api/overview', overview);
 app.route('/api/financial', financial);
 app.route('/api/occupancy', occupancy);
 app.route('/api/period-detail', periodDetail);
