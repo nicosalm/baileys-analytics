@@ -1,20 +1,4 @@
-import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { api } from './api';
-
-let stripePromise: Promise<Stripe | null>;
-
-// initialize stripe with publishable key
-export const getStripe = () => {
-  if (!stripePromise) {
-    const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-    if (!publishableKey) {
-      console.error('Missing Stripe publishable key');
-      return Promise.resolve(null);
-    }
-    stripePromise = loadStripe(publishableKey);
-  }
-  return stripePromise;
-};
 
 // billing api client
 class BillingClient {
@@ -73,10 +57,6 @@ class BillingClient {
     return result.success ? result.data.metrics : [];
   }
 
-  async getPlans() {
-    const result = await api.request<{ plans: any[] }>('/billing/plans');
-    return result.success ? result.data.plans : [];
-  }
 }
 
 export const billingClient = new BillingClient();
