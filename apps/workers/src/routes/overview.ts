@@ -66,7 +66,7 @@ async function getPeriodMetrics(
     // bookings data
     supabase
       .from('bookings')
-      .select('id, total_amount, arrival, departure, guest_name, status')
+      .select('id, total_amount, arrival, departure, guest_name, status, host_service_fee, guest_listing_site_fee')
       .eq('tenant_id', tenantId)
       .gte('arrival', from)
       .lte('arrival', to)
@@ -136,7 +136,7 @@ async function getPeriodMetrics(
 
   return {
     revenue: totalRevenue,
-    netRevenue: totalRevenue * 0.9, // Simplified: 10% for taxes/fees
+    netRevenue: totalRevenue - bookings.reduce((s: number, b: any) => s + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0),
     bookings: totalBookings,
     upcomingBookings,
     cancellationRate,
@@ -148,7 +148,7 @@ async function getPeriodMetrics(
     avgNights,
     totalProperties,
     avgPropertyOccupancy: occupancyRate,
-    platformFees: totalRevenue * 0.03,
+    platformFees: bookings.reduce((s: number, b: any) => s + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0),
     taxes: totalRevenue * 0.07
   };
 }

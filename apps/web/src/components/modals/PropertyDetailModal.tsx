@@ -255,7 +255,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {data.metrics.platformFees > 0 && (
                 <div>
-                  <div className="text-xs text-muted-foreground">Platform Fees</div>
+                  <div className="text-xs text-muted-foreground">Platform Fees (est.)</div>
                   <div className="text-lg font-semibold text-danger">-{formatCurrency(data.metrics.platformFees)}</div>
                 </div>
               )}

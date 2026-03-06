@@ -34,7 +34,7 @@ const ProfitabilityTooltip = ({ active, payload }: any) => {
           <span className="font-medium">{formatCurrency(d.grossRevenue)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Platform Fees:</span>
+          <span className="text-muted-foreground">Platform Fees (est.):</span>
           <span className="font-medium text-danger">-{formatCurrency(d.platformFees)}</span>
         </div>
         <div className="flex justify-between gap-4">

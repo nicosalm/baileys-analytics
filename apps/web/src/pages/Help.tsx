@@ -113,7 +113,7 @@ export const Help = () => {
                 <li>Operating expenses (cleaning, maintenance, etc.) in <SLink tab="expenses">Settings → Expenses</SLink></li>
               </ul>
               <p className="text-muted-foreground text-sm mt-2">
-                Platform fees are pulled from OwnerRez booking data automatically. Net revenue calculations require operating expenses to be set correctly.
+                Host service fees come from OwnerRez directly. Guest service fees are estimated (~13–15% by platform) until OwnerRez exposes them via their API — these are marked "(est.)" in the dashboard. Net revenue calculations require operating expenses to be set correctly.
               </p>
             </div>
 
@@ -179,7 +179,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How are platform fees calculated?</h3>
               <p className="text-muted-foreground text-sm">
-                Platform fees are pulled from your OwnerRez booking data. Host service fees are exact values from OwnerRez. Guest service fees are estimated during sync (approximately 13 to 15% depending on the platform).
+                Host service fees are exact values from OwnerRez. Guest service fees are <strong>estimated</strong> during sync (approximately 13–15% depending on the platform) because OwnerRez does not yet expose them via their API. All figures marked "(est.)" will update to actuals once OwnerRez adds this data.
               </p>
             </div>
 

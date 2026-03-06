@@ -186,7 +186,7 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>P&L Summary:</strong> Revenue → Platform Fees → Operating Expenses → Taxes → Net Revenue.{' '}
+              <strong>P&L Summary:</strong> Revenue → Platform Fees (est.) → Operating Expenses → Taxes → Net Revenue.{' '}
               {revenue.operatingExpenses.total > 0
                 ? `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
                 : <>Configure <Link to="/settings?tab=expenses" className="underline hover:text-info-fg">Expenses</Link> in Settings for a complete picture.</>}
@@ -214,14 +214,14 @@ export const PLView: React.FC<PLViewProps> = ({
         />
         <MetricCard
           icon={Receipt}
-          label="Expenses & Platform Fees"
+          label="Expenses & Platform Fees (est.)"
           value={revenue.totalCosts}
           format="currency"
-          tooltip="Platform fees (Airbnb, VRBO, etc.) plus your monthly operating expenses"
+          tooltip="Estimated platform fees (Airbnb, VRBO, etc.) plus your monthly operating expenses. Guest service fees are estimated until OwnerRez exposes exact values."
           color="orange"
           subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `Fees: ${formatCurrency(revenue.platformFees)}${revenue.operatingExpenses.total > 0 ? ` | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}` : ''}`}
+            : `Fees (est.): ${formatCurrency(revenue.platformFees)}${revenue.operatingExpenses.total > 0 ? ` | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}` : ''}`}
           trend={comparisonMode !== 'none' && comparison.costsGrowth !== 0 ? {
             value: comparison.costsGrowth,
             isPositive: comparison.costsGrowth < 0
@@ -249,7 +249,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Net Revenue"
           value={revenue.operatingProfit}
           format="currency"
-          tooltip="What you keep after platform fees, operating expenses, and taxes"
+          tooltip="What you keep after estimated platform fees, operating expenses, and taxes"
           color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
           subValue={comparisonMode !== 'none' && comparison.previousOperatingProfit > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousOperatingProfit)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -291,7 +291,7 @@ export const PLView: React.FC<PLViewProps> = ({
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-foreground">Platform Fees</span>
+                  <span className="text-sm font-medium text-foreground">Platform Fees <span className="text-xs font-normal text-muted-foreground">(est.)</span></span>
                   <div className="text-right">
                     <p className="font-semibold">{formatCurrency(revenue.platformFees)}</p>
                     <p className="text-xs text-muted-foreground">{formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue</p>

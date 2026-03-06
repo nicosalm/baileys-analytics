@@ -147,7 +147,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
             <div className="space-y-2">
               {data.costs.platformFees > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Platform Fees</span>
+                  <span className="text-muted-foreground">Platform Fees (est.)</span>
                   <span className="font-medium text-danger">-{formatCurrency(data.costs.platformFees)}</span>
                 </div>
               )}

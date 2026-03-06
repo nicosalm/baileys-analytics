@@ -11,7 +11,7 @@ async function fetchBookings(
 ) {
 	let query = supabase
 		.from('bookings')
-		.select('id, total_amount, arrival, departure, guest_email, guest_name, platform, property_id')
+		.select('id, total_amount, arrival, departure, guest_email, guest_name, platform, property_id, host_service_fee, guest_listing_site_fee')
 		.eq('tenant_id', tenantId)
 		.lte('arrival', to)
 		.gte('departure', from)
@@ -116,7 +116,7 @@ async function getCurrentPeriodMetrics(
 	const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 	const totalBookings = bookings.length;
 	const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
-	const platformFees = totalRevenue * 0.03;
+	const platformFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0);
 	const netRevenue = totalRevenue - platformFees;
 	let totalNights = 0;
 	bookings.forEach(b => {

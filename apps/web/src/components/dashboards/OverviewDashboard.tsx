@@ -532,7 +532,7 @@ export const OverviewDashboard = () => {
           staggerIndex={0}
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `After fees: ${formatCompactCurrency(metrics.revenue.net)}`
+            : `After fees (est.): ${formatCompactCurrency(metrics.revenue.net)}`
           }
           trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
             value: metrics.revenue.growth,
