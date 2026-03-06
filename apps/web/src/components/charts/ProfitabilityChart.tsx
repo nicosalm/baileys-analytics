@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { formatCurrency } from '@/utils/formatters'
 import { resolveToken, CHART_INFRA } from '@/lib/theme'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 
 interface PropertyProfitability {
   propertyId: string
@@ -25,7 +26,7 @@ const ProfitabilityTooltip = ({ active, payload }: any) => {
 
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
-      <p className="font-semibold text-sm mb-2">{d.name}</p>
+      <p className="font-semibold text-sm mb-2">{d.fullName}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Gross Revenue:</span>
@@ -62,39 +63,76 @@ const ProfitabilityTooltip = ({ active, payload }: any) => {
   )
 }
 
+const MarginLabel = ({ x, y, width, height, value, payload }: any) => {
+  if (!payload || payload.grossRevenue <= 0) return null
+  const margin = (payload.netRevenue / payload.grossRevenue) * 100
+  const labelX = value >= 0 ? (x || 0) + (width || 0) + 6 : (x || 0) - 6
+  const labelY = (y || 0) + (height || 0) / 2
+
+  return (
+    <text
+      x={labelX}
+      y={labelY}
+      textAnchor={value >= 0 ? 'start' : 'end'}
+      dominantBaseline="central"
+      className="fill-muted-foreground"
+      fontSize={11}
+    >
+      {Math.round(margin)}%
+    </text>
+  )
+}
+
+const formatAxisK = (v: number) => {
+  if (v === 0) return '$0'
+  return `$${Math.round(v / 1000)}k`
+}
+
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, onPropertyClick }) => {
   const chartData = useMemo(() =>
     data.map(d => ({
       ...d,
-      name: d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '...' : d.propertyName,
+      name: d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName,
       fullName: d.propertyName,
       costs: d.platformFees + d.taxes + d.operatingExpenses
     })),
     [data]
   )
 
-  if (chartData.length === 0) return null
+  const colors = useMemo(() => ({
+    success: resolveToken('--success'),
+    danger: resolveToken('--danger'),
+  }), [])
+
+  const handleBarClick = useCallback((data: any) => {
+    if (onPropertyClick && data?.propertyId) {
+      onPropertyClick(data.propertyId, data.fullName)
+    }
+  }, [onPropertyClick])
+
+  if (chartData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+        <EmptyQuadrants className="w-12 h-12 mb-2" />
+        <p className="text-sm font-medium">No profitability data</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">Data will appear once bookings are synced</p>
+      </div>
+    )
+  }
 
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
         data={chartData}
         layout="vertical"
-        margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+        margin={{ top: 5, right: 45, left: 10, bottom: 5 }}
         barGap={0}
         barCategoryGap="25%"
-        onClick={(state: any) => {
-          if (state?.activePayload?.[0] && onPropertyClick) {
-            const d = state.activePayload[0].payload
-            onPropertyClick(d.propertyId, d.fullName)
-          }
-        }}
-        style={{ cursor: onPropertyClick ? 'pointer' : 'default' }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} horizontal={false} />
         <XAxis
           type="number"
-          tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+          tickFormatter={formatAxisK}
           stroke={CHART_INFRA.axis}
         />
         <YAxis
@@ -104,19 +142,37 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
           tick={{ fontSize: 12 }}
           stroke={CHART_INFRA.axis}
         />
-        <Tooltip content={<ProfitabilityTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} />
-        <Bar dataKey="netRevenue" radius={[0, 4, 4, 0]} maxBarSize={28}>
+        <Tooltip content={<ProfitabilityTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} isAnimationActive={false} />
+        <Bar
+          dataKey="netRevenue"
+          radius={[0, 4, 4, 0]}
+          maxBarSize={28}
+          animationDuration={500}
+          animationEasing="ease-out"
+          label={<MarginLabel />}
+          onClick={handleBarClick}
+          className={onPropertyClick ? 'cursor-pointer' : ''}
+        >
           {chartData.map((entry, i) => (
             <Cell
               key={i}
-              fill={entry.netRevenue >= 0 ? resolveToken('--success') : resolveToken('--danger')}
+              fill={entry.netRevenue >= 0 ? colors.success : colors.danger}
               fillOpacity={0.85}
             />
           ))}
         </Bar>
-        <Bar dataKey="costs" radius={[0, 4, 4, 0]} maxBarSize={28} fillOpacity={0.4}>
+        <Bar
+          dataKey="costs"
+          radius={[0, 4, 4, 0]}
+          maxBarSize={28}
+          fillOpacity={0.4}
+          animationDuration={500}
+          animationEasing="ease-out"
+          onClick={handleBarClick}
+          className={onPropertyClick ? 'cursor-pointer' : ''}
+        >
           {chartData.map((_, i) => (
-            <Cell key={i} fill={resolveToken('--danger')} />
+            <Cell key={i} fill={colors.danger} />
           ))}
         </Bar>
       </BarChart>

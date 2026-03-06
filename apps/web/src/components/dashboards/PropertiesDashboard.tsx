@@ -3,7 +3,7 @@ import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@bail
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import { Calendar, DollarSign, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table, Wallet, Share2 } from 'lucide-react'
+import { Calendar, DollarSign, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table, Wallet, Share2, BarChart3, PieChart } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -23,6 +23,7 @@ export const PropertiesDashboard = () => {
   const { openModal } = useModal()
   const comparisonDateRange = useComparisonDateRange()
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
+  const [platformView, setPlatformView] = useState<'pct' | 'rev'>('pct')
 
   const tagIds = useTagIds()
 
@@ -78,20 +79,24 @@ export const PropertiesDashboard = () => {
     }
   }, [previousProperties])
 
-  // collect unique platforms for legend
+  // collect platforms sorted by total revenue (matches chart stacking order)
   const allPlatforms = useMemo(() => {
-    const set = new Set<string>()
+    const totals = new Map<string, number>()
     for (const p of platformMix) {
       for (const entry of p.platforms || []) {
-        set.add(entry.platform)
+        totals.set(entry.platform, (totals.get(entry.platform) || 0) + entry.revenue)
       }
     }
-    return Array.from(set)
+    return Array.from(totals.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name)
   }, [platformMix])
 
   // memoized view toggle handlers
   const handleViewCards = useCallback(() => setViewMode('cards'), [])
   const handleViewTable = useCallback(() => setViewMode('table'), [])
+  const handlePlatformPct = useCallback(() => setPlatformView('pct'), [])
+  const handlePlatformRev = useCallback(() => setPlatformView('rev'), [])
 
   // memoized click handlers
   const handleScatterClick = useCallback((property: PropertyMetrics) => {
@@ -286,32 +291,30 @@ export const PropertiesDashboard = () => {
       {/* Analysis Charts */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Net Profitability */}
-        {profitability.length > 0 && (
-          <ChartWrapper
-            title="Net Profitability"
-            subtitle="Revenue after fees, taxes, and expenses"
-            icon={Wallet}
-            height={barChartHeight}
-            responsive={false}
-          >
-            <div className="h-full flex flex-col">
-              <div className="flex-1">
-                <ProfitabilityChart
-                  data={profitability}
-                  onPropertyClick={handleChartPropertyClick}
-                />
-              </div>
-              <ProfitabilityLegend />
+        <ChartWrapper
+          title="Net Profitability"
+          subtitle="Revenue after fees, taxes, and expenses"
+          icon={Wallet}
+          height={barChartHeight}
+          responsive={false}
+        >
+          <div className="h-full flex flex-col">
+            <div className="flex-1">
+              <ProfitabilityChart
+                data={profitability}
+                onPropertyClick={handleChartPropertyClick}
+              />
             </div>
-          </ChartWrapper>
-        )}
+            {profitability.length > 0 && <ProfitabilityLegend />}
+          </div>
+        </ChartWrapper>
 
         {/* Performance Matrix */}
         <ChartWrapper
           title="Performance Matrix"
           subtitle="Revenue vs Occupancy Analysis"
           icon={ScatterChart}
-          height={360}
+          height={380}
           responsive={false}
         >
           <div className="h-full flex flex-col">
@@ -327,25 +330,46 @@ export const PropertiesDashboard = () => {
       </div>
 
       {/* Booking Source Mix — full width */}
-      {platformMix.length > 0 && platformMix.some((p: any) => p.platforms?.length > 0) && (
-        <ChartWrapper
-          title="Booking Sources"
-          subtitle="Platform concentration by property"
-          icon={Share2}
-          height={barChartHeight}
-          responsive={false}
-        >
-          <div className="h-full flex flex-col">
-            <div className="flex-1">
-              <PlatformMixChart
-                data={platformMix}
-                onPropertyClick={handleChartPropertyClick}
-              />
-            </div>
-            <PlatformMixLegend platforms={allPlatforms} />
+      <ChartWrapper
+        title="Booking Sources"
+        subtitle="Platform concentration by property"
+        icon={Share2}
+        height={barChartHeight}
+        responsive={false}
+        actions={allPlatforms.length > 0 ? (
+          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePlatformPct}
+              className={platformView === 'pct' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
+            >
+              <PieChart className="w-4 h-4" />
+              %
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handlePlatformRev}
+              className={platformView === 'rev' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Revenue
+            </Button>
           </div>
-        </ChartWrapper>
-      )}
+        ) : undefined}
+      >
+        <div className="h-full flex flex-col">
+          <div className="flex-1">
+            <PlatformMixChart
+              data={platformMix}
+              onPropertyClick={handleChartPropertyClick}
+              showPercentage={platformView === 'pct'}
+            />
+          </div>
+          {allPlatforms.length > 0 && <PlatformMixLegend platforms={allPlatforms} />}
+        </div>
+      </ChartWrapper>
     </div>
   )
 }
