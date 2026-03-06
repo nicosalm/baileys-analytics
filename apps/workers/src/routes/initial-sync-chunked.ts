@@ -77,6 +77,7 @@ initialSyncChunked.post('/properties', async (c) => {
       tenant_id: tenantId,
       ownerrez_id: property.id,
       name: property.name,
+      internal_code: property.internal_code || null,
       address: property.address?.street1 || property.address,
       city: property.address?.city,
       state: property.address?.state,

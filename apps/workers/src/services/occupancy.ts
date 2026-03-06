@@ -12,6 +12,7 @@ export interface OccupancyData {
 export interface PropertyOccupancy {
   propertyId: string;
   propertyName: string;
+  propertyCode: string | null;
   rate: number;
   bookedNights: number;
   availableNights: number;
@@ -150,7 +151,7 @@ async function fetchPropertyOccupancy(
 
   let propertiesQuery = supabase
     .from('properties')
-    .select('id, name')
+    .select('id, name, internal_code')
     .eq('tenant_id', tenantId)
     .eq('active', true);
 
@@ -196,6 +197,7 @@ async function fetchPropertyOccupancy(
       return properties.map(p => ({
         propertyId: p.id,
         propertyName: p.name,
+        propertyCode: p.internal_code || null,
         rate: 0,
         bookedNights: 0,
         availableNights: totalDays,
@@ -236,6 +238,7 @@ async function fetchPropertyOccupancy(
     propertyOccupancy.push({
       propertyId: property.id,
       propertyName: property.name,
+      propertyCode: property.internal_code || null,
       rate: calculateOccupancyRate(bookedNights, availableNights),
       bookedNights,
       availableNights,
@@ -551,7 +554,7 @@ export async function detectBookingGaps(
   // fetch properties
   const { data: properties } = await supabase
     .from('properties')
-    .select('id, name')
+    .select('id, name, internal_code')
     .eq('tenant_id', tenantId);
 
   if (!properties || properties.length === 0) {

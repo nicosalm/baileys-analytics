@@ -69,6 +69,7 @@ const tables = [
     columns: [
       ['id', 'uuid', 'Primary key'],
       ['name', 'varchar', 'Property name'],
+      ['internal_code', 'varchar', 'Short code for charts and compact displays (e.g. CEC, CMC)'],
       ['address', 'text', 'Street address'],
       ['city', 'varchar', 'City'],
       ['state', 'varchar', 'State or province'],

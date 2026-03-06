@@ -7,6 +7,7 @@ import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 interface PropertyProfitability {
   propertyId: string
   propertyName: string
+  propertyCode?: string | null
   grossRevenue: number
   platformFees: number
   taxes: number
@@ -92,7 +93,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
   const chartData = useMemo(() =>
     data.map(d => ({
       ...d,
-      name: d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName,
+      name: d.propertyCode || (d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName),
       fullName: d.propertyName,
       costs: d.platformFees + d.taxes + d.operatingExpenses
     })),
@@ -138,7 +139,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
         <YAxis
           type="category"
           dataKey="name"
-          width={120}
+          width={80}
           tick={{ fontSize: 12 }}
           stroke={CHART_INFRA.axis}
         />

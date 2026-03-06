@@ -51,7 +51,7 @@ export async function getOverviewData(
 ) {
 	let propertiesQuery = supabase
 		.from('properties')
-		.select('id, name')
+		.select('id, name, internal_code')
 		.eq('tenant_id', tenantId)
 		.eq('active', true);
 
@@ -198,7 +198,7 @@ function getChartsData(
 	bookings.forEach(b => {
 		const property = properties.find(p => p.id === b.property_id);
 		if (property) {
-			const current = propertyRevenue.get(property.name) || { name: property.name, revenue: 0, bookings: 0 };
+			const current = propertyRevenue.get(property.name) || { name: property.name, code: property.internal_code || null, revenue: 0, bookings: 0 };
 			current.revenue += b.total_amount || 0;
 			current.bookings++;
 			propertyRevenue.set(property.name, current);

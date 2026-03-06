@@ -5,6 +5,7 @@ import { getExpensesWithTemplateFallback } from './expense-utils';
 export interface PropertyMetrics {
   propertyId: string;
   propertyName: string;
+  propertyCode: string | null;
   revenue: number;
   bookings: number;
   occupancyRate: number;
@@ -16,6 +17,7 @@ export interface PropertyMetrics {
 export interface PropertyProfitability {
   propertyId: string;
   propertyName: string;
+  propertyCode: string | null;
   grossRevenue: number;
   platformFees: number;
   taxes: number;
@@ -26,6 +28,7 @@ export interface PropertyProfitability {
 export interface PropertyPlatformMix {
   propertyId: string;
   propertyName: string;
+  propertyCode: string | null;
   platforms: { platform: string; bookings: number; revenue: number }[];
 }
 
@@ -41,7 +44,7 @@ export async function getPropertyMetrics(
 
   let propertiesQuery = supabase
     .from('properties')
-    .select('id, name')
+    .select('id, name, internal_code')
     .eq('tenant_id', tenantId)
     .eq('active', true);
 
@@ -95,6 +98,7 @@ export async function getPropertyMetrics(
       return properties.map(p => ({
         propertyId: p.id,
         propertyName: p.name,
+        propertyCode: p.internal_code || null,
         revenue: 0,
         bookings: 0,
         occupancyRate: 0,
@@ -117,6 +121,7 @@ export async function getPropertyMetrics(
     propertyMetricsMap.set(property.id, {
       propertyId: property.id,
       propertyName: property.name,
+      propertyCode: property.internal_code || null,
       revenue: 0,
       bookings: 0,
       occupancyRate: 0,
@@ -204,7 +209,7 @@ export async function getPropertyProfitability(
 ): Promise<PropertyProfitability[]> {
   let propertiesQuery = supabase
     .from('properties')
-    .select('id, name')
+    .select('id, name, internal_code')
     .eq('tenant_id', tenantId)
     .eq('active', true);
 
@@ -237,7 +242,7 @@ export async function getPropertyProfitability(
       bookingsQuery = bookingsQuery.in('id', taggedBookings.map(tb => tb.booking_id));
     } else {
       return properties.map(p => ({
-        propertyId: p.id, propertyName: p.name,
+        propertyId: p.id, propertyName: p.name, propertyCode: p.internal_code || null,
         grossRevenue: 0, platformFees: 0, taxes: 0, operatingExpenses: 0, netRevenue: 0
       }));
     }
@@ -297,6 +302,7 @@ export async function getPropertyProfitability(
     return {
       propertyId: p.id,
       propertyName: p.name,
+      propertyCode: p.internal_code || null,
       grossRevenue: entry.revenue,
       platformFees: entry.fees,
       taxes,
@@ -316,7 +322,7 @@ export async function getPropertyPlatformMix(
 ): Promise<PropertyPlatformMix[]> {
   let propertiesQuery = supabase
     .from('properties')
-    .select('id, name')
+    .select('id, name, internal_code')
     .eq('tenant_id', tenantId)
     .eq('active', true);
 
@@ -345,7 +351,7 @@ export async function getPropertyPlatformMix(
     if (taggedBookings && taggedBookings.length > 0) {
       bookingsQuery = bookingsQuery.in('id', taggedBookings.map(tb => tb.booking_id));
     } else {
-      return properties.map(p => ({ propertyId: p.id, propertyName: p.name, platforms: [] }));
+      return properties.map(p => ({ propertyId: p.id, propertyName: p.name, propertyCode: p.internal_code || null, platforms: [] }));
     }
   }
 
@@ -368,6 +374,7 @@ export async function getPropertyPlatformMix(
   return properties.map(p => ({
     propertyId: p.id,
     propertyName: p.name,
+    propertyCode: p.internal_code || null,
     platforms: Array.from(propMap.get(p.id)!.entries())
       .map(([platform, data]) => ({ platform, ...data }))
       .sort((a, b) => b.revenue - a.revenue)

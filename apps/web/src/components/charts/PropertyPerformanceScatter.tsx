@@ -21,7 +21,7 @@ const ScatterTooltip = ({ active, payload }: any) => {
   const data = payload[0].payload
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
-      <p className="font-semibold text-sm mb-2">{data.name}</p>
+      <p className="font-semibold text-sm mb-2">{data.fullName || data.name}</p>
       {data.isZeroData ? (
         <div className="text-xs text-muted-foreground italic">
           No booking data for selected period
@@ -123,7 +123,8 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
         realPoints.push({
           x, y,
           z: 64,
-          name: property.propertyName,
+          name: property.propertyCode || property.propertyName,
+          fullName: property.propertyName,
           propertyId: property.propertyId,
           avgNightlyRate: property.avgNightlyRate || 0,
           isZeroData: false,

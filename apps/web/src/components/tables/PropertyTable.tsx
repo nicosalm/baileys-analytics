@@ -182,8 +182,13 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                   onClick={() => handlePropertyClick(property)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-foreground">
+                    <div className="text-sm font-medium text-foreground flex items-center gap-2">
                       {property.propertyName}
+                      {property.propertyCode && (
+                        <span className="text-[10px] font-mono font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">
+                          {property.propertyCode}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

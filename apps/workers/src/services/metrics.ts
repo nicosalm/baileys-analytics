@@ -12,7 +12,7 @@ export class MetricsService {
 	) {
 		let propertiesQuery = this.supabase
 			.from('properties')
-			.select('id, name')
+			.select('id, name, internal_code')
 			.eq('tenant_id', tenantId)
 			.eq('active', true);
 		
@@ -104,6 +104,7 @@ export class MetricsService {
 				return {
 					propertyId: property.id,
 					propertyName: property.name,
+					propertyCode: property.internal_code || null,
 					revenue: totalRevenue,
 					bookings: bookingCount,
 					occupancyRate,

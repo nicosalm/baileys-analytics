@@ -592,7 +592,7 @@ export async function getTaxData(
     .from('bookings')
     .select(`
       *,
-      properties!inner(id, name),
+      properties!inner(id, name, internal_code),
       booking_charges(amount, type)
     `)
     .eq('tenant_id', tenantId)
@@ -648,6 +648,7 @@ export async function getTaxData(
     const existing = propertyTaxMap.get(property.id) || {
       propertyId: property.id,
       propertyName: property.name,
+      propertyCode: property.internal_code || null,
       totalTax: 0,
       totalRent: 0,
       bookingCount: 0,

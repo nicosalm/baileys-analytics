@@ -13,6 +13,7 @@ interface PlatformEntry {
 interface PropertyPlatformMix {
   propertyId: string
   propertyName: string
+  propertyCode?: string | null
   platforms: PlatformEntry[]
 }
 
@@ -79,7 +80,7 @@ export const PlatformMixChart: React.FC<PlatformMixChartProps> = ({ data, onProp
 
     const chartData = validData.map(d => {
       const row: any = {
-        name: d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName,
+        name: d.propertyCode || (d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName),
         fullName: d.propertyName,
         propertyId: d.propertyId
       }
@@ -92,7 +93,7 @@ export const PlatformMixChart: React.FC<PlatformMixChartProps> = ({ data, onProp
     const percentageData = validData.map(d => {
       const total = d.platforms.reduce((sum, p) => sum + p.revenue, 0)
       const row: any = {
-        name: d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName,
+        name: d.propertyCode || (d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName),
         fullName: d.propertyName,
         propertyId: d.propertyId,
         _totalRevenue: total
@@ -143,7 +144,7 @@ export const PlatformMixChart: React.FC<PlatformMixChartProps> = ({ data, onProp
         <YAxis
           type="category"
           dataKey="name"
-          width={120}
+          width={80}
           tick={{ fontSize: 12 }}
           stroke={CHART_INFRA.axis}
         />

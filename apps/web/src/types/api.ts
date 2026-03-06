@@ -95,6 +95,7 @@ export interface RevenueData {
   byProperty: Array<{
     propertyId: string
     propertyName: string
+    propertyCode?: string | null
     revenue: number
   }>
   lastYearData?: FinancialTrendData[]
@@ -113,6 +114,7 @@ export interface TaxSummary {
 export interface TaxByProperty {
   propertyId: string
   propertyName: string
+  propertyCode?: string | null
   tax: number
   revenue: number
   taxRate: number
@@ -139,6 +141,7 @@ export interface OccupancyMetrics {
 export interface OccupancyByProperty {
   propertyId: string
   propertyName: string
+  propertyCode?: string | null
   rate: number
   bookedNights: number
   availableNights: number
@@ -173,6 +176,7 @@ export interface OccupancyData extends OccupancyMetrics {
 export interface PropertyMetrics {
   propertyId: string
   propertyName: string
+  propertyCode?: string | null
   revenue: number
   bookings: number
   occupancyRate: number

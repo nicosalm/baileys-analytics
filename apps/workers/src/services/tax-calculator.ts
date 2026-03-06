@@ -127,7 +127,7 @@ export class TaxCalculator {
       .from('bookings')
       .select(`
         *,
-        properties!inner(id, name),
+        properties!inner(id, name, internal_code),
         booking_charges(amount, type, description)
       `)
       .eq('tenant_id', tenantId)
@@ -198,6 +198,7 @@ export class TaxCalculator {
         propertyTaxData.set(propertyId, {
           propertyId,
           propertyName: booking.properties?.name || 'Unknown',
+          propertyCode: booking.properties?.internal_code || null,
           totalRevenue: 0,
           totalTax: 0,
           ownerRemitted: 0,

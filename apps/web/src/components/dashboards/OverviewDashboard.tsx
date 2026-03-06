@@ -346,7 +346,7 @@ export const OverviewDashboard = () => {
             stroke={colors[i]}
             fill={colors[i]}
             fillOpacity={0.6}
-            name={topProps[i].name || `Property ${i + 1}`}
+            name={topProps[i].code || topProps[i].name || `Property ${i + 1}`}
           />
         )
       }
@@ -387,7 +387,7 @@ export const OverviewDashboard = () => {
     const colors = Array.from({ length: 10 }, (_, i) => getChartColor(i))
 
     const items = topProps.slice(0, MAX_INDIVIDUAL_PROPERTIES).map((p: any, i: number) => ({
-      name: p.name || `Property ${i + 1}`,
+      name: p.code || p.name || `Property ${i + 1}`,
       color: colors[i]
     }))
 
