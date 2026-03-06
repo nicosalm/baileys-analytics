@@ -31,9 +31,22 @@ const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentT
 
 const DashboardContent = () => {
   const { activeTab } = useDashboard()
+  const [fadeKey, setFadeKey] = useState(activeTab)
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    if (activeTab !== fadeKey) {
+      setVisible(false)
+      const timeout = setTimeout(() => {
+        setFadeKey(activeTab)
+        setVisible(true)
+      }, 150)
+      return () => clearTimeout(timeout)
+    }
+  }, [activeTab, fadeKey])
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (fadeKey) {
       case 'overview':
         return <OverviewDashboard />
       case 'financial':
@@ -52,14 +65,16 @@ const DashboardContent = () => {
   return (
     <ErrorBoundary
       level="section"
-      resetKeys={[activeTab]}
+      resetKeys={[fadeKey]}
       onError={(error, errorInfo) => {
-        console.error(`Dashboard error in ${activeTab} tab:`, error, errorInfo)
+        console.error(`Dashboard error in ${fadeKey} tab:`, error, errorInfo)
       }}
     >
-      <Suspense fallback={<LoadingState />}>
-        {renderContent()}
-      </Suspense>
+      <div className={`transition-opacity duration-150 ${visible ? 'opacity-100' : 'opacity-0'}`}>
+        <Suspense fallback={<LoadingState />}>
+          {renderContent()}
+        </Suspense>
+      </div>
     </ErrorBoundary>
   )
 }

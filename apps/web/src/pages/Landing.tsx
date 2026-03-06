@@ -105,24 +105,24 @@ export const Landing = () => {
       {/* hero — dark atmospheric gradient */}
       <section className="landing-hero relative min-h-screen flex items-center justify-center pt-20">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-24 md:py-32 text-center relative z-10">
-          <div className="flex items-center justify-center gap-1.5 mb-6">
+          <div className="flex items-center justify-center gap-1.5 mb-6 hero-stagger" style={{ '--hero-index': 0 } as React.CSSProperties}>
             <span className="text-sm font-medium text-white/60">Built for</span>
             <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5 brightness-0 invert opacity-70" />
             <span className="text-sm font-medium text-white/60">users</span>
           </div>
 
-          <p className="text-sm text-white/50 mb-4">For OwnerRez hosts managing 2+ properties</p>
+          <p className="text-sm text-white/50 mb-4 hero-stagger" style={{ '--hero-index': 1 } as React.CSSProperties}>For OwnerRez hosts managing 2+ properties</p>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-[1.1]">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-[1.1] hero-stagger" style={{ '--hero-index': 2 } as React.CSSProperties}>
             Know your real numbers.
           </h1>
 
-          <p className="text-lg md:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed hero-stagger" style={{ '--hero-index': 3 } as React.CSSProperties}>
             Pull in booking data from OwnerRez. See revenue, occupancy, and profit breakdowns in minutes.
           </p>
 
           {!isAuthenticated && (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6 hero-stagger" style={{ '--hero-index': 4 } as React.CSSProperties}>
               <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center">
                 Start Your $1 Trial
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -137,12 +137,12 @@ export const Landing = () => {
             </div>
           )}
 
-          <p className="text-sm text-white/40">
+          <p className="text-sm text-white/40 hero-stagger" style={{ '--hero-index': 5 } as React.CSSProperties}>
             30 days for $1, then $20/month. Cancel anytime.
           </p>
 
           {/* hero image */}
-          <div className="mt-16 md:mt-24">
+          <div className="mt-16 md:mt-24 hero-stagger" style={{ '--hero-index': 6 } as React.CSSProperties}>
             <div className="relative max-w-4xl mx-auto">
               <div className="absolute -inset-4 bg-gradient-to-r from-[oklch(0.45_0.12_280/0.3)] to-[oklch(0.40_0.10_255/0.2)] rounded-3xl blur-3xl" />
               <div className="relative rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10">
