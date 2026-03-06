@@ -3,7 +3,7 @@ import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@bail
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import { Calendar, DollarSign, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table } from 'lucide-react'
+import { Calendar, DollarSign, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table, Wallet, Share2 } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -14,6 +14,8 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { PropertyPerformanceScatter, PerformanceQuadrantLegend } from '@/components/charts/PropertyPerformanceScatter'
 import { PropertyCard } from '@/components/cards/PropertyCard'
 import { PropertyTable } from '@/components/tables/PropertyTable'
+import { ProfitabilityChart, ProfitabilityLegend } from '@/components/charts/ProfitabilityChart'
+import { PlatformMixChart, PlatformMixLegend } from '@/components/charts/PlatformMixChart'
 
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
@@ -33,14 +35,18 @@ export const PropertiesDashboard = () => {
     comparisonRange?.to
   )
 
-  let properties = []
-  let previousProperties = null
+  let properties: any[] = []
+  let previousProperties: any = null
+  let profitability: any[] = []
+  let platformMix: any[] = []
 
   if (Array.isArray(data)) {
     properties = data
   } else if (data) {
     properties = data.properties || []
     previousProperties = data.previousProperties || null
+    profitability = data.profitability || []
+    platformMix = data.platformMix || []
   }
 
   useErrorToast(error, 'Failed to load property metrics')
@@ -72,17 +78,32 @@ export const PropertiesDashboard = () => {
     }
   }, [previousProperties])
 
+  // collect unique platforms for legend
+  const allPlatforms = useMemo(() => {
+    const set = new Set<string>()
+    for (const p of platformMix) {
+      for (const entry of p.platforms || []) {
+        set.add(entry.platform)
+      }
+    }
+    return Array.from(set)
+  }, [platformMix])
+
   // memoized view toggle handlers
   const handleViewCards = useCallback(() => setViewMode('cards'), [])
   const handleViewTable = useCallback(() => setViewMode('table'), [])
 
-  // memoized scatter plot click handler
+  // memoized click handlers
   const handleScatterClick = useCallback((property: PropertyMetrics) => {
     openModal({
       type: 'property',
       propertyId: property.propertyId,
       propertyName: property.propertyName
     })
+  }, [openModal])
+
+  const handleChartPropertyClick = useCallback((propertyId: string, propertyName: string) => {
+    openModal({ type: 'property', propertyId, propertyName })
   }, [openModal])
 
   if (isLoading || error || validProperties.length === 0) {
@@ -110,6 +131,9 @@ export const PropertiesDashboard = () => {
       </div>
     )
   }
+
+  // dynamic chart height based on property count
+  const barChartHeight = Math.max(200, validProperties.length * 48 + 40)
 
   return (
     <div className="space-y-6">
@@ -259,9 +283,30 @@ export const PropertiesDashboard = () => {
         )}
       </div>
 
-      {/* Charts Section */}
-      <div>
-        {/* Property Performance Scatter Plot */}
+      {/* Analysis Charts */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Net Profitability */}
+        {profitability.length > 0 && (
+          <ChartWrapper
+            title="Net Profitability"
+            subtitle="Revenue after fees, taxes, and expenses"
+            icon={Wallet}
+            height={barChartHeight}
+            responsive={false}
+          >
+            <div className="h-full flex flex-col">
+              <div className="flex-1">
+                <ProfitabilityChart
+                  data={profitability}
+                  onPropertyClick={handleChartPropertyClick}
+                />
+              </div>
+              <ProfitabilityLegend />
+            </div>
+          </ChartWrapper>
+        )}
+
+        {/* Performance Matrix */}
         <ChartWrapper
           title="Performance Matrix"
           subtitle="Revenue vs Occupancy Analysis"
@@ -280,6 +325,27 @@ export const PropertiesDashboard = () => {
           </div>
         </ChartWrapper>
       </div>
+
+      {/* Booking Source Mix — full width */}
+      {platformMix.length > 0 && platformMix.some((p: any) => p.platforms?.length > 0) && (
+        <ChartWrapper
+          title="Booking Sources"
+          subtitle="Platform concentration by property"
+          icon={Share2}
+          height={barChartHeight}
+          responsive={false}
+        >
+          <div className="h-full flex flex-col">
+            <div className="flex-1">
+              <PlatformMixChart
+                data={platformMix}
+                onPropertyClick={handleChartPropertyClick}
+              />
+            </div>
+            <PlatformMixLegend platforms={allPlatforms} />
+          </div>
+        </ChartWrapper>
+      )}
     </div>
   )
 }

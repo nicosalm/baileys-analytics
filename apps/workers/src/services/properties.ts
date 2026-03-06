@@ -1,4 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_MAX_ROWS } from '../constants';
+import { getExpensesWithTemplateFallback } from './expense-utils';
 
 export interface PropertyMetrics {
   propertyId: string;
@@ -9,6 +11,22 @@ export interface PropertyMetrics {
   avgNightlyRate: number;
   bookedNights: number;
   availableNights: number;
+}
+
+export interface PropertyProfitability {
+  propertyId: string;
+  propertyName: string;
+  grossRevenue: number;
+  platformFees: number;
+  taxes: number;
+  operatingExpenses: number;
+  netRevenue: number;
+}
+
+export interface PropertyPlatformMix {
+  propertyId: string;
+  propertyName: string;
+  platforms: { platform: string; bookings: number; revenue: number }[];
 }
 
 export async function getPropertyMetrics(
@@ -169,6 +187,176 @@ function calculateAvailableNights(from: string, to: string, firstBookingDate: Da
   return Math.max(0, nights);
 }
 
+export async function getPropertyProfitability(
+  supabase: SupabaseClient,
+  tenantId: string,
+  from: string,
+  to: string,
+  tagIds: string[] = []
+): Promise<PropertyProfitability[]> {
+  const { data: properties } = await supabase
+    .from('properties')
+    .select('id, name')
+    .eq('tenant_id', tenantId)
+    .eq('active', true);
+
+  if (!properties || properties.length === 0) return [];
+
+  const propertyIds = properties.map(p => p.id);
+
+  // fetch bookings with fee columns
+  let bookingsQuery = supabase
+    .from('bookings')
+    .select('id, property_id, total_amount, host_service_fee, guest_listing_site_fee')
+    .eq('tenant_id', tenantId)
+    .lte('arrival', to)
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
+
+  if (tagIds.length > 0) {
+    const { data: taggedBookings } = await supabase
+      .from('booking_tags')
+      .select('booking_id')
+      .in('tag_id', tagIds);
+    if (taggedBookings && taggedBookings.length > 0) {
+      bookingsQuery = bookingsQuery.in('id', taggedBookings.map(tb => tb.booking_id));
+    } else {
+      return properties.map(p => ({
+        propertyId: p.id, propertyName: p.name,
+        grossRevenue: 0, platformFees: 0, taxes: 0, operatingExpenses: 0, netRevenue: 0
+      }));
+    }
+  }
+
+  const { data: bookings } = await bookingsQuery;
+
+  // aggregate per property
+  const propMap = new Map<string, { revenue: number; fees: number; bookingIds: string[] }>();
+  for (const p of properties) {
+    propMap.set(p.id, { revenue: 0, fees: 0, bookingIds: [] });
+  }
+  for (const b of bookings || []) {
+    const entry = propMap.get(b.property_id);
+    if (!entry) continue;
+    entry.revenue += b.total_amount || 0;
+    entry.fees += (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0);
+    entry.bookingIds.push(b.id);
+  }
+
+  // taxes from booking_charges
+  const allBookingIds = (bookings || []).map(b => b.id);
+  const taxByProperty = new Map<string, number>();
+  if (allBookingIds.length > 0) {
+    // need to join back to bookings for property_id
+    const { data: charges } = await supabase
+      .from('booking_charges')
+      .select('booking_id, amount')
+      .in('booking_id', allBookingIds)
+      .eq('type', 'tax')
+      .limit(SUPABASE_MAX_ROWS);
+
+    // build booking->property lookup
+    const bookingPropertyMap = new Map<string, string>();
+    for (const b of bookings || []) {
+      bookingPropertyMap.set(b.id, b.property_id);
+    }
+    for (const c of charges || []) {
+      const propId = bookingPropertyMap.get(c.booking_id);
+      if (propId) {
+        taxByProperty.set(propId, (taxByProperty.get(propId) || 0) + (parseFloat(c.amount) || 0));
+      }
+    }
+  }
+
+  // operating expenses per property
+  const expensesByProperty = new Map<string, number>();
+  for (const propId of propertyIds) {
+    const expenses = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds, propId);
+    expensesByProperty.set(propId, expenses.reduce((sum, e) => sum + e.amount, 0));
+  }
+
+  return properties.map(p => {
+    const entry = propMap.get(p.id)!;
+    const taxes = taxByProperty.get(p.id) || 0;
+    const opex = expensesByProperty.get(p.id) || 0;
+    return {
+      propertyId: p.id,
+      propertyName: p.name,
+      grossRevenue: entry.revenue,
+      platformFees: entry.fees,
+      taxes,
+      operatingExpenses: opex,
+      netRevenue: entry.revenue - entry.fees - taxes - opex
+    };
+  }).sort((a, b) => b.netRevenue - a.netRevenue);
+}
+
+export async function getPropertyPlatformMix(
+  supabase: SupabaseClient,
+  tenantId: string,
+  from: string,
+  to: string,
+  tagIds: string[] = []
+): Promise<PropertyPlatformMix[]> {
+  const { data: properties } = await supabase
+    .from('properties')
+    .select('id, name')
+    .eq('tenant_id', tenantId)
+    .eq('active', true);
+
+  if (!properties || properties.length === 0) return [];
+
+  let bookingsQuery = supabase
+    .from('bookings')
+    .select('property_id, platform, total_amount')
+    .eq('tenant_id', tenantId)
+    .lte('arrival', to)
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
+
+  if (tagIds.length > 0) {
+    const { data: taggedBookings } = await supabase
+      .from('booking_tags')
+      .select('booking_id')
+      .in('tag_id', tagIds);
+    if (taggedBookings && taggedBookings.length > 0) {
+      bookingsQuery = bookingsQuery.in('id', taggedBookings.map(tb => tb.booking_id));
+    } else {
+      return properties.map(p => ({ propertyId: p.id, propertyName: p.name, platforms: [] }));
+    }
+  }
+
+  const { data: bookings } = await bookingsQuery;
+
+  const propMap = new Map<string, Map<string, { bookings: number; revenue: number }>>();
+  for (const p of properties) {
+    propMap.set(p.id, new Map());
+  }
+  for (const b of bookings || []) {
+    const platforms = propMap.get(b.property_id);
+    if (!platforms) continue;
+    const platform = b.platform || 'Unassigned';
+    const entry = platforms.get(platform) || { bookings: 0, revenue: 0 };
+    entry.bookings++;
+    entry.revenue += b.total_amount || 0;
+    platforms.set(platform, entry);
+  }
+
+  return properties.map(p => ({
+    propertyId: p.id,
+    propertyName: p.name,
+    platforms: Array.from(propMap.get(p.id)!.entries())
+      .map(([platform, data]) => ({ platform, ...data }))
+      .sort((a, b) => b.revenue - a.revenue)
+  })).sort((a, b) => {
+    const aRev = a.platforms.reduce((s, p) => s + p.revenue, 0);
+    const bRev = b.platforms.reduce((s, p) => s + p.revenue, 0);
+    return bRev - aRev;
+  });
+}
+
 export async function getPropertiesData(
   supabase: SupabaseClient,
   tenantId: string,
@@ -178,20 +366,28 @@ export async function getPropertiesData(
   comparisonFrom?: string,
   comparisonTo?: string
 ) {
-  const currentMetrics = await getPropertyMetrics(supabase, tenantId, from, to, tagIds);
-  
+  const [currentMetrics, profitability, platformMix] = await Promise.all([
+    getPropertyMetrics(supabase, tenantId, from, to, tagIds),
+    getPropertyProfitability(supabase, tenantId, from, to, tagIds),
+    getPropertyPlatformMix(supabase, tenantId, from, to, tagIds)
+  ]);
+
   if (comparisonFrom && comparisonTo) {
     const previousMetrics = await getPropertyMetrics(supabase, tenantId, comparisonFrom, comparisonTo, tagIds);
-    
+
     return {
       properties: currentMetrics,
       previousProperties: previousMetrics,
+      profitability,
+      platformMix,
       view: 'properties'
     };
   }
-  
+
   return {
     properties: currentMetrics,
+    profitability,
+    platformMix,
     view: 'properties'
   };
 }

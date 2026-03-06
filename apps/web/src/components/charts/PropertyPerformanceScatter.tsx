@@ -239,26 +239,26 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
 
 export const PerformanceQuadrantLegend: React.FC = () => {
   return (
-    <div className="flex flex-wrap gap-2 justify-center text-xs mt-3 px-4">
-      <div className="flex items-center gap-1.5 bg-success-subtle px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-success rounded-full"></div>
-        <span className="text-foreground text-[11px] font-medium">High Occupancy & Revenue</span>
+    <div className="flex flex-wrap gap-3 justify-center text-xs mt-3 px-4">
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-2.5 bg-success rounded-sm" />
+        <span className="text-muted-foreground">High Occupancy & Revenue</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-info-subtle px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-info rounded-full"></div>
-        <span className="text-foreground text-[11px] font-medium">High Revenue, Low Occupancy</span>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-2.5 bg-info rounded-sm" />
+        <span className="text-muted-foreground">High Revenue, Low Occupancy</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-warning-subtle px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-warning rounded-full"></div>
-        <span className="text-foreground text-[11px] font-medium">High Occupancy, Low Revenue</span>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-2.5 bg-warning rounded-sm" />
+        <span className="text-muted-foreground">High Occupancy, Low Revenue</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-danger-subtle px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-danger rounded-full"></div>
-        <span className="text-foreground text-[11px] font-medium">Low Occupancy & Revenue</span>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-2.5 bg-danger rounded-sm" />
+        <span className="text-muted-foreground">Low Occupancy & Revenue</span>
       </div>
-      <div className="flex items-center gap-1.5 bg-muted px-2 py-1 rounded">
-        <div className="w-2.5 h-2.5 bg-chart-reference rounded-full"></div>
-        <span className="text-foreground text-[11px] font-medium">No Bookings</span>
+      <div className="flex items-center gap-1.5">
+        <div className="w-3 h-2.5 bg-chart-reference rounded-sm" />
+        <span className="text-muted-foreground">No Bookings</span>
       </div>
     </div>
   )

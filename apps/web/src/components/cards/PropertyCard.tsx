@@ -42,7 +42,7 @@ export const PropertyCard = memo(({ property, previousProperty, comparisonMode }
 
   return (
     <div
-      className="bg-card p-4 rounded-lg shadow-sm border border-border cursor-pointer hover:bg-muted/50 transition-colors"
+      className="bg-card p-4 rounded-lg shadow-sm border border-border cursor-pointer hover:shadow-md hover:bg-muted/30 transition-[background-color,box-shadow] duration-200"
       onClick={handleClick}
     >
       <h3 className="text-base font-bold mb-3 truncate" title={property.propertyName}>{property.propertyName}</h3>

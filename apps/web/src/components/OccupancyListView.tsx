@@ -56,16 +56,9 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   const [sortBy, setSortBy] = useState<'name' | 'occupancy'>('occupancy')
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set())
 
-  // Auto-expand new properties (initial load + tag changes)
-  // Preserves user's collapse state for properties they've already seen
+  // reset collapsed state when properties change (tag filter, etc.)
   useEffect(() => {
-    setExpandedProperties(prev => {
-      const newIds = properties.map(p => p.propertyId).filter(id => !prev.has(id))
-      if (newIds.length === 0) return prev
-      const next = new Set(prev)
-      newIds.forEach(id => next.add(id))
-      return next
-    })
+    setExpandedProperties(new Set())
   }, [properties])
 
   const isTruncated = bookings?.length === TRUNCATION_LIMIT

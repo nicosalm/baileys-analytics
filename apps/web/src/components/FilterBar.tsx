@@ -1,4 +1,4 @@
-import React, { memo } from 'react'
+import React, { memo, useState, useEffect } from 'react'
 import { SmartPeriodSelector } from './SmartPeriodSelector'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags } from '@/hooks/use-api'
@@ -50,6 +50,15 @@ export const FilterBar: React.FC = () => {
   const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
 
   const hasActiveFilters = filters.selectedTags.length > 0
+  const [tagsOpen, setTagsOpen] = useState(false)
+
+  // close tags popover on scroll to prevent overlap with sticky header
+  useEffect(() => {
+    if (!tagsOpen) return
+    const onScroll = () => setTagsOpen(false)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [tagsOpen])
 
   return (
     <div className="bg-background/80 backdrop-blur-sm border-b border-border relative z-30">
@@ -62,7 +71,7 @@ export const FilterBar: React.FC = () => {
               comparisonRange={comparisonRange}
             />
 
-            <Popover>
+            <Popover open={tagsOpen} onOpenChange={setTagsOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"

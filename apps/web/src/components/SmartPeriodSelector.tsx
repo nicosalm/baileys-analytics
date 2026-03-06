@@ -73,6 +73,17 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   const { data: seasons = [], isLoading: seasonsLoading } = useSeasons()
   const activeSeasons = useMemo(() => seasons.filter(s => s.isActive), [seasons])
 
+  // close popovers on scroll to prevent overlap with sticky header
+  useEffect(() => {
+    if (!dateOpen && !compOpen) return
+    const onScroll = () => {
+      if (dateOpen) setDateOpen(false)
+      if (compOpen) setCompOpen(false)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [dateOpen, compOpen])
+
   const hasSetInitialSeason = useRef(false)
   useEffect(() => {
     if (!seasonsLoading && activeSeasons.length > 0 && !hasSetInitialSeason.current) {

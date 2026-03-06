@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -34,6 +34,7 @@ export const PLView: React.FC<PLViewProps> = ({
   const { comparisonLabel } = useDashboard()
   const { data: goalProgressData } = useGoalProgress()
   const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
+  const [chargesExpanded, setChargesExpanded] = useState(false)
 
   const processedData = useMemo(() => {
     if (!data || !data.metrics) return null
@@ -397,7 +398,7 @@ export const PLView: React.FC<PLViewProps> = ({
             )}
           </div>
           <div className="space-y-2">
-            {data.chargeComposition.details.slice(0, 10).map((detail: any, i: number) => (
+            {(chargesExpanded ? data.chargeComposition.details : data.chargeComposition.details.slice(0, 10)).map((detail: any, i: number) => (
               <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0">
                 <span className="text-muted-foreground flex items-center gap-2">
                   <span className={`w-2 h-2 rounded-full ${
@@ -415,9 +416,15 @@ export const PLView: React.FC<PLViewProps> = ({
               </div>
             ))}
             {data.chargeComposition.details.length > 10 && (
-              <p className="text-xs text-muted-foreground pt-1">
-                and {data.chargeComposition.details.length - 10} more charge {data.chargeComposition.details.length - 10 === 1 ? 'type' : 'types'}
-              </p>
+              <button
+                onClick={() => setChargesExpanded(!chargesExpanded)}
+                className="text-xs text-primary hover:text-primary/80 transition-colors pt-1 cursor-pointer"
+              >
+                {chargesExpanded
+                  ? 'Show less'
+                  : `Show all ${data.chargeComposition.details.length} charge types`
+                }
+              </button>
             )}
           </div>
         </div>

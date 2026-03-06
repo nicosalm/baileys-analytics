@@ -134,10 +134,10 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
     <div className="space-y-6">
       {/* Info Banner */}
       {showTips && (
-        <div className="bg-success-subtle border border-success/30 rounded-lg p-4">
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
           <div className="flex items-start">
-            <Info className="w-5 h-5 text-success mr-2 mt-0.5" />
-            <div className="text-sm text-success-fg">
+            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+            <div className="text-sm text-info-fg">
               <strong>Revenue Analysis:</strong> Deep dive into your revenue streams, trends, and property performance
             </div>
           </div>
@@ -239,10 +239,10 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             </h3>
             <div className="group relative">
               <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help" />
-              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-popover text-popover-foreground border border-border text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-foreground text-background border-none text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <p className="font-semibold mb-1">Top Performers</p>
                 <p className="mb-2">Properties with the highest revenue in the selected period.</p>
-                <p className="text-muted-foreground">Tip: Study what makes these properties successful and apply similar strategies to underperforming properties.</p>
+                <p className="text-background/70">Tip: Study what makes these properties successful and apply similar strategies to underperforming properties.</p>
               </div>
             </div>
           </div>
@@ -285,11 +285,11 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             </h3>
             <div className="group relative">
               <HelpCircle className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help" />
-              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-popover text-popover-foreground border border-border text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+              <div className="absolute right-0 top-6 z-10 w-64 p-3 bg-foreground text-background border-none text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 <p className="font-semibold mb-1">Underperforming Properties</p>
                 <p className="mb-2">Properties with the lowest revenue in the selected period.</p>
-                <p className="text-muted-foreground">Actions to consider:</p>
-                <ul className="text-muted-foreground ml-2 mt-1">
+                <p className="text-background/70">Actions to consider:</p>
+                <ul className="text-background/70 ml-2 mt-1">
                   <li>• Review pricing strategy</li>
                   <li>• Improve listing photos/description</li>
                   <li>• Check guest reviews for issues</li>
