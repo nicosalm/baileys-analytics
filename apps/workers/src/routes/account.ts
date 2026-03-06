@@ -128,13 +128,15 @@ account.delete('/delete', authMiddleware, async (c) => {
             httpClient: Stripe.createFetchHttpClient()
           });
 
-          const subscriptions = await stripe.subscriptions.list({
-            customer: customer.stripe_customer_id,
-            status: 'active'
-          });
-
-          for (const sub of subscriptions.data) {
-            await stripe.subscriptions.cancel(sub.id);
+          // cancel all non-terminal subscriptions
+          for (const status of ['active', 'trialing', 'past_due'] as const) {
+            const subscriptions = await stripe.subscriptions.list({
+              customer: customer.stripe_customer_id,
+              status
+            });
+            for (const sub of subscriptions.data) {
+              await stripe.subscriptions.cancel(sub.id);
+            }
           }
         }
       } catch (stripeError) {
@@ -179,6 +181,7 @@ account.delete('/delete', authMiddleware, async (c) => {
       { table: 'platform_fee_entries', key: 'tenant_id', value: tenantId },
       { table: 'sync_status', key: 'tenant_id', value: tenantId },
       { table: 'webhook_events', key: 'tenant_id', value: tenantId },
+      { table: 'stripe_webhook_events', key: 'tenant_id', value: tenantId },
       { table: 'billing_history', key: 'tenant_id', value: tenantId },
       { table: 'usage_metrics', key: 'tenant_id', value: tenantId },
       { table: 'subscriptions', key: 'tenant_id', value: tenantId },
