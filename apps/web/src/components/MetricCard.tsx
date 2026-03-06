@@ -28,6 +28,7 @@ export interface MetricCardProps {
   error?: string
   onClick?: () => void
   className?: string
+  staggerIndex?: number
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -45,7 +46,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   loading = false,
   error,
   onClick,
-  className
+  className,
+  staggerIndex
 }) => {
   const colorClasses = {
     blue:   'bg-info-subtle text-info-fg',
@@ -146,13 +148,15 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   }
 
   return (
-    <div 
+    <div
       className={cn(
-        "bg-card rounded-lg shadow-sm border border-border transition-all",
-        onClick && "cursor-pointer hover:bg-muted/30",
+        "bg-card rounded-lg shadow-sm border border-border transition-all duration-200",
+        onClick && "cursor-pointer hover:shadow-md hover:scale-[1.01] hover:bg-muted/30",
+        staggerIndex !== undefined && "stagger-fade-in",
         currentSize.padding,
         className
       )}
+      style={staggerIndex !== undefined ? { '--stagger-index': staggerIndex } as React.CSSProperties : undefined}
       onClick={onClick}
     >
       {/* Header with icon and trend */}
@@ -192,7 +196,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {/* Main value */}
       <div className={cn("font-bold", currentSize.value)}>
         {typeof value === 'number'
-          ? <AnimatedValue value={value} format={format} formatValue={formatValue} />
+          ? <AnimatedValue value={value} format={format} formatValue={formatValue} staggerIndex={staggerIndex} />
           : formatValue(value)
         }
       </div>
@@ -253,8 +257,10 @@ const AnimatedValue: React.FC<{
   value: number
   format: MetricCardProps['format']
   formatValue: (val: number | string) => string
-}> = ({ value, formatValue }) => {
-  const animated = useCountUp(value)
+  staggerIndex?: number
+}> = ({ value, formatValue, staggerIndex }) => {
+  const delay = staggerIndex !== undefined ? staggerIndex * 60 : 0
+  const animated = useCountUp(value, 600, delay)
   const display = Number.isInteger(value) ? Math.round(animated) : animated
   return <>{formatValue(display)}</>
 }

@@ -190,6 +190,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.totalInflow}
           format="currency"
           color="green"
+          staggerIndex={0}
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousInflow > 0
             ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousInflow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${cashFlowData.monthlyData.length} months | Avg: ${formatCurrency(cashFlowData.totalInflow / Math.max(cashFlowData.monthlyData.length, 1))}`}
@@ -204,6 +205,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.totalOutflow}
           format="currency"
           color="red"
+          staggerIndex={1}
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousOutflow > 0
             ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousOutflow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(cashFlowData.totalOutflow / Math.max(cashFlowData.totalInflow, 1) * 100, 1)} of inflow | Fees: ${formatCurrency(cashFlowData.totalFees)} + Tax: ${formatCurrency(cashFlowData.totalTaxes)}${cashFlowData.totalOperatingExpenses > 0 ? ` + Expenses: ${formatCurrency(cashFlowData.totalOperatingExpenses)}` : ''}`}
@@ -218,6 +220,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.netCashFlow}
           format="currency"
           color={cashFlowData.netCashFlow > 0 ? 'green' : 'red'}
+          staggerIndex={2}
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousNetFlow !== 0
             ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousNetFlow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(cashFlowData.flowRatio, 1)} retained | ${cashFlowData.netCashFlow > 0 ? 'Positive' : 'Negative'} flow`}
@@ -232,6 +235,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           value={cashFlowData.avgMonthlyFlow}
           format="currency"
           color="blue"
+          staggerIndex={3}
           subValue={comparisonMode !== 'none' && cashFlowData.comparison.previousAvgMonthlyFlow !== 0
             ? <>{cashFlowData.comparison.periodLabel}: {formatCurrency(cashFlowData.comparison.previousAvgMonthlyFlow)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `Per month | ${cashFlowData.avgMonthlyFlow > 0 ? 'Profitable' : 'Loss'}`}

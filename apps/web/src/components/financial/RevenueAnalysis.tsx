@@ -159,6 +159,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             value: analysis.revenueGrowth,
             isPositive: analysis.revenueGrowth > 0
           } : undefined}
+          staggerIndex={0}
         />
         <MetricCard
           icon={Calendar}
@@ -173,6 +174,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             value: analysis.avgMonthlyGrowth,
             isPositive: analysis.avgMonthlyGrowth > 0
           } : undefined}
+          staggerIndex={1}
         />
         <MetricCard
           icon={ArrowUp}
@@ -186,6 +188,7 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             const [year, month] = best.month.split('-')
             return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
           })() : undefined}
+          staggerIndex={2}
         />
         <MetricCard
           icon={ArrowDown}
@@ -199,9 +202,10 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
             const [year, month] = lowest.month.split('-')
             return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
           })() : undefined}
+          staggerIndex={3}
         />
       </div>
-      
+
       {/* Revenue Trend */}
       <RevenueChart
         data={analysis.monthlyData}

@@ -490,6 +490,7 @@ export const OverviewDashboard = () => {
           value={Number(metrics.revenue.current) || 0}
           format="currency"
           tooltip="Gross booking revenue across all properties for this period"
+          staggerIndex={0}
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `After fees: ${formatCompactCurrency(metrics.revenue.net)}`
@@ -525,6 +526,7 @@ export const OverviewDashboard = () => {
           value={metrics.bookings.current}
           format="number"
           tooltip="Number of confirmed reservations in this period"
+          staggerIndex={1}
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
@@ -560,6 +562,7 @@ export const OverviewDashboard = () => {
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
           tooltip="Share of available nights that were booked across all properties"
+          staggerIndex={2}
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average`
@@ -589,6 +592,7 @@ export const OverviewDashboard = () => {
           value={metrics.guests.total}
           format="number"
           tooltip="Unique guests who had a booking in this period"
+          staggerIndex={3}
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
@@ -630,6 +634,7 @@ export const OverviewDashboard = () => {
           size="sm"
           color="gray"
           tooltip="Total revenue divided by number of bookings"
+          staggerIndex={4}
         />
         <MetricCard
           icon={Calendar}
@@ -640,6 +645,7 @@ export const OverviewDashboard = () => {
           size="sm"
           color="gray"
           tooltip="How many nights the average guest stays per reservation"
+          staggerIndex={5}
         />
         <MetricCard
           icon={TrendingUp}
@@ -650,6 +656,7 @@ export const OverviewDashboard = () => {
           size="sm"
           color="gray"
           tooltip="Share of guests who have booked with you more than once"
+          staggerIndex={6}
         />
         <MetricCard
           icon={TrendingDown}
@@ -660,6 +667,7 @@ export const OverviewDashboard = () => {
           subValue="This period"
           size="sm"
           color={Number(metrics.bookings.cancellationRate || 0) > 10 ? "red" : "gray"}
+          staggerIndex={7}
         />
       </div>
 

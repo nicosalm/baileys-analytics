@@ -163,6 +163,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           value={taxData.totalTax}
           format="currency"
           color="green"
+          staggerIndex={0}
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
@@ -178,6 +179,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           value={taxData.ownerRemitted}
           format="currency"
           color="blue"
+          staggerIndex={1}
           subValue={comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : "Your responsibility"}
@@ -193,6 +195,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           value={taxData.platformRemitted}
           format="currency"
           color="green"
+          staggerIndex={2}
           subValue="Paid by platforms"
           tooltip="Tax that Airbnb, VRBO, etc. collect and remit on your behalf"
         />
@@ -202,6 +205,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           value={taxData.propertyCount}
           format="number"
           color="yellow"
+          staggerIndex={3}
           subValue="Being tracked"
           tooltip="Properties that have tax jurisdiction configurations set up"
         />

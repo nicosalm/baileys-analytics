@@ -28,6 +28,7 @@ interface MetricCardWithGaugeProps {
   }
   onClick?: () => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
+  staggerIndex?: number
 }
 
 const colorClasses = {
@@ -50,7 +51,8 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
   tooltip,
   trend,
   gauge,
-  onClick
+  onClick,
+  staggerIndex
 }) => {
   const numericValue = typeof value === 'number' ? value : parseFloat(value.toString().replace(/[^0-9.-]/g, ''))
   
@@ -69,8 +71,9 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
   }
 
   return (
-    <div 
-      className={`bg-card p-4 rounded-lg shadow-sm border border-border ${onClick ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+    <div
+      className={`bg-card p-4 rounded-lg shadow-sm border border-border transition-[background-color,box-shadow] duration-200 ${onClick ? 'cursor-pointer hover:shadow-md hover:bg-muted/30' : ''} ${staggerIndex !== undefined ? 'stagger-fade-in' : ''}`}
+      style={staggerIndex !== undefined ? { '--stagger-index': staggerIndex } as React.CSSProperties : undefined}
       title={tooltip}
       onClick={onClick}
     >

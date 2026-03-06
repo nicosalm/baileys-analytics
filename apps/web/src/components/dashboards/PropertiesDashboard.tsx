@@ -155,6 +155,7 @@ export const PropertiesDashboard = () => {
             isPositive: totalRevenue > prevTotalRevenue
           } : undefined}
           color="green"
+          staggerIndex={0}
         />
         <MetricCard
           icon={TrendingUp}
@@ -171,6 +172,7 @@ export const PropertiesDashboard = () => {
             isPositive: avgRevPAN > prevAvgRevPAN
           } : undefined}
           color="blue"
+          staggerIndex={1}
         />
         <MetricCard
           icon={Percent}
@@ -187,6 +189,7 @@ export const PropertiesDashboard = () => {
             isPositive: avgOccupancy > prevAvgOccupancy
           } : undefined}
           color={avgOccupancy >= 0.7 ? "green" : avgOccupancy >= 0.5 ? "yellow" : "red"}
+          staggerIndex={2}
         />
         <MetricCard
           icon={Calendar}
@@ -203,6 +206,7 @@ export const PropertiesDashboard = () => {
             isPositive: totalBookings > prevTotalBookings
           } : undefined}
           color="purple"
+          staggerIndex={3}
         />
       </div>
 

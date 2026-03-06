@@ -285,6 +285,7 @@ export const OccupancyDashboard = () => {
             isPositive: currentData.overall > previousData.overall
           } : undefined}
           color={currentData.overall > 0.7 ? "green" : currentData.overall > 0.5 ? "yellow" : "red"}
+          staggerIndex={0}
         />
         <MetricCard
           icon={Calendar}
@@ -303,6 +304,7 @@ export const OccupancyDashboard = () => {
             isPositive: currentData.bookedNights > previousData.bookedNights
           } : undefined}
           color="blue"
+          staggerIndex={1}
         />
         <MetricCard
           icon={Home}
@@ -321,6 +323,7 @@ export const OccupancyDashboard = () => {
             isPositive: currentData.availableNights > previousData.availableNights
           } : undefined}
           color="purple"
+          staggerIndex={2}
         />
         <MetricCard
           icon={TrendingDown}
@@ -344,6 +347,7 @@ export const OccupancyDashboard = () => {
           }
           tooltip={`The ${dataGranularity === 'Daily' ? 'day' : dataGranularity === 'Weekly' ? 'week' : 'month'} with the most unbooked nights${occupancyGoal !== null ? ` (your goal is ${occupancyGoal}%)` : ''}`}
           color="yellow"
+          staggerIndex={3}
         />
       </div>
 

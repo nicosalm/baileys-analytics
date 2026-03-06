@@ -435,6 +435,7 @@ export const GuestsDashboard = () => {
                         isPositive: data.metrics.totalGuests > previousData.metrics.totalGuests
                     } : undefined}
                     color="blue"
+                    staggerIndex={0}
                 />
                 <MetricCard
                     icon={UserCheck}
@@ -453,6 +454,7 @@ export const GuestsDashboard = () => {
                             : data.metrics.repeatRate > 0 ? 100 : 0,
                         isPositive: data.metrics.repeatRate > previousData.metrics.repeatRate
                     } : undefined}
+                    staggerIndex={1}
                 />
                 <MetricCard
                     icon={Calendar}
@@ -471,6 +473,7 @@ export const GuestsDashboard = () => {
                         isPositive: data.metrics.avgStayLength > previousData.metrics.avgStayLength
                     } : undefined}
                     color="purple"
+                    staggerIndex={2}
                 />
                 <MetricCard
                     icon={DollarSign}
@@ -487,6 +490,7 @@ export const GuestsDashboard = () => {
                     } : undefined}
                     tooltip="Total revenue divided by number of unique guests this period"
                     color="orange"
+                    staggerIndex={3}
                 />
             </div>
 

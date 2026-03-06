@@ -209,6 +209,7 @@ export const PLView: React.FC<PLViewProps> = ({
             value: comparison.revenueGrowth,
             isPositive: comparison.revenueGrowth > 0
           } : undefined}
+          staggerIndex={0}
         />
         <MetricCard
           icon={Receipt}
@@ -224,6 +225,7 @@ export const PLView: React.FC<PLViewProps> = ({
             value: comparison.costsGrowth,
             isPositive: comparison.costsGrowth < 0
           } : undefined}
+          staggerIndex={1}
         />
         <MetricCard
           icon={Landmark}
@@ -239,6 +241,7 @@ export const PLView: React.FC<PLViewProps> = ({
             value: comparison.taxesGrowth,
             isPositive: comparison.taxesGrowth < 0
           } : undefined}
+          staggerIndex={2}
         />
         <MetricCard
           icon={Wallet}
@@ -254,6 +257,7 @@ export const PLView: React.FC<PLViewProps> = ({
             value: comparison.operatingProfitGrowth,
             isPositive: comparison.operatingProfitGrowth > 0
           } : undefined}
+          staggerIndex={3}
         />
       </div>
       

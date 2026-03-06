@@ -216,6 +216,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             subValue="This period"
             size="sm"
             color="green"
+            staggerIndex={0}
             className="border border-border"
           />
           <MetricCard
@@ -226,6 +227,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             subValue={`${(data.metrics.avgStayLength || 0).toFixed(1)} nights avg`}
             size="sm"
             color="blue"
+            staggerIndex={1}
             className="border border-border"
           />
           <MetricCard
@@ -236,6 +238,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             subValue={`${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`}
             size="sm"
             color="purple"
+            staggerIndex={2}
             className="border border-border"
           />
           <MetricCard
@@ -246,6 +249,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             subValue="Average"
             size="sm"
             color="orange"
+            staggerIndex={3}
             className="border border-border"
           />
         </div>
