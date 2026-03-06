@@ -1,169 +1,134 @@
 import React from 'react'
-import { PieChart, Pie, Cell } from 'recharts'
 import { formatCompactCurrency } from '@baileys/utils'
-import { GAUGE_COLORS, resolveToken } from '@/lib/theme'
 
 interface SimpleGaugeChartProps {
   value: number
   min?: number
   max?: number
   format?: 'currency' | 'percent' | 'number'
+  color?: string
   width?: number
   height?: number
   onClick?: () => void
 }
 
-const RADIAN = Math.PI / 180
+const formatValue = (val: number, format: string) => {
+  switch (format) {
+    case 'currency':
+      return formatCompactCurrency(val)
+    case 'percent':
+      return `${val.toFixed(1)}%`
+    case 'number':
+      return val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val.toString()
+    default:
+      return val.toString()
+  }
+}
+
+// describe a 180° arc as a path so we control draw direction explicitly
+function halfArcPath(cx: number, cy: number, r: number): string {
+  // start at left end, sweep clockwise to right end
+  return `M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`
+}
 
 export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   value,
   min = 0,
   max = 100,
   format = 'number',
-  width = 200,
-  height = 120,
+  color = 'var(--primary)',
+  width = 180,
+  height = 110,
   onClick
 }) => {
-  // Normalize value to 0-100 range
-  const normalizedValue = (max - min) > 0 ? ((value - min) / (max - min)) * 100 : 0
-  const clampedValue = Math.min(Math.max(normalizedValue, 0), 100)
-  
-  const gaugeData = [
-    { name: 'Low',    value: 33.33, color: GAUGE_COLORS.low },
-    { name: 'Medium', value: 33.33, color: GAUGE_COLORS.medium },
-    { name: 'High',   value: 33.34, color: GAUGE_COLORS.high }
-  ]
+  const range = max - min
+  const normalizedValue = range > 0 ? ((value - min) / range) : 0
+  const clamped = Math.min(Math.max(normalizedValue, 0), 1)
 
+  const strokeWidth = 10
   const cx = width / 2
-  const cy = height - 45
-  const innerRadius = width * 0.25
-  const outerRadius = width * 0.35
+  const r = (width - strokeWidth) / 2 - 8
+  const cy = r + strokeWidth / 2 + 4
 
-  // Format the display value
-  const formatValue = (val?: number) => {
-    const displayVal = val ?? value
-    switch (format) {
-      case 'currency':
-        return formatCompactCurrency(displayVal)
-      case 'percent':
-        return `${displayVal.toFixed(1)}%`
-      case 'number':
-        return displayVal >= 1000 ? `${(displayVal / 1000).toFixed(1)}k` : displayVal.toString()
-      default:
-        return displayVal.toString()
-    }
-  }
+  // 180° arc length
+  const arcLen = Math.PI * r
+  const progressLen = arcLen * clamped
+  const progressDash = `${progressLen} ${arcLen}`
 
-  // Calculate needle geometry for SVG overlay
-  const needleAngle = 180 - (clampedValue / 100 * 180)
-  const radianAngle = needleAngle * RADIAN
-  const needleLength = (innerRadius + 2 * outerRadius) / 3
-  const needleX = cx + needleLength * Math.cos(-radianAngle)
-  const needleY = cy + needleLength * Math.sin(-radianAngle)
-  const chartHeight = height - 25
+  const labelY = cy + 16
+  const d = halfArcPath(cx, cy, r)
 
   return (
     <div
-      style={{
-        width,
-        height,
-        position: 'relative',
-        cursor: onClick ? 'pointer' : 'default'
-      }}
+      style={{ width, height, position: 'relative', cursor: onClick ? 'pointer' : 'default' }}
       onClick={onClick}
     >
-      <div style={{ pointerEvents: onClick ? 'none' : 'auto' }}>
-        <PieChart width={width} height={chartHeight}>
-          <Pie
-            dataKey="value"
-            startAngle={180}
-            endAngle={0}
-            data={gaugeData}
-            cx={cx}
-            cy={cy}
-            innerRadius={innerRadius}
-            outerRadius={outerRadius}
-            fill={resolveToken('--chart-series-5')}
-            stroke="none"
-          >
-            {gaugeData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-        </PieChart>
-      </div>
-
-      {/* Needle rendered as SVG overlay so it appears above the pie */}
-      <svg
-        width={width}
-        height={chartHeight}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          pointerEvents: 'none'
-        }}
-      >
-        <line
-          x1={cx}
-          y1={cy}
-          x2={needleX}
-          y2={needleY}
-          stroke={resolveToken('--muted-foreground')}
-          strokeWidth="1.5"
+      <svg width={width} height={height} aria-hidden="true">
+        {/* track */}
+        <path
+          d={d}
+          fill="none"
+          stroke="var(--muted)"
+          strokeWidth={strokeWidth}
           strokeLinecap="round"
         />
-        <circle cx={cx} cy={cy} r={3} fill={resolveToken('--muted-foreground')} />
+
+        {/* progress */}
+        {clamped > 0 && (
+          <path
+            d={d}
+            fill="none"
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={progressDash}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dasharray 0.6s ease-out' }}
+          />
+        )}
+
+        {/* min label */}
+        <text
+          x={cx - r}
+          y={labelY}
+          textAnchor="start"
+          fontSize="10"
+          fill="var(--muted-foreground)"
+          fontFamily="inherit"
+          dx={-4}
+        >
+          {formatValue(min, format)}
+        </text>
+
+        {/* max label */}
+        <text
+          x={cx + r}
+          y={labelY}
+          textAnchor="end"
+          fontSize="10"
+          fill="var(--muted-foreground)"
+          fontFamily="inherit"
+          dx={4}
+        >
+          {formatValue(max, format)}
+        </text>
       </svg>
-      
-      {/* Value label - positioned well below the gauge to avoid overlap */}
+
+      {/* value label */}
       <div
         style={{
           position: 'absolute',
           left: '50%',
-          bottom: 10,
+          bottom: 4,
           transform: 'translateX(-50%)',
-          fontSize: '22px',
+          fontSize: '20px',
           fontWeight: 'bold',
-          color: resolveToken('--foreground'),
           textAlign: 'center',
           pointerEvents: 'none',
-          zIndex: 10
+          lineHeight: 1,
         }}
+        className="text-foreground"
       >
-        {formatValue()}
-      </div>
-
-      {/* Min label - positioned at left edge of gauge */}
-      <div
-        style={{
-          position: 'absolute',
-          left: cx - outerRadius - 20,
-          top: cy + 2,
-          fontSize: '11px',
-          color: resolveToken('--muted-foreground'),
-          fontWeight: '400',
-          pointerEvents: 'none',
-          zIndex: 10
-        }}
-      >
-        {formatValue(min)}
-      </div>
-
-      {/* Max label - positioned at right edge of gauge */}
-      <div
-        style={{
-          position: 'absolute',
-          right: cx - outerRadius - 20,
-          top: cy + 2,
-          fontSize: '11px',
-          color: resolveToken('--muted-foreground'),
-          fontWeight: '400',
-          pointerEvents: 'none',
-          zIndex: 10
-        }}
-      >
-        {formatValue(max)}
+        {formatValue(value, format)}
       </div>
     </div>
   )

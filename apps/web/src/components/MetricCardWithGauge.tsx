@@ -41,6 +41,16 @@ const colorClasses = {
   orange: 'text-orange-fg bg-orange-subtle'
 }
 
+const gaugeColorMap: Record<string, string> = {
+  blue: 'var(--primary)',
+  green: 'var(--success)',
+  red: 'var(--danger)',
+  yellow: 'var(--warning)',
+  purple: 'var(--purple-fg)',
+  gray: 'var(--muted-foreground)',
+  orange: 'var(--orange-fg)'
+}
+
 export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
   icon: Icon,
   label,
@@ -55,6 +65,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
   staggerIndex
 }) => {
   const numericValue = typeof value === 'number' ? value : parseFloat(value.toString().replace(/[^0-9.-]/g, ''))
+  const gaugeColor = gaugeColorMap[color] || 'var(--primary)'
   
   const formatValue = (val: number | string, compact: boolean = false) => {
     if (typeof val === 'string') return val
@@ -91,8 +102,9 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
             min={gauge.min}
             max={gauge.max}
             format={format === 'custom' ? 'number' : format}
+            color={gaugeColor}
             width={180}
-            height={120}
+            height={110}
             onClick={onClick}
           />
           {trend && (

@@ -74,10 +74,6 @@ export const METRIC_COLORS = {
   get tax()       { return resolveToken('--metric-tax') },
   get expenses()  { return resolveToken('--metric-expenses') },
   get profit()    { return resolveToken('--metric-profit') },
-  // aliases kept for existing call sites
-  get primary()   { return resolveToken('--metric-revenue') },
-  get success()   { return resolveToken('--metric-occupancy') },
-  get danger()    { return resolveToken('--metric-tax') },
 }
 
 // chart infrastructure colors for recharts stroke/fill props
@@ -87,13 +83,6 @@ export const CHART_INFRA = {
   get reference()  { return resolveToken('--chart-reference') },
   get goal()       { return resolveToken('--chart-goal') },
   get comparison() { return resolveToken('--chart-comparison') },
-}
-
-// gauge segment colors (used in SimpleGaugeChart arcs)
-export const GAUGE_COLORS = {
-  get low()    { return resolveToken('--danger') },
-  get medium() { return resolveToken('--warning') },
-  get high()   { return resolveToken('--success') },
 }
 
 export const PLATFORM_COLORS: Record<string, string> = {

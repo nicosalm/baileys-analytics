@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
-import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
+import { CHART_INFRA, resolveToken } from '@/lib/theme'
 import { useDashboard } from '@/contexts/dashboard'
 
 const CashFlowChartTooltip = ({ active, payload, label }: any) => {
@@ -24,14 +24,14 @@ const CashFlowChartTooltip = ({ active, payload, label }: any) => {
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.success }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: resolveToken('--success') }} />
             <span className="text-muted-foreground">Inflow:</span>
           </div>
           <span className="font-medium">{formatCurrency(data.inflow)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.danger }} />
+            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: resolveToken('--danger') }} />
             <span className="text-muted-foreground">Outflow:</span>
           </div>
           <span className="font-medium">{formatCurrency(data.outflow)}</span>
@@ -266,8 +266,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               type="monotone"
               dataKey="inflow"
               stackId="1"
-              stroke={METRIC_COLORS.success}
-              fill={METRIC_COLORS.success}
+              stroke={resolveToken('--success')}
+              fill={resolveToken('--success')}
               fillOpacity={0.6}
               name="Inflow"
             />
@@ -275,8 +275,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
               type="monotone"
               dataKey="outflow"
               stackId="2"
-              stroke={METRIC_COLORS.danger}
-              fill={METRIC_COLORS.danger}
+              stroke={resolveToken('--danger')}
+              fill={resolveToken('--danger')}
               fillOpacity={0.6}
               name="Outflow"
             />

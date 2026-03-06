@@ -1,7 +1,7 @@
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
 import { formatCurrency } from '@/utils/formatters'
 
@@ -23,7 +23,7 @@ const TaxChartTooltip = ({ active, payload, label }: any) => {
         {data.ownerRemitted !== undefined && (
           <div className="flex justify-between gap-4">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.primary }} />
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: resolveToken('--warning') }} />
               <span className="text-muted-foreground">Owner Remitted:</span>
             </div>
             <span className="font-medium">{formatCurrency(data.ownerRemitted)}</span>
@@ -32,7 +32,7 @@ const TaxChartTooltip = ({ active, payload, label }: any) => {
         {data.platformRemitted !== undefined && (
           <div className="flex justify-between gap-4">
             <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.success }} />
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: resolveToken('--success') }} />
               <span className="text-muted-foreground">Platform Remitted:</span>
             </div>
             <span className="font-medium">{formatCurrency(data.platformRemitted)}</span>
@@ -122,10 +122,10 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
             <Line
               type="monotone"
               dataKey="ownerRemitted"
-              stroke={METRIC_COLORS.primary}
+              stroke={resolveToken('--warning')}
               strokeWidth={2}
               strokeDasharray="5 5"
-              dot={{ fill: METRIC_COLORS.primary }}
+              dot={{ fill: resolveToken('--warning') }}
               name="Owner Remitted"
             />
           )}
@@ -133,10 +133,10 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
             <Line
               type="monotone"
               dataKey="platformRemitted"
-              stroke={METRIC_COLORS.success}
+              stroke={resolveToken('--success')}
               strokeWidth={2}
               strokeDasharray="5 5"
-              dot={{ fill: METRIC_COLORS.success }}
+              dot={{ fill: resolveToken('--success') }}
               name="Platform Remitted"
             />
           )}
