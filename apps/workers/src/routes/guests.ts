@@ -61,7 +61,7 @@ guests.get('/', cache({ ttl: 3600 }), async (c) => {
 });
 
 guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
-	const { startMonth, startDay, endMonth, endDay, yearsBack = '3' } = c.req.query();
+	const { startMonth, startDay, endMonth, endDay, yearsBack = '4' } = c.req.query();
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 
@@ -74,7 +74,7 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 	}
 
 	const currentYear = new Date().getFullYear();
-	const numYears = Math.min(parseInt(yearsBack) || 3, 5);
+	const numYears = Math.min(parseInt(yearsBack) || 4, 5);
 	const results: any[] = [];
 
 	for (let offset = 0; offset < numYears; offset++) {

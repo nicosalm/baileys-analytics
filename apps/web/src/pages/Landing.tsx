@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
 import {
-  ArrowRight, CheckCircle,
+  ArrowRight, Check,
   Shield, Zap, Lock, Building2, Calendar, DollarSign
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
@@ -288,7 +288,7 @@ export const Landing = () => {
             }`} style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}>
               <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">2</div>
               <h3 className="font-semibold text-white mb-1">Data syncs automatically</h3>
-              <p className="text-sm text-white/50">We pull 3 years of bookings, properties, and guests. Takes about 2 minutes.</p>
+              <p className="text-sm text-white/50">We pull 4 years of bookings, properties, and guests. Takes about 2 minutes.</p>
             </div>
 
             <div className={`text-center transition-all duration-700 ${
@@ -333,55 +333,78 @@ export const Landing = () => {
             <p className="text-white/50">Everything you need. No tiers, no upsells.</p>
           </div>
 
-          <div className="flex justify-center items-center gap-4 mb-10">
-            <span className={`text-sm font-medium ${!yearlyBilling ? 'text-white' : 'text-white/50'}`}>Monthly</span>
+          {/* billing toggle */}
+          <div className="flex justify-center items-center gap-3 mb-8">
+            <span className={`text-sm transition-colors ${!yearlyBilling ? 'text-white font-medium' : 'text-white/40'}`}>Monthly</span>
             <Switch
               checked={yearlyBilling}
               onCheckedChange={handleToggleBilling}
               aria-label="Toggle billing cycle"
             />
-            <span className={`text-sm font-medium ${yearlyBilling ? 'text-white' : 'text-white/50'}`}>
-              Yearly
-              <span className="ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success/20 text-success">
-                Save 20%
-              </span>
-            </span>
+            <span className={`text-sm transition-colors ${yearlyBilling ? 'text-white font-medium' : 'text-white/40'}`}>Yearly</span>
           </div>
 
-          <div className="max-w-md mx-auto">
-            <div className="relative">
+          <div className="max-w-sm mx-auto">
+            <div className="relative group">
               {/* gradient border glow */}
-              <div className="absolute -inset-px bg-gradient-to-b from-[oklch(0.78_0.08_265)] to-[oklch(0.45_0.12_280)] rounded-2xl" />
-              <div className="relative bg-[oklch(0.16_0.02_265)] rounded-2xl p-8 md:p-10">
-                <div className="text-center mb-6">
-                  <div className="text-4xl md:text-5xl font-bold text-white mb-1">
-                    ${yearlyBilling ? '16' : '20'}<span className="text-xl text-white/40 font-normal">/mo</span>
+              <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-[oklch(0.78_0.08_265)] via-[oklch(0.60_0.10_272)] to-[oklch(0.45_0.12_280)] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+
+              <div className="relative bg-[oklch(0.16_0.02_265)] rounded-2xl px-8 py-10 md:px-10 flex flex-col min-h-[480px]">
+                {/* plan label */}
+                <div className="text-center mb-8">
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-6">
+                    Standard
+                  </p>
+
+                  {/* price */}
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-5xl font-bold tracking-tight text-white">
+                      ${yearlyBilling ? '16' : '20'}
+                    </span>
+                    <span className="text-base text-white/40 font-normal">/mo</span>
                   </div>
-                  {yearlyBilling && <p className="text-sm text-success">$192/year, save $48</p>}
-                  {!yearlyBilling && <p className="text-sm text-white/40">Billed monthly</p>}
+
+                  {/* billing context */}
+                  <div className="mt-2 h-5">
+                    {yearlyBilling
+                      ? <p className="text-sm text-success font-medium">$192/year — save $48</p>
+                      : <p className="text-sm text-white/40">Billed monthly</p>
+                    }
+                  </div>
                 </div>
 
-                <div className="space-y-3 mb-8">
+                {/* divider */}
+                <div className="h-px bg-white/10 mb-8" />
+
+                {/* features */}
+                <div className="space-y-3.5 mb-auto">
                   {[
-                    'Full OwnerRez sync (3 years of data)',
-                    '5 dashboards with filtering',
+                    'Full OwnerRez sync (4 years of data)',
+                    '6 dashboards with filtering',
+                    'Comparison mode & seasonal filters',
                     'Exportable PDF reports',
+                    'Real-time webhook updates',
                     'Cancel anytime',
                   ].map(item => (
-                    <div key={item} className="flex items-center">
-                      <CheckCircle className="w-4 h-4 text-success mr-3 flex-shrink-0" />
-                      <span className="text-sm text-white/80">{item}</span>
+                    <div key={item} className="flex items-start gap-3">
+                      <div className="mt-0.5 w-4.5 h-4.5 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3 h-3 text-success" strokeWidth={2.5} />
+                      </div>
+                      <span className="text-sm text-white/70 leading-snug">{item}</span>
                     </div>
                   ))}
                 </div>
 
-                <Link to="/signup" className="block w-full py-3 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium">
-                  Start $1 Trial
-                </Link>
+                {/* cta */}
+                <div className="mt-10">
+                  <Link to="/signup" className="block w-full h-11 leading-[2.75rem] text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold">
+                    Start $1 Trial
+                  </Link>
 
-                <p className="text-center text-xs text-white/30 mt-4">
-                  $1 for 30 days, then {yearlyBilling ? '$192/year' : '$20/month'}. Cancel anytime.
-                </p>
+                  <p className="text-center text-xs text-white/30 mt-3">
+                    $1 for 30 days, then {yearlyBilling ? '$192/year' : '$20/month'}. Cancel anytime.
+                  </p>
+                </div>
               </div>
             </div>
           </div>

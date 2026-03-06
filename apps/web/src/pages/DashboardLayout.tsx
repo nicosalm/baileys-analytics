@@ -198,7 +198,7 @@ export const DashboardLayout = () => {
                   <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                     <span className="w-2 h-2 bg-success rounded-full" />
                   </span>
-                  Sync 3 years of booking history
+                  Sync 4 years of booking history
                 </div>
                 <div className="flex items-center text-sm text-foreground">
                   <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">

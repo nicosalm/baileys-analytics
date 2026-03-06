@@ -688,7 +688,7 @@ const RecurringDateSearch = () => {
     const [startDay, setStartDay] = useState('1')
     const [endMonth, setEndMonth] = useState('7')
     const [endDay, setEndDay] = useState('7')
-    const [yearsBack, setYearsBack] = useState('3')
+    const [yearsBack, setYearsBack] = useState('4')
     const [results, setResults] = useState<any[] | null>(null)
     const [loading, setLoading] = useState(false)
 
@@ -736,7 +736,7 @@ const RecurringDateSearch = () => {
                     <X className="w-4 h-4" />
                 </Button>
             </div>
-            <p className="text-sm text-muted-foreground mb-4">Find guests who stayed during the same date window across multiple years (e.g., 4th of July guests for past 3 years)</p>
+            <p className="text-sm text-muted-foreground mb-4">Find guests who stayed during the same date window across multiple years (e.g., 4th of July guests for past 4 years)</p>
             <div className="flex flex-wrap items-end gap-3 mb-4">
                 <div>
                     <label className="text-xs text-muted-foreground block mb-1">From</label>

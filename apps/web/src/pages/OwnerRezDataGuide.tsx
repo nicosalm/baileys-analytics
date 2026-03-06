@@ -100,7 +100,7 @@ export const OwnerRezDataGuide = () => {
           <h2 className="text-lg font-semibold text-foreground mb-4">Initial Sync</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
-            On first connection, the system imports 3 years of historical bookings and 1 year of future bookings. This typically takes 2 to 5 minutes.
+            On first connection, the system imports 4 years of historical bookings and 1 year of future bookings. This typically takes 2 to 5 minutes.
           </p>
 
           <p className="text-muted-foreground text-sm">

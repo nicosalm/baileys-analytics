@@ -83,7 +83,7 @@ export class EmailService {
                         </td>
                         <td style="padding-left: 12px;">
                           <p style="margin: 0; font-size: 14px; line-height: 20px; color: #374151;">
-                            <strong>Your data is syncing</strong> - We're importing 3 years of historical bookings from OwnerRez. This usually takes 2-5 minutes.
+                            <strong>Your data is syncing</strong> - We're importing 4 years of historical bookings from OwnerRez. This usually takes 2-5 minutes.
                           </p>
                         </td>
                       </tr>

@@ -51,7 +51,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How long does the first sync take?</h3>
               <p className="text-muted-foreground text-sm">
-                Typically 2 to 5 minutes. The sync imports 3 years of historical bookings and 1 year of future bookings. Progress is visible on the dashboard during the process.
+                Typically 2 to 5 minutes. The sync imports 4 years of historical bookings and 1 year of future bookings. Progress is visible on the dashboard during the process.
               </p>
             </div>
 

@@ -194,10 +194,10 @@ export const IntegrationsTab = () => {
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={handleManualSync}>
                     <RefreshCw className="w-4 h-4" />
-                    Re-sync All Data (3 years)
+                    Re-sync All Data (4 years)
                   </Button>
                   <p className="text-xs text-muted-foreground w-full mt-2">
-                    This will re-run the initial sync process, refreshing all properties and bookings from the last 3 years.
+                    This will re-run the initial sync process, refreshing all properties and bookings from the last 4 years.
                   </p>
                   <p className="text-xs text-muted-foreground/50 w-full mt-4">
                     Revenue, bookings, guests, and host service fees are synced from OwnerRez. Guest-facing OTA fees are estimated automatically (Airbnb ~15%, VRBO ~13%). Operating expenses, tax jurisdictions, and platform remittance rules must be configured manually in Settings.
@@ -218,7 +218,7 @@ export const IntegrationsTab = () => {
                     </p>
                     <p className="text-sm text-warning-fg">
                       Connect your OwnerRez account to start syncing property and booking data.
-                      Initial connection will sync 3 years of historical data and enable real-time webhook updates.
+                      Initial connection will sync 4 years of historical data and enable real-time webhook updates.
                     </p>
                   </div>
                 </div>

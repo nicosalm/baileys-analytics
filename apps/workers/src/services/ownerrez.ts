@@ -175,13 +175,13 @@ export class OwnerRezService {
 		params.append('include_tags', 'true');
 		params.append('include_fields', 'true');
 
-		// default to 3 years ago if not specified
+		// default to 4 years ago if not specified
 		if (createdSinceUtc) {
 			params.append('created_since_utc', createdSinceUtc);
 		} else {
-			const threeYearsAgo = new Date();
-			threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
-			params.append('created_since_utc', threeYearsAgo.toISOString());
+			const fourYearsAgo = new Date();
+			fourYearsAgo.setFullYear(fourYearsAgo.getFullYear() - 4);
+			params.append('created_since_utc', fourYearsAgo.toISOString());
 		}
 
 		return this.fetchAllPages(`${this.baseUrl}/guests?${params.toString()}`);

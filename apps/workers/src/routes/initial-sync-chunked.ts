@@ -210,9 +210,9 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
   const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
   try {
-    // sync 3 years of historical data plus 1 year future
+    // sync 4 years of historical data plus 1 year future
     const startDate = new Date();
-    startDate.setFullYear(startDate.getFullYear() - 3);
+    startDate.setFullYear(startDate.getFullYear() - 4);
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1);
 

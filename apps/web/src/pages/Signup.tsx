@@ -311,7 +311,7 @@ export const Signup = () => {
               <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">2</div>
               <div>
                 <h4 className="font-semibold mb-1">Automatic sync (~2 minutes)</h4>
-                <p className="text-white/80 text-sm">We pull 3 years of bookings, properties, and guest data</p>
+                <p className="text-white/80 text-sm">We pull 4 years of bookings, properties, and guest data</p>
               </div>
             </div>
             <div className="flex items-start">

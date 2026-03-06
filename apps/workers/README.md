@@ -33,7 +33,7 @@ pnpm deploy
 ## API Endpoints
 
 ### Sync Endpoints
-- `POST /api/initial-sync/full` - Full historical sync (2 years back, 1 year forward)
+- `POST /api/initial-sync/full` - Full historical sync (4 years back, 1 year forward)
 - `POST /api/sync/recovery` - Recovery sync (last 7 days, requires X-Force-Sync header)
 - `POST /api/sync/properties` - Sync only properties
 - `POST /api/sync/guest-details` - Update guest contact information
