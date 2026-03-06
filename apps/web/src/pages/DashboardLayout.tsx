@@ -20,6 +20,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { InitialSyncModal } from '@/components/InitialSyncModal'
 import { Button } from '@/components/ui/button'
 import { LogoCube } from '@/components/LogoCube'
+import { usePageTitle } from '@/hooks/use-page-title'
 
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -119,6 +120,9 @@ const DashboardTabs = () => {
 }
 
 export const DashboardLayout = () => {
+  const { activeTab } = useDashboard()
+  const tabLabel = tabConfig.find(t => t.id === activeTab)?.label || 'Dashboard'
+  usePageTitle(tabLabel)
   const { state, logout } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()

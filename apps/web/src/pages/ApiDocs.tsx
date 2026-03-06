@@ -1,4 +1,5 @@
 import { DocsLayout } from '@/components/DocsLayout'
+import { usePageTitle } from '@/hooks/use-page-title'
 import { useState, useMemo } from 'react'
 import { Check, Copy, Braces } from 'lucide-react'
 
@@ -198,6 +199,7 @@ const buildLlmSchema = () => {
 }
 
 export const ApiDocs = () => {
+  usePageTitle('Data API')
   const [expandedTable, setExpandedTable] = useState<string | null>(null)
   const [schemaCopied, setSchemaCopied] = useState(false)
   const llmSchema = useMemo(buildLlmSchema, [])

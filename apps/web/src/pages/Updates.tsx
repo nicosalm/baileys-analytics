@@ -5,6 +5,7 @@ import { LogoCube } from '@/components/LogoCube'
 import { BRAND } from '@/constants'
 import { useStatus } from '@/hooks'
 import { ArrowLeft } from 'lucide-react'
+import { usePageTitle } from '@/hooks/use-page-title'
 
 interface Announcement {
   id: string
@@ -79,6 +80,7 @@ const formatDate = (iso: string) => {
 }
 
 export const Updates = () => {
+  usePageTitle('Updates')
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -183,6 +185,18 @@ export const Updates = () => {
               >
                 support@baileysanalytics.com
               </a>
+            </div>
+
+            <div className="bg-card rounded-xl border p-5">
+              <h3 className="text-sm font-semibold text-foreground mb-2">Resources</h3>
+              <div className="space-y-1.5">
+                <Link to="/help" className="block text-sm text-primary hover:underline underline-offset-2">
+                  Help & FAQ
+                </Link>
+                <Link to="/docs/ownerrez-data" className="block text-sm text-primary hover:underline underline-offset-2">
+                  OwnerRez Data Guide
+                </Link>
+              </div>
             </div>
           </aside>
         </div>

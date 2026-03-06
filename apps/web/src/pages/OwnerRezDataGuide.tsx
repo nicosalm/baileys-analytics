@@ -1,4 +1,5 @@
 import { DocsLayout } from '@/components/DocsLayout'
+import { usePageTitle } from '@/hooks/use-page-title'
 import { Link } from 'react-router-dom'
 
 const SLink = ({ tab, children }: { tab: string; children: React.ReactNode }) => (
@@ -6,6 +7,7 @@ const SLink = ({ tab, children }: { tab: string; children: React.ReactNode }) =>
 )
 
 export const OwnerRezDataGuide = () => {
+  usePageTitle('Data Guide')
   return (
     <DocsLayout>
       <div className="prose prose-gray max-w-none">

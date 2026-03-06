@@ -10,8 +10,10 @@ import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { LogoCube } from '@/components/LogoCube'
 import { validatePassword } from '@/utils/password'
+import { usePageTitle } from '@/hooks/use-page-title'
 
 export const Signup = () => {
+  usePageTitle('Sign Up')
   const { signup, signInWithGoogle, signInWithMicrosoft } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')

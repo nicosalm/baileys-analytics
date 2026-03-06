@@ -8,8 +8,10 @@ import { Separator } from '@/components/ui/separator'
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { LogoCube } from '@/components/LogoCube'
+import { usePageTitle } from '@/hooks/use-page-title'
 
 export const Login = () => {
+  usePageTitle('Log In')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { login, signInWithGoogle, signInWithMicrosoft, signInAsDemo, state } = useAuth()

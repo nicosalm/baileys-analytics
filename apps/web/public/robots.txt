@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /settings
+Disallow: /admin
+Disallow: /auth/callback
+Disallow: /reset-password
+
+Sitemap: https://baileysanalytics.com/sitemap.xml

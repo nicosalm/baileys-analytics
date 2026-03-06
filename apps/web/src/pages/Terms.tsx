@@ -1,6 +1,8 @@
 import { DocsLayout } from '@/components/DocsLayout'
+import { usePageTitle } from '@/hooks/use-page-title'
 
 export const Terms = () => {
+  usePageTitle('Terms of Service')
   return (
     <DocsLayout>
       <div className="prose prose-gray max-w-none">

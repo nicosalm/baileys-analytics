@@ -9,10 +9,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { useInView } from '@/hooks'
+import { usePageTitle } from '@/hooks/use-page-title'
 import { Switch } from '@/components/ui/switch'
 import { LogoCube } from '@/components/LogoCube'
 
 export const Landing = () => {
+  usePageTitle()
   const { state, logout, signInAsDemo } = useAuth()
   const isAuthenticated = state.status === 'authenticated'
   const navigate = useNavigate()

@@ -1,11 +1,13 @@
 import { DocsLayout } from '@/components/DocsLayout'
 import { Link } from 'react-router-dom'
+import { usePageTitle } from '@/hooks/use-page-title'
 
 const SLink = ({ tab, children }: { tab: string; children: React.ReactNode }) => (
   <Link to={`/settings?tab=${tab}`} className="text-primary hover:text-primary/80">{children}</Link>
 )
 
 export const Help = () => {
+  usePageTitle('Help & FAQ')
   return (
     <DocsLayout>
       <div className="prose prose-gray max-w-none">
@@ -27,6 +29,9 @@ export const Help = () => {
             <a href="https://status.baileysanalytics.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 text-sm">
               → System status
             </a>
+            <Link to="/updates" className="text-primary hover:text-primary/80 text-sm">
+              → Updates & Changelog
+            </Link>
             <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80 text-sm">
               → Contact support
             </a>

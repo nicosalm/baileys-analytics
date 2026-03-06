@@ -1,6 +1,8 @@
 import { DocsLayout } from '@/components/DocsLayout'
+import { usePageTitle } from '@/hooks/use-page-title'
 
 export const Privacy = () => {
+  usePageTitle('Privacy Policy')
   return (
     <DocsLayout>
       <div className="prose prose-gray max-w-none">
