@@ -374,13 +374,13 @@ export const Admin = () => {
       <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
+            <Link to="/dashboard" className="flex items-center">
               <LogoCube />
               <div className="ml-3">
                 <h1 className="text-xl font-semibold text-foreground">Admin Panel</h1>
                 <p className="text-xs text-muted-foreground -mt-0.5">System management</p>
               </div>
-            </div>
+            </Link>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground hidden sm:inline">{state.user?.email}</span>
               <div className="flex items-center gap-2 pl-3 border-l">
