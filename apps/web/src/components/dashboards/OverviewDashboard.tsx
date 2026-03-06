@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState } from 'react'
 import { useDashboardBatch, useGoalProgress, useSeasons } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
-import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
+import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay, formatDateISO, subDays, startOfYear, endOfYear, subYears } from '@baileys/utils'
 import {
   TrendingUp, TrendingDown,
@@ -148,6 +148,7 @@ export const OverviewDashboard = () => {
 
   const { data: goalProgressData } = useGoalProgress()
   const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
+  const propertyIds = usePropertyIds()
 
   const { data, error, isLoading } = useDashboardBatch(
     'overview',
@@ -155,7 +156,8 @@ export const OverviewDashboard = () => {
     filters.dateRange.to,
     tagIds,
     comparisonRange?.from,
-    comparisonRange?.to
+    comparisonRange?.to,
+    propertyIds
   )
 
   useErrorToast(error, 'Failed to load overview data')

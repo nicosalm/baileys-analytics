@@ -150,7 +150,8 @@ export async function getPLData(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<PLData> {
   const seasons = await getActiveSeasons(supabase, tenantId);
   const hasTagFilter = tagIds.length > 0;
@@ -168,6 +169,10 @@ export async function getPLData(
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
 
+  if (filterPropertyIds.length > 0) {
+    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+  }
+
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
       .from('booking_tags')
@@ -180,13 +185,19 @@ export async function getPLData(
     }
   }
 
+  let propertiesQuery = supabase
+    .from('properties')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
   const [bookingsResult, propertiesResult, upcomingResult] = await Promise.all([
     bookingsQuery,
-    supabase
-      .from('properties')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .eq('active', true),
+    propertiesQuery,
     supabase
       .from('bookings')
       .select('total_amount, arrival')
@@ -376,7 +387,8 @@ export async function getRevenueData(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<RevenueData> {
   const seasons = await getActiveSeasons(supabase, tenantId);
   const hasTagFilter = tagIds.length > 0;
@@ -393,6 +405,10 @@ export async function getRevenueData(
     .gte('departure', from)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
+
+  if (filterPropertyIds.length > 0) {
+    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+  }
 
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
@@ -486,7 +502,8 @@ export async function getCashflowData(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<CashflowData> {
   const hasTagFilter = tagIds.length > 0;
 
@@ -498,6 +515,10 @@ export async function getCashflowData(
     .gte('departure', from)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
+
+  if (filterPropertyIds.length > 0) {
+    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+  }
 
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase
@@ -560,7 +581,8 @@ export async function getTaxData(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<TaxData> {
   const taxCalculator = new TaxCalculator(supabase);
   const hasTagFilter = tagIds.length > 0;
@@ -578,6 +600,10 @@ export async function getTaxData(
     .gte('departure', from)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
+
+  if (filterPropertyIds.length > 0) {
+    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+  }
 
   if (hasTagFilter) {
     const { data: taggedBookings } = await supabase

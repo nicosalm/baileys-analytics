@@ -531,6 +531,7 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 	const from = c.req.query('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
 	const to = c.req.query('to') || new Date().toISOString().split('T')[0];
 	const tags = c.req.query('tags')?.split(',').filter(Boolean);
+	const properties = c.req.query('properties')?.split(',').filter(Boolean);
 	const comparisonFrom = c.req.query('comparisonFrom');
 	const comparisonTo = c.req.query('comparisonTo');
 
@@ -538,7 +539,7 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const cacheKey = `dashboard:${user.id}:${view}:${from}:${to}:${tags?.join(',')}:${comparisonFrom || ''}:${comparisonTo || ''}`;
+	const cacheKey = `dashboard:${user.id}:${view}:${from}:${to}:${tags?.join(',')}:${properties?.join(',')}:${comparisonFrom || ''}:${comparisonTo || ''}`;
 
 	// try to get from cache if available
 	if (c.env.CACHE) {
@@ -560,17 +561,18 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 				to,
 				tags,
 				comparisonFrom,
-				comparisonTo
+				comparisonTo,
+				properties
 			);
 			break;
 		}
 
 		case 'financial': {
 			const [plData, revenueData, cashflowData, taxData] = await Promise.all([
-				getPLData(supabase, tenantId, from, to, tags),
-				getRevenueData(supabase, tenantId, from, to, tags),
-				getCashflowData(supabase, tenantId, from, to, tags),
-				getTaxData(supabase, tenantId, from, to, tags)
+				getPLData(supabase, tenantId, from, to, tags, properties),
+				getRevenueData(supabase, tenantId, from, to, tags, properties),
+				getCashflowData(supabase, tenantId, from, to, tags, properties),
+				getTaxData(supabase, tenantId, from, to, tags, properties)
 			]);
 
 			let previousPL = null;
@@ -580,10 +582,10 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 
 			if (comparisonFrom && comparisonTo) {
 				const [prevPL, prevRevenue, prevCashflow, prevTax] = await Promise.all([
-					getPLData(supabase, tenantId, comparisonFrom, comparisonTo, tags),
-					getRevenueData(supabase, tenantId, comparisonFrom, comparisonTo, tags),
-					getCashflowData(supabase, tenantId, comparisonFrom, comparisonTo, tags),
-					getTaxData(supabase, tenantId, comparisonFrom, comparisonTo, tags)
+					getPLData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties),
+					getRevenueData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties),
+					getCashflowData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties),
+					getTaxData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties)
 				]);
 
 				previousPL = prevPL ? {
@@ -640,19 +642,20 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 				to,
 				tags,
 				comparisonFrom,
-				comparisonTo
+				comparisonTo,
+				properties
 			);
 			break;
 		}
 
 		case 'occupancy': {
 			const { detectBookingGaps } = await import('./services/occupancy');
-			const currentData = await getOccupancyData(supabase, tenantId, from, to, tags);
+			const currentData = await getOccupancyData(supabase, tenantId, from, to, tags, properties);
 			// detect booking gaps for the next 60 days
 			const bookingGaps = await detectBookingGaps(supabase, tenantId, 60);
 
 			if (comparisonFrom && comparisonTo) {
-				const previousData = await getOccupancyData(supabase, tenantId, comparisonFrom, comparisonTo, tags);
+				const previousData = await getOccupancyData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties);
 				data = {
 					current: { ...currentData, gaps: bookingGaps },
 					previous: previousData,
@@ -665,10 +668,10 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		}
 
 		case 'guests': {
-			const currentData = await getGuestsData(supabase, tenantId, from, to, tags);
+			const currentData = await getGuestsData(supabase, tenantId, from, to, tags, properties);
 
 			if (comparisonFrom && comparisonTo) {
-				const previousData = await getGuestsData(supabase, tenantId, comparisonFrom, comparisonTo, tags);
+				const previousData = await getGuestsData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties);
 				data = {
 					current: currentData,
 					previous: previousData,

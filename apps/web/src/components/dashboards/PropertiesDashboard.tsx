@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react'
 import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
-import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
+import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
 import { Calendar, DollarSign, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table, Wallet, Share2, BarChart3, PieChart } from 'lucide-react'
@@ -26,6 +26,7 @@ export const PropertiesDashboard = () => {
   const [platformView, setPlatformView] = useState<'pct' | 'rev'>('pct')
 
   const tagIds = useTagIds()
+  const propertyIds = usePropertyIds()
 
   const { data, error, isLoading } = useDashboardBatch(
     'properties',
@@ -33,7 +34,8 @@ export const PropertiesDashboard = () => {
     filters.dateRange.to,
     tagIds,
     comparisonRange?.from,
-    comparisonRange?.to
+    comparisonRange?.to,
+    propertyIds
   )
 
   let properties: any[] = []

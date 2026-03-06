@@ -12,6 +12,14 @@ export function useTagIds() {
 }
 
 /**
+ * Extracts selected property IDs with memoization
+ */
+export function usePropertyIds() {
+  const { filters } = useDashboard()
+  return useMemo(() => filters.selectedProperties, [filters.selectedProperties])
+}
+
+/**
  * Handles error display with consistent toast notifications
  */
 export function useErrorToast(error: any, messagePrefix: string = 'Error') {
@@ -37,19 +45,21 @@ export function useDashboardData<T = any>(
 ) {
   const { filters, comparisonRange } = useDashboard()
   const tagIds = useTagIds()
-  
+  const propertyIds = usePropertyIds()
+
   // Use batch endpoint
-  const { 
-    data: batchData, 
-    error: batchError, 
-    isLoading: batchLoading 
+  const {
+    data: batchData,
+    error: batchError,
+    isLoading: batchLoading
   } = useDashboardBatch(
     view,
     filters.dateRange.from,
     filters.dateRange.to,
     tagIds,
     comparisonRange?.from,
-    comparisonRange?.to
+    comparisonRange?.to,
+    propertyIds
   )
   
   // Fallback to old endpoint if batch fails

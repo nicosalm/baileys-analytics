@@ -1,8 +1,8 @@
 import React, { memo, useState, useEffect } from 'react'
 import { SmartPeriodSelector } from './SmartPeriodSelector'
 import { useDashboard } from '@/contexts/dashboard'
-import { useTags } from '@/hooks/use-api'
-import { Filter, X, ChevronDown } from 'lucide-react'
+import { useTags, useProperties } from '@/hooks/use-api'
+import { Filter, X, ChevronDown, Home } from 'lucide-react'
 import { cn } from '@baileys/utils'
 import { getTagColor } from '@/lib/theme'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
@@ -38,33 +38,66 @@ const TagButton = memo(({ tag, isSelected, onToggle }: TagButtonProps) => (
 
 TagButton.displayName = 'TagButton'
 
+interface PropertyButtonProps {
+  property: { id: string; name: string }
+  isSelected: boolean
+  onToggle: (propertyId: string) => void
+}
+
+const PropertyButton = memo(({ property, isSelected, onToggle }: PropertyButtonProps) => (
+  <Button
+    variant="ghost"
+    onClick={() => onToggle(property.id)}
+    className={cn(
+      "w-full justify-start px-3 py-2 h-auto text-sm",
+      isSelected
+        ? "bg-primary/10 text-primary font-medium"
+        : "text-foreground"
+    )}
+  >
+    <div className="flex items-center gap-2">
+      <Home className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
+      <span>{property.name}</span>
+    </div>
+  </Button>
+))
+
+PropertyButton.displayName = 'PropertyButton'
+
 export const FilterBar: React.FC = () => {
   const {
     filters,
     comparisonRange,
     updateDateRange,
     toggleTag,
+    toggleProperty,
     clearFilters
   } = useDashboard()
 
   const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
+  const { data: availableProperties = [], isLoading: isPropertiesLoading } = useProperties()
 
-  const hasActiveFilters = filters.selectedTags.length > 0
+  const hasActiveFilters = filters.selectedTags.length > 0 || filters.selectedProperties.length > 0
   const [tagsOpen, setTagsOpen] = useState(false)
+  const [propertiesOpen, setPropertiesOpen] = useState(false)
 
-  // close tags popover on scroll to prevent overlap with sticky header
+  // close popovers on scroll to prevent overlap with sticky header
   useEffect(() => {
-    if (!tagsOpen) return
-    const onScroll = () => setTagsOpen(false)
+    if (!tagsOpen && !propertiesOpen) return
+    const onScroll = () => {
+      setTagsOpen(false)
+      setPropertiesOpen(false)
+    }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [tagsOpen])
+  }, [tagsOpen, propertiesOpen])
 
   return (
     <div className="bg-background/80 backdrop-blur-sm border-b border-border relative z-30">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-3">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-3 space-y-2">
+        {/* row 1: controls */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
             <SmartPeriodSelector
               value={filters.dateRange}
               onChange={updateDateRange}
@@ -110,44 +143,94 @@ export const FilterBar: React.FC = () => {
               </PopoverContent>
             </Popover>
 
-            {filters.selectedTags.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {filters.selectedTags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium rounded-full border border-border bg-background text-foreground/80"
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: getTagColor(tag) }}
-                    />
-                    {tag.name}
-                    <button
-                      onClick={() => toggleTag(tag)}
-                      className="ml-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+            <Popover open={propertiesOpen} onOpenChange={setPropertiesOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all",
+                    filters.selectedProperties.length > 0 && "border-primary bg-primary/5"
+                  )}
+                >
+                  <Home className="w-4 h-4" />
+                  <span>
+                    {filters.selectedProperties.length > 0
+                      ? `${filters.selectedProperties.length} Propert${filters.selectedProperties.length > 1 ? 'ies' : 'y'}`
+                      : 'Properties'
+                    }
                   </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearFilters}
-                className="text-sm text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-4 h-4" />
-                Clear Tags
-              </Button>
-            )}
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3">
+                {isPropertiesLoading ? (
+                  <div className="text-center py-4 text-muted-foreground">Loading properties...</div>
+                ) : availableProperties.length === 0 ? (
+                  <div className="text-center py-4 text-muted-foreground">No properties available</div>
+                ) : (
+                  <div className="space-y-1">
+                    {availableProperties.map((property: any) => (
+                      <PropertyButton
+                        key={property.id}
+                        property={property}
+                        isSelected={filters.selectedProperties.includes(property.id)}
+                        onToggle={toggleProperty}
+                      />
+                    ))}
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
+
+        {/* row 2: active filter pills */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {filters.selectedProperties.map((propertyId) => {
+              const property = availableProperties.find((p: any) => p.id === propertyId)
+              return (
+                <span
+                  key={propertyId}
+                  className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-medium rounded-md border border-primary/20 bg-primary/5 text-foreground"
+                >
+                  <Home className="w-3 h-3 flex-shrink-0 text-primary/60" />
+                  {property?.name || 'Unknown'}
+                  <button
+                    onClick={() => toggleProperty(propertyId)}
+                    className="ml-0.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )
+            })}
+            {filters.selectedTags.map((tag) => (
+              <span
+                key={tag.id}
+                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-medium rounded-md border border-primary/20 bg-primary/5 text-foreground"
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: getTagColor(tag) }}
+                />
+                {tag.name}
+                <button
+                  onClick={() => toggleTag(tag)}
+                  className="ml-0.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              onClick={clearFilters}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

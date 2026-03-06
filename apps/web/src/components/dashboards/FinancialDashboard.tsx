@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
-import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
+import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
@@ -19,14 +19,16 @@ export const FinancialDashboard = () => {
   const [activeTab, setActiveTab] = useState('pl')
   
   const tagIds = useTagIds()
-  
+  const propertyIds = usePropertyIds()
+
   const { data, error, isLoading } = useDashboardBatch(
     'financial',
     filters.dateRange.from,
     filters.dateRange.to,
     tagIds,
     comparisonRange?.from,
-    comparisonRange?.to
+    comparisonRange?.to,
+    propertyIds
   )
   
   const financialData = useMemo(() => data ? {

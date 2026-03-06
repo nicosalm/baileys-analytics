@@ -6,7 +6,8 @@ async function fetchBookings(
 	tenantId: string,
 	from: string,
 	to: string,
-	tagIds: string[] = []
+	tagIds: string[] = [],
+	filterPropertyIds: string[] = []
 ) {
 	let query = supabase
 		.from('bookings')
@@ -16,6 +17,10 @@ async function fetchBookings(
 		.gte('departure', from)
 		.neq('status', 'canceled')
 		.limit(SUPABASE_MAX_ROWS);
+
+	if (filterPropertyIds.length > 0) {
+		query = query.in('property_id', filterPropertyIds);
+	}
 
 	if (tagIds.length > 0) {
 		const { data: taggedBookings } = await supabase
@@ -41,19 +46,26 @@ export async function getOverviewData(
 	to: string,
 	tagIds: string[] = [],
 	comparisonFrom?: string,
-	comparisonTo?: string
+	comparisonTo?: string,
+	filterPropertyIds: string[] = []
 ) {
-	const { data: properties } = await supabase
+	let propertiesQuery = supabase
 		.from('properties')
 		.select('id, name')
 		.eq('tenant_id', tenantId)
 		.eq('active', true);
 
+	if (filterPropertyIds.length > 0) {
+		propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+	}
+
+	const { data: properties } = await propertiesQuery;
+
 	const sharedProperties = properties || [];
 
-	const currentBookings = await fetchBookings(supabase, tenantId, from, to, tagIds);
+	const currentBookings = await fetchBookings(supabase, tenantId, from, to, tagIds, filterPropertyIds);
 	const comparisonBookings = comparisonFrom && comparisonTo
-		? await fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds)
+		? await fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds, filterPropertyIds)
 		: null;
 
 	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([

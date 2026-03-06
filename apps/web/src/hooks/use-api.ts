@@ -11,16 +11,18 @@ export function useDashboardBatch(
   to?: string,
   tagIds?: string[],
   comparisonFrom?: string,
-  comparisonTo?: string
+  comparisonTo?: string,
+  propertyIds?: string[]
 ) {
   const validFrom = from && isValidDateString(from) ? from : undefined
   const validTo = to && isValidDateString(to) ? to : undefined
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  const validPropertyIds = propertyIds ? filterValidUUIDs(propertyIds) : undefined
   const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
 
   const key = (validFrom || validTo)
-    ? `dashboard-batch:${[view, validFrom, validTo, validTagIds?.join(','), validCompFrom, validCompTo].filter(Boolean).join('|')}`
+    ? `dashboard-batch:${[view, validFrom, validTo, validTagIds?.join(','), validPropertyIds?.join(','), validCompFrom, validCompTo].filter(Boolean).join('|')}`
     : null
 
   const result = useSWR<any>(key, async () => {
@@ -29,6 +31,7 @@ export function useDashboardBatch(
     if (validFrom) params.append('from', validFrom)
     if (validTo) params.append('to', validTo)
     if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+    if (validPropertyIds && validPropertyIds.length > 0) params.append('properties', validPropertyIds.join(','))
     if (validCompFrom) params.append('comparisonFrom', validCompFrom)
     if (validCompTo) params.append('comparisonTo', validCompTo)
 

@@ -88,10 +88,12 @@ export async function getGuestsData(
   tenantId: string,
   from?: string,
   to?: string,
-  tagIds?: string[]
+  tagIds?: string[],
+  filterPropertyIds?: string[]
 ): Promise<GuestData> {
   const hasDateFilter = from && to;
   const hasTagFilter = tagIds && tagIds.length > 0;
+  const hasPropertyFilter = filterPropertyIds && filterPropertyIds.length > 0;
 
   let bookingsQuery = supabase
     .from('bookings')
@@ -99,6 +101,10 @@ export async function getGuestsData(
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
+
+  if (hasPropertyFilter) {
+    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+  }
 
   if (hasDateFilter) {
     bookingsQuery = bookingsQuery

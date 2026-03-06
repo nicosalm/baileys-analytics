@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
-import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
+import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { WhatIfCalculator } from '@/components/WhatIfCalculator'
@@ -70,6 +70,7 @@ export const OccupancyDashboard = () => {
   const { openModal } = useModal()
   const { showTips } = useTips()
   const tagIds = useTagIds()
+  const propertyIds = usePropertyIds()
   const comparisonDateRange = useComparisonDateRange()
   const [calendarView, setCalendarView] = useState<'calendar' | 'list'>('list')
   const { data: goalProgressData } = useGoalProgress()
@@ -84,7 +85,8 @@ export const OccupancyDashboard = () => {
     filters.dateRange.to,
     tagIds,
     comparisonRange?.from,
-    comparisonRange?.to
+    comparisonRange?.to,
+    propertyIds
   )
 
   const currentData = data?.current || data

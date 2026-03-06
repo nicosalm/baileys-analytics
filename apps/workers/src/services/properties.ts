@@ -34,15 +34,22 @@ export async function getPropertyMetrics(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<PropertyMetrics[]> {
   const hasTagFilter = tagIds.length > 0;
 
-  const { data: properties } = await supabase
+  let propertiesQuery = supabase
     .from('properties')
     .select('id, name')
     .eq('tenant_id', tenantId)
     .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const { data: properties } = await propertiesQuery;
 
   if (!properties || properties.length === 0) {
     return [];
@@ -192,13 +199,20 @@ export async function getPropertyProfitability(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<PropertyProfitability[]> {
-  const { data: properties } = await supabase
+  let propertiesQuery = supabase
     .from('properties')
     .select('id, name')
     .eq('tenant_id', tenantId)
     .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const { data: properties } = await propertiesQuery;
 
   if (!properties || properties.length === 0) return [];
 
@@ -297,13 +311,20 @@ export async function getPropertyPlatformMix(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<PropertyPlatformMix[]> {
-  const { data: properties } = await supabase
+  let propertiesQuery = supabase
     .from('properties')
     .select('id, name')
     .eq('tenant_id', tenantId)
     .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const { data: properties } = await propertiesQuery;
 
   if (!properties || properties.length === 0) return [];
 
@@ -364,16 +385,17 @@ export async function getPropertiesData(
   to: string,
   tagIds: string[] = [],
   comparisonFrom?: string,
-  comparisonTo?: string
+  comparisonTo?: string,
+  filterPropertyIds: string[] = []
 ) {
   const [currentMetrics, profitability, platformMix] = await Promise.all([
-    getPropertyMetrics(supabase, tenantId, from, to, tagIds),
-    getPropertyProfitability(supabase, tenantId, from, to, tagIds),
-    getPropertyPlatformMix(supabase, tenantId, from, to, tagIds)
+    getPropertyMetrics(supabase, tenantId, from, to, tagIds, filterPropertyIds),
+    getPropertyProfitability(supabase, tenantId, from, to, tagIds, filterPropertyIds),
+    getPropertyPlatformMix(supabase, tenantId, from, to, tagIds, filterPropertyIds)
   ]);
 
   if (comparisonFrom && comparisonTo) {
-    const previousMetrics = await getPropertyMetrics(supabase, tenantId, comparisonFrom, comparisonTo, tagIds);
+    const previousMetrics = await getPropertyMetrics(supabase, tenantId, comparisonFrom, comparisonTo, tagIds, filterPropertyIds);
 
     return {
       properties: currentMetrics,

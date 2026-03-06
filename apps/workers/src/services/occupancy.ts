@@ -52,15 +52,22 @@ async function fetchOverallOccupancy(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<{ bookedNights: number; availableNights: number }> {
   const hasTagFilter = tagIds.length > 0;
-  
-  const { data: properties } = await supabase
+
+  let propertiesQuery = supabase
     .from('properties')
     .select('id')
     .eq('tenant_id', tenantId)
     .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const { data: properties } = await propertiesQuery;
 
   if (!properties || properties.length === 0) {
     return { bookedNights: 0, availableNights: 0 };
@@ -136,15 +143,22 @@ async function fetchPropertyOccupancy(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<PropertyOccupancy[]> {
   const hasTagFilter = tagIds.length > 0;
-  
-  const { data: properties } = await supabase
+
+  let propertiesQuery = supabase
     .from('properties')
     .select('id, name')
     .eq('tenant_id', tenantId)
     .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const { data: properties } = await propertiesQuery;
 
   if (!properties || properties.length === 0) {
     return [];
@@ -238,15 +252,22 @@ async function fetchMonthlyOccupancy(
   from: string,
   to: string,
   tagIds: string[] = [],
-  granularity: 'daily' | 'weekly' | 'monthly'
+  granularity: 'daily' | 'weekly' | 'monthly',
+  filterPropertyIds: string[] = []
 ): Promise<MonthlyOccupancy[]> {
   const hasTagFilter = tagIds.length > 0;
-  
-  const { data: properties } = await supabase
+
+  let propertiesQuery = supabase
     .from('properties')
     .select('id')
     .eq('tenant_id', tenantId)
     .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const { data: properties } = await propertiesQuery;
 
   if (!properties || properties.length === 0) {
     return [];
@@ -475,14 +496,15 @@ export async function getOccupancyData(
   tenantId: string,
   from: string,
   to: string,
-  tagIds: string[] = []
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
 ): Promise<OccupancyData> {
   const granularity = determineGranularity(from, to);
-  
+
   const [overall, byProperty, byMonth] = await Promise.all([
-    fetchOverallOccupancy(supabase, tenantId, from, to, tagIds),
-    fetchPropertyOccupancy(supabase, tenantId, from, to, tagIds),
-    fetchMonthlyOccupancy(supabase, tenantId, from, to, tagIds, granularity)
+    fetchOverallOccupancy(supabase, tenantId, from, to, tagIds, filterPropertyIds),
+    fetchPropertyOccupancy(supabase, tenantId, from, to, tagIds, filterPropertyIds),
+    fetchMonthlyOccupancy(supabase, tenantId, from, to, tagIds, granularity, filterPropertyIds)
   ]);
   
   return {

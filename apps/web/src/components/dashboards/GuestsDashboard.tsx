@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
-import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
+import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage, parseISO } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
 import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X, Sparkles } from 'lucide-react'
@@ -60,6 +60,7 @@ export const GuestsDashboard = () => {
     const comparisonDateRange = useComparisonDateRange()
 
     const tagIds = useTagIds()
+    const propertyIds = usePropertyIds()
 
     const { data: rawData, error, isLoading } = useDashboardBatch(
         'guests',
@@ -67,7 +68,8 @@ export const GuestsDashboard = () => {
         filters.dateRange.to,
         tagIds,
         comparisonRange?.from,
-        comparisonRange?.to
+        comparisonRange?.to,
+        propertyIds
     )
 
     const data = rawData?.current || rawData
