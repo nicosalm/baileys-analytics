@@ -28,7 +28,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
     <div className="min-h-screen flex flex-col bg-background">
       {/* header */}
       <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             {/* logo */}
             <Link to="/" className="flex items-center">
@@ -51,7 +51,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
         </div>
       </header>
 
-      <div className="flex-1 max-w-7xl mx-auto px-4 py-4 md:px-6 md:py-6 w-full">
+      <div className="flex-1 max-w-6xl mx-auto px-4 py-4 md:px-6 md:py-6 w-full">
         <div className="grid md:grid-cols-4 gap-4 md:gap-8">
           {/* sidebar navigation */}
           <aside className="md:col-span-1">

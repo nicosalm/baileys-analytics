@@ -12,8 +12,8 @@ export const NotFound = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="bg-background/80 backdrop-blur-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4">
+      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex justify-between items-center">
             <Link to="/" className="flex items-center">
               <LogoCube />
@@ -39,7 +39,7 @@ export const NotFound = () => {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full flex items-center justify-center">
+      <main className="flex-1 max-w-6xl mx-auto px-4 md:px-6 py-12 w-full flex items-center justify-center">
         <div className="text-center max-w-lg">
           {/* Error Message */}
           <h2 className="text-6xl font-light text-muted-foreground/40 mb-4">404</h2>
@@ -52,10 +52,10 @@ export const NotFound = () => {
           <div className="flex items-center justify-center gap-3">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 px-4 py-2 text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to Home
+              Back to home
             </Link>
             {isAuthenticated ? (
               <Link

@@ -71,6 +71,7 @@ export const Landing = () => {
               <div className="hidden md:flex items-center gap-5">
                 <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Features</a>
                 <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Pricing</a>
+                <Link to="/updates" className="text-sm text-white/70 hover:text-white transition-colors">Updates</Link>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -296,7 +297,7 @@ export const Landing = () => {
             }`} style={{ transitionDelay: howItWorks.isInView ? '200ms' : '0ms' }}>
               <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">3</div>
               <h3 className="font-semibold text-white mb-1">Start exploring</h3>
-              <p className="text-sm text-white/50">Your dashboards are ready. Filter by date, property, or tag. Export reports anytime.</p>
+              <p className="text-sm text-white/50">Your dashboards are ready. Filter by date, property, or tag.</p>
             </div>
           </div>
         </div>
@@ -382,7 +383,6 @@ export const Landing = () => {
                     'Full OwnerRez sync (4 years of data)',
                     '6 dashboards with filtering',
                     'Comparison mode & seasonal filters',
-                    'Exportable PDF reports',
                     'Real-time webhook updates',
                     'Cancel anytime',
                   ].map(item => (

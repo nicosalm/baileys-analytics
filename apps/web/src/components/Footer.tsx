@@ -82,6 +82,7 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li><a href="/#features" onClick={(e) => handleAnchorClick(e, '#features')} className={linkClass}>Features</a></li>
               <li><a href="/#pricing" onClick={(e) => handleAnchorClick(e, '#pricing')} className={linkClass}>Pricing</a></li>
+              <li><Link to="/updates" onClick={() => handleSamePageClick('/updates')} className={linkClass}>Updates</Link></li>
               <li><Link to="/dashboard/overview" className={linkClass}>Dashboard</Link></li>
             </ul>
           </div>

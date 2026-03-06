@@ -97,7 +97,7 @@ export const Privacy = () => {
 
             <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">Access and Export</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              You can access and export your data at any time. The Service supports JSON and PDF exports, as well as programmatic access through the Data API.
+              You can access and export your data at any time. The Service supports JSON exports, as well as programmatic access through the Data API.
             </p>
 
             <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">Correction</h3>

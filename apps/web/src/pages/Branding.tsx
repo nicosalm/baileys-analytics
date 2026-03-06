@@ -4,7 +4,7 @@ import { LogoCube } from '@/components/LogoCube'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { MetricCard } from '@/components/MetricCard'
 import { Footer } from '@/components/Footer'
-import { DollarSign, TrendingUp, Users, Calendar } from 'lucide-react'
+import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft } from 'lucide-react'
 import { useState } from 'react'
 
 const LOGO_FILLS = [
@@ -35,7 +35,7 @@ export const Branding = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-3 md:py-4">
+        <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center">
               <LogoCube />
@@ -44,14 +44,18 @@ export const Branding = () => {
                 <p className="text-xs text-muted-foreground -mt-0.5">Brand Guide</p>
               </div>
             </Link>
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              to="/"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-1 px-3 py-1.5 hover:bg-muted rounded-lg"
+            >
+              <ArrowLeft className="w-4 h-4" />
               Back to home
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 md:px-6 py-12 w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-4 md:px-6 py-12 w-full">
 
         {/* Logo */}
         <Section title="Logo">

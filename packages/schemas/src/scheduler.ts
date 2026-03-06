@@ -16,7 +16,6 @@ export const scheduledJobSchema = z.object({
     'sync_properties',
     'sync_bookings',
     'sync_guest_details',
-    'generate_report',
     'calculate_taxes',
     'update_platform_fees'
   ]),

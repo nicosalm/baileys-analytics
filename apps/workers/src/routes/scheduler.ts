@@ -11,7 +11,7 @@ scheduler.use('*', authMiddleware);
 interface ScheduledTask {
   id: string;
   tenantId: string;
-  taskType: 'sync_properties' | 'sync_bookings' | 'sync_guests' | 'generate_report';
+  taskType: 'sync_properties' | 'sync_bookings' | 'sync_guests';
   schedule: string;
   enabled: boolean;
   lastRun?: string;
@@ -71,7 +71,6 @@ scheduler.post('/', async (c) => {
       'sync_properties',
       'sync_bookings',
       'sync_guests',
-      'generate_report'
     ]),
     schedule: z.string(),
     enabled: z.boolean().default(true),
@@ -249,14 +248,6 @@ scheduler.post('/:id/run', async (c) => {
         } else {
           result = { success: true, data: guestSync };
         }
-        break;
-        
-      case 'generate_report':
-        const reportType = task.metadata?.reportType || 'monthly';
-        result = { 
-          success: true, 
-          message: `Report generation triggered for type: ${reportType}` 
-        };
         break;
         
       default:

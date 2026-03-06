@@ -134,7 +134,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How much does Baileys Analytics cost?</h3>
               <p className="text-muted-foreground text-sm">
-                The first 30 days are $1. After that, pricing is $20/month or $192/year (20% discount). All plans include unlimited properties, reports, and data exports.
+                The first 30 days are $1. After that, pricing is $20/month or $192/year (20% discount). All plans include unlimited properties and data exports.
               </p>
             </div>
 
@@ -193,7 +193,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Can I export my data?</h3>
               <p className="text-muted-foreground text-sm">
-                Yes. Use Reports to generate PDF exports, or export all data as JSON from <SLink tab="account">Settings → Account</SLink>. You can also query data programmatically through the <Link to="/docs/api" className="text-primary hover:text-primary/80">Data API</Link>.
+                Yes. Export all data as JSON from <SLink tab="account">Settings → Account</SLink>. You can also query data programmatically through the <Link to="/docs/api" className="text-primary hover:text-primary/80">Data API</Link>.
               </p>
             </div>
 

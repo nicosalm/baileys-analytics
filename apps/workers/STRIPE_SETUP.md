@@ -54,7 +54,6 @@ create single product:
   - financial & occupancy insights
   - guest history & analytics
   - advanced tax tracking
-  - custom reports & exports
   - season analysis
   - email support
   - unlimited properties

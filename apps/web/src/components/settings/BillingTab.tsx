@@ -84,10 +84,6 @@ export const BillingTab = () => {
             </li>
             <li className="flex items-start gap-2">
               <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
-              <span className="text-sm text-foreground">Custom reports and exports</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
               <span className="text-sm text-foreground">Priority support</span>
             </li>
           </ul>

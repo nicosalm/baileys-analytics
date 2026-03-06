@@ -23,7 +23,6 @@ const PLANS = [
       'Full OwnerRez sync (4 years of data)',
       '6 dashboards with filtering',
       'Comparison mode & seasonal filters',
-      'Exportable PDF reports',
       'Real-time webhook updates',
       'Cancel anytime',
     ],

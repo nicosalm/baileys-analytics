@@ -188,57 +188,6 @@ export const taxCalculationRequestSchema = z.object({
   channel: z.string().optional(),
 })
 
-// ============= Report Schemas =============
-export const reportTypeSchema = z.enum(['financial', 'tax', 'occupancy', 'guest'])
-export const reportFormatSchema = z.enum(['pdf', 'csv', 'xlsx'])
-export const reportFrequencySchema = z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'yearly'])
-
-export const reportConfigSchema = z.object({
-  type: reportTypeSchema,
-  format: reportFormatSchema,
-  frequency: reportFrequencySchema.optional(),
-  filters: z.object({
-    propertyIds: z.array(z.string()).optional(),
-    tags: z.array(z.string()).optional(),
-    dateRange: dateRangeSchema.optional(),
-  }).optional(),
-  delivery: z.object({
-    email: z.string().email().optional(),
-    webhook: z.string().url().optional(),
-  }).optional(),
-})
-
-export const reportScheduleSchema = z.object({
-  enabled: z.boolean(),
-  frequency: reportFrequencySchema,
-  dayOfWeek: z.number().min(0).max(6).optional(), // 0 = Sunday
-  dayOfMonth: z.number().min(1).max(31).optional(),
-  hour: z.number().min(0).max(23),
-  minute: z.number().min(0).max(59).default(0),
-  timezone: z.string().default('America/Chicago'),
-})
-
-export const reportRequestSchema = z.object({
-  type: reportTypeSchema,
-  from: dateStringSchema,
-  to: dateStringSchema,
-  propertyIds: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
-  format: reportFormatSchema.optional(),
-})
-
-export const scheduledReportSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  config: reportConfigSchema,
-  schedule: reportScheduleSchema,
-  lastRun: z.string().datetime().optional(),
-  nextRun: z.string().datetime().optional(),
-  status: z.enum(['active', 'paused', 'error']),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-})
-
 // ============= Database Result Schemas =============
 // Schema for parsing numeric strings from database
 export const numericStringSchema = z.string().transform(val => parseFloat(val))
@@ -290,5 +239,4 @@ export type SyncRequest = z.infer<typeof syncRequestSchema>
 export type SyncStatus = z.infer<typeof syncStatusSchema>
 export type TaxRule = z.infer<typeof taxRuleSchema>
 export type TaxCalculationRequest = z.infer<typeof taxCalculationRequestSchema>
-export type ReportRequest = z.infer<typeof reportRequestSchema>
 export type ErrorResponse = z.infer<typeof errorResponseSchema>
