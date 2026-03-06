@@ -777,7 +777,9 @@ app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 6
 // rate limit expensive sync operations
 app.use('/api/manual-sync', rateLimit({ max: 5, windowMs: 300000 }));
 app.use('/api/sync-guest-details', rateLimit({ max: 5, windowMs: 300000 }));
-app.use('/api/initial-sync-chunked/*', rateLimit({ max: 5, windowMs: 300000 }));
+// initial sync is a multi-step flow (reset + status + properties + N bookings + guests + contacts + complete)
+// limit must accommodate the full sequence
+app.use('/api/initial-sync-chunked/*', rateLimit({ max: 50, windowMs: 300000 }));
 
 // rate limit destructive account operations
 app.use('/api/account/delete', rateLimit({ max: 3, windowMs: 300000 }));
