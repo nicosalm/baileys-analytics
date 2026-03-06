@@ -2,7 +2,7 @@ import { Context, Next } from 'hono';
 import { createSupabaseClient } from '../services/supabase';
 
 // subscription statuses that allow access
-const ACTIVE_STATUSES = ['active', 'trialing'];
+const ACTIVE_STATUSES = ['active'];
 
 // public routes that don't require subscription
 const PUBLIC_ROUTES = [

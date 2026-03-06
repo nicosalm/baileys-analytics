@@ -47,7 +47,7 @@ admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
       supabase
         .from('subscriptions')
         .select('billing_cycle, status')
-        .in('status', ['active', 'trialing'])
+        .eq('status', 'active')
     ]);
 
     // calculate MRR
@@ -126,7 +126,7 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
       (users || []).map(async (user) => {
         const { data: subscription } = await supabase
           .from('subscriptions')
-          .select('billing_cycle, status, trial_end, current_period_end')
+          .select('billing_cycle, status, current_period_end')
           .eq('tenant_id', user.id)
           .single();
 
@@ -246,10 +246,14 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
 
           const subscriptions = await stripe.subscriptions.list({
             customer: customer.stripe_customer_id,
-            status: 'active'
           });
 
-          for (const sub of subscriptions.data) {
+          // cancel all non-terminal subscriptions
+          const cancelable = subscriptions.data.filter(s =>
+            ['active', 'trialing', 'past_due'].includes(s.status)
+          );
+
+          for (const sub of cancelable) {
             await stripe.subscriptions.cancel(sub.id);
           }
         }

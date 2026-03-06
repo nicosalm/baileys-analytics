@@ -95,7 +95,7 @@ export const Landing = () => {
                     Log in
                   </Link>
                   <Link to="/signup" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
-                    Start Trial
+                    Get Started
                   </Link>
                 </>
               )}
@@ -126,7 +126,7 @@ export const Landing = () => {
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6 hero-stagger" style={{ '--hero-index': 4 } as React.CSSProperties}>
               <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center">
-                Start Your $1 Trial
+                Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
               <button
@@ -140,7 +140,7 @@ export const Landing = () => {
           )}
 
           <p className="text-sm text-white/40 hero-stagger" style={{ '--hero-index': 5 } as React.CSSProperties}>
-            30 days for $1, then $20/month. Cancel anytime.
+            $20/month or $192/year. Cancel anytime.
           </p>
 
           {/* hero image */}
@@ -400,11 +400,11 @@ export const Landing = () => {
                 {/* cta */}
                 <div className="mt-10">
                   <Link to="/signup" className="block w-full h-11 leading-[2.75rem] text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold">
-                    Start $1 Trial
+                    Subscribe
                   </Link>
 
                   <p className="text-center text-xs text-white/30 mt-3">
-                    $1 for 30 days, then {yearlyBilling ? '$192/year' : '$20/month'}. Cancel anytime.
+                    {yearlyBilling ? '$192/year' : '$20/month'}. Cancel anytime.
                   </p>
                 </div>
               </div>
@@ -428,7 +428,7 @@ export const Landing = () => {
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
-              <p className="text-sm text-white/30">$1 for 30 days. No risk.</p>
+              <p className="text-sm text-white/30">Try the demo first. Subscribe when you're ready.</p>
             </div>
           )}
         </div>

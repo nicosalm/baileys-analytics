@@ -65,8 +65,7 @@ export const Terms = () => {
               The Service is offered on a subscription basis:
             </p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm mb-3">
-              <li>First 30 days for $1</li>
-              <li>$20/month or $192/year (20% discount) after trial</li>
+              <li>$20/month or $192/year (20% discount)</li>
               <li>Subscriptions renew automatically unless canceled before the renewal date</li>
               <li>All payments are non-refundable</li>
             </ul>
@@ -90,7 +89,7 @@ export const Terms = () => {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">8. No Refunds</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-              All payments are final and non-refundable, including the $1 trial.
+              All payments are final and non-refundable.
             </p>
             <p className="text-muted-foreground text-sm leading-relaxed">
               For billing errors or unauthorized charges, contact us within 60 days. We will investigate and respond

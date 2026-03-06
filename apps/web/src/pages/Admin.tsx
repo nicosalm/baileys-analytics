@@ -85,9 +85,6 @@ const StatusBadge = ({ status, exempt }: { status?: string; exempt: boolean }) =
   if (status === 'active') return (
     <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-success-subtle text-success-fg">Active</span>
   )
-  if (status === 'trialing') return (
-    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-info-subtle text-info-fg">Trial</span>
-  )
   return (
     <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">Inactive</span>
   )
@@ -140,14 +137,6 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
           <p className="font-medium text-foreground">
             {detail.subscription?.current_period_end
               ? new Date(detail.subscription.current_period_end).toLocaleDateString()
-              : '-'}
-          </p>
-        </div>
-        <div>
-          <p className="text-muted-foreground text-xs mb-1">Trial ends</p>
-          <p className="font-medium text-foreground">
-            {detail.subscription?.trial_end
-              ? new Date(detail.subscription.trial_end).toLocaleDateString()
               : '-'}
           </p>
         </div>

@@ -152,8 +152,8 @@ export const Signup = () => {
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-foreground mb-2">Start your $1 trial</h2>
-            <p className="text-muted-foreground">30 days full access for just $1. Then $20/month.</p>
+            <h2 className="text-3xl font-bold text-foreground mb-2">Create your account</h2>
+            <p className="text-muted-foreground">Get started with Baileys Analytics.</p>
           </div>
 
           {/* Signup form */}
@@ -245,7 +245,7 @@ export const Signup = () => {
               loadingText="Creating account..."
               className="w-full py-3 bg-primary text-primary-foreground rounded-lg font-medium cursor-pointer hover:opacity-90 transition-opacity"
             >
-              Start $1 Trial
+              Create Account
             </Button>
 
             {/* Divider */}

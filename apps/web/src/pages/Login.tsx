@@ -253,7 +253,7 @@ export const Login = () => {
           <p className="mt-4 text-center text-muted-foreground">
             Don't have an account?{' '}
             <Link to="/signup" className="font-medium text-primary hover:text-primary/90">
-              Start your $1 trial
+              Sign up
             </Link>
           </p>
         </div>

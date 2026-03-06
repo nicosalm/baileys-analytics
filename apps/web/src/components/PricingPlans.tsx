@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { billingClient } from '@/lib/stripe';
 import { useToast } from '@/contexts/toast';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { LoadingState } from './LoadingState';
 
 
 interface PricingPlansProps {
@@ -35,33 +34,12 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
 }) => {
   const [yearlyBilling, setYearlyBilling] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [isTrialEligible, setIsTrialEligible] = useState(false);
-  const [checkingEligibility, setCheckingEligibility] = useState(true);
   const { addToast } = useToast();
-
-  useEffect(() => {
-    const checkEligibility = async () => {
-      try {
-        const eligible = await billingClient.isTrialEligible();
-        setIsTrialEligible(eligible);
-      } catch (error) {
-        console.error('Failed to check trial eligibility:', error);
-        setIsTrialEligible(false);
-      } finally {
-        setCheckingEligibility(false);
-      }
-    };
-    checkEligibility();
-  }, []);
 
   const handleSelectPlan = async (planId: string) => {
     try {
       setLoading(true);
-      await billingClient.createCheckoutSession(
-        planId,
-        yearlyBilling,
-        isTrialEligible
-      );
+      await billingClient.createCheckoutSession(planId, yearlyBilling);
       if (onPlanSelect) {
         onPlanSelect();
       }
@@ -71,14 +49,6 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
       setLoading(false);
     }
   };
-
-  if (checkingEligibility) {
-    return (
-      <div className="flex justify-center py-12">
-        <LoadingState message="Loading..." size="md" />
-      </div>
-    );
-  }
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -153,14 +123,8 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
                     loadingText="Processing..."
                     className="w-full h-11 rounded-full text-sm font-semibold"
                   >
-                    {currentPlan ? 'Current Plan' : isTrialEligible ? 'Start $1 Trial' : 'Subscribe'}
+                    {currentPlan ? 'Current Plan' : 'Subscribe'}
                   </Button>
-
-                  {isTrialEligible && (
-                    <p className="text-center text-xs text-muted-foreground mt-3">
-                      $1 for 30 days, then {yearlyBilling ? `$${plan.yearlyPrice}/year` : `$${plan.monthlyPrice}/month`}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>

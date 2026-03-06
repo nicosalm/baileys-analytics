@@ -55,25 +55,8 @@ export class StripeService {
     priceId: string,
     successUrl: string,
     cancelUrl: string,
-    isFirstMonth: boolean = false
   ): Promise<{ sessionId: string; url: string }> {
     const customerId = await this.createOrRetrieveCustomer(tenantId, email);
-
-    // check if tenant has ever subscribed before
-    const { data: tenant, error: tenantError } = await this.supabase
-      .from('tenants')
-      .select('first_subscription_at')
-      .eq('id', tenantId)
-      .single();
-
-    if (tenantError) {
-      console.error('Failed to check trial eligibility for tenant:', tenantId, tenantError);
-      // fail-closed: if we can't verify eligibility, don't allow trial
-      throw new Error('Unable to verify trial eligibility');
-    }
-
-    // only allow trial if tenant has never subscribed before
-    const allowTrial = isFirstMonth && !tenant?.first_subscription_at;
 
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
@@ -83,60 +66,17 @@ export class StripeService {
       cancel_url: cancelUrl,
       metadata: {
         tenant_id: tenantId
-      }
-    };
-
-    if (allowTrial) {
-      // first month: $1 total using trial + invoice item
-      // Add subscription line item and $1 setup fee separately
-      sessionConfig.line_items = [
-        {
-          price: priceId,
-          quantity: 1
-        },
-        // Add $1 setup fee as a one-time charge
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: 'First Month Access Fee'
-            },
-            unit_amount: 100 // $1 in cents
-          },
-          quantity: 1
-        }
-      ];
-
-      // add subscription with 30-day trial
-      sessionConfig.subscription_data = {
-        metadata: {
-          tenant_id: tenantId,
-          first_month_promo: 'true'
-        },
-        // 30-day trial period
-        trial_period_days: 30,
-        trial_settings: {
-          end_behavior: {
-            missing_payment_method: 'cancel'
-          }
-        }
-      };
-
-      // ensure payment method is collected
-      sessionConfig.payment_method_collection = 'always';
-    } else {
-      // regular subscription without trial
-      sessionConfig.line_items = [{
+      },
+      line_items: [{
         price: priceId,
         quantity: 1
-      }];
-
-      sessionConfig.subscription_data = {
+      }],
+      subscription_data: {
         metadata: {
           tenant_id: tenantId
         }
-      };
-    }
+      }
+    };
 
     const session = await this.stripe.checkout.sessions.create(sessionConfig);
 

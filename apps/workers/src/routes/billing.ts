@@ -64,40 +64,7 @@ billing.get('/subscription', async (c) => {
   }
 });
 
-// check if tenant is eligible for $1 trial
-billing.get('/trial-eligible', async (c) => {
-  try {
-    const supabase = createSupabaseClient(c.env);
-    const tenantId = c.get('tenantId');
-
-    const { data: tenant, error } = await supabase
-      .from('tenants')
-      .select('first_subscription_at, subscription_exempt')
-      .eq('id', tenantId)
-      .single();
-
-    // fail-closed: if query fails or tenant not found, not eligible
-    if (error || !tenant) {
-      console.error('Error checking trial eligibility for tenant:', tenantId, error);
-      return c.json({ isEligible: false });
-    }
-
-    // exempt accounts don't need trials
-    if (tenant.subscription_exempt === true) {
-      return c.json({ isEligible: false, isExempt: true });
-    }
-
-    // eligible if they've never subscribed before
-    const isEligible = !tenant.first_subscription_at;
-
-    return c.json({ isEligible });
-  } catch (error) {
-    console.error('Error checking trial eligibility:', error);
-    return c.json({ error: 'Failed to check trial eligibility' }, 500);
-  }
-});
-
-// create checkout session for new subscription or upgrade
+// create checkout session for new subscription
 billing.post('/create-checkout-session', async (c) => {
   try {
     const supabase = createSupabaseClient(c.env);
@@ -105,7 +72,7 @@ billing.post('/create-checkout-session', async (c) => {
     const tenantId = c.get('tenantId');
     const user = c.get('user');
 
-    const { priceId, isYearly, isFirstMonth } = await c.req.json();
+    const { priceId, isYearly } = await c.req.json();
 
     // single tier pricing - map to yearly or monthly
     const stripePriceId = isYearly ? c.env.STRIPE_PRICE_YEARLY : c.env.STRIPE_PRICE_MONTHLY;
@@ -119,7 +86,6 @@ billing.post('/create-checkout-session', async (c) => {
       stripePriceId,
       successUrl,
       cancelUrl,
-      isFirstMonth
     );
 
     return c.json(session);

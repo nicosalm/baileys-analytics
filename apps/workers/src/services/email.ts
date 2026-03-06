@@ -60,12 +60,12 @@ export class EmailService {
                 Thanks for signing up! You now have access to powerful analytics for your vacation rental properties.
               </p>
 
-              <div style="background-color: #eff6ff; border-left: 4px solid: #3b82f6; padding: 16px; margin: 24px 0; border-radius: 4px;">
+              <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 24px 0; border-radius: 4px;">
                 <p style="margin: 0; font-size: 14px; font-weight: 600; color: #1e40af; margin-bottom: 8px;">
-                  ✨ Your $1 Trial is Active
+                  ✨ Your Subscription is Active
                 </p>
                 <p style="margin: 0; font-size: 14px; line-height: 20px; color: #1e3a8a;">
-                  Get 30 days of full access for just $1. After that, it's $20/month or $192/year (save 20%).
+                  You have full access to all dashboards and analytics. Manage your subscription anytime in Settings.
                 </p>
               </div>
 

@@ -117,8 +117,6 @@ export const BillingTab = () => {
     switch (status) {
       case 'active':
         return 'bg-success-subtle text-success-fg';
-      case 'trialing':
-        return 'bg-info-subtle text-info-fg';
       case 'past_due':
         return 'bg-danger-subtle text-danger-fg';
       case 'canceled':
@@ -170,19 +168,9 @@ export const BillingTab = () => {
               </p>
             </div>
           )}
-          {subscription.trial_end && subscription.status === 'trialing' && (
-            <div>
-              <span className="text-muted-foreground">Trial Ends</span>
-              <p className="font-medium text-foreground">
-                {formatDateDisplay(subscription.trial_end)}
-              </p>
-            </div>
-          )}
           <div>
             <span className="text-muted-foreground">Payment</span>
-            <p className="font-medium text-foreground">
-              {subscription.status === 'trialing' ? 'Required after trial' : 'Via Stripe'}
-            </p>
+            <p className="font-medium text-foreground">Via Stripe</p>
           </div>
           <div>
             <span className="text-muted-foreground">Properties</span>

@@ -139,7 +139,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How much does Baileys Analytics cost?</h3>
               <p className="text-muted-foreground text-sm">
-                The first 30 days are $1. After that, pricing is $20/month or $192/year (20% discount). All plans include unlimited properties and data exports.
+                Pricing is $20/month or $192/year (20% discount). All plans include unlimited properties and data exports.
               </p>
             </div>
 
@@ -163,7 +163,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Do you offer refunds?</h3>
               <p className="text-muted-foreground text-sm">
-                Payments are non-refundable. The $1 trial provides 30 days of full access before committing to a subscription.
+                Payments are non-refundable. You can cancel anytime and access continues until the end of your billing period.
               </p>
             </div>
 

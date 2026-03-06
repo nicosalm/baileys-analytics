@@ -30,7 +30,7 @@ export const NotFound = () => {
                     Login
                   </Link>
                   <Link to="/signup" className={`px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium`}>
-                    Start Free Trial
+                    Get Started
                   </Link>
                 </>
               )}

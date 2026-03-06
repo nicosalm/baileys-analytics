@@ -65,7 +65,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
   const isExempt = subscriptionData?.isExempt === true;
   const subscription = subscriptionData?.subscription;
   const hasActiveSubscription = subscription &&
-    ['active', 'trialing'].includes(subscription.status);
+    subscription.status === 'active';
 
   // allow access if exempt or has active subscription
   if (!isExempt && !hasActiveSubscription) {
