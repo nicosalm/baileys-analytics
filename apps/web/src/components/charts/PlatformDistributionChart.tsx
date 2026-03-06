@@ -1,8 +1,8 @@
-import React from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import React, { useState, useCallback } from 'react'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { getPlatformColor, resolveToken } from '@/lib/theme'
-import { formatCurrency } from '@baileys/utils'
+import { formatCurrency, formatCompactCurrency } from '@baileys/utils'
 
 interface PlatformDistributionChartProps {
   data: Array<{
@@ -41,6 +41,8 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
   title = 'Revenue by Platform',
   height = 320
 }) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+
   if (!data || data.length === 0) {
     return (
       <ChartWrapper title={title} height={height} noData noDataMessage="No platform data available">
@@ -49,39 +51,76 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
     )
   }
 
-  const chartData = data.map(item => ({
-    ...item,
-    value: item.revenue
-  }))
+  const chartData = data
+    .map(item => ({ ...item, value: item.revenue }))
+    .sort((a, b) => b.value - a.value)
+
+  const total = chartData.reduce((sum, item) => sum + item.value, 0)
+
+  const handleMouseEnter = useCallback((_: any, index: number) => {
+    setActiveIndex(index)
+  }, [])
+
+  const handleMouseLeave = useCallback(() => {
+    setActiveIndex(null)
+  }, [])
 
   return (
-    <ChartWrapper title={title} height={height}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            labelLine={false}
-            label={(entry: any) => {
-              const percent = ((entry.percent || 0) * 100).toFixed(0)
-              const name = entry.name.length > 18 ? entry.name.substring(0, 18) + '...' : entry.name
-              return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
-            }}
-            outerRadius="70%"
-            dataKey="value"
-            stroke={resolveToken('--card')}
-          >
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={getPlatformColor(entry.name, index)}
+    <ChartWrapper title={title} height={height} responsive={false}>
+      <div style={{ height: height - 40 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              innerRadius="55%"
+              outerRadius="80%"
+              dataKey="value"
+              stroke={resolveToken('--card')}
+              strokeWidth={2}
+              animationBegin={0}
+              animationDuration={500}
+              animationEasing="ease-out"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              {chartData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={getPlatformColor(entry.name, index)}
+                  opacity={activeIndex === null || activeIndex === index ? 1 : 0.3}
+                  style={{ transition: 'opacity 0.2s ease' }}
+                />
+              ))}
+              <Label
+                content={({ viewBox }) => {
+                  const { cx, cy } = viewBox as any
+                  return (
+                    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                      <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
+                        {formatCompactCurrency(total)}
+                      </tspan>
+                      <tspan x={cx} y={cy + 12} className="fill-muted-foreground text-xs">
+                        Revenue
+                      </tspan>
+                    </text>
+                  )
+                }}
               />
-            ))}
-          </Pie>
-          <Tooltip content={<PlatformDistTooltip />} />
-        </PieChart>
-      </ResponsiveContainer>
+            </Pie>
+            <Tooltip content={<PlatformDistTooltip />} isAnimationActive={false} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
+        {chartData.map((entry, index) => (
+          <div key={entry.name} className="flex items-center gap-1.5">
+            <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: getPlatformColor(entry.name, index) }} />
+            <span className="text-muted-foreground">{entry.name}</span>
+          </div>
+        ))}
+      </div>
     </ChartWrapper>
   )
 }

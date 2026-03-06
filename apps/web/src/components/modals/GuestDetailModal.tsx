@@ -1,7 +1,7 @@
 import { useMemo, useState, Fragment } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
 import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronDown, Sparkles } from 'lucide-react'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -9,7 +9,7 @@ import { Modal } from '@/components/Modal'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useTips } from '@/hooks/use-tips'
-import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 
 const GuestSpendingTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null
@@ -228,6 +228,20 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
   )
 }
 
+const FeeTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null
+  const data = payload[0]
+  return (
+    <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
+      <p className="font-semibold text-sm mb-1">{data.name}</p>
+      <p className="text-xs">
+        <span className="text-muted-foreground">Amount: </span>
+        <span className="font-medium">{formatCurrency(data.value)}</span>
+      </p>
+    </div>
+  )
+}
+
 const FEE_PIE_COLORS = {
   rent: '#6366f1',
   surcharges: '#8b5cf6',
@@ -239,6 +253,7 @@ const FEE_PIE_COLORS = {
 const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: any, guestName: string }) => {
   const { rent, surcharges, taxes, ccFees, otaFees, directSavings } = feeAnalysis
   const total = rent + surcharges + taxes + ccFees + otaFees
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   const pieData = [
     { name: 'Rent', value: rent, color: FEE_PIE_COLORS.rent },
@@ -271,14 +286,40 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: any, guestNam
                   cy="50%"
                   innerRadius={55}
                   outerRadius={88}
-                  paddingAngle={2}
                   dataKey="value"
+                  stroke={resolveToken('--card')}
+                  strokeWidth={2}
+                  animationBegin={0}
+                  animationDuration={500}
+                  animationEasing="ease-out"
+                  onMouseEnter={(_: any, index: number) => setActiveIndex(index)}
+                  onMouseLeave={() => setActiveIndex(null)}
                 >
                   {pieData.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
+                    <Cell
+                      key={i}
+                      fill={entry.color}
+                      opacity={activeIndex === null || activeIndex === i ? 1 : 0.3}
+                      style={{ transition: 'opacity 0.2s ease' }}
+                    />
                   ))}
+                  <Label
+                    content={({ viewBox }) => {
+                      const { cx, cy } = viewBox as any
+                      return (
+                        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                          <tspan x={cx} y={cy - 7} className="fill-foreground text-base font-bold">
+                            {formatCurrency(total)}
+                          </tspan>
+                          <tspan x={cx} y={cy + 11} className="fill-muted-foreground text-[10px]">
+                            Spent
+                          </tspan>
+                        </text>
+                      )
+                    }}
+                  />
                 </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                <Tooltip content={<FeeTooltip />} isAnimationActive={false} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -286,7 +327,7 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: any, guestNam
             {pieData.map((item, i) => (
               <div key={i} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  <div className="w-3 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
                   <span className="text-muted-foreground">{item.name}</span>
                 </div>
                 <div className="text-right">

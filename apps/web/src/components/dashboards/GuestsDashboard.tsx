@@ -18,7 +18,7 @@ import { getPlatformColor, getTagColor, resolveToken } from '@/lib/theme'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import {
-    PieChart, Pie, Cell, Tooltip, ResponsiveContainer
+    PieChart, Pie, Cell, Label, Tooltip, ResponsiveContainer
 } from 'recharts'
 
 
@@ -357,17 +357,14 @@ export const GuestsDashboard = () => {
                 color: getTagColor(tag)
             })) || [], [tagDistribution, resolvedTheme])
 
+    const [guestSourceActiveIndex, setGuestSourceActiveIndex] = useState<number | null>(null)
+    const handleSourceMouseEnter = useCallback((_: any, index: number) => setGuestSourceActiveIndex(index), [])
+    const handleSourceMouseLeave = useCallback(() => setGuestSourceActiveIndex(null), [])
+
     // memoized pie chart totals
     const sourceChartTotal = useMemo(() =>
         sourceChartData.reduce((sum: number, item: GuestSourceData) => sum + (item.count || 0), 0)
     , [sourceChartData])
-
-    // memoized pie chart label function
-    const pieChartLabel = useCallback((entry: any) => {
-        const percent = ((entry.count / sourceChartTotal) * 100).toFixed(0)
-        const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
-        return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
-    }, [sourceChartTotal])
 
     // memoized tag chart derived values
     const tagChartDerived = useMemo(() => {
@@ -551,26 +548,62 @@ export const GuestsDashboard = () => {
                     icon={BarChart3}
                     height={280}
                     noData={sourceChartData.length === 0}
+                    responsive={false}
                 >
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={sourceChartData}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={pieChartLabel}
-                                outerRadius="70%"
-                                dataKey="count"
-                                stroke={resolveToken('--card')}
-                            >
-                                {sourceChartData.map((entry: GuestSourceData & {color: string}, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                ))}
-                            </Pie>
-                            <Tooltip content={<GuestSourceTooltip />} />
-                        </PieChart>
-                    </ResponsiveContainer>
+                    <div style={{ height: 240 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={sourceChartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius="55%"
+                                    outerRadius="80%"
+                                    dataKey="count"
+                                    stroke={resolveToken('--card')}
+                                    strokeWidth={2}
+                                    animationBegin={0}
+                                    animationDuration={500}
+                                    animationEasing="ease-out"
+                                    onMouseEnter={handleSourceMouseEnter}
+                                    onMouseLeave={handleSourceMouseLeave}
+                                >
+                                    {sourceChartData.map((entry: GuestSourceData & {color: string}, index: number) => (
+                                        <Cell
+                                            key={`cell-${index}`}
+                                            fill={entry.color}
+                                            opacity={guestSourceActiveIndex === null || guestSourceActiveIndex === index ? 1 : 0.3}
+                                            style={{ transition: 'opacity 0.2s ease' }}
+                                        />
+                                    ))}
+                                    <Label
+                                        content={({ viewBox }) => {
+                                            const { cx, cy } = viewBox as any
+                                            return (
+                                                <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                                                    <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
+                                                        {sourceChartTotal}
+                                                    </tspan>
+                                                    <tspan x={cx} y={cy + 12} className="fill-muted-foreground text-xs">
+                                                        Guests
+                                                    </tspan>
+                                                </text>
+                                            )
+                                        }}
+                                    />
+                                </Pie>
+                                <Tooltip content={<GuestSourceTooltip />} isAnimationActive={false} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
+                        {sourceChartData.map((entry: GuestSourceData & {color: string}) => (
+                            <div key={entry.source} className="flex items-center gap-1.5">
+                                <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
+                                <span className="text-muted-foreground">{entry.source}</span>
+                            </div>
+                        ))}
+                    </div>
                 </ChartWrapper>
 
                 <ChartWrapper

@@ -1,7 +1,7 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency, formatDateDisplay } from '@baileys/utils'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
 import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, ExternalLink } from 'lucide-react'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -117,17 +117,11 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
     })) || []
   , [data?.revenueByPlatform])
 
-  // memoized platform total for pie chart label
+  const [platformActiveIndex, setPlatformActiveIndex] = useState<number | null>(null)
+
   const platformTotal = useMemo(() =>
     platformData.reduce((sum: number, p: any) => sum + p.revenue, 0)
   , [platformData])
-
-  // memoized pie chart label function
-  const pieChartLabel = useCallback((entry: any) => {
-    const percent = platformTotal > 0 ? ((entry.revenue / platformTotal) * 100).toFixed(0) : '0'
-    const name = entry.platform.length > 18 ? entry.platform.substring(0, 18) + '...' : entry.platform
-    return `${name} (${percent}%)`
-  }, [platformTotal])
 
   // memoized guest click handler
   const handleGuestClick = useCallback((guestId: string, guestName: string) => {
@@ -372,27 +366,62 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
               <div className="bg-card p-6 rounded-lg border border-border">
                 <h3 className="text-lg font-bold mb-4">Where Bookings Come From</h3>
                 {platformData.length > 0 ? (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={platformData}
-                          cx="50%"
-                          cy="50%"
-                          labelLine={false}
-                          label={pieChartLabel}
-                          outerRadius="70%"
-                          dataKey="revenue"
-                          stroke={resolveToken('--card')}
-                        >
-                          {platformData.map((entry: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<PlatformRevenueTooltip />} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <>
+                    <div className="h-56">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={platformData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius="55%"
+                            outerRadius="80%"
+                            dataKey="revenue"
+                            stroke={resolveToken('--card')}
+                            strokeWidth={2}
+                            animationBegin={0}
+                            animationDuration={500}
+                            animationEasing="ease-out"
+                            onMouseEnter={(_: any, index: number) => setPlatformActiveIndex(index)}
+                            onMouseLeave={() => setPlatformActiveIndex(null)}
+                          >
+                            {platformData.map((entry: any, index: number) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.color}
+                                opacity={platformActiveIndex === null || platformActiveIndex === index ? 1 : 0.3}
+                                style={{ transition: 'opacity 0.2s ease' }}
+                              />
+                            ))}
+                            <Label
+                              content={({ viewBox }) => {
+                                const { cx, cy } = viewBox as any
+                                return (
+                                  <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                                    <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
+                                      {formatCompactCurrency(platformTotal)}
+                                    </tspan>
+                                    <tspan x={cx} y={cy + 12} className="fill-muted-foreground text-xs">
+                                      Revenue
+                                    </tspan>
+                                  </text>
+                                )
+                              }}
+                            />
+                          </Pie>
+                          <Tooltip content={<PlatformRevenueTooltip />} isAnimationActive={false} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
+                      {platformData.map((entry: any) => (
+                        <div key={entry.platform} className="flex items-center gap-1.5">
+                          <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
+                          <span className="text-muted-foreground">{entry.platform}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-8">
                     <EmptyQuadrants className="w-12 h-12 mx-auto mb-2" />

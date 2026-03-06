@@ -13,7 +13,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, Legend, ReferenceLine, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, Label, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, ReferenceLine, ResponsiveContainer } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { useTheme } from '@/contexts/theme'
@@ -184,14 +184,20 @@ export const OverviewDashboard = () => {
     })
   }, [updateDateRange])
 
+  const [bookingSourceActiveIndex, setBookingSourceActiveIndex] = useState<number | null>(null)
+  const handleSourceMouseEnter = useCallback((_: any, index: number) => setBookingSourceActiveIndex(index), [])
+  const handleSourceMouseLeave = useCallback(() => setBookingSourceActiveIndex(null), [])
+
   const bookingSourceChartData = useMemo(() => {
     const sources = charts?.bookingsBySource || []
     const totalBookings = sources.reduce((sum: number, item: any) => sum + Number(item.count), 0)
-    return sources.map((item: any) => ({
-      ...item,
-      count: Number(item.count),
-      totalBookings
-    }))
+    return sources
+      .map((item: any) => ({
+        ...item,
+        count: Number(item.count),
+        totalBookings
+      }))
+      .sort((a: any, b: any) => b.count - a.count)
   }, [charts?.bookingsBySource])
 
   const revenueChartData = useMemo(() => {
@@ -361,6 +367,37 @@ export const OverviewDashboard = () => {
     }
 
     return areas
+  }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total, resolvedTheme])
+
+  const revenueChartLegendItems = useMemo(() => {
+    if (!charts?.topProperties) return []
+
+    const allSortedProps = charts.topProperties || []
+    const topRevenue = allSortedProps[0]?.revenue || 0
+    const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
+
+    const significantProps = allSortedProps
+      .filter((p: any) => p.revenue >= revenueThreshold)
+      .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+
+    const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
+    const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
+    const colors = Array.from({ length: 10 }, (_, i) => getChartColor(i))
+
+    const items = topProps.slice(0, MAX_INDIVIDUAL_PROPERTIES).map((p: any, i: number) => ({
+      name: p.name || `Property ${i + 1}`,
+      color: colors[i]
+    }))
+
+    const otherCount = Math.max(0, totalPropertyCount - topProps.length)
+    if (otherCount > 0 || charts?.revenueLastWeek?.length > 0) {
+      items.push({
+        name: otherCount > 0 ? `Other (${otherCount})` : 'Other',
+        color: CHART_INFRA.reference
+      })
+    }
+
+    return items
   }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total, resolvedTheme])
 
   const enabledGoals = useMemo(() => {
@@ -676,43 +713,54 @@ export const OverviewDashboard = () => {
           title="Revenue Composition by Property"
           subtitle="Showing revenue breakdown across your top properties"
           icon={Layers}
-          height={300}
+          height={340}
+          responsive={false}
         >
-          <AreaChart data={revenueChartData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-            <XAxis
-              dataKey="week"
-              stroke={CHART_INFRA.axis}
-              tick={{ fontSize: 11 }}
-            />
-            <YAxis
-              tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`}
-              stroke={CHART_INFRA.axis}
-              tick={{ fontSize: 11 }}
-            />
-            <Tooltip content={<RevenueChartTooltip />} />
-            <Legend
-              wrapperStyle={{ paddingTop: '10px' }}
-              iconType="rect"
-            />
-            {revenueChartAreas}
-            {revenueGoal != null && (
-              <ReferenceLine
-                y={revenueGoal}
-                stroke={CHART_INFRA.goal}
-                strokeDasharray="6 4"
-                strokeWidth={1.5}
-                label={{
-                  value: `⬥ Goal: ${formatCompactCurrency(revenueGoal)}`,
-                  position: 'insideTopLeft',
-                  fill: CHART_INFRA.goal,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  offset: 4
-                }}
-              />
-            )}
-          </AreaChart>
+          <div className="h-full flex flex-col">
+            <div className="flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+                  <XAxis
+                    dataKey="week"
+                    stroke={CHART_INFRA.axis}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <YAxis
+                    tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`}
+                    stroke={CHART_INFRA.axis}
+                    tick={{ fontSize: 11 }}
+                  />
+                  <Tooltip content={<RevenueChartTooltip />} />
+                  {revenueChartAreas}
+                  {revenueGoal != null && (
+                    <ReferenceLine
+                      y={revenueGoal}
+                      stroke={CHART_INFRA.goal}
+                      strokeDasharray="6 4"
+                      strokeWidth={1.5}
+                      label={{
+                        value: `⬥ Goal: ${formatCompactCurrency(revenueGoal)}`,
+                        position: 'insideTopLeft',
+                        fill: CHART_INFRA.goal,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        offset: 4
+                      }}
+                    />
+                  )}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap gap-3 justify-center text-xs mt-3 px-4">
+              {revenueChartLegendItems.map((item: any) => (
+                <div key={item.name} className="flex items-center gap-1.5">
+                  <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                  <span className="text-muted-foreground">{item.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </ChartWrapper>
 
         <ChartWrapper
@@ -720,30 +768,63 @@ export const OverviewDashboard = () => {
           icon={BarChart3}
           height={280}
           noData={charts.bookingsBySource.length === 0}
+          responsive={false}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={bookingSourceChartData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={(entry: any) => {
-                  const percent = ((entry.percent || 0) * 100).toFixed(0)
-                  const name = entry.source.length > 18 ? entry.source.substring(0, 18) + '...' : entry.source
-                  return parseInt(percent) > 5 ? `${name} (${percent}%)` : ''
-                }}
-                outerRadius="70%"
-                dataKey="count"
-                stroke={resolveToken('--card')}
-              >
-                {charts.bookingsBySource.map((entry: any, index: any) => (
-                  <Cell key={`cell-${index}`} fill={getPlatformColor(entry.source, index)} />
-                ))}
-              </Pie>
-              <Tooltip content={<BookingSourceTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div style={{ height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={bookingSourceChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="55%"
+                  outerRadius="80%"
+                  dataKey="count"
+                  stroke={resolveToken('--card')}
+                  strokeWidth={2}
+                  animationBegin={0}
+                  animationDuration={500}
+                  animationEasing="ease-out"
+                  onMouseEnter={handleSourceMouseEnter}
+                  onMouseLeave={handleSourceMouseLeave}
+                >
+                  {bookingSourceChartData.map((entry: any, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={getPlatformColor(entry.source, index)}
+                      opacity={bookingSourceActiveIndex === null || bookingSourceActiveIndex === index ? 1 : 0.3}
+                      style={{ transition: 'opacity 0.2s ease' }}
+                    />
+                  ))}
+                  <Label
+                    content={({ viewBox }) => {
+                      const { cx, cy } = viewBox as any
+                      const total = bookingSourceChartData.reduce((sum: number, s: any) => sum + s.count, 0)
+                      return (
+                        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                          <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
+                            {total}
+                          </tspan>
+                          <tspan x={cx} y={cy + 12} className="fill-muted-foreground text-xs">
+                            Bookings
+                          </tspan>
+                        </text>
+                      )
+                    }}
+                  />
+                </Pie>
+                <Tooltip content={<BookingSourceTooltip />} isAnimationActive={false} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
+            {bookingSourceChartData.map((entry: any, index: number) => (
+              <div key={entry.source} className="flex items-center gap-1.5">
+                <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: getPlatformColor(entry.source, index) }} />
+                <span className="text-muted-foreground">{entry.source}</span>
+              </div>
+            ))}
+          </div>
           {(() => {
             const unassigned = bookingSourceChartData.find((s: any) => s.source === 'Unassigned' || s.source === 'unassigned')
             if (unassigned && unassigned.count > 0) {
