@@ -29,8 +29,11 @@ export const Tag: React.FC<TagProps> = ({
     borderColor: color
   }
 
+  const Component = onClick ? 'button' : 'span'
+
   return (
-    <span
+    <Component
+      type={onClick ? 'button' : undefined}
       className={`inline-flex items-center rounded-full border whitespace-nowrap max-w-[150px] ${sizeClasses} ${
         onClick ? 'cursor-pointer hover:opacity-80' : ''
       } ${selected ? 'ring-2 ring-offset-1 ring-info' : ''}`}
@@ -51,7 +54,7 @@ export const Tag: React.FC<TagProps> = ({
           </svg>
         </button>
       )}
-    </span>
+    </Component>
   )
 }
 

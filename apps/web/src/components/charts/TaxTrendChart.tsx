@@ -72,10 +72,8 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
 }) => {
   if (!data || data.length === 0) {
     return (
-      <ChartWrapper title={title} height={height}>
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          No tax data available
-        </div>
+      <ChartWrapper title={title} height={height} noData noDataMessage="No tax data available">
+        <div />
       </ChartWrapper>
     )
   }

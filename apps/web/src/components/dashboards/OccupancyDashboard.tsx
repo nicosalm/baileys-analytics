@@ -221,7 +221,6 @@ export const OccupancyDashboard = () => {
         loadingMessage="Loading occupancy data..."
         emptyMessage="No occupancy data available"
         emptySubMessage="Occupancy data will appear once bookings are synced"
-        emptyIcon={<Percent className="w-12 h-12 text-muted-foreground opacity-50 mb-2" />}
         onRetry={() => window.location.reload()}
         minHeight={400}
         className="py-12"
@@ -353,7 +352,7 @@ export const OccupancyDashboard = () => {
       <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold flex items-center">
+            <h3 className="text-lg font-semibold flex items-center">
               <Calendar className="w-5 h-5 mr-2 text-muted-foreground" />
               {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
             </h3>
@@ -473,7 +472,7 @@ export const OccupancyDashboard = () => {
 
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">Property Occupancy</h3>
+            <h3 className="text-lg font-semibold">Property Occupancy</h3>
             {currentData.byProperty.length > 5 && (
               <span className="text-xs text-muted-foreground">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
             )}

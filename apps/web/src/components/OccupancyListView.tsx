@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
-import { ChevronDown, ChevronRight, AlertTriangle, Clock, Info } from 'lucide-react'
+import { ChevronDown, ChevronRight, AlertTriangle, Info } from 'lucide-react'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { useBookingsForRange } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -249,7 +249,6 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
         empty={true}
         emptyMessage="No properties found"
         emptySubMessage="Properties will appear once bookings are synced"
-        emptyIcon={<Clock className="w-12 h-12 text-muted-foreground opacity-50 mb-2" />}
         minHeight={300}
         className="py-12"
       >

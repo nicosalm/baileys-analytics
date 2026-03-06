@@ -294,7 +294,7 @@ const ApiTokenCard = () => {
         {token ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={copyToken} title="Click to copy">
+              <div className="flex-1 min-w-0 cursor-pointer" onClick={copyToken} onKeyDown={(e) => e.key === 'Enter' && copyToken()} role="button" tabIndex={0} title="Click to copy">
                 <pre className="bg-muted/40 border rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto max-h-20 whitespace-pre-wrap break-all select-all hover:bg-muted/60 transition-colors">
                   {showToken ? token : '\u2022'.repeat(40)}
                 </pre>

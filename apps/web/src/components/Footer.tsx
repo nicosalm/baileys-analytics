@@ -64,7 +64,7 @@ export const Footer = () => {
 
   return (
     <footer className="bg-background border-t border-border mt-auto">
-      <div className="max-w-6xl mx-auto px-4 md:px-6 py-12 md:py-16">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-16">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-10 md:gap-10">
           {/* brand */}
           <div className="col-span-2 md:col-span-1">

@@ -89,7 +89,7 @@ export const Landing = () => {
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm">
+                  <Link to="/login" className="px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm">
                     Log in
                   </Link>
                   <Link to="/signup" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">

@@ -164,8 +164,8 @@ export function SelectableTable<T extends Record<string, any>>({
   if (!loading && paginatedData.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-        <EmptyQuadrants className="w-12 h-12 mb-4" />
-        <div className="text-lg font-medium">{emptyMessage}</div>
+        <EmptyQuadrants className="w-12 h-12 mb-2" />
+        <p className="text-sm font-medium text-muted-foreground">{emptyMessage}</p>
         {enableSearch && searchTerm && (
           <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>
         )}

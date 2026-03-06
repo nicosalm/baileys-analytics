@@ -258,14 +258,26 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         <div className="bg-card rounded-xl shadow-xl p-8 max-w-md w-full mx-4">
-          <h2 className="text-xl font-bold text-danger mb-4">Sync Error</h2>
+          <h2 className="text-xl font-semibold text-danger mb-4">Sync Error</h2>
           <p className="text-muted-foreground mb-6">{error}</p>
-          <Button
-            onClick={() => navigate('/dashboard/settings')}
-            className="w-full"
-          >
-            Go to Settings
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => {
+                setError(null)
+                performInitialSync()
+              }}
+              className="flex-1"
+            >
+              Try Again
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/dashboard/settings')}
+              className="flex-1"
+            >
+              Go to Settings
+            </Button>
+          </div>
         </div>
       </div>
     )

@@ -255,7 +255,8 @@ const AnimatedValue: React.FC<{
   formatValue: (val: number | string) => string
 }> = ({ value, formatValue }) => {
   const animated = useCountUp(value)
-  return <>{formatValue(animated)}</>
+  const display = Number.isInteger(value) ? Math.round(animated) : animated
+  return <>{formatValue(display)}</>
 }
 
 // Export a simplified version for backwards compatibility

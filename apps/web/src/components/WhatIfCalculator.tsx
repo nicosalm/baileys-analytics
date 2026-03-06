@@ -271,7 +271,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
 
               {nightContext.historical && (
                 <p className="text-xs text-warning">
-                  Date range is in the past — showing historical opportunity
+                  Date range is in the past · showing historical opportunity
                 </p>
               )}
             </div>

@@ -83,32 +83,48 @@ export const Signup = () => {
   // Show success message if signup was successful
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="max-w-md w-full px-8">
-          <div className="bg-card rounded-xl shadow-sm border border-border p-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-8 h-8 text-success" />
+      <div className="min-h-screen bg-background flex">
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+          <div className="max-w-md w-full mx-auto">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-8 h-8 text-success" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h2>
+                <p className="text-muted-foreground mb-4">
+                  We've sent a confirmation link to:
+                </p>
+                <p className="font-medium text-foreground mb-6">{email}</p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Please click the link in the email to confirm your account and get started.
+                </p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Didn't receive the email? Check your spam folder or wait a few minutes.
+                </p>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center text-sm text-primary hover:text-primary/90 font-medium transition-colors"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Back to login
+                </Link>
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h2>
-              <p className="text-muted-foreground mb-4">
-                We've sent a confirmation link to:
-              </p>
-              <p className="font-medium text-foreground mb-6">{email}</p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Please click the link in the email to confirm your account and get started.
-              </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                Didn't receive the email? Check your spam folder or wait a few minutes.
-              </p>
-              <Link
-                to="/login"
-                className="inline-flex items-center text-sm text-primary hover:text-primary/90 font-medium transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Back to login
-              </Link>
             </div>
+          </div>
+        </div>
+
+        {/* Right side - Decorative */}
+        <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
+          <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
+          <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
+
+          <div className="relative z-10 flex flex-col justify-center px-16 text-white">
+            <h3 className="text-4xl font-bold mb-6">Almost There!</h3>
+            <p className="text-lg text-white/80">
+              Confirm your email to unlock your dashboard. It only takes a second.
+            </p>
           </div>
         </div>
       </div>

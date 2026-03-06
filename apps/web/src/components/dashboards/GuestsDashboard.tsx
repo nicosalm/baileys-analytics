@@ -385,7 +385,6 @@ export const GuestsDashboard = () => {
                 loadingMessage="Loading guest analytics..."
                 emptyMessage="No guest data available"
                 emptySubMessage="Guest data will appear once bookings are synced"
-                emptyIcon={<Users className="w-12 h-12 text-muted-foreground/50 mb-2" />}
                 onRetry={() => window.location.reload()}
                 minHeight={400}
                 className="py-12"
@@ -497,7 +496,7 @@ export const GuestsDashboard = () => {
                     <div className="flex items-center gap-2 mb-4">
                         <Sparkles className="w-5 h-5 text-muted-foreground" />
                         <div>
-                            <h3 className="text-lg font-bold">Direct Booking Opportunity</h3>
+                            <h3 className="text-lg font-semibold">Direct Booking Opportunity</h3>
                             <p className="text-sm text-muted-foreground">
                                 Fees paid to OTAs and credit card processors this period that could stay with guests (and you) via direct bookings
                             </p>
@@ -616,7 +615,7 @@ export const GuestsDashboard = () => {
             <div className="bg-card rounded-lg shadow-sm border border-border">
                 <div className="p-4 border-b border-border space-y-3">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold">Guest List ({sortedGuests.length})</h3>
+                        <h3 className="text-lg font-semibold">Guest List ({sortedGuests.length})</h3>
                         <Select value={staysFilter} onValueChange={handleStaysFilter}>
                             <SelectTrigger className="w-[130px] h-8 text-sm">
                                 <SelectValue />
@@ -730,7 +729,7 @@ const RecurringDateSearch = () => {
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                     <Search className="w-5 h-5 text-primary" />
-                    <h3 className="text-lg font-bold">Search Across Years</h3>
+                    <h3 className="text-lg font-semibold">Search Across Years</h3>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => { setIsOpen(false); setResults(null) }}>
                     <X className="w-4 h-4" />

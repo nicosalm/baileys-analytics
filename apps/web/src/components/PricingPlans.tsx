@@ -33,7 +33,7 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
   currentPlan,
   onPlanSelect
 }) => {
-  const [yearlyBilling, setYearlyBilling] = useState(false);
+  const [yearlyBilling, setYearlyBilling] = useState(true);
   const [loading, setLoading] = useState(false);
   const [isTrialEligible, setIsTrialEligible] = useState(false);
   const [checkingEligibility, setCheckingEligibility] = useState(true);

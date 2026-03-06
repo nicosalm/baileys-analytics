@@ -3,7 +3,7 @@ import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@bail
 import { useTagIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import { Calendar, DollarSign, Home, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table } from 'lucide-react'
+import { Calendar, DollarSign, Info, Percent, TrendingUp, ScatterChart, LayoutGrid, Table } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -88,8 +88,8 @@ export const PropertiesDashboard = () => {
   if (isLoading || error || validProperties.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="bg-card rounded-xl border border-border p-6">
-          <h2 className="text-2xl font-bold text-foreground">Your Properties at a Glance</h2>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <h2 className="text-lg font-semibold text-foreground">Your Properties at a Glance</h2>
           <p className="text-muted-foreground text-sm mt-1">
             See how each property is performing and compare them side by side
           </p>
@@ -101,7 +101,6 @@ export const PropertiesDashboard = () => {
           loadingMessage="Loading property data..."
           emptyMessage="No Properties Found"
           emptySubMessage="Properties will appear here once they're synced from your booking platform."
-          emptyIcon={<Home className="w-12 h-12 text-muted-foreground/50 mb-2" />}
           onRetry={() => window.location.reload()}
           minHeight={300}
           className="bg-card rounded-lg shadow-sm py-12"

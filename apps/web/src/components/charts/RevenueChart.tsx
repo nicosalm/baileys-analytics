@@ -93,10 +93,8 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
 }) => {
   if (!data || data.length === 0) {
     return (
-      <ChartWrapper title={title} height={height}>
-        <div className="flex items-center justify-center h-full text-muted-foreground">
-          No data available
-        </div>
+      <ChartWrapper title={title} height={height} noData noDataMessage="No data available">
+        <div />
       </ChartWrapper>
     )
   }

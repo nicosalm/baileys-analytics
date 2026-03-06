@@ -9,6 +9,7 @@ import {
   DollarSign, TrendingUp, Calendar,
   Info, ArrowUp, ArrowDown, HelpCircle
 } from 'lucide-react'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { formatCurrency } from '@/utils/formatters'
 import { usePropertyMetrics, useGoalProgress } from '@/hooks/use-api'
 import { getMonthlyGoalValue } from '@/utils/goals'
@@ -218,10 +219,10 @@ export const RevenueAnalysis: React.FC<RevenueAnalysisProps> = ({
       
       {/* Property Performance Tables */}
       {analysis.topProperties.length === 0 && analysis.bottomProperties.length === 0 ? (
-        <div className="bg-muted/40 border rounded-lg p-6 text-center text-muted-foreground">
-          <Info className="w-12 h-12 mx-auto mb-2 opacity-50" />
+        <div className="bg-muted/40 border rounded-lg p-6 flex flex-col items-center justify-center text-muted-foreground">
+          <EmptyQuadrants className="w-12 h-12 mb-2" />
           <p className="text-sm font-medium">No property data available for the selected period</p>
-          <p className="text-xs text-muted-foreground mt-1">Select a different date range or check your property sync status</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Select a different date range or check your property sync status</p>
         </div>
       ) : (
       <div className="grid lg:grid-cols-2 gap-6">

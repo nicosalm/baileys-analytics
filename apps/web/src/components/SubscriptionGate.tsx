@@ -78,7 +78,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
       <div className="min-h-screen bg-background flex flex-col">
         {/* header */}
         <header className="bg-background/80 backdrop-blur-sm border-b">
-          <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
             <div className="flex justify-between items-center">
               <Link to="/" className="flex items-center">
                 <LogoCube />

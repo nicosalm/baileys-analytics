@@ -755,7 +755,7 @@ export const OverviewDashboard = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-lg font-bold">Your Goals</h3>
+              <h3 className="text-lg font-semibold">Your Goals</h3>
             </div>
             {enabledGoals.length > 0 && (
               <Link to="/settings?tab=goals" className="text-xs text-info hover:text-info-fg flex items-center gap-1">
@@ -803,7 +803,7 @@ export const OverviewDashboard = () => {
 
           <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold">What's New</h3>
+            <h3 className="text-lg font-semibold">What's New</h3>
             <span className="text-xs text-muted-foreground">Recent bookings</span>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
@@ -900,7 +900,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-lg font-bold">Upcoming</h3>
+          <h3 className="text-lg font-semibold">Upcoming</h3>
           <span className="text-xs text-muted-foreground">({filtered.length})</span>
         </div>
         <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">

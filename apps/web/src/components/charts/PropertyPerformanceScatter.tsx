@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
+import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { PropertyMetrics } from '@/types/api'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 
@@ -162,11 +163,10 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
   
   if (scatterData.data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <div className="text-center">
-          <p className="text-sm">No property data available</p>
-          <p className="text-xs mt-1">Select a date range with booking data</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+        <EmptyQuadrants className="w-12 h-12 mb-2" />
+        <p className="text-sm font-medium">No property data available</p>
+        <p className="text-xs text-muted-foreground/70 mt-1">Select a date range with booking data</p>
       </div>
     )
   }

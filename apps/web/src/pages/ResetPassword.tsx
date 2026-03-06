@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase'
 import { Lock, ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { PasswordRequirements } from '@/components/PasswordRequirements'
 import { BRAND } from '@/constants'
 import { LogoCube } from '@/components/LogoCube'
@@ -73,7 +72,7 @@ export const ResetPassword = () => {
       setError(validation.errors[0])
       return
     }
-    
+
     // show warnings but don't block submission
     if (validation.warnings.length > 0) {
       console.warn('Password warnings:', validation.warnings)
@@ -98,10 +97,10 @@ export const ResetPassword = () => {
       }
 
       setSuccess(true)
-      
+
       // sign out to ensure clean state
       await supabase.auth.signOut()
-      
+
       setTimeout(() => navigate('/login'), 2000)
     } catch (err) {
       setError('Failed to reset password. Please try again.')
@@ -110,20 +109,54 @@ export const ResetPassword = () => {
     }
   }
 
+  // decorative right panel (shared across states)
+  const rightPanel = (
+    <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden">
+      <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
+      <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
+      <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
+
+      <div className="relative z-10 flex flex-col justify-center px-16 text-white">
+        <h3 className="text-4xl font-bold mb-6">Secure Your Account</h3>
+        <p className="text-lg text-white/80 mb-8">
+          Choose a strong password to keep your data safe.
+        </p>
+
+        <div className="space-y-4">
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
+            <p className="text-white/80">At least 8 characters</p>
+          </div>
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
+            <p className="text-white/80">Mix of uppercase, lowercase, and numbers</p>
+          </div>
+          <div className="flex items-start">
+            <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
+            <p className="text-white/80">You'll be redirected to sign in after resetting</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   if (success) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="max-w-md w-full px-8">
-          <div className="bg-card rounded-xl shadow-sm border p-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-success" />
+      <div className="min-h-screen bg-background flex">
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+          <div className="max-w-md w-full mx-auto">
+            <div className="bg-card rounded-xl shadow-sm border border-border p-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-success" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Password Reset Successfully</h2>
+                <p className="text-muted-foreground">Redirecting to login...</p>
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Password Reset Successfully</h2>
-              <p className="text-muted-foreground">Redirecting to login...</p>
             </div>
           </div>
         </div>
+        {rightPanel}
       </div>
     )
   }
@@ -131,65 +164,75 @@ export const ResetPassword = () => {
   // show loading state while checking token
   if (checkingToken) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Button loading loadingText="Verifying reset link..." className="" />
-        </div>
-      </div>
-    )
-  }
-  
-  // show error if token is invalid
-  if (tokenValid === false) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="max-w-md w-full px-8">
-          <div className="bg-card rounded-xl shadow-sm border p-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-8 h-8 text-danger" />
+      <div className="min-h-screen bg-background flex">
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+          <div className="max-w-md w-full mx-auto">
+            <div className="bg-card rounded-xl shadow-sm border p-8">
+              <div className="flex flex-col items-center text-center">
+                <LogoCube className="w-10 h-10 mb-4" />
+                <Button loading loadingText="Verifying reset link..." variant="ghost" />
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Invalid Reset Link</h2>
-              <p className="text-muted-foreground mb-6">{error}</p>
-              <Link
-                to="/forgot-password"
-                className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
-              >
-                Request New Link
-              </Link>
             </div>
           </div>
         </div>
+        {rightPanel}
+      </div>
+    )
+  }
+
+  // show error if token is invalid
+  if (tokenValid === false) {
+    return (
+      <div className="min-h-screen bg-background flex">
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+          <div className="max-w-md w-full mx-auto">
+            <div className="bg-card rounded-xl shadow-sm border p-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-8 h-8 text-danger" />
+                </div>
+                <h2 className="text-2xl font-bold text-foreground mb-2">Invalid Reset Link</h2>
+                <p className="text-muted-foreground mb-6">{error}</p>
+                <Button asChild>
+                  <Link to="/forgot-password">
+                    Request New Link
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        {rightPanel}
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="max-w-md w-full px-8">
-        <div className="mb-8">
-          <Link to="/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors">
+    <div className="min-h-screen bg-background flex">
+      {/* Left side - Form */}
+      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+        <div className="max-w-md w-full mx-auto">
+          {/* Back to login link */}
+          <Link to="/login" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-all mb-8">
             <ArrowLeft className="w-4 h-4 mr-1" />
             Back to login
           </Link>
-        </div>
 
-        <div className="bg-card rounded-xl shadow-sm border p-8">
-          <div className="flex items-center mb-6">
+          {/* Logo */}
+          <div className="flex items-center mb-8">
             <LogoCube />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 
-          <div className="mb-6">
-            <h2 className="text-xl font-bold text-foreground mb-2">Create new password</h2>
-            <p className="text-muted-foreground text-sm">
-              Choose a strong password to secure your account.
-            </p>
+          {/* Welcome text */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-foreground mb-2">Create new password</h2>
+            <p className="text-muted-foreground">Choose a strong password to secure your account.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <Label htmlFor="password" className="mb-2">New password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -198,7 +241,7 @@ export const ResetPassword = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-12 h-11"
-                  placeholder="Enter new password"
+                  placeholder="New password"
                   required
                   disabled={loading}
                 />
@@ -214,14 +257,13 @@ export const ResetPassword = () => {
                 </Button>
               </div>
               {password && (
-                <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
+                <div className="mt-3 p-3 bg-muted/40 rounded-lg border border-border">
                   <PasswordRequirements password={password} />
                 </div>
               )}
             </div>
 
             <div>
-              <Label htmlFor="confirmPassword" className="mb-2">Confirm password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -264,6 +306,9 @@ export const ResetPassword = () => {
           </form>
         </div>
       </div>
+
+      {/* Right side - Decorative */}
+      {rightPanel}
     </div>
   )
 }
