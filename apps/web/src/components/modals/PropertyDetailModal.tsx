@@ -153,8 +153,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             <div className="flex items-start">
               <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
               <div className="text-sm text-info-fg">
-                <strong>Property Overview:</strong> All metrics shown are for your selected date range.
-                Click on any guest name to see their booking history.
+                <strong>Property Overview:</strong> Metrics reflect the selected date range. Click any guest name for their booking history.
               </div>
             </div>
           </div>

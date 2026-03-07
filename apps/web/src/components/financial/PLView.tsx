@@ -228,7 +228,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Total Revenue"
           value={revenue.gross}
           format="currency"
-          tooltip="Gross booking revenue before any deductions"
+          tooltip="Gross revenue before fees, taxes, and expenses"
           color="blue"
           subValue={comparisonMode !== 'none' && comparison.previousRevenue > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -244,7 +244,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Expenses & Platform Fees (est.)"
           value={revenue.totalCosts}
           format="currency"
-          tooltip="Estimated platform fees (Airbnb, VRBO, etc.) plus your monthly operating expenses. Guest service fees are estimated until OwnerRez exposes exact values."
+          tooltip="Estimated platform fees plus operating expenses. Guest service fees are estimated."
           color="orange"
           subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -260,7 +260,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Taxes"
           value={revenue.taxes}
           format="currency"
-          tooltip="Occupancy and lodging taxes collected on bookings"
+          tooltip="Occupancy and lodging taxes collected"
           color="yellow"
           subValue={comparisonMode !== 'none' && comparison.previousTaxes > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -277,8 +277,8 @@ export const PLView: React.FC<PLViewProps> = ({
           value={revenue.operatingProfit}
           format="currency"
           tooltip={revenue.operatingExpenses.total > 0
-            ? "What you keep after estimated platform fees, taxes, and operating expenses"
-            : "What you keep after estimated platform fees and taxes"}
+            ? "Net after fees, taxes, and operating expenses"
+            : "Net after fees and taxes"}
           color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
           subValue={comparisonMode !== 'none' && comparison.previousOperatingProfit > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousOperatingProfit)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -509,8 +509,7 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <TrendingDown className="w-5 h-5 text-warning mr-2 mt-0.5" />
             <div className="text-sm text-warning-fg">
-              <strong>Optimization Opportunity:</strong> Your operating margin is {formatPercentage(profitability.operatingMargin, 1)}.
-              Consider reviewing platform fees and exploring direct booking options to retain more revenue.
+              <strong>Low Margin:</strong> Operating margin is {formatPercentage(profitability.operatingMargin, 1)}. Review platform fees or increase direct bookings to improve.
             </div>
           </div>
         </div>

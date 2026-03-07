@@ -141,7 +141,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Tax Tracking:</strong> Occupancy taxes collected from guests in the selected period. Includes both what you remit and what platforms remit on your behalf.
+              <strong>Tax Tracking:</strong> Occupancy taxes collected in this period, split by owner-remitted and platform-remitted.
             </div>
           </div>
         </div>
@@ -159,7 +159,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
-          tooltip="Total occupancy and lodging tax collected on all bookings"
+          tooltip="Total occupancy and lodging tax collected"
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
             value: taxData.comparison.taxGrowth,
             isPositive: taxData.comparison.taxGrowth > 0  // Keep standard: up arrow for increases
@@ -175,7 +175,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : "Your responsibility"}
-          tooltip="The portion of tax you need to file and pay to local authorities yourself"
+          tooltip="Tax you file and pay to local authorities"
           trend={comparisonMode !== 'none' && taxData.comparison.ownerRemittedGrowth !== 0 ? {
             value: taxData.comparison.ownerRemittedGrowth,
             isPositive: taxData.comparison.ownerRemittedGrowth > 0
@@ -189,7 +189,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           color="green"
           staggerIndex={2}
           subValue="Paid by platforms"
-          tooltip="Tax that Airbnb, VRBO, etc. collect and remit on your behalf"
+          tooltip="Tax collected and remitted by OTAs on your behalf"
         />
         <MetricCard
           icon={Home}
@@ -199,7 +199,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           color="yellow"
           staggerIndex={3}
           subValue="Being tracked"
-          tooltip="Properties that have tax jurisdiction configurations set up"
+          tooltip="Properties with tax jurisdictions configured"
         />
       </div>
       
@@ -289,8 +289,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           <div className="flex items-start">
             <AlertTriangle className="w-5 h-5 text-warning mr-2 mt-0.5" />
             <div className="text-sm text-warning-fg">
-              <strong>High Tax Rate:</strong> Your effective tax rate is {formatPercentage(taxData.effectiveTaxRate, 2)}. 
-              Consider reviewing your tax settings and jurisdictions to ensure accuracy.
+              <strong>High Tax Rate:</strong> Effective rate is {formatPercentage(taxData.effectiveTaxRate, 2)} — verify your tax jurisdiction settings are correct.
             </div>
           </div>
         </div>

@@ -99,8 +99,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
             <div className="flex items-start">
               <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
               <div className="text-sm text-info-fg">
-                <strong>{granularity === 'daily' ? 'Daily' : granularity === 'weekly' ? 'Weekly' : 'Monthly'} Summary:</strong> See how {displayName} performed across all your properties. 
-                Click any property or guest name for more details.
+                <strong>{granularity === 'daily' ? 'Daily' : granularity === 'weekly' ? 'Weekly' : 'Monthly'} Summary:</strong> Performance across all properties for {displayName}. Click any property or guest for details.
               </div>
             </div>
           </div>

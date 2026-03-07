@@ -465,7 +465,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
             <div className="flex items-start">
               <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
               <div className="text-sm text-info-fg">
-                <strong>Guest Profile:</strong> View this guest's complete booking history and spending patterns.
+                <strong>Guest Profile:</strong> Full booking history and spending for this guest.
               </div>
             </div>
           </div>

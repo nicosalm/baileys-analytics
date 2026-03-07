@@ -261,9 +261,7 @@ export const OccupancyDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Understanding Your Numbers:</strong> Occupancy is the share of available nights that were booked.
-              Higher = fewer empty nights. Use the What If calculator to estimate revenue from gaps,
-              the timeline to spot open stretches, and the trend chart to see how occupancy moves over time.
+              <strong>Tip:</strong> Use the What If calculator to estimate revenue from gaps, the timeline to spot open stretches, and the trend chart to track occupancy over time.
             </div>
           </div>
         </div>
@@ -275,7 +273,7 @@ export const OccupancyDashboard = () => {
           label="Occupancy Rate"
           value={currentData.overall * 100}
           format="percent"
-          tooltip="Share of available nights that were booked across all properties"
+          tooltip="Booked nights as a share of available nights"
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
@@ -294,7 +292,7 @@ export const OccupancyDashboard = () => {
           label="Booked Nights"
           value={currentData.bookedNights}
           format="number"
-          tooltip="Sum of all booked nights across every property in this period"
+          tooltip="Total booked nights across all properties"
           subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
             ? <>vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
@@ -313,7 +311,7 @@ export const OccupancyDashboard = () => {
           label="Available Nights"
           value={currentData.availableNights}
           format="number"
-          tooltip="Total calendar nights across all properties, minus owner blocks"
+          tooltip="Calendar nights minus owner blocks, all properties"
           subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
             ? <>vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"

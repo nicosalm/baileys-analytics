@@ -181,8 +181,7 @@ export const PropertiesDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Reading Your Data:</strong> Click any property for a detailed breakdown.
-              Higher occupancy = fewer empty nights. Compare revenue and RevPAN to spot your strongest performers.
+              <strong>Tip:</strong> Click any property card for a full breakdown. Compare RevPAN across properties to spot top performers.
             </div>
           </div>
         </div>
@@ -194,7 +193,7 @@ export const PropertiesDashboard = () => {
           label="Total Revenue"
           value={totalRevenue}
           format="currency"
-          tooltip="Gross booking revenue across all properties for this period"
+          tooltip="Gross booking revenue, all properties"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
             ? <>vs {comparisonLabel}: {formatCurrency(prevTotalRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${totalBookings} bookings | All properties`
@@ -212,7 +211,7 @@ export const PropertiesDashboard = () => {
             label="Operating Profit"
             value={totalNetRevenue}
             format="currency"
-            tooltip="Revenue minus platform fees, taxes, and operating expenses across all properties"
+            tooltip="Revenue minus fees, taxes, and operating expenses"
             subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
               ? <>vs {comparisonLabel}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
               : totalRevenue > 0 ? `${formatPercentage((totalNetRevenue / totalRevenue) * 100, 1)} margin` : '0% margin'
@@ -226,7 +225,7 @@ export const PropertiesDashboard = () => {
             label="Avg RevPAN"
             value={avgRevPAN}
             format="currency"
-            tooltip="Revenue Per Available Night: how much each night earns on average, factoring in both rate and occupancy"
+            tooltip="Revenue Per Available Night — factors in both rate and occupancy"
             subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
               ? <>vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
               : "Across all properties"
@@ -244,7 +243,7 @@ export const PropertiesDashboard = () => {
           label="Occupancy Rate"
           value={avgOccupancy * 100}
           format="percent"
-          tooltip="Share of available nights that were booked across all properties"
+          tooltip="Booked nights as a share of available nights"
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
             ? <>vs {comparisonLabel}: {formatPercentage(prevAvgOccupancy * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"
@@ -262,8 +261,8 @@ export const PropertiesDashboard = () => {
           value={profitability.length > 0 ? avgRevPAN : totalBookings}
           format={profitability.length > 0 ? "currency" : "number"}
           tooltip={profitability.length > 0
-            ? "Revenue Per Available Night: how much each night earns on average"
-            : "Number of confirmed reservations in this period"
+            ? "Revenue Per Available Night"
+            : "Confirmed reservations in this period"
           }
           subValue={comparisonMode !== 'none' && previousProperties
             ? profitability.length > 0 && prevAvgRevPAN > 0

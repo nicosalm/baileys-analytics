@@ -55,8 +55,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             <div className="flex items-start">
               <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
               <div className="text-sm text-info-fg">
-                <strong>Booking Details:</strong> Complete information about this reservation.
-                Click the guest name to view their profile.
+                <strong>Booking Details:</strong> Click the guest name to view their full profile.
               </div>
             </div>
           </div>

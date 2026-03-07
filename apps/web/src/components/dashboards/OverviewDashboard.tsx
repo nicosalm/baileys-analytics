@@ -468,8 +468,7 @@ export const OverviewDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Quick Start:</strong> Click any metric card to jump to that section.
-              Green arrows mean growth, red means decline vs. your comparison period. Everything reflects your selected date range.
+              <strong>Tip:</strong> Click any metric card to drill into that section. Arrows show change vs. your comparison period.
             </div>
           </div>
         </div>
@@ -528,7 +527,7 @@ export const OverviewDashboard = () => {
           label="Total Revenue"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
-          tooltip="Gross booking revenue across all properties for this period"
+          tooltip="Gross booking revenue, all properties"
           staggerIndex={0}
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -566,7 +565,7 @@ export const OverviewDashboard = () => {
           label="Total Bookings"
           value={metrics.bookings.current}
           format="number"
-          tooltip="Number of confirmed reservations in this period"
+          tooltip="Confirmed reservations in this period"
           staggerIndex={1}
           subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -602,7 +601,7 @@ export const OverviewDashboard = () => {
           label="Occupancy Rate"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
-          tooltip="Share of available nights that were booked across all properties"
+          tooltip="Booked nights as a share of available nights"
           staggerIndex={2}
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -632,7 +631,7 @@ export const OverviewDashboard = () => {
           label="Total Guests"
           value={metrics.guests.total}
           format="number"
-          tooltip="Unique guests who had a booking in this period"
+          tooltip="Unique guests with bookings in this period"
           staggerIndex={3}
           subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
             ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -682,7 +681,7 @@ export const OverviewDashboard = () => {
             } : undefined}
             size="sm"
             color={metrics.revenue.operatingProfit > 0 ? "green" : "red"}
-            tooltip="Revenue minus platform fees, taxes, and operating expenses — what you actually keep"
+            tooltip="Revenue minus platform fees, taxes, and operating expenses"
             staggerIndex={4}
           />
         )}
@@ -694,7 +693,7 @@ export const OverviewDashboard = () => {
           subValue="Per reservation"
           size="sm"
           color="gray"
-          tooltip="Total revenue divided by number of bookings"
+          tooltip="Revenue per booking"
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 5 : 4}
         />
         <MetricCard
@@ -705,7 +704,7 @@ export const OverviewDashboard = () => {
           subValue="Per booking"
           size="sm"
           color="gray"
-          tooltip="How many nights the average guest stays per reservation"
+          tooltip="Average nights per booking"
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 6 : 5}
         />
         <MetricCard
@@ -716,14 +715,14 @@ export const OverviewDashboard = () => {
           subValue={metrics.guests.total > 0 ? 'Return rate' : 'No data yet'}
           size="sm"
           color="gray"
-          tooltip="Share of guests who have booked with you more than once"
+          tooltip="Guests with more than one booking"
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 7 : 6}
         />
         <MetricCard
           icon={TrendingDown}
           label="Cancellation Rate"
           value={Number(metrics.bookings.cancellationRate || 0)}
-          tooltip="Share of bookings that were canceled during this period"
+          tooltip="Cancellations as a percentage of total bookings"
           format="percent"
           subValue="This period"
           size="sm"
