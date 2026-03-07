@@ -4,7 +4,6 @@ import type { Season, SeasonFormData } from '@/types/season'
 import type { Goal, GoalFormData, GoalProgress } from '@/types/goal'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
-// New batch endpoint hook for dashboards
 export function useDashboardBatch(
   view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests',
   from?: string,
@@ -52,7 +51,6 @@ export function useDashboardBatch(
   }
 }
 
-
 export function usePropertyMetrics(
   from?: string,
   to?: string,
@@ -61,7 +59,6 @@ export function usePropertyMetrics(
   comparisonTo?: string,
   propertyIds?: string[]
 ) {
-  // Validate inputs
   const validFrom = from && isValidDateString(from) ? from : undefined
   const validTo = to && isValidDateString(to) ? to : undefined
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
@@ -86,7 +83,6 @@ export function usePropertyMetrics(
     return result.data
   }, { keepPreviousData: true })
 }
-
 
 export function useProperties() {
   return useSWR<any>('/properties', async () => {
@@ -122,7 +118,6 @@ export function useSyncStatus() {
   })
 }
 
-
 export async function manualSync() {
   const result = await api.manualSync()
   if (result.success) {
@@ -149,7 +144,6 @@ export async function historicalSync() {
   return result
 }
 
-// Detail View Hooks
 export function useBookingDetail(bookingId?: string) {
   return useSWR<any>(
     bookingId ? `/bookings/${bookingId}` : null,
@@ -167,7 +161,6 @@ export function usePropertyDetail(propertyId?: string, from?: string, to?: strin
   if (to) params.append('to', to)
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
   
-  // Use a more specific cache key that includes the exact dates and tags
   const cacheKey = propertyId ? `/property/${propertyId}/detail?${params.toString()}` : null
   
   return useSWR<any>(
@@ -181,7 +174,7 @@ export function usePropertyDetail(propertyId?: string, from?: string, to?: strin
     {
       revalidateOnMount: true,
       revalidateOnFocus: false,
-      dedupingInterval: 0, // Force fresh fetch
+      dedupingInterval: 0,
       revalidateIfStale: true,
       revalidateOnReconnect: true
     }
@@ -249,7 +242,6 @@ export function useDailyOccupancy(from?: string, to?: string, tagIds?: string[])
   )
 }
 
-// Operating Expenses hooks
 export function useOperatingExpenses(propertyId?: string, month?: string) {
   const key = month ? ['/operating-expenses', propertyId || 'all', month] : null
   return useSWR(key, async () => {
@@ -273,7 +265,6 @@ export async function saveOperatingExpense(data: any): Promise<void> {
   await globalMutate((key: any) =>
     Array.isArray(key) && key[0] === '/operating-expenses'
   )
-  // also invalidate financial data
   await globalMutate((key: any) =>
     typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )
@@ -305,7 +296,6 @@ export async function deleteOperatingExpense(id: string): Promise<void> {
   )
 }
 
-// Expense Templates hooks
 export function useExpenseTemplates(propertyId?: string) {
   const key = ['/expense-templates', propertyId || 'all']
   return useSWR(key, async () => {
@@ -324,7 +314,6 @@ export async function saveExpenseTemplates(data: any): Promise<void> {
   )
 }
 
-// Tax Remittance hooks
 export function useTaxRemittance(propertyId?: string, periodStart?: string, periodEnd?: string) {
   const key = ['/tax-remittance', propertyId, periodStart, periodEnd].filter(Boolean)
   return useSWR(key.length > 1 ? key : null, async () => {
@@ -343,7 +332,6 @@ export function useCalculatedTax(from?: string, to?: string, propertyId?: string
   })
 }
 
-// Property Tax Status hooks
 export function usePropertyTaxStatus() {
   return useSWR('/tax/status', async () => {
     const result = await api.getPropertyTaxStatus()
@@ -352,7 +340,6 @@ export function usePropertyTaxStatus() {
   })
 }
 
-// Property Tax Configs hook
 export function usePropertyTaxConfigs() {
   return useSWR('/tax/configs', async () => {
     const result = await api.getPropertyTaxConfigs()
@@ -434,12 +421,10 @@ export async function savePropertyTaxConfig(data: any): Promise<void> {
   if (!result.success) {
     throw new Error(result.error)
   }
-  // Invalidate cache
   await globalMutate('/tax/status')
   await globalMutate('/tax/configs')
 }
 
-// Tax Jurisdictions hook
 export function useBookingsForRange(from?: string, to?: string) {
   const key = from && to ? `bookings-range:${from}|${to}` : null
   return useSWR<any[]>(key, async () => {

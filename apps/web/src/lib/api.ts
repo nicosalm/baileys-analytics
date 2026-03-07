@@ -6,7 +6,6 @@ type ApiResult<T> =
 
 export type DbResult<T> = ApiResult<T>
 
-
 class ApiClient {
     private accessToken: string | null = null
 
@@ -64,8 +63,6 @@ class ApiClient {
         }
     }
 
-
-    // oauth methods
     oauth = {
         initiate: (): Promise<ApiResult<{ authUrl: string }>> => {
             return this.request('/oauth/initiate')
@@ -80,19 +77,17 @@ class ApiClient {
             })
         }
     }
-    
+
     async initiateOAuth(): Promise<ApiResult<{ authUrl: string }>> {
         return this.oauth.initiate()
     }
-    
+
     async disconnectOwnerRez(): Promise<ApiResult<{ success: boolean }>> {
         return this.oauth.disconnect()
     }
 
-
     async manualSync(): Promise<ApiResult<any>> {
-        // use recovery sync for emergency use only
-        return this.request('/sync/recovery', { 
+        return this.request('/sync/recovery', {
             method: 'POST',
             headers: {
                 'X-Force-Sync': 'true'
@@ -285,7 +280,7 @@ export const authenticatedFetch = async (
         'Content-Type': 'application/json',
     }
 
-    const token = api['accessToken'] // Access private property for helper
+    const token = api['accessToken']
     if (token) {
         headers['Authorization'] = `Bearer ${token}`
     }
