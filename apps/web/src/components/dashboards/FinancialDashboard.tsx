@@ -9,7 +9,6 @@ import { formatCompactCurrency } from '@baileys/utils'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { PLView } from '@/components/financial/PLView'
-import { RevenueAnalysis } from '@/components/financial/RevenueAnalysis'
 import { CashFlowView } from '@/components/financial/CashFlowView'
 import { TaxCenter } from '@/components/financial/TaxCenter'
 
@@ -39,19 +38,6 @@ export const FinancialDashboard = () => {
     previousPeriod: data.pl.previousPeriod,
     byMonth: data.pl.monthlyTrend,
     chargeComposition: data.pl.chargeComposition
-  } : null, [data])
-
-  const revenueData = useMemo(() => data ? {
-    metrics: data.pl.metrics,
-    gross: data.revenue.gross,
-    net: data.revenue.net,
-    taxes: data.revenue.taxes,
-    fees: data.revenue.fees,
-    bySource: data.revenue.bySource,
-    byMonth: data.revenue.byMonth,
-    byProperty: [],
-    lastYearData: data.revenue.lastYearData,
-    previousPeriod: data.revenue.previousPeriod || data.pl.previousPeriod
   } : null, [data])
 
   const cashFlowData = useMemo(() => data ? {
@@ -86,9 +72,6 @@ export const FinancialDashboard = () => {
     switch (activeTab) {
       case 'pl':
         chartData = financialData?.monthlyTrend || []
-        break
-      case 'revenue_analysis':
-        chartData = revenueData?.byMonth || []
         break
       case 'cashflow':
         chartData = cashFlowData?.byMonth || []
@@ -195,7 +178,7 @@ export const FinancialDashboard = () => {
       originalDate: dateStr,
       granularity
     })
-  }, [activeTab, financialData?.monthlyTrend, revenueData?.byMonth, cashFlowData?.byMonth, taxData?.tax?.byMonth, openModal])
+  }, [activeTab, financialData?.monthlyTrend, cashFlowData?.byMonth, taxData?.tax?.byMonth, openModal])
 
   const handlePropertyClick = useCallback((propertyId: string) => {
     openModal({ type: 'property', propertyId, propertyName: '' })
@@ -232,9 +215,15 @@ export const FinancialDashboard = () => {
             {financialData?.metrics && (
               <>
                 <div className="text-right">
-                  <div className="text-xs text-muted-foreground">Net Revenue</div>
+                  <div className="text-xs text-muted-foreground">
+                    {(financialData.metrics.operatingExpenses?.total || 0) > 0 ? 'Operating Profit' : 'Net Revenue'}
+                  </div>
                   <div className="text-lg font-bold text-success">
-                    {formatCompactCurrency(financialData.metrics.revenue?.net || 0)}
+                    {formatCompactCurrency(
+                      (financialData.metrics.operatingExpenses?.total || 0) > 0
+                        ? (financialData.metrics.operatingProfit ?? (financialData.metrics.revenue?.net || 0) - (financialData.metrics.operatingExpenses?.total || 0))
+                        : (financialData.metrics.revenue?.net || 0)
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
@@ -254,7 +243,6 @@ export const FinancialDashboard = () => {
           <h3 className="text-lg font-semibold text-foreground">Financial Analysis</h3>
           <TabsList>
             <TabsTrigger value="pl">P&L View</TabsTrigger>
-            <TabsTrigger value="revenue_analysis">Revenue</TabsTrigger>
             <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
             <TabsTrigger value="tax_center">Tax Center</TabsTrigger>
           </TabsList>
@@ -262,7 +250,6 @@ export const FinancialDashboard = () => {
 
         <div className="p-6">
           <TabsContent value="pl" className="mt-0"><PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
-          <TabsContent value="revenue_analysis" className="mt-0"><RevenueAnalysis data={revenueData} loading={isLoading} onPeriodClick={handlePeriodClick} onPropertyClick={handlePropertyClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
           <TabsContent value="cashflow" className="mt-0"><CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
           <TabsContent value="tax_center" className="mt-0"><TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
         </div>

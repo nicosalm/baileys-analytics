@@ -54,11 +54,12 @@ export function useDashboardBatch(
 
 
 export function usePropertyMetrics(
-  from?: string, 
-  to?: string, 
+  from?: string,
+  to?: string,
   tagIds?: string[],
   comparisonFrom?: string,
-  comparisonTo?: string
+  comparisonTo?: string,
+  propertyIds?: string[]
 ) {
   // Validate inputs
   const validFrom = from && isValidDateString(from) ? from : undefined
@@ -66,8 +67,9 @@ export function usePropertyMetrics(
   const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
   const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
-  
-  const key = validFrom || validTo || validTagIds ? ['/properties/metrics', validFrom, validTo, validTagIds, validCompFrom, validCompTo] : null
+  const validPropertyIds = propertyIds ? filterValidUUIDs(propertyIds) : undefined
+
+  const key = validFrom || validTo || validTagIds ? ['/properties/metrics', validFrom, validTo, validTagIds, validCompFrom, validCompTo, validPropertyIds] : null
   return useSWR<any>(key, async () => {
     if (!key) return null
     const params = new URLSearchParams()
@@ -76,6 +78,7 @@ export function usePropertyMetrics(
     if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
     if (validCompFrom) params.append('comparisonFrom', validCompFrom)
     if (validCompTo) params.append('comparisonTo', validCompTo)
+    if (validPropertyIds && validPropertyIds.length > 0) params.append('filterPropertyIds', validPropertyIds.join(','))
 
     const endpoint = params.toString() ? `/properties/metrics?${params}` : '/properties/metrics'
     const result = await api.request(endpoint)

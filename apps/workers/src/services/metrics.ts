@@ -8,16 +8,19 @@ export class MetricsService {
 		fromDate: string,
 		toDate: string,
 		propertyId?: string,
-		tagIds?: string[]
+		tagIds?: string[],
+		propertyIds?: string[]
 	) {
 		let propertiesQuery = this.supabase
 			.from('properties')
 			.select('id, name, internal_code')
 			.eq('tenant_id', tenantId)
 			.eq('active', true);
-		
+
 		if (propertyId) {
 			propertiesQuery = propertiesQuery.eq('id', propertyId);
+		} else if (propertyIds?.length) {
+			propertiesQuery = propertiesQuery.in('id', propertyIds);
 		}
 		
 		const { data: properties } = await propertiesQuery;

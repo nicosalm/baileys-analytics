@@ -7,21 +7,22 @@ const properties = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: s
 properties.use('/*', authMiddleware);
 
 properties.get('/metrics', async (c) => {
-	const { from, to, tags, comparisonFrom, comparisonTo } = c.req.query();
+	const { from, to, tags, comparisonFrom, comparisonTo, filterPropertyIds: filterPropParam } = c.req.query();
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
+
 	const { MetricsService } = await import('../services/metrics');
 	const metricsService = new MetricsService(supabase);
-	
+
 	const fromDate = from || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
 	const toDate = to || new Date().toISOString().split('T')[0];
 	const tagIds = tags?.split(',').filter(Boolean);
-	
+	const propertyIds = filterPropParam?.split(',').filter(Boolean);
+
 	if (comparisonFrom && comparisonTo) {
 		const metrics = await metricsService.calculateComparativeMetrics(
 			tenantId,
@@ -32,15 +33,16 @@ properties.get('/metrics', async (c) => {
 		);
 		return c.json({ metrics, comparison: true });
 	}
-	
+
 	const metrics = await metricsService.calculatePropertyMetrics(
 		tenantId,
 		fromDate,
 		toDate,
 		undefined,
-		tagIds
+		tagIds,
+		propertyIds
 	);
-	
+
 	return c.json({ metrics });
 });
 

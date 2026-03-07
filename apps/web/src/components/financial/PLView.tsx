@@ -4,12 +4,14 @@ import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { RevenueChart } from '@/components/charts/RevenueChart'
 import { PlatformDistributionChart } from '@/components/charts/PlatformDistributionChart'
+import { GuestSpendChart } from '@/components/charts/GuestSpendChart'
 import { useTips } from '@/hooks/use-tips'
 import { useGoalProgress } from '@/hooks/use-api'
 import { getMonthlyGoalValue } from '@/utils/goals'
 import {
   DollarSign, Wallet, Receipt,
-  Info, Landmark, TrendingDown
+  Info, Landmark, TrendingDown,
+  Calendar, ArrowUp, ArrowDown
 } from 'lucide-react'
 import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
@@ -123,6 +125,23 @@ export const PLView: React.FC<PLViewProps> = ({
       }
     }) || []
     
+    // revenue highlights from monthly data
+    const monthlyRevenues = monthlyData.map((m: any) => m.revenue || 0)
+    const avgMonthlyRevenue = monthlyRevenues.length > 0
+      ? monthlyRevenues.reduce((sum: number, r: number) => sum + r, 0) / monthlyRevenues.length
+      : 0
+    const bestMonthValue = monthlyRevenues.length > 0 ? Math.max(...monthlyRevenues) : 0
+    const lowestMonthValue = monthlyRevenues.length > 0 ? Math.min(...monthlyRevenues) : 0
+    const bestMonth = monthlyData.find((m: any) => (m.revenue || 0) === bestMonthValue)
+    const lowestMonth = monthlyData.find((m: any) => (m.revenue || 0) === lowestMonthValue)
+
+    const formatMonthLabel = (month?: string) => {
+      if (!month) return undefined
+      const parts = month.split('-')
+      if (parts.length < 2) return month
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    }
+
     return {
       revenue: {
         gross: grossRevenue,
@@ -157,7 +176,15 @@ export const PLView: React.FC<PLViewProps> = ({
       },
       platforms: platformData,
       monthly: monthlyData,
-      granularity
+      granularity,
+      highlights: {
+        avgMonthlyRevenue,
+        bestMonthValue,
+        bestMonthLabel: formatMonthLabel(bestMonth?.month),
+        lowestMonthValue,
+        lowestMonthLabel: formatMonthLabel(lowestMonth?.month),
+        monthCount: monthlyData.length
+      }
     }
   }, [data, comparisonMode, comparisonLabel])
   
@@ -177,7 +204,7 @@ export const PLView: React.FC<PLViewProps> = ({
     )
   }
   
-  const { revenue, profitability, comparison, platforms, monthly, granularity } = processedData
+  const { revenue, profitability, comparison, platforms, monthly, granularity, highlights } = processedData
   
   return (
     <div className="space-y-6">
@@ -186,7 +213,7 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>P&L Summary:</strong> Revenue → Platform Fees (est.) → Operating Expenses → Taxes → Net Revenue.{' '}
+              <strong>P&L Summary:</strong> Revenue → Platform Fees (est.) → Taxes{revenue.operatingExpenses.total > 0 ? ' → Operating Expenses' : ''} → {revenue.operatingExpenses.total > 0 ? 'Operating Profit' : 'Net Revenue'}.{' '}
               {revenue.operatingExpenses.total > 0
                 ? `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
                 : <>Configure <Link to="/settings?tab=expenses" className="underline hover:text-info-fg">Expenses</Link> in Settings for a complete picture.</>}
@@ -246,10 +273,12 @@ export const PLView: React.FC<PLViewProps> = ({
         />
         <MetricCard
           icon={Wallet}
-          label="Net Revenue"
+          label={revenue.operatingExpenses.total > 0 ? "Operating Profit" : "Net Revenue"}
           value={revenue.operatingProfit}
           format="currency"
-          tooltip="What you keep after estimated platform fees, operating expenses, and taxes"
+          tooltip={revenue.operatingExpenses.total > 0
+            ? "What you keep after estimated platform fees, taxes, and operating expenses"
+            : "What you keep after estimated platform fees and taxes"}
           color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
           subValue={comparisonMode !== 'none' && comparison.previousOperatingProfit > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousOperatingProfit)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -261,7 +290,43 @@ export const PLView: React.FC<PLViewProps> = ({
           staggerIndex={3}
         />
       </div>
-      
+
+      {/* Revenue highlights */}
+      {highlights.monthCount > 1 && (
+        <div className="grid grid-cols-3 gap-3 md:gap-4">
+          <MetricCard
+            icon={Calendar}
+            label="Monthly Average"
+            value={highlights.avgMonthlyRevenue}
+            format="currency"
+            color="gray"
+            size="sm"
+            subValue={`${highlights.monthCount} months`}
+            staggerIndex={4}
+          />
+          <MetricCard
+            icon={ArrowUp}
+            label="Best Month"
+            value={highlights.bestMonthValue}
+            format="currency"
+            color="gray"
+            size="sm"
+            subValue={highlights.bestMonthLabel}
+            staggerIndex={5}
+          />
+          <MetricCard
+            icon={ArrowDown}
+            label="Lowest Month"
+            value={highlights.lowestMonthValue}
+            format="currency"
+            color="gray"
+            size="sm"
+            subValue={highlights.lowestMonthLabel}
+            staggerIndex={6}
+          />
+        </div>
+      )}
+
       {/* P&L Chart - Direct without wrapper */}
       <RevenueChart
         data={monthly}
@@ -366,66 +431,75 @@ export const PLView: React.FC<PLViewProps> = ({
           </div>
         </div>
       
-      {/* Charge Composition Breakdown */}
+      {/* Guest Spend Breakdown + Charge Composition */}
       {data?.chargeComposition && data.chargeComposition.details.length > 0 && (
-        <div className="bg-card rounded-lg shadow-sm border p-6">
-          <h4 className="font-semibold text-foreground mb-1">Booking Charge Composition</h4>
-          <p className="text-sm text-muted-foreground mb-4">Itemized charges from booking data, excluding base rent</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-            {data.chargeComposition.taxes > 0 && (
-              <div className="bg-info-subtle rounded-lg p-3">
-                <div className="text-xs text-info font-medium">Taxes</div>
-                <div className="text-lg font-bold text-info-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
-              </div>
-            )}
-            {data.chargeComposition.fees > 0 && (
-              <div className="bg-purple-subtle rounded-lg p-3">
-                <div className="text-xs text-purple-fg font-medium">Booking Fees</div>
-                <div className="text-lg font-bold text-purple-fg">{formatCurrency(data.chargeComposition.fees)}</div>
-              </div>
-            )}
-            {data.chargeComposition.discounts > 0 && (
-              <div className="bg-muted/40 rounded-lg p-3">
-                <div className="text-xs text-muted-foreground font-medium">Discounts</div>
-                <div className="text-lg font-bold text-foreground">-{formatCurrency(data.chargeComposition.discounts)}</div>
-              </div>
-            )}
-            {data.chargeComposition.other > 0 && (
-              <div className="bg-muted/30 rounded-lg p-3">
-                <div className="text-xs text-muted-foreground font-medium">Other</div>
-                <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.other)}</div>
-              </div>
-            )}
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div>
+            <GuestSpendChart
+              grossRevenue={revenue.gross}
+              guestFees={revenue.guestFees}
+              chargeComposition={data.chargeComposition}
+            />
           </div>
-          <div className="space-y-2">
-            {(chargesExpanded ? data.chargeComposition.details : data.chargeComposition.details.slice(0, 10)).map((detail: any, i: number) => (
-              <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0">
-                <span className="text-muted-foreground flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${
-                    detail.type === 'tax' ? 'bg-info' :
-                    detail.type === 'fee' ? 'bg-purple-fg' :
-                    detail.type === 'discount' ? 'bg-muted-foreground' :
-                    'bg-muted-foreground'
-                  }`} />
-                  {detail.description}
-                  <span className="text-xs text-muted-foreground">({detail.count} {detail.count === 1 ? 'booking' : 'bookings'})</span>
-                </span>
-                <span className="font-medium">
-                  {detail.type === 'discount' ? '-' : ''}{formatCurrency(detail.total)}
-                </span>
-              </div>
-            ))}
-            {data.chargeComposition.details.length > 10 && (
-              <button
-                onClick={() => setChargesExpanded(!chargesExpanded)}
-                className="text-xs text-primary hover:text-primary/80 transition-colors pt-1 cursor-pointer"
-              >
-                {chargesExpanded
-                  ? 'Show less'
-                  : `Show all ${data.chargeComposition.details.length} charge types`
-                }
-              </button>
-            )}
+          <div className="lg:col-span-2 bg-card rounded-lg shadow-sm border p-6">
+            <h4 className="font-semibold text-foreground mb-1">Booking Charge Composition</h4>
+            <p className="text-sm text-muted-foreground mb-4">Itemized charges from booking data, excluding base rent</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              {data.chargeComposition.taxes > 0 && (
+                <div className="bg-info-subtle rounded-lg p-3">
+                  <div className="text-xs text-info font-medium">Taxes</div>
+                  <div className="text-lg font-bold text-info-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
+                </div>
+              )}
+              {data.chargeComposition.fees > 0 && (
+                <div className="bg-purple-subtle rounded-lg p-3">
+                  <div className="text-xs text-purple-fg font-medium">Booking Fees</div>
+                  <div className="text-lg font-bold text-purple-fg">{formatCurrency(data.chargeComposition.fees)}</div>
+                </div>
+              )}
+              {data.chargeComposition.discounts > 0 && (
+                <div className="bg-muted/40 rounded-lg p-3">
+                  <div className="text-xs text-muted-foreground font-medium">Discounts</div>
+                  <div className="text-lg font-bold text-foreground">-{formatCurrency(data.chargeComposition.discounts)}</div>
+                </div>
+              )}
+              {data.chargeComposition.other > 0 && (
+                <div className="bg-muted/30 rounded-lg p-3">
+                  <div className="text-xs text-muted-foreground font-medium">Other</div>
+                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.other)}</div>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              {(chargesExpanded ? data.chargeComposition.details : data.chargeComposition.details.slice(0, 10)).map((detail: any, i: number) => (
+                <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${
+                      detail.type === 'tax' ? 'bg-info' :
+                      detail.type === 'fee' ? 'bg-purple-fg' :
+                      detail.type === 'discount' ? 'bg-muted-foreground' :
+                      'bg-muted-foreground'
+                    }`} />
+                    {detail.description}
+                    <span className="text-xs text-muted-foreground">({detail.count} {detail.count === 1 ? 'booking' : 'bookings'})</span>
+                  </span>
+                  <span className="font-medium">
+                    {detail.type === 'discount' ? '-' : ''}{formatCurrency(detail.total)}
+                  </span>
+                </div>
+              ))}
+              {data.chargeComposition.details.length > 10 && (
+                <button
+                  onClick={() => setChargesExpanded(!chargesExpanded)}
+                  className="text-xs text-primary hover:text-primary/80 transition-colors pt-1 cursor-pointer"
+                >
+                  {chargesExpanded
+                    ? 'Show less'
+                    : `Show all ${data.chargeComposition.details.length} charge types`
+                  }
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
