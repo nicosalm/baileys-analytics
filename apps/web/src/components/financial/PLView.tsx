@@ -452,15 +452,15 @@ export const PLView: React.FC<PLViewProps> = ({
                 </div>
               )}
               {data.chargeComposition.fees > 0 && (
-                <div className="bg-purple-subtle rounded-lg p-3">
-                  <div className="text-xs text-purple-fg font-medium">Booking Fees</div>
-                  <div className="text-lg font-bold text-purple-fg">{formatCurrency(data.chargeComposition.fees)}</div>
+                <div className="bg-warning-subtle rounded-lg p-3">
+                  <div className="text-xs text-warning font-medium">Booking Fees</div>
+                  <div className="text-lg font-bold text-warning-fg">{formatCurrency(data.chargeComposition.fees)}</div>
                 </div>
               )}
-              {data.chargeComposition.discounts > 0 && (
-                <div className="bg-muted/40 rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground font-medium">Discounts</div>
-                  <div className="text-lg font-bold text-foreground">-{formatCurrency(data.chargeComposition.discounts)}</div>
+              {data.chargeComposition.discounts !== 0 && (
+                <div className="bg-success-subtle rounded-lg p-3">
+                  <div className="text-xs text-success font-medium">Discounts</div>
+                  <div className="text-lg font-bold text-success-fg">-{formatCurrency(Math.abs(data.chargeComposition.discounts))}</div>
                 </div>
               )}
               {data.chargeComposition.other > 0 && (
@@ -476,15 +476,15 @@ export const PLView: React.FC<PLViewProps> = ({
                   <span className="text-muted-foreground flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${
                       detail.type === 'tax' ? 'bg-info' :
-                      detail.type === 'fee' ? 'bg-purple-fg' :
-                      detail.type === 'discount' ? 'bg-muted-foreground' :
+                      detail.type === 'fee' ? 'bg-warning' :
+                      detail.type === 'discount' ? 'bg-success' :
                       'bg-muted-foreground'
                     }`} />
                     {detail.description}
                     <span className="text-xs text-muted-foreground">({detail.count} {detail.count === 1 ? 'booking' : 'bookings'})</span>
                   </span>
-                  <span className="font-medium">
-                    {detail.type === 'discount' ? '-' : ''}{formatCurrency(detail.total)}
+                  <span className={`font-medium ${detail.type === 'discount' ? 'text-success' : ''}`}>
+                    {detail.type === 'discount' ? '-' : ''}{formatCurrency(Math.abs(detail.total))}
                   </span>
                 </div>
               ))}

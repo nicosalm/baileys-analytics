@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase'
 import { api } from '@/lib/api'
 import { Session } from '@supabase/supabase-js'
 import { AppUser } from '@/types/auth'
-import { getCaptchaToken } from '@/lib/turnstile'
 
 type AuthState =
   | { status: 'loading' }
@@ -246,11 +245,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const captchaToken = await getCaptchaToken()
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: { captchaToken },
       })
 
       if (error) {
@@ -269,13 +266,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const captchaToken = await getCaptchaToken()
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`,
-          captchaToken,
         }
       })
 
@@ -333,10 +328,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInAsDemo = async (): Promise<boolean> => {
     try {
-      const captchaToken = await getCaptchaToken()
-      const { data, error } = await supabase.auth.signInAnonymously({
-        options: { captchaToken },
-      })
+      const { data, error } = await supabase.auth.signInAnonymously()
       if (error || !data.session) return false
       return await processSession(data.session)
     } catch {

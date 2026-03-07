@@ -3,7 +3,7 @@ import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@bail
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import { Calendar, DollarSign, Info, Percent, TrendingUp, ArrowDown, ScatterChart, LayoutGrid, Table, Wallet, Share2, BarChart3, PieChart, HelpCircle } from 'lucide-react'
+import { DollarSign, Info, Percent, TrendingUp, ArrowDown, ScatterChart, LayoutGrid, Table, Wallet, Share2, BarChart3, PieChart, HelpCircle } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -59,16 +59,20 @@ export const PropertiesDashboard = () => {
     ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
     : [] as PropertyMetrics[]
 
-  const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN } = useMemo(() => {
+  const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN, totalNetRevenue } = useMemo(() => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
     const totalRev = sumBy(validProperties, (p: PropertyMetrics) => p.revenue)
+    const totalNet = profitability.length > 0
+      ? sumBy(profitability, (p: any) => p.netRevenue || 0)
+      : 0
     return {
       totalRevenue: totalRev,
       totalBookings: sumBy(validProperties, (p: PropertyMetrics) => p.bookings),
       avgOccupancy: calculateAverage(validProperties.map((p: PropertyMetrics) => p.occupancyRate)),
-      avgRevPAN: totalAvailableNights > 0 ? totalRev / totalAvailableNights : 0
+      avgRevPAN: totalAvailableNights > 0 ? totalRev / totalAvailableNights : 0,
+      totalNetRevenue: totalNet
     }
-  }, [validProperties])
+  }, [validProperties, profitability])
 
   const { prevTotalRevenue, prevTotalBookings, prevAvgOccupancy, prevAvgRevPAN } = useMemo(() => {
     const prev = previousProperties || []
@@ -193,7 +197,7 @@ export const PropertiesDashboard = () => {
           tooltip="Gross booking revenue across all properties for this period"
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
             ? <>vs {comparisonLabel}: {formatCurrency(prevTotalRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : "All properties"
+            : `${totalBookings} bookings | All properties`
           }
           trend={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? {
             value: ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100,
@@ -202,23 +206,39 @@ export const PropertiesDashboard = () => {
           color="green"
           staggerIndex={0}
         />
-        <MetricCard
-          icon={TrendingUp}
-          label="Avg RevPAN"
-          value={avgRevPAN}
-          format="currency"
-          tooltip="Revenue Per Available Night: how much each night earns on average, factoring in both rate and occupancy"
-          subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
-            ? <>vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : "Across all properties"
-          }
-          trend={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? {
-            value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100,
-            isPositive: avgRevPAN > prevAvgRevPAN
-          } : undefined}
-          color="blue"
-          staggerIndex={1}
-        />
+        {profitability.length > 0 ? (
+          <MetricCard
+            icon={Wallet}
+            label="Operating Profit"
+            value={totalNetRevenue}
+            format="currency"
+            tooltip="Revenue minus platform fees, taxes, and operating expenses across all properties"
+            subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
+              ? <>vs {comparisonLabel}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
+              : totalRevenue > 0 ? `${formatPercentage((totalNetRevenue / totalRevenue) * 100, 1)} margin` : '0% margin'
+            }
+            color={totalNetRevenue > 0 ? "green" : "red"}
+            staggerIndex={1}
+          />
+        ) : (
+          <MetricCard
+            icon={TrendingUp}
+            label="Avg RevPAN"
+            value={avgRevPAN}
+            format="currency"
+            tooltip="Revenue Per Available Night: how much each night earns on average, factoring in both rate and occupancy"
+            subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
+              ? <>vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
+              : "Across all properties"
+            }
+            trend={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? {
+              value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100,
+              isPositive: avgRevPAN > prevAvgRevPAN
+            } : undefined}
+            color="blue"
+            staggerIndex={1}
+          />
+        )}
         <MetricCard
           icon={Percent}
           label="Occupancy Rate"
@@ -237,20 +257,30 @@ export const PropertiesDashboard = () => {
           staggerIndex={2}
         />
         <MetricCard
-          icon={Calendar}
-          label="Total Bookings"
-          value={totalBookings}
-          format="number"
-          tooltip="Number of confirmed reservations in this period"
-          subValue={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0
-            ? <>vs {comparisonLabel}: {prevTotalBookings}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : "In selected period"
+          icon={TrendingUp}
+          label={profitability.length > 0 ? "Avg RevPAN" : "Total Bookings"}
+          value={profitability.length > 0 ? avgRevPAN : totalBookings}
+          format={profitability.length > 0 ? "currency" : "number"}
+          tooltip={profitability.length > 0
+            ? "Revenue Per Available Night: how much each night earns on average"
+            : "Number of confirmed reservations in this period"
           }
-          trend={comparisonMode !== 'none' && previousProperties && prevTotalBookings > 0 ? {
-            value: ((totalBookings - prevTotalBookings) / prevTotalBookings) * 100,
-            isPositive: totalBookings > prevTotalBookings
-          } : undefined}
-          color="purple"
+          subValue={comparisonMode !== 'none' && previousProperties
+            ? profitability.length > 0 && prevAvgRevPAN > 0
+              ? <>vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
+              : prevTotalBookings > 0
+              ? <>vs {comparisonLabel}: {prevTotalBookings}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
+              : "In selected period"
+            : profitability.length > 0 ? "Across all properties" : "In selected period"
+          }
+          trend={comparisonMode !== 'none' && previousProperties ? (
+            profitability.length > 0 && prevAvgRevPAN > 0
+              ? { value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100, isPositive: avgRevPAN > prevAvgRevPAN }
+              : prevTotalBookings > 0
+              ? { value: ((totalBookings - prevTotalBookings) / prevTotalBookings) * 100, isPositive: totalBookings > prevTotalBookings }
+              : undefined
+          ) : undefined}
+          color={profitability.length > 0 ? "blue" : "purple"}
           staggerIndex={3}
         />
       </div>
@@ -300,6 +330,7 @@ export const PropertiesDashboard = () => {
             properties={validProperties}
             previousProperties={previousProperties}
             comparisonMode={comparisonMode}
+            profitability={profitability}
           />
         )}
       </div>

@@ -154,7 +154,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
                     <div key={charge.id || i} className="flex justify-between text-sm py-0.5">
                       <span className="text-muted-foreground flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${
-                          charge.type === 'tax' ? 'bg-danger' :
+                          charge.type === 'tax' ? 'bg-info' :
                           charge.type === 'fee' ? 'bg-warning' :
                           charge.type === 'discount' ? 'bg-success' :
                           'bg-muted-foreground'

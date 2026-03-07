@@ -256,13 +256,13 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
               {data.metrics.platformFees > 0 && (
                 <div>
                   <div className="text-xs text-muted-foreground">Platform Fees (est.)</div>
-                  <div className="text-lg font-semibold text-danger">-{formatCurrency(data.metrics.platformFees)}</div>
+                  <div className="text-lg font-semibold text-warning">-{formatCurrency(data.metrics.platformFees)}</div>
                 </div>
               )}
               {data.metrics.taxes > 0 && (
                 <div>
                   <div className="text-xs text-muted-foreground">Taxes</div>
-                  <div className="text-lg font-semibold text-danger">-{formatCurrency(data.metrics.taxes)}</div>
+                  <div className="text-lg font-semibold text-info">-{formatCurrency(data.metrics.taxes)}</div>
                 </div>
               )}
               {data.metrics.operatingExpenses > 0 && (

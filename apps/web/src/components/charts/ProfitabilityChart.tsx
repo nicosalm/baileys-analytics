@@ -35,11 +35,11 @@ const ProfitabilityTooltip = ({ active, payload }: any) => {
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Platform Fees (est.):</span>
-          <span className="font-medium text-danger">-{formatCurrency(d.platformFees)}</span>
+          <span className="font-medium text-warning">-{formatCurrency(d.platformFees)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Taxes:</span>
-          <span className="font-medium text-danger">-{formatCurrency(d.taxes)}</span>
+          <span className="font-medium text-info">-{formatCurrency(d.taxes)}</span>
         </div>
         {d.operatingExpenses > 0 && (
           <div className="flex justify-between gap-4">

@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
+import { getExpensesWithTemplateFallback } from './expense-utils';
 
 async function fetchBookings(
 	supabase: SupabaseClient,
@@ -117,7 +118,31 @@ async function getCurrentPeriodMetrics(
 	const totalBookings = bookings.length;
 	const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 	const platformFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0);
-	const netRevenue = totalRevenue - platformFees;
+
+	// fetch taxes from booking_charges
+	const bookingIds = bookings.map(b => b.id);
+	let taxes = 0;
+	if (bookingIds.length > 0) {
+		const { data: taxCharges } = await supabase
+			.from('booking_charges')
+			.select('amount')
+			.in('booking_id', bookingIds)
+			.eq('type', 'tax')
+			.limit(SUPABASE_MAX_ROWS);
+		taxes = (taxCharges || []).reduce((sum: number, c: any) => sum + (parseFloat(c.amount) || 0), 0);
+	}
+
+	// fetch operating expenses
+	const propertyIds = properties.map(p => p.id);
+	const expenseRows = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds);
+	const operatingExpensesTotal = expenseRows.reduce((sum, e) => sum + e.amount, 0);
+	const operatingExpensesByCategory: Record<string, number> = {};
+	expenseRows.forEach(e => {
+		operatingExpensesByCategory[e.category] = (operatingExpensesByCategory[e.category] || 0) + e.amount;
+	});
+
+	const netRevenue = totalRevenue - platformFees - taxes;
+	const operatingProfit = netRevenue - operatingExpensesTotal;
 	let totalNights = 0;
 	bookings.forEach(b => {
 		const nights = Math.ceil(
@@ -168,6 +193,11 @@ async function getCurrentPeriodMetrics(
 	return {
 		revenue: totalRevenue,
 		netRevenue,
+		platformFees,
+		taxes,
+		operatingExpenses: operatingExpensesTotal,
+		operatingExpensesByCategory,
+		operatingProfit,
 		bookings: totalBookings,
 		upcomingBookings,
 		cancellationRate,
@@ -557,6 +587,12 @@ function formatOverviewMetrics(current: any, previous: any = null) {
 			previous: previous?.revenue || 0,
 			growth: previous?.revenue ? ((current.revenue - previous.revenue) / previous.revenue) * 100 : 0,
 			net: current.netRevenue,
+			platformFees: current.platformFees,
+			taxes: current.taxes,
+			operatingExpenses: current.operatingExpenses,
+			operatingExpensesByCategory: current.operatingExpensesByCategory,
+			operatingProfit: current.operatingProfit,
+			previousOperatingProfit: previous?.operatingProfit || 0,
 			avgBookingValue: current.avgBookingValue
 		},
 		bookings: {

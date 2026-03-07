@@ -148,13 +148,13 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
               {data.costs.platformFees > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Platform Fees (est.)</span>
-                  <span className="font-medium text-danger">-{formatCurrency(data.costs.platformFees)}</span>
+                  <span className="font-medium text-warning">-{formatCurrency(data.costs.platformFees)}</span>
                 </div>
               )}
               {data.costs.taxes > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Taxes</span>
-                  <span className="font-medium text-danger">-{formatCurrency(data.costs.taxes)}</span>
+                  <span className="font-medium text-info">-{formatCurrency(data.costs.taxes)}</span>
                 </div>
               )}
               {data.costs.operatingExpenses > 0 && (

@@ -5,7 +5,7 @@ import { TrendingUp, TrendingDown, ArrowUpDown, ChevronUp, ChevronDown } from 'l
 import { useModal } from '@/contexts/modal'
 
 type ComparisonMode = 'none' | 'previous-period' | 'previous-year'
-type SortField = 'name' | 'revenue' | 'revpan' | 'bookings' | 'occupancy' | 'trend'
+type SortField = 'name' | 'revenue' | 'revpan' | 'bookings' | 'occupancy' | 'trend' | 'margin'
 type SortDirection = 'asc' | 'desc'
 
 interface SortIconProps {
@@ -25,10 +25,17 @@ const SortIcon = memo(({ field, currentField, direction }: SortIconProps) => {
 
 SortIcon.displayName = 'SortIcon'
 
+interface PropertyProfitability {
+  propertyId: string
+  grossRevenue: number
+  netRevenue: number
+}
+
 export interface PropertyTableProps {
   properties: PropertyMetrics[]
   previousProperties?: PropertyMetrics[] | null
   comparisonMode: ComparisonMode
+  profitability?: PropertyProfitability[]
 }
 
 const getTrend = (current: number, previous?: number) => {
@@ -36,7 +43,7 @@ const getTrend = (current: number, previous?: number) => {
   return ((current - previous) / previous) * 100
 }
 
-export const PropertyTable = memo(({ properties, previousProperties, comparisonMode }: PropertyTableProps) => {
+export const PropertyTable = memo(({ properties, previousProperties, comparisonMode, profitability }: PropertyTableProps) => {
   const { openModal } = useModal()
   const [sortField, setSortField] = useState<SortField>('revpan')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
@@ -85,6 +92,12 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
           aValue = a.revenue / Math.max(a.availableNights, 1)
           bValue = b.revenue / Math.max(b.availableNights, 1)
           break
+        case 'margin':
+          const aProf = profitability?.find(p => p.propertyId === a.propertyId)
+          const bProf = profitability?.find(p => p.propertyId === b.propertyId)
+          aValue = aProf && aProf.grossRevenue > 0 ? (aProf.netRevenue / aProf.grossRevenue) * 100 : 0
+          bValue = bProf && bProf.grossRevenue > 0 ? (bProf.netRevenue / bProf.grossRevenue) * 100 : 0
+          break
         case 'trend':
           const aPrev = previousProperties?.find(p => p.propertyId === a.propertyId)
           const bPrev = previousProperties?.find(p => p.propertyId === b.propertyId)
@@ -129,6 +142,17 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                   <SortIcon field="revenue" currentField={sortField} direction={sortDirection} />
                 </div>
               </th>
+              {profitability && profitability.length > 0 && (
+                <th
+                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
+                  onClick={() => handleSort('margin')}
+                >
+                  <div className="flex items-center gap-1">
+                    Margin
+                    <SortIcon field="margin" currentField={sortField} direction={sortDirection} />
+                  </div>
+                </th>
+              )}
               <th
                 className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
                 onClick={() => handleSort('revpan')}
@@ -201,6 +225,22 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                       </div>
                     )}
                   </td>
+                  {profitability && profitability.length > 0 && (() => {
+                    const prof = profitability.find(p => p.propertyId === property.propertyId)
+                    const margin = prof && prof.grossRevenue > 0 ? (prof.netRevenue / prof.grossRevenue) * 100 : 0
+                    return (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm font-medium ${margin >= 50 ? 'text-success' : margin >= 30 ? 'text-warning' : 'text-danger'}`}>
+                          {formatPercentage(margin, 1)}
+                        </div>
+                        {prof && (
+                          <div className="text-xs text-muted-foreground">
+                            {formatCompactCurrency(prof.netRevenue)} net
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })()}
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-foreground">
                       {formatCurrency(property.revenue / Math.max(property.availableNights, 1))}

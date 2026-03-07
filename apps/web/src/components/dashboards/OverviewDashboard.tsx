@@ -6,7 +6,7 @@ import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisp
 import {
   TrendingUp, TrendingDown,
   DollarSign, Users, Calendar, Clock,
-  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink,
+  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink, Wallet,
   LogIn, LogOut
 } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
@@ -532,7 +532,9 @@ export const OverviewDashboard = () => {
           staggerIndex={0}
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `After fees (est.): ${formatCompactCurrency(metrics.revenue.net)}`
+            : metrics.revenue.operatingExpenses > 0
+              ? `Profit: ${formatCompactCurrency(metrics.revenue.operatingProfit)} | Fees + Expenses: ${formatCompactCurrency(metrics.revenue.platformFees + metrics.revenue.operatingExpenses)}`
+              : `After fees (est.): ${formatCompactCurrency(metrics.revenue.net)}`
           }
           trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
             value: metrics.revenue.growth,
@@ -663,7 +665,27 @@ export const OverviewDashboard = () => {
         />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className={`grid grid-cols-2 ${metrics.revenue.operatingExpenses > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-3 md:gap-4`}>
+        {metrics.revenue.operatingExpenses > 0 && (
+          <MetricCard
+            icon={Wallet}
+            label="Operating Profit"
+            value={metrics.revenue.operatingProfit}
+            format="currency"
+            subValue={comparisonMode !== 'none' && metrics.revenue.previousOperatingProfit > 0
+              ? `vs ${comparisonLabel}: ${formatCompactCurrency(metrics.revenue.previousOperatingProfit)}`
+              : `${metrics.revenue.current > 0 ? formatPercentage((metrics.revenue.operatingProfit / metrics.revenue.current) * 100, 1) : '0%'} margin`
+            }
+            trend={comparisonMode !== 'none' && metrics.revenue.previousOperatingProfit > 0 ? {
+              value: ((metrics.revenue.operatingProfit - metrics.revenue.previousOperatingProfit) / metrics.revenue.previousOperatingProfit) * 100,
+              isPositive: metrics.revenue.operatingProfit > metrics.revenue.previousOperatingProfit
+            } : undefined}
+            size="sm"
+            color={metrics.revenue.operatingProfit > 0 ? "green" : "red"}
+            tooltip="Revenue minus platform fees, taxes, and operating expenses — what you actually keep"
+            staggerIndex={4}
+          />
+        )}
         <MetricCard
           icon={DollarSign}
           label="Average Booking Value"
@@ -673,7 +695,7 @@ export const OverviewDashboard = () => {
           size="sm"
           color="gray"
           tooltip="Total revenue divided by number of bookings"
-          staggerIndex={4}
+          staggerIndex={metrics.revenue.operatingExpenses > 0 ? 5 : 4}
         />
         <MetricCard
           icon={Calendar}
@@ -684,7 +706,7 @@ export const OverviewDashboard = () => {
           size="sm"
           color="gray"
           tooltip="How many nights the average guest stays per reservation"
-          staggerIndex={5}
+          staggerIndex={metrics.revenue.operatingExpenses > 0 ? 6 : 5}
         />
         <MetricCard
           icon={TrendingUp}
@@ -695,7 +717,7 @@ export const OverviewDashboard = () => {
           size="sm"
           color="gray"
           tooltip="Share of guests who have booked with you more than once"
-          staggerIndex={6}
+          staggerIndex={metrics.revenue.operatingExpenses > 0 ? 7 : 6}
         />
         <MetricCard
           icon={TrendingDown}
@@ -706,7 +728,7 @@ export const OverviewDashboard = () => {
           subValue="This period"
           size="sm"
           color={Number(metrics.bookings.cancellationRate || 0) > 10 ? "red" : "gray"}
-          staggerIndex={7}
+          staggerIndex={metrics.revenue.operatingExpenses > 0 ? 8 : 7}
         />
       </div>
 
