@@ -319,7 +319,6 @@ export const Landing = () => {
           <p className="mt-6 text-sm text-white/40">
             — Jerry, co-founder & property manager
           </p>
-          <p className="mt-1 text-xs text-white/20">(quote pending approval)</p>
         </div>
       </section>
 
