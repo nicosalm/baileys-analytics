@@ -147,14 +147,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         </div>
       )}
 
-      {/* Download Report Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleDownloadTaxReport}>
-          <Download className="w-4 h-4" />
-          Download Tax Report (CSV)
-        </Button>
-      </div>
-
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
@@ -229,14 +221,20 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         {/* Property Tax Details Table */}
         <div className="bg-card rounded-lg shadow-sm border">
           <div className="p-4 border-b">
-            <div>
-              <h3 className="font-semibold text-foreground flex items-center">
-                <Building className="w-4 h-4 mr-2" />
-                Tax by Property
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {taxData.propertyCount} {taxData.propertyCount === 1 ? 'property' : 'properties'} with tax data
-              </p>
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground flex items-center">
+                  <Building className="w-4 h-4 mr-2" />
+                  Tax by Property
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {taxData.propertyCount} {taxData.propertyCount === 1 ? 'property' : 'properties'} with tax data
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleDownloadTaxReport} className="text-muted-foreground hover:text-foreground">
+                <Download className="w-4 h-4" />
+                Export
+              </Button>
             </div>
           </div>
           <div className="p-4">
