@@ -282,7 +282,7 @@ function buildRevenueChartData(
 			label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 		}
 
-		const current = revenueMap.get(key) || { day: label, revenue: 0 };
+		const current = revenueMap.get(key) || { day: label, date: key, revenue: 0 };
 		current.revenue += b.total_amount || 0;
 		revenueMap.set(key, current);
 	});
@@ -295,22 +295,22 @@ function buildRevenueChartData(
 		for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
 			const key = d.toISOString().split('T')[0];
 			const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-			result.push(revenueMap.get(key) || { day: label, revenue: 0 });
+			result.push(revenueMap.get(key) || { day: label, date: key, revenue: 0 });
 		}
 	} else if (useWeekly) {
 		const weekStart = new Date(startDate);
 		weekStart.setDate(startDate.getDate() - startDate.getDay());
-		
+
 		for (let d = new Date(weekStart); d <= endDate; d.setDate(d.getDate() + 7)) {
 			const key = d.toISOString().split('T')[0];
 			const label = `Week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-			result.push(revenueMap.get(key) || { day: label, revenue: 0 });
+			result.push(revenueMap.get(key) || { day: label, date: key, revenue: 0 });
 		}
 	} else {
 		for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
 			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 			const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-			result.push(revenueMap.get(key) || { day: label, revenue: 0 });
+			result.push(revenueMap.get(key) || { day: label, date: key, revenue: 0 });
 		}
 	}
 

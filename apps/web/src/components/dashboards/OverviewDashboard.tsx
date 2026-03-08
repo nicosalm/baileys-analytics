@@ -21,6 +21,7 @@ import { useModal } from '@/contexts/modal'
 import { useTheme } from '@/contexts/theme'
 import { getPlatformColor, getChartColor, CHART_INFRA, resolveToken } from '@/lib/theme'
 import { getMonthlyGoalValue } from '@/utils/goals'
+import { detectGranularity } from '@/utils/chart-helpers'
 import { Button } from '@/components/ui/button'
 import { useNavigate, Link } from 'react-router-dom'
 
@@ -280,10 +281,11 @@ export const OverviewDashboard = () => {
     const dataByDate: Record<string, Record<string, number | string>> = {}
 
     charts.revenueLastWeek.forEach((item: RevenueLastWeekItem) => {
-      const dateKey = item.day || item.date || item.month || ''
+      const dateKey = item.date || item.day || item.month || ''
       if (!dataByDate[dateKey]) {
         dataByDate[dateKey] = {
           date: dateKey,
+          displayDate: item.day || item.date || item.month || '',
           prop1: 0, prop2: 0, prop3: 0, prop4: 0,
           prop5: 0, prop6: 0, prop7: 0, prop8: 0,
           other: 0
@@ -302,12 +304,13 @@ export const OverviewDashboard = () => {
 
     if (hasPropertyData) {
       charts.revenueLastWeek.forEach((item: RevenueLastWeekItem) => {
-        const dateKey = item.day || item.date || item.month || ''
+        const dateKey = item.date || item.day || item.month || ''
         const propName = item.propertyName
 
         if (!dataByDate[dateKey]) {
           dataByDate[dateKey] = {
             date: dateKey,
+            displayDate: item.day || item.date || item.month || '',
             prop1: 0, prop2: 0, prop3: 0, prop4: 0,
             prop5: 0, prop6: 0, prop7: 0, prop8: 0,
             other: 0
@@ -362,18 +365,45 @@ export const OverviewDashboard = () => {
 
     return Object.values(dataByDate)
       .sort((a: Record<string, number | string>, b: Record<string, number | string>) => {
-        const dateA = new Date(String(a.date).includes('Jul') ? `${a.date} 2025` : String(a.date))
-        const dateB = new Date(String(b.date).includes('Jul') ? `${b.date} 2025` : String(b.date))
-        return dateA.getTime() - dateB.getTime()
+        return String(a.date).localeCompare(String(b.date))
       })
       .map((item: Record<string, number | string>) => {
-        const { date, totalRevenue, ...properties } = item
+        const { date, displayDate, totalRevenue, ...properties } = item
         return {
-          week: String(date).replace(' 2025', '').replace('2025-', ''),
+          week: String(displayDate || date).replace(' 2025', '').replace('2025-', ''),
+          fullDate: String(date),
           ...properties
         }
       })
   }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total, resolvedTheme])
+
+  const revenueGranularity = useMemo(() => {
+    if (!charts?.revenueLastWeek?.length) return 'Monthly' as const
+    return detectGranularity(charts.revenueLastWeek, 'date')
+  }, [charts?.revenueLastWeek])
+
+  const handleRevenueChartClick = useCallback((data: { activeLabel?: string | number }) => {
+    if (!data?.activeLabel) return
+    const clicked = revenueChartData.find(
+      (d: Record<string, string | number>) => d.week === data.activeLabel
+    )
+    if (!clicked) return
+
+    const rawDate = String(clicked.fullDate)
+    let granularity: 'daily' | 'weekly' | 'monthly' = 'monthly'
+    if (revenueGranularity === 'Daily') granularity = 'daily'
+    else if (revenueGranularity === 'Weekly') granularity = 'weekly'
+
+    const [year, month, day] = rawDate.split('-')
+    openModal({
+      type: 'period',
+      month,
+      year,
+      day,
+      originalDate: rawDate,
+      granularity
+    })
+  }, [revenueChartData, revenueGranularity, openModal])
 
   const revenueChartAreas = useMemo(() => {
     if (!charts?.topProperties) return []
@@ -800,7 +830,7 @@ export const OverviewDashboard = () => {
           <div className="h-full flex flex-col">
             <div className="flex-1">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueChartData}>
+                <AreaChart data={revenueChartData} onClick={handleRevenueChartClick} style={{ cursor: 'pointer' }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
                   <XAxis
                     dataKey="week"
