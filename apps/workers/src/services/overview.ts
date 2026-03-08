@@ -161,25 +161,18 @@ async function getCurrentPeriodMetrics(
 	const uniqueGuests = new Set(bookings.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
 
-	// repeat guest rate: check historical bookings before the current period
-	const { data: historicalBookings } = await supabase
-		.from('bookings')
-		.select('guest_email, guest_name')
-		.eq('tenant_id', tenantId)
-		.lt('arrival', from)
-		.neq('status', 'canceled')
-		.limit(SUPABASE_MAX_ROWS);
-
-	const historicalGuestIds = new Set(
-		historicalBookings?.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean) || []
-	);
-
+	// repeat guest rate via SQL (avoids fetching all historical bookings)
 	let repeatGuests = 0;
-	uniqueGuests.forEach(guestId => {
-		if (historicalGuestIds.has(guestId)) {
-			repeatGuests++;
-		}
-	});
+	if (totalGuests > 0) {
+		const bookingIds = bookings.map((b: { id: string }) => b.id);
+		const { data: repeatCount } = await supabase.rpc('get_repeat_guest_count', {
+			p_tenant_id: tenantId,
+			p_from: from,
+			p_to: to,
+			p_booking_ids: bookingIds,
+		});
+		repeatGuests = Number(repeatCount ?? 0);
+	}
 
 	const newGuests = totalGuests - repeatGuests;
 	const repeatGuestRate = totalGuests > 0 ? repeatGuests / totalGuests : 0;
