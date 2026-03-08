@@ -12,10 +12,11 @@ import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
 import { CHART_INFRA, resolveToken } from '@/lib/theme'
 import { useDashboard } from '@/contexts/dashboard'
+import type { TooltipContentProps, MouseHandlerDataParam } from 'recharts'
 
-const CashFlowChartTooltip = ({ active, payload, label }: any) => {
+const CashFlowChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
-  const data = payload[0].payload
+  const data = payload![0].payload as { inflow: number; outflow: number }
   const netFlow = data.inflow - data.outflow
 
   return (
@@ -54,8 +55,26 @@ const CashFlowChartTooltip = ({ active, payload, label }: any) => {
   )
 }
 
+interface CashFlowMonthEntry {
+  month: string
+  revenue?: number
+  amount?: number
+}
+
+interface CashFlowData {
+  byMonth: CashFlowMonthEntry[]
+  fees: number
+  taxes: number
+  gross: number
+  operatingExpenses: number
+  previousPeriod?: {
+    revenue?: { gross: number }
+    monthlyTrend?: CashFlowMonthEntry[]
+  }
+}
+
 interface CashFlowViewProps {
-  data: any
+  data: CashFlowData | null
   loading: boolean
   onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
@@ -84,7 +103,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
     const actualOutflowRate = totalGross > 0 ? (totalFees + totalTaxes + totalOperatingExpenses) / totalGross : 0.3
     
     // Calculate cash flow metrics
-    const monthlyData = byMonth?.map((month: any) => {
+    const monthlyData = byMonth?.map((month: CashFlowMonthEntry) => {
       const monthRevenue = month.revenue || month.amount || 0
       const monthOutflow = monthRevenue * actualOutflowRate
       return {
@@ -95,11 +114,11 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       }
     }) || []
     
-    const totalInflow = monthlyData.reduce((sum: number, m: any) => sum + m.inflow, 0)
-    const totalOutflow = monthlyData.reduce((sum: number, m: any) => sum + m.outflow, 0)
+    const totalInflow = monthlyData.reduce((sum, m) => sum + m.inflow, 0)
+    const totalOutflow = monthlyData.reduce((sum, m) => sum + m.outflow, 0)
     const netCashFlow = totalInflow - totalOutflow
-    const avgMonthlyFlow = monthlyData.length > 0 
-      ? monthlyData.reduce((sum: number, m: any) => sum + m.netFlow, 0) / monthlyData.length
+    const avgMonthlyFlow = monthlyData.length > 0
+      ? monthlyData.reduce((sum, m) => sum + m.netFlow, 0) / monthlyData.length
       : 0
     
     // Calculate comparison metrics
@@ -117,12 +136,13 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
       ? ((netCashFlow - previousNetFlow) / Math.abs(previousNetFlow)) * 100
       : 0
     
-    const previousAvgMonthlyFlow = previousPeriod?.monthlyTrend?.length > 0
-      ? previousPeriod.monthlyTrend.reduce((sum: number, m: any) => {
+    const prevTrend = previousPeriod?.monthlyTrend
+    const previousAvgMonthlyFlow = prevTrend && prevTrend.length > 0
+      ? prevTrend.reduce((sum: number, m: CashFlowMonthEntry) => {
           const monthRevenue = m.revenue || m.amount || 0
           const monthOutflow = monthRevenue * actualOutflowRate
           return sum + (monthRevenue - monthOutflow)
-        }, 0) / previousPeriod.monthlyTrend.length
+        }, 0) / prevTrend.length
       : 0
     
     const avgMonthlyFlowGrowth = previousAvgMonthlyFlow !== 0
@@ -251,9 +271,9 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={cashFlowData.monthlyData}
-            onClick={(e: any) => {
-              if (e && e.activeLabel && onPeriodClick) {
-                onPeriodClick(e.activeLabel)
+            onClick={(e: MouseHandlerDataParam) => {
+              if (e?.activeLabel && onPeriodClick) {
+                onPeriodClick(String(e.activeLabel))
               }
             }}
             style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}

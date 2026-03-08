@@ -14,8 +14,8 @@ export const TaxQuickConfigWidget = () => {
   const taxStatus = Array.isArray(taxStatusData) ? taxStatusData : []
   
   const totalProperties = taxStatus.length
-  const configuredProperties = taxStatus.filter((p: any) => p.hasConfig).length
-  const missingConfigs = taxStatus.filter((p: any) => !p.hasConfig)
+  const configuredProperties = taxStatus.filter(p => p.hasConfig).length
+  const missingConfigs = taxStatus.filter(p => !p.hasConfig)
   
   const completionPercentage = totalProperties > 0 
     ? Math.round((configuredProperties / totalProperties) * 100)

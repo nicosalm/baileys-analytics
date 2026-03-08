@@ -1,9 +1,31 @@
 import { api } from './api';
 
+interface SubscriptionResponse {
+  subscription: {
+    status: string
+    billing_cycle?: string
+    current_period_end?: string
+  } | null
+  isExempt: boolean
+}
+
+interface BillingHistoryEntry {
+  id: string
+  amount: number
+  status: string
+  created_at: string
+}
+
+interface UsageMetric {
+  name: string
+  value: number
+  limit?: number
+}
+
 // billing api client
 class BillingClient {
   async getSubscription() {
-    const result = await api.request<{ subscription: any; isExempt: boolean }>('/billing/subscription');
+    const result = await api.request<SubscriptionResponse>('/billing/subscription');
     return result.success ? result.data : null;
   }
 
@@ -43,12 +65,12 @@ class BillingClient {
   }
 
   async getBillingHistory() {
-    const result = await api.request<{ history: any[] }>('/billing/history');
+    const result = await api.request<{ history: BillingHistoryEntry[] }>('/billing/history');
     return result.success ? result.data.history : [];
   }
 
   async getUsageMetrics() {
-    const result = await api.request<{ metrics: any[] }>('/billing/usage');
+    const result = await api.request<{ metrics: UsageMetric[] }>('/billing/usage');
     return result.success ? result.data.metrics : [];
   }
 

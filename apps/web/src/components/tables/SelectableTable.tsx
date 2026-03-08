@@ -43,6 +43,7 @@ interface SelectableTableProps<T> {
   bulkActions?: Array<{ label: string; action: string; icon?: React.ReactNode }>
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function SelectableTable<T extends Record<string, any>>({
   data,
   columns,
@@ -113,7 +114,7 @@ export function SelectableTable<T extends Record<string, any>>({
       return column.render(item, data.indexOf(item))
     }
     if (typeof column.key === 'string' && column.key.includes('.')) {
-      return column.key.split('.').reduce((obj, key) => obj?.[key], item as any)
+      return column.key.split('.').reduce<unknown>((obj, key) => (obj as Record<string, unknown>)?.[key], item) as React.ReactNode
     }
     return item[column.key]
   }

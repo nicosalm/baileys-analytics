@@ -17,8 +17,52 @@ import { formatPercentage, formatCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { useDashboard } from '@/contexts/dashboard'
 
+interface PlatformEntry {
+  platform: string
+  grossRevenue: number
+}
+
+interface MonthlyTrendEntry {
+  month: string
+  revenue: number
+}
+
+interface PreviousPeriodData {
+  revenue?: { gross?: number; net?: number; platformFees?: number; taxes?: number }
+  operatingExpenses?: { total: number; byCategory: Record<string, number> }
+  operatingProfit?: number
+  monthlyTrend?: MonthlyTrendEntry[]
+}
+
+interface ChargeDetail {
+  type: 'tax' | 'fee' | 'discount' | 'other'
+  description: string
+  count: number
+  total: number
+}
+
+interface ChargeComposition {
+  taxes: number
+  fees: number
+  discounts: number
+  other: number
+  details: ChargeDetail[]
+}
+
+interface PLData {
+  metrics: {
+    revenue: { gross: number; net: number; platformFees: number; hostFees: number; guestFees: number; taxes: number }
+    operatingExpenses: { total: number; byCategory: Record<string, number> }
+    operatingProfit?: number
+  }
+  platforms: PlatformEntry[]
+  previousPeriod?: PreviousPeriodData
+  monthlyTrend: MonthlyTrendEntry[]
+  chargeComposition?: ChargeComposition
+}
+
 interface PLViewProps {
-  data: any
+  data: PLData | null
   loading: boolean
   onPeriodClick?: (period: string) => void
   comparisonMode?: 'none' | 'previous-period' | 'previous-year'
@@ -44,7 +88,7 @@ export const PLView: React.FC<PLViewProps> = ({
     const { metrics, platforms, previousPeriod, monthlyTrend } = data
     
     // Determine granularity based on data format
-    const granularity = detectGranularity(monthlyTrend, 'month')
+    const granularity = detectGranularity(monthlyTrend as unknown as Record<string, string | number>[], 'month')
     
     // Access data exactly as the original did
     const grossRevenue = metrics.revenue?.gross || 0
@@ -89,23 +133,25 @@ export const PLView: React.FC<PLViewProps> = ({
       ? ((operatingProfit - previousOperatingProfit) / previousOperatingProfit) * 100
       : 0
 
-    const previousProfitMargin = previousPeriod?.revenue?.gross > 0
-      ? ((previousPeriod.revenue.net / previousPeriod.revenue.gross) * 100)
+    const prevGross = previousPeriod?.revenue?.gross ?? 0
+    const prevNet = previousPeriod?.revenue?.net ?? 0
+    const previousProfitMargin = prevGross > 0
+      ? ((prevNet / prevGross) * 100)
       : 0
 
     const profitMarginChange = previousProfitMargin > 0
       ? profitMargin - previousProfitMargin
       : 0
     
-    const platformData = platforms?.map((p: any) => ({
+    const platformData = platforms?.map((p: PlatformEntry) => ({
       name: p.platform || 'Unassigned',
       revenue: p.grossRevenue || 0,
       percentage: grossRevenue > 0 ? (p.grossRevenue / grossRevenue) * 100 : 0
     })) || []
     
-    const monthlyData = monthlyTrend?.map((m: any, index: number) => {
+    const monthlyData = monthlyTrend?.map((m: MonthlyTrendEntry, index: number) => {
       // Find matching previous period data
-      const prevData = previousPeriod?.monthlyTrend?.find((pm: any) => pm.month === m.month) ||
+      const prevData = previousPeriod?.monthlyTrend?.find((pm: MonthlyTrendEntry) => pm.month === m.month) ||
                       previousPeriod?.monthlyTrend?.[index]
       
       const monthRevenue = m.revenue || 0
@@ -126,14 +172,14 @@ export const PLView: React.FC<PLViewProps> = ({
     }) || []
     
     // revenue highlights from monthly data
-    const monthlyRevenues = monthlyData.map((m: any) => m.revenue || 0)
+    const monthlyRevenues = monthlyData.map((m: { revenue: number }) => m.revenue || 0)
     const avgMonthlyRevenue = monthlyRevenues.length > 0
       ? monthlyRevenues.reduce((sum: number, r: number) => sum + r, 0) / monthlyRevenues.length
       : 0
     const bestMonthValue = monthlyRevenues.length > 0 ? Math.max(...monthlyRevenues) : 0
     const lowestMonthValue = monthlyRevenues.length > 0 ? Math.min(...monthlyRevenues) : 0
-    const bestMonth = monthlyData.find((m: any) => (m.revenue || 0) === bestMonthValue)
-    const lowestMonth = monthlyData.find((m: any) => (m.revenue || 0) === lowestMonthValue)
+    const bestMonth = monthlyData.find(m => (m.revenue || 0) === bestMonthValue)
+    const lowestMonth = monthlyData.find(m => (m.revenue || 0) === lowestMonthValue)
 
     const formatMonthLabel = (month?: string) => {
       if (!month) return undefined
@@ -172,7 +218,7 @@ export const PLView: React.FC<PLViewProps> = ({
         previousOperatingProfit,
         previousProfitMargin,
         periodLabel: comparisonLabel ? `vs ${comparisonLabel}` : '',
-        hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some((m: any) => m.previousRevenue !== undefined)
+        hasComparison: comparisonMode !== 'none' && previousPeriod && monthlyData.some(m => m.previousRevenue !== undefined)
       },
       platforms: platformData,
       monthly: monthlyData,
@@ -471,7 +517,7 @@ export const PLView: React.FC<PLViewProps> = ({
               )}
             </div>
             <div className="space-y-2">
-              {(chargesExpanded ? data.chargeComposition.details : data.chargeComposition.details.slice(0, 10)).map((detail: any, i: number) => (
+              {(chargesExpanded ? data.chargeComposition.details : data.chargeComposition.details.slice(0, 10)).map((detail: ChargeDetail, i: number) => (
                 <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${

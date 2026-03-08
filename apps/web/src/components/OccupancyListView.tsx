@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
 import { ChevronDown, ChevronRight, AlertTriangle, Info } from 'lucide-react'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
-import { useBookingsForRange } from '@/hooks/use-api'
+import { useBookingsForRange, type BookingRow } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Button } from '@/components/ui/button'
@@ -87,13 +87,13 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
     const propertyIdSet = new Set(properties.map(p => p.propertyId))
 
     // Filter to active bookings belonging to filtered properties
-    const activeBookings = (bookings || []).filter((b: any) =>
+    const activeBookings = (bookings || []).filter((b) =>
       propertyIdSet.has(b.property_id) &&
       !INACTIVE_STATUSES.includes((b.status || '').toLowerCase())
     )
 
     // Group by property
-    const byProperty = new Map<string, any[]>()
+    const byProperty = new Map<string, BookingRow[]>()
     for (const b of activeBookings) {
       if (!byProperty.has(b.property_id)) byProperty.set(b.property_id, [])
       byProperty.get(b.property_id)!.push(b)
@@ -102,7 +102,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
     // Build groups for ALL properties (including those with zero bookings)
     return properties.map(({ propertyId, propertyName }) => {
       const propBookings = byProperty.get(propertyId) || []
-      const sorted = propBookings.slice().sort((a: any, b: any) =>
+      const sorted = propBookings.slice().sort((a, b) =>
         new Date(a.arrival).getTime() - new Date(b.arrival).getTime()
       )
 
@@ -112,8 +112,8 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       const name = propertyName || `Property ${propertyId.slice(0, 8)}`
 
       // Compute average nightly rate from existing bookings
-      const totalRevenue = sorted.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0)
-      const totalBookedNights = sorted.reduce((sum: number, b: any) => sum + daysBetween(b.arrival, b.departure), 0)
+      const totalRevenue = sorted.reduce((sum, b) => sum + (b.total_amount || 0), 0)
+      const totalBookedNights = sorted.reduce((sum, b) => sum + daysBetween(b.arrival, b.departure), 0)
       const avgNightlyRate = totalBookedNights > 0 ? totalRevenue / totalBookedNights : 0
 
       if (sorted.length === 0) {
@@ -180,7 +180,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       }
 
       const totalNightsInRange = daysBetween(rangeStart, rangeEnd)
-      const bookedNights = sorted.reduce((sum: number, b: any) => {
+      const bookedNights = sorted.reduce((sum, b) => {
         const start = b.arrival < rangeStart ? rangeStart : b.arrival
         const end = b.departure > rangeEnd ? rangeEnd : b.departure
         return sum + Math.max(0, daysBetween(start, end))

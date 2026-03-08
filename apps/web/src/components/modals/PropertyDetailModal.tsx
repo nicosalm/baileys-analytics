@@ -13,6 +13,31 @@ import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS, CHART_INFRA, getChartColor, resolveToken } from '@/lib/theme'
+import type { TooltipContentProps } from 'recharts'
+
+interface PropertyMonthlyEntry {
+  month: string
+  revenue: number
+  bookings: number
+  occupancy: number
+}
+
+interface PlatformRevenueEntry {
+  platform: string
+  revenue: number
+  percentage?: number
+}
+
+interface PropertyBooking {
+  id: string
+  guestId?: string
+  guestName: string
+  guestEmail?: string
+  arrival: string
+  departure: string
+  totalAmount: number
+  status: string
+}
 
 interface PropertyDetailModalProps {
   propertyId: string
@@ -21,9 +46,9 @@ interface PropertyDetailModalProps {
   to?: string
 }
 
-const PropertyPerformanceTooltip = ({ active, payload, label }: any) => {
+const PropertyPerformanceTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
-  const data = payload[0].payload
+  const data = payload![0].payload as { revenue: number; occupancy: number; bookings: number }
 
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
@@ -60,9 +85,9 @@ const PropertyPerformanceTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-const PlatformRevenueTooltip = ({ active, payload }: any) => {
+const PlatformRevenueTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (active && payload && payload.length) {
-    const data = payload[0].payload
+    const data = payload[0].payload as PlatformRevenueEntry
     return (
       <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{data.platform}</p>
@@ -102,7 +127,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                    `Performance metrics for ${propertyName}`
 
   const monthlyChartData = useMemo(() =>
-    data?.monthlyData?.map((m: any) => ({
+    data?.monthlyData?.map((m: PropertyMonthlyEntry) => ({
       month: new Date(m.month).toLocaleDateString('en-US', { month: 'short' }),
       revenue: m.revenue,
       bookings: m.bookings,
@@ -111,7 +136,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
   , [data?.monthlyData])
 
   const platformData = useMemo(() =>
-    data?.revenueByPlatform?.map((p: any, index: number) => ({
+    data?.revenueByPlatform?.map((p: PlatformRevenueEntry, index: number) => ({
       ...p,
       color: getChartColor(index)
     })) || []
@@ -120,7 +145,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
   const [platformActiveIndex, setPlatformActiveIndex] = useState<number | null>(null)
 
   const platformTotal = useMemo(() =>
-    platformData.reduce((sum: number, p: any) => sum + p.revenue, 0)
+    platformData.reduce((sum, p) => sum + p.revenue, 0)
   , [platformData])
 
   // memoized guest click handler
@@ -326,11 +351,11 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                     </tr>
                   </thead>
                   <tbody>
-                    {data.recentBookings?.map((booking: any) => (
+                    {data.recentBookings?.map((booking: PropertyBooking) => (
                       <tr
                         key={booking.id}
                         className="border-t border-border hover:bg-muted/50 cursor-pointer"
-                        onClick={() => handleGuestClick(booking.guestId, booking.guestName)}
+                        onClick={() => booking.guestId && handleGuestClick(booking.guestId, booking.guestName)}
                       >
                         <td className="p-4">
                           <div>
@@ -381,10 +406,10 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                             animationBegin={0}
                             animationDuration={500}
                             animationEasing="ease-out"
-                            onMouseEnter={(_: any, index: number) => setPlatformActiveIndex(index)}
+                            onMouseEnter={(_: unknown, index: number) => setPlatformActiveIndex(index)}
                             onMouseLeave={() => setPlatformActiveIndex(null)}
                           >
-                            {platformData.map((entry: any, index: number) => (
+                            {platformData.map((entry, index) => (
                               <Cell
                                 key={`cell-${index}`}
                                 fill={entry.color}
@@ -394,7 +419,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                             ))}
                             <Label
                               content={({ viewBox }) => {
-                                const { cx, cy } = viewBox as any
+                                const { cx, cy } = viewBox as { cx: number; cy: number }
                                 return (
                                   <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
                                     <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
@@ -413,7 +438,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                       </ResponsiveContainer>
                     </div>
                     <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
-                      {platformData.map((entry: any) => (
+                      {platformData.map((entry) => (
                         <div key={entry.platform} className="flex items-center gap-1.5">
                           <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
                           <span className="text-muted-foreground">{entry.platform}</span>

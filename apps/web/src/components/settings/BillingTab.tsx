@@ -10,9 +10,22 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/contexts/toast';
 import { formatDateDisplay } from '@baileys/utils';
 
+interface SubscriptionInfo {
+  status: string
+  billing_cycle?: string
+  current_period_end?: string
+}
+
+interface BillingHistoryEntry {
+  id: string
+  amount: number
+  status: string
+  created_at: string
+}
+
 export const BillingTab = () => {
-  const [subscription, setSubscription] = useState<any>(null);
-  const [billingHistory, setBillingHistory] = useState<any[]>([]);
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
+  const [billingHistory, setBillingHistory] = useState<BillingHistoryEntry[]>([]);
   const [isExempt, setIsExempt] = useState(false);
   const [loading, setLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);

@@ -25,11 +25,12 @@ export type AuthError = {
   status?: number
 }
 
-export const handleAuthError = (error: any): AuthError => {
-  if (error?.message) {
+export const handleAuthError = (error: unknown): AuthError => {
+  if (error && typeof error === 'object' && 'message' in error) {
+    const err = error as { message: string; status?: number }
     return {
-      message: error.message,
-      status: error.status
+      message: err.message,
+      status: err.status
     }
   }
   return {

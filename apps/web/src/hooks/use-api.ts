@@ -128,7 +128,7 @@ export interface GuestDetailResponse {
     guestListingSiteFee?: number
     status?: string
     ownerrezBookingId?: string
-    charges?: Array<{ type: string; amount: number }>
+    charges?: Array<{ type: string; amount: number; description?: string }>
   }>
   spendingTrend: Array<{
     month: string

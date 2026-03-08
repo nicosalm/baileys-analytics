@@ -9,6 +9,26 @@ import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
 
+interface PeriodProperty {
+  propertyId: string
+  propertyName: string
+  bookings: number
+  occupancyRate: number
+  revenue: number
+}
+
+interface PeriodBooking {
+  id: string
+  guestId?: string
+  guestName: string
+  propertyId: string
+  propertyName: string
+  arrival: string
+  departure: string
+  totalAmount: number
+  ownerrezBookingId?: string
+}
+
 interface PeriodDetailModalProps {
   month: string
   year: string
@@ -178,7 +198,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
             <h3 className="font-semibold">Top Properties This {granularity === 'daily' ? 'Day' : granularity === 'weekly' ? 'Week' : 'Month'}</h3>
           </div>
           <div className="divide-y">
-            {data?.topProperties?.slice(0, 5).map((property: any) => (
+            {data?.topProperties?.slice(0, 5).map((property: PeriodProperty) => (
               <div
                 key={property.propertyId}
                 className="p-4 hover:bg-muted/40 cursor-pointer flex justify-between items-center"
@@ -215,11 +235,11 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                 </tr>
               </thead>
               <tbody>
-                {data?.bookings?.map((booking: any) => (
+                {data?.bookings?.map((booking: PeriodBooking) => (
                   <tr key={booking.id} className="border-t hover:bg-muted/40">
                     <td
                       className="p-4 cursor-pointer"
-                      onClick={() => handleGuestClick(booking.guestId, booking.guestName)}
+                      onClick={() => booking.guestId && handleGuestClick(booking.guestId, booking.guestName)}
                     >
                       <div className="font-medium text-primary hover:underline">
                         {booking.guestName}

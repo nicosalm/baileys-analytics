@@ -10,10 +10,26 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
+import type { TooltipContentProps } from 'recharts'
 
-const GuestSpendingTooltip = ({ active, payload, label }: any) => {
+interface BookingCharge {
+  type: string
+  amount: number
+  description?: string
+}
+
+interface FeeAnalysis {
+  rent: number
+  surcharges: number
+  taxes: number
+  ccFees: number
+  otaFees: number
+  directSavings: number
+}
+
+const GuestSpendingTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
-  const data = payload[0].payload
+  const data = payload![0].payload as { amount: number; bookings: number }
 
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
@@ -43,8 +59,8 @@ const GuestSpendingTooltip = ({ active, payload, label }: any) => {
   )
 }
 
-function categorizeCharges(charges: any[]) {
-  const isSurcharge = (c: any) => c.type === 'surcharge' || c.type === 'surcharge_other'
+function categorizeCharges(charges: BookingCharge[]) {
+  const isSurcharge = (c: BookingCharge) => c.type === 'surcharge' || c.type === 'surcharge_other'
   const rent = charges.filter(c => c.type === 'rent')
   const ccFees = charges.filter(c => isSurcharge(c) && c.description?.toLowerCase().includes('credit card'))
   const surcharges = charges.filter(c => isSurcharge(c) && !c.description?.toLowerCase().includes('credit card'))
@@ -53,12 +69,14 @@ function categorizeCharges(charges: any[]) {
   return { rent, surcharges, taxes, ccFees, discounts }
 }
 
-function sumCharges(charges: any[]) {
+function sumCharges(charges: BookingCharge[]) {
   return charges.reduce((s, c) => s + (c.amount || 0), 0)
 }
 
-const BookingFeeBreakdown = ({ booking }: { booking: any }) => {
-  const charges: any[] = booking.charges || []
+type GuestDetailBooking = NonNullable<ReturnType<typeof useGuestDetail>['data']>['bookings'][number]
+
+const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
+  const charges: BookingCharge[] = booking.charges || []
   const { rent, surcharges, taxes, ccFees, discounts } = categorizeCharges(charges)
   const otaFee = booking.guestListingSiteFee || 0
   const ccFeeTotal = sumCharges(ccFees)
@@ -139,7 +157,7 @@ const BookingFeeBreakdown = ({ booking }: { booking: any }) => {
   )
 }
 
-const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
+const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: GuestDetailBooking[] }) => {
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
 
   return (
@@ -157,16 +175,17 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
             </tr>
           </thead>
           <tbody>
-            {bookingHistory.map((booking: any) => {
+            {bookingHistory.map((booking, idx) => {
               const hasCharges = booking.charges && booking.charges.length > 0
+              const bookingKey = booking.id ?? `booking-${idx}`
               const isExpanded = expandedBooking === booking.id
 
               return (
-                <Fragment key={booking.id}>
+                <Fragment key={bookingKey}>
                   <tr
-                    key={booking.id}
+                    key={bookingKey}
                     className={`border-t ${hasCharges ? 'cursor-pointer hover:bg-muted/40' : ''}`}
-                    onClick={() => hasCharges && setExpandedBooking(isExpanded ? null : booking.id)}
+                    onClick={() => hasCharges && setExpandedBooking(isExpanded ? null : booking.id ?? null)}
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-1.5">
@@ -187,14 +206,14 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
                     </td>
                     <td className="p-4 text-sm font-medium">
                       {formatCurrency(booking.totalAmount)}
-                      {booking.guestListingSiteFee > 0 && (
+                      {(booking.guestListingSiteFee ?? 0) > 0 && (
                         <div className="text-xs text-muted-foreground font-normal">
-                          +{formatCurrency(booking.guestListingSiteFee)} OTA fee (est.)
+                          +{formatCurrency(booking.guestListingSiteFee!)} OTA fee (est.)
                         </div>
                       )}
                     </td>
                     <td className="p-4">
-                      <StatusBadge status={booking.status} />
+                      <StatusBadge status={booking.status || 'unknown'} />
                     </td>
                     <td className="p-4">
                       {booking.ownerrezBookingId && (
@@ -228,7 +247,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: any[] }) => {
   )
 }
 
-const FeeTooltip = ({ active, payload }: any) => {
+const FeeTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
   const data = payload[0]
   return (
@@ -250,7 +269,7 @@ const FEE_PIE_COLORS = {
   otaFees: '#f97316',
 }
 
-const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: any, guestName: string }) => {
+const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: FeeAnalysis, guestName: string }) => {
   const { rent, surcharges, taxes, ccFees, otaFees, directSavings } = feeAnalysis
   const total = rent + surcharges + taxes + ccFees + otaFees
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
@@ -292,7 +311,7 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: any, guestNam
                   animationBegin={0}
                   animationDuration={500}
                   animationEasing="ease-out"
-                  onMouseEnter={(_: any, index: number) => setActiveIndex(index)}
+                  onMouseEnter={(_: unknown, index: number) => setActiveIndex(index)}
                   onMouseLeave={() => setActiveIndex(null)}
                 >
                   {pieData.map((entry, i) => (
@@ -305,7 +324,7 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: any, guestNam
                   ))}
                   <Label
                     content={({ viewBox }) => {
-                      const { cx, cy } = viewBox as any
+                      const { cx, cy } = viewBox as { cx: number; cy: number }
                       return (
                         <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
                           <tspan x={cx} y={cy - 7} className="fill-foreground text-base font-bold">
@@ -409,17 +428,17 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
 
   // memoized metrics
   const totalSpent = useMemo(() =>
-    guest?.totalSpent || bookingHistory.reduce((sum: number, b: any) => sum + b.totalAmount, 0)
+    guest?.totalSpent || bookingHistory.reduce((sum, b) => sum + b.totalAmount, 0)
   , [guest?.totalSpent, bookingHistory])
 
   const avgStayLength = useMemo(() =>
     guest?.avgStayLength || (bookingHistory.length > 0
-      ? bookingHistory.reduce((sum: number, b: any) => sum + b.nights, 0) / bookingHistory.length
+      ? bookingHistory.reduce((sum, b) => sum + (b.nights || 0), 0) / bookingHistory.length
       : 0)
   , [guest?.avgStayLength, bookingHistory])
 
   const chartData = useMemo(() =>
-    spendingTrend.map((item: any) => ({
+    spendingTrend.map((item) => ({
       month: format(parseDate(`${item.month}-01`), 'MMM yyyy'),
       amount: item.amount,
       bookings: item.bookings

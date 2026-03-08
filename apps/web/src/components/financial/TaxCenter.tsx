@@ -16,8 +16,26 @@ import { detectGranularity } from '@/utils/chart-helpers'
 import { authenticatedFetch } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
 
+interface TaxByPropertyRow {
+  propertyId: string
+  propertyName: string
+  totalTax: number
+  taxRate: number
+  status: 'configured' | 'needs_setup'
+}
+
+interface TaxData {
+  tax: {
+    summary: { totalTax: number; ownerRemitted: number; platformRemitted: number }
+    byProperty: TaxByPropertyRow[]
+    byMonth: { month: string; totalTax: number; ownerRemitted?: number; platformRemitted?: number }[]
+  }
+  metrics?: { revenue?: { gross?: number } }
+  previousPeriod?: { revenue?: { gross?: number; taxes?: number } }
+}
+
 interface TaxCenterProps {
-  data: any
+  data: TaxData | null
   loading: boolean
   onPropertyClick?: (propertyId: string) => void
   onPeriodClick?: (period: string) => void
@@ -244,7 +262,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
               {
                 key: 'propertyName',
                 header: 'Property',
-                render: (row: any) => (
+                render: (row: TaxByPropertyRow) => (
                   <Button
                     variant="link"
                     onClick={() => onPropertyClick?.(row.propertyId)}
@@ -257,17 +275,17 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
               {
                 key: 'totalTax',
                 header: 'Total Tax',
-                render: (row: any) => formatCurrency(row.totalTax)
+                render: (row: TaxByPropertyRow) => formatCurrency(row.totalTax)
               },
               {
                 key: 'taxRate',
                 header: 'Tax Rate',
-                render: (row: any) => formatPercentage(row.taxRate, 2)
+                render: (row: TaxByPropertyRow) => formatPercentage(row.taxRate, 2)
               },
               {
                 key: 'status',
                 header: 'Status',
-                render: (row: any) => (
+                render: (row: TaxByPropertyRow) => (
                   <span className={`px-2 py-1 text-xs rounded-full ${
                     row.status === 'configured'
                       ? 'bg-success-subtle text-success-fg'

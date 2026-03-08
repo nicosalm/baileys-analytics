@@ -64,9 +64,9 @@ export const OperatingExpenseEntryModal = ({
   useEffect(() => {
     if (existingExpenses && existingExpenses.length > 0) {
       setExpenseRows(
-        existingExpenses.map((exp: any) => ({
+        existingExpenses.map(exp => ({
           category: exp.category,
-          amount: parseFloat(exp.amount) || 0,
+          amount: parseFloat(String(exp.amount)) || 0,
           description: exp.description || ''
         }))
       )

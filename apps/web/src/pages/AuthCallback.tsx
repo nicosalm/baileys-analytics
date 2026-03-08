@@ -114,7 +114,7 @@ export const AuthCallback = () => {
         const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('getSession timeout')), 5000)
         )
-        const { data: { session: existingSession } } = await Promise.race([sessionPromise, timeoutPromise]) as any
+        const { data: { session: existingSession } } = await Promise.race([sessionPromise, timeoutPromise]) as Awaited<typeof sessionPromise>
 
         if (existingSession) {
           handleSuccess(type)
