@@ -98,8 +98,8 @@ platformFees.post('/bulk', async (c) => {
 		return c.json({ error: 'Failed to save platform fees' }, 500);
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache');
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+	const { invalidateConfigViews } = await import('../utils/cache');
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
 
 	return c.json({ success: true, data });
 });
@@ -168,8 +168,8 @@ platformFees.post('/', async (c) => {
 		return c.json({ error: 'Failed to save platform fee' }, 500);
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache');
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+	const { invalidateConfigViews } = await import('../utils/cache');
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
 
 	return c.json({ success: true, data });
 });
@@ -235,8 +235,8 @@ platformFees.post('/booking', async (c) => {
 		return c.json({ error: 'Failed to save booking fee' }, 500);
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache');
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+	const { invalidateConfigViews } = await import('../utils/cache');
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
 
 	return c.json({ success: true, data });
 });
@@ -324,8 +324,8 @@ platformFees.delete('/:id', async (c) => {
 		return c.json({ error: 'Failed to delete platform fee' }, 500);
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache');
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+	const { invalidateConfigViews } = await import('../utils/cache');
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
 
 	return c.json({ success: true });
 });

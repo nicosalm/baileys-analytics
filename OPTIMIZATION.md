@@ -155,41 +155,32 @@ Uses overlapping semantics (`arrival <= to AND departure >= from`) to match the
 
 ---
 
-## Phase 4: Caching Improvements
+## ~~Phase 4: Caching Improvements~~
 
-### 4a. Tiered cache TTLs
+### ~~4a. Tiered cache TTLs~~
 
-Currently everything uses 30-min TTL. Static data should live longer:
+Done — dashboard views use per-view TTLs via `getDashboardTtl()`. Config data
+(properties, seasons, tax configs, expense templates) gets 24h TTL constants
+in `CONFIG_TTL` for use by standalone config routes.
 
-| Data | Current TTL | Proposed TTL |
-|------|-------------|-------------|
-| Properties list | 30 min | 24 hours (invalidate on sync) |
-| Seasons config | 30 min | 24 hours (invalidate on save) |
-| Tax configs | 30 min | 24 hours (invalidate on save) |
-| Dashboard views | 30 min | 30 min (keep as-is) |
-| Expense templates | 30 min | 24 hours (invalidate on save) |
+### ~~4b. Per-view cache invalidation~~
 
-### 4b. Per-view cache invalidation
+Done — three targeted invalidation functions replace the old nuke-everything approach:
+- `invalidateBookingViews()`: sync/webhook → only overview, financial, occupancy, guests, properties
+- `invalidateConfigViews(configType)`: config saves → only affected views per dependency map
+- `invalidateConfigCache()`: standalone config route caches
 
-Currently, sync invalidates ALL cached views for a user. Most syncs only affect
-booking data, so financial/occupancy/overview caches need invalidation but
-seasons/tax-config caches don't.
+Dependency map: seasons→overview+occupancy, goals→overview, operatingExpenses→financial+properties+overview,
+platformFees→financial+overview, tags→all views.
 
-**Change**: Tag cache entries by data dependency and only invalidate affected views.
+### ~~4c. Shared sub-query cache within a request~~
 
-### 4c. Shared sub-query cache within a request
-
-For a single dashboard-batch call, properties and tag-filtered booking IDs should be
-computed once and shared across all service calls. This isn't KV caching — it's just
-passing data through function arguments instead of re-querying.
-
-(This overlaps with Phase 2 but is worth calling out as a caching concept.)
+Done in Phase 2 (query consolidation).
 
 ### 4d. Stale-while-revalidate
 
-Instead of blocking on cache miss, serve stale data immediately and revalidate in background.
-Cloudflare Workers KV supports metadata — store `lastUpdated` timestamp and serve stale
-data up to 2x TTL while triggering background refresh.
+Skipped — cache misses are fast after Phases 2+3 (SQL RPCs, consolidated queries).
+KV metadata adds complexity for marginal gain. Revisit if p99 latency becomes an issue.
 
 ---
 
@@ -227,13 +218,9 @@ single-pass booking accumulation into month buckets.
 | ~~2. Query consolidation~~ | ~~Medium~~ | ~~**High**~~ | **Done** |
 | ~~5. JS algorithmic cleanup~~ | ~~Low~~ | ~~Low-Medium~~ | **Done** (5c skipped — negligible at scale) |
 | ~~3. SQL-side aggregation~~ | ~~Medium-High~~ | ~~**High**~~ | **Done** (3b/3c skipped — already single-pass) |
-| 4. Caching improvements | Medium | Medium | Low |
+| ~~4. Caching improvements~~ | ~~Medium~~ | ~~Medium~~ | **Done** (4d skipped — fast cache misses after phases 2+3) |
 
-Phases 1, 2, 3, 5 done. Overview and Guests query consolidation skipped — different
-shapes/filters, marginal payoff. Financial trend bucketing (3b) and tax aggregation (3c)
-skipped — already efficient single-pass JS with data fetched for other purposes.
-
-Next up: Phase 4 (caching improvements).
+All phases complete.
 
 ---
 

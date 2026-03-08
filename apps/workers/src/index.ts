@@ -399,8 +399,8 @@ app.post('/api/manual-sync', authMiddleware, async (c) => {
 
 	// invalidate cache after successful sync
 	if (c.env.CACHE) {
-		const { invalidateDashboardCache } = await import('./utils/cache');
-		await invalidateDashboardCache(c.env.CACHE, user.id);
+		const { invalidateBookingViews } = await import('./utils/cache');
+		await invalidateBookingViews(c.env.CACHE, user.id);
 	}
 
 	return c.json({
@@ -678,8 +678,9 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 	}
 
 	if (c.env.CACHE) {
+		const { getDashboardTtl } = await import('./utils/cache');
 		await c.env.CACHE.put(cacheKey, JSON.stringify(data), {
-			expirationTtl: 1800
+			expirationTtl: getDashboardTtl(view)
 		});
 	}
 

@@ -140,8 +140,8 @@ tags.post('/', async (c) => {
       throw error;
     }
 
-    const { invalidateDashboardCache } = await import('../utils/cache');
-    await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+    const { invalidateConfigViews } = await import('../utils/cache');
+    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'tags');
 
     return c.json({
       id: data.id,
@@ -188,8 +188,8 @@ tags.put('/:id', async (c) => {
       return c.json({ error: 'Tag not found' }, 404);
     }
 
-    const { invalidateDashboardCache } = await import('../utils/cache');
-    await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+    const { invalidateConfigViews } = await import('../utils/cache');
+    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'tags');
 
     return c.json({
       id: data.id,
@@ -219,8 +219,8 @@ tags.delete('/:id', async (c) => {
       throw error;
     }
 
-    const { invalidateDashboardCache } = await import('../utils/cache');
-    await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+    const { invalidateConfigViews } = await import('../utils/cache');
+    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'tags');
 
     return c.json({ success: true });
   } catch (error) {

@@ -93,8 +93,8 @@ goals.put('/', async (c) => {
 		return c.json({ error: error.message }, 500);
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache');
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id);
+	const { invalidateConfigViews } = await import('../utils/cache');
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'goals');
 
 	const formatted = (upserted || []).map(g => ({
 		id: g.id,

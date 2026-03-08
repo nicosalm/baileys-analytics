@@ -2,23 +2,99 @@
  * Cache utilities for Baileys Analytics
  */
 
+// dashboard view TTLs (seconds)
+const DASHBOARD_TTL: Record<string, number> = {
+	overview: 1800,    // 30 min — booking-dependent, changes on sync
+	financial: 1800,   // 30 min
+	occupancy: 1800,   // 30 min
+	guests: 1800,      // 30 min
+	properties: 1800,  // 30 min
+};
+
+// config/static data TTLs — only change on explicit user save
+export const CONFIG_TTL = {
+	properties: 86400,        // 24h — changes on sync only
+	seasons: 86400,           // 24h — changes on explicit save
+	taxConfigs: 86400,        // 24h — changes on explicit save
+	expenseTemplates: 86400,  // 24h — changes on explicit save
+};
+
+export function getDashboardTtl(view: string): number {
+	return DASHBOARD_TTL[view] ?? 1800;
+}
+
+// views that depend on booking data (invalidated on sync/webhook)
+const BOOKING_VIEWS = ['overview', 'financial', 'occupancy', 'guests', 'properties'];
+
+// views affected by each config type
+const CONFIG_VIEW_DEPS: Record<string, string[]> = {
+	seasons: ['overview', 'occupancy'],
+	goals: ['overview'],
+	operatingExpenses: ['financial', 'properties', 'overview'],
+	platformFees: ['financial', 'overview'],
+	tags: BOOKING_VIEWS,
+};
+
 export async function invalidateDashboardCache(
 	cache: KVNamespace | undefined,
-	userId: string
+	userId: string,
+	views?: string[]
 ) {
 	if (!cache) return;
 
-	// list all cache keys for this user
-	const prefix = `dashboard:${userId}:`;
-	
 	try {
-		const keys = await cache.list({ prefix });
-		
-		// delete all matching keys
-		const deletions = keys.keys.map(key => cache.delete(key.name));
-		await Promise.all(deletions);
+		if (views) {
+			// targeted: only invalidate specific views
+			const deletions = views.map(view => {
+				const prefix = `dashboard:${userId}:${view}:`;
+				return cache.list({ prefix }).then(keys =>
+					Promise.all(keys.keys.map(key => cache.delete(key.name)))
+				);
+			});
+			await Promise.all(deletions);
+		} else {
+			// full invalidation (backwards-compatible)
+			const prefix = `dashboard:${userId}:`;
+			const keys = await cache.list({ prefix });
+			await Promise.all(keys.keys.map(key => cache.delete(key.name)));
+		}
 	} catch (error) {
 		console.error('Failed to invalidate cache:', error);
+	}
+}
+
+// invalidate only booking-dependent views (for sync/webhook)
+export async function invalidateBookingViews(
+	cache: KVNamespace | undefined,
+	userId: string
+) {
+	return invalidateDashboardCache(cache, userId, BOOKING_VIEWS);
+}
+
+// invalidate views affected by a config change
+export async function invalidateConfigViews(
+	cache: KVNamespace | undefined,
+	userId: string,
+	configType: keyof typeof CONFIG_VIEW_DEPS
+) {
+	const views = CONFIG_VIEW_DEPS[configType];
+	if (views) {
+		return invalidateDashboardCache(cache, userId, views);
+	}
+	return invalidateDashboardCache(cache, userId);
+}
+
+// invalidate a specific config cache key
+export async function invalidateConfigCache(
+	cache: KVNamespace | undefined,
+	userId: string,
+	configType: string
+) {
+	if (!cache) return;
+	try {
+		await cache.delete(`config:${userId}:${configType}`);
+	} catch (error) {
+		console.error('Failed to invalidate config cache:', error);
 	}
 }
 
@@ -30,7 +106,6 @@ export async function invalidateTenantCache(
 	if (!cache) return;
 
 	try {
-		// get the user id for this tenant
 		const { data: tenant } = await supabase
 			.from('tenants')
 			.select('user_id')
@@ -38,7 +113,7 @@ export async function invalidateTenantCache(
 			.single();
 
 		if (tenant?.user_id) {
-			await invalidateDashboardCache(cache, tenant.user_id);
+			await invalidateBookingViews(cache, tenant.user_id);
 		}
 	} catch (error) {
 		console.error('Failed to invalidate tenant cache:', error);

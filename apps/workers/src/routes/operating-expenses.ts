@@ -145,8 +145,8 @@ operatingExpenses.post('/', async (c) => {
 		return c.json({ error: 'Failed to create operating expense' }, 500)
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache')
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id)
+	const { invalidateConfigViews } = await import('../utils/cache')
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
 
 	return c.json({ success: true, data })
 })
@@ -222,8 +222,8 @@ operatingExpenses.post('/bulk', async (c) => {
 		return c.json({ error: 'Failed to save operating expenses' }, 500)
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache')
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id)
+	const { invalidateConfigViews } = await import('../utils/cache')
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
 
 	return c.json({ success: true, data })
 })
@@ -277,8 +277,8 @@ operatingExpenses.put('/:id', async (c) => {
 		return c.json({ error: 'Failed to update operating expense' }, 500)
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache')
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id)
+	const { invalidateConfigViews } = await import('../utils/cache')
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
 
 	return c.json({ success: true, data })
 })
@@ -310,8 +310,8 @@ operatingExpenses.delete('/:id', async (c) => {
 		return c.json({ error: 'Failed to delete operating expense' }, 500)
 	}
 
-	const { invalidateDashboardCache } = await import('../utils/cache')
-	await invalidateDashboardCache(c.env.CACHE, c.get('user').id)
+	const { invalidateConfigViews } = await import('../utils/cache')
+	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
 
 	return c.json({ success: true })
 })
