@@ -112,6 +112,26 @@ account.delete('/delete', authMiddleware, async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
 
   try {
+    // 0. audit log — snapshot before deletion
+    const [{ data: tenant }, { count: propCount }, { count: bookCount }, { data: sub }] = await Promise.all([
+      supabase.from('tenants').select('email, company_name').eq('id', tenantId).single(),
+      supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+      supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).single(),
+    ]);
+
+    if (tenant) {
+      await supabase.from('account_deletions').insert({
+        tenant_id: tenantId,
+        email: tenant.email,
+        company_name: tenant.company_name,
+        deleted_by: 'self',
+        property_count: propCount || 0,
+        booking_count: bookCount || 0,
+        had_active_subscription: sub?.status === 'active',
+      });
+    }
+
     // 1. cancel stripe subscription if exists
     if (c.env.STRIPE_SECRET_KEY) {
       try {

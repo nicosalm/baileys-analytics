@@ -219,7 +219,7 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
     // get the user_id from tenant
     const { data: tenant, error: tenantError } = await supabase
       .from('tenants')
-      .select('user_id, email')
+      .select('user_id, email, company_name')
       .eq('id', tenantId)
       .single();
 
@@ -228,6 +228,24 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
     }
 
     const userId = tenant.user_id;
+
+    // 0. audit log — snapshot before deletion
+    const adminEmail = c.get('user').email || 'unknown';
+    const [{ count: propCount }, { count: bookCount }, { data: sub }] = await Promise.all([
+      supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+      supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).single(),
+    ]);
+
+    await supabase.from('account_deletions').insert({
+      tenant_id: tenantId,
+      email: tenant.email,
+      company_name: tenant.company_name,
+      deleted_by: adminEmail,
+      property_count: propCount || 0,
+      booking_count: bookCount || 0,
+      had_active_subscription: sub?.status === 'active',
+    });
 
     // 1. cancel stripe subscription if exists
     if (c.env.STRIPE_SECRET_KEY) {
@@ -333,6 +351,106 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
       error: 'Failed to delete account',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, 500);
+  }
+});
+
+// signup trend — daily signups for last N days
+admin.get('/signup-trend', authMiddleware, adminMiddleware, async (c) => {
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const days = Math.min(parseInt(c.req.query('days') || '30'), 90);
+
+  try {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    const { data: tenants } = await supabase
+      .from('tenants')
+      .select('created_at')
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: true });
+
+    // bucket by date
+    const buckets: Record<string, number> = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      buckets[d.toISOString().slice(0, 10)] = 0;
+    }
+
+    for (const t of tenants || []) {
+      const day = t.created_at.slice(0, 10);
+      if (buckets[day] !== undefined) buckets[day]++;
+    }
+
+    const trend = Object.entries(buckets).map(([date, count]) => ({ date, count }));
+    return c.json({ trend });
+  } catch (error) {
+    console.error('Failed to get signup trend:', error);
+    return c.json({ error: 'Failed to get signup trend' }, 500);
+  }
+});
+
+// sync health — aggregate sync status across all tenants
+admin.get('/sync-health', authMiddleware, adminMiddleware, async (c) => {
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+
+  try {
+    const { data: syncRows } = await supabase
+      .from('sync_status')
+      .select('tenant_id, sync_type, status, last_sync, records_synced');
+
+    // group by tenant
+    const byTenant: Record<string, { statuses: string[]; lastSync: string | null; totalRecords: number }> = {};
+    for (const row of syncRows || []) {
+      if (!byTenant[row.tenant_id]) {
+        byTenant[row.tenant_id] = { statuses: [], lastSync: null, totalRecords: 0 };
+      }
+      byTenant[row.tenant_id].statuses.push(row.status);
+      byTenant[row.tenant_id].totalRecords += row.records_synced || 0;
+      if (!byTenant[row.tenant_id].lastSync || row.last_sync > byTenant[row.tenant_id].lastSync!) {
+        byTenant[row.tenant_id].lastSync = row.last_sync;
+      }
+    }
+
+    // classify each tenant
+    let healthy = 0;
+    let partial = 0;
+    let failing = 0;
+    let noSync = 0;
+    let stale = 0;
+
+    const now = Date.now();
+    const staleThreshold = 48 * 60 * 60 * 1000; // 48 hours
+
+    // get total tenants with ownerrez connected
+    const { count: connectedTenants } = await supabase
+      .from('tenants')
+      .select('id', { count: 'exact', head: true })
+      .eq('ownerrez_connected', true);
+
+    const tenantsWithSync = new Set(Object.keys(byTenant));
+
+    for (const [, info] of Object.entries(byTenant)) {
+      const hasFailure = info.statuses.includes('failure');
+      const hasPartial = info.statuses.includes('partial');
+      const isStale = info.lastSync && (now - new Date(info.lastSync).getTime()) > staleThreshold;
+
+      if (isStale) stale++;
+      else if (hasFailure) failing++;
+      else if (hasPartial) partial++;
+      else healthy++;
+    }
+
+    // tenants with ownerrez connected but no sync records
+    noSync = Math.max(0, (connectedTenants || 0) - tenantsWithSync.size);
+
+    return c.json({
+      syncHealth: { healthy, partial, failing, stale, noSync },
+      totalConnected: connectedTenants || 0
+    });
+  } catch (error) {
+    console.error('Failed to get sync health:', error);
+    return c.json({ error: 'Failed to get sync health' }, 500);
   }
 });
 

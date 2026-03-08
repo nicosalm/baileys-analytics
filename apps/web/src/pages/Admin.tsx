@@ -1,25 +1,34 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
+import { resolveToken } from '@/lib/theme'
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Label,
+  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer
+} from 'recharts'
 import {
   Users, DollarSign, TrendingUp, Search, Trash2, AlertTriangle,
   Settings, LogOut, LayoutDashboard, RefreshCw, ChevronDown,
   Shield, Link2, Link2Off, AlertCircle, UserPlus, Building2, CalendarDays,
-  ExternalLink, Megaphone, Plus, Pencil, Eye, EyeOff
+  ExternalLink, Megaphone, Plus, Pencil, Eye, EyeOff, ArrowUpDown,
+  ChevronLeft, ChevronRight, ChevronUp, Activity
 } from 'lucide-react'
 import { LogoCube } from '@/components/LogoCube'
 import { Footer } from '@/components/Footer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Label as FormLabel } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel
 } from '@/components/ui/alert-dialog'
+
+// --- types ---
 
 interface AdminMetrics {
   totalUsers: number
@@ -78,6 +87,35 @@ interface WebhookError {
   tenant_id: string
 }
 
+interface SignupTrendEntry {
+  date: string
+  count: number
+}
+
+interface SyncHealth {
+  healthy: number
+  partial: number
+  failing: number
+  stale: number
+  noSync: number
+}
+
+type SortField = 'email' | 'company_name' | 'status' | 'created_at'
+type SortDir = 'asc' | 'desc'
+
+// --- helpers ---
+
+function useResolvedTokens<T extends string>(varNames: readonly T[]): Record<T, string> {
+  const [values, setValues] = useState<Record<string, string>>({})
+  const key = varNames.join(',')
+  useEffect(() => {
+    const resolved: Record<string, string> = {}
+    for (const name of varNames) resolved[name] = resolveToken(name)
+    setValues(resolved)
+  }, [key])
+  return values as Record<T, string>
+}
+
 const StatusBadge = ({ status, exempt }: { status?: string; exempt: boolean }) => {
   if (exempt) return (
     <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-subtle text-purple-fg">Exempt</span>
@@ -107,6 +145,425 @@ const TimeAgo = ({ date }: { date: string }) => {
 
   return <span title={new Date(date).toLocaleString()}>{text}</span>
 }
+
+const USERS_PER_PAGE = 15
+
+// --- metric strip ---
+
+const MetricStrip = memo(({ metrics, errorCount }: { metrics: AdminMetrics; errorCount: number }) => (
+  <div className="space-y-4">
+    {/* primary metrics */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {[
+        { icon: Users, label: 'Total Users', value: String(metrics.totalUsers) },
+        { icon: TrendingUp, label: 'Active Subs', value: String(metrics.activeSubscriptions) },
+        { icon: DollarSign, label: 'MRR', value: `$${metrics.mrr}` },
+        { icon: UserPlus, label: 'Signups (7d)', value: String(metrics.recentSignups) },
+      ].map(({ icon: Icon, label, value }, i) => (
+        <div
+          key={label}
+          className="bg-card rounded-lg shadow-sm border border-border px-4 py-3 stagger-fade-in"
+          style={{ '--stagger-index': i } as React.CSSProperties}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">{label}</span>
+          </div>
+          <span className="text-xl font-bold text-foreground">{value}</span>
+        </div>
+      ))}
+    </div>
+    {/* secondary metrics */}
+    <div className="grid grid-cols-3 gap-4">
+      {[
+        { icon: Building2, label: 'Properties', value: String(metrics.totalProperties) },
+        { icon: CalendarDays, label: 'Bookings', value: metrics.totalBookings.toLocaleString() },
+        { icon: AlertCircle, label: 'Errors', value: String(errorCount), danger: errorCount > 0 },
+      ].map(({ icon: Icon, label, value, danger }, i) => (
+        <div
+          key={label}
+          className="bg-card rounded-lg shadow-sm border border-border px-4 py-3 flex items-center gap-3 stagger-fade-in"
+          style={{ '--stagger-index': i + 4 } as React.CSSProperties}
+        >
+          <Icon className={`w-3.5 h-3.5 ${danger ? 'text-danger' : 'text-muted-foreground'}`} />
+          <div>
+            <span className="text-xs text-muted-foreground">{label}</span>
+            <p className="text-sm font-semibold text-foreground leading-tight">{value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+))
+MetricStrip.displayName = 'MetricStrip'
+
+// --- charts ---
+
+const TREND_TOKENS = ['--primary', '--border', '--muted-foreground'] as const
+
+const SignupTrendChart = memo(({ data }: { data: SignupTrendEntry[] }) => {
+  const t = useResolvedTokens(TREND_TOKENS)
+  if (!data.length) return null
+
+  return (
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <UserPlus className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">Signup Trend</h3>
+        <span className="text-xs text-muted-foreground ml-auto">Last 30 days</span>
+      </div>
+      <div style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={t['--border']} vertical={false} />
+            <XAxis
+              dataKey="date"
+              stroke={t['--muted-foreground']}
+              tick={{ fontSize: 10, fill: t['--muted-foreground'] }}
+              tickFormatter={(v: string) => {
+                const d = new Date(v + 'T00:00:00')
+                return `${d.getMonth() + 1}/${d.getDate()}`
+              }}
+              interval={Math.floor(data.length / 6)}
+            />
+            <YAxis
+              stroke={t['--muted-foreground']}
+              tick={{ fontSize: 10, fill: t['--muted-foreground'] }}
+              allowDecimals={false}
+            />
+            <RechartsTooltip
+              isAnimationActive={false}
+              content={({ active, payload }) => {
+                if (!active || !payload?.[0]) return null
+                const d = payload[0].payload as SignupTrendEntry
+                return (
+                  <div className="bg-card p-2.5 rounded-lg shadow-lg border text-xs">
+                    <p className="font-medium mb-1">{new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                    <p className="text-muted-foreground">{d.count} signup{d.count !== 1 ? 's' : ''}</p>
+                  </div>
+                )
+              }}
+            />
+            <Area
+              type="monotone"
+              dataKey="count"
+              stroke={t['--primary']}
+              fill={t['--primary']}
+              fillOpacity={0.1}
+              strokeWidth={2}
+              animationDuration={500}
+              animationEasing="ease-out"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+})
+SignupTrendChart.displayName = 'SignupTrendChart'
+
+const DONUT_TOKENS = ['--card', '--chart-series-1', '--chart-series-2', '--muted-foreground'] as const
+
+const SubscriptionDonut = memo(({ users }: { users: AdminUser[] }) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const t = useResolvedTokens(DONUT_TOKENS)
+
+  const { data, dataColors, total } = useMemo(() => {
+    const monthly = users.filter(u => u.subscription?.status === 'active' && u.subscription?.billing_cycle === 'monthly').length
+    const yearly = users.filter(u => u.subscription?.status === 'active' && u.subscription?.billing_cycle === 'yearly').length
+    const exempt = users.filter(u => u.subscription_exempt).length
+    const inactive = users.length - monthly - yearly - exempt
+
+    const allEntries = [
+      { name: 'Monthly', value: monthly, colorKey: '--chart-series-1' as const },
+      { name: 'Yearly', value: yearly, colorKey: '--chart-series-2' as const },
+      { name: 'Exempt', value: exempt, colorKey: null },
+      { name: 'Inactive', value: inactive, colorKey: '--muted-foreground' as const },
+    ]
+    const filtered = allEntries.filter(d => d.value > 0)
+    const colors = filtered.map(d => d.colorKey ? t[d.colorKey] : '#a855f7')
+    return { data: filtered, dataColors: colors, total: users.length }
+  }, [users, t])
+
+  return (
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <DollarSign className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">Subscription Mix</h3>
+      </div>
+      <div style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              innerRadius="55%"
+              outerRadius="80%"
+              dataKey="value"
+              stroke={t['--card']}
+              strokeWidth={2}
+              animationBegin={0}
+              animationDuration={500}
+              animationEasing="ease-out"
+              onMouseEnter={(_, i) => setActiveIndex(i)}
+              onMouseLeave={() => setActiveIndex(null)}
+            >
+              {data.map((_, i) => (
+                <Cell
+                  key={i}
+                  fill={dataColors[i]}
+                  opacity={activeIndex === null || activeIndex === i ? 1 : 0.3}
+                  style={{ transition: 'opacity 0.2s ease' }}
+                />
+              ))}
+              <Label
+                content={({ viewBox }) => {
+                  const { cx, cy } = viewBox as { cx: number; cy: number }
+                  return (
+                    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                      <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
+                        {total}
+                      </tspan>
+                      <tspan x={cx} y={cy + 12} className="fill-muted-foreground text-xs">
+                        Users
+                      </tspan>
+                    </text>
+                  )
+                }}
+              />
+            </Pie>
+            <RechartsTooltip
+              isAnimationActive={false}
+              content={({ active, payload }) => {
+                if (!active || !payload?.[0]) return null
+                const d = payload[0].payload as { name: string; value: number }
+                return (
+                  <div className="bg-card p-2.5 rounded-lg shadow-lg border text-xs">
+                    <p className="font-medium">{d.name}: {d.value}</p>
+                  </div>
+                )
+              }}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex flex-wrap gap-3 justify-center text-xs mt-1">
+        {data.map((entry, i) => (
+          <div key={entry.name} className="flex items-center gap-1.5">
+            <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: dataColors[i] }} />
+            <span className="text-muted-foreground">{entry.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})
+SubscriptionDonut.displayName = 'SubscriptionDonut'
+
+// --- compact user funnel (CSS bars, no recharts) ---
+
+const UserFunnel = memo(({ users }: { users: AdminUser[] }) => {
+  const { total, connected, subscribed } = useMemo(() => ({
+    total: users.length,
+    connected: users.filter(u => u.ownerrez_connected).length,
+    subscribed: users.filter(u => u.subscription?.status === 'active' || u.subscription_exempt).length,
+  }), [users])
+
+  if (total === 0) return null
+
+  const steps = [
+    { label: 'Signed Up', value: total, pct: 100 },
+    { label: 'OwnerRez Connected', value: connected, pct: Math.round((connected / total) * 100) },
+    { label: 'Active / Exempt', value: subscribed, pct: Math.round((subscribed / total) * 100) },
+  ]
+
+  return (
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <TrendingUp className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">User Funnel</h3>
+      </div>
+      <div className="space-y-3">
+        {steps.map(step => (
+          <div key={step.label}>
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-xs text-muted-foreground">{step.label}</span>
+              <span className="text-sm font-semibold text-foreground tabular-nums">
+                {step.value} <span className="text-xs font-normal text-muted-foreground">({step.pct}%)</span>
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${step.pct}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})
+UserFunnel.displayName = 'UserFunnel'
+
+// --- sync health ---
+
+const SyncHealthSummary = memo(({ health, totalConnected }: { health: SyncHealth; totalConnected: number }) => {
+  if (totalConnected === 0) return null
+
+  const segments = [
+    { label: 'Healthy', value: health.healthy, color: 'bg-success' },
+    { label: 'Partial', value: health.partial, color: 'bg-warning' },
+    { label: 'Failing', value: health.failing, color: 'bg-danger' },
+    { label: 'Stale (>48h)', value: health.stale, color: 'bg-orange-400' },
+    { label: 'No Sync', value: health.noSync, color: 'bg-muted-foreground/40' },
+  ].filter(s => s.value > 0)
+
+  const total = segments.reduce((s, seg) => s + seg.value, 0)
+
+  return (
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <Activity className="w-4 h-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold text-foreground">Sync Health</h3>
+        <span className="text-xs text-muted-foreground ml-auto">{totalConnected} connected</span>
+      </div>
+
+      <div className="h-3 rounded-full overflow-hidden flex bg-muted mb-3">
+        {segments.map(seg => (
+          <div
+            key={seg.label}
+            className={`${seg.color} transition-all duration-500`}
+            style={{ width: `${(seg.value / total) * 100}%` }}
+            title={`${seg.label}: ${seg.value}`}
+          />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+        {segments.map(seg => (
+          <div key={seg.label} className="flex items-center gap-2 text-xs">
+            <span className={`w-2.5 h-2.5 rounded-full ${seg.color}`} />
+            <span className="text-muted-foreground">{seg.label}</span>
+            <span className="font-medium text-foreground">{seg.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})
+SyncHealthSummary.displayName = 'SyncHealthSummary'
+
+// --- errors section (combined: trend chart + collapsible log) ---
+
+const ERROR_TOKENS = ['--danger', '--border', '--muted-foreground', '--muted'] as const
+
+const ErrorsSection = memo(({ errors }: { errors: WebhookError[] }) => {
+  const [showLog, setShowLog] = useState(false)
+  const t = useResolvedTokens(ERROR_TOKENS)
+
+  const data = useMemo(() => {
+    const buckets: Record<string, number> = {}
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      buckets[d.toISOString().slice(0, 10)] = 0
+    }
+    for (const err of errors) {
+      const day = err.created_at.slice(0, 10)
+      if (buckets[day] !== undefined) buckets[day]++
+    }
+    return Object.entries(buckets).map(([date, count]) => ({ date, count }))
+  }, [errors])
+
+  const hasRecentErrors = data.some(d => d.count > 0)
+
+  if (!hasRecentErrors && errors.length === 0) return null
+
+  return (
+    <div className="bg-card rounded-lg shadow-sm border border-border p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <AlertCircle className="w-4 h-4 text-danger" />
+        <h3 className="text-sm font-semibold text-foreground">Errors</h3>
+        <span className="text-xs text-muted-foreground">{errors.length} total</span>
+        <span className="text-xs text-muted-foreground ml-auto">Last 14 days</span>
+      </div>
+
+      {hasRecentErrors && (
+        <div style={{ height: 120 }} className="mb-3">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={t['--border']} vertical={false} />
+              <XAxis
+                dataKey="date"
+                stroke={t['--muted-foreground']}
+                tick={{ fontSize: 10, fill: t['--muted-foreground'] }}
+                tickFormatter={(v: string) => {
+                  const d = new Date(v + 'T00:00:00')
+                  return `${d.getMonth() + 1}/${d.getDate()}`
+                }}
+                interval={2}
+              />
+              <YAxis stroke={t['--muted-foreground']} tick={{ fontSize: 10, fill: t['--muted-foreground'] }} allowDecimals={false} />
+              <RechartsTooltip
+                isAnimationActive={false}
+                cursor={{ fill: t['--muted'], opacity: 0.3 }}
+                content={({ active, payload }) => {
+                  if (!active || !payload?.[0]) return null
+                  const d = payload[0].payload as { date: string; count: number }
+                  return (
+                    <div className="bg-card p-2.5 rounded-lg shadow-lg border text-xs">
+                      <p className="font-medium mb-1">{new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                      <p className="text-danger-fg">{d.count} error{d.count !== 1 ? 's' : ''}</p>
+                    </div>
+                  )
+                }}
+              />
+              <Bar
+                dataKey="count"
+                fill={t['--danger']}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={18}
+                animationDuration={500}
+                animationEasing="ease-out"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {errors.length > 0 && (
+        <>
+          <button
+            onClick={() => setShowLog(!showLog)}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
+          >
+            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showLog ? 'rotate-180' : ''}`} />
+            {showLog ? 'Hide' : 'View'} error log ({Math.min(errors.length, 20)} most recent)
+          </button>
+
+          {showLog && (
+            <div className="divide-y mt-3 max-h-48 overflow-y-auto -mx-5 px-5 border-t pt-3">
+              {errors.slice(0, 20).map(err => (
+                <div key={err.id} className="py-2.5 text-sm first:pt-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-medium text-foreground text-xs">{err.event_type}</span>
+                    <span className="text-xs text-muted-foreground"><TimeAgo date={err.created_at} /></span>
+                  </div>
+                  <p className="text-xs text-danger-fg font-mono truncate">{err.processing_error}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+})
+ErrorsSection.displayName = 'ErrorsSection'
+
+// --- user detail panel ---
 
 const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => void }) => {
   const [detail, setDetail] = useState<UserDetail | null>(null)
@@ -167,23 +624,64 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
   )
 }
 
+// --- sortable header ---
+
+const SortHeader = ({ label, field, current, dir, onSort, className }: {
+  label: string
+  field: SortField
+  current: SortField
+  dir: SortDir
+  onSort: (f: SortField) => void
+  className?: string
+}) => (
+  <th
+    className={`px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:text-foreground transition-colors select-none ${className || ''}`}
+    onClick={() => onSort(field)}
+  >
+    <div className="flex items-center gap-1">
+      {label}
+      {current === field ? (
+        dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+      ) : (
+        <ArrowUpDown className="w-3 h-3 opacity-30" />
+      )}
+    </div>
+  </th>
+)
+
+// --- main component ---
+
 export const Admin = () => {
   const { state, logout } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
+
+  // data state
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [errors, setErrors] = useState<WebhookError[]>([])
+  const [signupTrend, setSignupTrend] = useState<SignupTrendEntry[]>([])
+  const [syncHealth, setSyncHealth] = useState<SyncHealth | null>(null)
+  const [syncTotalConnected, setSyncTotalConnected] = useState(0)
+  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+
+  // ui state
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
   const [isVerified, setIsVerified] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [expandedUser, setExpandedUser] = useState<string | null>(null)
+  const [sortField, setSortField] = useState<SortField>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [page, setPage] = useState(1)
+
+  // delete modal
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: AdminUser | null }>({ open: false, user: null })
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
-  const [expandedUser, setExpandedUser] = useState<string | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
-  const [showErrors, setShowErrors] = useState(false)
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
+
+  // announcements form
   const [announcementForm, setAnnouncementForm] = useState<{ open: boolean; editing: Announcement | null }>({ open: false, editing: null })
   const [formTitle, setFormTitle] = useState('')
   const [formBody, setFormBody] = useState('')
@@ -194,18 +692,28 @@ export const Admin = () => {
   const [deletingAnnouncement, setDeletingAnnouncement] = useState<string | null>(null)
   const [confirmDeleteAnnouncement, setConfirmDeleteAnnouncement] = useState<string | null>(null)
 
+  const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   const loadData = useCallback(async () => {
-    const [metricsResult, usersResult, errorsResult, announcementsResult] = await Promise.all([
+    const [metricsRes, usersRes, errorsRes, announcementsRes, trendRes, syncRes] = await Promise.all([
       api.request<{ metrics: AdminMetrics }>('/admin/metrics', { method: 'GET' }),
       api.request<{ users: AdminUser[] }>('/admin/users', { method: 'GET' }),
       api.request<{ errors: WebhookError[] }>('/admin/errors', { method: 'GET' }),
       api.request<{ announcements: Announcement[] }>('/announcements/all', { method: 'GET' }),
+      api.request<{ trend: SignupTrendEntry[] }>('/admin/signup-trend', { method: 'GET' }),
+      api.request<{ syncHealth: SyncHealth; totalConnected: number }>('/admin/sync-health', { method: 'GET' }),
     ])
 
-    if (metricsResult.success && metricsResult.data) setMetrics(metricsResult.data.metrics)
-    if (usersResult.success && usersResult.data) setUsers(usersResult.data.users)
-    if (errorsResult.success && errorsResult.data) setErrors(errorsResult.data.errors)
-    if (announcementsResult.success && announcementsResult.data) setAnnouncements(announcementsResult.data.announcements)
+    if (metricsRes.success && metricsRes.data) setMetrics(metricsRes.data.metrics)
+    if (usersRes.success && usersRes.data) setUsers(usersRes.data.users)
+    if (errorsRes.success && errorsRes.data) setErrors(errorsRes.data.errors)
+    if (announcementsRes.success && announcementsRes.data) setAnnouncements(announcementsRes.data.announcements)
+    if (trendRes.success && trendRes.data) setSignupTrend(trendRes.data.trend)
+    if (syncRes.success && syncRes.data) {
+      setSyncHealth(syncRes.data.syncHealth)
+      setSyncTotalConnected(syncRes.data.totalConnected)
+    }
+    setLastRefreshed(new Date())
   }, [])
 
   useEffect(() => {
@@ -227,6 +735,13 @@ export const Admin = () => {
     }
     init()
   }, [])
+
+  // auto-refresh every 2 minutes
+  useEffect(() => {
+    if (!isVerified) return
+    autoRefreshRef.current = setInterval(loadData, 120_000)
+    return () => { if (autoRefreshRef.current) clearInterval(autoRefreshRef.current) }
+  }, [isVerified, loadData])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -267,6 +782,7 @@ export const Admin = () => {
     }
   }
 
+  // announcements handlers
   const openAnnouncementForm = (announcement?: Announcement) => {
     if (announcement) {
       setFormTitle(announcement.title)
@@ -343,11 +859,48 @@ export const Admin = () => {
     }
   }
 
-  const filteredUsers = users.filter(user => {
+  // sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+    setPage(1)
+  }
+
+  const sortedFilteredUsers = useMemo(() => {
     const term = searchTerm.toLowerCase()
-    return user.email?.toLowerCase().includes(term) ||
-           user.company_name?.toLowerCase().includes(term)
-  })
+    const filtered = users.filter(user =>
+      user.email?.toLowerCase().includes(term) ||
+      user.company_name?.toLowerCase().includes(term)
+    )
+
+    filtered.sort((a, b) => {
+      const dir = sortDir === 'asc' ? 1 : -1
+      switch (sortField) {
+        case 'email':
+          return dir * (a.email || '').localeCompare(b.email || '')
+        case 'company_name':
+          return dir * (a.company_name || '').localeCompare(b.company_name || '')
+        case 'status': {
+          const statusOrder = (u: AdminUser) => u.subscription_exempt ? 2 : u.subscription?.status === 'active' ? 1 : 0
+          return dir * (statusOrder(a) - statusOrder(b))
+        }
+        case 'created_at':
+          return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [users, searchTerm, sortField, sortDir])
+
+  // pagination
+  const totalPages = Math.max(1, Math.ceil(sortedFilteredUsers.length / USERS_PER_PAGE))
+  const paginatedUsers = sortedFilteredUsers.slice((page - 1) * USERS_PER_PAGE, page * USERS_PER_PAGE)
 
   const handleLogout = async () => {
     await logout()
@@ -397,120 +950,52 @@ export const Admin = () => {
         </div>
       </header>
 
-      <div className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full">
-        {/* top bar with refresh */}
-        <div className="flex items-center justify-between mb-6">
+      <div className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full space-y-6">
+
+        {/* heading + refresh */}
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Overview</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-3">
+            {lastRefreshed && (
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                Updated <TimeAgo date={lastRefreshed.toISOString()} />
+              </span>
+            )}
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`w-4 h-4 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
-        {/* metrics grid — 2 rows */}
-        {metrics && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-card rounded-lg shadow-sm border p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Total Users</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">{metrics.totalUsers}</span>
-            </div>
+        {/* metrics */}
+        {metrics && <MetricStrip metrics={metrics} errorCount={errors.length} />}
 
-            <div className="bg-card rounded-lg shadow-sm border p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Active Subs</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">{metrics.activeSubscriptions}</span>
-            </div>
-
-            <div className="bg-card rounded-lg shadow-sm border p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">MRR</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">${metrics.mrr}</span>
-            </div>
-
-            <div className="bg-card rounded-lg shadow-sm border p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <UserPlus className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Signups (7d)</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">{metrics.recentSignups}</span>
-            </div>
-
-            <div className="bg-card rounded-lg shadow-sm border p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <Building2 className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Properties</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">{metrics.totalProperties}</span>
-            </div>
-
-            <div className="bg-card rounded-lg shadow-sm border p-5">
-              <div className="flex items-center gap-2 mb-2">
-                <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Bookings</span>
-              </div>
-              <span className="text-2xl font-bold text-foreground">{metrics.totalBookings.toLocaleString()}</span>
-            </div>
-
-            <div className="bg-card rounded-lg shadow-sm border p-5 col-span-2">
-              <div className="flex items-center gap-2 mb-2">
-                <AlertCircle className="w-4 h-4 text-danger" />
-                <span className="text-xs text-muted-foreground">Recent Errors</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-2xl font-bold text-foreground">{errors.length}</span>
-                {errors.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowErrors(!showErrors)}
-                    className="text-xs"
-                  >
-                    {showErrors ? 'Hide' : 'View'}
-                  </Button>
-                )}
-              </div>
-            </div>
+        {/* growth charts: signup trend (wider) + subscription donut */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 stagger-fade-in" style={{ '--stagger-index': 7 } as React.CSSProperties}>
+          <div className="md:col-span-3 [&>*]:h-full">
+            <SignupTrendChart data={signupTrend} />
           </div>
-        )}
-
-        {/* error log (collapsible) */}
-        {showErrors && errors.length > 0 && (
-          <div className="bg-card rounded-lg shadow-sm border mb-6">
-            <div className="p-4 border-b">
-              <h3 className="text-sm font-semibold text-foreground">Webhook Errors</h3>
-            </div>
-            <div className="divide-y max-h-64 overflow-y-auto">
-              {errors.slice(0, 20).map(err => (
-                <div key={err.id} className="px-4 py-3 text-sm">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-foreground">{err.event_type}</span>
-                    <span className="text-xs text-muted-foreground"><TimeAgo date={err.created_at} /></span>
-                  </div>
-                  <p className="text-xs text-danger-fg font-mono truncate">{err.processing_error}</p>
-                </div>
-              ))}
-            </div>
+          <div className="md:col-span-2 [&>*]:h-full">
+            <SubscriptionDonut users={users} />
           </div>
-        )}
+        </div>
+
+        {/* operations: funnel + sync health side-by-side */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-fade-in" style={{ '--stagger-index': 8 } as React.CSSProperties}>
+          <div className="[&>*]:h-full"><UserFunnel users={users} /></div>
+          <div className="[&>*]:h-full">{syncHealth && <SyncHealthSummary health={syncHealth} totalConnected={syncTotalConnected} />}</div>
+        </div>
+
+        {/* errors (chart + log combined) */}
+        <ErrorsSection errors={errors} />
 
         {/* users table */}
-        <div className="bg-card rounded-lg shadow-sm border">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
           <div className="p-4 md:p-6 border-b">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Users</h2>
-              <div className="text-sm text-muted-foreground">{filteredUsers.length} of {users.length}</div>
+              <div className="text-sm text-muted-foreground">{sortedFilteredUsers.length} of {users.length}</div>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -518,7 +1003,7 @@ export const Admin = () => {
                 type="text"
                 placeholder="Search by email or company..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(1) }}
                 className="pl-10"
               />
             </div>
@@ -528,17 +1013,17 @@ export const Admin = () => {
             <table className="w-full table-fixed">
               <thead className="bg-muted/40 border-b">
                 <tr>
-                  <th className="w-[25%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
-                  <th className="w-[15%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Company</th>
-                  <th className="w-[10%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <SortHeader label="User" field="email" current={sortField} dir={sortDir} onSort={handleSort} className="w-[25%]" />
+                  <SortHeader label="Company" field="company_name" current={sortField} dir={sortDir} onSort={handleSort} className="w-[15%] hidden lg:table-cell" />
+                  <SortHeader label="Status" field="status" current={sortField} dir={sortDir} onSort={handleSort} className="w-[10%]" />
                   <th className="w-[8%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Plan</th>
                   <th className="w-[8%] px-5 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">OwnerRez</th>
-                  <th className="w-[12%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Joined</th>
+                  <SortHeader label="Joined" field="created_at" current={sortField} dir={sortDir} onSort={handleSort} className="w-[12%] hidden lg:table-cell" />
                   <th className="w-[22%] px-5 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr key={user.id}>
                     <td colSpan={7} className="p-0">
                       <table className="w-full table-fixed">
@@ -617,7 +1102,7 @@ export const Admin = () => {
                     </td>
                   </tr>
                 ))}
-                {filteredUsers.length === 0 && (
+                {paginatedUsers.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-5 py-8 text-center text-sm text-muted-foreground">
                       {searchTerm ? 'No users match your search' : 'No users found'}
@@ -627,10 +1112,61 @@ export const Admin = () => {
               </tbody>
             </table>
           </div>
+
+          {/* pagination */}
+          {totalPages > 1 && (
+            <div className="p-4 border-t flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Showing {((page - 1) * USERS_PER_PAGE) + 1}–{Math.min(page * USERS_PER_PAGE, sortedFilteredUsers.length)} of {sortedFilteredUsers.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon-xs"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
+                    if (i > 0 && p - (arr[i - 1]) > 1) acc.push('ellipsis')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((item, i) =>
+                    item === 'ellipsis' ? (
+                      <span key={`e${i}`} className="px-1.5 text-xs text-muted-foreground">...</span>
+                    ) : (
+                      <Button
+                        key={item}
+                        variant={page === item ? 'default' : 'outline'}
+                        size="icon-xs"
+                        onClick={() => setPage(item)}
+                        className="w-7 h-7 text-xs"
+                      >
+                        {item}
+                      </Button>
+                    )
+                  )}
+                <Button
+                  variant="outline"
+                  size="icon-xs"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* announcements */}
-        <div className="bg-card rounded-lg shadow-sm border mt-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
           <div className="p-4 md:p-6 border-b flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <Megaphone className="w-5 h-5" />
@@ -800,9 +1336,9 @@ export const Admin = () => {
           </div>
 
           <div>
-            <Label className="mb-2">
+            <FormLabel className="mb-2">
               Type <span className="font-mono bg-muted px-1 rounded">DELETE</span> to confirm
-            </Label>
+            </FormLabel>
             <Input
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
