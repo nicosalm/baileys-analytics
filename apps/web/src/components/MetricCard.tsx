@@ -1,9 +1,25 @@
-import React from 'react'
-import { ArrowUpRight, ArrowDownRight, Minus, Info, Loader2 } from 'lucide-react'
+import React, { useCallback, useEffect, useRef } from 'react'
+import { ArrowUpRight, ArrowDownRight, Minus, Info, Loader2, Check, Copy } from 'lucide-react'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
 import { cn } from '@baileys/utils'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { useCountUp } from '@/hooks/use-count-up'
+
+function formatFullValue(val: number | string, format: MetricCardProps['format']): string {
+  if (val === undefined || val === null) return format === 'currency' ? '$0' : '0'
+  if (typeof val === 'string') return val
+  switch (format) {
+    case 'currency':
+    case 'compact':
+      return formatCurrency(val)
+    case 'percent':
+      return formatPercentage(val, 1)
+    case 'number':
+      return val.toLocaleString()
+    default:
+      return val?.toString() || '0'
+  }
+}
 
 export interface MetricCardProps {
   icon: React.ComponentType<{ className?: string }>
@@ -193,13 +209,15 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
 
-      {/* Main value */}
-      <div className={cn("font-bold", currentSize.value)}>
-        {typeof value === 'number'
-          ? <AnimatedValue value={value} format={format} formatValue={formatValue} staggerIndex={staggerIndex} />
-          : formatValue(value)
-        }
-      </div>
+      {/* Main value — hover to reveal full value, click to copy */}
+      <CopyableValue
+        value={value}
+        format={format}
+        formatValue={formatValue}
+        sizeClass={currentSize.value}
+        staggerIndex={staggerIndex}
+        hasCardClick={!!onClick}
+      />
 
       {/* Label with tooltip */}
       <div className={cn("text-muted-foreground mt-1 flex items-center gap-1", currentSize.label)}>
@@ -249,6 +267,101 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+const isTruncated = (value: number | string, format: MetricCardProps['format']): boolean => {
+  if (typeof value === 'string') return false
+  if (format === 'compact') return true
+  if (format === 'currency' && value >= 10000) return true
+  return false
+}
+
+const TRANSITION = 'opacity 0.2s cubic-bezier(0.25, 0.1, 0.25, 1)'
+
+const CopyableValue: React.FC<{
+  value: number | string
+  format: MetricCardProps['format']
+  formatValue: (val: number | string) => string
+  sizeClass: string
+  staggerIndex?: number
+  hasCardClick?: boolean
+}> = ({ value, format, formatValue, sizeClass, staggerIndex, hasCardClick }) => {
+  const truncated = isTruncated(value, format)
+  const fullText = truncated ? formatFullValue(value, format) : null
+
+  const shortRef = useRef<HTMLSpanElement>(null)
+  const fullRef = useRef<HTMLSpanElement>(null)
+  const iconRef = useRef<HTMLSpanElement>(null)
+  const copyIconRef = useRef<SVGSVGElement>(null)
+  const checkIconRef = useRef<SVGSVGElement>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const isHoveredRef = useRef(false)
+
+  const handleEnter = useCallback(() => {
+    isHoveredRef.current = true
+    if (iconRef.current) iconRef.current.style.display = 'inline'
+    if (truncated && shortRef.current && fullRef.current) {
+      shortRef.current.style.display = 'none'
+      fullRef.current.style.display = 'inline'
+    }
+  }, [truncated])
+
+  const handleLeave = useCallback(() => {
+    isHoveredRef.current = false
+    if (iconRef.current) iconRef.current.style.display = 'none'
+    if (truncated && shortRef.current && fullRef.current) {
+      shortRef.current.style.display = 'inline'
+      fullRef.current.style.display = 'none'
+    }
+  }, [truncated])
+
+  const handleCopy = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(formatFullValue(value, format))
+    if (copyIconRef.current) copyIconRef.current.style.display = 'none'
+    if (checkIconRef.current) checkIconRef.current.style.display = 'block'
+    clearTimeout(copyTimeoutRef.current)
+    copyTimeoutRef.current = setTimeout(() => {
+      if (copyIconRef.current) copyIconRef.current.style.display = 'block'
+      if (checkIconRef.current) checkIconRef.current.style.display = 'none'
+    }, 1500)
+  }, [value, format])
+
+  useEffect(() => {
+    return () => clearTimeout(copyTimeoutRef.current)
+  }, [])
+
+  return (
+    <div
+      className={cn("font-bold inline-flex items-center gap-1.5 cursor-pointer relative", sizeClass)}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+      onClick={handleCopy}
+      role="button"
+      tabIndex={hasCardClick ? -1 : 0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCopy(e) } }}
+    >
+      <span ref={shortRef}>
+        {typeof value === 'number'
+          ? <AnimatedValue value={value} format={format} formatValue={formatValue} staggerIndex={staggerIndex} />
+          : formatValue(value)
+        }
+      </span>
+      {truncated && fullText && (
+        <span ref={fullRef} style={{ display: 'none', whiteSpace: 'nowrap' }}>
+          {fullText}
+        </span>
+      )}
+      <span
+        ref={iconRef}
+        className="flex-shrink-0"
+        style={{ display: 'none' }}
+      >
+        <Copy ref={copyIconRef} className="w-3.5 h-3.5 text-muted-foreground" />
+        <Check ref={checkIconRef} className="w-4 h-4 text-success" style={{ display: 'none' }} />
+      </span>
     </div>
   )
 }
