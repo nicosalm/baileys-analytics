@@ -382,7 +382,7 @@ export const Landing = () => {
                 <div className="space-y-3.5 mb-auto">
                   {[
                     'Full OwnerRez sync (4 years of data)',
-                    '6 dashboards with filtering',
+                    '5 dashboards with filtering',
                     'Comparison mode & seasonal filters',
                     'Real-time webhook updates',
                     'Cancel anytime',
