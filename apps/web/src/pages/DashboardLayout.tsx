@@ -308,7 +308,7 @@ export const DashboardLayout = () => {
                         {isAdmin && (
                           <Link
                             to="/admin"
-                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all animate-in fade-in-0 duration-300"
+                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                             title="Admin Panel"
                             aria-label="Admin Panel"
                           >

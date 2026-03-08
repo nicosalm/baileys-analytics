@@ -11,6 +11,7 @@ import type {
   SaveOperatingExpenseData,
   SaveOperatingExpensesBulkData,
   SavePropertyTaxConfigData,
+  SyncStatusResponse,
 } from '@/hooks/use-api'
 
 const API_BASE = '/api'
@@ -116,7 +117,7 @@ class ApiClient {
         return this.request('/initial-sync/full', { method: 'POST' })
     }
 
-    async getSyncStatus(): Promise<ApiResult<{ status: string; progress: number | null; message: string | null; lastSync: string | null; bookingsCount: number; propertiesCount: number }>> {
+    async getSyncStatus(): Promise<ApiResult<SyncStatusResponse>> {
         return this.request('/sync-status')
     }
 

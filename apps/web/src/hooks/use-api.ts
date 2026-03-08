@@ -185,12 +185,20 @@ export interface WebhookHealthResponse {
 }
 
 export interface SyncStatusResponse {
-  status: string
-  progress: number | null
-  message: string | null
-  lastSync: string | null
-  bookingsCount: number
-  propertiesCount: number
+  propertyCount: number
+  bookingCount: number
+  guestCount: number
+  lastPropertySync: string | null
+  lastBookingSync: string | null
+  syncHistory: Array<{
+    id: string
+    tenant_id: string
+    sync_type: string
+    last_sync: string | null
+    status: string
+    records_synced: number
+    error_message: string | null
+  }>
 }
 
 export function useDashboardBatch(
