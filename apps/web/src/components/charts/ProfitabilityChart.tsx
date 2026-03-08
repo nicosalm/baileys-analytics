@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import type { TooltipContentProps, BarRectangleItem } from 'recharts'
 import { formatCurrency } from '@/utils/formatters'
 import { resolveToken, CHART_INFRA } from '@/lib/theme'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
@@ -20,7 +21,7 @@ interface ProfitabilityChartProps {
   onPropertyClick?: (propertyId: string, propertyName: string) => void
 }
 
-const ProfitabilityTooltip = ({ active, payload }: any) => {
+const ProfitabilityTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
   const margin = d.grossRevenue > 0 ? (d.netRevenue / d.grossRevenue) * 100 : 0
@@ -64,17 +65,26 @@ const ProfitabilityTooltip = ({ active, payload }: any) => {
   )
 }
 
-const MarginLabel = ({ x, y, width, height, value, payload }: any) => {
+interface MarginLabelProps {
+  x?: number
+  y?: number
+  width?: number
+  height?: number
+  value?: number
+  payload?: PropertyProfitability & { fullName: string; costs: number }
+}
+
+const MarginLabel = ({ x, y, width, height, value, payload }: MarginLabelProps) => {
   if (!payload || payload.grossRevenue <= 0) return null
   const margin = (payload.netRevenue / payload.grossRevenue) * 100
-  const labelX = value >= 0 ? (x || 0) + (width || 0) + 6 : (x || 0) - 6
+  const labelX = (value ?? 0) >= 0 ? (x || 0) + (width || 0) + 6 : (x || 0) - 6
   const labelY = (y || 0) + (height || 0) / 2
 
   return (
     <text
       x={labelX}
       y={labelY}
-      textAnchor={value >= 0 ? 'start' : 'end'}
+      textAnchor={(value ?? 0) >= 0 ? 'start' : 'end'}
       dominantBaseline="central"
       className="fill-muted-foreground"
       fontSize={11}
@@ -105,9 +115,10 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
     danger: resolveToken('--danger'),
   }), [])
 
-  const handleBarClick = useCallback((data: any) => {
-    if (onPropertyClick && data?.propertyId) {
-      onPropertyClick(data.propertyId, data.fullName)
+  const handleBarClick = useCallback((data: BarRectangleItem) => {
+    const p = data?.payload as { propertyId?: string; fullName?: string } | undefined
+    if (onPropertyClick && p?.propertyId) {
+      onPropertyClick(p.propertyId, p.fullName || '')
     }
   }, [onPropertyClick])
 

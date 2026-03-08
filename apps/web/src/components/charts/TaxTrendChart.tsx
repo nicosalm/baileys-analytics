@@ -1,11 +1,13 @@
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
+import type { MouseHandlerDataParam } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
 import { formatCurrency } from '@/utils/formatters'
 
-const TaxChartTooltip = ({ active, payload, label }: any) => {
+const TaxChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
   const data = payload[0].payload
 
@@ -86,9 +88,8 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
           data={formattedData}
-          onClick={(e: any) => {
-            if (e && e.activeLabel && onPeriodClick) {
-              // Find the original data point using the formatted label
+          onClick={(e: MouseHandlerDataParam) => {
+            if (e?.activeLabel && onPeriodClick) {
               const dataPoint = formattedData.find(d => d.month === e.activeLabel)
               if (dataPoint) {
                 // Look for the original date in the source data
@@ -98,7 +99,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
                   onPeriodClick(originalDate)
                 } else {
                   // Fallback to the formatted label
-                  onPeriodClick(e.activeLabel)
+                  onPeriodClick(String(e.activeLabel))
                 }
               }
             }

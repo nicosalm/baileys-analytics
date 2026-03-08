@@ -9,11 +9,13 @@ import {
   BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink, Wallet,
   LogIn, LogOut
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { PieChart, Pie, Cell, Label, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, ReferenceLine, ResponsiveContainer } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { useTheme } from '@/contexts/theme'
@@ -22,12 +24,68 @@ import { getMonthlyGoalValue } from '@/utils/goals'
 import { Button } from '@/components/ui/button'
 import { useNavigate, Link } from 'react-router-dom'
 
+interface RecentActivity {
+  id: string
+  bookingId?: string
+  description: string
+  timestamp: string
+  value?: number
+  ownerrezBookingId?: string
+  platform?: string
+  metadata?: { arrival?: string; departure?: string }
+}
+
+interface BookingSourceItem {
+  source: string
+  count: number
+  revenue?: number
+}
+
+interface BookingSourceChartItem extends BookingSourceItem {
+  totalBookings: number
+}
+
+interface TopProperty {
+  name: string
+  code?: string
+  revenue: number
+  [key: string]: unknown
+}
+
+interface RevenueLastWeekItem {
+  day?: string
+  date?: string
+  month?: string
+  revenue?: number
+  propertyName?: string
+  property?: string
+  propertyId?: string
+  name?: string
+}
+
+interface RevenueChartLegendItem {
+  name: string
+  color: string
+}
+
+interface UpcomingBooking {
+  id: string
+  guestName: string
+  propertyName: string
+  type: 'check-in' | 'check-out'
+  arrival: string
+  departure: string
+  amount: number
+  isToday: boolean
+  isThisWeek: boolean
+}
+
 const REVENUE_THRESHOLD_RATIO = 0.2
 const MAX_INDIVIDUAL_PROPERTIES = 8
 const MIN_OTHER_REVENUE_PORTION = 0.2
 const TOP_PROPERTIES_DEFAULT_PORTION = 0.8
 
-const GOAL_METRIC_CONFIG: Record<string, { label: string; icon: any; format: string }> = {
+const GOAL_METRIC_CONFIG: Record<string, { label: string; icon: LucideIcon; format: string }> = {
   revenue: { label: 'Total Revenue', icon: DollarSign, format: 'currency' },
   bookings: { label: 'Total Bookings', icon: Calendar, format: 'number' },
   occupancy: { label: 'Occupancy Rate', icon: Percent, format: 'percent' },
@@ -59,7 +117,7 @@ const getProgressBgColor = (pct: number) => {
 }
 
 // extracted tooltip component to module scope
-const BookingSourceTooltip = ({ active, payload }: any) => {
+const BookingSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
     const total = payload[0].payload?.totalBookings || 0
@@ -89,20 +147,20 @@ const BookingSourceTooltip = ({ active, payload }: any) => {
   return null
 }
 
-const RevenueChartTooltip = ({ active, payload, label }: any) => {
+const RevenueChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (active && payload && payload.length) {
-    const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0)
+    const total = payload.reduce((sum, entry) => sum + (entry.value || 0), 0)
     return (
       <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{label}</p>
         <div className="space-y-1 text-xs">
-          {payload.slice().reverse().map((entry: any, index: number) => (
+          {payload.slice().reverse().map((entry, index) => (
             <div key={index} className="flex justify-between gap-4">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
                 <span className="text-muted-foreground">{entry.name}:</span>
               </div>
-              <span className="font-medium">{formatCompactCurrency(entry.value)}</span>
+              <span className="font-medium">{formatCompactCurrency(entry.value || 0)}</span>
             </div>
           ))}
           <div className="pt-1 mt-1 border-t border-border">
@@ -137,7 +195,7 @@ export const OverviewDashboard = () => {
     navigate(newPath)
   }, [navigate])
 
-  const handleActivityClick = useCallback((activity: any) => {
+  const handleActivityClick = useCallback((activity: RecentActivity) => {
     if (activity.bookingId) {
       openModal({
         type: 'booking',
@@ -187,19 +245,19 @@ export const OverviewDashboard = () => {
   }, [updateDateRange])
 
   const [bookingSourceActiveIndex, setBookingSourceActiveIndex] = useState<number | null>(null)
-  const handleSourceMouseEnter = useCallback((_: any, index: number) => setBookingSourceActiveIndex(index), [])
+  const handleSourceMouseEnter = useCallback((_: unknown, index: number) => setBookingSourceActiveIndex(index), [])
   const handleSourceMouseLeave = useCallback(() => setBookingSourceActiveIndex(null), [])
 
   const bookingSourceChartData = useMemo(() => {
-    const sources = charts?.bookingsBySource || []
-    const totalBookings = sources.reduce((sum: number, item: any) => sum + Number(item.count), 0)
+    const sources: BookingSourceItem[] = charts?.bookingsBySource || []
+    const totalBookings = sources.reduce((sum: number, item: BookingSourceItem) => sum + Number(item.count), 0)
     return sources
-      .map((item: any) => ({
+      .map((item: BookingSourceItem): BookingSourceChartItem => ({
         ...item,
         count: Number(item.count),
         totalBookings
       }))
-      .sort((a: any, b: any) => b.count - a.count)
+      .sort((a: BookingSourceChartItem, b: BookingSourceChartItem) => b.count - a.count)
   }, [charts?.bookingsBySource])
 
   const revenueChartData = useMemo(() => {
@@ -210,7 +268,7 @@ export const OverviewDashboard = () => {
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
 
     const significantProps = allSortedProps
-      .filter((p: any) => p.revenue >= revenueThreshold)
+      .filter((p: TopProperty) => p.revenue >= revenueThreshold)
       .slice(0, MAX_INDIVIDUAL_PROPERTIES)
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
@@ -219,10 +277,10 @@ export const OverviewDashboard = () => {
       return []
     }
 
-    const dataByDate: { [date: string]: any } = {}
+    const dataByDate: Record<string, Record<string, number | string>> = {}
 
-    charts.revenueLastWeek.forEach((item: any) => {
-      const dateKey = item.day || item.date || item.month
+    charts.revenueLastWeek.forEach((item: RevenueLastWeekItem) => {
+      const dateKey = item.day || item.date || item.month || ''
       if (!dataByDate[dateKey]) {
         dataByDate[dateKey] = {
           date: dateKey,
@@ -231,20 +289,20 @@ export const OverviewDashboard = () => {
           other: 0
         }
       }
-      dataByDate[dateKey].totalRevenue = (dataByDate[dateKey].totalRevenue || 0) + (item.revenue || 0)
+      dataByDate[dateKey].totalRevenue = (Number(dataByDate[dateKey].totalRevenue) || 0) + (item.revenue || 0)
     })
 
     const totalPropertyCount = metrics?.properties?.total || 0
-    const topPropsRevenue = topProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
-    const allPropsRevenue = allSortedProps.reduce((sum: number, p: any) => sum + (p.revenue || 0), 0)
+    const topPropsRevenue = topProps.reduce((sum: number, p: TopProperty) => sum + (p.revenue || 0), 0)
+    const allPropsRevenue = allSortedProps.reduce((sum: number, p: TopProperty) => sum + (p.revenue || 0), 0)
     const hasMoreProperties = totalPropertyCount > topProps.length || allSortedProps.length > topProps.length
 
-    const hasPropertyData = charts.revenueLastWeek.some((item: any) =>
+    const hasPropertyData = charts.revenueLastWeek.some((item: RevenueLastWeekItem) =>
       item.propertyName || item.property || item.propertyId || item.name)
 
     if (hasPropertyData) {
-      charts.revenueLastWeek.forEach((item: any) => {
-        const dateKey = item.day || item.date || item.month
+      charts.revenueLastWeek.forEach((item: RevenueLastWeekItem) => {
+        const dateKey = item.day || item.date || item.month || ''
         const propName = item.propertyName
 
         if (!dataByDate[dateKey]) {
@@ -256,22 +314,22 @@ export const OverviewDashboard = () => {
           }
         }
 
-        const topIndex = topProps.findIndex((p: any) => p.name === propName)
+        const topIndex = topProps.findIndex((p: TopProperty) => p.name === propName)
         if (topIndex >= 0 && topIndex < MAX_INDIVIDUAL_PROPERTIES) {
-          dataByDate[dateKey][`prop${topIndex + 1}`] = (dataByDate[dateKey][`prop${topIndex + 1}`] || 0) + (item.revenue || 0)
+          dataByDate[dateKey][`prop${topIndex + 1}`] = (Number(dataByDate[dateKey][`prop${topIndex + 1}`]) || 0) + (item.revenue || 0)
         } else if (propName) {
-          dataByDate[dateKey].other = (dataByDate[dateKey].other || 0) + (item.revenue || 0)
+          dataByDate[dateKey].other = (Number(dataByDate[dateKey].other) || 0) + (item.revenue || 0)
         }
       })
     } else {
       Object.keys(dataByDate).forEach(dateKey => {
-        const periodRevenue = dataByDate[dateKey].totalRevenue || 0
+        const periodRevenue = Number(dataByDate[dateKey].totalRevenue) || 0
 
         if (topPropsRevenue > 0) {
           const topPropsPortion = allPropsRevenue > 0 ? topPropsRevenue / allPropsRevenue : TOP_PROPERTIES_DEFAULT_PORTION
           const otherPortion = 1 - topPropsPortion
 
-          topProps.forEach((prop: any, index: number) => {
+          topProps.forEach((prop: TopProperty, index: number) => {
             const propKey = `prop${index + 1}`
             const proportion = (prop.revenue || 0) / topPropsRevenue
             dataByDate[dateKey][propKey] = periodRevenue * proportion * topPropsPortion
@@ -283,9 +341,9 @@ export const OverviewDashboard = () => {
 
             if (otherPortion < MIN_OTHER_REVENUE_PORTION) {
               const adjustmentFactor = (1 - MIN_OTHER_REVENUE_PORTION) / topPropsPortion
-              topProps.forEach((_: any, index: number) => {
+              topProps.forEach((_: unknown, index: number) => {
                 const propKey = `prop${index + 1}`
-                dataByDate[dateKey][propKey] = dataByDate[dateKey][propKey] * adjustmentFactor
+                dataByDate[dateKey][propKey] = Number(dataByDate[dateKey][propKey]) * adjustmentFactor
               })
             }
           }
@@ -303,15 +361,15 @@ export const OverviewDashboard = () => {
     }
 
     return Object.values(dataByDate)
-      .sort((a: any, b: any) => {
-        const dateA = new Date(a.date.includes('Jul') ? `${a.date} 2025` : a.date)
-        const dateB = new Date(b.date.includes('Jul') ? `${b.date} 2025` : b.date)
+      .sort((a: Record<string, number | string>, b: Record<string, number | string>) => {
+        const dateA = new Date(String(a.date).includes('Jul') ? `${a.date} 2025` : String(a.date))
+        const dateB = new Date(String(b.date).includes('Jul') ? `${b.date} 2025` : String(b.date))
         return dateA.getTime() - dateB.getTime()
       })
-      .map((item: any) => {
+      .map((item: Record<string, number | string>) => {
         const { date, totalRevenue, ...properties } = item
         return {
-          week: date.replace(' 2025', '').replace('2025-', ''),
+          week: String(date).replace(' 2025', '').replace('2025-', ''),
           ...properties
         }
       })
@@ -325,7 +383,7 @@ export const OverviewDashboard = () => {
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
 
     const significantProps = allSortedProps
-      .filter((p: any) => p.revenue >= revenueThreshold)
+      .filter((p: TopProperty) => p.revenue >= revenueThreshold)
       .slice(0, MAX_INDIVIDUAL_PROPERTIES)
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
@@ -379,14 +437,14 @@ export const OverviewDashboard = () => {
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
 
     const significantProps = allSortedProps
-      .filter((p: any) => p.revenue >= revenueThreshold)
+      .filter((p: TopProperty) => p.revenue >= revenueThreshold)
       .slice(0, MAX_INDIVIDUAL_PROPERTIES)
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
     const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
     const colors = Array.from({ length: 10 }, (_, i) => getChartColor(i))
 
-    const items = topProps.slice(0, MAX_INDIVIDUAL_PROPERTIES).map((p: any, i: number) => ({
+    const items = topProps.slice(0, MAX_INDIVIDUAL_PROPERTIES).map((p: TopProperty, i: number) => ({
       name: p.code || p.name || `Property ${i + 1}`,
       color: colors[i]
     }))
@@ -750,7 +808,7 @@ export const OverviewDashboard = () => {
                     tick={{ fontSize: 11 }}
                   />
                   <YAxis
-                    tickFormatter={(value: any) => `$${(value / 1000).toFixed(0)}k`}
+                    tickFormatter={(value: number) => `$${(value / 1000).toFixed(0)}k`}
                     stroke={CHART_INFRA.axis}
                     tick={{ fontSize: 11 }}
                   />
@@ -776,7 +834,7 @@ export const OverviewDashboard = () => {
               </ResponsiveContainer>
             </div>
             <div className="flex flex-wrap gap-3 justify-center text-xs mt-3 px-4">
-              {revenueChartLegendItems.map((item: any) => (
+              {revenueChartLegendItems.map((item: RevenueChartLegendItem) => (
                 <div key={item.name} className="flex items-center gap-1.5">
                   <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
                   <span className="text-muted-foreground">{item.name}</span>
@@ -811,7 +869,7 @@ export const OverviewDashboard = () => {
                   onMouseEnter={handleSourceMouseEnter}
                   onMouseLeave={handleSourceMouseLeave}
                 >
-                  {bookingSourceChartData.map((entry: any, index: number) => (
+                  {bookingSourceChartData.map((entry: BookingSourceChartItem, index: number) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={getPlatformColor(entry.source, index)}
@@ -821,8 +879,8 @@ export const OverviewDashboard = () => {
                   ))}
                   <Label
                     content={({ viewBox }) => {
-                      const { cx, cy } = viewBox as any
-                      const total = bookingSourceChartData.reduce((sum: number, s: any) => sum + s.count, 0)
+                      const { cx, cy } = viewBox as { cx: number; cy: number }
+                      const total = bookingSourceChartData.reduce((sum: number, s: BookingSourceChartItem) => sum + s.count, 0)
                       return (
                         <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
                           <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
@@ -841,7 +899,7 @@ export const OverviewDashboard = () => {
             </ResponsiveContainer>
           </div>
           <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
-            {bookingSourceChartData.map((entry: any, index: number) => (
+            {bookingSourceChartData.map((entry: BookingSourceChartItem, index: number) => (
               <div key={entry.source} className="flex items-center gap-1.5">
                 <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: getPlatformColor(entry.source, index) }} />
                 <span className="text-muted-foreground">{entry.source}</span>
@@ -849,7 +907,7 @@ export const OverviewDashboard = () => {
             ))}
           </div>
           {(() => {
-            const unassigned = bookingSourceChartData.find((s: any) => s.source === 'Unassigned' || s.source === 'unassigned')
+            const unassigned = bookingSourceChartData.find((s: BookingSourceChartItem) => s.source === 'Unassigned' || s.source === 'unassigned')
             if (unassigned && unassigned.count > 0) {
               return (
                 <p className="text-xs text-warning text-center mt-1">
@@ -920,7 +978,7 @@ export const OverviewDashboard = () => {
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
             {recentActivity && recentActivity.length > 0 ? (
-              recentActivity.map((activity: any) => (
+              recentActivity.map((activity: RecentActivity) => (
                 <div
                   key={activity.id}
                   className={`flex items-center justify-between py-2 border-b last:border-0 ${
@@ -991,15 +1049,15 @@ export const OverviewDashboard = () => {
   )
 }
 
-const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
+const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
   const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'month'>('week')
 
   const filtered = useMemo(() => {
     switch (filter) {
       case 'today':
-        return upcoming.filter((b: any) => b.isToday)
+        return upcoming.filter((b: UpcomingBooking) => b.isToday)
       case 'week':
-        return upcoming.filter((b: any) => b.isThisWeek)
+        return upcoming.filter((b: UpcomingBooking) => b.isThisWeek)
       case 'month':
         return upcoming
       default:
@@ -1038,7 +1096,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: any[] }) => {
       </div>
       <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
         {filtered.length > 0 ? (
-          filtered.map((booking: any) => (
+          filtered.map((booking: UpcomingBooking) => (
             <div key={booking.id} className="flex items-center justify-between py-2 border-b last:border-0">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${

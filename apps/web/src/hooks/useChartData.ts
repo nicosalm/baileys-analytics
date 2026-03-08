@@ -116,7 +116,7 @@ export function useMultiSeriesData(
     defaultValue?: number
   } = {}
 ): {
-  chartData: any[]
+  chartData: Array<Record<string, string | number | undefined>>
   series: string[]
   isEmpty: boolean
 } {
@@ -135,7 +135,7 @@ export function useMultiSeriesData(
     
     // Build chart data
     const chartData = Array.from(allXValues).sort().map(x => {
-      const dataPoint: any = { x }
+      const dataPoint: Record<string, string | number | undefined> = { x }
       
       series.forEach(s => {
         const point = s.data.find(p => p.x === x)

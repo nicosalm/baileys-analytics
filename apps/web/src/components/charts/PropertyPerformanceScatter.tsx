@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine, ReferenceArea } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { PropertyMetrics } from '@/types/api'
@@ -16,7 +17,7 @@ function niceStep(range: number): number {
   return 10 * pow
 }
 
-const ScatterTooltip = ({ active, payload }: any) => {
+const ScatterTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
   const data = payload[0].payload
   return (
@@ -52,7 +53,7 @@ const ScatterTooltip = ({ active, payload }: any) => {
 
 // stable label renderer factory — called once per quadrant, returns a render function
 const makeQuadrantLabel = (text: string, position: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left') =>
-  ({ viewBox }: any) => {
+  ({ viewBox }: { viewBox?: { x: number; y: number; width: number; height: number } }) => {
     if (!viewBox) return null
     const { x, y, width, height } = viewBox
     const pad = 6
@@ -97,6 +98,18 @@ const formatRevenueTick = (value: number) => {
   return `$${Math.round(value / 1000)}k`
 }
 
+interface ScatterPoint {
+  x: number
+  y: number
+  z: number
+  name: string
+  fullName?: string
+  propertyId: string
+  avgNightlyRate: number
+  isZeroData: boolean
+  property: PropertyMetrics
+}
+
 interface PropertyPerformanceScatterProps {
   properties: PropertyMetrics[]
   onPropertyClick?: (property: PropertyMetrics) => void
@@ -110,7 +123,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
     const empty = { data: [], avgOccupancy: 0, avgRevenue: 0, xDomain: [0, 100] as [number, number], yDomain: [0, 1000] as [number, number] }
     if (!properties || properties.length === 0) return empty
 
-    const realPoints: any[] = []
+    const realPoints: ScatterPoint[] = []
     const zeroProperties: PropertyMetrics[] = []
 
     for (const property of properties) {
@@ -135,8 +148,8 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
 
     if (realPoints.length === 0) return empty
 
-    const xValues = realPoints.map((d: any) => d.x)
-    const yValues = realPoints.map((d: any) => d.y)
+    const xValues = realPoints.map((d) => d.x)
+    const yValues = realPoints.map((d) => d.y)
 
     const dataMinX = Math.min(...xValues)
     const dataMaxX = Math.max(...xValues)
@@ -176,8 +189,8 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
 
     const data = [...realPoints, ...zeroPoints]
 
-    const avgOccupancy = realPoints.reduce((sum: number, d: any) => sum + d.x, 0) / realPoints.length
-    const avgRevenue = realPoints.reduce((sum: number, d: any) => sum + d.y, 0) / realPoints.length
+    const avgOccupancy = realPoints.reduce((sum: number, d) => sum + d.x, 0) / realPoints.length
+    const avgRevenue = realPoints.reduce((sum: number, d) => sum + d.y, 0) / realPoints.length
 
     return { data, avgOccupancy, avgRevenue, xDomain: [xMin, xMax] as [number, number], yDomain: [yMin, yMax] as [number, number] }
   }, [properties])
@@ -191,7 +204,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
     reference: CHART_INFRA.reference,
   }), [])
 
-  const getPointColor = (point: any) => {
+  const getPointColor = (point: ScatterPoint) => {
     const { avgOccupancy, avgRevenue } = scatterData
     if (point.isZeroData) return quadrantColors.reference
     if (point.x >= avgOccupancy && point.y >= avgRevenue) return quadrantColors.success
@@ -200,7 +213,7 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
     return quadrantColors.danger
   }
 
-  const handlePointClick = useCallback((point: any) => {
+  const handlePointClick = useCallback((point: ScatterPoint) => {
     if (onPropertyClick && point?.property) {
       onPropertyClick(point.property)
     }

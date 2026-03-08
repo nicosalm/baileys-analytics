@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { getChartColor, resolveToken } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency } from '@baileys/utils'
@@ -25,7 +26,7 @@ const SEGMENT_COLORS: Record<string, string> = {
   'Discounts': '#6B7280',
 }
 
-const SpendTooltip = ({ active, payload }: any) => {
+const SpendTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
     return (
@@ -77,7 +78,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
     return { chartData: segments, totalSpend: total }
   }, [grossRevenue, guestFees, chargeComposition])
 
-  const handleMouseEnter = useCallback((_: any, index: number) => {
+  const handleMouseEnter = useCallback((_: unknown, index: number) => {
     setActiveIndex(index)
   }, [])
 
@@ -123,7 +124,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
               ))}
               <Label
                 content={({ viewBox }) => {
-                  const { cx, cy } = viewBox as any
+                  const { cx, cy } = viewBox as { cx: number; cy: number }
                   return (
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
                       <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">

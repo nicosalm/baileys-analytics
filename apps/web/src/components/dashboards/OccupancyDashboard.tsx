@@ -17,8 +17,9 @@ import { formatPercentage, minBy } from '@baileys/utils'
 import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 import { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
+import type { TooltipContentProps } from 'recharts'
 
-const OccupancyChartTooltip = ({ active, payload, label }: any) => {
+const OccupancyChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
   const data = payload[0].payload
   const emptyNights = data.availableNights - data.bookedNights

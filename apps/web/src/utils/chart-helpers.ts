@@ -8,7 +8,7 @@ export interface ChartConfig {
   showTooltip?: boolean
   showLegend?: boolean
   animate?: boolean
-  onClick?: (data: any) => void
+  onClick?: (data: Record<string, unknown>) => void
 }
 
 export const DEFAULT_CHART_CONFIG: ChartConfig = {
@@ -202,8 +202,8 @@ export const generateComparisonData = (
 
 
 export const exportChartData = (
-  data: any[],
-  columns: Array<{ key: string; label: string; format?: (value: any) => string }>
+  data: Record<string, unknown>[],
+  columns: Array<{ key: string; label: string; format?: (value: unknown) => string }>
 ): string => {
   const headers = columns.map(col => col.label).join(',')
   const rows = data.map(row =>
@@ -218,12 +218,13 @@ export const exportChartData = (
 
 export type DateGranularity = 'Daily' | 'Weekly' | 'Monthly';
 
-export function detectGranularity(data: any[], dateField = 'month'): DateGranularity {
+export function detectGranularity(data: Array<Record<string, string | number | undefined>>, dateField = 'month'): DateGranularity {
   if (!data || data.length === 0) return 'Monthly';
   
-  const firstDate = data[0][dateField];
-  if (!firstDate) return 'Monthly';
-  
+  const rawFirst = data[0][dateField];
+  if (!rawFirst || typeof rawFirst !== 'string') return 'Monthly';
+  const firstDate = rawFirst;
+
   // Check if it's explicitly marked as weekly (contains "Week of")
   if (firstDate.includes('Week of')) {
     return 'Weekly';
@@ -236,10 +237,10 @@ export function detectGranularity(data: any[], dateField = 'month'): DateGranula
   
   // For YYYY-MM-DD format, we need to check the interval between dates
   if (firstDate.match(/^\d{4}-\d{2}-\d{2}$/) && data.length >= 2) {
-    const secondDate = data[1][dateField];
-    if (secondDate && secondDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const rawSecond = data[1][dateField];
+    if (rawSecond && typeof rawSecond === 'string' && rawSecond.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const date1 = parseISO(firstDate);
-      const date2 = parseISO(secondDate);
+      const date2 = parseISO(rawSecond);
       // Use date-fns for consistent date difference calculation
       const diffDays = differenceInDays(date2, date1);
       
@@ -289,12 +290,12 @@ export function formatChartDate(dateStr: string): string {
   return dateStr;
 }
 
-export function formatChartData<T extends Record<string, any>>(
+export function formatChartData<T extends Record<string, string | number | undefined | null>>(
   data: T[],
   dateField = 'month'
 ): T[] {
   return data.map(item => ({
     ...item,
-    [dateField]: formatChartDate(item[dateField])
+    [dateField]: typeof item[dateField] === 'string' ? formatChartDate(item[dateField]) : item[dateField]
   }));
 }

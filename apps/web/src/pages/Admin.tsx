@@ -49,8 +49,8 @@ interface AdminUser {
 }
 
 interface UserDetail {
-  tenant: any
-  subscription: any
+  tenant: Record<string, unknown>
+  subscription: { current_period_end?: string; [key: string]: unknown } | null
   stats: { properties: number; bookings: number }
   syncStatus: Array<{
     sync_type: string

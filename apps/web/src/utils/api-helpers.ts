@@ -48,7 +48,7 @@ export const getErrorMessageByStatus = (status: number): string => {
   }
 }
 
-export const buildQueryString = (params: Record<string, any>): string => {
+export const buildQueryString = (params: Record<string, string | number | boolean | string[] | null | undefined>): string => {
   const searchParams = new URLSearchParams()
   
   Object.entries(params).forEach(([key, value]) => {
@@ -85,16 +85,16 @@ export const parseApiResponse = <T>(
 
 export const createSwrKey = (
   endpoint: string,
-  params?: Record<string, any>
+  params?: Record<string, string | number | boolean | string[] | null | undefined>
 ): string | null => {
   if (!endpoint) return null
-  
+
   const validParams = params ? Object.entries(params).reduce((acc, [key, value]) => {
     if (value !== undefined && value !== null) {
       acc[key] = value
     }
     return acc
-  }, {} as Record<string, any>) : {}
+  }, {} as Record<string, string | number | boolean | string[]>) : {}
   
   if (params && Object.keys(validParams).length === 0) {
     return null
@@ -110,9 +110,9 @@ export const batchApiCalls = async <T extends readonly unknown[]>(
   
   return results.map((result) => {
     if (result.status === 'fulfilled') {
-      return { success: true, data: result.value } as ApiResult<any>
+      return { success: true, data: result.value } as ApiResult<unknown>
     } else {
-      return { success: false, error: parseApiError(result.reason) } as ApiResult<any>
+      return { success: false, error: parseApiError(result.reason) } as ApiResult<unknown>
     }
   }) as { [K in keyof T]: ApiResult<T[K]> }
 }
@@ -131,8 +131,8 @@ export const retryApiCall = async <T>(
       lastError = error
       
       if (error && typeof error === 'object' && 'status' in error) {
-        const status = (error as any).status
-        if (status >= 400 && status < 500) {
+        const status = (error as { status?: number }).status
+        if (status !== undefined && status >= 400 && status < 500) {
           throw error
         }
       }

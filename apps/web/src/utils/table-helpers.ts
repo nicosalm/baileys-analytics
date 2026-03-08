@@ -185,8 +185,8 @@ export const calculateColumnStats = <T>(
 export const groupTableData = <T>(
   data: T[],
   groupKey: keyof T
-): Map<any, T[]> => {
-  const groups = new Map<any, T[]>()
+): Map<T[keyof T], T[]> => {
+  const groups = new Map<T[keyof T], T[]>()
   
   data.forEach(item => {
     const key = item[groupKey]
@@ -203,7 +203,7 @@ export const exportTableToCSV = <T>(
   columns: Array<{
     key: keyof T
     label: string
-    format?: (value: any) => string
+    format?: (value: T[keyof T]) => string
   }>,
   filename = 'export.csv'
 ): void => {

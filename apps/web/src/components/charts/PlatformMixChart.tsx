@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import type { TooltipContentProps, BarRectangleItem } from 'recharts'
 import { formatCurrency } from '@/utils/formatters'
 import { getPlatformColor, CHART_INFRA } from '@/lib/theme'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
@@ -23,19 +24,29 @@ interface PlatformMixChartProps {
   showPercentage?: boolean
 }
 
-const PlatformMixTooltip = ({ active, payload, label, isPercentage }: any) => {
-  if (!active || !payload?.length) return null
-  const items = payload.filter((p: any) => p.value > 0)
+type PlatformMixTooltipProps = Partial<TooltipContentProps<number, string>> & { isPercentage?: boolean }
 
-  const raw = payload[0]?.payload
-  const totalRevenue = raw?._totalRevenue || items.reduce((sum: number, p: any) => sum + (isPercentage ? (raw?.[`_raw_${p.dataKey}`] || 0) : p.value), 0)
+interface PlatformMixPayloadEntry {
+  value: number
+  dataKey: string
+  fill?: string
+  color?: string
+  [key: string]: unknown
+}
+
+const PlatformMixTooltip = ({ active, payload, label, isPercentage }: PlatformMixTooltipProps) => {
+  if (!active || !payload?.length) return null
+  const items = (payload as PlatformMixPayloadEntry[]).filter((p) => p.value > 0)
+
+  const raw = payload[0]?.payload as Record<string, unknown> | undefined
+  const totalRevenue = (raw?._totalRevenue as number) || items.reduce((sum: number, p) => sum + (isPercentage ? ((raw?.[`_raw_${p.dataKey}`] as number) || 0) : p.value), 0)
 
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
-      <p className="font-semibold text-sm mb-2">{raw?.fullName || label}</p>
+      <p className="font-semibold text-sm mb-2">{(raw?.fullName as string) || label}</p>
       <div className="space-y-1 text-xs">
-        {items.map((item: any) => {
-          const actualValue = isPercentage ? (raw?.[`_raw_${item.dataKey}`] || 0) : item.value
+        {items.map((item) => {
+          const actualValue = isPercentage ? ((raw?.[`_raw_${item.dataKey}`] as number) || 0) : item.value
           const pct = totalRevenue > 0 ? Math.round((actualValue / totalRevenue) * 100) : 0
           return (
             <div key={item.dataKey} className="flex justify-between gap-4">
@@ -79,7 +90,7 @@ export const PlatformMixChart: React.FC<PlatformMixChartProps> = ({ data, onProp
     const validData = data.filter(d => d.platforms.length > 0)
 
     const chartData = validData.map(d => {
-      const row: any = {
+      const row: Record<string, string | number> = {
         name: d.propertyCode || (d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName),
         fullName: d.propertyName,
         propertyId: d.propertyId
@@ -92,7 +103,7 @@ export const PlatformMixChart: React.FC<PlatformMixChartProps> = ({ data, onProp
 
     const percentageData = validData.map(d => {
       const total = d.platforms.reduce((sum, p) => sum + p.revenue, 0)
-      const row: any = {
+      const row: Record<string, string | number> = {
         name: d.propertyCode || (d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName),
         fullName: d.propertyName,
         propertyId: d.propertyId,
@@ -108,9 +119,10 @@ export const PlatformMixChart: React.FC<PlatformMixChartProps> = ({ data, onProp
     return { chartData, percentageData, sortedPlatforms }
   }, [data])
 
-  const handleBarClick = useCallback((data: any) => {
-    if (onPropertyClick && data?.propertyId) {
-      onPropertyClick(data.propertyId, data.fullName)
+  const handleBarClick = useCallback((data: BarRectangleItem) => {
+    const p = data?.payload as { propertyId?: string; fullName?: string } | undefined
+    if (onPropertyClick && p?.propertyId) {
+      onPropertyClick(p.propertyId, p.fullName || '')
     }
   }, [onPropertyClick])
 

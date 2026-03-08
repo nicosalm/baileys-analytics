@@ -18,6 +18,24 @@ import { SimpleTable } from '@/components/tables'
 import { ProfitabilityChart, ProfitabilityLegend } from '@/components/charts/ProfitabilityChart'
 import { PlatformMixChart, PlatformMixLegend } from '@/components/charts/PlatformMixChart'
 
+interface PropertyProfitability {
+  propertyId: string
+  propertyName: string
+  propertyCode?: string | null
+  grossRevenue: number
+  platformFees: number
+  taxes: number
+  operatingExpenses: number
+  netRevenue: number
+}
+
+interface PropertyPlatformMix {
+  propertyId: string
+  propertyName: string
+  propertyCode?: string | null
+  platforms: Array<{ platform: string; bookings: number; revenue: number }>
+}
+
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
   const { showTips } = useTips()
@@ -39,10 +57,10 @@ export const PropertiesDashboard = () => {
     propertyIds
   )
 
-  let properties: any[] = []
-  let previousProperties: any = null
-  let profitability: any[] = []
-  let platformMix: any[] = []
+  let properties: PropertyMetrics[] = []
+  let previousProperties: PropertyMetrics[] | null = null
+  let profitability: PropertyProfitability[] = []
+  let platformMix: PropertyPlatformMix[] = []
 
   if (Array.isArray(data)) {
     properties = data
@@ -63,7 +81,7 @@ export const PropertiesDashboard = () => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
     const totalRev = sumBy(validProperties, (p: PropertyMetrics) => p.revenue)
     const totalNet = profitability.length > 0
-      ? sumBy(profitability, (p: any) => p.netRevenue || 0)
+      ? sumBy(profitability, (p: PropertyProfitability) => p.netRevenue || 0)
       : 0
     return {
       totalRevenue: totalRev,
@@ -357,14 +375,14 @@ export const PropertiesDashboard = () => {
                 {
                   key: 'propertyName',
                   header: 'Property',
-                  render: (row: any) => (
+                  render: (row: PropertyMetrics) => (
                     <Button variant="link" className="px-0 h-auto" onClick={() => handlePropertyClick(row.propertyId)}>
                       {row.propertyName}
                     </Button>
                   )
                 },
-                { key: 'revenue', header: 'Revenue', render: (row: any) => formatCurrency(row.revenue || 0) },
-                { key: 'bookings', header: 'Bookings', render: (row: any) => String(row.bookings || 0) }
+                { key: 'revenue', header: 'Revenue', render: (row: PropertyMetrics) => formatCurrency(row.revenue || 0) },
+                { key: 'bookings', header: 'Bookings', render: (row: PropertyMetrics) => String(row.bookings || 0) }
               ]}
             />
           </div>
@@ -389,14 +407,14 @@ export const PropertiesDashboard = () => {
                 {
                   key: 'propertyName',
                   header: 'Property',
-                  render: (row: any) => (
+                  render: (row: PropertyMetrics) => (
                     <Button variant="link" className="px-0 h-auto" onClick={() => handlePropertyClick(row.propertyId)}>
                       {row.propertyName}
                     </Button>
                   )
                 },
-                { key: 'revenue', header: 'Revenue', render: (row: any) => formatCurrency(row.revenue || 0) },
-                { key: 'bookings', header: 'Bookings', render: (row: any) => String(row.bookings || 0) }
+                { key: 'revenue', header: 'Revenue', render: (row: PropertyMetrics) => formatCurrency(row.revenue || 0) },
+                { key: 'bookings', header: 'Bookings', render: (row: PropertyMetrics) => String(row.bookings || 0) }
               ]}
             />
           </div>

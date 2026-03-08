@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts'
+import type { TooltipContentProps } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { getPlatformColor, resolveToken } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency } from '@baileys/utils'
@@ -14,7 +15,7 @@ interface PlatformDistributionChartProps {
   height?: number
 }
 
-const PlatformDistTooltip = ({ active, payload }: any) => {
+const PlatformDistTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
     return (
@@ -57,7 +58,7 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
 
   const total = chartData.reduce((sum, item) => sum + item.value, 0)
 
-  const handleMouseEnter = useCallback((_: any, index: number) => {
+  const handleMouseEnter = useCallback((_: unknown, index: number) => {
     setActiveIndex(index)
   }, [])
 
@@ -95,7 +96,7 @@ export const PlatformDistributionChart: React.FC<PlatformDistributionChartProps>
               ))}
               <Label
                 content={({ viewBox }) => {
-                  const { cx, cy } = viewBox as any
+                  const { cx, cy } = viewBox as { cx: number; cy: number }
                   return (
                     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
                       <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">

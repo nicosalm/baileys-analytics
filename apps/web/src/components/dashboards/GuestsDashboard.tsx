@@ -17,12 +17,26 @@ import { useTheme } from '@/contexts/theme'
 import { getPlatformColor, getTagColor, resolveToken } from '@/lib/theme'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
+import type { TooltipContentProps } from 'recharts'
 import {
     PieChart, Pie, Cell, Label, Tooltip, ResponsiveContainer
 } from 'recharts'
 
+interface TagChartItem {
+    name: string
+    size: number
+    value: number
+    color: string
+}
 
-const GuestSourceTooltip = ({ active, payload }: any) => {
+interface PlatformFeeItem {
+    platform: string
+    totalFees: number
+    bookingCount: number
+}
+
+
+const GuestSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload
         const total = data.totalGuests || 0
@@ -360,7 +374,7 @@ export const GuestsDashboard = () => {
             })) || [], [tagDistribution, resolvedTheme])
 
     const [guestSourceActiveIndex, setGuestSourceActiveIndex] = useState<number | null>(null)
-    const handleSourceMouseEnter = useCallback((_: any, index: number) => setGuestSourceActiveIndex(index), [])
+    const handleSourceMouseEnter = useCallback((_: unknown, index: number) => setGuestSourceActiveIndex(index), [])
     const handleSourceMouseLeave = useCallback(() => setGuestSourceActiveIndex(null), [])
 
     // memoized pie chart totals
@@ -370,8 +384,8 @@ export const GuestsDashboard = () => {
 
     // memoized tag chart derived values
     const tagChartDerived = useMemo(() => {
-        const maxCount = tagChartData.length > 0 ? Math.max(...tagChartData.map((t: any) => t.value)) : 0
-        const totalTags = tagDistribution.reduce((sum: number, t: any) => sum + t.count, 0)
+        const maxCount = tagChartData.length > 0 ? Math.max(...tagChartData.map((t: TagChartItem) => t.value)) : 0
+        const totalTags = tagDistribution.reduce((sum: number, t: GuestTagDistribution) => sum + t.count, 0)
         return { maxCount, totalTags }
     }, [tagChartData, tagDistribution])
 
@@ -522,7 +536,7 @@ export const GuestsDashboard = () => {
                     {data.metrics.feesByPlatform.length > 0 && (
                         <div className="space-y-2">
                             <div className="text-xs font-medium text-muted-foreground mb-2">By platform</div>
-                            {data.metrics.feesByPlatform.map((pf: any) => (
+                            {data.metrics.feesByPlatform.map((pf: PlatformFeeItem) => (
                                 <div key={pf.platform} className="flex items-center gap-3">
                                     <div className="w-28 text-sm text-muted-foreground truncate">{pf.platform}</div>
                                     <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
@@ -577,7 +591,7 @@ export const GuestsDashboard = () => {
                                     ))}
                                     <Label
                                         content={({ viewBox }) => {
-                                            const { cx, cy } = viewBox as any
+                                            const { cx, cy } = viewBox as { cx: number; cy: number }
                                             return (
                                                 <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
                                                     <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
@@ -615,7 +629,7 @@ export const GuestsDashboard = () => {
                     responsive={false}
                 >
                     <div className="space-y-3 overflow-y-auto max-h-[280px] pr-2">
-                        {tagChartData.map((tag: any) => {
+                        {tagChartData.map((tag: TagChartItem) => {
                             const percentage = tagChartDerived.maxCount > 0 ? (tag.value / tagChartDerived.maxCount) * 100 : 0
                             const overallPercent = tagChartDerived.totalTags > 0 ? ((tag.value / tagChartDerived.totalTags) * 100).toFixed(0) : '0'
 
@@ -716,6 +730,22 @@ export const GuestsDashboard = () => {
     )
 }
 
+interface RecurringBooking {
+    id: string
+    guestName: string
+    propertyName: string
+    arrival: string
+    departure: string
+    amount: number
+}
+
+interface RecurringYearData {
+    year: number
+    guestCount: number
+    bookings: RecurringBooking[]
+    totalRevenue: number
+}
+
 const RecurringDateSearch = () => {
     const { openModal } = useModal()
     const [isOpen, setIsOpen] = useState(false)
@@ -724,7 +754,7 @@ const RecurringDateSearch = () => {
     const [endMonth, setEndMonth] = useState('7')
     const [endDay, setEndDay] = useState('7')
     const [yearsBack, setYearsBack] = useState('4')
-    const [results, setResults] = useState<any[] | null>(null)
+    const [results, setResults] = useState<RecurringYearData[] | null>(null)
     const [loading, setLoading] = useState(false)
 
     const handleSearch = useCallback(async () => {
@@ -733,7 +763,7 @@ const RecurringDateSearch = () => {
             const params = new URLSearchParams({
                 startMonth, startDay, endMonth, endDay, yearsBack
             })
-            const result = await api.request(`/guests/recurring-search?${params}`) as any
+            const result = await api.request(`/guests/recurring-search?${params}`) as { success: boolean; data: { results: RecurringYearData[] } }
             if (result.success) {
                 setResults(result.data.results)
             }
@@ -804,7 +834,7 @@ const RecurringDateSearch = () => {
 
             {results && (
                 <div className="space-y-4">
-                    {results.map((yearData: any) => (
+                    {results.map((yearData: RecurringYearData) => (
                         <div key={yearData.year} className="border rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                                 <h4 className="font-semibold text-foreground">{yearData.year}</h4>
@@ -816,7 +846,7 @@ const RecurringDateSearch = () => {
                             </div>
                             {yearData.bookings.length > 0 ? (
                                 <div className="space-y-1.5">
-                                    {yearData.bookings.map((b: any) => (
+                                    {yearData.bookings.map((b: RecurringBooking) => (
                                         <div key={b.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-border">
                                             <div>
                                                 <button

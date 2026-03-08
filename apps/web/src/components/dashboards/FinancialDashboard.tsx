@@ -67,7 +67,7 @@ export const FinancialDashboard = () => {
   useErrorToast(error, 'Failed to load financial data')
 
   const handlePeriodClick = useCallback((dateStr: string) => {
-    let chartData: any[] = []
+    let chartData: Array<Record<string, string | number | undefined>> = []
     
     switch (activeTab) {
       case 'pl':
@@ -129,10 +129,9 @@ export const FinancialDashboard = () => {
     } else {
       // Try to parse other formats (e.g., "Jun 22" or "Jan 2024")
       // First, try to find the original date from the chart data
-      const dataPoint = chartData.find(d => formatChartDate(d.month) === dateStr)
-      
-      if (dataPoint && dataPoint.month) {
-        // Found the original date, parse it properly
+      const dataPoint = chartData.find(d => typeof d.month === 'string' && formatChartDate(d.month) === dateStr)
+
+      if (dataPoint && typeof dataPoint.month === 'string') {
         const originalDateStr = dataPoint.month
         if (originalDateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
           const parts = originalDateStr.split('-')
