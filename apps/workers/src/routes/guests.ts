@@ -151,6 +151,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			guest_phone,
 			property_id,
 			ownerrez_booking_id,
+			host_service_fee,
 			booking_charges(id, type, description, amount, position)
 		`)
 		.eq('tenant_id', tenantId)
@@ -243,6 +244,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			propertyName: propertyMap.get(b.property_id) || 'Unknown Property',
 			totalAmount: b.total_amount,
 			guestListingSiteFee: b.guest_listing_site_fee || 0,
+			hostServiceFee: b.host_service_fee || 0,
 			platform: b.platform || 'Unassigned',
 			status: b.status,
 			nights: b.arrival && b.departure ? Math.ceil(

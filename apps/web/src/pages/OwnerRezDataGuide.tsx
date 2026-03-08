@@ -75,7 +75,7 @@ export const OwnerRezDataGuide = () => {
             <li>Operating expenses (cleaning, maintenance, etc.) in <SLink tab="expenses">Settings → Expenses</SLink></li>
           </ul>
           <p className="text-muted-foreground text-sm mt-4">
-            Host service fees are imported from OwnerRez booking data. Guest service fees are estimated (~13–15% by platform) until OwnerRez exposes them via their API. All estimated figures are marked "(est.)" in the dashboard. Net revenue calculations also require operating expenses to be configured.
+            Host service fees are imported from OwnerRez booking data. Guest service fees are estimated (Vrbo ~8%, Airbnb ~14% pre-Oct 2025, 0% after) until OwnerRez exposes them via their API. Booking.com and direct bookings have no guest fee. All estimated figures are marked "(est.)" in the dashboard. Net revenue calculations also require operating expenses to be configured.
           </p>
         </section>
 

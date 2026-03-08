@@ -34,21 +34,49 @@ export function normalizeBookingStatus(status: string | undefined | null): strin
   return lower;
 }
 
-// platform service fee rates charged to the guest by the OTA (estimates pending OR API exposure)
-const PLATFORM_GUEST_FEE_RATES: Record<string, number> = {
-  vrbo: 0.13,
-  airbnb: 0.15,
-};
+// guest-facing OTA service fee estimates (what the OTA charges the guest on top of listing price)
+// host-side fees are tracked separately in host_service_fee (real data from OR API)
+//
+// airbnb split-fee (pre oct 27 2025): 14.2% guest fee on top of listing price
+// airbnb host-only (post oct 27 2025): 0% guest fee (host absorbs 15.5%, baked into price)
+// vrbo: 6-15% sliding scale on top of listing price. ~8% for typical $1.5-5k bookings
+// booking.com: 0% guest fee (host pays ~15% commission, baked into price)
+// tripadvisor: shut down direct bookings nov 2024
+//
+// "direct booking savings" = guest_listing_site_fee + host_service_fee + cc fees
+// this is computed in the UI, not here — this function only estimates the guest portion
+const AIRBNB_SPLIT_FEE_CUTOFF = '2025-10-27';
+const AIRBNB_GUEST_FEE_RATE = 0.142;
+const VRBO_GUEST_FEE_RATE = 0.08;
 
 /**
  * Estimate the guest-facing OTA service fee for a booking.
- * Returns 0 for direct bookings; uses known platform rates otherwise.
+ * This is ONLY the fee the OTA charges the guest on top of the listing price.
+ * Host-side fees (commission, payment processing) are stored separately in host_service_fee.
+ *
+ * Airbnb pre-Oct 2025: ~14.2% guest service fee
+ * Airbnb post-Oct 2025: 0% (host-only model, no guest fee)
+ * Vrbo: ~8% traveler service fee
+ * Booking.com: 0% (no guest fee)
  */
-export function estimateGuestListingSiteFee(platform: string | null | undefined, totalAmount: number): number {
+export function estimateGuestListingSiteFee(
+  platform: string | null | undefined,
+  totalAmount: number,
+  bookedDate?: string | null
+): number {
   if (!platform || !totalAmount) return 0;
   const key = platform.toLowerCase().replace(/[^a-z]/g, '');
-  for (const [name, rate] of Object.entries(PLATFORM_GUEST_FEE_RATES)) {
-    if (key.includes(name)) return Math.round(totalAmount * rate * 100) / 100;
+
+  if (key.includes('airbnb')) {
+    // post oct 27 2025: host-only model, guest pays no separate fee
+    if (bookedDate && bookedDate >= AIRBNB_SPLIT_FEE_CUTOFF) return 0;
+    return Math.round(totalAmount * AIRBNB_GUEST_FEE_RATE * 100) / 100;
   }
+
+  if (key.includes('vrbo')) {
+    return Math.round(totalAmount * VRBO_GUEST_FEE_RATE * 100) / 100;
+  }
+
+  // booking.com, direct, etc. — no guest fee
   return 0;
 }

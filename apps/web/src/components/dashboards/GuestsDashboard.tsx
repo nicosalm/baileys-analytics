@@ -518,9 +518,9 @@ export const GuestsDashboard = () => {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                         <div className="bg-muted/40 rounded-lg p-4 text-center">
-                            <div className="text-2xl font-bold text-warning">{formatCurrency(data.metrics.totalOtaFees)}</div>
-                            <div className="text-sm text-muted-foreground mt-1">OTA service fees (est.)</div>
-                            <div className="text-xs text-muted-foreground">Vrbo ~13%, Airbnb ~15%</div>
+                            <div className="text-2xl font-bold text-warning">{formatCurrency(data.metrics.totalPlatformFees)}</div>
+                            <div className="text-sm text-muted-foreground mt-1">Platform fees</div>
+                            <div className="text-xs text-muted-foreground">Host fees + guest OTA fees (est.)</div>
                         </div>
                         <div className="bg-muted/40 rounded-lg p-4 text-center">
                             <div className="text-2xl font-bold text-danger">{formatCurrency(data.metrics.totalCcFees)}</div>

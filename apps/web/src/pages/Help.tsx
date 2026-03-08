@@ -118,7 +118,7 @@ export const Help = () => {
                 <li>Operating expenses (cleaning, maintenance, etc.) in <SLink tab="expenses">Settings → Expenses</SLink></li>
               </ul>
               <p className="text-muted-foreground text-sm mt-2">
-                Host service fees come from OwnerRez directly. Guest service fees are estimated (~13–15% by platform) until OwnerRez exposes them via their API — these are marked "(est.)" in the dashboard. Net revenue calculations require operating expenses to be set correctly.
+                Host service fees come from OwnerRez directly. Guest service fees are estimated (Vrbo ~8%, Airbnb ~14% pre-Oct 2025, 0% after) until OwnerRez exposes them via their API. These are marked "(est.)" in the dashboard. Net revenue calculations require operating expenses to be set correctly.
               </p>
             </div>
 
@@ -183,8 +183,57 @@ export const Help = () => {
           <div className="space-y-6">
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How are platform fees calculated?</h3>
+              <p className="text-muted-foreground text-sm mb-3">
+                Platform fees include host fees (what the platform charges you) and guest fees (what the platform charges the guest). Host fees are exact values from OwnerRez. Guest fees are estimated and marked "(est.)" because OwnerRez does not yet expose them via their API.
+              </p>
+
+              <div className="overflow-x-auto mb-3">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 pr-4 text-foreground font-medium">Platform</th>
+                      <th className="text-left py-2 pr-4 text-foreground font-medium">Host Fee</th>
+                      <th className="text-left py-2 pr-4 text-foreground font-medium">Guest Fee</th>
+                      <th className="text-left py-2 text-foreground font-medium">Source</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-muted-foreground">
+                    <tr className="border-b border-border/50">
+                      <td className="py-2 pr-4">Airbnb <span className="text-xs">(pre-Oct 2025)</span></td>
+                      <td className="py-2 pr-4">~3%</td>
+                      <td className="py-2 pr-4">~14.2% <span className="text-xs">(est.)</span></td>
+                      <td className="py-2 text-xs">Host: OwnerRez | Guest: estimated</td>
+                    </tr>
+                    <tr className="border-b border-border/50">
+                      <td className="py-2 pr-4">Airbnb <span className="text-xs">(post-Oct 2025)</span></td>
+                      <td className="py-2 pr-4">15.5%</td>
+                      <td className="py-2 pr-4">0%</td>
+                      <td className="py-2 text-xs">Host: OwnerRez | Guest: none (host-only model)</td>
+                    </tr>
+                    <tr className="border-b border-border/50">
+                      <td className="py-2 pr-4">Vrbo</td>
+                      <td className="py-2 pr-4">~8%</td>
+                      <td className="py-2 pr-4">~8% <span className="text-xs">(est.)</span></td>
+                      <td className="py-2 text-xs">Host: OwnerRez | Guest: estimated (6-15% sliding scale)</td>
+                    </tr>
+                    <tr className="border-b border-border/50">
+                      <td className="py-2 pr-4">Booking.com</td>
+                      <td className="py-2 pr-4">~15%</td>
+                      <td className="py-2 pr-4">0%</td>
+                      <td className="py-2 text-xs">Host: OwnerRez | Guest: none (host-only model)</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 pr-4">Direct / Other</td>
+                      <td className="py-2 pr-4">0%</td>
+                      <td className="py-2 pr-4">0%</td>
+                      <td className="py-2 text-xs">No platform involved</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
               <p className="text-muted-foreground text-sm">
-                Host service fees are exact values from OwnerRez. Guest service fees are <strong>estimated</strong> during sync (approximately 13–15% depending on the platform) because OwnerRez does not yet expose them via their API. All figures marked "(est.)" will update to actuals once OwnerRez adds this data.
+                Vrbo's guest fee varies on a 6-15% sliding scale based on booking value. We use 8% as the midpoint for typical bookings. Direct booking savings shown in the dashboard equal host fee + guest fee + credit card fees.
               </p>
             </div>
 

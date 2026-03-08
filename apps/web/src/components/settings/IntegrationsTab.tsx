@@ -200,7 +200,7 @@ export const IntegrationsTab = () => {
                     This will re-run the initial sync process, refreshing all properties and bookings from the last 4 years.
                   </p>
                   <p className="text-xs text-muted-foreground/50 w-full mt-4">
-                    Revenue, bookings, guests, and host service fees are synced from OwnerRez. Guest-facing OTA fees are estimated automatically (Airbnb ~15%, VRBO ~13%). Operating expenses, tax jurisdictions, and platform remittance rules must be configured manually in Settings.
+                    Revenue, bookings, guests, and host service fees are synced from OwnerRez. Guest-facing OTA fees are estimated automatically (Vrbo ~8%, Airbnb ~14% pre-Oct 2025, 0% after). Operating expenses, tax jurisdictions, and platform remittance rules must be configured manually in Settings.
                   </p>
                 </div>
               </div>

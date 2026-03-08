@@ -3,7 +3,7 @@ import { SUPABASE_MAX_ROWS } from '../constants';
 
 export interface FeePlatformBreakdown {
   platform: string;
-  otaFees: number;
+  platformFees: number;
   ccFees: number;
   totalFees: number;
   bookingCount: number;
@@ -18,7 +18,7 @@ export interface GuestMetrics {
   topSpenders: GuestListItem[];
   guestsBySource: GuestSourceData[];
   tagDistribution: TagDistribution[];
-  totalOtaFees: number;
+  totalPlatformFees: number;
   totalCcFees: number;
   directSavingsOpportunity: number;
   feesByPlatform: FeePlatformBreakdown[];
@@ -97,7 +97,7 @@ export async function getGuestsData(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee')
+    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
@@ -132,7 +132,7 @@ export async function getGuestsData(
           topSpenders: [],
           guestsBySource: [],
           tagDistribution: [],
-          totalOtaFees: 0,
+          totalPlatformFees: 0,
           totalCcFees: 0,
           directSavingsOpportunity: 0,
           feesByPlatform: []
@@ -155,7 +155,7 @@ export async function getGuestsData(
         topSpenders: [],
         guestsBySource: [],
         tagDistribution: [],
-        totalOtaFees: 0,
+        totalPlatformFees: 0,
         totalCcFees: 0,
         directSavingsOpportunity: 0,
         feesByPlatform: []
@@ -170,7 +170,7 @@ export async function getGuestsData(
 
   const { data: allBookings } = await supabase
     .from('bookings')
-    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee')
+    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
@@ -469,20 +469,23 @@ export async function getGuestsData(
     })
     .sort((a, b) => b.count - a.count);
 
-  // aggregate fee leakage: OTA fees (from booking field) + CC fees (from booking_charges)
-  let totalOtaFees = 0;
+  // aggregate platform fees: guest fees (estimated) + host fees (real from OR) + CC fees
+  let totalGuestFees = 0;
+  let totalHostFees = 0;
   const platformFeeMap = new Map<string, FeePlatformBreakdown>();
 
   for (const booking of filteredPeriodBookings) {
-    const otaFee = (booking as any).guest_listing_site_fee || 0;
-    totalOtaFees += otaFee;
+    const guestFee = (booking as Record<string, unknown>).guest_listing_site_fee as number || 0;
+    const hostFee = (booking as Record<string, unknown>).host_service_fee as number || 0;
+    totalGuestFees += guestFee;
+    totalHostFees += hostFee;
 
     const platform = normalizePlatform(booking.platform);
     if (!platformFeeMap.has(platform)) {
-      platformFeeMap.set(platform, { platform, otaFees: 0, ccFees: 0, totalFees: 0, bookingCount: 0 });
+      platformFeeMap.set(platform, { platform, platformFees: 0, ccFees: 0, totalFees: 0, bookingCount: 0 });
     }
     const pf = platformFeeMap.get(platform)!;
-    pf.otaFees += otaFee;
+    pf.platformFees += guestFee + hostFee;
     pf.bookingCount += 1;
   }
 
@@ -508,11 +511,12 @@ export async function getGuestsData(
   }
 
   const feesByPlatform: FeePlatformBreakdown[] = Array.from(platformFeeMap.values())
-    .map(pf => ({ ...pf, totalFees: pf.otaFees + pf.ccFees }))
+    .map(pf => ({ ...pf, totalFees: pf.platformFees + pf.ccFees }))
     .filter(pf => pf.totalFees > 0)
     .sort((a, b) => b.totalFees - a.totalFees);
 
-  const directSavingsOpportunity = totalOtaFees + totalCcFees;
+  const totalPlatformFees = totalGuestFees + totalHostFees;
+  const directSavingsOpportunity = totalPlatformFees + totalCcFees;
 
   return {
     metrics: {
@@ -524,7 +528,7 @@ export async function getGuestsData(
       topSpenders,
       guestsBySource,
       tagDistribution,
-      totalOtaFees,
+      totalPlatformFees,
       totalCcFees,
       directSavingsOpportunity,
       feesByPlatform

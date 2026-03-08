@@ -126,6 +126,7 @@ export interface GuestDetailResponse {
     departure: string
     totalAmount: number
     guestListingSiteFee?: number
+    hostServiceFee?: number
     status?: string
     ownerrezBookingId?: string
     charges?: Array<{ type: string; amount: number; description?: string }>

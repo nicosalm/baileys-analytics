@@ -13,7 +13,7 @@ import {
   Info, Landmark, TrendingDown,
   Calendar, ArrowUp, ArrowDown
 } from 'lucide-react'
-import { formatPercentage, formatCurrency } from '@/utils/formatters'
+import { formatPercentage, formatCurrency, formatCompactCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { useDashboard } from '@/contexts/dashboard'
 
@@ -287,14 +287,16 @@ export const PLView: React.FC<PLViewProps> = ({
         />
         <MetricCard
           icon={Receipt}
-          label="Expenses & Platform Fees (est.)"
+          label={revenue.operatingExpenses.total > 0 ? "Expenses & Platform Fees (est.)" : "Platform Fees (est.)"}
           value={revenue.totalCosts}
           format="currency"
-          tooltip="Estimated platform fees plus operating expenses. Guest service fees are estimated."
+          tooltip="Platform fees (host fees are exact, guest fees are estimated) plus operating expenses."
           color="orange"
           subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `Fees (est.): ${formatCurrency(revenue.platformFees)}${revenue.operatingExpenses.total > 0 ? ` | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}` : ''}`}
+            : revenue.operatingExpenses.total > 0
+            ? `Fees (est.): ${formatCurrency(revenue.platformFees)} | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}`
+            : `Host: ${formatCompactCurrency(revenue.hostFees)} | Guest (est.): ${formatCompactCurrency(revenue.guestFees)}`}
           trend={comparisonMode !== 'none' && comparison.costsGrowth !== 0 ? {
             value: comparison.costsGrowth,
             isPositive: comparison.costsGrowth < 0

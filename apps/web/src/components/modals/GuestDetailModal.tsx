@@ -23,7 +23,7 @@ interface FeeAnalysis {
   surcharges: number
   taxes: number
   ccFees: number
-  otaFees: number
+  platformFees: number
   directSavings: number
 }
 
@@ -78,10 +78,12 @@ type GuestDetailBooking = NonNullable<ReturnType<typeof useGuestDetail>['data']>
 const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
   const charges: BookingCharge[] = booking.charges || []
   const { rent, surcharges, taxes, ccFees, discounts } = categorizeCharges(charges)
-  const otaFee = booking.guestListingSiteFee || 0
+  const guestFee = booking.guestListingSiteFee || 0
+  const hostFee = booking.hostServiceFee || 0
   const ccFeeTotal = sumCharges(ccFees)
-  const directSavings = otaFee + ccFeeTotal
-  const totalGuestPaid = (booking.totalAmount || 0) + otaFee
+  const platformFees = guestFee + hostFee
+  const directSavings = platformFees + ccFeeTotal
+  const totalGuestPaid = (booking.totalAmount || 0) + guestFee
 
   return (
     <div className="space-y-3">
@@ -119,18 +121,18 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
         ))}
       </div>
 
-      {/* host total divider */}
+      {/* booking total */}
       <div className="flex justify-between text-sm font-semibold border-t pt-2">
-        <span>Host total</span>
+        <span>Booking total</span>
         <span>{formatCurrency(booking.totalAmount)}</span>
       </div>
 
-      {/* OTA fee */}
-      {otaFee > 0 && (
+      {/* guest-facing fee (only for platforms that charge guests on top, e.g. Vrbo) */}
+      {guestFee > 0 && (
         <>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{booking.platform} service fee <span className="text-xs">(est.)</span></span>
-            <span className="font-medium text-warning">{formatCurrency(otaFee)}</span>
+            <span className="text-muted-foreground">{booking.platform} guest fee <span className="text-xs">(est.)</span></span>
+            <span className="font-medium text-warning">{formatCurrency(guestFee)}</span>
           </div>
           <div className="flex justify-between text-sm font-semibold border-t pt-2">
             <span>Guest paid (total)</span>
@@ -145,11 +147,11 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
           <Sparkles className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
           <div className="text-xs text-success-fg">
             <span className="font-semibold">Direct booking saves {formatCurrency(directSavings)}</span>
-            {otaFee > 0 && ccFeeTotal > 0
-              ? ` — eliminates the ${booking.platform} fee (${formatCurrency(otaFee)}) and credit card fee (${formatCurrency(ccFeeTotal)}) when paying via Zelle.`
-              : otaFee > 0
-              ? ` — eliminates the ${booking.platform} service fee when booking direct.`
-              : ` — eliminates the credit card fee when paying via Zelle.`}
+            {platformFees > 0 && ccFeeTotal > 0
+              ? `: ${formatCurrency(platformFees)} in platform fees and ${formatCurrency(ccFeeTotal)} in credit card fees.`
+              : platformFees > 0
+              ? ` by eliminating ${booking.platform} platform fees.`
+              : ` by eliminating credit card fees via Zelle.`}
           </div>
         </div>
       )}
@@ -208,7 +210,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: GuestDetailBo
                       {formatCurrency(booking.totalAmount)}
                       {(booking.guestListingSiteFee ?? 0) > 0 && (
                         <div className="text-xs text-muted-foreground font-normal">
-                          +{formatCurrency(booking.guestListingSiteFee!)} OTA fee (est.)
+                          +{formatCurrency(booking.guestListingSiteFee!)} guest fee (est.)
                         </div>
                       )}
                     </td>
@@ -266,12 +268,12 @@ const FEE_PIE_COLORS = {
   surcharges: '#8b5cf6',
   taxes: '#f59e0b',
   ccFees: '#ef4444',
-  otaFees: '#f97316',
+  platformFees: '#f97316',
 }
 
 const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: FeeAnalysis, guestName: string }) => {
-  const { rent, surcharges, taxes, ccFees, otaFees, directSavings } = feeAnalysis
-  const total = rent + surcharges + taxes + ccFees + otaFees
+  const { rent, surcharges, taxes, ccFees, platformFees, directSavings } = feeAnalysis
+  const total = rent + surcharges + taxes + ccFees + platformFees
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   const pieData = [
@@ -279,7 +281,7 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: FeeAnalysis, 
     { name: 'Surcharges', value: surcharges, color: FEE_PIE_COLORS.surcharges },
     { name: 'Taxes', value: taxes, color: FEE_PIE_COLORS.taxes },
     { name: 'Credit card fee', value: ccFees, color: FEE_PIE_COLORS.ccFees },
-    { name: 'OTA service fee (est.)', value: otaFees, color: FEE_PIE_COLORS.otaFees },
+    { name: 'Platform fees', value: platformFees, color: FEE_PIE_COLORS.platformFees },
   ].filter(d => d.value > 0)
 
   if (total === 0) {
@@ -356,7 +358,7 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: FeeAnalysis, 
               </div>
             ))}
             <div className="border-t pt-2 flex justify-between text-sm font-semibold">
-              <span>Total (incl. OTA fees)</span>
+              <span>Total (incl. platform fees)</span>
               <span>{formatCurrency(total)}</span>
             </div>
           </div>
@@ -372,11 +374,11 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: FeeAnalysis, 
                 Direct booking opportunity: {formatCurrency(directSavings)} in savings
               </p>
               <p className="text-sm text-success-fg/80 mt-1">
-                {guestName} paid {formatCurrency(otaFees + ccFees)} in avoidable fees across all stays —
-                {otaFees > 0 && ` ${formatCurrency(otaFees)} to the OTA`}
-                {otaFees > 0 && ccFees > 0 && ' and'}
+                {guestName} paid {formatCurrency(platformFees + ccFees)} in avoidable fees across all stays —
+                {platformFees > 0 && ` ${formatCurrency(platformFees)} in platform fees`}
+                {platformFees > 0 && ccFees > 0 && ' and'}
                 {ccFees > 0 && ` ${formatCurrency(ccFees)} in credit card processing`}.
-                Booking direct via Zelle eliminates both.
+                Booking direct eliminates both.
               </p>
             </div>
           </div>
@@ -447,17 +449,19 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
 
   // aggregate fee breakdown across all bookings
   const feeAnalysis = useMemo(() => {
-    let rent = 0, surcharges = 0, taxes = 0, ccFees = 0, otaFees = 0
+    let rent = 0, surcharges = 0, taxes = 0, ccFees = 0, guestFees = 0, hostFees = 0
     for (const b of bookingHistory) {
       const cats = categorizeCharges(b.charges || [])
       rent += sumCharges(cats.rent)
       surcharges += sumCharges(cats.surcharges)
       taxes += sumCharges(cats.taxes)
       ccFees += sumCharges(cats.ccFees)
-      otaFees += b.guestListingSiteFee || 0
+      guestFees += b.guestListingSiteFee || 0
+      hostFees += b.hostServiceFee || 0
     }
-    const directSavings = otaFees + ccFees
-    return { rent, surcharges, taxes, ccFees, otaFees, directSavings }
+    const platformFees = guestFees + hostFees
+    const directSavings = platformFees + ccFees
+    return { rent, surcharges, taxes, ccFees, platformFees, directSavings }
   }, [bookingHistory])
 
   return (

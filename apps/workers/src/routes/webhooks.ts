@@ -419,7 +419,7 @@ async function handleBookingUpdate(
 			arrival: booking.arrival,
 			departure: booking.departure,
 			total_amount: booking.total_amount || 0,
-			guest_listing_site_fee: estimateGuestListingSiteFee(platform, booking.total_amount || 0),
+			guest_listing_site_fee: estimateGuestListingSiteFee(platform, booking.total_amount || 0, booking.booked_utc || booking.created_utc),
 			host_service_fee: booking.total_host_fees || 0,
 			status: normalizedStatus,
 			platform,
