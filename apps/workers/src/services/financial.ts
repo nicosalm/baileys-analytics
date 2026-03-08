@@ -136,6 +136,13 @@ export interface TaxData {
   previousPeriod?: TaxData;
 }
 
+export interface FinancialSharedData {
+  bookings?: any[];
+  properties?: any[];
+  upcomingBookings?: any[];
+  lastYearBookings?: any[];
+}
+
 function determineGranularity(from: string, to: string) {
   const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
   return {
@@ -151,65 +158,76 @@ export async function getPLData(
   from: string,
   to: string,
   tagIds: string[] = [],
-  filterPropertyIds: string[] = []
+  filterPropertyIds: string[] = [],
+  shared?: FinancialSharedData
 ): Promise<PLData> {
   const seasons = await getActiveSeasons(supabase, tenantId);
   const hasTagFilter = tagIds.length > 0;
   const { useDaily, useWeekly } = determineGranularity(from, to);
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select(`
-      *,
-      booking_charges(amount, type, description)
-    `)
-    .eq('tenant_id', tenantId)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
+  let bookings: any[];
+  let properties: any[];
+  let upcomingBookings: any[];
 
-  if (filterPropertyIds.length > 0) {
-    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-  }
-
-  if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
-    }
-  }
-
-  let propertiesQuery = supabase
-    .from('properties')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('active', true);
-
-  if (filterPropertyIds.length > 0) {
-    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
-  }
-
-  const [bookingsResult, propertiesResult, upcomingResult] = await Promise.all([
-    bookingsQuery,
-    propertiesQuery,
-    supabase
+  if (shared?.bookings && shared?.properties && shared?.upcomingBookings) {
+    bookings = shared.bookings;
+    properties = shared.properties;
+    upcomingBookings = shared.upcomingBookings;
+  } else {
+    let bookingsQuery = supabase
       .from('bookings')
-      .select('total_amount, arrival')
+      .select(`
+        *,
+        booking_charges(amount, type, description)
+      `)
       .eq('tenant_id', tenantId)
-      .gte('arrival', new Date().toISOString().split('T')[0])
+      .lte('arrival', to)
+      .gte('departure', from)
       .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS)
-  ]);
+      .limit(SUPABASE_MAX_ROWS);
 
-  const bookings = bookingsResult.data || [];
-  const properties = propertiesResult.data || [];
-  const upcomingBookings = upcomingResult.data || [];
+    if (filterPropertyIds.length > 0) {
+      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+    }
+
+    if (hasTagFilter) {
+      const { data: taggedBookings } = await supabase
+        .from('booking_tags')
+        .select('booking_id')
+        .in('tag_id', tagIds);
+
+      if (taggedBookings) {
+        const bookingIds = taggedBookings.map(tb => tb.booking_id);
+        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      }
+    }
+
+    let propertiesQuery = supabase
+      .from('properties')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('active', true);
+
+    if (filterPropertyIds.length > 0) {
+      propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+    }
+
+    const [bookingsResult, propertiesResult, upcomingResult] = await Promise.all([
+      bookingsQuery,
+      propertiesQuery,
+      supabase
+        .from('bookings')
+        .select('total_amount, arrival')
+        .eq('tenant_id', tenantId)
+        .gte('arrival', new Date().toISOString().split('T')[0])
+        .neq('status', 'canceled')
+        .limit(SUPABASE_MAX_ROWS)
+    ]);
+
+    bookings = bookingsResult.data || [];
+    properties = propertiesResult.data || [];
+    upcomingBookings = upcomingResult.data || [];
+  }
 
   const propertyIds = properties.map((p: any) => p.id);
   const operatingExpensesList = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds);
@@ -243,29 +261,12 @@ export async function getPLData(
     .reduce((sum, b) => sum + (b.total_amount || 0), 0);
   const collectedRevenue = grossRevenue - pendingRevenue;
 
-  const next30Days = upcomingBookings
-    .filter(b => {
-      const arrival = new Date(b.arrival);
-      const daysDiff = Math.ceil((arrival.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return daysDiff <= 30;
-    })
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-  const next60Days = upcomingBookings
-    .filter(b => {
-      const arrival = new Date(b.arrival);
-      const daysDiff = Math.ceil((arrival.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return daysDiff <= 60;
-    })
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-  const next90Days = upcomingBookings
-    .filter(b => {
-      const arrival = new Date(b.arrival);
-      const daysDiff = Math.ceil((arrival.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return daysDiff <= 90;
-    })
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  let next30Days = 0, next60Days = 0, next90Days = 0;
+  for (const b of upcomingBookings) {
+    const days = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const amt = b.total_amount || 0;
+    if (days <= 90) { next90Days += amt; if (days <= 60) { next60Days += amt; if (days <= 30) { next30Days += amt; } } }
+  }
 
   const totalNights = bookings.reduce((sum, b) => {
     const nights = Math.ceil(
@@ -388,42 +389,49 @@ export async function getRevenueData(
   from: string,
   to: string,
   tagIds: string[] = [],
-  filterPropertyIds: string[] = []
+  filterPropertyIds: string[] = [],
+  shared?: FinancialSharedData
 ): Promise<RevenueData> {
   const seasons = await getActiveSeasons(supabase, tenantId);
   const hasTagFilter = tagIds.length > 0;
   const { useDaily, useWeekly } = determineGranularity(from, to);
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select(`
-      *,
-      booking_charges(amount, type)
-    `)
-    .eq('tenant_id', tenantId)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
+  let bookings: any[];
 
-  if (filterPropertyIds.length > 0) {
-    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-  }
+  if (shared?.bookings) {
+    bookings = shared.bookings;
+  } else {
+    let bookingsQuery = supabase
+      .from('bookings')
+      .select(`
+        *,
+        booking_charges(amount, type)
+      `)
+      .eq('tenant_id', tenantId)
+      .lte('arrival', to)
+      .gte('departure', from)
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS);
 
-  if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
+    if (filterPropertyIds.length > 0) {
+      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
     }
-  }
 
-  const { data: bookingsData } = await bookingsQuery;
-  const bookings = bookingsData || [];
+    if (hasTagFilter) {
+      const { data: taggedBookings } = await supabase
+        .from('booking_tags')
+        .select('booking_id')
+        .in('tag_id', tagIds);
+
+      if (taggedBookings) {
+        const bookingIds = taggedBookings.map(tb => tb.booking_id);
+        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      }
+    }
+
+    const { data: bookingsData } = await bookingsQuery;
+    bookings = bookingsData || [];
+  }
 
   const gross = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
@@ -439,7 +447,7 @@ export async function getRevenueData(
   const net = gross - taxes - fees;
 
   const sourceMap = new Map<string, number>();
-  bookings?.forEach(b => {
+  bookings.forEach(b => {
     const source = b.platform || 'Unassigned';
     sourceMap.set(source, (sourceMap.get(source) || 0) + (b.total_amount || 0));
   });
@@ -450,25 +458,31 @@ export async function getRevenueData(
 
   const byMonth = buildMonthlyRevenue(bookings, from, to, useDaily, useWeekly);
 
-  const lastYear = new Date(from).getFullYear() - 1;
-  const lastYearFrom = from.replace(/\d{4}/, lastYear.toString());
-  const lastYearTo = to.replace(/\d{4}/, lastYear.toString());
+  let lastYearBookings: any[];
 
-  const { data: lastYearBookingsData } = await supabase
-    .from('bookings')
-    .select(`
-      total_amount,
-      host_service_fee,
-      guest_listing_site_fee,
-      booking_charges(amount, type)
-    `)
-    .eq('tenant_id', tenantId)
-    .lte('arrival', lastYearTo)
-    .gte('departure', lastYearFrom)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
+  if (shared?.lastYearBookings) {
+    lastYearBookings = shared.lastYearBookings;
+  } else {
+    const lastYear = new Date(from).getFullYear() - 1;
+    const lastYearFrom = from.replace(/\d{4}/, lastYear.toString());
+    const lastYearTo = to.replace(/\d{4}/, lastYear.toString());
 
-  const lastYearBookings = lastYearBookingsData || [];
+    const { data: lastYearBookingsData } = await supabase
+      .from('bookings')
+      .select(`
+        total_amount,
+        host_service_fee,
+        guest_listing_site_fee,
+        booking_charges(amount, type)
+      `)
+      .eq('tenant_id', tenantId)
+      .lte('arrival', lastYearTo)
+      .gte('departure', lastYearFrom)
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS);
+
+    lastYearBookings = lastYearBookingsData || [];
+  }
 
   const lastYearGross = lastYearBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
@@ -503,36 +517,56 @@ export async function getCashflowData(
   from: string,
   to: string,
   tagIds: string[] = [],
-  filterPropertyIds: string[] = []
+  filterPropertyIds: string[] = [],
+  shared?: FinancialSharedData
 ): Promise<CashflowData> {
   const hasTagFilter = tagIds.length > 0;
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
+  let bookings: any[] | null;
+  let upcomingBookings: any[] | null;
 
-  if (filterPropertyIds.length > 0) {
-    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-  }
+  if (shared?.bookings && shared?.upcomingBookings) {
+    bookings = shared.bookings;
+    upcomingBookings = shared.upcomingBookings;
+  } else {
+    let bookingsQuery = supabase
+      .from('bookings')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .lte('arrival', to)
+      .gte('departure', from)
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS);
 
-  if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
+    if (filterPropertyIds.length > 0) {
+      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
     }
-  }
 
-  const { data: bookings } = await bookingsQuery;
+    if (hasTagFilter) {
+      const { data: taggedBookings } = await supabase
+        .from('booking_tags')
+        .select('booking_id')
+        .in('tag_id', tagIds);
+
+      if (taggedBookings) {
+        const bookingIds = taggedBookings.map(tb => tb.booking_id);
+        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      }
+    }
+
+    const { data: bookingsData } = await bookingsQuery;
+    bookings = bookingsData;
+
+    const { data: upcomingData } = await supabase
+      .from('bookings')
+      .select('total_amount, arrival')
+      .eq('tenant_id', tenantId)
+      .gte('arrival', new Date().toISOString().split('T')[0])
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS);
+
+    upcomingBookings = upcomingData;
+  }
 
   const today = new Date();
   const collected = bookings?.filter(b => new Date(b.arrival) <= today)
@@ -541,28 +575,14 @@ export async function getCashflowData(
     .reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
   const total = collected + pending;
 
-  const { data: upcomingBookings } = await supabase
-    .from('bookings')
-    .select('total_amount, arrival')
-    .eq('tenant_id', tenantId)
-    .gte('arrival', today.toISOString().split('T')[0])
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  const next30Days = upcomingBookings?.filter(b => {
-    const daysDiff = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 30;
-  }).reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-
-  const next60Days = upcomingBookings?.filter(b => {
-    const daysDiff = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 60;
-  }).reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-
-  const next90Days = upcomingBookings?.filter(b => {
-    const daysDiff = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff <= 90;
-  }).reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+  let next30Days = 0, next60Days = 0, next90Days = 0;
+  if (upcomingBookings) {
+    for (const b of upcomingBookings) {
+      const days = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const amt = b.total_amount || 0;
+      if (days <= 90) { next90Days += amt; if (days <= 60) { next60Days += amt; if (days <= 30) { next30Days += amt; } } }
+    }
+  }
 
   return {
     collected,
@@ -582,56 +602,67 @@ export async function getTaxData(
   from: string,
   to: string,
   tagIds: string[] = [],
-  filterPropertyIds: string[] = []
+  filterPropertyIds: string[] = [],
+  shared?: FinancialSharedData
 ): Promise<TaxData> {
   const taxCalculator = new TaxCalculator(supabase);
   const hasTagFilter = tagIds.length > 0;
   const { useDaily, useWeekly } = determineGranularity(from, to);
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select(`
-      *,
-      properties!inner(id, name, internal_code),
-      booking_charges(amount, type)
-    `)
-    .eq('tenant_id', tenantId)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
+  let bookings: any[];
 
-  if (filterPropertyIds.length > 0) {
-    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-  }
-
-  if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
-    }
-  }
-
-  const [bookingsResult, taxConfigResult] = await Promise.all([
-    bookingsQuery,
-    supabase
-      .from('property_tax_configs')
-      .select('*')
+  if (shared?.bookings) {
+    bookings = shared.bookings;
+  } else {
+    let bookingsQuery = supabase
+      .from('bookings')
+      .select(`
+        *,
+        properties!inner(id, name, internal_code),
+        booking_charges(amount, type)
+      `)
       .eq('tenant_id', tenantId)
-      .eq('is_active', true)
-  ]);
+      .lte('arrival', to)
+      .gte('departure', from)
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS);
 
-  const bookings = bookingsResult.data || [];
+    if (filterPropertyIds.length > 0) {
+      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+    }
+
+    if (hasTagFilter) {
+      const { data: taggedBookings } = await supabase
+        .from('booking_tags')
+        .select('booking_id')
+        .in('tag_id', tagIds);
+
+      if (taggedBookings) {
+        const bookingIds = taggedBookings.map(tb => tb.booking_id);
+        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      }
+    }
+
+    const { data: bookingsData } = await bookingsQuery;
+    bookings = bookingsData || [];
+  }
+
+  const { data: taxConfigs } = await supabase
+    .from('property_tax_configs')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true);
+
   const platformFees: any[] = [];
-  const taxConfigs = taxConfigResult.data || [];
+
+  // when using shared data, bookings lack the joined `properties` field,
+  // so build a lookup map from shared.properties instead
+  const propertyLookup = shared?.properties
+    ? new Map(shared.properties.map((p: any) => [p.id, p]))
+    : null;
 
   const totalRent = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-  
+
   const ownerTax = bookings.reduce((sum, b) => {
     const taxCharges = b.booking_charges?.filter((c: any) => c.type === 'tax') || [];
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
@@ -642,9 +673,9 @@ export async function getTaxData(
 
   const propertyTaxMap = new Map();
   bookings.forEach(b => {
-    const property = b.properties;
+    const property = b.properties || (propertyLookup ? propertyLookup.get(b.property_id) : null);
     if (!property) return;
-    
+
     const existing = propertyTaxMap.get(property.id) || {
       propertyId: property.id,
       propertyName: property.name,
@@ -657,11 +688,11 @@ export async function getTaxData(
 
     const bookingTax = b.booking_charges?.filter((c: any) => c.type === 'tax')
       .reduce((sum: number, c: any) => sum + (c.amount || 0), 0) || 0;
-    
+
     existing.totalTax += bookingTax;
     existing.totalRent += b.total_amount || 0;
     existing.bookingCount++;
-    
+
     propertyTaxMap.set(property.id, existing);
   });
 
@@ -684,6 +715,92 @@ export async function getTaxData(
     byProperty,
     byMonth
   };
+}
+
+export async function getFinancialBatchData(
+  supabase: SupabaseClient,
+  tenantId: string,
+  from: string,
+  to: string,
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
+): Promise<{ pl: PLData; revenue: RevenueData; cashflow: CashflowData; tax: TaxData }> {
+  const hasTagFilter = tagIds.length > 0;
+
+  let bookingsQuery = supabase
+    .from('bookings')
+    .select('*, booking_charges(amount, type, description)')
+    .eq('tenant_id', tenantId)
+    .lte('arrival', to)
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
+
+  if (filterPropertyIds.length > 0) {
+    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
+  }
+
+  if (hasTagFilter) {
+    const { data: taggedBookings } = await supabase
+      .from('booking_tags')
+      .select('booking_id')
+      .in('tag_id', tagIds);
+
+    if (taggedBookings) {
+      bookingsQuery = bookingsQuery.in('id', taggedBookings.map(tb => tb.booking_id));
+    }
+  }
+
+  let propertiesQuery = supabase
+    .from('properties')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const lastYear = new Date(from).getFullYear() - 1;
+  const lastYearFrom = from.replace(/\d{4}/, lastYear.toString());
+  const lastYearTo = to.replace(/\d{4}/, lastYear.toString());
+
+  const [bookingsResult, propertiesResult, upcomingResult, lastYearResult] = await Promise.all([
+    bookingsQuery,
+    propertiesQuery,
+    supabase
+      .from('bookings')
+      .select('total_amount, arrival')
+      .eq('tenant_id', tenantId)
+      .gte('arrival', new Date().toISOString().split('T')[0])
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS),
+    supabase
+      .from('bookings')
+      .select('total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
+      .eq('tenant_id', tenantId)
+      .lte('arrival', lastYearTo)
+      .gte('departure', lastYearFrom)
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS)
+  ]);
+
+  const bookings = bookingsResult.data || [];
+  const properties = propertiesResult.data || [];
+  const upcomingBookings = upcomingResult.data || [];
+  const lastYearBookings = lastYearResult.data || [];
+
+  const shared: FinancialSharedData = { bookings, properties, upcomingBookings };
+
+  const [pl, revenue, cashflow, tax] = await Promise.all([
+    getPLData(supabase, tenantId, from, to, tagIds, filterPropertyIds, shared),
+    getRevenueData(supabase, tenantId, from, to, tagIds, filterPropertyIds,
+      { bookings, lastYearBookings }),
+    getCashflowData(supabase, tenantId, from, to, tagIds, filterPropertyIds, shared),
+    getTaxData(supabase, tenantId, from, to, tagIds, filterPropertyIds, shared)
+  ]);
+
+  return { pl, revenue, cashflow, tax };
 }
 
 function buildTrendData(

@@ -9,7 +9,7 @@ import { timeout } from './middleware/timeout';
 import { createSupabaseClient } from './services/supabase';
 import { getValidOwnerRezToken } from './services/ownerrez-token';
 import { getOverviewData } from './services/overview';
-import { getPLData, getRevenueData, getCashflowData, getTaxData } from './services/financial';
+import { getFinancialBatchData } from './services/financial';
 import { getPropertiesData } from './services/properties';
 import { getOccupancyData } from './services/occupancy';
 import { getGuestsData } from './services/guests';
@@ -566,12 +566,8 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		}
 
 		case 'financial': {
-			const [plData, revenueData, cashflowData, taxData] = await Promise.all([
-				getPLData(supabase, tenantId, from, to, tags, properties),
-				getRevenueData(supabase, tenantId, from, to, tags, properties),
-				getCashflowData(supabase, tenantId, from, to, tags, properties),
-				getTaxData(supabase, tenantId, from, to, tags, properties)
-			]);
+			const { pl: plData, revenue: revenueData, cashflow: cashflowData, tax: taxData } =
+				await getFinancialBatchData(supabase, tenantId, from, to, tags, properties);
 
 			let previousPL = null;
 			let previousRevenue = null;
@@ -579,12 +575,8 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 			let previousTax = null;
 
 			if (comparisonFrom && comparisonTo) {
-				const [prevPL, prevRevenue, prevCashflow, prevTax] = await Promise.all([
-					getPLData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties),
-					getRevenueData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties),
-					getCashflowData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties),
-					getTaxData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties)
-				]);
+				const { pl: prevPL, revenue: prevRevenue, cashflow: prevCashflow, tax: prevTax } =
+					await getFinancialBatchData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties);
 
 				previousPL = prevPL ? {
 					revenue: prevPL.metrics.revenue,

@@ -42,197 +42,94 @@ function determineGranularity(from: string, to: string): 'daily' | 'weekly' | 'm
   const startDate = new Date(from);
   const endDate = new Date(to);
   const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-  
+
   if (daysDiff <= 60) return 'daily';
   if (daysDiff <= 180) return 'weekly';
   return 'monthly';
 }
 
-async function fetchOverallOccupancy(
-  supabase: SupabaseClient,
-  tenantId: string,
+function computeOverallOccupancy(
+  propertyCount: number,
+  bookings: { property_id: string; arrival: string; departure: string }[],
   from: string,
-  to: string,
-  tagIds: string[] = [],
-  filterPropertyIds: string[] = []
-): Promise<{ bookedNights: number; availableNights: number }> {
-  const hasTagFilter = tagIds.length > 0;
-
-  let propertiesQuery = supabase
-    .from('properties')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('active', true);
-
-  if (filterPropertyIds.length > 0) {
-    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
-  }
-
-  const { data: properties } = await propertiesQuery;
-
-  if (!properties || properties.length === 0) {
-    return { bookedNights: 0, availableNights: 0 };
-  }
-
-  const propertyIds = properties.map(p => p.id);
-
+  to: string
+): { bookedNights: number; availableNights: number } {
   const endDate = new Date(to);
   const startDate = new Date(from);
 
   const totalDays = endDate >= startDate
     ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
     : 0;
-  const totalAvailableNights = totalDays * properties.length;
-
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('property_id, arrival, departure')
-    .eq('tenant_id', tenantId)
-    .in('property_id', propertyIds)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings && taggedBookings.length > 0) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
-    } else {
-      return { bookedNights: 0, availableNights: totalAvailableNights };
-    }
-  }
-
-  const { data: bookings } = await bookingsQuery;
+  const totalAvailableNights = totalDays * propertyCount;
 
   const countedPropertyDays = new Set<string>();
-  if (bookings) {
-    const periodStart = new Date(from);
-    const periodEnd = new Date(to);
+  const periodStart = new Date(from);
+  const periodEnd = new Date(to);
 
-    for (const booking of bookings) {
-      const arrivalDate = new Date(booking.arrival);
-      const departureDate = new Date(booking.departure);
+  for (const booking of bookings) {
+    const arrivalDate = new Date(booking.arrival);
+    const departureDate = new Date(booking.departure);
 
-      const effectiveStart = new Date(Math.max(arrivalDate.getTime(), periodStart.getTime()));
-      // periodEnd is an inclusive boundary; convert to exclusive for the < loop
-      const effectiveEnd = new Date(Math.min(departureDate.getTime(), periodEnd.getTime() + MS_PER_DAY));
+    const effectiveStart = new Date(Math.max(arrivalDate.getTime(), periodStart.getTime()));
+    const effectiveEnd = new Date(Math.min(departureDate.getTime(), periodEnd.getTime() + MS_PER_DAY));
 
-      let day = new Date(effectiveStart);
-      while (day < effectiveEnd) {
-        const key = `${booking.property_id}_${day.toISOString().split('T')[0]}`;
-        countedPropertyDays.add(key);
-        day.setDate(day.getDate() + 1);
-      }
+    let day = new Date(effectiveStart);
+    while (day < effectiveEnd) {
+      const key = `${booking.property_id}_${day.toISOString().split('T')[0]}`;
+      countedPropertyDays.add(key);
+      day.setDate(day.getDate() + 1);
     }
   }
-  const totalBookedNights = countedPropertyDays.size;
-  
+
   return {
-    bookedNights: totalBookedNights,
+    bookedNights: countedPropertyDays.size,
     availableNights: totalAvailableNights
   };
 }
 
-async function fetchPropertyOccupancy(
-  supabase: SupabaseClient,
-  tenantId: string,
+function computePropertyOccupancy(
+  properties: { id: string; name: string; internal_code: string | null }[],
+  bookings: { property_id: string; arrival: string; departure: string; total_amount?: number }[],
   from: string,
-  to: string,
-  tagIds: string[] = [],
-  filterPropertyIds: string[] = []
-): Promise<PropertyOccupancy[]> {
-  const hasTagFilter = tagIds.length > 0;
-
-  let propertiesQuery = supabase
-    .from('properties')
-    .select('id, name, internal_code')
-    .eq('tenant_id', tenantId)
-    .eq('active', true);
-
-  if (filterPropertyIds.length > 0) {
-    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
-  }
-
-  const { data: properties } = await propertiesQuery;
-
-  if (!properties || properties.length === 0) {
-    return [];
-  }
-
-  const propertyIds = properties.map(p => p.id);
-
+  to: string
+): PropertyOccupancy[] {
   const endDate = new Date(to);
   const startDate = new Date(from);
   const totalDays = endDate >= startDate
     ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
     : 0;
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('property_id, arrival, departure, total_amount')
-    .eq('tenant_id', tenantId)
-    .in('property_id', propertyIds)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings && taggedBookings.length > 0) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
-    } else {
-      // No bookings match the tag filter — return all properties with 0 occupancy
-      return properties.map(p => ({
-        propertyId: p.id,
-        propertyName: p.name,
-        propertyCode: p.internal_code || null,
-        rate: 0,
-        bookedNights: 0,
-        availableNights: totalDays,
-        avgNightlyRate: 0
-      }));
-    }
+  const bookingsByProperty = new Map<string, typeof bookings>();
+  for (const b of bookings) {
+    const list = bookingsByProperty.get(b.property_id);
+    if (list) list.push(b);
+    else bookingsByProperty.set(b.property_id, [b]);
   }
-
-  const { data: bookings } = await bookingsQuery;
 
   const propertyOccupancy: PropertyOccupancy[] = [];
 
   for (const property of properties) {
     const availableNights = totalDays;
-    
+    const propertyBookings = bookingsByProperty.get(property.id) || [];
+
     const occupiedDays = new Set<string>();
     let totalRevenue = 0;
-    if (bookings) {
-      const propertyBookings = bookings.filter(b => b.property_id === property.id);
-      for (const booking of propertyBookings) {
-        const arrivalDate = new Date(booking.arrival);
-        const departureDate = new Date(booking.departure);
 
-        const effectiveStart = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
-        // endDate is an inclusive boundary; convert to exclusive for the < loop
-        const effectiveEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY));
+    for (const booking of propertyBookings) {
+      const arrivalDate = new Date(booking.arrival);
+      const departureDate = new Date(booking.departure);
 
-        let day = new Date(effectiveStart);
-        while (day < effectiveEnd) {
-          occupiedDays.add(day.toISOString().split('T')[0]);
-          day.setDate(day.getDate() + 1);
-        }
-        totalRevenue += booking.total_amount || 0;
+      const effectiveStart = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
+      const effectiveEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY));
+
+      let day = new Date(effectiveStart);
+      while (day < effectiveEnd) {
+        occupiedDays.add(day.toISOString().split('T')[0]);
+        day.setDate(day.getDate() + 1);
       }
+      totalRevenue += booking.total_amount || 0;
     }
+
     const bookedNights = occupiedDays.size;
 
     propertyOccupancy.push({
@@ -245,66 +142,17 @@ async function fetchPropertyOccupancy(
       avgNightlyRate: bookedNights > 0 ? totalRevenue / bookedNights : 0
     });
   }
-  
+
   return propertyOccupancy.sort((a, b) => b.rate - a.rate);
 }
 
-async function fetchMonthlyOccupancy(
-  supabase: SupabaseClient,
-  tenantId: string,
+function computeMonthlyOccupancy(
+  propertyCount: number,
+  bookings: { property_id: string; arrival: string; departure: string }[],
   from: string,
   to: string,
-  tagIds: string[] = [],
-  granularity: 'daily' | 'weekly' | 'monthly',
-  filterPropertyIds: string[] = []
-): Promise<MonthlyOccupancy[]> {
-  const hasTagFilter = tagIds.length > 0;
-
-  let propertiesQuery = supabase
-    .from('properties')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('active', true);
-
-  if (filterPropertyIds.length > 0) {
-    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
-  }
-
-  const { data: properties } = await propertiesQuery;
-
-  if (!properties || properties.length === 0) {
-    return [];
-  }
-
-  const propertyIds = properties.map(p => p.id);
-  const propertyCount = properties.length;
-
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('property_id, arrival, departure')
-    .eq('tenant_id', tenantId)
-    .in('property_id', propertyIds)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings && taggedBookings.length > 0) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
-    } else {
-      bookingsQuery = bookingsQuery.in('id', []);
-    }
-  }
-
-  const { data: bookings } = await bookingsQuery;
-
+  granularity: 'daily' | 'weekly' | 'monthly'
+): MonthlyOccupancy[] {
   const periods = new Map<string, { bookedNights: number; availableNights: number }>();
   const startDate = new Date(from);
   const endDate = new Date(to);
@@ -352,53 +200,48 @@ async function fetchMonthlyOccupancy(
     } else if (granularity === 'weekly') {
       currentDate.setDate(currentDate.getDate() + 7);
     } else {
-      // Advance to the 1st of the next month
       currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
     }
   }
-  
-  // Track property-day pairs to avoid double-counting overlapping bookings
+
   const countedPropertyDays = new Set<string>();
 
-  if (bookings) {
-    for (const booking of bookings) {
-      const arrivalDate = new Date(booking.arrival);
-      const departureDate = new Date(booking.departure);
+  for (const booking of bookings) {
+    const arrivalDate = new Date(booking.arrival);
+    const departureDate = new Date(booking.departure);
 
-      let bookingDate = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
-      // endDate is an inclusive boundary; convert to exclusive for the < loop
-      const bookingEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY));
+    let bookingDate = new Date(Math.max(arrivalDate.getTime(), startDate.getTime()));
+    const bookingEnd = new Date(Math.min(departureDate.getTime(), endDate.getTime() + MS_PER_DAY));
 
-      while (bookingDate < bookingEnd) {
-        const dayKey = bookingDate.toISOString().split('T')[0];
-        const propertyDayKey = `${booking.property_id}_${dayKey}`;
+    while (bookingDate < bookingEnd) {
+      const dayKey = bookingDate.toISOString().split('T')[0];
+      const propertyDayKey = `${booking.property_id}_${dayKey}`;
 
-        if (!countedPropertyDays.has(propertyDayKey)) {
-          countedPropertyDays.add(propertyDayKey);
+      if (!countedPropertyDays.has(propertyDayKey)) {
+        countedPropertyDays.add(propertyDayKey);
 
-          let periodKey: string;
+        let periodKey: string;
 
-          if (granularity === 'daily') {
-            periodKey = dayKey;
-          } else if (granularity === 'weekly') {
-            const weekStart = new Date(bookingDate);
-            weekStart.setDate(bookingDate.getDate() - bookingDate.getDay());
-            periodKey = weekStart.toISOString().split('T')[0];
-          } else {
-            periodKey = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}`;
-          }
-
-          const period = periods.get(periodKey);
-          if (period) {
-            period.bookedNights++;
-          }
+        if (granularity === 'daily') {
+          periodKey = dayKey;
+        } else if (granularity === 'weekly') {
+          const weekStart = new Date(bookingDate);
+          weekStart.setDate(bookingDate.getDate() - bookingDate.getDay());
+          periodKey = weekStart.toISOString().split('T')[0];
+        } else {
+          periodKey = `${bookingDate.getFullYear()}-${String(bookingDate.getMonth() + 1).padStart(2, '0')}`;
         }
 
-        bookingDate.setDate(bookingDate.getDate() + 1);
+        const period = periods.get(periodKey);
+        if (period) {
+          period.bookedNights++;
+        }
       }
+
+      bookingDate.setDate(bookingDate.getDate() + 1);
     }
   }
-  
+
   const result: MonthlyOccupancy[] = [];
   for (const [month, data] of periods) {
     result.push({
@@ -408,8 +251,102 @@ async function fetchMonthlyOccupancy(
       availableNights: data.availableNights
     });
   }
-  
+
   return result.sort((a, b) => a.month.localeCompare(b.month));
+}
+
+export async function getOccupancyData(
+  supabase: SupabaseClient,
+  tenantId: string,
+  from: string,
+  to: string,
+  tagIds: string[] = [],
+  filterPropertyIds: string[] = []
+): Promise<OccupancyData> {
+  let propertiesQuery = supabase
+    .from('properties')
+    .select('id, name, internal_code')
+    .eq('tenant_id', tenantId)
+    .eq('active', true);
+
+  if (filterPropertyIds.length > 0) {
+    propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
+  }
+
+  const { data: properties } = await propertiesQuery;
+
+  if (!properties || properties.length === 0) {
+    return { overall: 0, byProperty: [], byMonth: [], bookedNights: 0, availableNights: 0 };
+  }
+
+  const propertyIds = properties.map(p => p.id);
+  const hasTagFilter = tagIds.length > 0;
+
+  let bookingIdFilter: string[] | null = null;
+  if (hasTagFilter) {
+    const { data: taggedBookings } = await supabase
+      .from('booking_tags')
+      .select('booking_id')
+      .in('tag_id', tagIds);
+
+    if (taggedBookings && taggedBookings.length > 0) {
+      bookingIdFilter = taggedBookings.map(tb => tb.booking_id);
+    } else {
+      const endDate = new Date(to);
+      const startDate = new Date(from);
+      const totalDays = endDate >= startDate
+        ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 0;
+      const totalAvailableNights = totalDays * properties.length;
+
+      return {
+        overall: 0,
+        byProperty: properties.map(p => ({
+          propertyId: p.id,
+          propertyName: p.name,
+          propertyCode: p.internal_code || null,
+          rate: 0,
+          bookedNights: 0,
+          availableNights: totalDays,
+          avgNightlyRate: 0
+        })),
+        byMonth: [],
+        bookedNights: 0,
+        availableNights: totalAvailableNights
+      };
+    }
+  }
+
+  let bookingsQuery = supabase
+    .from('bookings')
+    .select('property_id, arrival, departure, total_amount')
+    .eq('tenant_id', tenantId)
+    .in('property_id', propertyIds)
+    .lte('arrival', to)
+    .gte('departure', from)
+    .neq('status', 'canceled')
+    .limit(SUPABASE_MAX_ROWS);
+
+  if (bookingIdFilter) {
+    bookingsQuery = bookingsQuery.in('id', bookingIdFilter);
+  }
+
+  const { data: bookings } = await bookingsQuery;
+  const bookingsList = bookings || [];
+
+  const granularity = determineGranularity(from, to);
+
+  const overall = computeOverallOccupancy(properties.length, bookingsList, from, to);
+  const byProperty = computePropertyOccupancy(properties, bookingsList, from, to);
+  const byMonth = computeMonthlyOccupancy(properties.length, bookingsList, from, to, granularity);
+
+  return {
+    overall: calculateOccupancyRate(overall.bookedNights, overall.availableNights),
+    byProperty,
+    byMonth,
+    bookedNights: overall.bookedNights,
+    availableNights: overall.availableNights
+  };
 }
 
 async function fetchDailyOccupancy(
@@ -420,17 +357,17 @@ async function fetchDailyOccupancy(
   tagIds: string[] = []
 ): Promise<DailyOccupancy[]> {
   const hasTagFilter = tagIds.length > 0;
-  
+
   const { data: properties } = await supabase
     .from('properties')
     .select('id')
     .eq('tenant_id', tenantId)
     .eq('active', true);
-  
+
   if (!properties || properties.length === 0) {
     return [];
   }
-  
+
   const totalProperties = properties.length;
   const propertyIds = properties.map(p => p.id);
 
@@ -468,7 +405,7 @@ async function fetchDailyOccupancy(
   while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split('T')[0];
     const bookedProperties = new Set<string>();
-    
+
     if (bookings) {
       for (const booking of bookings) {
         const arrivalDate = new Date(booking.arrival);
@@ -480,43 +417,18 @@ async function fetchDailyOccupancy(
         }
       }
     }
-    
+
     dailyOccupancy.push({
       date: dateStr,
       occupancyRate: totalProperties > 0 ? bookedProperties.size / totalProperties : 0,
       bookedProperties: bookedProperties.size,
       totalProperties
     });
-    
+
     currentDate.setDate(currentDate.getDate() + 1);
   }
-  
+
   return dailyOccupancy;
-}
-
-export async function getOccupancyData(
-  supabase: SupabaseClient,
-  tenantId: string,
-  from: string,
-  to: string,
-  tagIds: string[] = [],
-  filterPropertyIds: string[] = []
-): Promise<OccupancyData> {
-  const granularity = determineGranularity(from, to);
-
-  const [overall, byProperty, byMonth] = await Promise.all([
-    fetchOverallOccupancy(supabase, tenantId, from, to, tagIds, filterPropertyIds),
-    fetchPropertyOccupancy(supabase, tenantId, from, to, tagIds, filterPropertyIds),
-    fetchMonthlyOccupancy(supabase, tenantId, from, to, tagIds, granularity, filterPropertyIds)
-  ]);
-  
-  return {
-    overall: calculateOccupancyRate(overall.bookedNights, overall.availableNights),
-    byProperty,
-    byMonth,
-    bookedNights: overall.bookedNights,
-    availableNights: overall.availableNights
-  };
 }
 
 export async function getDailyOccupancyData(
@@ -550,7 +462,7 @@ export async function detectBookingGaps(
   today.setHours(0, 0, 0, 0);
   const endDate = new Date(today);
   endDate.setDate(endDate.getDate() + maxDaysAhead);
-  
+
   // fetch properties
   const { data: properties } = await supabase
     .from('properties')
@@ -574,10 +486,10 @@ export async function detectBookingGaps(
     .limit(SUPABASE_MAX_ROWS);
 
   const gaps: BookingGap[] = [];
-  
+
   for (const property of properties) {
     const propertyBookings = bookings?.filter(b => b.property_id === property.id) || [];
-    
+
     // check for gaps between bookings
     let lastDeparture: Date | null = null;
 

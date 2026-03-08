@@ -331,61 +331,85 @@ function buildOccupancyChartData(
 	to: string,
 	useDaily: boolean
 ) {
-	const occupancyMap = new Map();
 	const totalProperties = properties.length || 1;
-
 	const startDate = new Date(from);
 	const endDate = new Date(to);
+	const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 	if (useDaily) {
-		for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-			const dateStr = d.toISOString().split('T')[0];
-			const label = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-			
-			const bookedProperties = new Set();
-			bookings.forEach(b => {
-				if (new Date(b.arrival) <= d && new Date(b.departure) > d) {
-					bookedProperties.add(b.property_id);
-				}
-			});
+		// single pass over bookings to build grid: epochDay -> Set<propertyId>
+		const startEpoch = Math.floor(startDate.getTime() / MS_PER_DAY);
+		const endEpoch = Math.floor(endDate.getTime() / MS_PER_DAY);
+		const grid = new Map<number, Set<string>>();
 
-			const occupancyRate = (bookedProperties.size / totalProperties) * 100;
-			occupancyMap.set(dateStr, { month: label, rate: Math.round(occupancyRate * 10) / 10 });
+		for (const b of bookings) {
+			const bStart = Math.max(Math.floor(new Date(b.arrival).getTime() / MS_PER_DAY), startEpoch);
+			const bEnd = Math.min(Math.floor(new Date(b.departure).getTime() / MS_PER_DAY), endEpoch + 1);
+			for (let d = bStart; d < bEnd; d++) {
+				let set = grid.get(d);
+				if (!set) { set = new Set(); grid.set(d, set); }
+				set.add(b.property_id);
+			}
 		}
+
+		// iterate days to read from grid: O(D)
+		const result = [];
+		for (let epoch = startEpoch; epoch <= endEpoch; epoch++) {
+			const d = new Date(epoch * MS_PER_DAY);
+			const label = `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`;
+			const bookedCount = grid.get(epoch)?.size ?? 0;
+			const rate = (bookedCount / totalProperties) * 100;
+			result.push({ month: label, rate: Math.round(rate * 10) / 10 });
+		}
+		return result;
 	} else {
+		// single pass over bookings to accumulate nights per month
+		const monthNights = new Map<string, number>();
+
+		for (const b of bookings) {
+			const arrivalDate = new Date(b.arrival);
+			const departureDate = new Date(b.departure);
+			const bStart = arrivalDate > startDate ? arrivalDate : startDate;
+			const bEnd = departureDate < endDate ? departureDate : endDate;
+
+			// walk month boundaries this booking spans
+			let cursor = new Date(bStart.getFullYear(), bStart.getMonth(), 1);
+			while (cursor <= bEnd) {
+				const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+				const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+				const effectiveStart = monthStart > startDate ? monthStart : startDate;
+				const effectiveEnd = monthEnd < endDate ? monthEnd : endDate;
+
+				if (arrivalDate <= effectiveEnd && departureDate > effectiveStart) {
+					const overlapStart = arrivalDate > effectiveStart ? arrivalDate : effectiveStart;
+					const overlapEnd = departureDate < effectiveEnd ? departureDate : effectiveEnd;
+					const nights = Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / MS_PER_DAY);
+					const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+					monthNights.set(key, (monthNights.get(key) || 0) + nights);
+				}
+				cursor.setMonth(cursor.getMonth() + 1);
+			}
+		}
+
+		// iterate months to build result
+		const result = [];
 		for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
-			const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 			const label = d.toLocaleDateString('en-US', { month: 'short' });
-			
-			let totalNights = 0;
-			let bookedNights = 0;
-			
+
 			const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
 			const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
 			const effectiveStart = monthStart > startDate ? monthStart : startDate;
 			const effectiveEnd = monthEnd < endDate ? monthEnd : endDate;
-			
-			const daysInMonth = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-			totalNights = daysInMonth * totalProperties;
+			const daysInMonth = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / MS_PER_DAY) + 1;
+			const totalNights = daysInMonth * totalProperties;
 
-			bookings.forEach(b => {
-				const arrivalDate = new Date(b.arrival);
-				const departureDate = new Date(b.departure);
-				
-				if (arrivalDate <= effectiveEnd && departureDate > effectiveStart) {
-					const overlapStart = arrivalDate > effectiveStart ? arrivalDate : effectiveStart;
-					const overlapEnd = departureDate < effectiveEnd ? departureDate : effectiveEnd;
-					const nights = Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / (1000 * 60 * 60 * 24));
-					bookedNights += nights;
-				}
-			});
-
-			const occupancyRate = totalNights > 0 ? (bookedNights / totalNights) * 100 : 0;
-			occupancyMap.set(monthKey, { month: label, rate: Math.round(occupancyRate * 10) / 10 });
+			const bookedNights = monthNights.get(key) || 0;
+			const rate = totalNights > 0 ? (bookedNights / totalNights) * 100 : 0;
+			result.push({ month: label, rate: Math.round(rate * 10) / 10 });
 		}
+		return result;
 	}
-
-	return Array.from(occupancyMap.values());
 }
 
 async function getAlerts(
