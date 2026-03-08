@@ -22,7 +22,7 @@ export function usePropertyIds() {
 /**
  * Handles error display with consistent toast notifications
  */
-export function useErrorToast(error: any, messagePrefix: string = 'Error') {
+export function useErrorToast(error: Error | undefined, messagePrefix: string = 'Error') {
   const { addToast } = useToast()
   
   useEffect(() => {
@@ -38,10 +38,11 @@ export function useErrorToast(error: any, messagePrefix: string = 'Error') {
 /**
  * Consolidated hook for fetching dashboard data with batch endpoint and fallback
  */
-export function useDashboardData<T = any>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dashboard batch returns view-specific shapes
+export function useDashboardData<T = Record<string, any>>(
   view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests',
-  fallbackHook: (params: any) => { data: T; error: any; isLoading: boolean },
-  fallbackParams?: any
+  fallbackHook: (params: unknown) => { data: T; error: Error | undefined; isLoading: boolean },
+  fallbackParams?: unknown
 ) {
   const { filters, comparisonRange } = useDashboard()
   const tagIds = useTagIds()

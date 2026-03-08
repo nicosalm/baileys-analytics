@@ -130,7 +130,7 @@ export const FilterBar: React.FC = () => {
                   <div className="text-center py-4 text-muted-foreground">No tags available</div>
                 ) : (
                   <div className="space-y-1">
-                    {availableTags.map((tag: any) => (
+                    {availableTags.map((tag) => (
                       <TagButton
                         key={tag.id}
                         tag={tag}
@@ -169,7 +169,7 @@ export const FilterBar: React.FC = () => {
                   <div className="text-center py-4 text-muted-foreground">No properties available</div>
                 ) : (
                   <div className="space-y-1">
-                    {availableProperties.map((property: any) => (
+                    {availableProperties.map((property) => (
                       <PropertyButton
                         key={property.id}
                         property={property}
@@ -188,7 +188,7 @@ export const FilterBar: React.FC = () => {
         {hasActiveFilters && (
           <div className="flex items-center gap-2 flex-wrap">
             {filters.selectedProperties.map((propertyId) => {
-              const property = availableProperties.find((p: any) => p.id === propertyId)
+              const property = availableProperties.find((p) => p.id === propertyId)
               return (
                 <span
                   key={propertyId}
@@ -198,6 +198,7 @@ export const FilterBar: React.FC = () => {
                   {property?.name || 'Unknown'}
                   <button
                     onClick={() => toggleProperty(propertyId)}
+                    aria-label={`Remove ${property?.name || 'property'} filter`}
                     className="ml-0.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
                   >
                     <X className="w-3 h-3" />
@@ -217,6 +218,7 @@ export const FilterBar: React.FC = () => {
                 {tag.name}
                 <button
                   onClick={() => toggleTag(tag)}
+                  aria-label={`Remove ${tag.name} filter`}
                   className="ml-0.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
                 >
                   <X className="w-3 h-3" />
@@ -225,6 +227,7 @@ export const FilterBar: React.FC = () => {
             ))}
             <button
               onClick={clearFilters}
+              aria-label="Clear all filters"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               Clear all

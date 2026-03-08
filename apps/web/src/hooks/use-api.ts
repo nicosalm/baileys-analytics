@@ -2,7 +2,196 @@ import useSWR, { mutate as globalMutate } from 'swr'
 import { api } from '@/lib/api'
 import type { Season, SeasonFormData } from '@/types/season'
 import type { Goal, GoalFormData, GoalProgress } from '@/types/goal'
+import type { Tag, PropertyMetrics } from '@/types/dashboard'
+import type { Database } from '@/types/database.types'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
+
+export type PropertyRow = Database['public']['Tables']['properties']['Row']
+export type BookingRow = Database['public']['Tables']['bookings']['Row']
+export type ExpenseTemplateRow = Database['public']['Tables']['expense_templates']['Row']
+export type OperatingExpenseRow = Database['public']['Tables']['operating_expenses']['Row']
+export type PropertyTaxConfigRow = Database['public']['Tables']['property_tax_configs']['Row']
+
+export interface SaveExpenseTemplatesData {
+  propertyId: string
+  templates: Array<{ category: string; amount: number; description?: string }>
+}
+
+export interface SaveOperatingExpenseData {
+  propertyId: string
+  year: number
+  month: number
+  category: string
+  amount: number
+  description?: string
+}
+
+export interface SaveOperatingExpensesBulkData {
+  propertyId: string
+  year: number
+  month: number
+  expenses: Array<{ category: string; amount: number; description?: string }>
+}
+
+export interface SavePropertyTaxConfigData {
+  propertyId: string
+  configName: string
+  effectiveFrom: string
+  effectiveTo?: string
+  jurisdictions: Record<string, unknown>
+  platformSettings: Record<string, unknown>
+  ownerrezMappings?: Record<string, unknown>
+}
+
+export interface BookingDetailResponse {
+  booking: BookingRow & {
+    property_name?: string
+    property_address?: string
+    avgNightlyRate?: number
+    notes?: string
+  }
+  charges: Array<{
+    id: string
+    type: string
+    description: string
+    amount: number
+  }>
+}
+
+export interface PropertyDetailResponse {
+  property: PropertyRow & {
+    ownerrezId?: string
+    maxGuests?: number | null
+  }
+  metrics: {
+    totalRevenue: number
+    totalBookings: number
+    avgStayLength: number
+    occupancyRate: number
+    totalNights: number
+    totalDays: number
+    avgNightlyRate: number
+    platformFees: number
+    taxes: number
+    operatingExpenses: number
+    netRevenue: number
+  }
+  monthlyData: Array<{
+    month: string
+    revenue: number
+    bookings: number
+    occupancy: number
+  }>
+  revenueByPlatform: Array<{
+    platform: string
+    revenue: number
+    percentage: number
+  }>
+  recentBookings?: Array<{
+    id: string
+    guestId?: string
+    guestName: string
+    guestEmail?: string
+    arrival: string
+    departure: string
+    totalAmount: number
+    status: string
+  }>
+  guestStats?: {
+    totalGuests: number
+    repeatGuests: number
+  }
+}
+
+export interface GuestDetailResponse {
+  guest: {
+    name: string
+    email: string | null
+    phone: string | null
+    source: string | null
+    firstVisit: string
+    lastVisit: string
+    totalSpent: number
+    bookingCount: number
+    avgStayLength?: number
+    isRepeat?: boolean
+    notes: string | null
+  }
+  bookings: Array<{
+    id?: string
+    propertyName: string
+    nights?: number
+    platform?: string
+    arrival: string
+    departure: string
+    totalAmount: number
+    guestListingSiteFee?: number
+    status?: string
+    ownerrezBookingId?: string
+    charges?: Array<{ type: string; amount: number }>
+  }>
+  spendingTrend: Array<{
+    month: string
+    amount: number
+    bookings: number
+  }>
+}
+
+export interface PeriodDetailResponse {
+  metrics: {
+    revenue: number
+    bookings: number
+    occupancyRate: number
+    avgNightlyRate: number
+  }
+  costs: {
+    platformFees: number
+    taxes: number
+    operatingExpenses: number
+    netRevenue: number
+  }
+  topProperties?: Array<{
+    propertyId: string
+    propertyName: string
+    revenue: number
+    bookings: number
+    occupancyRate: number
+  }>
+  bookings?: Array<{
+    id: string
+    guestId?: string
+    guestName: string
+    propertyId: string
+    propertyName: string
+    arrival: string
+    departure: string
+    totalAmount: number
+    ownerrezBookingId?: string
+  }>
+}
+
+export interface DailyOccupancyEntry {
+  date: string
+  occupancyRate: number
+  bookedProperties: number
+  totalProperties: number
+}
+
+export interface WebhookHealthResponse {
+  lastWebhookHoursAgo: number | null
+  lastWebhookTime: string | null
+  status: string
+  nextRetry: string | null
+}
+
+export interface SyncStatusResponse {
+  status: string
+  progress: number | null
+  message: string | null
+  lastSync: string | null
+  bookingsCount: number
+  propertiesCount: number
+}
 
 export function useDashboardBatch(
   view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests',
@@ -24,7 +213,8 @@ export function useDashboardBatch(
     ? `dashboard-batch:${[view, validFrom, validTo, validTagIds?.join(','), validPropertyIds?.join(','), validCompFrom, validCompTo].filter(Boolean).join('|')}`
     : null
 
-  const result = useSWR<any>(key, async () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- response shape varies by view param
+  const result = useSWR<Record<string, any>>(key, async () => {
     const params = new URLSearchParams()
     params.append('view', view)
     if (validFrom) params.append('from', validFrom)
@@ -34,7 +224,7 @@ export function useDashboardBatch(
     if (validCompFrom) params.append('comparisonFrom', validCompFrom)
     if (validCompTo) params.append('comparisonTo', validCompTo)
 
-    const result = await api.request(`/dashboard-batch?${params}`)
+    const result = await api.request<Record<string, any>>(`/dashboard-batch?${params}`)
     if (!result.success) throw new Error(result.error)
     return result.data
   }, { refreshInterval: 120000, keepPreviousData: true })
@@ -66,9 +256,8 @@ export function usePropertyMetrics(
   const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
   const validPropertyIds = propertyIds ? filterValidUUIDs(propertyIds) : undefined
 
-  const key = validFrom || validTo || validTagIds ? ['/properties/metrics', validFrom, validTo, validTagIds, validCompFrom, validCompTo, validPropertyIds] : null
-  return useSWR<any>(key, async () => {
-    if (!key) return null
+  const key = validFrom || validTo || validTagIds ? ['/properties/metrics', validFrom ?? '', validTo ?? '', validTagIds?.join(',') ?? '', validCompFrom ?? '', validCompTo ?? '', validPropertyIds?.join(',') ?? ''] : null
+  return useSWR<PropertyMetrics[]>(key, async () => {
     const params = new URLSearchParams()
     if (validFrom) params.append('from', validFrom)
     if (validTo) params.append('to', validTo)
@@ -78,14 +267,14 @@ export function usePropertyMetrics(
     if (validPropertyIds && validPropertyIds.length > 0) params.append('filterPropertyIds', validPropertyIds.join(','))
 
     const endpoint = params.toString() ? `/properties/metrics?${params}` : '/properties/metrics'
-    const result = await api.request(endpoint)
+    const result = await api.request<PropertyMetrics[]>(endpoint)
     if (!result.success) throw new Error(result.error)
     return result.data
   }, { keepPreviousData: true })
 }
 
 export function useProperties() {
-  return useSWR<any>('/properties', async () => {
+  return useSWR<PropertyRow[]>('/properties', async () => {
     const result = await api.getProperties()
     if (!result.success) throw new Error(result.error)
     return result.data?.properties || []
@@ -93,7 +282,7 @@ export function useProperties() {
 }
 
 export function useTags() {
-  return useSWR<any>('/tags', async () => {
+  return useSWR<Tag[]>('/tags', async () => {
     const result = await api.getTags()
     if (!result.success) throw new Error(result.error)
     return result.data
@@ -101,15 +290,15 @@ export function useTags() {
 }
 
 export function useWebhookHealth() {
-  return useSWR<any>('webhook-health', async () => {
-    const result = await api.request('/sync/health')
+  return useSWR<WebhookHealthResponse>('webhook-health', async () => {
+    const result = await api.request<WebhookHealthResponse>('/sync/health')
     if (!result.success) throw new Error(result.error)
     return result.data
   }, { refreshInterval: 60000 })
 }
 
 export function useSyncStatus() {
-  return useSWR<any>('/sync-status', async () => {
+  return useSWR<SyncStatusResponse>('/sync-status', async () => {
     const result = await api.getSyncStatus()
     if (!result.success) throw new Error(result.error)
     return result.data
@@ -145,10 +334,10 @@ export async function historicalSync() {
 }
 
 export function useBookingDetail(bookingId?: string) {
-  return useSWR<any>(
+  return useSWR<BookingDetailResponse>(
     bookingId ? `/bookings/${bookingId}` : null,
     async () => {
-      const result = await api.request(`/bookings/${encodeURIComponent(bookingId!)}`)
+      const result = await api.request<BookingDetailResponse>(`/bookings/${encodeURIComponent(bookingId!)}`)
       if (!result.success) throw new Error(result.error)
       return result.data
     }
@@ -160,14 +349,14 @@ export function usePropertyDetail(propertyId?: string, from?: string, to?: strin
   if (from) params.append('from', from)
   if (to) params.append('to', to)
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
-  
+
   const cacheKey = propertyId ? `/property/${propertyId}/detail?${params.toString()}` : null
-  
-  return useSWR<any>(
+
+  return useSWR<PropertyDetailResponse>(
     cacheKey,
     async () => {
       const url = `/property/${encodeURIComponent(propertyId!)}/detail${params.toString() ? `?${params}` : ''}`
-      const result = await api.request(url)
+      const result = await api.request<PropertyDetailResponse>(url)
       if (!result.success) throw new Error(result.error)
       return result.data
     },
@@ -182,10 +371,10 @@ export function usePropertyDetail(propertyId?: string, from?: string, to?: strin
 }
 
 export function useGuestDetail(guestId?: string) {
-  return useSWR<any>(
+  return useSWR<GuestDetailResponse>(
     guestId ? `/guests/${guestId}/detail` : null,
     async () => {
-      const result = await api.request(`/guests/${encodeURIComponent(guestId!)}/detail`)
+      const result = await api.request<GuestDetailResponse>(`/guests/${encodeURIComponent(guestId!)}/detail`)
       if (!result.success) throw new Error(result.error)
       return result.data
     }
@@ -199,11 +388,11 @@ export function usePeriodDetail(from?: string, to?: string, tagIds?: string[]) {
   if (to) params.append('to', to)
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
 
-  return useSWR<any>(
+  return useSWR<PeriodDetailResponse>(
     from && to ? [`/period-detail`, from, to, tagIds] : null,
     async () => {
       const url = `/period-detail?${params}`
-      const result = await api.request(url)
+      const result = await api.request<PeriodDetailResponse>(url)
       if (!result.success) throw new Error(result.error)
       return result.data
     },
@@ -215,10 +404,10 @@ export function usePeriodDetail(from?: string, to?: string, tagIds?: string[]) {
 }
 
 export function usePropertyMonthDetail(propertyId?: string, month?: string, year?: string) {
-  return useSWR<any>(
+  return useSWR<PropertyDetailResponse>(
     propertyId && month && year ? `/property/${propertyId}/month/${year}/${month}` : null,
     async () => {
-      const result = await api.request(`/property/${encodeURIComponent(propertyId!)}/month/${year}/${month}`)
+      const result = await api.request<PropertyDetailResponse>(`/property/${encodeURIComponent(propertyId!)}/month/${year}/${month}`)
       if (!result.success) throw new Error(result.error)
       return result.data
     }
@@ -230,11 +419,11 @@ export function useDailyOccupancy(from?: string, to?: string, tagIds?: string[])
   if (from) params.append('from', from)
   if (to) params.append('to', to)
   if (tagIds && tagIds.length > 0) params.append('tags', tagIds.join(','))
-  
-  return useSWR<any>(
+
+  return useSWR<DailyOccupancyEntry[]>(
     from && to ? [`/occupancy/daily`, from, to, tagIds] : null,
     async () => {
-      const result = await api.request(`/occupancy/daily?${params}`)
+      const result = await api.request<DailyOccupancyEntry[]>(`/occupancy/daily?${params}`)
       if (!result.success) throw new Error(result.error)
       return result.data
     },
@@ -244,7 +433,7 @@ export function useDailyOccupancy(from?: string, to?: string, tagIds?: string[])
 
 export function useOperatingExpenses(propertyId?: string, month?: string) {
   const key = month ? ['/operating-expenses', propertyId || 'all', month] : null
-  return useSWR(key, async () => {
+  return useSWR<OperatingExpenseRow[]>(key, async () => {
     if (!month) return []
     const result = await api.getOperatingExpenses(propertyId, month)
     if (!result.success) throw new Error(result.error)
@@ -257,28 +446,28 @@ export function useOperatingExpenses(propertyId?: string, month?: string) {
   })
 }
 
-export async function saveOperatingExpense(data: any): Promise<void> {
+export async function saveOperatingExpense(data: SaveOperatingExpenseData): Promise<void> {
   const result = await api.saveOperatingExpense(data)
   if (!result.success) {
     throw new Error(result.error)
   }
-  await globalMutate((key: any) =>
+  await globalMutate((key: unknown) =>
     Array.isArray(key) && key[0] === '/operating-expenses'
   )
-  await globalMutate((key: any) =>
+  await globalMutate((key: unknown) =>
     typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )
 }
 
-export async function saveOperatingExpensesBulk(data: any): Promise<void> {
+export async function saveOperatingExpensesBulk(data: SaveOperatingExpensesBulkData): Promise<void> {
   const result = await api.saveOperatingExpensesBulk(data)
   if (!result.success) {
     throw new Error(result.error)
   }
-  await globalMutate((key: any) =>
+  await globalMutate((key: unknown) =>
     Array.isArray(key) && key[0] === '/operating-expenses'
   )
-  await globalMutate((key: any) =>
+  await globalMutate((key: unknown) =>
     typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )
 }
@@ -288,28 +477,28 @@ export async function deleteOperatingExpense(id: string): Promise<void> {
   if (!result.success) {
     throw new Error(result.error)
   }
-  await globalMutate((key: any) =>
+  await globalMutate((key: unknown) =>
     Array.isArray(key) && key[0] === '/operating-expenses'
   )
-  await globalMutate((key: any) =>
+  await globalMutate((key: unknown) =>
     typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )
 }
 
 export function useExpenseTemplates(propertyId?: string) {
   const key = ['/expense-templates', propertyId || 'all']
-  return useSWR(key, async () => {
+  return useSWR<ExpenseTemplateRow[]>(key, async () => {
     const result = await api.getExpenseTemplates(propertyId)
     if (!result.success) throw new Error(result.error)
     return result.data?.data || []
   }, { revalidateOnMount: true, dedupingInterval: 0 })
 }
 
-export async function saveExpenseTemplates(data: any): Promise<void> {
+export async function saveExpenseTemplates(data: SaveExpenseTemplatesData): Promise<void> {
   const result = await api.saveExpenseTemplates(data)
   if (!result.success) throw new Error(result.error)
-  await globalMutate((key: any) => Array.isArray(key) && key[0] === '/expense-templates')
-  await globalMutate((key: any) =>
+  await globalMutate((key: unknown) => Array.isArray(key) && key[0] === '/expense-templates')
+  await globalMutate((key: unknown) =>
     typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )
 }
@@ -416,7 +605,7 @@ export async function saveGoals(goals: GoalFormData[]) {
   return result
 }
 
-export async function savePropertyTaxConfig(data: any): Promise<void> {
+export async function savePropertyTaxConfig(data: SavePropertyTaxConfigData): Promise<void> {
   const result = await api.savePropertyTaxConfig(data)
   if (!result.success) {
     throw new Error(result.error)
@@ -427,7 +616,7 @@ export async function savePropertyTaxConfig(data: any): Promise<void> {
 
 export function useBookingsForRange(from?: string, to?: string) {
   const key = from && to ? `bookings-range:${from}|${to}` : null
-  return useSWR<any[]>(key, async () => {
+  return useSWR<BookingRow[]>(key, async () => {
     const result = await api.getBookings({ startDate: from!, endDate: to!, limit: '1000' })
     if (!result.success) throw new Error(result.error)
     return result.data

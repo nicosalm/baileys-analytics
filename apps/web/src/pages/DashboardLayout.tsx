@@ -21,6 +21,7 @@ import { InitialSyncModal } from '@/components/InitialSyncModal'
 import { Button } from '@/components/ui/button'
 import { LogoCube } from '@/components/LogoCube'
 import { usePageTitle } from '@/hooks/use-page-title'
+import { useToast } from '@/contexts/toast'
 
 const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -32,6 +33,7 @@ const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentT
 
 const DashboardContent = () => {
   const { activeTab } = useDashboard()
+  const { addToast } = useToast()
   const [fadeKey, setFadeKey] = useState(activeTab)
   const [visible, setVisible] = useState(true)
 
@@ -67,8 +69,11 @@ const DashboardContent = () => {
     <ErrorBoundary
       level="section"
       resetKeys={[fadeKey]}
-      onError={(error, errorInfo) => {
-        console.error(`Dashboard error in ${fadeKey} tab:`, error, errorInfo)
+      onError={(error) => {
+        addToast('error', `Failed to load ${fadeKey} dashboard. Try refreshing.`)
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`Dashboard error in ${fadeKey} tab:`, error)
+        }
       }}
     >
       <div className={`transition-opacity duration-150 ${visible ? 'opacity-100' : 'opacity-0'}`}>
@@ -291,6 +296,7 @@ export const DashboardLayout = () => {
                         onClick={handleLogout}
                         className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                         title="Exit demo"
+                        aria-label="Exit demo"
                       >
                         <LogOut className="w-4 h-4" />
                       </button>
@@ -304,6 +310,7 @@ export const DashboardLayout = () => {
                             to="/admin"
                             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                             title="Admin Panel"
+                            aria-label="Admin Panel"
                           >
                             <Shield className="w-5 h-5" />
                           </Link>
@@ -312,6 +319,7 @@ export const DashboardLayout = () => {
                           to="/settings"
                           className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
                           title="Settings"
+                          aria-label="Settings"
                         >
                           <Settings className="w-5 h-5" />
                         </Link>

@@ -1,6 +1,7 @@
 import { FC, ReactNode } from 'react'
 import { ErrorBoundary } from './ErrorBoundary'
 import { AlertTriangle } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ChartErrorBoundaryProps {
   children: ReactNode
@@ -34,7 +35,10 @@ export const ChartErrorBoundary: FC<ChartErrorBoundaryProps> = ({
       isolate
       fallback={<ChartErrorFallback chartName={chartName} height={height} />}
       onError={(error) => {
-        console.error(`Chart error${chartName ? ` in ${chartName}` : ''}:`, error)
+        toast.error(chartName ? `Unable to load ${chartName}` : 'Unable to load chart')
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`Chart error${chartName ? ` in ${chartName}` : ''}:`, error)
+        }
       }}
     >
       {children}

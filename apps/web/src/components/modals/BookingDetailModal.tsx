@@ -27,7 +27,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
   const handleGuestClick = useCallback(() => {
     if (booking) {
       const guestId = `${(booking.guest_name || '').toLowerCase().trim()}_${(booking.guest_email || '').toLowerCase().trim()}`
-      openModal({ type: 'guest', guestId, guestName: booking.guest_name })
+      openModal({ type: 'guest', guestId, guestName: booking.guest_name || 'Unknown' })
     }
   }, [booking, openModal])
 
@@ -64,7 +64,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
         {/* Status */}
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">Booking Status</div>
-          <StatusBadge status={booking?.status} />
+          <StatusBadge status={booking?.status ?? 'unknown'} />
         </div>
 
         {/* Guest & Property Info */}
@@ -137,19 +137,19 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
           <div className="space-y-2">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Nightly Rate</span>
-              <span className="font-medium">{formatCurrency(booking?.avgNightlyRate || (nights > 0 ? (booking?.total_amount || 0) / nights : 0))}</span>
+              <span className="font-medium">{formatCurrency(booking?.avgNightlyRate || (nights > 0 ? ((booking?.total_amount ?? 0)) / nights : 0))}</span>
             </div>
-            {booking?.host_service_fee > 0 && (
+            {(booking?.host_service_fee ?? 0) > 0 && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Host Service Fee</span>
-                <span className="font-medium">{formatCurrency(booking.host_service_fee)}</span>
+                <span className="font-medium">{formatCurrency(booking!.host_service_fee ?? 0)}</span>
               </div>
             )}
             {data?.charges && data.charges.length > 0 && (
               <>
                 <div className="pt-2 border-t">
                   <div className="text-xs text-muted-foreground font-medium mb-1.5">Itemized Charges</div>
-                  {data.charges.map((charge: any, i: number) => (
+                  {data.charges.map((charge, i) => (
                     <div key={charge.id || i} className="flex justify-between text-sm py-0.5">
                       <span className="text-muted-foreground flex items-center gap-1.5">
                         <span className={`w-1.5 h-1.5 rounded-full ${
@@ -170,7 +170,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             )}
             <div className="flex justify-between pt-2 border-t font-semibold">
               <span>Total Amount</span>
-              <span className="text-success">{formatCurrency(booking?.total_amount)}</span>
+              <span className="text-success">{formatCurrency(booking?.total_amount ?? 0)}</span>
             </div>
           </div>
         </div>

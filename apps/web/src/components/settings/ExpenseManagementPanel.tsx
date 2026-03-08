@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useModal } from '@/contexts/modal'
 import { useProperties, useOperatingExpenses, useExpenseTemplates, saveExpenseTemplates } from '@/hooks/use-api'
+import type { PropertyRow, ExpenseTemplateRow, OperatingExpenseRow } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 import { formatCurrency, format } from '@baileys/utils'
 import {
@@ -39,13 +40,13 @@ interface TemplateRow {
 // --- Templates view ---
 
 interface PropertyTemplateCardProps {
-  property: any
+  property: PropertyRow
 }
 
 const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
   const { data: templates, mutate } = useExpenseTemplates(property.id)
   const { addToast } = useToast()
-  const templateList: any[] = Array.isArray(templates) ? templates : []
+  const templateList: ExpenseTemplateRow[] = Array.isArray(templates) ? templates : []
 
   const [rows, setRows] = useState<TemplateRow[]>([])
   const [isDirty, setIsDirty] = useState(false)
@@ -53,9 +54,9 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
 
   useEffect(() => {
     if (templateList.length > 0) {
-      setRows(templateList.map((t: any) => ({
+      setRows(templateList.map((t) => ({
         category: t.category,
-        amount: parseFloat(t.amount) || 0,
+        amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
         description: t.description || ''
       })))
     } else {
@@ -107,7 +108,7 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
 
   const usedCategories = rows.map(r => r.category).filter(Boolean)
   // savedTotal reflects what's actually persisted, not what's in the editor
-  const savedTotal = templateList.reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
+  const savedTotal = templateList.reduce((sum, t) => sum + (typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount), 0)
   const hasTemplate = templateList.length > 0
 
   return (
@@ -227,7 +228,7 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
 // --- Overrides view ---
 
 interface PropertyOverrideRowProps {
-  property: any
+  property: PropertyRow
   month: string
   onOverride: (propertyId: string, propertyName: string, templateData?: TemplateRow[]) => void
 }
@@ -236,20 +237,20 @@ const PropertyOverrideRow = ({ property, month, onOverride }: PropertyOverrideRo
   const { data: expenses } = useOperatingExpenses(property.id, month)
   const { data: templates } = useExpenseTemplates(property.id)
 
-  const expensesList: any[] = Array.isArray(expenses) ? expenses : []
-  const templateList: any[] = Array.isArray(templates) ? templates : []
+  const expensesList: OperatingExpenseRow[] = Array.isArray(expenses) ? expenses : []
+  const templateList: ExpenseTemplateRow[] = Array.isArray(templates) ? templates : []
 
   const hasOverride = expensesList.length > 0
   const hasTemplate = templateList.length > 0
 
-  const overrideTotal = expensesList.reduce((sum: number, e: any) => sum + (parseFloat(e.amount) || 0), 0)
-  const templateTotal = templateList.reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
+  const overrideTotal = expensesList.reduce((sum, e) => sum + (typeof e.amount === 'string' ? parseFloat(e.amount) : e.amount), 0)
+  const templateTotal = templateList.reduce((sum, t) => sum + (typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount), 0)
 
   const handleOverride = () => {
     const templateRows: TemplateRow[] = hasTemplate
-      ? templateList.map((t: any) => ({
+      ? templateList.map((t) => ({
           category: t.category,
-          amount: parseFloat(t.amount) || 0,
+          amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
           description: t.description || undefined
         }))
       : []
@@ -386,7 +387,7 @@ export const ExpenseManagementPanel = () => {
             minHeight={400}
           >
             <div className="space-y-4">
-              {(properties || []).map((property: any) => (
+              {(properties || []).map((property) => (
                 <PropertyTemplateCard key={property.id} property={property} />
               ))}
             </div>
@@ -420,7 +421,7 @@ export const ExpenseManagementPanel = () => {
             minHeight={400}
           >
             <div className="space-y-3">
-              {(properties || []).map((property: any) => (
+              {(properties || []).map((property) => (
                 <PropertyOverrideRow
                   key={property.id}
                   property={property}

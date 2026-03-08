@@ -1174,6 +1174,7 @@ export type Database = {
           created_at: string | null
           deleted_at: string | null
           id: string
+          internal_code: string | null
           latitude: number | null
           longitude: number | null
           max_guests: number | null
@@ -1195,6 +1196,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
+          internal_code?: string | null
           latitude?: number | null
           longitude?: number | null
           max_guests?: number | null
@@ -1216,6 +1218,7 @@ export type Database = {
           created_at?: string | null
           deleted_at?: string | null
           id?: string
+          internal_code?: string | null
           latitude?: number | null
           longitude?: number | null
           max_guests?: number | null
