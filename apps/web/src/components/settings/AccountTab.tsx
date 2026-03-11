@@ -143,7 +143,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       <div className="bg-card rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-foreground mb-1">Company Name</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Shows up in the dashboard header alongside Baileys Analytics
+          Appears in the dashboard header next to Baileys Analytics
         </p>
 
         <div className="flex gap-3">
@@ -226,7 +226,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           <AlertTriangle className="w-5 h-5 text-danger" />
         </div>
         <p className="text-sm text-muted-foreground mb-4">
-          Once deleted, your account and all its data are gone for good
+          Deletion is permanent — your data cannot be recovered
         </p>
 
         <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4 mb-4">

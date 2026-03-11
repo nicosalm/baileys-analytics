@@ -246,7 +246,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       case 'guests':
         return 'Syncing guest information and tags...'
       case 'guest-contacts':
-        return 'Enriching guest contact details...'
+        return 'Loading guest contact details...'
       case 'complete':
         return 'Sync complete!'
       default:

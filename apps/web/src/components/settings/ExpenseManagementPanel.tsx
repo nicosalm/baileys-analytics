@@ -375,7 +375,7 @@ export const ExpenseManagementPanel = () => {
             <div>
               <h3 className="text-base font-semibold text-foreground">Monthly Templates</h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Template amounts are used automatically for any month with no explicit override
+                Templates apply to all months unless you override them
               </p>
             </div>
           </div>

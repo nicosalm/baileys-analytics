@@ -133,7 +133,7 @@ export const Login = () => {
           {/* Welcome text */}
           <div className="mb-8">
             <h2 className="text-3xl font-bold text-foreground mb-2">Welcome back</h2>
-            <p className="text-muted-foreground">Enter your credentials to access your dashboard</p>
+            <p className="text-muted-foreground">Sign in to your dashboard</p>
           </div>
 
           {/* Login form */}

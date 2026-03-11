@@ -99,7 +99,7 @@ export const Signup = () => {
                 </p>
                 <p className="font-medium text-foreground mb-6">{email}</p>
                 <p className="text-sm text-muted-foreground mb-6">
-                  Please click the link in the email to confirm your account and get started.
+                  Click the confirmation link to activate your account.
                 </p>
                 <p className="text-sm text-muted-foreground mb-6">
                   Didn't receive the email? Check your spam folder or wait a few minutes.
