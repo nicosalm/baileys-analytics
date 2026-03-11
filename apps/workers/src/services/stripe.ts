@@ -180,28 +180,28 @@ export class StripeService {
       throw new Error('Invalid signature');
     }
 
-    // Check for duplicate events (idempotency)
-    const { data: existingEvent } = await this.supabase
+    // atomic idempotency: insert event, skip if already exists
+    const { data: inserted, error: insertError } = await this.supabase
       .from('stripe_webhook_events')
-      .select('id, processed')
-      .eq('stripe_event_id', event.id)
-      .single();
-
-    if (existingEvent?.processed) {
-      return { received: true };
-    }
-
-    // Record the event
-    await this.supabase
-      .from('stripe_webhook_events')
-      .upsert({
+      .insert({
         stripe_event_id: event.id,
         event_type: event.type,
         payload: event,
         processed: false
-      }, {
-        onConflict: 'stripe_event_id'
-      });
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      // unique constraint violation means event already exists
+      const isDuplicate = insertError.code === '23505' ||
+        insertError.message?.includes('duplicate') ||
+        insertError.message?.includes('unique');
+      if (isDuplicate) {
+        return { received: true };
+      }
+      throw insertError;
+    }
 
     try {
       // handle different event types
@@ -388,10 +388,10 @@ export class StripeService {
 
     if (!customer?.tenant_id) return null;
 
-    // record payment in billing history
+    // record payment in billing history (idempotent on webhook retry)
     await this.supabase
       .from('billing_history')
-      .insert({
+      .upsert({
         tenant_id: customer.tenant_id,
         stripe_invoice_id: invoice.id,
         stripe_payment_intent_id: (invoice as any).payment_intent as string,
@@ -401,6 +401,8 @@ export class StripeService {
         description: invoice.description || 'Subscription payment',
         invoice_pdf: invoice.invoice_pdf,
         paid_at: new Date().toISOString()
+      }, {
+        onConflict: 'stripe_invoice_id'
       });
 
     return customer.tenant_id;
@@ -418,10 +420,10 @@ export class StripeService {
 
     if (!customer?.tenant_id) return null;
 
-    // record failed payment
+    // record failed payment (idempotent on webhook retry)
     await this.supabase
       .from('billing_history')
-      .insert({
+      .upsert({
         tenant_id: customer.tenant_id,
         stripe_invoice_id: invoice.id,
         stripe_payment_intent_id: (invoice as any).payment_intent as string,
@@ -429,6 +431,8 @@ export class StripeService {
         currency: invoice.currency,
         status: 'failed',
         description: 'Payment failed - ' + (invoice.description || 'Subscription payment')
+      }, {
+        onConflict: 'stripe_invoice_id'
       });
 
     // update subscription status if needed
@@ -458,34 +462,18 @@ export class StripeService {
     return metrics || [];
   }
 
-  // track usage metric
+  // track usage metric (atomic increment via RPC)
   async trackUsage(tenantId: string, metricType: string, count: number = 1) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
-    // upsert metric - increment if exists
-    const { data: existing } = await this.supabase
-      .from('usage_metrics')
-      .select('count')
-      .eq('tenant_id', tenantId)
-      .eq('metric_type', metricType)
-      .eq('period_start', startOfMonth.toISOString())
-      .eq('period_end', endOfMonth.toISOString())
-      .single();
-
-    const newCount = (existing?.count || 0) + count;
-
-    await this.supabase
-      .from('usage_metrics')
-      .upsert({
-        tenant_id: tenantId,
-        metric_type: metricType,
-        count: newCount,
-        period_start: startOfMonth.toISOString(),
-        period_end: endOfMonth.toISOString()
-      }, {
-        onConflict: 'tenant_id,metric_type,period_start,period_end'
-      });
+    await this.supabase.rpc('increment_usage_metric', {
+      p_tenant_id: tenantId,
+      p_metric_type: metricType,
+      p_period_start: startOfMonth.toISOString(),
+      p_period_end: endOfMonth.toISOString(),
+      p_count: count
+    });
   }
 }

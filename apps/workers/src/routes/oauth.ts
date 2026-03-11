@@ -100,7 +100,7 @@ oauth.post('/callback', async (c) => {
       // last retry - try to create tenant if it doesn't exist
       const { data } = await supabase.auth.admin.getUserById(oauthState.user_id);
       if (data?.user) {
-        const { data: createdTenant } = await supabase
+        const { data: createdTenant, error: createError } = await supabase
           .from('tenants')
           .insert({
             id: tenantId,
@@ -110,7 +110,17 @@ oauth.post('/callback', async (c) => {
           })
           .select()
           .single();
-        tenant = createdTenant;
+        if (createError) {
+          // tenant was likely created by auth trigger between SELECT and INSERT — re-fetch
+          const { data: refetched } = await supabase
+            .from('tenants')
+            .select('id, user_id')
+            .eq('id', tenantId)
+            .single();
+          tenant = refetched;
+        } else {
+          tenant = createdTenant;
+        }
       }
       retries--;
     }

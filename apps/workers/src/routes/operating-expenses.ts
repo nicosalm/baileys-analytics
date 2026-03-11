@@ -188,39 +188,34 @@ operatingExpenses.post('/bulk', async (c) => {
 		return c.json({ error: 'Property not found' }, 404)
 	}
 
-	const { error: deleteError } = await supabase
+	const rows = expenses.map(expense => ({
+		category: expense.category,
+		amount: expense.amount,
+		description: expense.description || null
+	}))
+
+	const { error: rpcError } = await supabase.rpc('replace_operating_expenses', {
+		p_tenant_id: tenant.id,
+		p_property_id: propertyId,
+		p_year: year,
+		p_month: month,
+		p_rows: rows
+	})
+
+	if (rpcError) {
+		console.error('Failed to save operating expenses:', rpcError)
+		return c.json({ error: 'Failed to save operating expenses' }, 500)
+	}
+
+	// fetch the newly inserted rows
+	const { data } = await supabase
 		.from('operating_expenses')
-		.delete()
+		.select('*')
 		.eq('tenant_id', tenant.id)
 		.eq('property_id', propertyId)
 		.eq('year', year)
 		.eq('month', month)
-
-	if (deleteError) {
-		console.error('Failed to delete existing operating expenses:', deleteError)
-		return c.json({ error: 'Failed to delete existing operating expenses' }, 500)
-	}
-
-	const entries = expenses.map(expense => ({
-		tenant_id: tenant.id,
-		property_id: propertyId,
-		category: expense.category,
-		amount: expense.amount,
-		year,
-		month,
-		description: expense.description || null,
-		notes: null
-	}))
-
-	const { data, error } = await supabase
-		.from('operating_expenses')
-		.insert(entries)
-		.select()
-
-	if (error) {
-		console.error('Failed to save operating expenses:', error)
-		return c.json({ error: 'Failed to save operating expenses' }, 500)
-	}
+		.order('created_at', { ascending: false })
 
 	const { invalidateConfigViews } = await import('../utils/cache')
 	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')

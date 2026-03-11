@@ -183,52 +183,14 @@ account.delete('/delete', authMiddleware, async (c) => {
       // continue with deletion
     }
 
-    // 3. delete all tenant data (cascade deletes should handle related tables)
-    // order matters due to foreign key constraints
-    const tablesToDelete = [
-      { table: 'expense_templates', key: 'tenant_id', value: tenantId },
-      { table: 'booking_charges', key: 'tenant_id', value: tenantId },
-      { table: 'booking_tags', key: 'tenant_id', value: tenantId },
-      { table: 'property_tags', key: 'tenant_id', value: tenantId },
-      { table: 'guest_tags', key: 'tenant_id', value: tenantId },
-      { table: 'blocks', key: 'tenant_id', value: tenantId },
-      { table: 'bookings', key: 'tenant_id', value: tenantId },
-      { table: 'guests', key: 'tenant_id', value: tenantId },
-      { table: 'properties', key: 'tenant_id', value: tenantId },
-      { table: 'tags', key: 'tenant_id', value: tenantId },
-      { table: 'season_configurations', key: 'tenant_id', value: tenantId },
-      { table: 'property_tax_configs', key: 'tenant_id', value: tenantId },
-      { table: 'platform_fee_entries', key: 'tenant_id', value: tenantId },
-      { table: 'sync_status', key: 'tenant_id', value: tenantId },
-      { table: 'webhook_events', key: 'tenant_id', value: tenantId },
-      { table: 'stripe_webhook_events', key: 'tenant_id', value: tenantId },
-      { table: 'billing_history', key: 'tenant_id', value: tenantId },
-      { table: 'usage_metrics', key: 'tenant_id', value: tenantId },
-      { table: 'subscriptions', key: 'tenant_id', value: tenantId },
-      { table: 'stripe_customers', key: 'tenant_id', value: tenantId },
-      { table: 'oauth_tokens', key: 'tenant_id', value: tenantId },
-      { table: 'oauth_states', key: 'tenant_id', value: tenantId },
-      { table: 'tenants', key: 'id', value: tenantId },
-    ];
+    // 3. delete all tenant data atomically via RPC
+    const { error: deleteDataError } = await supabase.rpc('delete_tenant_data', {
+      p_tenant_id: tenantId
+    });
 
-    // execute all deletes with error handling
-    for (const { table, key, value } of tablesToDelete) {
-      const { error } = await supabase.from(table).delete().eq(key, value);
-      if (error) {
-        console.error(`Failed to delete from ${table}:`, error);
-        // continue with other deletions even if one fails
-      }
-    }
-
-    // verify tenants table was deleted
-    const { data: tenantCheck } = await supabase
-      .from('tenants')
-      .select('id')
-      .eq('id', tenantId)
-      .single();
-
-    if (tenantCheck) {
-      console.error('Tenant record still exists after deletion attempt');
+    if (deleteDataError) {
+      console.error('Failed to delete tenant data:', deleteDataError);
+      return c.json({ error: 'Failed to delete account data. Please contact support.' }, 500);
     }
 
     // 4. delete auth user (this will log them out)

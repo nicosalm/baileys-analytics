@@ -90,47 +90,41 @@ tax.post('/configs', async (c) => {
 		}
 	}
 	
+	// deduplicate config name if needed
 	const { data: existing } = await supabase
 		.from('property_tax_configs')
-		.select('id, config_name')
+		.select('config_name')
 		.eq('property_id', body.propertyId)
 		.eq('tenant_id', tenantId);
-	
-	if (existing && existing.length > 0) {
-		await supabase
-			.from('property_tax_configs')
-			.update({ is_active: false })
-			.eq('property_id', body.propertyId)
-			.eq('tenant_id', tenantId);
-	}
-	
+
 	let configName = body.configName || 'Default Configuration';
-	const existingNames = existing?.map(e => e.config_name) || [];
+	const existingNames = existing?.map((e: { config_name: string }) => e.config_name) || [];
 	if (existingNames.includes(configName)) {
 		const timestamp = new Date().toISOString().split('T')[0];
 		configName = `${configName} - ${timestamp}`;
 	}
-	
-	const { data, error } = await supabase
-		.from('property_tax_configs')
-		.insert({
-			tenant_id: tenantId,
-			property_id: body.propertyId,
-			config_name: configName,
-			jurisdictions: body.jurisdictions || [],
-			platform_settings: body.platformSettings || {},
-			effective_from: body.effectiveFrom || new Date().toISOString(),
-			is_active: true,
-			created_at: new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		})
-		.select()
-		.single();
-	
+
+	// atomic deactivate + insert via RPC
+	const { data: newId, error } = await supabase.rpc('replace_active_tax_config', {
+		p_tenant_id: tenantId,
+		p_property_id: body.propertyId,
+		p_config_name: configName,
+		p_jurisdictions: body.jurisdictions || [],
+		p_platform_settings: body.platformSettings || {},
+		p_effective_from: body.effectiveFrom || new Date().toISOString()
+	});
+
 	if (error) {
 		return c.json({ error: error.message }, 500);
 	}
-	
+
+	// fetch the newly created config
+	const { data } = await supabase
+		.from('property_tax_configs')
+		.select('*')
+		.eq('id', newId)
+		.single();
+
 	return c.json(data, 201);
 });
 

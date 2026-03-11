@@ -280,57 +280,14 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
       }
     }
 
-    // 2. delete all tenant data (order matters for FK constraints)
-    const tablesToDelete = [
-      // junction / child tables first
-      { table: 'booking_charges', key: 'tenant_id', value: tenantId },
-      { table: 'booking_tags', key: 'tenant_id', value: tenantId },
-      { table: 'property_tags', key: 'tenant_id', value: tenantId },
-      { table: 'guest_tags', key: 'tenant_id', value: tenantId },
-      // core data
-      { table: 'blocks', key: 'tenant_id', value: tenantId },
-      { table: 'bookings', key: 'tenant_id', value: tenantId },
-      { table: 'guests', key: 'tenant_id', value: tenantId },
-      { table: 'properties', key: 'tenant_id', value: tenantId },
-      { table: 'tags', key: 'tenant_id', value: tenantId },
-      // config & expenses
-      { table: 'season_configurations', key: 'tenant_id', value: tenantId },
-      { table: 'property_tax_configs', key: 'tenant_id', value: tenantId },
-      { table: 'platform_fee_entries', key: 'tenant_id', value: tenantId },
-      { table: 'platform_guest_fees', key: 'tenant_id', value: tenantId },
-      { table: 'expenses', key: 'tenant_id', value: tenantId },
-      { table: 'operating_expenses', key: 'tenant_id', value: tenantId },
-      { table: 'expense_templates', key: 'tenant_id', value: tenantId },
-      { table: 'expense_categories', key: 'tenant_id', value: tenantId },
-      { table: 'goals', key: 'tenant_id', value: tenantId },
-      { table: 'budgets', key: 'tenant_id', value: tenantId },
-      { table: 'quotes', key: 'tenant_id', value: tenantId },
-      { table: 'inquiries', key: 'tenant_id', value: tenantId },
-      { table: 'tenant_platform_configs', key: 'tenant_id', value: tenantId },
-      // sync & events
-      { table: 'sync_status', key: 'tenant_id', value: tenantId },
-      { table: 'sync_progress', key: 'tenant_id', value: tenantId },
-      { table: 'background_jobs', key: 'tenant_id', value: tenantId },
-      { table: 'webhook_events', key: 'tenant_id', value: tenantId },
-      { table: 'stripe_webhook_events', key: 'tenant_id', value: tenantId },
-      // billing
-      { table: 'billing_history', key: 'tenant_id', value: tenantId },
-      { table: 'usage_metrics', key: 'tenant_id', value: tenantId },
-      { table: 'payment_methods', key: 'tenant_id', value: tenantId },
-      { table: 'subscriptions', key: 'tenant_id', value: tenantId },
-      { table: 'stripe_customers', key: 'tenant_id', value: tenantId },
-      // auth
-      { table: 'oauth_tokens', key: 'tenant_id', value: tenantId },
-      { table: 'oauth_states', key: 'tenant_id', value: tenantId },
-      // tenant last
-      { table: 'tenants', key: 'id', value: tenantId },
-    ];
+    // 2. delete all tenant data atomically via RPC
+    const { error: deleteDataError } = await supabase.rpc('delete_tenant_data', {
+      p_tenant_id: tenantId
+    });
 
-    for (const { table, key, value } of tablesToDelete) {
-      const { error } = await supabase.from(table).delete().eq(key, value);
-      if (error) {
-        console.error(`Failed to delete from ${table}:`, error);
-      }
+    if (deleteDataError) {
+      console.error('Failed to delete tenant data:', deleteDataError);
+      return c.json({ error: 'Failed to delete tenant data' }, 500);
     }
 
     // 3. delete auth user

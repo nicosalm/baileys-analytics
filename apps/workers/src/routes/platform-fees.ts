@@ -63,40 +63,34 @@ platformFees.post('/bulk', async (c) => {
 		return c.json({ error: 'Property not found' }, 404);
 	}
 
-	const { error: deleteError } = await supabase
+	const rows = fees.map(fee => ({
+		platform: fee.platform,
+		amount: fee.amount,
+		notes: fee.notes || null
+	}));
+
+	const { error: rpcError } = await supabase.rpc('replace_platform_fees', {
+		p_tenant_id: tenant.id,
+		p_property_id: propertyId,
+		p_year: year,
+		p_month: month,
+		p_rows: rows
+	});
+
+	if (rpcError) {
+		console.error('Failed to save platform fees:', rpcError);
+		return c.json({ error: 'Failed to save platform fees' }, 500);
+	}
+
+	// fetch the newly inserted rows
+	const { data } = await supabase
 		.from('platform_guest_fees')
-		.delete()
+		.select('*')
 		.eq('tenant_id', tenant.id)
 		.eq('property_id', propertyId)
 		.eq('year', year)
 		.eq('month', month)
 		.is('booking_id', null);
-
-	if (deleteError) {
-		console.error('Failed to delete existing platform fees:', deleteError);
-		return c.json({ error: 'Failed to delete existing platform fees' }, 500);
-	}
-
-	const entries = fees.map(fee => ({
-		tenant_id: tenant.id,
-		property_id: propertyId,
-		platform: fee.platform,
-		amount: fee.amount,
-		year,
-		month,
-		notes: fee.notes || null,
-		booking_id: null
-	}));
-
-	const { data, error } = await supabase
-		.from('platform_guest_fees')
-		.insert(entries)
-		.select();
-
-	if (error) {
-		console.error('Failed to save platform fees:', error);
-		return c.json({ error: 'Failed to save platform fees' }, 500);
-	}
 
 	const { invalidateConfigViews } = await import('../utils/cache');
 	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
@@ -140,7 +134,7 @@ platformFees.post('/', async (c) => {
 	const { platform, month, feeAmount, platformTaxRemitted, notes } = validation.data;
 	const [year, monthNum] = month.split('-');
 
-	await supabase
+	const { error: deleteError } = await supabase
 		.from('platform_guest_fees')
 		.delete()
 		.eq('tenant_id', tenant.id)
@@ -148,6 +142,11 @@ platformFees.post('/', async (c) => {
 		.eq('year', parseInt(year))
 		.eq('month', parseInt(monthNum))
 		.is('booking_id', null);
+
+	if (deleteError) {
+		console.error('Failed to delete existing platform fee:', deleteError);
+		return c.json({ error: 'Failed to delete existing platform fee' }, 500);
+	}
 
 	const { data, error } = await supabase
 		.from('platform_guest_fees')
@@ -211,10 +210,15 @@ platformFees.post('/booking', async (c) => {
 		return c.json({ error: 'Booking not found' }, 404);
 	}
 
-	await supabase
+	const { error: deleteError } = await supabase
 		.from('platform_guest_fees')
 		.delete()
 		.eq('booking_id', booking_id);
+
+	if (deleteError) {
+		console.error('Failed to delete existing booking fee:', deleteError);
+		return c.json({ error: 'Failed to delete existing booking fee' }, 500);
+	}
 
 	const { data, error } = await supabase
 		.from('platform_guest_fees')

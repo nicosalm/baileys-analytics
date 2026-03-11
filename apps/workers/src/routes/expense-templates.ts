@@ -94,40 +94,32 @@ expenseTemplates.post('/bulk', async (c) => {
     return c.json({ error: 'Property not found' }, 404)
   }
 
-  const { error: deleteError } = await supabase
-    .from('expense_templates')
-    .delete()
-    .eq('tenant_id', tenant.id)
-    .eq('property_id', propertyId)
-
-  if (deleteError) {
-    console.error('Failed to delete existing templates:', deleteError)
-    return c.json({ error: 'Failed to delete existing templates' }, 500)
-  }
-
-  if (templates.length === 0) {
-    return c.json({ success: true, data: [] })
-  }
-
-  const entries = templates.map(t => ({
-    tenant_id: tenant.id,
-    property_id: propertyId,
+  const rows = templates.map(t => ({
     category: t.category,
     amount: t.amount,
     description: t.description || null
   }))
 
-  const { data, error } = await supabase
-    .from('expense_templates')
-    .insert(entries)
-    .select()
+  const { error: rpcError } = await supabase.rpc('replace_expense_templates', {
+    p_tenant_id: tenant.id,
+    p_property_id: propertyId,
+    p_rows: rows
+  })
 
-  if (error) {
-    console.error('Failed to save expense templates:', error)
+  if (rpcError) {
+    console.error('Failed to save expense templates:', rpcError)
     return c.json({ error: 'Failed to save templates' }, 500)
   }
 
-  return c.json({ success: true, data })
+  // fetch the newly inserted rows
+  const { data } = await supabase
+    .from('expense_templates')
+    .select('*')
+    .eq('tenant_id', tenant.id)
+    .eq('property_id', propertyId)
+    .order('category')
+
+  return c.json({ success: true, data: data || [] })
 })
 
 export { expenseTemplates }
