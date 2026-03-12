@@ -344,7 +344,7 @@ export const Signup = () => {
           {/* Trust badge */}
           <div className="mt-12 pt-8 border-t border-white/15">
             <p className="text-sm text-white/80 mb-2">Cancel anytime from settings - No hassle</p>
-            <p className="text-sm text-white/60">Made with cheese in Wisconsin</p>
+            <p className="text-sm text-white/60">Made with 🧀 in Wisconsin</p>
           </div>
         </div>
       </div>
