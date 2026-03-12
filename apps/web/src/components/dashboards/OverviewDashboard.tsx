@@ -877,11 +877,11 @@ export const OverviewDashboard = () => {
         <ChartWrapper
           title="Booking Sources"
           icon={BarChart3}
-          height={280}
+          height={340}
           noData={charts.bookingsBySource.length === 0}
           responsive={false}
         >
-          <div style={{ height: 240 }}>
+          <div style={{ height: 300 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie

@@ -559,11 +559,11 @@ export const GuestsDashboard = () => {
                     title="Guest Sources"
                     subtitle="Where your guests come from"
                     icon={BarChart3}
-                    height={280}
+                    height={320}
                     noData={sourceChartData.length === 0}
                     responsive={false}
                 >
-                    <div style={{ height: 240 }}>
+                    <div style={{ height: 280 }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie

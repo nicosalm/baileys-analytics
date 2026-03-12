@@ -3,7 +3,7 @@ import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@bail
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Info, Percent, TrendingUp, ArrowDown, ScatterChart, LayoutGrid, Table, Wallet, Share2, BarChart3, PieChart, HelpCircle } from 'lucide-react'
+import { DollarSign, Info, Percent, TrendingUp, ArrowDown, ScatterChart, LayoutGrid, Table, Wallet, HelpCircle, GitBranch } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -16,7 +16,7 @@ import { PropertyCard } from '@/components/cards/PropertyCard'
 import { PropertyTable } from '@/components/tables/PropertyTable'
 import { SimpleTable } from '@/components/tables'
 import { ProfitabilityChart, ProfitabilityLegend } from '@/components/charts/ProfitabilityChart'
-import { PlatformMixChart, PlatformMixLegend } from '@/components/charts/PlatformMixChart'
+import { PlatformPropertySankey } from '@/components/charts/PlatformPropertySankey'
 
 interface PropertyProfitability {
   propertyId: string
@@ -42,7 +42,7 @@ export const PropertiesDashboard = () => {
   const { openModal } = useModal()
   const comparisonDateRange = useComparisonDateRange()
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
-  const [platformView, setPlatformView] = useState<'pct' | 'rev'>('pct')
+
 
   const tagIds = useTagIds()
   const propertyIds = usePropertyIds()
@@ -120,9 +120,6 @@ export const PropertiesDashboard = () => {
   // memoized view toggle handlers
   const handleViewCards = useCallback(() => setViewMode('cards'), [])
   const handleViewTable = useCallback(() => setViewMode('table'), [])
-  const handlePlatformPct = useCallback(() => setPlatformView('pct'), [])
-  const handlePlatformRev = useCallback(() => setPlatformView('rev'), [])
-
   // memoized click handlers
   const handleScatterClick = useCallback((property: PropertyMetrics) => {
     openModal({
@@ -176,7 +173,8 @@ export const PropertiesDashboard = () => {
   }
 
   // dynamic chart height based on property count
-  const barChartHeight = Math.max(200, validProperties.length * 48 + 40)
+  // shared height for side-by-side analysis charts
+  const analysisChartHeight = Math.max(380, validProperties.length * 44 + 30)
 
   return (
     <div className="space-y-6">
@@ -428,7 +426,7 @@ export const PropertiesDashboard = () => {
           title="Net Profitability"
           subtitle="Revenue after fees, taxes, and expenses"
           icon={Wallet}
-          height={barChartHeight}
+          height={analysisChartHeight}
           responsive={false}
         >
           <div className="h-full flex flex-col">
@@ -447,7 +445,7 @@ export const PropertiesDashboard = () => {
           title="Performance Matrix"
           subtitle="Revenue vs Occupancy Analysis"
           icon={ScatterChart}
-          height={380}
+          height={analysisChartHeight}
           responsive={false}
         >
           <div className="h-full flex flex-col">
@@ -462,47 +460,23 @@ export const PropertiesDashboard = () => {
         </ChartWrapper>
       </div>
 
-      {/* Booking Source Mix — full width */}
-      <ChartWrapper
-        title="Booking Sources"
-        subtitle="Platform concentration by property"
-        icon={Share2}
-        height={barChartHeight}
-        responsive={false}
-        actions={allPlatforms.length > 0 ? (
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePlatformPct}
-              className={platformView === 'pct' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-            >
-              <PieChart className="w-4 h-4" />
-              %
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handlePlatformRev}
-              className={platformView === 'rev' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Revenue
-            </Button>
-          </div>
-        ) : undefined}
-      >
-        <div className="h-full flex flex-col">
-          <div className="flex-1">
-            <PlatformMixChart
+      {/* Platform → Property Revenue Flow */}
+      {platformMix.length > 0 && allPlatforms.length > 0 && (
+        <ChartWrapper
+          title="Revenue Flow by Platform"
+          subtitle="How booking platform revenue distributes across properties"
+          icon={GitBranch}
+          height={Math.max(360, (allPlatforms.length + validProperties.length) * 36 + 60)}
+          responsive={false}
+        >
+          <div className="h-full">
+            <PlatformPropertySankey
               data={platformMix}
               onPropertyClick={handleChartPropertyClick}
-              showPercentage={platformView === 'pct'}
             />
           </div>
-          {allPlatforms.length > 0 && <PlatformMixLegend platforms={allPlatforms} />}
-        </div>
-      </ChartWrapper>
+        </ChartWrapper>
+      )}
     </div>
   )
 }

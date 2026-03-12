@@ -3,15 +3,16 @@ import { Link } from 'react-router-dom'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { RevenueChart } from '@/components/charts/RevenueChart'
-import { PlatformDistributionChart } from '@/components/charts/PlatformDistributionChart'
 import { GuestSpendChart } from '@/components/charts/GuestSpendChart'
+import { RevenueFlowSankey, RevenueFlowLegend } from '@/components/charts/RevenueFlowSankey'
+import { ChartWrapper } from '@/components/ChartWrapper'
 import { useTips } from '@/hooks/use-tips'
 import { useGoalProgress } from '@/hooks/use-api'
 import { getMonthlyGoalValue } from '@/utils/goals'
 import {
   DollarSign, Wallet, Receipt,
   Info, Landmark, TrendingDown,
-  Calendar, ArrowUp, ArrowDown
+  Calendar, ArrowUp, ArrowDown, GitBranch
 } from 'lucide-react'
 import { formatPercentage, formatCurrency, formatCompactCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
@@ -391,94 +392,36 @@ export const PLView: React.FC<PLViewProps> = ({
         revenueGoal={revenueGoal}
       />
       
-      {/* Platform Distribution (2/3) and Cost Breakdown (1/3) */}
-      <div className="grid lg:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
-            <PlatformDistributionChart
-              data={platforms}
-              title="Revenue by Platform"
-            />
-          </div>
-          <div className="bg-card rounded-lg shadow-sm border p-4">
-            <h4 className="font-semibold text-foreground mb-3">Cost Breakdown</h4>
-            <div className="space-y-3">
-              <div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-foreground">Platform Fees <span className="text-xs font-normal text-muted-foreground">(est.)</span></span>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(revenue.platformFees)}</p>
-                    <p className="text-xs text-muted-foreground">{formatPercentage((revenue.platformFees / revenue.gross) * 100, 1)} of revenue</p>
-                  </div>
-                </div>
-                {(revenue.hostFees > 0 || revenue.guestFees > 0) && (
-                  <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-border pl-3">
-                    {revenue.hostFees > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-muted-foreground">Host Service Fees</span>
-                        <span className="text-xs font-medium text-muted-foreground">{formatCurrency(revenue.hostFees)}</span>
-                      </div>
-                    )}
-                    {revenue.guestFees > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-muted-foreground">Guest Service Fees (Est.)</span>
-                        <span className="text-xs font-medium text-muted-foreground">{formatCurrency(revenue.guestFees)}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Taxes</span>
-                <div className="text-right">
-                  <p className="font-semibold">{formatCurrency(revenue.taxes)}</p>
-                  <p className="text-xs text-muted-foreground">{formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} of revenue</p>
-                </div>
-              </div>
-              {revenue.operatingExpenses.total > 0 && (
-                <div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-foreground">Operating Expenses</span>
-                    <div className="text-right">
-                      <p className="font-semibold">{formatCurrency(revenue.operatingExpenses.total)}</p>
-                      <p className="text-xs text-muted-foreground">{formatPercentage((revenue.operatingExpenses.total / revenue.gross) * 100, 1)} of revenue</p>
-                    </div>
-                  </div>
-                  {Object.keys(revenue.operatingExpenses.byCategory).length > 0 && (
-                    <div className="ml-4 mt-2 space-y-1.5 border-l-2 border-border pl-3">
-                      {Object.entries(revenue.operatingExpenses.byCategory).map(([category, amount]) => (
-                        <div key={category} className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground capitalize">{category}</span>
-                          <span className="text-xs font-medium text-muted-foreground">{formatCurrency(amount as number)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="border-t pt-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-foreground">Total Costs</span>
-                  <div className="text-right">
-                    <p className="font-bold text-danger">{formatCurrency(revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total)}</p>
-                    <p className="text-xs text-muted-foreground">{formatPercentage(((revenue.platformFees + revenue.taxes + revenue.operatingExpenses.total) / revenue.gross) * 100, 1)} of revenue</p>
-                  </div>
-                </div>
-              </div>
-              {revenue.operatingExpenses.total > 0 && (
-                <div className="border-t-2 border-success/30 pt-3 mt-1 bg-success-subtle -mx-4 px-4 py-3 rounded-b-lg">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-success-fg">Operating Profit</span>
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-success-fg">{formatCurrency(revenue.operatingProfit)}</p>
-                      <p className="text-xs text-success">{formatPercentage((revenue.operatingProfit / revenue.gross) * 100, 1)} margin</p>
-                    </div>
-                  </div>
-                </div>
-              )}
+      {/* Revenue Flow Sankey */}
+      {platforms.length > 0 && (
+        <ChartWrapper
+          title="Revenue Flow"
+          subtitle="Where your revenue comes from and where it goes"
+          icon={GitBranch}
+          height={Math.max(360, platforms.length * 50 + 100)}
+          responsive={false}
+        >
+          <div className="h-full flex flex-col">
+            <div className="flex-1">
+              <RevenueFlowSankey
+                data={{
+                  platforms: platforms.map(p => ({ platform: p.name, grossRevenue: p.revenue })),
+                  platformFees: revenue.platformFees,
+                  hostFees: revenue.hostFees,
+                  guestFees: revenue.guestFees,
+                  taxes: revenue.taxes,
+                  operatingExpenses: revenue.operatingExpenses,
+                  grossRevenue: revenue.gross,
+                  netRevenue: revenue.net,
+                  operatingProfit: revenue.operatingProfit,
+                }}
+              />
             </div>
+            <RevenueFlowLegend hasOpex={revenue.operatingExpenses.total > 0} />
           </div>
-        </div>
-      
+        </ChartWrapper>
+      )}
+
       {/* Guest Spend Breakdown + Charge Composition */}
       {data?.chargeComposition && data.chargeComposition.details.length > 0 && (
         <div className="grid lg:grid-cols-3 gap-6">
