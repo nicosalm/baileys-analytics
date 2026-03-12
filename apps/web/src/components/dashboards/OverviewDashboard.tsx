@@ -1026,7 +1026,7 @@ export const OverviewDashboard = () => {
                   >
                     <div className="flex-1 min-w-0 mr-2">
                       <div className="flex items-center gap-2">
-                        <p className={`text-sm font-medium truncate ${isCancelled ? 'line-through decoration-muted-foreground/50' : ''}`}>
+                        <p className="text-sm font-medium truncate">
                           {activity.description}
                         </p>
                         {isCancelled && (
@@ -1041,7 +1041,7 @@ export const OverviewDashboard = () => {
                           {formatDateDisplay(activity.timestamp)}
                         </span>
                         {activity.metadata?.arrival && activity.metadata?.departure && (
-                          <span className={`text-xs text-muted-foreground/70 ${isCancelled ? 'line-through decoration-muted-foreground/30' : ''}`}>
+                          <span className="text-xs text-muted-foreground/70">
                             · Stay: {formatDateDisplay(activity.metadata.arrival)} – {formatDateDisplay(activity.metadata.departure)}
                           </span>
                         )}
