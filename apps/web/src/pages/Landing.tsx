@@ -1,3 +1,4 @@
+import '@/styles/newsreader.css'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
@@ -109,7 +110,10 @@ export const Landing = () => {
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-24 md:py-32 text-center relative z-10">
           <div className="flex items-center justify-center gap-1.5 mb-6 hero-stagger" style={{ '--hero-index': 0 } as React.CSSProperties}>
             <span className="text-sm font-medium text-white/60">Built for</span>
-            <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5 brightness-0 invert opacity-70" />
+            <picture>
+              <source srcSet="/logos/ownerrez-wide.avif" type="image/avif" />
+              <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5 brightness-0 invert opacity-70" />
+            </picture>
             <span className="text-sm font-medium text-white/60">users</span>
           </div>
 
@@ -148,7 +152,10 @@ export const Landing = () => {
             <div className="relative max-w-4xl mx-auto">
               <div className="absolute -inset-6 bg-[var(--landing-glow-hero)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10">
-                <img src="/demo/demo1.jpeg" alt="Baileys Analytics dashboard overview" className="w-full" />
+                <picture>
+                  <source srcSet="/demo/demo1.avif" type="image/avif" />
+                  <img src="/demo/demo1.jpeg" alt="Baileys Analytics dashboard overview" className="w-full" />
+                </picture>
               </div>
             </div>
 
@@ -194,7 +201,10 @@ export const Landing = () => {
             <div className="relative">
               <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
-                <img src="/demo/demo2.jpeg" alt="Financial breakdown dashboard" className="w-full" />
+                <picture>
+                  <source srcSet="/demo/demo2.avif" type="image/avif" />
+                  <img src="/demo/demo2.jpeg" alt="Financial breakdown dashboard" className="w-full" loading="lazy" />
+                </picture>
               </div>
             </div>
           </div>
@@ -213,7 +223,10 @@ export const Landing = () => {
             <div className="relative md:order-1">
               <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
-                <img src="/demo/demo3.jpeg" alt="Property comparison dashboard" className="w-full" />
+                <picture>
+                  <source srcSet="/demo/demo3.avif" type="image/avif" />
+                  <img src="/demo/demo3.jpeg" alt="Property comparison dashboard" className="w-full" loading="lazy" />
+                </picture>
               </div>
             </div>
             <div className="md:order-2">
@@ -254,7 +267,10 @@ export const Landing = () => {
             <div className="relative">
               <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
-                <img src="/demo/demo4.jpeg" alt="Occupancy heatmap dashboard" className="w-full" />
+                <picture>
+                  <source srcSet="/demo/demo4.avif" type="image/avif" />
+                  <img src="/demo/demo4.jpeg" alt="Occupancy heatmap dashboard" className="w-full" loading="lazy" />
+                </picture>
               </div>
             </div>
           </div>

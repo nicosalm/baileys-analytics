@@ -4,27 +4,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Newsreader serif — landing page headings only */
-@font-face {
-  font-family: 'Newsreader';
-  src: url('/fonts/Newsreader-Regular.ttf') format('truetype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Newsreader';
-  src: url('/fonts/Newsreader-SemiBold.ttf') format('truetype');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* DM Sans font family */
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/DMSans-Regular.ttf') format('truetype');
+  src: url('/fonts/DMSans-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -32,7 +15,7 @@
 
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/DMSans-Medium.ttf') format('truetype');
+  src: url('/fonts/DMSans-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -40,7 +23,7 @@
 
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/DMSans-SemiBold.ttf') format('truetype');
+  src: url('/fonts/DMSans-SemiBold.woff2') format('woff2');
   font-weight: 600;
   font-style: normal;
   font-display: swap;
@@ -48,7 +31,7 @@
 
 @font-face {
   font-family: 'DM Sans';
-  src: url('/fonts/DMSans-Bold.ttf') format('truetype');
+  src: url('/fonts/DMSans-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
