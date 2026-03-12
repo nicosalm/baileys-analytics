@@ -524,11 +524,16 @@ async function getRecentActivity(
 	return recentBookings?.map(b => ({
 		id: b.id,
 		type: 'booking' as const,
-		description: `${b.guest_name} booked ${b.properties?.name}`,
-		timestamp: b.booked_utc || b.created_at || b.arrival,
+		description: b.status === 'canceled'
+			? `${b.guest_name} cancelled ${b.properties?.name}`
+			: `${b.guest_name} booked ${b.properties?.name}`,
+		timestamp: b.status === 'canceled'
+			? (b.canceled_utc || b.booked_utc || b.created_at || b.arrival)
+			: (b.booked_utc || b.created_at || b.arrival),
 		value: b.total_amount,
 		platform: b.platform || 'Unassigned',
 		ownerrezBookingId: b.ownerrez_booking_id || null,
+		status: b.status || 'confirmed',
 		metadata: {
 			guestName: b.guest_name,
 			propertyName: b.properties?.name,

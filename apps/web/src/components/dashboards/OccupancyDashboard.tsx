@@ -477,7 +477,10 @@ export const OccupancyDashboard = () => {
 
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Property Occupancy</h3>
+            <div className="flex items-center gap-2">
+              <Home className="w-5 h-5 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">Property Occupancy</h3>
+            </div>
             {currentData.byProperty.length > 5 && (
               <span className="text-xs text-muted-foreground">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
             )}

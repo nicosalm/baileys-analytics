@@ -665,7 +665,10 @@ export const GuestsDashboard = () => {
             <div className="bg-card rounded-lg shadow-sm border border-border">
                 <div className="p-4 border-b border-border space-y-3">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold">Guest List ({sortedGuests.length})</h3>
+                        <div className="flex items-center gap-2">
+                          <Users className="w-5 h-5 text-muted-foreground" />
+                          <h3 className="text-lg font-semibold">Guest List ({sortedGuests.length})</h3>
+                        </div>
                         <Select value={staysFilter} onValueChange={handleStaysFilter}>
                             <SelectTrigger className="w-[130px] h-8 text-sm">
                                 <SelectValue />

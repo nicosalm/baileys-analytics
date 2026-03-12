@@ -7,7 +7,7 @@ import {
   TrendingUp, TrendingDown,
   DollarSign, Users, Calendar, Clock,
   BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink, Wallet,
-  LogIn, LogOut
+  LogIn, LogOut, Sparkles, Ban
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
@@ -33,6 +33,7 @@ interface RecentActivity {
   value?: number
   ownerrezBookingId?: string
   platform?: string
+  status?: string
   metadata?: { arrival?: string; departure?: string }
 }
 
@@ -1003,62 +1004,82 @@ export const OverviewDashboard = () => {
 
           <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">What's New</h3>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">What's New</h3>
+            </div>
             <span className="text-xs text-muted-foreground">Recent bookings</span>
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
             {recentActivity && recentActivity.length > 0 ? (
-              recentActivity.map((activity: RecentActivity) => (
-                <div
-                  key={activity.id}
-                  className={`flex items-center justify-between py-2 border-b last:border-0 ${
-                    activity.bookingId ? 'hover:bg-muted/50 px-2 -mx-2 rounded transition-colors cursor-pointer' : ''
-                  }`}
-                  onClick={() => handleActivityClick(activity)}
-                >
-                  <div className="flex-1 min-w-0 mr-2">
-                    <p className="text-sm font-medium truncate">{activity.description}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateDisplay(activity.timestamp)}
-                      </span>
-                      {activity.metadata?.arrival && activity.metadata?.departure && (
-                        <span className="text-xs text-muted-foreground/70">
-                          · Stay: {formatDateDisplay(activity.metadata.arrival)} – {formatDateDisplay(activity.metadata.departure)}
+              recentActivity.map((activity: RecentActivity) => {
+                const isCancelled = activity.status === 'canceled'
+                return (
+                  <div
+                    key={activity.id}
+                    className={`flex items-center justify-between py-2 border-b last:border-0 ${
+                      isCancelled ? 'opacity-60' : ''
+                    } ${
+                      activity.bookingId ? 'hover:bg-muted/50 px-2 -mx-2 rounded transition-colors cursor-pointer' : ''
+                    }`}
+                    onClick={() => handleActivityClick(activity)}
+                  >
+                    <div className="flex-1 min-w-0 mr-2">
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-medium truncate ${isCancelled ? 'line-through decoration-muted-foreground/50' : ''}`}>
+                          {activity.description}
+                        </p>
+                        {isCancelled && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded flex-shrink-0">
+                            <Ban className="w-2.5 h-2.5" />
+                            Cancelled
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground">
+                          {formatDateDisplay(activity.timestamp)}
                         </span>
+                        {activity.metadata?.arrival && activity.metadata?.departure && (
+                          <span className={`text-xs text-muted-foreground/70 ${isCancelled ? 'line-through decoration-muted-foreground/30' : ''}`}>
+                            · Stay: {formatDateDisplay(activity.metadata.arrival)} – {formatDateDisplay(activity.metadata.departure)}
+                          </span>
+                        )}
+                        {activity.platform && (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <span
+                              className="w-2 h-2 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: getPlatformColor(activity.platform) }}
+                            />
+                            {activity.platform}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {activity.value != null && (
+                        <div className={`text-sm font-medium ${
+                          isCancelled ? 'text-muted-foreground' : 'text-success'
+                        }`}>
+                          {formatCurrency(activity.value)}
+                        </div>
                       )}
-                      {activity.platform && (
-                        <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                          <span
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: getPlatformColor(activity.platform) }}
-                          />
-                          {activity.platform}
-                        </span>
+                      {activity.ownerrezBookingId && (
+                        <a
+                          href={`https://app.ownerrez.com/bookings/${activity.ownerrezBookingId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-muted-foreground/70 hover:text-info transition-colors"
+                          title="Open in OwnerRez"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {activity.value && (
-                      <div className="text-sm font-medium text-success">
-                        {formatCurrency(activity.value)}
-                      </div>
-                    )}
-                    {activity.ownerrezBookingId && (
-                      <a
-                        href={`https://app.ownerrez.com/bookings/${activity.ownerrezBookingId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground/70 hover:text-info transition-colors"
-                        title="Open in OwnerRez"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))
+                )
+              })
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
