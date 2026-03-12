@@ -33,14 +33,14 @@ const SpendTooltip = ({ active, payload }: Partial<TooltipContentProps<number, s
       <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{data.name}</p>
         <div className="space-y-1 text-xs">
-          <p className="flex justify-between gap-4">
+          <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Amount:</span>
             <span className="font-medium">{formatCurrency(data.value)}</span>
-          </p>
-          <p className="flex justify-between gap-4">
+          </div>
+          <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
             <span className="text-muted-foreground">Share:</span>
             <span className="font-medium">{data.percentage.toFixed(1)}%</span>
-          </p>
+          </div>
         </div>
       </div>
     )

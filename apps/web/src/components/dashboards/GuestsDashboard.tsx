@@ -45,20 +45,20 @@ const GuestSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<num
             <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
                 <p className="font-semibold text-sm mb-2">{data.source}</p>
                 <div className="space-y-1 text-xs">
-                    <p className="flex justify-between gap-4">
+                    <div className="flex justify-between gap-4">
                         <span className="text-muted-foreground">Guests:</span>
                         <span className="font-medium">{data.count}</span>
-                    </p>
-                    <p className="flex justify-between gap-4">
-                        <span className="text-muted-foreground">Share:</span>
-                        <span className="font-medium">{percent}%</span>
-                    </p>
+                    </div>
                     {data.revenue !== undefined && data.revenue > 0 && (
-                        <p className="flex justify-between gap-4">
+                        <div className="flex justify-between gap-4">
                             <span className="text-muted-foreground">Revenue:</span>
                             <span className="font-medium text-success">{formatCurrency(data.revenue)}</span>
-                        </p>
+                        </div>
                     )}
+                    <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
+                        <span className="text-muted-foreground">Share:</span>
+                        <span className="font-medium">{percent}%</span>
+                    </div>
                 </div>
             </div>
         )

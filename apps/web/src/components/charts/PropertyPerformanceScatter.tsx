@@ -29,22 +29,22 @@ const ScatterTooltip = ({ active, payload }: Partial<TooltipContentProps<number,
         </div>
       ) : (
         <div className="space-y-1 text-xs">
-          <p className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Occupancy:</span>
-            <span className="font-medium">{formatPercentage(data.property.occupancyRate * 100, 1)}</span>
-          </p>
-          <p className="flex justify-between gap-4">
+          <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Revenue:</span>
             <span className="font-medium text-success">{formatCurrency(data.property.revenue)}</span>
-          </p>
-          <p className="flex justify-between gap-4">
+          </div>
+          <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Bookings:</span>
             <span className="font-medium">{data.property.bookings || 0}</span>
-          </p>
-          <p className="flex justify-between gap-4">
+          </div>
+          <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
+            <span className="text-muted-foreground">Occupancy:</span>
+            <span className="font-medium">{formatPercentage(data.property.occupancyRate * 100, 1)}</span>
+          </div>
+          <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Avg Rate:</span>
             <span className="font-medium">{formatCurrency(data.avgNightlyRate)}</span>
-          </p>
+          </div>
         </div>
       )}
     </div>
