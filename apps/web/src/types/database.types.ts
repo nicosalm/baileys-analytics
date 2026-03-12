@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_deletions: {
+        Row: {
+          booking_count: number
+          company_name: string | null
+          deleted_at: string
+          deleted_by: string
+          email: string
+          had_active_subscription: boolean
+          id: string
+          property_count: number
+          reason: string | null
+          tenant_id: string
+        }
+        Insert: {
+          booking_count?: number
+          company_name?: string | null
+          deleted_at?: string
+          deleted_by: string
+          email: string
+          had_active_subscription?: boolean
+          id?: string
+          property_count?: number
+          reason?: string | null
+          tenant_id: string
+        }
+        Update: {
+          booking_count?: number
+          company_name?: string | null
+          deleted_at?: string
+          deleted_by?: string
+          email?: string
+          had_active_subscription?: boolean
+          id?: string
+          property_count?: number
+          reason?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           author: string
@@ -1960,6 +1999,7 @@ export type Database = {
       }
       cleanup_expired_oauth_states: { Args: never; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
+      delete_tenant_data: { Args: { p_tenant_id: string }; Returns: undefined }
       get_database_stats: {
         Args: never
         Returns: {
@@ -1996,6 +2036,33 @@ export type Database = {
           unique_guests: number
         }[]
       }
+      get_overall_occupancy: {
+        Args: {
+          p_booking_ids?: string[]
+          p_from: string
+          p_property_ids?: string[]
+          p_tenant_id: string
+          p_to: string
+        }
+        Returns: {
+          available_nights: number
+          booked_nights: number
+        }[]
+      }
+      get_periodic_occupancy: {
+        Args: {
+          p_booking_ids?: string[]
+          p_from: string
+          p_granularity?: string
+          p_property_ids?: string[]
+          p_tenant_id: string
+          p_to: string
+        }
+        Returns: {
+          booked_nights: number
+          period: string
+        }[]
+      }
       get_property_metrics: {
         Args: { p_end_date: string; p_start_date: string; p_tenant_id: string }
         Returns: {
@@ -2006,6 +2073,75 @@ export type Database = {
           property_name: string
           revenue: number
         }[]
+      }
+      get_property_occupancy: {
+        Args: {
+          p_booking_ids?: string[]
+          p_from: string
+          p_property_ids?: string[]
+          p_tenant_id: string
+          p_to: string
+        }
+        Returns: {
+          booked_nights: number
+          property_id: string
+          revenue: number
+        }[]
+      }
+      get_repeat_guest_count: {
+        Args: {
+          p_booking_ids?: string[]
+          p_from: string
+          p_property_ids?: string[]
+          p_tenant_id: string
+          p_to: string
+        }
+        Returns: number
+      }
+      increment_usage_metric: {
+        Args: {
+          p_count?: number
+          p_metric_type: string
+          p_period_end: string
+          p_period_start: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
+      replace_active_tax_config: {
+        Args: {
+          p_config_name: string
+          p_effective_from: string
+          p_jurisdictions: Json
+          p_platform_settings: Json
+          p_property_id: string
+          p_tenant_id: string
+        }
+        Returns: string
+      }
+      replace_expense_templates: {
+        Args: { p_property_id: string; p_rows: Json; p_tenant_id: string }
+        Returns: undefined
+      }
+      replace_operating_expenses: {
+        Args: {
+          p_month: number
+          p_property_id: string
+          p_rows: Json
+          p_tenant_id: string
+          p_year: number
+        }
+        Returns: undefined
+      }
+      replace_platform_fees: {
+        Args: {
+          p_month: number
+          p_property_id: string
+          p_rows: Json
+          p_tenant_id: string
+          p_year: number
+        }
+        Returns: undefined
       }
     }
     Enums: {
