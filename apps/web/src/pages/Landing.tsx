@@ -56,11 +56,11 @@ export const Landing = () => {
   }, [signInAsDemo, navigate])
 
   return (
-    <div className="dark min-h-screen flex flex-col bg-[oklch(0.12_0.02_265)]">
+    <div className="dark min-h-screen flex flex-col bg-[var(--landing-bg)]">
       {/* nav — light text on dark hero */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-[oklch(0.12_0.02_265/0.85)] backdrop-blur-md shadow-sm border-b border-white/5'
+          ? 'bg-[var(--landing-bg)/0.85] backdrop-blur-md shadow-sm border-b border-white/5'
           : 'bg-transparent'
       }`}>
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
@@ -115,11 +115,11 @@ export const Landing = () => {
 
           <p className="text-sm text-white/50 mb-4 hero-stagger" style={{ '--hero-index': 1 } as React.CSSProperties}>For OwnerRez hosts managing 2+ properties</p>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold text-white mb-6 tracking-tight leading-[1.1] hero-stagger" style={{ '--hero-index': 2 } as React.CSSProperties}>
+          <h1 className="landing-serif text-5xl sm:text-6xl md:text-7xl font-semibold text-white mb-6 tracking-tight leading-[1.1] hero-stagger" style={{ '--hero-index': 2 } as React.CSSProperties}>
             Know your real numbers.
           </h1>
 
-          <p className="text-lg md:text-xl text-white/60 mb-10 max-w-2xl mx-auto leading-relaxed hero-stagger" style={{ '--hero-index': 3 } as React.CSSProperties}>
+          <p className="text-lg md:text-xl font-light text-[var(--landing-body-bright)] mb-10 max-w-2xl mx-auto leading-relaxed hero-stagger" style={{ '--hero-index': 3 } as React.CSSProperties}>
             Pull in booking data from OwnerRez. See revenue, occupancy, and profit breakdowns in minutes.
           </p>
 
@@ -146,7 +146,7 @@ export const Landing = () => {
           {/* hero image */}
           <div className="mt-16 md:mt-24 hero-stagger" style={{ '--hero-index': 6 } as React.CSSProperties}>
             <div className="relative max-w-4xl mx-auto">
-              <div className="absolute -inset-4 bg-gradient-to-r from-[oklch(0.45_0.12_280/0.3)] to-[oklch(0.40_0.10_255/0.2)] rounded-3xl blur-3xl" />
+              <div className="absolute -inset-6 bg-[var(--landing-glow-hero)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10">
                 <img src="/demo/demo1.jpeg" alt="Baileys Analytics dashboard overview" className="w-full" />
               </div>
@@ -181,18 +181,18 @@ export const Landing = () => {
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
-              <div className="w-10 h-10 bg-[oklch(0.45_0.12_280/0.2)] rounded-xl flex items-center justify-center mb-5">
-                <DollarSign className="w-5 h-5 text-[oklch(0.78_0.08_265)]" />
+              <div className="w-10 h-10 bg-[var(--landing-icon-bg)] rounded-xl flex items-center justify-center mb-5">
+                <DollarSign className="w-5 h-5 text-[var(--landing-icon-fg)]" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+              <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
                 See where your money actually goes
               </h2>
-              <p className="text-white/60 leading-relaxed text-lg">
+              <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
                 Track platform fees, cleaning costs, and taxes by property. Know your real margins, not just gross revenue.
               </p>
             </div>
             <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-br from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
+              <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
                 <img src="/demo/demo2.jpeg" alt="Financial breakdown dashboard" className="w-full" />
               </div>
@@ -211,19 +211,19 @@ export const Landing = () => {
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="relative md:order-1">
-              <div className="absolute -inset-4 bg-gradient-to-bl from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
+              <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
                 <img src="/demo/demo3.jpeg" alt="Property comparison dashboard" className="w-full" />
               </div>
             </div>
             <div className="md:order-2">
-              <div className="w-10 h-10 bg-[oklch(0.45_0.12_280/0.2)] rounded-xl flex items-center justify-center mb-5">
-                <Building2 className="w-5 h-5 text-[oklch(0.78_0.08_265)]" />
+              <div className="w-10 h-10 bg-[var(--landing-icon-bg)] rounded-xl flex items-center justify-center mb-5">
+                <Building2 className="w-5 h-5 text-[var(--landing-icon-fg)]" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+              <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
                 Find your best and worst performers
               </h2>
-              <p className="text-white/60 leading-relaxed text-lg">
+              <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
                 Sort by occupancy, revenue, or profit. Compare properties side by side and know which ones are pulling their weight.
               </p>
             </div>
@@ -241,18 +241,18 @@ export const Landing = () => {
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
-              <div className="w-10 h-10 bg-[oklch(0.45_0.12_280/0.2)] rounded-xl flex items-center justify-center mb-5">
-                <Calendar className="w-5 h-5 text-[oklch(0.78_0.08_265)]" />
+              <div className="w-10 h-10 bg-[var(--landing-icon-bg)] rounded-xl flex items-center justify-center mb-5">
+                <Calendar className="w-5 h-5 text-[var(--landing-icon-fg)]" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+              <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
                 Spot gaps before they cost you
               </h2>
-              <p className="text-white/60 leading-relaxed text-lg">
+              <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
                 Visualize booked vs. available nights. See seasonal patterns and year-over-year trends at a glance.
               </p>
             </div>
             <div className="relative">
-              <div className="absolute -inset-4 bg-gradient-to-br from-[oklch(0.45_0.12_280/0.15)] to-transparent rounded-3xl blur-2xl" />
+              <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
                 <img src="/demo/demo4.jpeg" alt="Occupancy heatmap dashboard" className="w-full" />
               </div>
@@ -270,8 +270,8 @@ export const Landing = () => {
           }`}
         >
           <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-semibold text-white mb-3">Up and running in 5 minutes</h2>
-            <p className="text-white/50">No spreadsheets. No manual entry. Just connect and go.</p>
+            <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">Up and running in 5 minutes</h2>
+            <p className="text-sm uppercase tracking-[0.15em] text-white/40">No spreadsheets. No manual entry. Just connect and go.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 md:gap-6 relative">
@@ -281,25 +281,25 @@ export const Landing = () => {
             <div className={`text-center transition-all duration-700 ${
               howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}>
-              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">1</div>
+              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">1</div>
               <h3 className="font-semibold text-white mb-1">Connect OwnerRez</h3>
-              <p className="text-sm text-white/50">Click, authorize, done. We use OAuth so we never see your password.</p>
+              <p className="text-sm text-[var(--landing-caption)]">Click, authorize, done. We use OAuth so we never see your password.</p>
             </div>
 
             <div className={`text-center transition-all duration-700 ${
               howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`} style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}>
-              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">2</div>
+              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">2</div>
               <h3 className="font-semibold text-white mb-1">Data syncs automatically</h3>
-              <p className="text-sm text-white/50">We pull 4 years of bookings, properties, and guests. Takes about 2 minutes.</p>
+              <p className="text-sm text-[var(--landing-caption)]">We pull 4 years of bookings, properties, and guests. Takes about 2 minutes.</p>
             </div>
 
             <div className={`text-center transition-all duration-700 ${
               howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`} style={{ transitionDelay: howItWorks.isInView ? '200ms' : '0ms' }}>
-              <div className="w-10 h-10 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold mx-auto mb-4 relative z-10">3</div>
+              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">3</div>
               <h3 className="font-semibold text-white mb-1">Start exploring</h3>
-              <p className="text-sm text-white/50">Your dashboards are ready. Filter by date, property, or tag.</p>
+              <p className="text-sm text-[var(--landing-caption)]">Your dashboards are ready. Filter by date, property, or tag.</p>
             </div>
           </div>
         </div>
@@ -313,7 +313,7 @@ export const Landing = () => {
             quote.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          <blockquote className="text-xl md:text-2xl text-white/80 leading-relaxed font-medium italic">
+          <blockquote className="landing-serif text-xl md:text-2xl text-white/80 leading-relaxed font-normal italic">
             "OwnerRez is great at managing my properties and bookings. I just needed a deeper analytics layer on top of it. So we built one. Now I check my numbers every morning."
           </blockquote>
           <p className="mt-6 text-sm text-white/40">
@@ -331,8 +331,8 @@ export const Landing = () => {
           }`}
         >
           <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-semibold text-white mb-3">One plan, one price</h2>
-            <p className="text-white/50">Everything you need. No tiers, no upsells.</p>
+            <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">One plan, one price</h2>
+            <p className="text-sm uppercase tracking-[0.15em] text-white/40">Everything you need. No tiers, no upsells.</p>
           </div>
 
           {/* billing toggle */}
@@ -349,9 +349,9 @@ export const Landing = () => {
           <div className="max-w-sm mx-auto">
             <div className="relative group">
               {/* gradient border glow */}
-              <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-[oklch(0.78_0.08_265)] via-[oklch(0.60_0.10_272)] to-[oklch(0.45_0.12_280)] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary via-[oklch(0.60_0.10_272)] to-[oklch(0.45_0.12_280)] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
 
-              <div className="relative bg-[oklch(0.16_0.02_265)] rounded-2xl px-8 py-10 md:px-10 flex flex-col min-h-[480px]">
+              <div className="relative bg-[var(--landing-card)] rounded-2xl px-8 py-10 md:px-10 flex flex-col min-h-[480px]">
                 {/* plan label */}
                 <div className="text-center mb-8">
                   <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-6">
@@ -360,7 +360,7 @@ export const Landing = () => {
 
                   {/* price */}
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-bold tracking-tight text-white">
+                    <span className="landing-serif text-5xl font-semibold tracking-tight text-white">
                       ${yearlyBilling ? '16' : '20'}
                     </span>
                     <span className="text-base text-white/40 font-normal">/mo</span>
@@ -391,7 +391,7 @@ export const Landing = () => {
                       <div className="mt-0.5 w-4.5 h-4.5 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
                         <Check className="w-3 h-3 text-success" strokeWidth={2.5} />
                       </div>
-                      <span className="text-sm text-white/70 leading-snug">{item}</span>
+                      <span className="text-sm text-[var(--landing-body)] leading-snug">{item}</span>
                     </div>
                   ))}
                 </div>
@@ -420,7 +420,7 @@ export const Landing = () => {
             bottomCta.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}
         >
-          <h2 className="text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
+          <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
           {!isAuthenticated && (
             <div className="mt-6 flex flex-col items-center gap-4">
               <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg">

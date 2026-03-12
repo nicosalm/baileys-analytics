@@ -117,13 +117,13 @@ export const Signup = () => {
         </div>
 
         {/* Right side - Decorative */}
-        <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden">
+        <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden landing-noise-bg">
           <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
           <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
           <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
 
           <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-            <h3 className="text-4xl font-bold mb-6">Almost There!</h3>
+            <h3 className="landing-serif text-4xl font-semibold mb-6">Almost There!</h3>
             <p className="text-lg text-white/80">
               Confirm your email to unlock your dashboard. It only takes a second.
             </p>
@@ -152,7 +152,7 @@ export const Signup = () => {
 
           {/* Welcome text */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-foreground mb-2">Create your account</h2>
+            <h2 className="landing-serif text-3xl font-semibold text-foreground mb-2">Create your account</h2>
             <p className="text-muted-foreground">Get started with Baileys Analytics.</p>
           </div>
 
@@ -304,14 +304,14 @@ export const Signup = () => {
       </div>
 
       {/* Right side - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden landing-noise-bg">
         {/* Floating shapes */}
         <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
         <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
         <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h3 className="text-4xl font-bold mb-6">What Happens After You Sign Up</h3>
+          <h3 className="landing-serif text-4xl font-semibold mb-6">What Happens After You Sign Up</h3>
           <p className="text-lg text-white/80 mb-8">
             You'll be up and running in under 5 minutes.
           </p>

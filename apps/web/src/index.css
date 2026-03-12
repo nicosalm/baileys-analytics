@@ -4,6 +4,23 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Newsreader serif — landing page headings only */
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/Newsreader-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/Newsreader-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* DM Sans font family */
 @font-face {
   font-family: 'DM Sans';
@@ -156,21 +173,55 @@
   animation-delay: calc(var(--hero-index, 0) * 120ms + 200ms);
 }
 
+/* landing page tokens */
+.dark {
+  --landing-bg: oklch(0.12 0.02 265);
+  --landing-bg-alt: oklch(0.15 0.02 265);
+  --landing-card: oklch(0.16 0.02 265);
+  --landing-glow: oklch(0.40 0.10 270 / 0.12);
+  --landing-glow-hero: oklch(0.40 0.10 270 / 0.2);
+  --landing-icon-bg: oklch(0.45 0.12 280 / 0.2);
+  --landing-icon-fg: oklch(0.78 0.08 265);
+  --landing-body: oklch(0.75 0.01 80);
+  --landing-body-bright: oklch(0.78 0.01 80);
+  --landing-caption: oklch(0.65 0.01 80);
+}
+
 /* landing page dark sections */
 .landing-hero {
   background:
+    url('/noise.png'),
     radial-gradient(ellipse 80% 60% at 15% 20%, oklch(0.25 0.12 280 / 0.6), transparent 70%),
     radial-gradient(ellipse 50% 50% at 85% 75%, oklch(0.20 0.08 255 / 0.5), transparent 50%),
     radial-gradient(ellipse 40% 40% at 90% 10%, oklch(0.18 0.06 240 / 0.4), transparent 40%),
-    oklch(0.12 0.02 265);
+    var(--landing-bg);
+  background-size: 64px, auto, auto, auto, auto;
+  background-blend-mode: soft-light, normal, normal, normal, normal;
 }
 
 .landing-section-primary {
-  background: oklch(0.12 0.02 265);
+  background: url('/noise.png'), var(--landing-bg);
+  background-size: 64px, auto;
+  background-blend-mode: soft-light, normal;
 }
 
 .landing-section-secondary {
-  background: oklch(0.15 0.02 265);
+  background: url('/noise.png'), var(--landing-bg-alt);
+  background-size: 64px, auto;
+  background-blend-mode: soft-light, normal;
+}
+
+/* paper noise — baked into section backgrounds, not overlaid on content */
+.landing-noise-bg {
+  background-image: url('/noise.png');
+  background-repeat: repeat;
+  background-size: 64px;
+  background-blend-mode: soft-light;
+}
+
+/* serif headings on the landing page */
+.landing-serif {
+  font-family: 'Newsreader', 'Georgia', serif;
 }
 
 @theme inline {
