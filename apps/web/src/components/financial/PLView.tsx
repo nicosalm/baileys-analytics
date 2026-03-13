@@ -342,7 +342,7 @@ export const PLView: React.FC<PLViewProps> = ({
 
       {/* Revenue highlights */}
       {highlights.monthCount > 1 && (
-        <div className="grid grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
           <MetricCard
             icon={Calendar}
             label="Monthly Average"
@@ -463,18 +463,18 @@ export const PLView: React.FC<PLViewProps> = ({
             </div>
             <div className="space-y-2">
               {(chargesExpanded ? data.chargeComposition.details : data.chargeComposition.details.slice(0, 10)).map((detail: ChargeDetail, i: number) => (
-                <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0">
-                  <span className="text-muted-foreground flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${
+                <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0 gap-2">
+                  <span className="text-muted-foreground flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${
                       detail.type === 'tax' ? 'bg-info' :
                       detail.type === 'fee' ? 'bg-warning' :
                       detail.type === 'discount' ? 'bg-success' :
                       'bg-muted-foreground'
                     }`} />
-                    {detail.description}
-                    <span className="text-xs text-muted-foreground">({detail.count} {detail.count === 1 ? 'booking' : 'bookings'})</span>
+                    <span className="truncate">{detail.description}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">({detail.count})</span>
                   </span>
-                  <span className={`font-medium ${detail.type === 'discount' ? 'text-success' : ''}`}>
+                  <span className={`font-medium shrink-0 ${detail.type === 'discount' ? 'text-success' : ''}`}>
                     {detail.type === 'discount' ? '-' : ''}{formatCurrency(Math.abs(detail.total))}
                   </span>
                 </div>

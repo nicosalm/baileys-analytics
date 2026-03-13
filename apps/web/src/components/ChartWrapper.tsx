@@ -139,7 +139,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
             </ResponsiveContainer>
           </div>
         ) : (
-          <div style={{ height: heightValue }}>
+          <div style={{ height: heightValue }} className="overflow-x-auto">
             {children}
           </div>
         )}

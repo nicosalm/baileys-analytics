@@ -537,16 +537,16 @@ export const GuestsDashboard = () => {
                         <div className="space-y-2">
                             <div className="text-xs font-medium text-muted-foreground mb-2">By platform</div>
                             {data.metrics.feesByPlatform.map((pf: PlatformFeeItem) => (
-                                <div key={pf.platform} className="flex items-center gap-3">
-                                    <div className="w-28 text-sm text-muted-foreground truncate">{pf.platform}</div>
-                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                                <div key={pf.platform} className="flex items-center gap-2 sm:gap-3">
+                                    <div className="w-20 sm:w-28 text-xs sm:text-sm text-muted-foreground truncate">{pf.platform}</div>
+                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden hidden sm:block">
                                         <div
                                             className="h-full bg-warning rounded-full transition-all"
                                             style={{ width: `${Math.min(100, (pf.totalFees / data.metrics.directSavingsOpportunity) * 100)}%` }}
                                         />
                                     </div>
-                                    <div className="text-sm font-medium w-24 text-right">{formatCurrency(pf.totalFees)}</div>
-                                    <div className="text-xs text-muted-foreground w-20 text-right">{pf.bookingCount} bookings</div>
+                                    <div className="text-xs sm:text-sm font-medium text-right ml-auto">{formatCurrency(pf.totalFees)}</div>
+                                    <div className="text-xs text-muted-foreground text-right hidden sm:block w-20">{pf.bookingCount} bookings</div>
                                 </div>
                             ))}
                         </div>
@@ -681,17 +681,17 @@ export const GuestsDashboard = () => {
                             </SelectContent>
                         </Select>
                     </div>
-                    <div className="flex items-center gap-2 bg-muted p-1 rounded-lg w-fit">
+                    <div className="flex items-center gap-2 bg-muted p-1 rounded-lg max-w-full overflow-x-auto scrollbar-hide">
                         {viewModes.map((mode) => (
                             <Button
                                 key={mode.key}
                                 variant="ghost"
                                 size="sm"
                                 onClick={mode.handler}
-                                className={viewMode === mode.key
+                                className={`text-xs sm:text-sm ${viewMode === mode.key
                                     ? 'bg-card text-foreground shadow-sm'
                                     : 'text-muted-foreground hover:text-foreground'
-                                }
+                                }`}
                             >
                                 {mode.label}
                             </Button>
@@ -839,9 +839,9 @@ const RecurringDateSearch = () => {
                 <div className="space-y-4">
                     {results.map((yearData: RecurringYearData) => (
                         <div key={yearData.year} className="border rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
                                 <h4 className="font-semibold text-foreground">{yearData.year}</h4>
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                                     <span>{yearData.guestCount} guests</span>
                                     <span>{yearData.bookings.length} bookings</span>
                                     <span className="text-success font-medium">{formatCurrency(yearData.totalRevenue)}</span>
@@ -850,18 +850,18 @@ const RecurringDateSearch = () => {
                             {yearData.bookings.length > 0 ? (
                                 <div className="space-y-1.5">
                                     {yearData.bookings.map((b: RecurringBooking) => (
-                                        <div key={b.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0 border-border">
-                                            <div>
+                                        <div key={b.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm py-1.5 border-b last:border-0 border-border gap-0.5 sm:gap-3">
+                                            <div className="min-w-0">
                                                 <button
                                                     onClick={() => openModal({ type: 'booking', bookingId: b.id, guestName: b.guestName })}
-                                                    className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
+                                                    className="font-medium text-foreground hover:text-primary hover:underline transition-colors truncate max-w-full"
                                                 >
                                                     {b.guestName}
                                                 </button>
-                                                <span className="text-muted-foreground/60 mx-2">at</span>
-                                                <span className="text-muted-foreground">{b.propertyName}</span>
+                                                <span className="text-muted-foreground/60 mx-1 sm:mx-2">at</span>
+                                                <span className="text-muted-foreground truncate">{b.propertyName}</span>
                                             </div>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                                                 <span className="text-muted-foreground text-xs">
                                                     {formatDateDisplay(b.arrival)} - {formatDateDisplay(b.departure)}
                                                 </span>

@@ -141,54 +141,67 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
 
       <div className="p-4 space-y-3">
         {rows.map((row, index) => (
-          <div key={index} className="flex gap-2 items-center">
-            <Select value={row.category || undefined} onValueChange={v => updateRow(index, 'category', v)}>
-              <SelectTrigger className="flex-1 h-8 text-sm">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPENSE_CATEGORIES.map(cat => (
-                  <SelectItem
-                    key={cat.value}
-                    value={cat.value}
-                    disabled={usedCategories.includes(cat.value) && row.category !== cat.value}
-                  >
-                    {cat.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className="flex gap-2 items-center">
+              <Select value={row.category || undefined} onValueChange={v => updateRow(index, 'category', v)}>
+                <SelectTrigger className="flex-1 sm:w-[180px] h-8 text-sm">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EXPENSE_CATEGORIES.map(cat => (
+                    <SelectItem
+                      key={cat.value}
+                      value={cat.value}
+                      disabled={usedCategories.includes(cat.value) && row.category !== cat.value}
+                    >
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            <div className="relative w-28">
-              <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={row.amount || ''}
-                onChange={e => updateRow(index, 'amount', parseFloat(e.target.value) || 0)}
-                className="pl-7 h-8 text-sm"
-                placeholder="0.00"
-              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeRow(index)}
+                className="h-8 w-8 text-muted-foreground hover:text-danger hover:bg-danger-subtle sm:hidden shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
             </div>
+            <div className="flex gap-2 items-center">
+              <div className="relative w-28 shrink-0">
+                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={row.amount || ''}
+                  onChange={e => updateRow(index, 'amount', parseFloat(e.target.value) || 0)}
+                  className="pl-7 h-8 text-sm"
+                  placeholder="0.00"
+                />
+              </div>
 
-            <Input
-              type="text"
-              value={row.description || ''}
-              onChange={e => updateRow(index, 'description', e.target.value)}
-              className="w-32 h-8 text-sm"
-              placeholder="Note"
-            />
+              <Input
+                type="text"
+                value={row.description || ''}
+                onChange={e => updateRow(index, 'description', e.target.value)}
+                className="flex-1 sm:flex-none sm:w-32 h-8 text-sm"
+                placeholder="Note"
+              />
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => removeRow(index)}
-              className="h-8 w-8 text-muted-foreground hover:text-danger hover:bg-danger-subtle"
-            >
-              <X className="w-4 h-4" />
-            </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeRow(index)}
+                className="h-8 w-8 text-muted-foreground hover:text-danger hover:bg-danger-subtle hidden sm:inline-flex shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         ))}
 

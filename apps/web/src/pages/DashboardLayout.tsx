@@ -1,8 +1,11 @@
 import { useAuth } from '@/contexts/auth'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft, Eye } from 'lucide-react'
+import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft, Eye, Menu } from 'lucide-react'
 import { lazy, Suspense, useState, useEffect } from 'react'
+import {
+  Sheet, SheetTrigger, SheetContent, SheetTitle
+} from '@/components/ui/sheet'
 
 const OverviewDashboard = lazy(() => import('@/components/dashboards/OverviewDashboard').then(m => ({ default: m.OverviewDashboard })))
 const FinancialDashboard = lazy(() => import('@/components/dashboards/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })))
@@ -10,7 +13,8 @@ const PropertiesDashboard = lazy(() => import('@/components/dashboards/Propertie
 const OccupancyDashboard = lazy(() => import('@/components/dashboards/OccupancyDashboard').then(m => ({ default: m.OccupancyDashboard })))
 const GuestsDashboard = lazy(() => import('@/components/dashboards/GuestsDashboard').then(m => ({ default: m.GuestsDashboard })))
 
-import { FilterBar } from '@/components/FilterBar'
+import { FilterBar, MobileFilterControls } from '@/components/FilterBar'
+import { cn } from '@baileys/utils'
 import { LoadingState } from '@/components/LoadingState'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
@@ -98,7 +102,7 @@ const DashboardTabs = () => {
   }
 
   return (
-    <div className="bg-background/90 backdrop-blur-sm border-b border-border">
+    <div className="hidden sm:block bg-background/90 backdrop-blur-sm border-b border-border">
       <div className="max-w-7xl mx-auto">
         <nav className="flex gap-1 px-4 md:px-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
           {tabConfig.map(({ id, label, icon: Icon }) => (
@@ -133,6 +137,7 @@ export const DashboardLayout = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [showInitialSync, setShowInitialSync] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const syncParam = searchParams.get('sync')
@@ -167,9 +172,18 @@ export const DashboardLayout = () => {
   const { user } = state
   const isDemo = user.isDemo === true
 
+  const location = useLocation()
+
   const handleLogout = async () => {
     await logout()
     navigate('/')
+  }
+
+  const handleMobileTabClick = (tabId: DashboardTab) => {
+    const currentParams = new URLSearchParams(location.search)
+    const newPath = `/dashboard/${tabId}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
+    navigate(newPath)
+    setMobileMenuOpen(false)
   }
 
   if (!user.hasOwnerRezConnection) {
@@ -268,33 +282,33 @@ export const DashboardLayout = () => {
       )}
       <div className="min-h-screen bg-background flex flex-col">
           <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
+            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
               <div className="flex justify-between items-center">
-                <Link to="/" className="flex items-center">
+                <Link to="/" className="flex items-center shrink-0">
                   <LogoCube />
-                  <div className="ml-3">
-                    <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
+                  <div className="ml-2 sm:ml-3">
+                    <h1 className="text-lg sm:text-xl font-semibold text-foreground">{BRAND.name}</h1>
                     {user.companyName && (
-                      <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>
+                      <p className="hidden sm:block text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>
                     )}
                   </div>
                 </Link>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
                   {isDemo ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                       <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2.5 py-1.5 rounded-md whitespace-nowrap">
                         <Eye className="w-3.5 h-3.5 shrink-0" />
                         Demo
                       </span>
                       <Link
                         to="/signup"
-                        className="px-4 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                        className="hidden sm:inline-flex whitespace-nowrap px-4 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
                       >
                         Sign Up
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                        className="hidden sm:block p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
                         title="Exit demo"
                         aria-label="Exit demo"
                       >
@@ -303,8 +317,8 @@ export const DashboardLayout = () => {
                     </div>
                   ) : (
                     <>
-                      <span className="text-sm text-muted-foreground hidden sm:inline">{user.email}</span>
-                      <div className="flex items-center gap-2 pl-3 border-l border-border">
+                      <span className="hidden sm:inline text-sm text-muted-foreground">{user.email}</span>
+                      <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-border">
                         {isAdmin && (
                           <Link
                             to="/admin"
@@ -335,6 +349,115 @@ export const DashboardLayout = () => {
                       </div>
                     </>
                   )}
+
+                  <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                    <SheetTrigger asChild>
+                      <button className="sm:hidden p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer" aria-label="Open menu">
+                        <Menu className="w-5 h-5" />
+                      </button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-80 overflow-y-auto p-0 gap-0">
+                      <SheetTitle className="sr-only">Menu</SheetTitle>
+
+                      {/* pr-10 clears the sheet close button */}
+                      <div className="px-5 pr-10 pt-5 pb-3">
+                        {isDemo ? (
+                          <div className="flex items-center justify-between">
+                            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2.5 py-1.5 rounded-md">
+                              <Eye className="w-3.5 h-3.5 shrink-0" />
+                              Demo Mode
+                            </span>
+                            <Link
+                              to="/signup"
+                              onClick={() => setMobileMenuOpen(false)}
+                              className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:opacity-90 transition-opacity"
+                            >
+                              Sign Up
+                            </Link>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground truncate">{user.email}</p>
+                        )}
+                      </div>
+
+                      <div className="h-px bg-border" />
+
+                      <div className="px-5 py-3">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">Navigation</p>
+                        <nav className="flex flex-col gap-0.5" aria-label="Dashboard tabs">
+                          {tabConfig.map(({ id, label, icon: Icon }) => (
+                            <button
+                              key={id}
+                              onClick={() => handleMobileTabClick(id)}
+                              className={cn(
+                                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer text-left",
+                                activeTab === id
+                                  ? "bg-primary/10 text-primary"
+                                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                              )}
+                            >
+                              <Icon className="w-4 h-4" />
+                              {label}
+                            </button>
+                          ))}
+                        </nav>
+                      </div>
+
+                      <div className="h-px bg-border" />
+
+                      <div className="px-5 py-3">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">Filters</p>
+                        <MobileFilterControls />
+                      </div>
+
+                      {/* pushes account section to the bottom of the sheet */}
+                      <div className="flex-1" />
+
+                      <div className="h-px bg-border" />
+
+                      <div className="px-5 py-3">
+                        <div className="flex flex-col gap-0.5">
+                          {isDemo ? (
+                            <button
+                              onClick={() => { handleLogout(); setMobileMenuOpen(false) }}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                            >
+                              <LogOut className="w-4 h-4" />
+                              Exit Demo
+                            </button>
+                          ) : (
+                            <>
+                              {isAdmin && (
+                                <Link
+                                  to="/admin"
+                                  onClick={() => setMobileMenuOpen(false)}
+                                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                >
+                                  <Shield className="w-4 h-4" />
+                                  Admin
+                                </Link>
+                              )}
+                              <Link
+                                to="/settings"
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                              >
+                                <Settings className="w-4 h-4" />
+                                Settings
+                              </Link>
+                              <button
+                                onClick={() => { handleLogout(); setMobileMenuOpen(false) }}
+                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer text-left"
+                              >
+                                <LogOut className="w-4 h-4" />
+                                Logout
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </SheetContent>
+                  </Sheet>
                 </div>
               </div>
             </div>

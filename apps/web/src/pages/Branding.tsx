@@ -46,7 +46,7 @@ const StaggerDemo = () => {
       >
         Replay animation
       </button>
-      <div key={key} className="grid grid-cols-4 gap-3">
+      <div key={key} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[0, 1, 2, 3].map(i => (
           <div
             key={i}
@@ -752,7 +752,7 @@ export const Branding = () => {
           <div className="grid md:grid-cols-2 gap-8">
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Border Radius</h3>
-              <div className="flex gap-4 items-end">
+              <div className="flex flex-wrap items-end gap-4">
                 {[
                   { label: 'sm', cls: 'rounded-sm' },
                   { label: 'md', cls: 'rounded-md' },
@@ -769,7 +769,7 @@ export const Branding = () => {
             </div>
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Elevation</h3>
-              <div className="flex gap-4 items-end">
+              <div className="flex flex-wrap items-end gap-4">
                 {[
                   { label: 'flat', cls: 'border' },
                   { label: 'sm', cls: 'shadow-sm border' },

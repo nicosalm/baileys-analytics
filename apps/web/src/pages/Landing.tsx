@@ -4,9 +4,12 @@ import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
 import {
   ArrowRight, Check,
-  Shield, Zap, Lock, Building2, Calendar, DollarSign
+  Shield, Zap, Lock, Building2, Calendar, DollarSign, Menu
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
+import {
+  Sheet, SheetTrigger, SheetContent, SheetTitle
+} from '@/components/ui/sheet'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { useInView } from '@/hooks'
@@ -22,6 +25,7 @@ export const Landing = () => {
   const [yearlyBilling, setYearlyBilling] = useState(true)
   const [scrolled, setScrolled] = useState(false)
   const [demoLoading, setDemoLoading] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const feature1 = useInView()
   const feature2 = useInView()
@@ -86,20 +90,49 @@ export const Landing = () => {
                   >
                     Logout
                   </button>
-                  <Link to="/dashboard/overview" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
+                  <Link to="/dashboard/overview" className="whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
                     Dashboard
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link to="/login" className="px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm">
+                  <Link to="/login" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors">
                     Log in
                   </Link>
-                  <Link to="/signup" className="px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
+                  <Link to="/signup" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity">
                     Get Started
                   </Link>
                 </>
               )}
+
+              {/* mobile hamburger */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <button className="md:hidden p-2 text-white/70 hover:text-white transition-colors cursor-pointer" aria-label="Open menu">
+                    <Menu className="w-5 h-5" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="right" className="dark bg-[var(--landing-bg)] border-white/10 w-64">
+                  <SheetTitle className="text-white sr-only">Navigation</SheetTitle>
+                  <nav className="flex flex-col gap-1 mt-4">
+                    <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Features</a>
+                    <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</a>
+                    <Link to="/updates" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Updates</Link>
+                    <div className="h-px bg-white/10 my-2" />
+                    {isAuthenticated ? (
+                      <>
+                        <Link to="/dashboard/overview" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium text-white hover:bg-white/5 rounded-lg transition-colors">Dashboard</Link>
+                        <button onClick={() => { handleLogout(); setMobileMenuOpen(false) }} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left cursor-pointer">Logout</button>
+                      </>
+                    ) : (
+                      <>
+                        <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Log in</Link>
+                        <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="mx-4 mt-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm text-center">Get Started</Link>
+                      </>
+                    )}
+                  </nav>
+                </SheetContent>
+              </Sheet>
             </div>
           </div>
         </div>
@@ -129,14 +162,14 @@ export const Landing = () => {
 
           {!isAuthenticated && (
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6 hero-stagger" style={{ '--hero-index': 4 } as React.CSSProperties}>
-              <Link to="/signup" className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center">
+              <Link to="/signup" className="whitespace-nowrap px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center">
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
               <button
                 onClick={handleTryDemo}
                 disabled={demoLoading}
-                className="px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50 cursor-pointer"
+                className="whitespace-nowrap px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50 cursor-pointer"
               >
                 {demoLoading ? 'Loading...' : 'Try the Demo'}
               </button>
@@ -439,7 +472,7 @@ export const Landing = () => {
           <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
           {!isAuthenticated && (
             <div className="mt-6 flex flex-col items-center gap-4">
-              <Link to="/signup" className="inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg">
+              <Link to="/signup" className="whitespace-nowrap inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg">
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>

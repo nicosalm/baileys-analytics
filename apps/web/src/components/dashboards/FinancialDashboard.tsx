@@ -203,17 +203,17 @@ export const FinancialDashboard = () => {
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Financial Center</h2>
-            <p className="text-muted-foreground text-sm mt-1">
+            <p className="text-muted-foreground text-sm mt-1 hidden sm:block">
               Track your vacation rental income, expenses, and profitability
             </p>
           </div>
           <div className="flex items-center gap-3">
             {financialData?.metrics && (
               <>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <div className="text-xs text-muted-foreground">
                     {(financialData.metrics.operatingExpenses?.total || 0) > 0 ? 'Operating Profit' : 'Net Revenue'}
                   </div>
@@ -225,7 +225,7 @@ export const FinancialDashboard = () => {
                     )}
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <div className="text-xs text-muted-foreground">Gross Revenue</div>
                   <div className="text-lg font-bold text-foreground">
                     {formatCompactCurrency(financialData.metrics.revenue?.gross || 0)}
@@ -238,9 +238,9 @@ export const FinancialDashboard = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-card rounded-lg shadow-sm border border-border">
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground">Financial Analysis</h3>
-          <TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-border">
+          <h3 className="text-lg font-semibold text-foreground hidden sm:block">Financial Analysis</h3>
+          <TabsList className="w-full sm:w-auto">
             <TabsTrigger value="pl">P&L View</TabsTrigger>
             <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
             <TabsTrigger value="tax_center">Tax Center</TabsTrigger>

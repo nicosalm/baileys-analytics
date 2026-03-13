@@ -307,7 +307,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
   return (
     <div className={cn("relative", className)}>
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0">
         {/* Main date range selector */}
         <Popover open={dateOpen} onOpenChange={(open) => {
           setDateOpen(open)
@@ -317,7 +317,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             <Button
               variant="outline"
               className={cn(
-                "flex items-center gap-2 px-3 md:px-4 py-2 cursor-pointer",
+                "flex items-center gap-2 px-3 md:px-4 py-2 min-w-0 cursor-pointer",
                 "hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80",
                 dateOpen && "ring-2 ring-primary border-primary",
                 seasonStatus === 'in-season' && "border-success bg-primary/5",
@@ -417,7 +417,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             <Button
               variant="outline"
               className={cn(
-                "flex items-center gap-2 px-3 md:px-4 py-2 cursor-pointer w-full sm:w-auto",
+                "flex items-center gap-2 px-3 md:px-4 py-2 min-w-0 w-full sm:w-auto cursor-pointer",
                 "hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80",
                 compOpen && "ring-2 ring-primary border-primary",
                 comparisonType !== 'none' && "border-primary bg-primary/5"

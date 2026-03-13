@@ -533,22 +533,14 @@ export const OverviewDashboard = () => {
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Your Business at a Glance</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              {filters.selectedTags.length > 0
-                ? `Filtered: ${filters.selectedTags.map(t => t.name).filter(Boolean).join(', ') || 'Selected tags'}`
-                : 'All Properties'
-              } · How your properties are performing right now
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-success-subtle text-success-fg border border-success/30">
-              <span className="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></span>
-              Live Data
-            </span>
-          </div>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Your Business at a Glance</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            {filters.selectedTags.length > 0
+              ? `Filtered: ${filters.selectedTags.map(t => t.name).filter(Boolean).join(', ') || 'Selected tags'}`
+              : 'All Properties'
+            } · How your properties are performing right now
+          </p>
         </div>
       </div>
 

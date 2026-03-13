@@ -428,17 +428,17 @@ Authorization: Bearer YOUR_ACCESS_TOKEN`}</CodeBlock>
                   onClick={() => setExpandedTable(expandedTable === table.name ? null : table.name)}
                   className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <span className="font-mono text-sm font-semibold text-foreground">{table.name}</span>
-                    <span className="text-muted-foreground text-sm ml-3">{table.description}</span>
+                    <span className="block sm:inline mt-0.5 sm:mt-0 sm:ml-3 text-sm text-muted-foreground">{table.description}</span>
                   </div>
                   <span className="text-muted-foreground text-xs shrink-0 ml-2">
                     {expandedTable === table.name ? 'collapse' : `${table.columns.length} columns`}
                   </span>
                 </button>
                 {expandedTable === table.name && (
-                  <div className="border-t">
-                    <table className="w-full text-sm">
+                  <div className="border-t overflow-x-auto">
+                    <table className="w-full text-sm min-w-[400px]">
                       <thead>
                         <tr className="border-b bg-muted/20">
                           <th className="text-left py-2 px-4 font-semibold text-foreground text-xs">Column</th>

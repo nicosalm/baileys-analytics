@@ -29,7 +29,7 @@ const StatusBadge = () => {
       href="https://status.baileysanalytics.com"
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full border border-border hover:border-border/80"
+      className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full border border-border hover:border-border/80 whitespace-nowrap"
     >
       <span className={`w-1.5 h-1.5 rounded-full ${config.color} ring-2 ${config.ring}`} />
       {config.text}

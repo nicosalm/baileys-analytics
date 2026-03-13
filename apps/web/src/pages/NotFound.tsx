@@ -19,17 +19,17 @@ export const NotFound = () => {
               <LogoCube />
               <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {isAuthenticated ? (
-                <Link to="/dashboard/overview" className={`px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium`}>
-                  Open Dashboard
+                <Link to="/dashboard/overview" className="whitespace-nowrap px-3 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm">
+                  Dashboard
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="px-5 py-2.5 text-foreground/80 hover:text-foreground font-medium transition-colors hover:bg-muted/70 rounded-lg">
+                  <Link to="/login" className="hidden sm:inline-flex whitespace-nowrap px-5 py-2.5 text-foreground/80 hover:text-foreground font-medium transition-colors hover:bg-muted/70 rounded-lg">
                     Login
                   </Link>
-                  <Link to="/signup" className={`px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium`}>
+                  <Link to="/signup" className="whitespace-nowrap px-3 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm">
                     Get Started
                   </Link>
                 </>
@@ -52,7 +52,7 @@ export const NotFound = () => {
           <div className="flex items-center justify-center gap-3">
             <Link
               to="/"
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all whitespace-nowrap"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to home
