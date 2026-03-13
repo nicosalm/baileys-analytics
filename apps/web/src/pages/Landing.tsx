@@ -109,7 +109,7 @@ export const Landing = () => {
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <button className="md:hidden p-2 text-white/70 hover:text-white transition-colors cursor-pointer" aria-label="Open menu">
-                    <Menu className="w-5 h-5" />
+                    <Menu className="w-6 h-6" />
                   </button>
                 </SheetTrigger>
                 <SheetContent side="right" className="dark bg-[var(--landing-bg)] border-white/10 w-64">

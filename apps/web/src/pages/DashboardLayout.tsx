@@ -352,8 +352,8 @@ export const DashboardLayout = () => {
 
                   <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                     <SheetTrigger asChild>
-                      <button className="sm:hidden p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer" aria-label="Open menu">
-                        <Menu className="w-5 h-5" />
+                      <button className="sm:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer" aria-label="Open menu">
+                        <Menu className="w-6 h-6" />
                       </button>
                     </SheetTrigger>
                     <SheetContent side="right" className="w-80 overflow-y-auto p-0 gap-0">
