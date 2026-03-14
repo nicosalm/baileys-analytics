@@ -320,6 +320,7 @@ sync.post('/bookings', async (c) => {
 							type: charges[i].type,
 							amount: charges[i].amount,
 							description: charges[i].description,
+							is_taxable: charges[i].is_taxable ?? false,
 							position: i
 						});
 					}
@@ -486,20 +487,24 @@ sync.post('/recovery', async (c) => {
 						? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 						: booking.guest_name || 'Unknown';
 
+					const recoveryPlatform = booking.source || booking.listing_site || 'Unassigned';
 					await supabase
 						.from('bookings')
 						.upsert({
 							tenant_id: tenant.id,
 							property_id: upsertedProperty.id,
 							ownerrez_booking_id: booking.id,
+							ownerrez_guest_id: booking.guest?.id?.toString(),
 							guest_name: guestName,
 							guest_email: booking.guest?.email || booking.guest_email,
 							guest_phone: booking.guest?.phone || booking.guest_phone,
 							arrival: booking.arrival,
 							departure: booking.departure,
 							total_amount: booking.total_amount || 0,
+							guest_listing_site_fee: estimateGuestListingSiteFee(recoveryPlatform, booking.total_amount || 0, booking.booked_utc || booking.created_utc),
+							host_service_fee: booking.total_host_fees || 0,
 							status: booking.status,
-							platform: booking.source || booking.listing_site || 'Unassigned',
+							platform: recoveryPlatform,
 							platform_reservation_number: booking.custom_source_id || booking.external_id,
 							adults: booking.adults || 0,
 							children: booking.children || 0,
@@ -543,6 +548,7 @@ sync.post('/recovery', async (c) => {
 								type: charges[i].type,
 								amount: charges[i].amount,
 								description: charges[i].description,
+								is_taxable: charges[i].is_taxable ?? false,
 								position: i
 							});
 						}

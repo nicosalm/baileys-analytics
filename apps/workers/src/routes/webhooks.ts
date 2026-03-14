@@ -501,6 +501,7 @@ async function handleBookingUpdate(
 								type: charge.type,
 								amount: charge.amount,
 								description: charge.description,
+								is_taxable: charge.is_taxable ?? false,
 								position: index
 							}));
 

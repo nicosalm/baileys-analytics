@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { cache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
+import { normalizePlatform } from '../utils/platform';
 
 const guests = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -112,7 +113,7 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 				arrival: b.arrival,
 				departure: b.departure,
 				amount: b.total_amount,
-				platform: b.platform || 'Unassigned',
+				platform: normalizePlatform(b.platform),
 				propertyName: b.properties?.name || 'Unknown'
 			})),
 			guestCount: new Set((bookings || []).map((b: any) => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase())).size,
@@ -190,7 +191,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 		totalRevenue += booking.total_amount || 0;
 		totalListingSiteFees += (booking as any).guest_listing_site_fee || 0;
 		propertySet.add(booking.property_id);
-		platformSet.add(booking.platform || 'Unassigned');
+		platformSet.add(normalizePlatform(booking.platform));
 		
 		if (booking.arrival && booking.departure) {
 			const nights = Math.ceil(
@@ -245,7 +246,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			totalAmount: b.total_amount,
 			guestListingSiteFee: b.guest_listing_site_fee || 0,
 			hostServiceFee: b.host_service_fee || 0,
-			platform: b.platform || 'Unassigned',
+			platform: normalizePlatform(b.platform),
 			status: b.status,
 			nights: b.arrival && b.departure ? Math.ceil(
 				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) /

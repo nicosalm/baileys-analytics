@@ -44,14 +44,13 @@ financial.get('/', async (c) => {
 	const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 	const guestFees = bookings?.reduce((s, b) => s + (b.guest_listing_site_fee || 0), 0) || 0;
 	const hostFees = bookings?.reduce((s, b) => s + (b.host_service_fee || 0), 0) || 0;
-	const platformFees = guestFees + hostFees;
 	const tax = totalRevenue * 0.08;
 
 	const metrics = {
 		revenue: totalRevenue,
-		expenses: platformFees,
+		expenses: hostFees,
 		tax: tax,
-		netIncome: totalRevenue - platformFees - tax
+		netIncome: totalRevenue - hostFees - tax
 	};
 
 	const feesBreakdown = { guestFees, hostFees, guestFeesEstimated: true };
@@ -66,9 +65,7 @@ financial.get('/', async (c) => {
 			.neq('status', 'canceled');
 
 		const compRevenue = compBookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-		const compGuestFees = compBookings?.reduce((s, b) => s + (b.guest_listing_site_fee || 0), 0) || 0;
 		const compHostFees = compBookings?.reduce((s, b) => s + (b.host_service_fee || 0), 0) || 0;
-		const compFees = compGuestFees + compHostFees;
 		const compTax = compRevenue * 0.08;
 
 		return c.json({
@@ -77,9 +74,9 @@ financial.get('/', async (c) => {
 				feesBreakdown,
 				previous: {
 					revenue: compRevenue,
-					expenses: compFees,
+					expenses: compHostFees,
 					tax: compTax,
-					netIncome: compRevenue - compFees - compTax
+					netIncome: compRevenue - compHostFees - compTax
 				}
 			}
 		});

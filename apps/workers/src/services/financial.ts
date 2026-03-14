@@ -3,6 +3,7 @@ import { getActiveSeasons } from './seasons';
 import { TaxCalculator } from './tax-calculator';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
+import { normalizePlatform } from '../utils/platform';
 
 interface FinancialMetrics {
   revenue: {
@@ -63,7 +64,11 @@ export interface ChargeComposition {
   taxes: number;
   fees: number;
   discounts: number;
-  other: number;
+  cleaning: number;
+  linens: number;
+  petFees: number;
+  creditCardFees: number;
+  otherSurcharges: number;
   details: { type: string; description: string; total: number; count: number }[];
 }
 
@@ -143,6 +148,24 @@ export interface FinancialSharedData {
   lastYearBookings?: any[];
 }
 
+function normalizeSurchargeCategory(description: string): string {
+  const d = (description || '').toLowerCase();
+  if (/\btax\b/.test(d)) return 'tax';
+  if (/\bpet\b/.test(d)) return 'pet';
+  if (d.includes('linen')) return 'linen';
+  if (d.includes('clean')) return 'cleaning';
+  if (d.includes('credit card')) return 'credit_card';
+  return 'other_surcharge';
+}
+
+const SURCHARGE_DISPLAY_NAMES: Record<string, string> = {
+  pet: 'Pet Fees',
+  linen: 'Linen Fees',
+  cleaning: 'Cleaning Fees',
+  credit_card: 'Credit Card Fees',
+  other_surcharge: 'Other Surcharges',
+};
+
 function determineGranularity(from: string, to: string) {
   const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
   return {
@@ -178,7 +201,7 @@ export async function getPLData(
       .from('bookings')
       .select(`
         *,
-        booking_charges(amount, type, description)
+        booking_charges(amount, type, description, is_taxable)
       `)
       .eq('tenant_id', tenantId)
       .lte('arrival', to)
@@ -245,7 +268,9 @@ export async function getPLData(
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
 
-  const netRevenue = grossRevenue - totalPlatformFees - totalTaxes;
+  // guest fees are estimated and not deducted from owner revenue (billed to guest separately)
+  // only host fees are a real deduction from what the owner receives
+  const netRevenue = grossRevenue - totalHostFees - totalTaxes;
 
   const operatingExpensesByCategory = operatingExpensesList.reduce((acc: Record<string, number>, exp: any) => {
     const category = exp.category || 'other';
@@ -282,7 +307,7 @@ export async function getPLData(
 
   const platformBreakdown = new Map<string, PlatformFinancials>();
   bookings.forEach(b => {
-    const platform = b.platform || 'Unassigned';
+    const platform = normalizePlatform(b.platform);
     const existing = platformBreakdown.get(platform) || {
       platform,
       grossRevenue: 0,
@@ -309,24 +334,68 @@ export async function getPLData(
   let compositionTaxes = 0;
   let compositionFees = 0;
   let compositionDiscounts = 0;
-  let compositionOther = 0;
+  let compositionCleaning = 0;
+  let compositionLinens = 0;
+  let compositionPetFees = 0;
+  let compositionCreditCardFees = 0;
+  let compositionOtherSurcharges = 0;
 
   bookings.forEach(b => {
     const charges = b.booking_charges || [];
     charges.forEach((c: any) => {
       if (c.type === 'rent') return;
       const amount = c.amount || 0;
-      switch (c.type) {
-        case 'tax': compositionTaxes += amount; break;
-        case 'fee': compositionFees += amount; break;
-        case 'discount': compositionDiscounts += amount; break;
-        default: compositionOther += amount; break;
+      const desc = (c.description || '').toLowerCase();
+
+      // filter out zero-amount security deposits
+      if (desc.includes('security') && amount === 0) return;
+
+      let detailKey: string;
+      let displayType: string;
+      let displayDescription: string;
+
+      if (c.type === 'tax') {
+        compositionTaxes += amount;
+        detailKey = `tax:${c.description || 'Tax'}`;
+        displayType = 'tax';
+        displayDescription = c.description || 'Tax';
+      } else if (c.type === 'fee') {
+        compositionFees += amount;
+        detailKey = `fee:${c.description || 'Fee'}`;
+        displayType = 'fee';
+        displayDescription = c.description || 'Fee';
+      } else if (c.type === 'discount') {
+        compositionDiscounts += amount;
+        detailKey = `discount:${c.description || 'Discount'}`;
+        displayType = 'discount';
+        displayDescription = c.description || 'Discount';
+      } else {
+        // surcharge / surcharge_other / any other type — categorize by description
+        const category = normalizeSurchargeCategory(c.description);
+        if (category === 'tax') {
+          // ownerrez sometimes sends taxes as type: 'surcharge'
+          compositionTaxes += amount;
+          detailKey = `tax:${c.description || 'Tax'}`;
+          displayType = 'tax';
+          displayDescription = c.description || 'Tax';
+        } else {
+          switch (category) {
+            case 'cleaning': compositionCleaning += amount; break;
+            case 'linen': compositionLinens += amount; break;
+            case 'pet': compositionPetFees += amount; break;
+            case 'credit_card': compositionCreditCardFees += amount; break;
+            default: compositionOtherSurcharges += amount; break;
+          }
+          detailKey = `surcharge:${category}`;
+          displayType = category;
+          displayDescription = SURCHARGE_DISPLAY_NAMES[category] || c.description || c.type;
+        }
       }
-      const key = `${c.type}:${c.description || c.type}`;
-      const existing = chargeDetailMap.get(key) || { type: c.type, description: c.description || c.type, total: 0, bookingIds: new Set<string>() };
+
+      const existing = chargeDetailMap.get(detailKey) || { type: displayType, description: displayDescription, total: 0, bookingIds: new Set<string>() };
       existing.total += amount;
       existing.bookingIds.add(b.id);
-      chargeDetailMap.set(key, existing);
+      chargeDetailMap.set(detailKey, existing);
     });
   });
 
@@ -334,7 +403,11 @@ export async function getPLData(
     taxes: compositionTaxes,
     fees: compositionFees,
     discounts: compositionDiscounts,
-    other: compositionOther,
+    cleaning: compositionCleaning,
+    linens: compositionLinens,
+    petFees: compositionPetFees,
+    creditCardFees: compositionCreditCardFees,
+    otherSurcharges: compositionOtherSurcharges,
     details: Array.from(chargeDetailMap.values())
       .map(({ bookingIds, ...rest }) => ({ ...rest, count: bookingIds.size }))
       .sort((a, b) => b.total - a.total)
@@ -440,15 +513,15 @@ export async function getRevenueData(
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
 
-  const fees = bookings.reduce((sum, b) =>
-    sum + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0
+  const hostFees = bookings.reduce((sum, b) =>
+    sum + (b.host_service_fee || 0), 0
   );
 
-  const net = gross - taxes - fees;
+  const net = gross - taxes - hostFees;
 
   const sourceMap = new Map<string, number>();
   bookings.forEach(b => {
-    const source = b.platform || 'Unassigned';
+    const source = normalizePlatform(b.platform);
     sourceMap.set(source, (sourceMap.get(source) || 0) + (b.total_amount || 0));
   });
 
@@ -491,17 +564,17 @@ export async function getRevenueData(
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
 
-  const lastYearFees = lastYearBookings.reduce((sum, b) =>
-    sum + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0
+  const lastYearHostFees = lastYearBookings.reduce((sum, b) =>
+    sum + (b.host_service_fee || 0), 0
   );
 
-  const lastYearNet = lastYearGross - lastYearTaxes - lastYearFees;
+  const lastYearNet = lastYearGross - lastYearTaxes - lastYearHostFees;
 
   return {
     gross,
     net,
     taxes,
-    fees,
+    fees: hostFees,
     bySource,
     byMonth,
     lastYearData: lastYearBookings.length > 0 ? {
@@ -619,7 +692,7 @@ export async function getTaxData(
       .select(`
         *,
         properties!inner(id, name, internal_code),
-        booking_charges(amount, type)
+        booking_charges(amount, type, is_taxable)
       `)
       .eq('tenant_id', tenantId)
       .lte('arrival', to)
@@ -661,18 +734,31 @@ export async function getTaxData(
     ? new Map(shared.properties.map((p: any) => [p.id, p]))
     : null;
 
-  const totalRent = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  // check if is_taxable data has been synced (short-circuits on first match)
+  const hasTaxableData = bookings.some(b =>
+    b.booking_charges?.some((c: any) => c.is_taxable === true)
+  );
 
-  const ownerTax = bookings.reduce((sum, b) => {
-    const taxCharges = b.booking_charges?.filter((c: any) => c.type === 'tax') || [];
-    return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
-  }, 0);
-
-  const platformTax = platformFees.reduce((sum, pf) => sum + (pf.platform_tax_remitted || 0), 0);
-  const totalTax = ownerTax + platformTax;
+  // single pass: compute totals and per-property breakdown
+  let totalRent = 0;
+  let ownerTax = 0;
+  let taxableBase = 0;
 
   const propertyTaxMap = new Map();
   bookings.forEach(b => {
+    const charges = b.booking_charges || [];
+    let bookingTax = 0;
+    let bookingTaxable = 0;
+
+    for (const c of charges) {
+      if (c.type === 'tax') bookingTax += c.amount || 0;
+      if (hasTaxableData && c.is_taxable === true) bookingTaxable += c.amount || 0;
+    }
+
+    totalRent += b.total_amount || 0;
+    ownerTax += bookingTax;
+    taxableBase += bookingTaxable;
+
     const property = b.properties || (propertyLookup ? propertyLookup.get(b.property_id) : null);
     if (!property) return;
 
@@ -686,29 +772,31 @@ export async function getTaxData(
       taxRate: 0
     };
 
-    const bookingTax = b.booking_charges?.filter((c: any) => c.type === 'tax')
-      .reduce((sum: number, c: any) => sum + (c.amount || 0), 0) || 0;
-
     existing.totalTax += bookingTax;
-    existing.totalRent += b.total_amount || 0;
+    existing.totalRent += hasTaxableData ? bookingTaxable : (b.total_amount || 0);
     existing.bookingCount++;
 
     propertyTaxMap.set(property.id, existing);
   });
+
+  const platformTax = platformFees.reduce((sum, pf) => sum + (pf.platform_tax_remitted || 0), 0);
+  const totalTax = ownerTax + platformTax;
 
   const byProperty = Array.from(propertyTaxMap.values()).map(p => ({
     ...p,
     taxRate: p.totalRent > 0 ? (p.totalTax / p.totalRent) * 100 : 0
   }));
 
-  const byMonth = buildMonthlyTaxData(bookings, platformFees, from, to, useDaily, useWeekly);
+  const byMonth = buildMonthlyTaxData(bookings, platformFees, from, to, useDaily, useWeekly, hasTaxableData);
+
+  const effectiveDenominator = hasTaxableData ? taxableBase : totalRent;
 
   return {
     summary: {
       totalTax,
       totalRent,
       totalBookings: bookings.length,
-      effectiveRate: totalRent > 0 ? (totalTax / totalRent) * 100 : 0,
+      effectiveRate: effectiveDenominator > 0 ? (totalTax / effectiveDenominator) * 100 : 0,
       platformRemitted: platformTax,
       ownerRemitted: ownerTax
     },
@@ -729,7 +817,7 @@ export async function getFinancialBatchData(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('*, booking_charges(amount, type, description)')
+    .select('*, booking_charges(amount, type, description, is_taxable)')
     .eq('tenant_id', tenantId)
     .lte('arrival', to)
     .gte('departure', from)
@@ -944,7 +1032,8 @@ function buildMonthlyTaxData(
   from: string,
   to: string,
   useDaily: boolean,
-  useWeekly: boolean
+  useWeekly: boolean,
+  hasTaxableData: boolean = false
 ): any[] {
   const taxMap = new Map();
   
@@ -971,14 +1060,19 @@ function buildMonthlyTaxData(
       platformRemitted: 0
     };
     
-    const bookingTax = b.booking_charges?.filter((c: any) => c.type === 'tax')
-      .reduce((sum: number, c: any) => sum + (c.amount || 0), 0) || 0;
-    
+    const charges = b.booking_charges || [];
+    let bookingTax = 0;
+    let bookingTaxable = 0;
+    for (const c of charges) {
+      if (c.type === 'tax') bookingTax += c.amount || 0;
+      if (hasTaxableData && c.is_taxable === true) bookingTaxable += c.amount || 0;
+    }
+
     existing.totalTax += bookingTax;
-    existing.totalRent += b.total_amount || 0;
+    existing.totalRent += hasTaxableData ? bookingTaxable : (b.total_amount || 0);
     existing.bookingCount++;
     existing.ownerRemitted += bookingTax;
-    
+
     taxMap.set(key, existing);
   });
 

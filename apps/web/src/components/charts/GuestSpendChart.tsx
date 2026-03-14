@@ -12,7 +12,11 @@ interface GuestSpendChartProps {
     taxes: number
     fees: number
     discounts: number
-    other: number
+    cleaning: number
+    linens: number
+    petFees: number
+    creditCardFees: number
+    otherSurcharges: number
   }
   height?: number
 }
@@ -20,9 +24,13 @@ interface GuestSpendChartProps {
 const SEGMENT_COLORS: Record<string, string> = {
   'Base Rent': '#3B82F6',
   'Taxes': '#F59E0B',
-  'Cleaning & Surcharges': '#8B5CF6',
+  'Cleaning': '#8B5CF6',
+  'Linens': '#A855F7',
+  'Pet Fees': '#D97706',
+  'CC Fees': '#EA580C',
   'Booking Fees': '#EC4899',
   'Guest Platform Fee (est.)': '#6366F1',
+  'Misc': '#9CA3AF',
   'Discounts': '#6B7280',
 }
 
@@ -57,18 +65,26 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   const { chartData, totalSpend } = useMemo(() => {
-    const { taxes, fees, discounts, other } = chargeComposition
+    const {
+      taxes, fees, discounts,
+      cleaning, linens, petFees,
+      creditCardFees, otherSurcharges
+    } = chargeComposition
 
     // base rent = gross revenue minus all non-rent charges
-    const baseRent = grossRevenue - taxes - fees - other + discounts
+    const baseRent = grossRevenue - taxes - cleaning - linens - petFees - creditCardFees - otherSurcharges - fees + discounts
     const total = grossRevenue + guestFees
 
     const segments = [
       { name: 'Base Rent', value: Math.max(0, baseRent) },
       { name: 'Taxes', value: taxes },
-      { name: 'Cleaning & Surcharges', value: other },
+      { name: 'Cleaning', value: cleaning },
+      { name: 'Linens', value: linens },
+      { name: 'Pet Fees', value: petFees },
+      { name: 'CC Fees', value: creditCardFees },
       { name: 'Booking Fees', value: fees },
       { name: 'Guest Platform Fee (est.)', value: guestFees },
+      { name: 'Misc', value: otherSurcharges },
       { name: 'Discounts', value: discounts },
     ]
       .filter(s => s.value > 0)

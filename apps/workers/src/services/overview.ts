@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
+import { normalizePlatform } from '../utils/platform';
 
 async function fetchBookings(
 	supabase: SupabaseClient,
@@ -117,7 +118,7 @@ async function getCurrentPeriodMetrics(
 	const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 	const totalBookings = bookings.length;
 	const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
-	const platformFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0), 0);
+	const platformFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
 
 	// fetch taxes from booking_charges
 	const bookingIds = bookings.map(b => b.id);
@@ -234,7 +235,7 @@ function getChartsData(
 
 	const sourceMap = new Map<string, { count: number; revenue: number }>();
 	bookings.forEach(b => {
-		const source = b.platform || 'Unassigned';
+		const source = normalizePlatform(b.platform);
 		const existing = sourceMap.get(source) || { count: 0, revenue: 0 };
 		existing.count++;
 		existing.revenue += b.total_amount || 0;
@@ -531,7 +532,7 @@ async function getRecentActivity(
 			? (b.canceled_utc || b.booked_utc || b.created_at || b.arrival)
 			: (b.booked_utc || b.created_at || b.arrival),
 		value: b.total_amount,
-		platform: b.platform || 'Unassigned',
+		platform: normalizePlatform(b.platform),
 		ownerrezBookingId: b.ownerrez_booking_id || null,
 		status: b.status || 'confirmed',
 		metadata: {

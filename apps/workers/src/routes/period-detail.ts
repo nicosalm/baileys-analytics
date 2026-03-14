@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
 import { getExpensesWithTemplateFallback } from '../services/expense-utils';
+import { normalizePlatform } from '../utils/platform';
 
 const periodDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -86,8 +87,6 @@ periodDetail.get('/', async (c) => {
 
     const bookings = bookingsData.data || [];
 
-    // Calculate costs from booking-level fee columns
-    const totalGuestFees = bookings.reduce((sum, b) => sum + (b.guest_listing_site_fee || 0), 0);
     const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     // Query booking_charges for tax amounts on these bookings
@@ -104,7 +103,7 @@ periodDetail.get('/', async (c) => {
     }
 
     const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
-    const combinedPlatformFees = totalGuestFees + totalHostFees;
+    const combinedPlatformFees = totalHostFees;
     
     const propertyMap = new Map<string, string>();
     properties.forEach(p => propertyMap.set(p.id, p.name));
@@ -172,7 +171,7 @@ periodDetail.get('/', async (c) => {
 
     const platformGroups = new Map<string, { count: number; revenue: number }>();
     bookings.forEach(b => {
-      const platform = b.platform || 'Unassigned';
+      const platform = normalizePlatform(b.platform);
       const current = platformGroups.get(platform) || { count: 0, revenue: 0 };
       current.count += 1;
       current.revenue += b.total_amount || 0;
@@ -222,7 +221,7 @@ periodDetail.get('/', async (c) => {
         arrival: b.arrival,
         departure: b.departure,
         totalAmount: b.total_amount,
-        platform: b.platform || 'Unassigned',
+        platform: normalizePlatform(b.platform),
         status: b.status,
         ownerrezBookingId: b.ownerrez_booking_id || null
       }))

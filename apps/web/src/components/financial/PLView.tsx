@@ -29,14 +29,14 @@ interface MonthlyTrendEntry {
 }
 
 interface PreviousPeriodData {
-  revenue?: { gross?: number; net?: number; platformFees?: number; taxes?: number }
+  revenue?: { gross?: number; net?: number; platformFees?: number; hostFees?: number; taxes?: number }
   operatingExpenses?: { total: number; byCategory: Record<string, number> }
   operatingProfit?: number
   monthlyTrend?: MonthlyTrendEntry[]
 }
 
 interface ChargeDetail {
-  type: 'tax' | 'fee' | 'discount' | 'other'
+  type: string
   description: string
   count: number
   total: number
@@ -46,7 +46,11 @@ interface ChargeComposition {
   taxes: number
   fees: number
   discounts: number
-  other: number
+  cleaning: number
+  linens: number
+  petFees: number
+  creditCardFees: number
+  otherSurcharges: number
   details: ChargeDetail[]
 }
 
@@ -101,7 +105,7 @@ export const PLView: React.FC<PLViewProps> = ({
     const operatingExpenses = metrics.operatingExpenses || { total: 0, byCategory: {} }
     const operatingProfit = metrics.operatingProfit ?? (netRevenue - operatingExpenses.total)
     
-    const totalCosts = platformFees + operatingExpenses.total
+    const totalCosts = hostFees + operatingExpenses.total
     const operatingMargin = grossRevenue > 0
       ? ((operatingProfit / grossRevenue) * 100)
       : 0
@@ -119,7 +123,7 @@ export const PLView: React.FC<PLViewProps> = ({
       : 0
 
     const previousOperatingExpenses = previousPeriod?.operatingExpenses || { total: 0, byCategory: {} }
-    const previousTotalCosts = (previousPeriod?.revenue?.platformFees || 0) + previousOperatingExpenses.total
+    const previousTotalCosts = (previousPeriod?.revenue?.hostFees || 0) + previousOperatingExpenses.total
     const costsGrowth = previousTotalCosts > 0
       ? ((totalCosts - previousTotalCosts) / previousTotalCosts) * 100
       : 0
@@ -156,7 +160,7 @@ export const PLView: React.FC<PLViewProps> = ({
                       previousPeriod?.monthlyTrend?.[index]
       
       const monthRevenue = m.revenue || 0
-      const monthFees = monthRevenue * (platformFees / Math.max(grossRevenue, 1))
+      const monthFees = monthRevenue * (hostFees / Math.max(grossRevenue, 1))
       const monthTaxes = monthRevenue * (taxes / Math.max(grossRevenue, 1))
       const monthProfit = monthRevenue - monthFees - monthTaxes
       
@@ -260,7 +264,7 @@ export const PLView: React.FC<PLViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>P&L Summary:</strong> Revenue → Platform Fees (est.) → Taxes{revenue.operatingExpenses.total > 0 ? ' → Operating Expenses' : ''} → {revenue.operatingExpenses.total > 0 ? 'Operating Profit' : 'Net Revenue'}.{' '}
+              <strong>P&L Summary:</strong> Revenue → Host Fees → Taxes{revenue.operatingExpenses.total > 0 ? ' → Operating Expenses' : ''} → {revenue.operatingExpenses.total > 0 ? 'Operating Profit' : 'Net Revenue'}. Guest platform fees are shown for reference but not deducted.{' '}
               {revenue.operatingExpenses.total > 0
                 ? `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
                 : <>Configure <Link to="/settings?tab=expenses" className="underline hover:text-info-fg">Expenses</Link> in Settings for a complete picture.</>}
@@ -288,16 +292,16 @@ export const PLView: React.FC<PLViewProps> = ({
         />
         <MetricCard
           icon={Receipt}
-          label={revenue.operatingExpenses.total > 0 ? "Expenses & Platform Fees (est.)" : "Platform Fees (est.)"}
+          label={revenue.operatingExpenses.total > 0 ? "Host Fees & Expenses" : "Host Commission"}
           value={revenue.totalCosts}
           format="currency"
-          tooltip="Platform fees (host fees are exact, guest fees are estimated) plus operating expenses."
+          tooltip="Host platform fees (deducted from revenue) plus operating expenses. Guest platform fees are billed separately and do not affect owner revenue."
           color="orange"
           subValue={comparisonMode !== 'none' && comparison.previousTotalCosts > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTotalCosts)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : revenue.operatingExpenses.total > 0
-            ? `Fees (est.): ${formatCurrency(revenue.platformFees)} | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}`
-            : `Host: ${formatCompactCurrency(revenue.hostFees)} | Guest (est.): ${formatCompactCurrency(revenue.guestFees)}`}
+            ? `Host fees: ${formatCurrency(revenue.hostFees)} | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}`
+            : `Guest platform fee (est.): ${formatCompactCurrency(revenue.guestFees)} (not deducted)`}
           trend={comparisonMode !== 'none' && comparison.costsGrowth !== 0 ? {
             value: comparison.costsGrowth,
             isPositive: comparison.costsGrowth < 0
@@ -406,7 +410,6 @@ export const PLView: React.FC<PLViewProps> = ({
               <RevenueFlowSankey
                 data={{
                   platforms: platforms.map(p => ({ platform: p.name, grossRevenue: p.revenue })),
-                  platformFees: revenue.platformFees,
                   hostFees: revenue.hostFees,
                   guestFees: revenue.guestFees,
                   taxes: revenue.taxes,
@@ -442,10 +445,28 @@ export const PLView: React.FC<PLViewProps> = ({
                   <div className="text-lg font-bold text-info-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
                 </div>
               )}
-              {data.chargeComposition.fees > 0 && (
-                <div className="bg-warning-subtle rounded-lg p-3">
-                  <div className="text-xs text-warning font-medium">Booking Fees</div>
-                  <div className="text-lg font-bold text-warning-fg">{formatCurrency(data.chargeComposition.fees)}</div>
+              {data.chargeComposition.cleaning > 0 && (
+                <div className="bg-purple-500/10 rounded-lg p-3">
+                  <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Cleaning</div>
+                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.cleaning)}</div>
+                </div>
+              )}
+              {data.chargeComposition.linens > 0 && (
+                <div className="bg-violet-500/10 rounded-lg p-3">
+                  <div className="text-xs text-violet-600 dark:text-violet-400 font-medium">Linens</div>
+                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.linens)}</div>
+                </div>
+              )}
+              {data.chargeComposition.petFees > 0 && (
+                <div className="bg-amber-500/10 rounded-lg p-3">
+                  <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">Pet Fees</div>
+                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.petFees)}</div>
+                </div>
+              )}
+              {data.chargeComposition.creditCardFees > 0 && (
+                <div className="bg-orange-500/10 rounded-lg p-3">
+                  <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">CC Fees</div>
+                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.creditCardFees)}</div>
                 </div>
               )}
               {data.chargeComposition.discounts !== 0 && (
@@ -454,10 +475,10 @@ export const PLView: React.FC<PLViewProps> = ({
                   <div className="text-lg font-bold text-success-fg">-{formatCurrency(Math.abs(data.chargeComposition.discounts))}</div>
                 </div>
               )}
-              {data.chargeComposition.other > 0 && (
+              {data.chargeComposition.otherSurcharges > 0 && (
                 <div className="bg-muted/30 rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground font-medium">Other</div>
-                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.other)}</div>
+                  <div className="text-xs text-muted-foreground font-medium">Other Surcharges</div>
+                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.otherSurcharges)}</div>
                 </div>
               )}
             </div>
@@ -469,6 +490,10 @@ export const PLView: React.FC<PLViewProps> = ({
                       detail.type === 'tax' ? 'bg-info' :
                       detail.type === 'fee' ? 'bg-warning' :
                       detail.type === 'discount' ? 'bg-success' :
+                      detail.type === 'cleaning' ? 'bg-purple-500' :
+                      detail.type === 'linen' ? 'bg-violet-500' :
+                      detail.type === 'pet' ? 'bg-amber-500' :
+                      detail.type === 'credit_card' ? 'bg-orange-500' :
                       'bg-muted-foreground'
                     }`} />
                     <span className="truncate">{detail.description}</span>

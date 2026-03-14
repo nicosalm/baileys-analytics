@@ -391,6 +391,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
               type: charges[i].type,
               amount: charges[i].amount,
               description: charges[i].description,
+              is_taxable: charges[i].is_taxable ?? false,
               position: i
             });
           }

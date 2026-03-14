@@ -73,7 +73,10 @@ export const Landing = () => {
             <div className="flex items-center gap-6">
               <Link to="/" className="flex items-center" onClick={handleLogoClick}>
                 <LogoCube />
-                <span className="text-xl font-semibold text-white ml-3">{BRAND.name}</span>
+                <span className="text-xl font-semibold text-white ml-3">
+                  <span className="sm:hidden">Baileys</span>
+                  <span className="hidden sm:inline">{BRAND.name}</span>
+                </span>
               </Link>
               <div className="hidden md:flex items-center gap-5">
                 <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Features</a>

@@ -54,21 +54,6 @@ export const formatShortMonth = (date: Date | string): string => {
   }).format(d)
 }
 
-export const normalizePlatformName = (platform: string | null): string => {
-  if (!platform || platform === '') return 'Unassigned'
-
-  const lower = platform.toLowerCase()
-  if (lower.includes('airbnb')) return 'Airbnb'
-  if (lower.includes('vrbo') || lower.includes('homeaway')) return 'VRBO'
-  if (lower.includes('booking')) return 'Booking.com'
-  if (lower.includes('google')) return 'Google Vacation Rentals'
-  if (lower.includes('hopper')) return 'Hopper'
-  if (lower.includes('hometogo')) return 'HomeToGo'
-  if (lower.includes('direct') || lower.includes('owner') || lower.includes('website')) return 'Direct'
-
-  return platform
-}
-
 export const formatTaxRate = (rate: number): string => {
   return formatPercentageBase(rate * 100, 2)
 }

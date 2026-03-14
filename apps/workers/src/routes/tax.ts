@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
+import { normalizePlatform } from '../utils/platform';
 import { TaxCalculator } from '../services/tax-calculator';
 
 const tax = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
@@ -449,7 +450,7 @@ tax.get('/export', async (c) => {
 				property: booking.properties.name,
 				checkin: booking.arrival,
 				checkout: booking.departure,
-				platform: booking.platform || 'Unassigned',
+				platform: normalizePlatform(booking.platform),
 				total: booking.total_amount || 0,
 				taxes: 0,
 				description: 'No taxes recorded'
@@ -460,7 +461,7 @@ tax.get('/export', async (c) => {
 			property: booking.properties.name,
 			checkin: booking.arrival,
 			checkout: booking.departure,
-			platform: booking.platform || 'Unassigned',
+			platform: normalizePlatform(booking.platform),
 			total: booking.total_amount || 0,
 			taxes: charge.amount || 0,
 			description: charge.description || 'Tax'

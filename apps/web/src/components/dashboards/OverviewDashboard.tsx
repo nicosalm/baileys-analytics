@@ -613,8 +613,8 @@ export const OverviewDashboard = () => {
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : metrics.revenue.operatingExpenses > 0
-              ? `Profit: ${formatCompactCurrency(metrics.revenue.operatingProfit)} | Fees + Expenses: ${formatCompactCurrency(metrics.revenue.platformFees + metrics.revenue.operatingExpenses)}`
-              : `After fees (est.): ${formatCompactCurrency(metrics.revenue.net)}`
+              ? `Profit: ${formatCompactCurrency(metrics.revenue.operatingProfit)} | Host fees + Expenses: ${formatCompactCurrency(metrics.revenue.platformFees + metrics.revenue.operatingExpenses)}`
+              : `After host fees: ${formatCompactCurrency(metrics.revenue.net)}`
           }
           trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
             value: metrics.revenue.growth,
@@ -929,17 +929,6 @@ export const OverviewDashboard = () => {
               </div>
             ))}
           </div>
-          {(() => {
-            const unassigned = bookingSourceChartData.find((s: BookingSourceChartItem) => s.source === 'Unassigned' || s.source === 'unassigned')
-            if (unassigned && unassigned.count > 0) {
-              return (
-                <p className="text-xs text-warning text-center mt-1">
-                  {unassigned.count} booking{unassigned.count !== 1 ? 's' : ''} unassigned
-                </p>
-              )
-            }
-            return null
-          })()}
         </ChartWrapper>
       </div>
 

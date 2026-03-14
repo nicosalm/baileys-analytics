@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
 import { getExpensesWithTemplateFallback } from '../services/expense-utils';
+import { normalizePlatform } from '../utils/platform';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -75,8 +76,6 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
 
     if (bookingsError) throw bookingsError;
 
-    // Calculate cost totals from booking-level fee columns
-    const totalGuestPlatformFees = (bookings || []).reduce((sum, b) => sum + (b.guest_listing_site_fee || 0), 0);
     const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
     const totalHostFees = (bookings || []).reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
 
@@ -93,7 +92,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       totalTaxes = (charges || []).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
     }
 
-    const combinedPlatformFees = totalGuestPlatformFees + totalHostFees;
+    const combinedPlatformFees = totalHostFees;
 
     let totalRevenue = 0;
     const platformRevenue = new Map<string, number>();
@@ -109,7 +108,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     (bookings || []).forEach(booking => {
       totalRevenue += booking.total_amount || 0;
 
-      const platform = booking.platform || 'Unassigned';
+      const platform = normalizePlatform(booking.platform);
       platformRevenue.set(platform, (platformRevenue.get(platform) || 0) + (booking.total_amount || 0));
 
       const month = booking.arrival.substring(0, 7);
@@ -199,7 +198,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
           arrival: booking.arrival,
           departure: booking.departure,
           totalAmount: booking.total_amount,
-          platform: booking.platform || 'Unassigned',
+          platform: normalizePlatform(booking.platform),
           status: booking.status
         };
       });

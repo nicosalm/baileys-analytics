@@ -12,7 +12,6 @@ interface PlatformEntry {
 
 interface RevenueFlowData {
   platforms: PlatformEntry[]
-  platformFees: number
   hostFees: number
   guestFees: number
   taxes: number
@@ -84,15 +83,15 @@ function buildSankeyData(data: RevenueFlowData): {
   })
 
   // column 3: deductions + profit
-  if (data.platformFees > 0) {
+  if (data.hostFees > 0) {
     const idx = nodes.length
-    nodes.push({ name: 'Platform Fees' })
+    nodes.push({ name: 'Host Fees' })
     nodeColors.push(colors.warning)
-    links.push({ source: grossIdx, target: idx, value: Math.max(data.platformFees, 1) })
+    links.push({ source: grossIdx, target: idx, value: Math.max(data.hostFees, 1) })
     linkMeta.push({
-      title: 'Platform Fees',
-      value: data.platformFees,
-      pctOfGross: gross > 0 ? (data.platformFees / gross) * 100 : 0,
+      title: 'Host Fees',
+      value: data.hostFees,
+      pctOfGross: gross > 0 ? (data.hostFees / gross) * 100 : 0,
       flowType: 'deduction',
     })
   }
@@ -323,7 +322,7 @@ export const RevenueFlowLegend: React.FC<{ hasOpex: boolean }> = ({ hasOpex }) =
     <div className="flex flex-wrap gap-3 justify-center text-xs mt-3 px-4">
       <div className="flex items-center gap-1.5">
         <div className="w-3 h-2.5 rounded-sm" style={{ background: colors.warning }} />
-        <span className="text-muted-foreground">Platform Fees</span>
+        <span className="text-muted-foreground">Host Fees</span>
       </div>
       <div className="flex items-center gap-1.5">
         <div className="w-3 h-2.5 rounded-sm" style={{ background: colors.info }} />

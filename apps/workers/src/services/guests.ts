@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
+import { normalizePlatform } from '../utils/platform';
 
 export interface FeePlatformBreakdown {
   platform: string;
@@ -66,21 +67,6 @@ function createGuestId(name: string, email?: string): string {
   const normalizedName = name.toLowerCase().trim();
   const normalizedEmail = (email || '').toLowerCase().trim();
   return `${normalizedName}_${normalizedEmail}`;
-}
-
-function normalizePlatform(platform: string | null): string {
-  if (!platform) return 'Unassigned';
-  const normalized = platform.toLowerCase().trim();
-
-  if (normalized.includes('airbnb')) return 'Airbnb';
-  if (normalized.includes('vrbo') || normalized.includes('homeaway')) return 'VRBO';
-  if (normalized.includes('booking')) return 'Booking.com';
-  if (normalized.includes('google')) return 'Google Vacation Rentals';
-  if (normalized.includes('hopper')) return 'Hopper';
-  if (normalized.includes('hometogo')) return 'HomeToGo';
-  if (normalized.includes('direct') || normalized.includes('owner') || normalized.includes('website')) return 'Direct';
-
-  return platform;
 }
 
 export async function getGuestsData(

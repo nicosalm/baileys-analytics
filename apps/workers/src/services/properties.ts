@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
+import { normalizePlatform } from '../utils/platform';
 
 export interface PropertyMetrics {
   propertyId: string;
@@ -189,7 +190,7 @@ function computePropertyProfitability(
     let fees = 0;
     for (const b of propBookings) {
       revenue += b.total_amount || 0;
-      fees += (b.host_service_fee || 0) + (b.guest_listing_site_fee || 0);
+      fees += b.host_service_fee || 0;
     }
     const taxes = taxByProperty.get(p.id) || 0;
     const opex = expensesByProperty.get(p.id) || 0;
@@ -217,7 +218,7 @@ function computePropertyPlatformMix(
   for (const b of bookings) {
     const platforms = propMap.get(b.property_id);
     if (!platforms) continue;
-    const platform = b.platform || 'Unassigned';
+    const platform = normalizePlatform(b.platform);
     const entry = platforms.get(platform) || { bookings: 0, revenue: 0 };
     entry.bookings++;
     entry.revenue += b.total_amount || 0;
