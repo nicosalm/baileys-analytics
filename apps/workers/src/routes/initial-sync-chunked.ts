@@ -319,6 +319,54 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       }
     }
 
+    // Upsert charges right after bookings (before re-enrichment to stay within subrequest limit)
+    if (bookingChargesMap.size > 0) {
+      const chargeOwnerrezIds = [...bookingChargesMap.keys()].map(String);
+      const { data: dbBookingsForCharges } = await supabase
+        .from('bookings')
+        .select('id, ownerrez_booking_id')
+        .eq('tenant_id', tenantId)
+        .in('ownerrez_booking_id', chargeOwnerrezIds);
+
+      if (dbBookingsForCharges) {
+        const allCharges: any[] = [];
+        const staleDeletes: any[] = [];
+
+        for (const dbBooking of dbBookingsForCharges) {
+          const charges = bookingChargesMap.get(Number(dbBooking.ownerrez_booking_id));
+          if (!charges) continue;
+          for (let i = 0; i < charges.length; i++) {
+            allCharges.push({
+              booking_id: dbBooking.id,
+              type: charges[i].type,
+              amount: charges[i].amount,
+              description: charges[i].description,
+              is_taxable: charges[i].is_taxable ?? false,
+              position: i
+            });
+          }
+          staleDeletes.push(
+            supabase.from('booking_charges')
+              .delete()
+              .eq('booking_id', dbBooking.id)
+              .gte('position', charges.length)
+          );
+        }
+
+        for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
+          const chunk = allCharges.slice(i, i + CHUNK_SIZE);
+          const { error } = await supabase.from('booking_charges').upsert(chunk, {
+            onConflict: 'booking_id,position',
+            ignoreDuplicates: false
+          });
+          if (error) {
+            console.error(`Failed to upsert charges chunk ${i}:`, error);
+          }
+        }
+        await Promise.all(staleDeletes);
+      }
+    }
+
     // Re-enrich contact info from the guests table. The booking upsert above may
     // have overwritten previously-enriched email/phone with null values from the API.
     const { data: guestsWithContact } = await supabase
@@ -366,55 +414,6 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
             await Promise.all(updates.slice(i, i + 10));
           }
         }
-      }
-    }
-
-    // Upsert charges — idempotent, safe under concurrent syncs
-    if (bookingChargesMap.size > 0) {
-      const chargeOwnerrezIds = [...bookingChargesMap.keys()].map(String);
-      const { data: dbBookingsForCharges } = await supabase
-        .from('bookings')
-        .select('id, ownerrez_booking_id')
-        .eq('tenant_id', tenantId)
-        .in('ownerrez_booking_id', chargeOwnerrezIds);
-
-      if (dbBookingsForCharges) {
-        const allCharges: any[] = [];
-        const staleDeletes: any[] = [];
-
-        for (const dbBooking of dbBookingsForCharges) {
-          const charges = bookingChargesMap.get(Number(dbBooking.ownerrez_booking_id));
-          if (!charges) continue;
-          for (let i = 0; i < charges.length; i++) {
-            allCharges.push({
-              booking_id: dbBooking.id,
-              type: charges[i].type,
-              amount: charges[i].amount,
-              description: charges[i].description,
-              is_taxable: charges[i].is_taxable ?? false,
-              position: i
-            });
-          }
-          staleDeletes.push(
-            supabase.from('booking_charges')
-              .delete()
-              .eq('booking_id', dbBooking.id)
-              .gte('position', charges.length)
-          );
-        }
-
-        // Upsert in chunks
-        for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
-          const chunk = allCharges.slice(i, i + CHUNK_SIZE);
-          const { error } = await supabase.from('booking_charges').upsert(chunk, {
-            onConflict: 'booking_id,position',
-            ignoreDuplicates: false
-          });
-          if (error) {
-            console.error(`Failed to upsert charges chunk ${i}:`, error);
-          }
-        }
-        await Promise.all(staleDeletes);
       }
     }
 
@@ -504,7 +503,7 @@ initialSyncChunked.post('/guests', async (c) => {
 
   try {
     const guests = await ownerRez.fetchAllGuests();
-    const CHUNK_SIZE = 100;
+    const CHUNK_SIZE = 500;
 
     // Collect all guest data and tags in memory first
     const allGuestData: any[] = [];
@@ -607,60 +606,7 @@ initialSyncChunked.post('/guests', async (c) => {
       }
     }
 
-    // Enrich bookings with guest contact info using batch lookups
-    // Fetch all guests with contact info in one query
-    const { data: allDbGuests } = await supabase
-      .from('guests')
-      .select('ownerrez_guest_id, full_name, email, phone')
-      .eq('tenant_id', tenantId)
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (allDbGuests && allDbGuests.length > 0) {
-      // Build lookup maps
-      const guestByOrId = new Map<string, { email: string | null; phone: string | null }>();
-      const guestByName = new Map<string, { email: string | null; phone: string | null }>();
-      for (const g of allDbGuests) {
-        if (g.ownerrez_guest_id) guestByOrId.set(g.ownerrez_guest_id, g);
-        if (g.full_name) guestByName.set(g.full_name.toLowerCase(), g);
-      }
-
-      // Fetch bookings missing contact info
-      const { data: bookingsToEnrich } = await supabase
-        .from('bookings')
-        .select('id, ownerrez_guest_id, guest_name, guest_email, guest_phone')
-        .eq('tenant_id', tenantId)
-        .or('guest_email.is.null,guest_phone.is.null')
-        .limit(SUPABASE_MAX_ROWS);
-
-      if (bookingsToEnrich && bookingsToEnrich.length > 0) {
-        const updates: { id: string; guest_email?: string; guest_phone?: string }[] = [];
-
-        for (const booking of bookingsToEnrich) {
-          // Try ownerrez_guest_id first, then name match
-          const match = (booking.ownerrez_guest_id && guestByOrId.get(booking.ownerrez_guest_id)) ||
-                       (booking.guest_name && guestByName.get(booking.guest_name.toLowerCase()));
-
-          if (match) {
-            const update: any = { id: booking.id };
-            if (!booking.guest_email && match.email) update.guest_email = match.email;
-            if (!booking.guest_phone && match.phone) update.guest_phone = match.phone;
-            if (update.guest_email || update.guest_phone) {
-              updates.push(update);
-            }
-          }
-        }
-
-        // Update bookings in parallel batches of 10 to stay within limits
-        const PARALLEL_SIZE = 10;
-        for (let i = 0; i < updates.length; i += PARALLEL_SIZE) {
-          const batch = updates.slice(i, i + PARALLEL_SIZE);
-          await Promise.all(batch.map(u => {
-            const { id, ...fields } = u;
-            return supabase.from('bookings').update(fields).eq('id', id);
-          }));
-        }
-      }
-    }
+    // booking contact enrichment handled by the /guest-contacts step
 
     return c.json({
       success: true,

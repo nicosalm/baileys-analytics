@@ -51,7 +51,7 @@ export const AuthCallback = () => {
     } else if (type === 'email_change') {
       setStatus('success')
       setMessage('Email changed successfully!')
-      setTimeout(() => navigate('/dashboard/settings', { replace: true }), 1500)
+      setTimeout(() => navigate('/settings', { replace: true }), 1500)
     } else {
       setStatus('success')
       setMessage('Signed in successfully!')
@@ -198,7 +198,7 @@ export const AuthCallback = () => {
           hasCompleted.current = true
           setStatus('error')
           setMessage(result.error || 'Failed to connect to OwnerRez')
-          setTimeout(() => navigate('/dashboard/settings', { replace: true }), 3000)
+          setTimeout(() => navigate('/settings', { replace: true }), 3000)
         }
       } catch {
         // OwnerRez-specific failure — do NOT clear auth storage.
@@ -206,7 +206,7 @@ export const AuthCallback = () => {
         hasCompleted.current = true
         setStatus('error')
         setMessage('Failed to complete OwnerRez connection')
-        setTimeout(() => navigate('/dashboard/settings', { replace: true }), 3000)
+        setTimeout(() => navigate('/settings', { replace: true }), 3000)
       }
     }
   }, [handleSuccess, handleError, navigate, setOwnerRezConnected])
@@ -220,7 +220,7 @@ export const AuthCallback = () => {
           hasCompleted.current = true
           setStatus('error')
           setMessage('OwnerRez connection timed out. Please try again from settings.')
-          setTimeout(() => navigate('/dashboard/settings', { replace: true }), 3000)
+          setTimeout(() => navigate('/settings', { replace: true }), 3000)
         } else {
           handleError('Authentication timed out. Please try again.')
         }

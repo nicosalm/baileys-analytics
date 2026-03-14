@@ -100,23 +100,6 @@ class ApiClient {
         return this.oauth.disconnect()
     }
 
-    async manualSync(): Promise<ApiResult<{ message: string }>> {
-        return this.request('/sync/recovery', {
-            method: 'POST',
-            headers: {
-                'X-Force-Sync': 'true'
-            }
-        })
-    }
-
-    async syncGuestDetails(): Promise<ApiResult<{ message: string }>> {
-        return this.request('/sync/guest-details', { method: 'POST' })
-    }
-
-    async historicalSync(): Promise<ApiResult<{ message: string }>> {
-        return this.request('/initial-sync/full', { method: 'POST' })
-    }
-
     async getSyncStatus(): Promise<ApiResult<SyncStatusResponse>> {
         return this.request('/sync-status')
     }

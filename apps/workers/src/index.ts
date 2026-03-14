@@ -7,7 +7,6 @@ import { rateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
 
 import { createSupabaseClient } from './services/supabase';
-import { getValidOwnerRezToken } from './services/ownerrez-token';
 import { getOverviewData } from './services/overview';
 import { getFinancialBatchData } from './services/financial';
 import { getPropertiesData } from './services/properties';
@@ -30,7 +29,6 @@ import { operatingExpenses as operatingExpensesRoute } from './routes/operating-
 import { expenseTemplates as expenseTemplatesRoute } from './routes/expense-templates';
 import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
-import { sync } from './routes/sync';
 import { oauth } from './routes/oauth';
 import { webhooks } from './routes/webhooks';
 import { initialSyncChunked } from './routes/initial-sync-chunked';
@@ -158,367 +156,6 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 		lastPropertySync,
 		lastBookingSync,
 		syncHistory: syncStatuses.data || []
-	});
-});
-
-app.post('/api/manual-sync', authMiddleware, async (c) => {
-	const tenantId = c.get('tenantId');
-	const url = new URL(c.req.url);
-	const type = url.searchParams.get('type') || 'recent';
-	const from = url.searchParams.get('from') || undefined;
-	const to = url.searchParams.get('to') || undefined;
-
-	if (!tenantId) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-
-	const supabase = createSupabaseClient(c.env);
-
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('*')
-		.eq('id', tenantId)
-		.single();
-
-	if (!tenant) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-
-	const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
-	if (tokenResult.error) {
-		return c.json({
-			error: tokenResult.error.message,
-			requiresAuth: true
-		}, tokenResult.error.status);
-	}
-
-	const user = c.get('user');
-	const { OwnerRezService } = await import('./services/ownerrez');
-	const ownerRez = new OwnerRezService(tokenResult.accessToken);
-
-	let { data: properties } = await supabase
-		.from('properties')
-		.select('id, ownerrez_id')
-		.eq('tenant_id', tenantId);
-
-	if (!properties || properties.length === 0) {
-		try {
-			const ownerRezProperties = await ownerRez.fetchProperties();
-
-			for (const property of ownerRezProperties) {
-				await supabase
-					.from('properties')
-					.upsert({
-						tenant_id: tenantId,
-						ownerrez_id: property.id,
-						name: property.name,
-						address: property.address?.street1 || property.address,
-						city: property.address?.city,
-						state: property.address?.state,
-						postal_code: property.address?.postal_code,
-						bedrooms: property.bedrooms || 0,
-						bathrooms: property.bathrooms || 0,
-						max_guests: property.max_guests || 0,
-						active: property.active !== false,
-						latitude: property.latitude,
-						longitude: property.longitude,
-						updated_at: new Date().toISOString()
-					}, {
-						onConflict: 'tenant_id,ownerrez_id',
-						ignoreDuplicates: false
-					});
-			}
-
-			const { data: updatedProperties } = await supabase
-				.from('properties')
-				.select('id, ownerrez_id')
-				.eq('tenant_id', tenantId);
-
-			properties = updatedProperties;
-
-			if (!properties || properties.length === 0) {
-				return c.json({
-					success: true,
-					message: 'No properties found in your OwnerRez account. Please add properties in OwnerRez first.',
-					propertiesSynced: 0,
-					bookingsSynced: 0
-				}, 200);
-			}
-		} catch (error: any) {
-			if (error.message?.includes('Forbidden') || error.message?.includes('Unauthorized')) {
-				return c.json({
-					error: 'OwnerRez rejected the request. Please reconnect to OwnerRez in Settings.',
-					requiresAuth: true
-				}, 400);
-			}
-			return c.json({ error: 'Failed to sync properties from OwnerRez' }, 500);
-		}
-	}
-
-	let startDate: string;
-	let endDate: string;
-
-	if (type === 'historical') {
-		startDate = from || new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-		endDate = to || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-	} else {
-		startDate = from || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-		endDate = to || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-	}
-
-	let totalBookings = 0;
-	let errorCount = 0;
-
-	// process properties in parallel batches for better performance
-	const BATCH_SIZE = 3; // process 3 properties at a time
-	const allBlocks = [];
-	const allBookings = [];
-
-	for (let i = 0; i < properties.length; i += BATCH_SIZE) {
-		const batch = properties.slice(i, i + BATCH_SIZE);
-
-		const batchResults = await Promise.allSettled(
-			batch.map(async (property) => {
-				const bookings = await ownerRez.fetchBookings(property.ownerrez_id, startDate, endDate);
-				return { property, bookings };
-			})
-		);
-
-		for (const result of batchResults) {
-			if (result.status === 'rejected') {
-				errorCount++;
-				continue;
-			}
-
-			const { property, bookings } = result.value;
-
-			for (const booking of bookings) {
-				if (booking.is_block || booking.type === 'block') {
-					allBlocks.push({
-						ownerrez_block_id: booking.id,
-						tenant_id: tenantId,
-						property_id: property.ownerrez_id,
-						arrival: booking.arrival,
-						departure: booking.departure,
-						type: booking.type || 'block',
-						reason: booking.reason,
-						updated_at: new Date().toISOString()
-					});
-				} else {
-					const guestName = booking.guest
-						? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
-						: booking.guest_name || 'Unknown';
-
-					// extract email/phone from nested arrays (if available) or flat properties
-					const guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
-						booking.guest?.email_addresses?.[0]?.address ||
-						booking.guest?.email ||
-						booking.guest_email;
-
-					const guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
-						booking.guest?.phones?.[0]?.number ||
-						booking.guest?.phone ||
-						booking.guest_phone;
-
-					allBookings.push({
-						tenant_id: tenantId,
-						property_id: property.id,
-						ownerrez_booking_id: booking.id,
-						ownerrez_guest_id: booking.guest?.id?.toString(),
-						guest_name: guestName,
-						guest_email: guestEmail,
-						guest_phone: guestPhone,
-						arrival: booking.arrival,
-						departure: booking.departure,
-						total_amount: booking.total_amount || 0,
-						status: booking.status,
-						platform: booking.source || booking.listing_site || 'Unassigned',
-						platform_reservation_number: booking.custom_source_id || booking.external_id,
-						adults: booking.adults || 0,
-						children: booking.children || 0,
-						infants: booking.infants || 0,
-						pets: booking.pets || 0,
-						booked_utc: booking.booked_utc || booking.created_utc,
-						canceled_utc: booking.canceled_utc || null,
-						updated_at: new Date().toISOString()
-					});
-				}
-			}
-
-			totalBookings += bookings.length;
-		}
-	}
-
-	// batch insert all blocks and bookings
-	const dbOperations = [];
-
-	if (allBlocks.length > 0) {
-		// insert blocks in chunks of 100
-		for (let i = 0; i < allBlocks.length; i += 100) {
-			const chunk = allBlocks.slice(i, i + 100);
-			dbOperations.push(
-				supabase
-					.from('blocks')
-					.upsert(chunk, {
-						onConflict: 'ownerrez_block_id,tenant_id',
-						ignoreDuplicates: false
-					})
-			);
-		}
-	}
-
-	if (allBookings.length > 0) {
-		// insert bookings in chunks of 100
-		for (let i = 0; i < allBookings.length; i += 100) {
-			const chunk = allBookings.slice(i, i + 100);
-			dbOperations.push(
-				supabase
-					.from('bookings')
-					.upsert(chunk, {
-						onConflict: 'tenant_id,ownerrez_booking_id',
-						ignoreDuplicates: false
-					})
-			);
-		}
-	}
-
-	await Promise.all(dbOperations);
-
-	await supabase
-		.from('sync_status')
-		.upsert({
-			tenant_id: tenantId,
-			sync_type: type === 'historical' ? 'historical' : 'recent',
-			last_sync: new Date().toISOString(),
-			status: errorCount > 0 ? 'partial' : 'success',
-			records_synced: totalBookings,
-			error_message: errorCount > 0 ? `Failed to sync ${errorCount} properties` : null
-		})
-		.eq('tenant_id', tenantId)
-		.eq('sync_type', type === 'historical' ? 'historical' : 'recent');
-
-	// invalidate cache after successful sync
-	if (c.env.CACHE) {
-		const { invalidateBookingViews } = await import('./utils/cache');
-		await invalidateBookingViews(c.env.CACHE, user.id);
-	}
-
-	return c.json({
-		success: true,
-		bookingsSynced: totalBookings,
-		propertiesProcessed: properties.length - errorCount,
-		errors: errorCount
-	});
-});
-
-app.post('/api/sync-guest-details', authMiddleware, async (c) => {
-	const tenantId = c.get('tenantId');
-
-	if (!tenantId) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-
-	const supabase = createSupabaseClient(c.env);
-
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('*')
-		.eq('id', tenantId)
-		.single();
-
-	if (!tenant) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-
-	const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
-	if (tokenResult.error) {
-		return c.json({
-			error: tokenResult.error.message,
-			requiresAuth: true
-		}, tokenResult.error.status);
-	}
-
-	const user = c.get('user');
-	const { OwnerRezService } = await import('./services/ownerrez');
-	const ownerRez = new OwnerRezService(tokenResult.accessToken);
-
-	const { data: guestsNeedingInfo } = await supabase
-		.from('bookings')
-		.select('guest_name')
-		.eq('tenant_id', tenantId)
-		.not('guest_name', 'is', null)
-		.or('guest_phone.is.null,guest_email.is.null')
-		.limit(100);
-
-	if (!guestsNeedingInfo?.length) {
-		return c.json({
-			status: 'success',
-			message: 'No guests need updating',
-			guestsUpdated: 0
-		});
-	}
-
-	const uniqueGuests = Array.from(new Set(guestsNeedingInfo.map(g => g.guest_name)));
-	let totalUpdated = 0;
-
-	const batchSize = 10;
-	for (let i = 0; i < uniqueGuests.length; i += batchSize) {
-		const batch = uniqueGuests.slice(i, i + batchSize);
-
-		const results = await Promise.all(
-			batch.map(async (guestName) => {
-				try {
-					const guests = await ownerRez.searchGuests(guestName);
-
-					if (guests.length > 0) {
-						const exactMatch = guests.find(g =>
-							`${g.first_name} ${g.last_name}`.toLowerCase() === guestName.toLowerCase()
-						);
-
-						const guest = exactMatch || guests[0];
-
-						const email = guest.email_addresses?.find((e: any) => e.is_default)?.address ||
-									 guest.email_addresses?.[0]?.address;
-
-						const phone = guest.phones?.find((p: any) => p.is_default)?.number ||
-									 guest.phones?.[0]?.number;
-
-						if (email || phone) {
-							const { error } = await supabase
-								.from('bookings')
-								.update({
-									guest_email: email || undefined,
-									guest_phone: phone || undefined,
-									updated_at: new Date().toISOString()
-								})
-								.eq('tenant_id', tenantId)
-								.eq('guest_name', guestName)
-								.or('guest_phone.is.null,guest_email.is.null');
-
-							if (!error) {
-								return { updated: true, name: guestName };
-							}
-						}
-					}
-					return { updated: false, name: guestName };
-				} catch (error) {
-					return { updated: false, name: guestName };
-				}
-			})
-		);
-
-		totalUpdated += results.filter(r => r.updated).length;
-
-		if (i + batchSize < uniqueGuests.length) {
-			await new Promise(resolve => setTimeout(resolve, 1000));
-		}
-	}
-
-	return c.json({
-		status: 'success',
-		guestsUpdated: totalUpdated,
-		guestsProcessed: uniqueGuests.length,
-		message: `Updated contact info for ${totalUpdated} out of ${uniqueGuests.length} guests`
 	});
 });
 
@@ -700,8 +337,6 @@ const dashboardPaths = [
 	'/api/platform-fees',
 	'/api/tax',
 	'/api/dashboard-batch',
-	'/api/manual-sync',
-	'/api/sync-guest-details',
 	'/api/seasons',
 	'/api/goals',
 	'/api/tags',
@@ -716,9 +351,6 @@ dashboardPaths.forEach(path => {
 
 // block write operations for demo users
 const demoBlockedPaths = [
-	'/api/manual-sync',
-	'/api/sync-guest-details',
-	'/api/sync',
 	'/api/initial-sync-chunked',
 	'/api/oauth',
 	'/api/account',
@@ -766,9 +398,6 @@ app.route('/api/expense-templates', expenseTemplatesRoute);
 // rate limit billing checkout to prevent abuse
 app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));
 
-// rate limit expensive sync operations
-app.use('/api/manual-sync', rateLimit({ max: 5, windowMs: 300000 }));
-app.use('/api/sync-guest-details', rateLimit({ max: 5, windowMs: 300000 }));
 // initial sync is a multi-step flow (reset + status + properties + N bookings + guests + contacts + complete)
 // limit must accommodate the full sequence
 app.use('/api/initial-sync-chunked/*', rateLimit({ max: 50, windowMs: 300000 }));
@@ -782,7 +411,6 @@ app.route('/api/admin', admin);
 app.route('/api/announcements', announcements);
 app.route('/api/scheduler', scheduler);
 app.route('/api/validation', validation);
-app.route('/api/sync', sync);
 app.route('/api/oauth', oauth);
 app.route('/api/webhooks', webhooks);
 app.route('/api/initial-sync-chunked', initialSyncChunked);

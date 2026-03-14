@@ -300,7 +300,7 @@ export function useTags() {
 
 export function useWebhookHealth() {
   return useSWR<WebhookHealthResponse>('webhook-health', async () => {
-    const result = await api.request<WebhookHealthResponse>('/sync/health')
+    const result = await api.request<WebhookHealthResponse>('/webhooks/health')
     if (!result.success) throw new Error(result.error)
     return result.data
   }, { refreshInterval: 60000 })
@@ -314,32 +314,6 @@ export function useSyncStatus() {
   }, {
     refreshInterval: 10000,
   })
-}
-
-export async function manualSync() {
-  const result = await api.manualSync()
-  if (result.success) {
-    await globalMutate('/sync-status')
-    await globalMutate(() => true, undefined, true)
-  }
-  return result
-}
-
-export async function syncGuestDetails() {
-  const result = await api.syncGuestDetails()
-  if (result.success) {
-    await globalMutate(() => true, undefined, true)
-  }
-  return result
-}
-
-export async function historicalSync() {
-  const result = await api.historicalSync()
-  if (result.success) {
-    await globalMutate('/sync-status')
-    await globalMutate(() => true, undefined, true)
-  }
-  return result
 }
 
 export function useBookingDetail(bookingId?: string) {

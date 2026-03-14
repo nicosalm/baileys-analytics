@@ -272,7 +272,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
             </Button>
             <Button
               variant="outline"
-              onClick={() => navigate('/dashboard/settings')}
+              onClick={() => navigate('/settings')}
               className="flex-1"
             >
               Go to Settings

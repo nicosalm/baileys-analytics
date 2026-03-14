@@ -1,3 +1,26 @@
+// ownerrez webhook handler
+//
+// receives push notifications from ownerrez when entities change (bookings,
+// guests, properties, etc). this is the primary real-time sync mechanism —
+// initial-sync-chunked handles the one-time historical import, and webhooks
+// keep everything in sync after that.
+//
+// processing model:
+// - validates auth + stores payload in webhook_events immediately
+// - returns 200 to ownerrez within milliseconds (they require <2s)
+// - processes the entity change in the background via waitUntil()
+// - errors during background processing are logged to webhook_events.processing_error
+//
+// per ownerrez best practices (https://api.ownerrez.com/help):
+// - the webhook payload includes the FULL entity (booking with charges, guest
+//   with contact info, etc), so we process it directly without calling the API.
+//   the only exception is fetchGuestDetail as a fallback when the booking
+//   webhook's nested guest object is missing email/phone arrays.
+// - rate limit: 300 req/5 min per IP, shared across all tenants (single worker).
+//   every avoided API call matters.
+//
+// auth: ownerrez sends Basic auth (webhook user/password), NOT user bearer tokens.
+
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createSupabaseClient } from '../services/supabase';
@@ -15,38 +38,43 @@ async function replaceEntityTags(
 	entityId: string,
 	tags: any[]
 ) {
+	const tagNames = tags.map((t: any) => typeof t === 'string' ? t : (t.name || t));
+	if (tagNames.length === 0) return;
+
 	await supabase.from(junctionTable).delete().eq(entityColumn, entityId);
 
-	// resolve all tag IDs first
-	const tagIds: string[] = [];
-	for (const tag of tags) {
-		const tagName = typeof tag === 'string' ? tag : (tag.name || tag);
+	// batch lookup all existing tags in one query
+	const { data: existingTags } = await supabase
+		.from('tags')
+		.select('id, name')
+		.eq('tenant_id', tenantId)
+		.in('name', tagNames);
 
-		const { data: existingTags } = await supabase
+	const tagIdMap = new Map((existingTags || []).map((t: any) => [t.name, t.id]));
+
+	// batch insert any missing tags
+	const missingTags = tagNames.filter((n: string) => !tagIdMap.has(n));
+	if (missingTags.length > 0) {
+		const tagInserts = missingTags.map((name: string) => {
+			const original = tags.find((t: any) => (typeof t === 'string' ? t : (t.name || t)) === name);
+			return {
+				tenant_id: tenantId,
+				name,
+				color: typeof original === 'object' ? (original.color || null) : null
+			};
+		});
+		const { data: newTags } = await supabase
 			.from('tags')
-			.select('id')
-			.eq('tenant_id', tenantId)
-			.eq('name', tagName);
+			.upsert(tagInserts, { onConflict: 'tenant_id,name' })
+			.select('id, name');
 
-		let tagId = existingTags && existingTags.length > 0 ? existingTags[0].id : null;
-
-		if (!tagId) {
-			const { data: newTag } = await supabase
-				.from('tags')
-				.insert({
-					tenant_id: tenantId,
-					name: tagName,
-					color: typeof tag === 'object' ? (tag.color || null) : null
-				})
-				.select()
-				.single();
-			tagId = newTag?.id;
+		if (newTags) {
+			for (const t of newTags) tagIdMap.set(t.name, t.id);
 		}
-
-		if (tagId) tagIds.push(tagId);
 	}
 
-	// single batch insert instead of one-by-one
+	// batch insert junction rows
+	const tagIds = tagNames.map((n: string) => tagIdMap.get(n)).filter((id): id is string => !!id);
 	if (tagIds.length > 0) {
 		await supabase.from(junctionTable).insert(
 			tagIds.map(tagId => ({ [entityColumn]: entityId, tag_id: tagId }))
@@ -171,34 +199,49 @@ webhooks.post('/ownerrez', async (c) => {
 			created_at: new Date().toISOString()
 		});
 
-	switch (payload.action) {
-		case 'webhook_test':
-			return c.json({ status: 'success', message: 'Webhook test received' });
-
-		case 'entity_create':
-		case 'entity_update':
-			await handleEntityChange(supabase, tenant.id, payload, c.env);
-			// invalidate cache for dashboard updates
-			if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
-				const { invalidateTenantCache } = await import('../utils/cache');
-				await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
-			}
-			break;
-
-		case 'entity_delete':
-			await handleEntityDelete(supabase, tenant.id, payload);
-			// invalidate cache for dashboard updates
-			if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
-				const { invalidateTenantCache } = await import('../utils/cache');
-				await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
-			}
-			break;
-
-		case 'application_authorization_revoked':
-			await handleAuthRevoked(supabase, tenant.id);
-			break;
+	if (payload.action === 'webhook_test') {
+		return c.json({ status: 'success', message: 'Webhook test received' });
 	}
 
+	// return 200 immediately, process in background (ownerrez requires <2s response)
+	const backgroundTask = (async () => {
+		try {
+			switch (payload.action) {
+				case 'entity_create':
+				case 'entity_update':
+					await handleEntityChange(supabase, tenant.id, payload, c.env);
+					if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
+						const { invalidateTenantCache } = await import('../utils/cache');
+						await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
+					}
+					break;
+
+				case 'entity_delete':
+					await handleEntityDelete(supabase, tenant.id, payload);
+					if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
+						const { invalidateTenantCache } = await import('../utils/cache');
+						await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
+					}
+					break;
+
+				case 'application_authorization_revoked':
+					await handleAuthRevoked(supabase, tenant.id);
+					break;
+			}
+		} catch (err) {
+			console.error('[Webhook] background processing failed:', err);
+			await supabase
+				.from('webhook_events')
+				.update({
+					processing_error: err instanceof Error ? err.message : 'Unknown error',
+					processed_at: new Date().toISOString()
+				})
+				.eq('tenant_id', tenant.id)
+				.eq('event_id', String(payload.id));
+		}
+	})();
+
+	c.executionCtx.waitUntil(backgroundTask);
 	return c.json({ status: 'success' });
 });
 
@@ -476,53 +519,28 @@ async function handleBookingUpdate(
 			await replaceEntityTags(supabase, tenantId, 'booking_tags', 'booking_id', upsertedBooking.id, booking.tags);
 		}
 
-		// Always fetch and process charges for every booking
-		if (env) {
-			try {
-				const tokenResult = await getValidOwnerRezToken(env, tenantId);
+		// process charges directly from webhook payload (no extra API call needed)
+		if (booking.charges && Array.isArray(booking.charges) && upsertedBooking) {
+			const charges = booking.charges.map((charge: any, index: number) => ({
+				booking_id: upsertedBooking.id,
+				type: charge.type,
+				amount: charge.amount,
+				description: charge.description,
+				is_taxable: charge.is_taxable ?? false,
+				position: index
+			}));
 
-				if (!tokenResult.error) {
-					const ownerRez = new OwnerRezService(tokenResult.accessToken);
-
-					// Fetch full booking details including charges
-					const fullBooking = await ownerRez.fetchBookingDetail(String(booking.id));
-
-					if (fullBooking?.charges) {
-						const { data: existingBooking } = await supabase
-							.from('bookings')
-							.select('id')
-							.eq('ownerrez_booking_id', booking.id)
-							.eq('tenant_id', tenantId)
-							.single();
-
-						if (existingBooking) {
-							const charges = fullBooking.charges.map((charge: any, index: number) => ({
-								booking_id: existingBooking.id,
-								type: charge.type,
-								amount: charge.amount,
-								description: charge.description,
-								is_taxable: charge.is_taxable ?? false,
-								position: index
-							}));
-
-							if (charges.length > 0) {
-								await supabase.from('booking_charges').upsert(charges, {
-									onConflict: 'booking_id,position',
-									ignoreDuplicates: false
-								});
-							}
-							// remove any charges beyond the current count
-							await supabase.from('booking_charges')
-								.delete()
-								.eq('booking_id', existingBooking.id)
-								.gte('position', fullBooking.charges.length);
-						}
-					}
-				}
-			} catch (error) {
-				console.error('Failed to fetch charges for booking:', error);
-				// Don't fail the entire webhook if charges fetch fails
+			if (charges.length > 0) {
+				await supabase.from('booking_charges').upsert(charges, {
+					onConflict: 'booking_id,position',
+					ignoreDuplicates: false
+				});
 			}
+			// remove any stale charges beyond the current count
+			await supabase.from('booking_charges')
+				.delete()
+				.eq('booking_id', upsertedBooking.id)
+				.gte('position', booking.charges.length);
 		}
 	}
 
@@ -692,5 +710,52 @@ async function handleAuthRevoked(supabase: any, tenantId: string) {
 		})
 		.eq('id', tenantId);
 }
+
+// webhook health — called by useWebhookHealth hook (IntegrationsTab)
+webhooks.get('/health', authMiddleware, async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const user = c.get('user');
+
+	const { data: tenant } = await supabase
+		.from('tenants')
+		.select('id')
+		.eq('user_id', user.id)
+		.single();
+
+	if (!tenant) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	const oneDayAgo = new Date();
+	oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+	const { data: recentWebhooks, count } = await supabase
+		.from('webhook_events')
+		.select('*', { count: 'exact' })
+		.eq('tenant_id', tenant.id)
+		.gte('created_at', oneDayAgo.toISOString())
+		.order('created_at', { ascending: false })
+		.limit(10);
+
+	const { data: lastWebhook } = await supabase
+		.from('webhook_events')
+		.select('*')
+		.eq('tenant_id', tenant.id)
+		.order('created_at', { ascending: false })
+		.limit(1)
+		.single();
+
+	const hoursSinceLastWebhook = lastWebhook
+		? (Date.now() - new Date(lastWebhook.created_at).getTime()) / (1000 * 60 * 60)
+		: 999;
+
+	return c.json({
+		healthy: hoursSinceLastWebhook < 24,
+		lastWebhookHoursAgo: hoursSinceLastWebhook,
+		webhooksLast24Hours: count || 0,
+		lastWebhookEvent: lastWebhook,
+		recentEvents: recentWebhooks || []
+	});
+});
 
 export { webhooks };
