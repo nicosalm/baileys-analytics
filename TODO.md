@@ -98,13 +98,8 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ---
 
-### 7. SmartPeriodSelector: add "All Time" option
-> "In quick periods in overview can we get an all tab — every date we have"
-
-**Fix** (`SmartPeriodSelector.tsx`, around line 202 where common options are pushed):
-- Add an "All Time" period option that sets `from` to the tenant's earliest booking and `to` to today
-- Best approach: add a lightweight endpoint or use existing data (e.g., the seasons config or a cached `min(arrival)`) to determine the start date
-- Alternatively, hardcode a reasonable start (2022-01-01 based on the earliest bookings in the DB) — simple and sufficient for now
+### ~~7. SmartPeriodSelector: add "All Time" option~~ → Done
+> Added "All Time" to Quick Periods. Backend endpoint `GET /bookings/earliest-date` queries `min(arrival)` dynamically. Option only appears once earliest date is loaded.
 
 ---
 
@@ -139,19 +134,8 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ## P2 — Polish & Minor Fixes
 
-### 12. Occupancy calendar: darken colors
-> "Colors on occupancy calendar are nice — can you just darken them a few shades?"
-
-**Fix** (`apps/web/src/index.css`):
-
-Light theme (lines 357-366) — decrease lightness (L) in oklch by ~0.05-0.08:
-- `occ-low`: `oklch(0.97 0.026 17.6)` → `oklch(0.91 0.04 17.6)` (was barely visible pink → now visible rose)
-- `occ-fair`: `oklch(0.987 0.026 102.2)` → `oklch(0.92 0.05 102.2)` (was barely yellow → now visible gold)
-- `occ-good`: `oklch(0.982 0.04 163.0)` → `oklch(0.91 0.07 163.0)`
-- `occ-great`: `oklch(0.96 0.06 163.0)` → `oklch(0.87 0.10 163.0)`
-- `occ-excellent`: `oklch(0.936 0.1 163.0)` → `oklch(0.83 0.14 163.0)`
-
-Adjust borders proportionally. Dark theme (lines 444-453) may not need changes — already darker.
+### ~~12. Occupancy calendar: darken colors~~ → Done
+> Darkened light theme occupancy heatmap colors by ~0.06-0.10 lightness. Borders darkened proportionally. Dark theme unchanged.
 
 ---
 
@@ -176,15 +160,8 @@ Adjust borders proportionally. Dark theme (lines 444-453) may not need changes �
 
 ---
 
-### 15. Tax "needs setup" — what to do?
-> "In tax it says needs set up — what do we need to do?"
-
-**Context**: `TaxCenter.tsx` shows a "Needs Setup" badge for properties without a row in `property_tax_configs`. The auto-detect endpoint (`GET /tax/auto-detect`) can scan existing charges to suggest rates, and `TaxQuickConfigWidget` provides a form — but there's no obvious path from the badge to the config.
-
-**Fix**:
-- Make the "Needs Setup" badge clickable — open `TaxQuickConfigWidget` for that property, pre-populated with auto-detected rates
-- Add a brief tooltip: "Click to configure tax jurisdictions. We'll auto-detect rates from your existing bookings."
-- The auto-detect endpoint already exists at `/tax/auto-detect` and works by scanning the last 6 months of `booking_charges type=tax` grouped by description
+### ~~15. Tax "needs setup" — what to do?~~ → Done
+> "Needs Setup" badge is now a clickable button that navigates to `/settings?tab=expenses`. Tooltip: "Click to configure tax jurisdictions".
 
 ---
 
@@ -250,13 +227,11 @@ Stored at sync time by `estimateGuestListingSiteFee()` in `constants.ts:62`. Use
 ## Implementation Notes for Future Sessions
 
 ### Suggested order (remaining items)
-1. **#12**: Occupancy colors — pure CSS, independent, do anytime.
-2. **#6**: Cancelled guests + inquiries — larger feature, can be done independently.
-3. **#7**: "All Time" period — small, independent.
-4. **#9**: Direct/OTA toggle — Phase 4 provides the charge data, needs platform split in composition.
-5. **#11**: CSV export — independent, follow `/tax/export` pattern.
-6. **#14**: Guest tags — mostly a data/UX issue, lower priority.
-7. **#15, #16**: Tax UX — small, independent.
+1. **#6**: Cancelled guests + inquiries — larger feature, can be done independently.
+2. **#9**: Direct/OTA toggle — Phase 4 provides the charge data, needs platform split in composition.
+3. **#11**: CSV export — independent, follow `/tax/export` pattern.
+4. **#14**: Guest tags — mostly a data/UX issue, lower priority.
+5. **#16**: Tax click-through UX — small, independent.
 
 ### Key gotchas
 - **Shared data path**: `getFinancialBatchData()` fetches bookings ONCE and passes them via `shared`. Shared query includes `booking_charges(amount, type, description, is_taxable)`.

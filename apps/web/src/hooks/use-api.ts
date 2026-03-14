@@ -531,6 +531,14 @@ export function useSeasons() {
   }, { keepPreviousData: true })
 }
 
+export function useEarliestBookingDate() {
+  return useSWR<string | null>('/bookings/earliest-date', async () => {
+    const result = await api.getEarliestBookingDate()
+    if (!result.success) return null
+    return result.data?.earliestDate ?? null
+  }, { keepPreviousData: true })
+}
+
 export async function createSeason(data: SeasonFormData) {
   const result = await api.createSeason(data)
   if (result.success) {

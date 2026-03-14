@@ -11,7 +11,7 @@ import {
   subYears,
   getYear
 } from '@baileys/utils'
-import { useSeasons } from '@/hooks/use-api'
+import { useSeasons, useEarliestBookingDate } from '@/hooks/use-api'
 import { InlineDateRangePicker } from './InlineDateRangePicker'
 import { Modal } from './Modal'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
@@ -71,6 +71,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   onChangeRef.current = onChange
 
   const { data: seasons = [], isLoading: seasonsLoading } = useSeasons()
+  const { data: earliestDate } = useEarliestBookingDate()
   const activeSeasons = useMemo(() => seasons.filter(s => s.isActive), [seasons])
 
   // close popovers on scroll to prevent overlap with sticky header
@@ -223,11 +224,19 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           from: formatDateISO(startOfMonth(today)),
           to: formatDateISO(today)
         })
-      }
+      },
+      ...(earliestDate ? [{
+        id: 'all-time',
+        label: 'All Time',
+        getRange: () => ({
+          from: earliestDate,
+          to: formatDateISO(today)
+        })
+      }] : [])
     )
 
     return options
-  }, [uiMode, activeSeasons])
+  }, [uiMode, activeSeasons, earliestDate])
 
   const handlePeriodSelect = (option: PeriodOption) => {
     const range = option.getRange(activeSeasons)

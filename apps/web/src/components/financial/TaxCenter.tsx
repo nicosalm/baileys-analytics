@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { SimpleTable } from '@/components/tables'
@@ -54,6 +55,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   const { showTips } = useTips()
   const { filters, comparisonLabel } = useDashboard()
   const { addToast } = useToast()
+  const navigate = useNavigate()
 
   const handleDownloadTaxReport = async () => {
     try {
@@ -286,13 +288,19 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
                 key: 'status',
                 header: 'Status',
                 render: (row: TaxByPropertyRow) => (
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    row.status === 'configured'
-                      ? 'bg-success-subtle text-success-fg'
-                      : 'bg-warning-subtle text-warning-fg'
-                  }`}>
-                    {row.status === 'configured' ? 'Configured' : 'Needs Setup'}
-                  </span>
+                  row.status === 'configured' ? (
+                    <span className="px-2 py-1 text-xs rounded-full bg-success-subtle text-success-fg">
+                      Configured
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => navigate('/settings?tab=expenses')}
+                      className="px-2 py-1 text-xs rounded-full bg-warning-subtle text-warning-fg hover:opacity-80 transition-opacity cursor-pointer"
+                      title="Click to configure tax jurisdictions"
+                    >
+                      Needs Setup
+                    </button>
+                  )
                 )
               }
             ]}

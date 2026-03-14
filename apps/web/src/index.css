@@ -354,16 +354,16 @@
   --orange-fg: oklch(0.467 0.152 45.0);
 
   /* occupancy heatmap scale */
-  --occ-low: oklch(0.97 0.026 17.6);
-  --occ-low-border: oklch(0.883 0.106 17.1);
-  --occ-fair: oklch(0.987 0.026 102.2);
-  --occ-fair-border: oklch(0.932 0.113 91.5);
-  --occ-good: oklch(0.982 0.04 163.0);
-  --occ-good-border: oklch(0.936 0.1 163.0);
-  --occ-great: oklch(0.96 0.06 163.0);
-  --occ-great-border: oklch(0.889 0.145 162.0);
-  --occ-excellent: oklch(0.936 0.1 163.0);
-  --occ-excellent-border: oklch(0.84 0.175 162.0);
+  --occ-low: oklch(0.91 0.04 17.6);
+  --occ-low-border: oklch(0.83 0.12 17.1);
+  --occ-fair: oklch(0.92 0.05 102.2);
+  --occ-fair-border: oklch(0.87 0.13 91.5);
+  --occ-good: oklch(0.91 0.07 163.0);
+  --occ-good-border: oklch(0.85 0.12 163.0);
+  --occ-great: oklch(0.87 0.10 163.0);
+  --occ-great-border: oklch(0.80 0.16 162.0);
+  --occ-excellent: oklch(0.83 0.14 163.0);
+  --occ-excellent-border: oklch(0.75 0.19 162.0);
 
   /* chart infrastructure */
   --chart-reference: oklch(0.707 0.023 264.0);

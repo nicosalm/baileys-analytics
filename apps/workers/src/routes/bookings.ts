@@ -51,6 +51,26 @@ bookings.get('/', async (c) => {
 	})));
 });
 
+bookings.get('/earliest-date', async (c) => {
+	const supabase = createSupabaseClient(c.env);
+	const tenantId = c.get('tenantId');
+
+	const { data, error } = await supabase
+		.from('bookings')
+		.select('arrival')
+		.eq('tenant_id', tenantId)
+		.neq('status', 'canceled')
+		.order('arrival', { ascending: true })
+		.limit(1)
+		.single();
+
+	if (error || !data) {
+		return c.json({ earliestDate: null });
+	}
+
+	return c.json({ earliestDate: data.arrival });
+});
+
 bookings.get('/:id', async (c) => {
 	const bookingId = c.req.param('id');
 	const supabase = createSupabaseClient(c.env);

@@ -265,6 +265,10 @@ class ApiClient {
         return this.request(`/bookings?${qs.toString()}`)
     }
 
+    async getEarliestBookingDate(): Promise<ApiResult<{ earliestDate: string | null }>> {
+        return this.request('/bookings/earliest-date')
+    }
+
 }
 
 export const api = new ApiClient()
