@@ -18,7 +18,6 @@ interface GuestSpendChartProps {
     creditCardFees: number
     otherSurcharges: number
   }
-  height?: number
 }
 
 const SEGMENT_COLORS: Record<string, string> = {
@@ -60,7 +59,6 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
   grossRevenue,
   guestFees,
   chargeComposition,
-  height = 320
 }) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
@@ -104,15 +102,15 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
 
   if (chartData.length === 0) {
     return (
-      <ChartWrapper title="Guest Spend Breakdown" height={height} noData noDataMessage="No charge data available">
+      <ChartWrapper title="Guest Spend Breakdown" height={260} noData noDataMessage="No charge data available">
         <div />
       </ChartWrapper>
     )
   }
 
   return (
-    <ChartWrapper title="Guest Spend Breakdown" subtitle="Where the guest dollar goes" height={height} responsive={false}>
-      <div style={{ height: height - 60 }}>
+    <ChartWrapper title="Guest Spend Breakdown" subtitle="Where the guest dollar goes" height="auto" responsive={false}>
+      <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -158,10 +156,10 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
+      <div className="flex flex-wrap gap-x-3 gap-y-1.5 justify-center text-xs px-4 pt-2 pb-1">
         {chartData.map((entry, index) => (
           <div key={entry.name} className="flex items-center gap-1.5">
-            <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: SEGMENT_COLORS[entry.name] || getChartColor(index) }} />
+            <div className="w-3 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: SEGMENT_COLORS[entry.name] || getChartColor(index) }} />
             <span className="text-muted-foreground">{entry.name}</span>
           </div>
         ))}
