@@ -227,23 +227,22 @@ export const GuestsDashboard = () => {
         }
     }, [sortBy])
 
-    // memoized maxSpent for revenue column - must be defined before columns
-    const maxSpent = useMemo(() =>
-        data?.guests ? Math.max(...data.guests.map((g: GuestListItem) => g.periodSpent || 0)) : 0
-    , [data?.guests])
-
     const columns = useMemo(() => [
         {
             key: 'name',
             header: 'Guest',
             sortable: true,
-            width: 250,
+            width: 200,
             render: (guest: GuestListItem) => {
                 return (
                     <div>
-                        <div className="font-medium">{guest.name}</div>
-                        {guest.email && <div className="text-xs text-muted-foreground truncate">{guest.email}</div>}
-                        {guest.phone && <div className="text-xs text-muted-foreground truncate">{guest.phone}</div>}
+                        <div className="font-medium truncate">{guest.name}</div>
+                        {guest.email
+                            ? <div className="text-xs text-muted-foreground truncate">{guest.email}</div>
+                            : guest.phone
+                                ? <div className="text-xs text-muted-foreground truncate">{guest.phone}</div>
+                                : null
+                        }
                     </div>
                 )
             }
@@ -268,27 +267,13 @@ export const GuestsDashboard = () => {
             sortable: true,
             width: 150,
             render: (guest: GuestListItem) => {
-                const spentPercentage = maxSpent > 0 ? ((guest.periodSpent || 0) / maxSpent) * 100 : 0
-
                 return (
                     <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium text-success text-sm whitespace-nowrap">
-                                {formatCurrency(guest.periodSpent || 0)}
-                            </span>
-                        </div>
-                        <div className="w-full bg-border rounded-full h-1.5 mt-1">
-                            <div
-                                className={`h-1.5 rounded-full ${
-                                    spentPercentage > 66 ? 'bg-success' :
-                                    spentPercentage > 33 ? 'bg-warning' :
-                                    'bg-muted-foreground'
-                                }`}
-                                style={{ width: `${spentPercentage}%` }}
-                            />
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                            Lifetime: {formatCurrency(guest.totalSpent)}
+                        <span className="font-medium text-success text-sm whitespace-nowrap">
+                            {formatCurrency(guest.periodSpent || 0)}
+                        </span>
+                        <div className="text-xs text-muted-foreground">
+                            {formatCurrency(guest.totalSpent)} lifetime
                         </div>
                     </div>
                 )
@@ -296,24 +281,30 @@ export const GuestsDashboard = () => {
         },
         {
             key: 'avgNightlyRate',
-            header: 'Average/Night',
+            header: 'Avg/Night',
             sortable: true,
-            width: 120,
-            render: (guest: GuestListItem) => formatCurrency(guest.avgNightlyRate)
+            width: 110,
+            render: (guest: GuestListItem) => (
+                <span className="text-sm">{formatCurrency(guest.avgNightlyRate)}</span>
+            )
         },
         {
             key: 'firstVisit',
             header: 'First Visit',
             sortable: true,
-            width: 120,
-            render: (guest: GuestListItem) => formatDateDisplay(guest.firstVisit)
+            width: 110,
+            render: (guest: GuestListItem) => (
+                <span className="text-sm text-muted-foreground">{formatDateDisplay(guest.firstVisit)}</span>
+            )
         },
         {
             key: 'lastVisit',
             header: 'Last Visit',
             sortable: true,
-            width: 120,
-            render: (guest: GuestListItem) => formatDateDisplay(guest.lastVisit)
+            width: 110,
+            render: (guest: GuestListItem) => (
+                <span className="text-sm text-muted-foreground">{formatDateDisplay(guest.lastVisit)}</span>
+            )
         },
         {
             key: 'tags',
@@ -327,7 +318,7 @@ export const GuestsDashboard = () => {
                 />
             )
         }
-    ], [maxSpent])
+    ], [])
 
     const sourceChartData = useMemo(() => {
         const sources = data?.metrics?.guestsBySource || []
@@ -444,7 +435,7 @@ export const GuestsDashboard = () => {
                         <div className="flex items-start">
                             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
                             <div className="text-sm text-info-fg">
-                                <strong>Tip:</strong> Recent periods show newly received inquiries, while seasons and fixed date ranges show demand for stays in that window. Hover over truncated notes to read the full message.
+                                <strong>Tip:</strong> Shows inquiries received during the selected period. Hover over truncated notes to read the full message.
                             </div>
                         </div>
                     </div>

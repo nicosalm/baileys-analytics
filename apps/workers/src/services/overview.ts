@@ -71,7 +71,7 @@ export async function getOverviewData(
 		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties),
 		getChartsData(currentBookings, sharedProperties, from, to),
 		getAlerts(supabase, tenantId, from, to),
-		getRecentActivity(supabase, tenantId),
+		getRecentActivity(supabase, tenantId, from, to),
 		getUpcomingBookings(supabase, tenantId)
 	]);
 
@@ -507,39 +507,100 @@ async function getAlerts(
 
 async function getRecentActivity(
 	supabase: SupabaseClient,
-	tenantId: string
+	tenantId: string,
+	from: string,
+	to: string
 ) {
-	const { data: recentBookings } = await supabase
-		.from('bookings')
-		.select(`
-			*,
-			properties!inner(name)
-		`)
-		.eq('tenant_id', tenantId)
-		.order('booked_utc', { ascending: false, nullsFirst: false })
-		.limit(10);
+	const [{ data: recentBookings }, { data: recentInquiries }] = await Promise.all([
+		supabase
+			.from('bookings')
+			.select(`
+				id, guest_name, ownerrez_guest_id, ownerrez_booking_id,
+				total_amount, arrival, departure, platform, status,
+				booked_utc, canceled_utc, created_at,
+				properties!inner(name)
+			`)
+			.eq('tenant_id', tenantId)
+			.gte('booked_utc', `${from}T00:00:00Z`)
+			.lte('booked_utc', `${to}T23:59:59Z`)
+			.order('booked_utc', { ascending: false, nullsFirst: false })
+			.limit(20),
+		supabase
+			.from('inquiries')
+			.select('id, ownerrez_inquiry_id, guest_name, guest_email, property_id, arrival, departure, data, created_at')
+			.eq('tenant_id', tenantId)
+			.gte('created_at', `${from}T00:00:00Z`)
+			.lte('created_at', `${to}T23:59:59Z`)
+			.order('created_at', { ascending: false })
+			.limit(10),
+	]);
 
-	return recentBookings?.map(b => ({
+	// build property lookup for inquiries (they store ownerrez numeric id, not uuid)
+	const inquiryPropertyIds = (recentInquiries || [])
+		.map(i => i.property_id)
+		.filter(Boolean);
+	let propertyByOrId = new Map<string, string>();
+	if (inquiryPropertyIds.length > 0) {
+		const { data: props } = await supabase
+			.from('properties')
+			.select('name, ownerrez_id')
+			.eq('tenant_id', tenantId);
+		if (props) {
+			for (const p of props) {
+				if (p.ownerrez_id) propertyByOrId.set(String(p.ownerrez_id), p.name);
+			}
+		}
+	}
+
+	const bookingItems = (recentBookings || []).map(b => ({
 		id: b.id,
 		type: 'booking' as const,
 		description: b.status === 'canceled'
-			? `${b.guest_name} cancelled ${b.properties?.name}`
-			: `${b.guest_name} booked ${b.properties?.name}`,
+			? `${b.guest_name} cancelled ${(b.properties as unknown as { name: string })?.name}`
+			: `${b.guest_name} booked ${(b.properties as unknown as { name: string })?.name}`,
 		timestamp: b.status === 'canceled'
 			? (b.canceled_utc || b.booked_utc || b.created_at || b.arrival)
 			: (b.booked_utc || b.created_at || b.arrival),
 		value: b.total_amount,
 		platform: normalizePlatform(b.platform),
 		ownerrezBookingId: b.ownerrez_booking_id || null,
+		ownerrezGuestId: b.ownerrez_guest_id || null,
+		guestName: b.guest_name,
 		status: b.status || 'confirmed',
 		metadata: {
-			guestName: b.guest_name,
-			propertyName: b.properties?.name,
 			arrival: b.arrival,
 			departure: b.departure,
-			amount: b.total_amount
 		}
-	})) || [];
+	}));
+
+	const inquiryItems = (recentInquiries || []).map(i => {
+		const data = i.data as Record<string, unknown> | null;
+		const propertyName = i.property_id ? propertyByOrId.get(String(i.property_id)) : null;
+		return {
+			id: i.id,
+			type: 'inquiry' as const,
+			description: `${i.guest_name || 'Unknown'} inquired about ${propertyName || 'a property'}`,
+			timestamp: (data?.created_utc as string) ?? (data?.received_utc as string) ?? i.created_at,
+			value: null,
+			platform: data?.listing_site ? normalizePlatform(data.listing_site as string) : null,
+			ownerrezBookingId: null,
+			ownerrezGuestId: null,
+			ownerrezInquiryId: i.ownerrez_inquiry_id || null,
+			guestName: i.guest_name,
+			status: 'inquiry',
+			metadata: {
+				arrival: i.arrival,
+				departure: i.departure,
+			}
+		};
+	});
+
+	// merge and sort by timestamp descending, take top 10
+	const all = [...bookingItems, ...inquiryItems]
+		.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+		.slice(0, 10);
+
+	return all;
 }
 
 async function getUpcomingBookings(

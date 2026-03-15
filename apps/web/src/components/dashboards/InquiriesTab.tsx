@@ -1,12 +1,12 @@
-import { useMemo } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useErrorToast } from '@/hooks/use-dashboard-utils'
-import { formatDateDisplay, formatDateISO } from '@baileys/utils'
+import { formatDateDisplay } from '@baileys/utils'
 import { StateWrapper } from '@/components/StateWrapper'
 import { PaginatedTable } from '@/components/tables'
 import { useDashboard } from '@/contexts/dashboard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getPlatformColor } from '@/lib/theme'
+import { ExternalLink, MessageSquare } from 'lucide-react'
 
 interface InquiryItem {
     id: string
@@ -39,11 +39,6 @@ function getInquiryPlatform(listingSite: string | null, source: string | null): 
 
 export const InquiriesTab = () => {
     const { filters } = useDashboard()
-    const isRecencyPeriod = filters.dateRange.to === formatDateISO(new Date())
-    const defaultSort = useMemo(() => ({
-        key: isRecencyPeriod ? 'createdAt' : 'arrival',
-        order: (isRecencyPeriod ? 'desc' : 'asc') as 'asc' | 'desc',
-    }), [isRecencyPeriod])
 
     const { data, error, isLoading } = useDashboardBatch(
         'guests-inquiries',
@@ -71,27 +66,36 @@ export const InquiriesTab = () => {
         )
     }
 
-    const filterLabel = isRecencyPeriod
-        ? `Showing inquiries received ${formatDateDisplay(filters.dateRange.from)} – ${formatDateDisplay(filters.dateRange.to)}`
-        : `Showing inquiries for stays ${formatDateDisplay(filters.dateRange.from)} – ${formatDateDisplay(filters.dateRange.to)}`
-
     return (
         <TooltipProvider>
-        <p className="text-xs text-muted-foreground">{filterLabel}</p>
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold">Inquiries ({data.inquiries?.length || 0})</h3>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                    Received {formatDateDisplay(filters.dateRange.from)} – {formatDateDisplay(filters.dateRange.to)}
+                </span>
+            </div>
         <PaginatedTable
             data={data.inquiries}
-            emptyMessage="No inquiries for stays in this period"
+            emptyMessage="No inquiries received in this period"
             columns={[
                 {
                     key: 'guestName',
                     header: 'Guest',
                     sortable: true,
+                    width: 200,
                     render: (inq: InquiryItem) => (
                         <div>
-                            <div className="font-medium">{inq.guestName || 'Unknown'}</div>
-                            {inq.guests && (
-                                <div className="text-xs text-muted-foreground">{inq.guests} guest{inq.guests !== 1 ? 's' : ''}</div>
-                            )}
+                            <div className="font-medium truncate">{inq.guestName || 'Unknown'}</div>
+                            {inq.guestEmail
+                                ? <div className="text-xs text-muted-foreground truncate">{inq.guestEmail}</div>
+                                : inq.guests
+                                    ? <div className="text-xs text-muted-foreground">{inq.guests} guest{inq.guests !== 1 ? 's' : ''}</div>
+                                    : null
+                            }
                         </div>
                     )
                 },
@@ -99,6 +103,7 @@ export const InquiriesTab = () => {
                     key: 'propertyName',
                     header: 'Property',
                     sortable: true,
+                    width: 160,
                     render: (inq: InquiryItem) => (
                         <span className="text-sm">{inq.propertyName || '–'}</span>
                     )
@@ -107,6 +112,7 @@ export const InquiriesTab = () => {
                     key: 'arrival',
                     header: 'Dates',
                     sortable: true,
+                    width: 200,
                     render: (inq: InquiryItem) => (
                         <span className="text-sm text-muted-foreground">
                             {inq.arrival && inq.departure
@@ -120,6 +126,7 @@ export const InquiriesTab = () => {
                     key: 'source',
                     header: 'Platform',
                     sortable: true,
+                    width: 120,
                     render: (inq: InquiryItem) => {
                         const platform = getInquiryPlatform(inq.listingSite, inq.source)
                         return (
@@ -136,12 +143,13 @@ export const InquiriesTab = () => {
                 {
                     key: 'comments',
                     header: 'Notes',
+                    width: 200,
                     render: (inq: InquiryItem) => {
                         if (!inq.comments) return <span className="text-xs text-muted-foreground">–</span>
                         return (
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <span className="text-xs text-muted-foreground line-clamp-2 max-w-[250px] cursor-default">
+                                    <span className="text-xs text-muted-foreground line-clamp-1 max-w-[200px] cursor-default">
                                         {inq.comments}
                                     </span>
                                 </TooltipTrigger>
@@ -156,20 +164,38 @@ export const InquiriesTab = () => {
                     key: 'createdAt',
                     header: 'Received',
                     sortable: true,
+                    width: 110,
                     render: (inq: InquiryItem) => (
                         <span className="text-sm text-muted-foreground">
                             {inq.createdAt ? formatDateDisplay(inq.createdAt.split('T')[0]) : '–'}
                         </span>
                     )
                 },
+                {
+                    key: 'ownerrezInquiryId',
+                    header: '',
+                    width: 40,
+                    render: (inq: InquiryItem) => inq.ownerrezInquiryId ? (
+                        <a
+                            href={`https://app.ownerrez.com/inquiries/${inq.ownerrezInquiryId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-muted-foreground hover:text-primary transition-colors"
+                            title="Open in OwnerRez"
+                        >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                    ) : null
+                },
             ]}
             pageSize={15}
-            sortBy={defaultSort.key}
-            sortOrder={defaultSort.order}
+            sortBy="createdAt"
+            sortOrder="desc"
             showRowNumbers
             enableSearch
             searchKeys={['guestName', 'propertyName', 'listingSite', 'comments']}
         />
+        </div>
         </TooltipProvider>
     )
 }

@@ -52,17 +52,8 @@ export async function getInquiriesData(
 		.order('created_at', { ascending: false })
 		.limit(200);
 
-	// heuristic: if the range ends today, the user picked a recency period
-	// (last 30 days, MTD, YTD, etc.) — filter by when the inquiry was received.
-	// if the range ends on a fixed past/future date, it's a demand window
-	// (a season, a specific month) — filter by requested arrival date.
 	if (from && to) {
-		const today = new Date().toISOString().split('T')[0];
-		if (to === today) {
-			query = query.gte('created_at', `${from}T00:00:00Z`).lte('created_at', `${to}T23:59:59Z`);
-		} else {
-			query = query.gte('arrival', from).lte('arrival', to);
-		}
+		query = query.gte('created_at', `${from}T00:00:00Z`).lte('created_at', `${to}T23:59:59Z`);
 	}
 
 	const { data: inquiries, error } = await query;

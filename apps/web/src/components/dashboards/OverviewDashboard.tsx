@@ -27,12 +27,15 @@ import { useNavigate, Link } from 'react-router-dom'
 
 interface RecentActivity {
   id: string
-  bookingId?: string
+  type: 'booking' | 'inquiry'
   description: string
   timestamp: string
-  value?: number
-  ownerrezBookingId?: string
-  platform?: string
+  value?: number | null
+  ownerrezBookingId?: number | null
+  ownerrezGuestId?: string | null
+  ownerrezInquiryId?: number | null
+  guestName?: string | null
+  platform?: string | null
   status?: string
   metadata?: { arrival?: string; departure?: string }
 }
@@ -198,10 +201,13 @@ export const OverviewDashboard = () => {
   }, [navigate])
 
   const handleActivityClick = useCallback((activity: RecentActivity) => {
-    if (activity.bookingId) {
+    if (activity.type === 'booking' && (activity.ownerrezGuestId || activity.guestName)) {
       openModal({
-        type: 'booking',
-        bookingId: activity.bookingId
+        type: 'guest',
+        guestId: activity.ownerrezGuestId
+          ? `or_${activity.ownerrezGuestId}`
+          : `name_${activity.guestName!.toLowerCase().trim()}`,
+        guestName: activity.guestName || 'Unknown',
       })
     }
   }, [openModal])
@@ -989,19 +995,26 @@ export const OverviewDashboard = () => {
               <Sparkles className="w-5 h-5 text-muted-foreground" />
               <h3 className="text-lg font-semibold">What's New</h3>
             </div>
-            <span className="text-xs text-muted-foreground">Recent bookings</span>
+            <span className="text-xs text-muted-foreground">{formatDateDisplay(filters.dateRange.from)} – {formatDateDisplay(filters.dateRange.to)}</span>
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
+          <div className="max-h-80 overflow-y-auto overflow-x-hidden pr-2 divide-y divide-border">
             {recentActivity && recentActivity.length > 0 ? (
               recentActivity.map((activity: RecentActivity) => {
                 const isCancelled = activity.status === 'canceled'
+                const isInquiry = activity.type === 'inquiry'
+                const isClickable = activity.type === 'booking' && (activity.ownerrezGuestId || activity.guestName)
+                const ownerrezUrl = activity.ownerrezBookingId
+                  ? `https://app.ownerrez.com/bookings/${activity.ownerrezBookingId}`
+                  : activity.ownerrezInquiryId
+                    ? `https://app.ownerrez.com/inquiries/${activity.ownerrezInquiryId}`
+                    : null
                 return (
                   <div
                     key={activity.id}
-                    className={`flex items-center justify-between py-2 border-b last:border-0 ${
+                    className={`flex items-center justify-between py-3 px-2 -mx-2 rounded ${
                       isCancelled ? 'opacity-60' : ''
                     } ${
-                      activity.bookingId ? 'hover:bg-muted/50 px-2 -mx-2 rounded transition-colors cursor-pointer' : ''
+                      isClickable ? 'hover:bg-muted/50 transition-colors cursor-pointer' : ''
                     }`}
                     onClick={() => handleActivityClick(activity)}
                   >
@@ -1014,6 +1027,11 @@ export const OverviewDashboard = () => {
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded flex-shrink-0">
                             <Ban className="w-2.5 h-2.5" />
                             Cancelled
+                          </span>
+                        )}
+                        {isInquiry && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-info bg-info/10 px-1.5 py-0.5 rounded flex-shrink-0">
+                            Inquiry
                           </span>
                         )}
                       </div>
@@ -1038,16 +1056,16 @@ export const OverviewDashboard = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {activity.value != null && (
+                      {activity.value != null && activity.value > 0 && (
                         <div className={`text-sm font-medium ${
                           isCancelled ? 'text-muted-foreground' : 'text-success'
                         }`}>
                           {formatCurrency(activity.value)}
                         </div>
                       )}
-                      {activity.ownerrezBookingId && (
+                      {ownerrezUrl && (
                         <a
-                          href={`https://app.ownerrez.com/bookings/${activity.ownerrezBookingId}`}
+                          href={ownerrezUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-muted-foreground/70 hover:text-info transition-colors"
@@ -1064,8 +1082,8 @@ export const OverviewDashboard = () => {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">No recent activity</p>
-                <p className="text-xs mt-1 text-muted-foreground/70">Check back later for updates</p>
+                <p className="text-sm font-medium">No activity in this period</p>
+                <p className="text-xs mt-1 text-muted-foreground/70">No bookings or inquiries were received during this time</p>
               </div>
             )}
           </div>

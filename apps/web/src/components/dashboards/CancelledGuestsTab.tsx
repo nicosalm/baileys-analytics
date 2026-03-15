@@ -7,6 +7,7 @@ import { PaginatedTable } from '@/components/tables'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { getPlatformColor } from '@/lib/theme'
+import { Ban } from 'lucide-react'
 
 interface CancelledBooking {
     id: string
@@ -67,6 +68,13 @@ export const CancelledGuestsTab = () => {
     }
 
     return (
+        <div className="bg-card rounded-lg shadow-sm border border-border">
+            <div className="p-4 border-b border-border">
+                <div className="flex items-center gap-2">
+                    <Ban className="w-5 h-5 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold">Cancellations ({data.bookings?.length || 0})</h3>
+                </div>
+            </div>
         <PaginatedTable
             data={data.bookings}
             emptyMessage="No cancellations in this period"
@@ -75,11 +83,12 @@ export const CancelledGuestsTab = () => {
                     key: 'guestName',
                     header: 'Guest',
                     sortable: true,
+                    width: 200,
                     render: (b: CancelledBooking) => (
                         <div>
-                            <div className="font-medium">{b.guestName}</div>
+                            <div className="font-medium truncate">{b.guestName}</div>
                             {b.guestEmail && (
-                                <div className="text-xs text-muted-foreground">{b.guestEmail}</div>
+                                <div className="text-xs text-muted-foreground truncate">{b.guestEmail}</div>
                             )}
                         </div>
                     )
@@ -88,6 +97,7 @@ export const CancelledGuestsTab = () => {
                     key: 'propertyName',
                     header: 'Property',
                     sortable: true,
+                    width: 160,
                     render: (b: CancelledBooking) => (
                         <span className="text-sm">{b.propertyName}</span>
                     )
@@ -96,6 +106,7 @@ export const CancelledGuestsTab = () => {
                     key: 'arrival',
                     header: 'Dates',
                     sortable: true,
+                    width: 200,
                     render: (b: CancelledBooking) => (
                         <span className="text-sm text-muted-foreground">
                             {formatDateDisplay(b.arrival)} – {formatDateDisplay(b.departure)}
@@ -106,6 +117,7 @@ export const CancelledGuestsTab = () => {
                     key: 'platform',
                     header: 'Platform',
                     sortable: true,
+                    width: 120,
                     render: (b: CancelledBooking) => (
                         <span className="inline-flex items-center gap-1.5 text-sm">
                             <span
@@ -120,6 +132,7 @@ export const CancelledGuestsTab = () => {
                     key: 'totalAmount',
                     header: 'Amount',
                     sortable: true,
+                    width: 100,
                     render: (b: CancelledBooking) => (
                         <span className="text-sm font-medium">
                             {b.totalAmount > 0 ? formatCurrency(b.totalAmount) : '–'}
@@ -127,9 +140,21 @@ export const CancelledGuestsTab = () => {
                     )
                 },
                 {
+                    key: 'bookedUtc',
+                    header: 'Booked',
+                    sortable: true,
+                    width: 110,
+                    render: (b: CancelledBooking) => (
+                        <span className="text-sm text-muted-foreground">
+                            {b.bookedUtc ? formatDateDisplay(b.bookedUtc.split('T')[0]) : '–'}
+                        </span>
+                    )
+                },
+                {
                     key: 'canceledUtc',
                     header: 'Cancelled',
                     sortable: true,
+                    width: 110,
                     render: (b: CancelledBooking) => (
                         <span className="text-sm text-muted-foreground">
                             {b.canceledUtc ? formatDateDisplay(b.canceledUtc.split('T')[0]) : '–'}
@@ -145,5 +170,6 @@ export const CancelledGuestsTab = () => {
             enableSearch
             searchKeys={['guestName', 'guestEmail', 'propertyName']}
         />
+        </div>
     )
 }
