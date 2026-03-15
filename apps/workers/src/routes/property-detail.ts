@@ -42,7 +42,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         departure,
         total_amount,
         guest_name,
-        guest_email,
+        ownerrez_guest_id,
         status,
         platform,
         host_service_fee,
@@ -174,7 +174,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     
     const guestMap = new Map<string, number>();
     (bookings || []).forEach(booking => {
-      const guestKey = booking.guest_email || booking.guest_name;
+      const guestKey = booking.ownerrez_guest_id || booking.guest_name;
       if (guestKey) {
         guestMap.set(guestKey, (guestMap.get(guestKey) || 0) + 1);
       }
@@ -186,15 +186,14 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     const recentBookings = (bookings || [])
       .slice(0, 10)
       .map(booking => {
-        const normalizedName = (booking.guest_name || '').toLowerCase().trim();
-        const normalizedEmail = (booking.guest_email || '').toLowerCase().trim();
-        const guestId = `${normalizedName}_${normalizedEmail}`;
-        
+        const guestId = booking.ownerrez_guest_id
+          ? `or_${booking.ownerrez_guest_id}`
+          : `name_${(booking.guest_name || '').toLowerCase().trim()}`;
+
         return {
           id: booking.id,
           guestId,
           guestName: booking.guest_name,
-          guestEmail: booking.guest_email,
           arrival: booking.arrival,
           departure: booking.departure,
           totalAmount: booking.total_amount,

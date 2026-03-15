@@ -257,16 +257,7 @@ initialSyncChunked.post('/bookings', async (c) => {
           ? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
           : booking.guest_name || 'Unknown';
 
-        const guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
-                          booking.guest?.email_addresses?.[0]?.address ||
-                          booking.guest?.email ||
-                          booking.guest_email;
-
-        const guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
-                          booking.guest?.phones?.[0]?.number ||
-                          booking.guest?.phone ||
-                          booking.guest_phone;
-
+        // guest contact info lives in the guests table — not denormalized here
         const platform = booking.source || booking.listing_site || 'Unassigned';
         allBookingData.push({
           tenant_id: tenantId,
@@ -274,8 +265,6 @@ initialSyncChunked.post('/bookings', async (c) => {
           ownerrez_booking_id: booking.id,
           ownerrez_guest_id: booking.guest?.id?.toString(),
           guest_name: guestName,
-          guest_email: guestEmail,
-          guest_phone: guestPhone,
           arrival: booking.arrival,
           departure: booking.departure,
           total_amount: booking.total_amount || 0,
@@ -310,6 +299,29 @@ initialSyncChunked.post('/bookings', async (c) => {
         .upsert(chunk, { onConflict: 'ownerrez_block_id,tenant_id' });
       if (error) {
         console.error(`Failed to batch upsert blocks chunk ${i}:`, error);
+      }
+    }
+
+    // create stub guest records for any ownerrez_guest_id referenced by bookings
+    // (the FK constraint requires the guest to exist before the booking)
+    const guestStubs = new Map<string, { ownerrez_guest_id: string; tenant_id: string; full_name: string; updated_at: string }>();
+    for (const b of allBookingData) {
+      if (b.ownerrez_guest_id && !guestStubs.has(b.ownerrez_guest_id)) {
+        guestStubs.set(b.ownerrez_guest_id, {
+          ownerrez_guest_id: b.ownerrez_guest_id,
+          tenant_id: tenantId,
+          full_name: b.guest_name,
+          updated_at: new Date().toISOString()
+        });
+      }
+    }
+    if (guestStubs.size > 0) {
+      const stubs = Array.from(guestStubs.values());
+      for (let i = 0; i < stubs.length; i += CHUNK_SIZE) {
+        const chunk = stubs.slice(i, i + CHUNK_SIZE);
+        await supabase
+          .from('guests')
+          .upsert(chunk, { onConflict: 'tenant_id,ownerrez_guest_id', ignoreDuplicates: true });
       }
     }
 
@@ -430,51 +442,7 @@ initialSyncChunked.post('/bookings', async (c) => {
       }
     }
 
-    // re-enrich contact info from the guests table (last — subrequest-heavy)
-    const { data: guestsWithContact } = await supabase
-      .from('guests')
-      .select('ownerrez_guest_id, email, phone')
-      .eq('tenant_id', tenantId)
-      .not('email', 'is', null)
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (guestsWithContact && guestsWithContact.length > 0) {
-      const ownerrezIds = allBookingData
-        .filter(b => b.ownerrez_guest_id && (!b.guest_email || !b.guest_phone))
-        .map(b => b.ownerrez_guest_id);
-
-      if (ownerrezIds.length > 0) {
-        const guestContactMap = new Map(
-          guestsWithContact.map(g => [String(g.ownerrez_guest_id), g])
-        );
-
-        const { data: bookingsToReEnrich } = await supabase
-          .from('bookings')
-          .select('id, ownerrez_guest_id, guest_email, guest_phone')
-          .eq('tenant_id', tenantId)
-          .or('guest_email.is.null,guest_phone.is.null');
-
-        if (bookingsToReEnrich) {
-          const updates: PromiseLike<any>[] = [];
-          for (const booking of bookingsToReEnrich) {
-            const contact = booking.ownerrez_guest_id && guestContactMap.get(String(booking.ownerrez_guest_id));
-            if (!contact) continue;
-
-            const fields: any = {};
-            if (!booking.guest_email && contact.email) fields.guest_email = contact.email;
-            if (!booking.guest_phone && contact.phone) fields.guest_phone = contact.phone;
-            if (Object.keys(fields).length > 0) {
-              updates.push(
-                supabase.from('bookings').update(fields).eq('id', booking.id)
-              );
-            }
-          }
-          for (let i = 0; i < updates.length; i += 10) {
-            await Promise.all(updates.slice(i, i + 10));
-          }
-        }
-      }
-    }
+    // guest contact info lives in the guests table — no re-enrichment needed
 
     return c.json({
       success: true,
@@ -634,47 +602,28 @@ initialSyncChunked.post('/guest-contacts', async (c) => {
   const ownerRez = new OwnerRezService(tokenResult.accessToken);
 
   try {
-    // Find bookings with guest IDs that are missing contact info
-    const { data: bookingsMissingContact } = await supabase
-      .from('bookings')
-      .select('ownerrez_guest_id')
-      .eq('tenant_id', tenantId)
-      .not('ownerrez_guest_id', 'is', null)
-      .or('guest_email.is.null,guest_phone.is.null')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (!bookingsMissingContact || bookingsMissingContact.length === 0) {
-      return c.json({ success: true, enriched: 0, remaining: 0 });
-    }
-
-    // Deduplicate guest IDs
-    const allGuestIds = [...new Set(
-      bookingsMissingContact
-        .map(b => b.ownerrez_guest_id)
-        .filter(Boolean)
-    )] as string[];
-
-    // Exclude guest IDs we've already individually fetched (their guests record
-    // will have 'addresses' in the data JSON, which the list API never includes).
-    // This prevents re-fetching guests that truly have no contact info in OwnerRez.
-    const { data: alreadyFetched } = await supabase
+    // find guest records missing contact info that haven't been individually fetched yet
+    // (the detail API includes 'addresses' which the list API never does)
+    const { data: guestsMissingContact } = await supabase
       .from('guests')
       .select('ownerrez_guest_id')
       .eq('tenant_id', tenantId)
-      .in('ownerrez_guest_id', allGuestIds)
-      .not('data->addresses', 'is', null);
+      .or('email.is.null,phone.is.null')
+      .is('data->addresses', null)
+      .limit(SUPABASE_MAX_ROWS);
 
-    const alreadyFetchedSet = new Set(
-      (alreadyFetched || []).map(g => g.ownerrez_guest_id)
-    );
-    const uniqueGuestIds = allGuestIds.filter(id => !alreadyFetchedSet.has(id));
+    if (!guestsMissingContact || guestsMissingContact.length === 0) {
+      return c.json({ success: true, enriched: 0, remaining: 0 });
+    }
+
+    const uniqueGuestIds = [...new Set(
+      guestsMissingContact.map(g => g.ownerrez_guest_id).filter(Boolean)
+    )] as string[];
 
     if (uniqueGuestIds.length === 0) {
       return c.json({ success: true, enriched: 0, remaining: 0 });
     }
 
-    // process up to 10 guests per call to stay within rate limits
-    // with retry-on-429 in fetchGuestDetail, this is safe but slower
     const BATCH_LIMIT = 10;
     const PARALLEL_SIZE = 3;
     const guestIdsToProcess = uniqueGuestIds.slice(0, BATCH_LIMIT);
@@ -701,33 +650,16 @@ initialSyncChunked.post('/guest-contacts', async (c) => {
         })
       );
 
-      // For guests where the API call failed (404 / deleted guest), create a stub
-      // record so we don't retry them on the next call.
+      // stub records for failed/deleted guests so we don't retry
       const failedGuestIds = results
         .filter(r => !r.guestDetail)
         .map(r => r.guestId);
 
       if (failedGuestIds.length > 0) {
-        // Look up guest names from bookings for the stub records
-        const { data: stubBookings } = await supabase
-          .from('bookings')
-          .select('ownerrez_guest_id, guest_name')
-          .eq('tenant_id', tenantId)
-          .in('ownerrez_guest_id', failedGuestIds)
-          .limit(failedGuestIds.length);
-
-        const nameMap = new Map<string, string>();
-        (stubBookings || []).forEach((b: any) => {
-          if (b.ownerrez_guest_id && b.guest_name) {
-            nameMap.set(b.ownerrez_guest_id, b.guest_name);
-          }
-        });
-
         const stubs = failedGuestIds.map(guestId => ({
           ownerrez_guest_id: guestId,
           tenant_id: tenantId,
-          full_name: nameMap.get(guestId) || undefined,
-          data: { addresses: [] }, // marker so alreadyFetched filter catches it
+          data: { addresses: [] },
           updated_at: new Date().toISOString()
         }));
 
@@ -736,16 +668,13 @@ initialSyncChunked.post('/guest-contacts', async (c) => {
           .upsert(stubs, { onConflict: 'tenant_id,ownerrez_guest_id' });
       }
 
-      // Process results in parallel — upsert guests and update bookings concurrently
+      // upsert successful results into guests table only (no booking updates)
       const resultOps = results
         .filter(r => r.guestDetail)
         .map(async (result) => {
           const fullName = `${result.guestDetail.first_name || ''} ${result.guestDetail.last_name || ''}`.trim();
 
-          // Always upsert the guest record with the full detail data so we
-          // don't re-fetch this guest on the next call (the 'addresses' key
-          // in the detail response marks it as already individually fetched).
-          const guestUpsert = supabase
+          await supabase
             .from('guests')
             .upsert({
               ownerrez_guest_id: result.guestId,
@@ -759,23 +688,6 @@ initialSyncChunked.post('/guest-contacts', async (c) => {
               updated_at: new Date().toISOString()
             }, { onConflict: 'tenant_id,ownerrez_guest_id' });
 
-          // Update bookings if we found contact info
-          if (result.email || result.phone) {
-            const updateFields: any = {};
-            if (result.email) updateFields.guest_email = result.email;
-            if (result.phone) updateFields.guest_phone = result.phone;
-
-            const bookingUpdate = supabase
-              .from('bookings')
-              .update(updateFields)
-              .eq('tenant_id', tenantId)
-              .eq('ownerrez_guest_id', result.guestId)
-              .or('guest_email.is.null,guest_phone.is.null');
-
-            await Promise.all([guestUpsert, bookingUpdate]);
-          } else {
-            await guestUpsert;
-          }
           return !!(result.email || result.phone);
         });
 

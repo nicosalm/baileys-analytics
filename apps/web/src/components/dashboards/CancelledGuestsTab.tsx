@@ -13,6 +13,7 @@ interface CancelledBooking {
     guestName: string
     guestEmail?: string
     guestPhone?: string
+    ownerrezGuestId?: string
     propertyName: string
     propertyId: string
     arrival: string
@@ -43,7 +44,7 @@ export const CancelledGuestsTab = () => {
     const handleBookingClick = useCallback((booking: CancelledBooking) => {
         openModal({
             type: 'guest',
-            guestId: `${booking.guestName.toLowerCase().trim()}_${(booking.guestEmail || '').toLowerCase().trim()}`,
+            guestId: booking.ownerrezGuestId ? `or_${booking.ownerrezGuestId}` : `name_${booking.guestName.toLowerCase().trim()}`,
             guestName: booking.guestName,
         })
     }, [openModal])

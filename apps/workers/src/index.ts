@@ -140,12 +140,11 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 			.limit(10)
 	]);
 
-	// count guests with contact info
+	// count guests with records
 	const { count: guestCount } = await supabase
-		.from('bookings')
-		.select('guest_name', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId)
-		.not('guest_email', 'is', null);
+		.from('guests')
+		.select('id', { count: 'exact', head: true })
+		.eq('tenant_id', tenantId);
 
 	const lastPropertySync = syncStatuses.data?.find(s => s.sync_type === 'properties')?.last_sync || null;
 	const lastBookingSync = syncStatuses.data?.find(s => ['recent', 'historical', 'bookings'].includes(s.sync_type))?.last_sync || null;

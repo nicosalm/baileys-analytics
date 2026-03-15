@@ -56,6 +56,8 @@ export interface BookingDetailResponse {
     description: string
     amount: number
   }>
+  tags: Array<{ id: string; name: string; color?: string }>
+  guestTags: Array<{ id: string; name: string; color?: string }>
 }
 
 export interface PropertyDetailResponse {
@@ -91,7 +93,6 @@ export interface PropertyDetailResponse {
     id: string
     guestId?: string
     guestName: string
-    guestEmail?: string
     arrival: string
     departure: string
     totalAmount: number
@@ -116,6 +117,7 @@ export interface GuestDetailResponse {
     avgStayLength?: number
     isRepeat?: boolean
     notes: string | null
+    tags?: Array<{ id: string; name: string; color?: string }>
   }
   bookings: Array<{
     id?: string

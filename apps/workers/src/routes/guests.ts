@@ -88,13 +88,14 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 			.select(`
 				id,
 				guest_name,
-				guest_email,
+				ownerrez_guest_id,
 				arrival,
 				departure,
 				total_amount,
 				platform,
 				property_id,
-				properties!inner(name)
+				properties!inner(name),
+				guests(email)
 			`)
 			.eq('tenant_id', tenantId)
 			.neq('status', 'canceled')
@@ -109,14 +110,14 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 			bookings: (bookings || []).map((b: any) => ({
 				id: b.id,
 				guestName: b.guest_name,
-				guestEmail: b.guest_email,
+				guestEmail: b.guests?.email || undefined,
 				arrival: b.arrival,
 				departure: b.departure,
 				amount: b.total_amount,
 				platform: normalizePlatform(b.platform),
 				propertyName: b.properties?.name || 'Unknown'
 			})),
-			guestCount: new Set((bookings || []).map((b: any) => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase())).size,
+			guestCount: new Set((bookings || []).map((b: any) => b.ownerrez_guest_id || b.guest_name?.toLowerCase())).size,
 			totalRevenue: (bookings || []).reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0)
 		});
 	}
@@ -133,10 +134,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
-	const lastUnderscoreIndex = guestId.lastIndexOf('_');
-	const name = guestId.substring(0, lastUnderscoreIndex);
-	const email = guestId.substring(lastUnderscoreIndex + 1);
-	
+	// guestId format: "or_<ownerrez_guest_id>" or legacy "name_<name>" or "<name>_<email>"
 	let query = supabase
 		.from('bookings')
 		.select(`
@@ -148,23 +146,32 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			platform,
 			status,
 			guest_name,
-			guest_email,
-			guest_phone,
+			ownerrez_guest_id,
 			property_id,
 			ownerrez_booking_id,
 			host_service_fee,
-			booking_charges(id, type, description, amount, position)
+			booking_charges(id, type, description, amount, position),
+			guests(email, phone)
 		`)
 		.eq('tenant_id', tenantId);
 
-	if (email) {
-		query = query
-			.ilike('guest_name', name)
-			.ilike('guest_email', email);
+	if (guestId.startsWith('or_')) {
+		query = query.eq('ownerrez_guest_id', guestId.substring(3));
+	} else if (guestId.startsWith('name_')) {
+		query = query.ilike('guest_name', guestId.substring(5));
 	} else {
-		query = query.ilike('guest_name', name);
+		// legacy format: "name_email"
+		const lastUnderscoreIndex = guestId.lastIndexOf('_');
+		const name = guestId.substring(0, lastUnderscoreIndex);
+		const email = guestId.substring(lastUnderscoreIndex + 1);
+		if (email) {
+			query = query.ilike('guest_name', name);
+			// fall back to name-only match since guest_email is no longer on bookings
+		} else {
+			query = query.ilike('guest_name', name);
+		}
 	}
-	
+
 	const { data: bookings } = await query.order('arrival', { ascending: false });
 	
 	if (!bookings || bookings.length === 0) {
@@ -217,12 +224,32 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			amount
 		}));
 	
+	const guestContact = (bookings[0] as any).guests;
+
+	let guestTags: { id: string; name: string; color?: string }[] = [];
+	const ownerrezGuestId = bookings[0].ownerrez_guest_id;
+	if (ownerrezGuestId) {
+		const { data: guestWithTags } = await supabase
+			.from('guests')
+			.select('guest_tags(tag_id, tags!inner(name, color))')
+			.eq('tenant_id', tenantId)
+			.eq('ownerrez_guest_id', ownerrezGuestId)
+			.single();
+
+		guestTags = ((guestWithTags as any)?.guest_tags || []).map((t: any) => ({
+			id: t.tag_id,
+			name: t.tags?.name,
+			color: t.tags?.color
+		}));
+	}
+
 	return c.json({
 		guest: {
 			id: guestId,
 			name: bookings[0].guest_name,
-			email: bookings[0].guest_email,
-			phone: bookings[0].guest_phone,
+			email: guestContact?.email || undefined,
+			phone: guestContact?.phone || undefined,
+			tags: guestTags,
 			totalBookings: bookings.length,
 			totalSpent: totalRevenue,
 			totalListingSiteFees,

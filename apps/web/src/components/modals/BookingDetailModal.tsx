@@ -1,7 +1,8 @@
 import { useCallback } from 'react'
 import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, differenceInDays, parseISO } from '@baileys/utils'
-import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin, ExternalLink } from 'lucide-react'
+import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin, ExternalLink, Tags } from 'lucide-react'
+import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -26,7 +27,9 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
 
   const handleGuestClick = useCallback(() => {
     if (booking) {
-      const guestId = `${(booking.guest_name || '').toLowerCase().trim()}_${(booking.guest_email || '').toLowerCase().trim()}`
+      const guestId = booking.ownerrez_guest_id
+        ? `or_${booking.ownerrez_guest_id}`
+        : `name_${(booking.guest_name || '').toLowerCase().trim()}`
       openModal({ type: 'guest', guestId, guestName: booking.guest_name || 'Unknown' })
     }
   }, [booking, openModal])
@@ -102,6 +105,17 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
             )}
           </div>
         </div>
+
+        {(() => {
+          const allTags = [...(data?.guestTags || []), ...(data?.tags || [])]
+          const unique = allTags.filter((t, i, arr) => arr.findIndex(u => u.id === t.id) === i)
+          return unique.length > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <Tags className="w-3.5 h-3.5 text-muted-foreground" />
+              <CollapsibleTags tags={unique} maxVisible={6} size="sm" />
+            </div>
+          ) : null
+        })()}
 
         {/* Dates & Duration */}
         <div className="bg-card border rounded-lg p-4">

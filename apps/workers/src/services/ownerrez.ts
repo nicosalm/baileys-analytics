@@ -81,6 +81,9 @@ export class OwnerRezService {
 		let page = 0;
 		let isFirstPage = true;
 
+		const originalUrl = new URL(url);
+		const originalParams = originalUrl.searchParams;
+
 		while (currentUrl && page < this.maxPages) {
 			const requestOptions: RequestInit = isFirstPage
 				? { ...options, headers: this.getHeaders() }
@@ -104,9 +107,20 @@ export class OwnerRezService {
 			}
 
 			const nextPage = data.next_page_url || null;
-			currentUrl = nextPage && nextPage.startsWith('/')
-				? `https://api.ownerrez.com${nextPage}`
-				: nextPage;
+			if (nextPage) {
+				const nextUrl = nextPage.startsWith('/')
+					? new URL(`https://api.ownerrez.com${nextPage}`)
+					: new URL(nextPage);
+
+				for (const [key, value] of originalParams) {
+					if (!nextUrl.searchParams.has(key)) {
+						nextUrl.searchParams.set(key, value);
+					}
+				}
+				currentUrl = nextUrl.toString();
+			} else {
+				currentUrl = null;
+			}
 			isFirstPage = false;
 			page++;
 		}
@@ -158,7 +172,10 @@ export class OwnerRezService {
 	}
 
 	async fetchBookingDetail(bookingId: string): Promise<any> {
-		const response = await this.fetchWithRetry(`${this.baseUrl}/bookings/${bookingId}`, {
+		const params = new URLSearchParams();
+		params.append('include_tags', 'true');
+		params.append('include_charges', 'true');
+		const response = await this.fetchWithRetry(`${this.baseUrl}/bookings/${bookingId}?${params.toString()}`, {
 			headers: this.getHeaders()
 		});
 

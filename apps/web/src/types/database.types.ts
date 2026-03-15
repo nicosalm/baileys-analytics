@@ -388,6 +388,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_guest_fk"
+            columns: ["tenant_id", "ownerrez_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guests"
+            referencedColumns: ["tenant_id", "ownerrez_guest_id"]
+          },
+          {
             foreignKeyName: "bookings_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: false
@@ -762,7 +769,7 @@ export type Database = {
           full_name: string | null
           id: string
           last_name: string | null
-          ownerrez_guest_id: number
+          ownerrez_guest_id: string
           phone: string | null
           tenant_id: string
           updated_at: string | null
@@ -775,7 +782,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_name?: string | null
-          ownerrez_guest_id: number
+          ownerrez_guest_id: string
           phone?: string | null
           tenant_id: string
           updated_at?: string | null
@@ -788,7 +795,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           last_name?: string | null
-          ownerrez_guest_id?: number
+          ownerrez_guest_id?: string
           phone?: string | null
           tenant_id?: string
           updated_at?: string | null

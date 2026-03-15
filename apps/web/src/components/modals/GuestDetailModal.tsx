@@ -2,7 +2,8 @@ import { useMemo, useState, Fragment } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
-import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronDown, Sparkles } from 'lucide-react'
+import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Info, Award, ExternalLink, ChevronDown, Sparkles, Tags } from 'lucide-react'
+import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
@@ -516,6 +517,12 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
                   {guest.phone}
+                </div>
+              )}
+              {guest?.tags && guest.tags.length > 0 && (
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Tags className="w-4 h-4 text-muted-foreground" />
+                  <CollapsibleTags tags={guest.tags} maxVisible={5} size="sm" />
                 </div>
               )}
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">

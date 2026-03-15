@@ -14,7 +14,7 @@ async function fetchBookings(
 ) {
 	let query = supabase
 		.from('bookings')
-		.select('id, total_amount, arrival, departure, guest_email, guest_name, platform, property_id, host_service_fee, guest_listing_site_fee')
+		.select('id, total_amount, arrival, departure, ownerrez_guest_id, guest_name, platform, property_id, host_service_fee, guest_listing_site_fee')
 		.eq('tenant_id', tenantId)
 		.lte('arrival', to)
 		.gte('departure', from)
@@ -156,7 +156,7 @@ async function getCurrentPeriodMetrics(
 	const totalPossibleNights = totalDays * (propertyCount || 1);
 	const occupancyRate = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
 
-	const uniqueGuests = new Set(bookings.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean));
+	const uniqueGuests = new Set(bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
 
 	// repeat guest rate via SQL (avoids fetching all historical bookings)

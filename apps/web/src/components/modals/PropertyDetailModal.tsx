@@ -32,7 +32,6 @@ interface PropertyBooking {
   id: string
   guestId?: string
   guestName: string
-  guestEmail?: string
   arrival: string
   departure: string
   totalAmount: number
@@ -360,9 +359,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                         <td className="p-4">
                           <div>
                             <div className="font-medium text-primary hover:underline">{booking.guestName}</div>
-                            {booking.guestEmail && (
-                              <div className="text-sm text-muted-foreground">{booking.guestEmail}</div>
-                            )}
                           </div>
                         </td>
                         <td className="p-4 text-sm">

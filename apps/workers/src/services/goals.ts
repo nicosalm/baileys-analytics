@@ -92,20 +92,20 @@ async function getGoalMetrics(
 	const occupancy = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
 
 	const uniqueGuests = new Set(
-		bookings?.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean)
+		bookings?.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()).filter(Boolean)
 	);
 	const totalGuests = uniqueGuests.size;
 
 	const { data: historicalBookings } = await supabase
 		.from('bookings')
-		.select('guest_email, guest_name')
+		.select('ownerrez_guest_id, guest_name')
 		.eq('tenant_id', tenantId)
 		.lt('arrival', from)
 		.neq('status', 'canceled')
 		.limit(SUPABASE_MAX_ROWS);
 
 	const historicalGuestIds = new Set(
-		historicalBookings?.map(b => b.guest_email?.toLowerCase() || b.guest_name?.toLowerCase()).filter(Boolean) || []
+		historicalBookings?.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()).filter(Boolean) || []
 	);
 
 	let repeatGuests = 0;

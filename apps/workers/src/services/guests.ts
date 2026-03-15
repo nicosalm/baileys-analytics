@@ -8,6 +8,7 @@ export interface CancelledBooking {
   guestName: string;
   guestEmail?: string;
   guestPhone?: string;
+  ownerrezGuestId?: string;
   propertyName: string;
   propertyId: string;
   arrival: string;
@@ -32,7 +33,7 @@ export async function getCancelledBookingsData(
 ): Promise<CancelledBookingsData> {
   let query = supabase
     .from('bookings')
-    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, canceled_utc, booked_utc, properties!inner(name)')
+    .select('id, guest_name, ownerrez_guest_id, arrival, departure, total_amount, platform, property_id, canceled_utc, booked_utc, properties!inner(name), guests(email, phone)')
     .eq('tenant_id', tenantId)
     .eq('status', 'canceled')
     .order('canceled_utc', { ascending: false, nullsFirst: false })
@@ -56,8 +57,9 @@ export async function getCancelledBookingsData(
     bookings: bookings.map((b: Record<string, unknown>) => ({
       id: b.id as string,
       guestName: b.guest_name as string,
-      guestEmail: (b.guest_email as string) || undefined,
-      guestPhone: (b.guest_phone as string) || undefined,
+      guestEmail: ((b.guests as Record<string, unknown>)?.email as string) || undefined,
+      guestPhone: ((b.guests as Record<string, unknown>)?.phone as string) || undefined,
+      ownerrezGuestId: b.ownerrez_guest_id as string | undefined,
       propertyName: (b.properties as Record<string, unknown>)?.name as string || '',
       propertyId: b.property_id as string,
       arrival: b.arrival as string,
@@ -132,10 +134,9 @@ export interface GuestData {
   guests: GuestListItem[];
 }
 
-function createGuestId(name: string, email?: string): string {
-  const normalizedName = name.toLowerCase().trim();
-  const normalizedEmail = (email || '').toLowerCase().trim();
-  return `${normalizedName}_${normalizedEmail}`;
+function createGuestId(ownerrezGuestId?: string | null, name?: string): string {
+  if (ownerrezGuestId) return `or_${ownerrezGuestId}`;
+  return `name_${(name || '').toLowerCase().trim()}`;
 }
 
 export async function getGuestsData(
@@ -152,7 +153,7 @@ export async function getGuestsData(
 
   let bookingsQuery = supabase
     .from('bookings')
-    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee')
+    .select('id, guest_name, ownerrez_guest_id, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee, guests(email, phone)')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
@@ -219,15 +220,22 @@ export async function getGuestsData(
 
   const { data: allBookings } = await supabase
     .from('bookings')
-    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee')
+    .select('id, guest_name, ownerrez_guest_id, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee, guests(email, phone)')
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
+
+  // helper to extract joined guest contact from booking
+  const getGuestContact = (booking: Record<string, unknown>) => {
+    const g = booking.guests as Record<string, unknown> | null;
+    return { email: g?.email as string | undefined, phone: g?.phone as string | undefined };
+  };
 
   const guestPeriodMap = new Map<string, {
     name: string;
     email?: string;
     phone?: string;
+    ownerrezGuestId?: string;
     bookings: any[];
     totalSpent: number;
     totalNights: number;
@@ -237,6 +245,7 @@ export async function getGuestsData(
     name: string;
     email?: string;
     phone?: string;
+    ownerrezGuestId?: string;
     bookings: any[];
     totalSpent: number;
     totalNights: number;
@@ -248,7 +257,8 @@ export async function getGuestsData(
   for (const booking of filteredPeriodBookings) {
     if (!booking.guest_name) continue;
 
-    const guestId = createGuestId(booking.guest_name, booking.guest_email);
+    const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
+    const contact = getGuestContact(booking as Record<string, unknown>);
     const nights = Math.ceil(
       (new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24)
     );
@@ -256,8 +266,9 @@ export async function getGuestsData(
     if (!guestPeriodMap.has(guestId)) {
       guestPeriodMap.set(guestId, {
         name: booking.guest_name,
-        email: booking.guest_email,
-        phone: booking.guest_phone,
+        email: contact.email,
+        phone: contact.phone,
+        ownerrezGuestId: booking.ownerrez_guest_id,
         bookings: [],
         totalSpent: 0,
         totalNights: 0
@@ -274,10 +285,11 @@ export async function getGuestsData(
     for (const booking of allBookings) {
       if (!booking.guest_name) continue;
 
-      const guestId = createGuestId(booking.guest_name, booking.guest_email);
+      const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
 
       if (!guestPeriodMap.has(guestId)) continue;
 
+      const contact = getGuestContact(booking as Record<string, unknown>);
       const nights = Math.ceil(
         (new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -285,8 +297,9 @@ export async function getGuestsData(
       if (!guestAllTimeMap.has(guestId)) {
         guestAllTimeMap.set(guestId, {
           name: booking.guest_name,
-          email: booking.guest_email,
-          phone: booking.guest_phone,
+          email: contact.email,
+          phone: contact.phone,
+          ownerrezGuestId: booking.ownerrez_guest_id,
           bookings: [],
           totalSpent: 0,
           totalNights: 0,
@@ -328,8 +341,8 @@ export async function getGuestsData(
     }
   } else {
     // If no date filter, count guests with multiple bookings total
-    repeatGuests = Array.from(guestPeriodMap.values()).filter(g => {
-      const allTimeData = guestAllTimeMap.get(createGuestId(g.name, g.email));
+    repeatGuests = Array.from(guestPeriodMap.entries()).filter(([guestId]) => {
+      const allTimeData = guestAllTimeMap.get(guestId);
       return allTimeData && allTimeData.bookings.length > 1;
     }).length;
   }
@@ -367,44 +380,21 @@ export async function getGuestsData(
     .select('booking_id, tag_id')
     .in('booking_id', bookingIds);
 
-  const uniqueGuestEmails = new Set<string>();
-  const uniqueGuestNames = new Set<string>();
+  // collect ownerrez_guest_ids from period bookings to look up guest tags
+  const uniqueOwnerrezGuestIds = new Set<string>();
   for (const booking of filteredPeriodBookings) {
-    if (booking.guest_name) uniqueGuestNames.add(booking.guest_name);
-    if (booking.guest_email) uniqueGuestEmails.add(booking.guest_email);
+    if (booking.ownerrez_guest_id) uniqueOwnerrezGuestIds.add(booking.ownerrez_guest_id);
   }
 
   let guestRecords: any[] = [];
-  if (uniqueGuestNames.size > 0 || uniqueGuestEmails.size > 0) {
-    // query guests in batches using .in() to avoid filter injection from
-    // guest names/emails that contain commas or postgrest syntax
-    const names = Array.from(uniqueGuestNames);
-    const emails = Array.from(uniqueGuestEmails);
-
-    const [nameResults, emailResults] = await Promise.all([
-      names.length > 0
-        ? supabase
-            .from('guests')
-            .select('id, full_name, email, guest_tags(tag_id)')
-            .eq('tenant_id', tenantId)
-            .in('full_name', names)
-        : { data: [] },
-      emails.length > 0
-        ? supabase
-            .from('guests')
-            .select('id, full_name, email, guest_tags(tag_id)')
-            .eq('tenant_id', tenantId)
-            .in('email', emails)
-        : { data: [] },
-    ]);
-
-    const seen = new Set<string>();
-    for (const g of [...(nameResults.data || []), ...(emailResults.data || [])]) {
-      if (!seen.has(g.id)) {
-        seen.add(g.id);
-        guestRecords.push(g);
-      }
-    }
+  if (uniqueOwnerrezGuestIds.size > 0) {
+    const ids = Array.from(uniqueOwnerrezGuestIds);
+    const { data } = await supabase
+      .from('guests')
+      .select('id, ownerrez_guest_id, full_name, email, guest_tags(tag_id)')
+      .eq('tenant_id', tenantId)
+      .in('ownerrez_guest_id', ids);
+    guestRecords = data || [];
   }
 
   const { data: tags } = await supabase
@@ -425,7 +415,7 @@ export async function getGuestsData(
     for (const bt of bookingTags) {
       const booking = filteredPeriodBookings.find(b => b.id === bt.booking_id);
       if (booking && booking.guest_name) {
-        const guestId = createGuestId(booking.guest_name, booking.guest_email);
+        const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
         if (!guestTagsMap.has(guestId)) {
           guestTagsMap.set(guestId, new Set());
         }
@@ -435,8 +425,8 @@ export async function getGuestsData(
   }
 
   for (const guest of guestRecords) {
-    if (guest.guest_tags && guest.full_name) {
-      const guestId = createGuestId(guest.full_name, guest.email);
+    if (guest.guest_tags && guest.ownerrez_guest_id) {
+      const guestId = createGuestId(guest.ownerrez_guest_id, guest.full_name);
       if (!guestTagsMap.has(guestId)) {
         guestTagsMap.set(guestId, new Set());
       }
@@ -482,7 +472,7 @@ export async function getGuestsData(
     if (!booking.guest_name) continue;
 
     const source = normalizePlatform(booking.platform);
-    const guestId = createGuestId(booking.guest_name, booking.guest_email);
+    const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
 
     if (!sourceMap.has(source)) {
       sourceMap.set(source, { count: new Set(), revenue: 0 });

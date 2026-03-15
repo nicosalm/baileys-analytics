@@ -85,7 +85,8 @@ bookings.get('/:id', async (c) => {
 			.from('bookings')
 			.select(`
 				*,
-				properties!inner(name, address, bedrooms, bathrooms, max_guests)
+				properties!inner(name, address, bedrooms, bathrooms, max_guests),
+				guests(id, email, phone)
 			`)
 			.eq('id', bookingId)
 			.eq('tenant_id', tenantId)
@@ -103,21 +104,37 @@ bookings.get('/:id', async (c) => {
 			`)
 			.eq('booking_id', bookingId)
 	]);
-	
+
 	if (bookingResult.error || !bookingResult.data) {
 		return c.json({ error: 'Booking not found' }, 404);
 	}
-	
+
 	const booking = bookingResult.data;
 	const nights = booking.arrival && booking.departure
 		? Math.ceil((new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24))
 		: 0;
-	
+
 	const avgNightlyRate = nights > 0 ? (booking.total_amount || 0) / nights : 0;
-	
+
+	const guestContact = (booking as any).guests;
+	let guestTags: { id: string; name: string; color?: string }[] = [];
+	if (guestContact?.id) {
+		const { data: guestTagRows } = await supabase
+			.from('guest_tags')
+			.select('tag_id, tags!inner(name, color)')
+			.eq('guest_id', guestContact.id);
+		guestTags = (guestTagRows || []).map((t: any) => ({
+			id: t.tag_id,
+			name: t.tags?.name,
+			color: t.tags?.color
+		}));
+	}
+
 	return c.json({
 		booking: {
 			...booking,
+			guest_email: guestContact?.email || booking.guest_email || null,
+			guest_phone: guestContact?.phone || booking.guest_phone || null,
 			property_name: booking.properties?.name,
 			property_address: booking.properties?.address,
 			property_bedrooms: booking.properties?.bedrooms,
@@ -131,7 +148,8 @@ bookings.get('/:id', async (c) => {
 			id: t.tag_id,
 			name: t.tags?.name,
 			color: t.tags?.color
-		})) || []
+		})) || [],
+		guestTags
 	});
 });
 

@@ -12,12 +12,13 @@
 // - errors during background processing are logged to webhook_events.processing_error
 //
 // per ownerrez best practices (https://api.ownerrez.com/help):
-// - the webhook payload includes the FULL entity (booking with charges, guest
-//   with contact info, etc), so we process it directly without calling the API.
-//   the only exception is fetchGuestDetail as a fallback when the booking
-//   webhook's nested guest object is missing email/phone arrays.
+// - the webhook payload includes the entity but may omit expanded relations
+//   (tags, charges) that require include_* params on the API. we process the
+//   payload directly where possible, falling back to an API call for tags.
+// - guest contact info lives in the guests table, not denormalized on bookings.
+//   booking webhooks upsert the guest record if guest data is included.
 // - rate limit: 300 req/5 min per IP, shared across all tenants (single worker).
-//   every avoided API call matters.
+//   tag fallback adds 1 API call per booking webhook when tags are missing.
 //
 // auth: ownerrez sends Basic auth (webhook user/password), NOT user bearer tokens.
 
@@ -25,9 +26,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { createSupabaseClient } from '../services/supabase';
 import { authMiddleware } from '../middleware/auth';
+import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
-import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 
 // resolve tag names to IDs (creating if needed), then batch-insert junction rows
 async function replaceEntityTags(
@@ -404,71 +405,32 @@ async function handleBookingUpdate(
 			return;
 		}
 
-		const guestName = booking.guest 
+		const guestName = booking.guest
 			? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
 			: booking.guest_name || 'Unknown';
 
-		// extract email/phone from nested arrays (if available) or flat properties
-		let guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
-			booking.guest?.email_addresses?.[0]?.address ||
-			booking.guest?.email ||
-			booking.guest_email;
+		// guest contact info lives in the guests table — no need to denormalize
+		// if the webhook includes guest data, upsert the guest record
+		if (booking.guest?.id) {
+			const guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
+				booking.guest?.email_addresses?.[0]?.address ||
+				booking.guest?.email;
+			const guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
+				booking.guest?.phones?.[0]?.number ||
+				booking.guest?.phone;
 
-		let guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
-			booking.guest?.phones?.[0]?.number ||
-			booking.guest?.phone ||
-			booking.guest_phone;
-		
-		if (!guestEmail || !guestPhone) {
-			// Try to find guest by ownerrez_guest_id if available
-			if (booking.guest?.id) {
-				const { data: existingGuest } = await supabase
-					.from('guests')
-					.select('email, phone')
-					.eq('tenant_id', tenantId)
-					.eq('ownerrez_guest_id', booking.guest.id.toString())
-					.single();
-
-				if (existingGuest) {
-					guestEmail = guestEmail || existingGuest.email;
-					guestPhone = guestPhone || existingGuest.phone;
-				}
-			} else if (guestName && guestName !== 'Unknown') {
-				// Try to find guest by name
-				const { data: existingGuest } = await supabase
-					.from('guests')
-					.select('email, phone')
-					.eq('tenant_id', tenantId)
-					.eq('full_name', guestName)
-					.single();
-
-				if (existingGuest) {
-					guestEmail = guestEmail || existingGuest.email;
-					guestPhone = guestPhone || existingGuest.phone;
-				}
-			}
-		}
-
-		// Last resort: fetch individual guest detail from OwnerRez API
-		// The list/webhook payload often omits email_addresses/phones
-		if ((!guestEmail || !guestPhone) && booking.guest?.id && env) {
-			try {
-				const tokenResult = await getValidOwnerRezToken(env, tenantId);
-				if (!tokenResult.error) {
-					const ownerRez = new OwnerRezService(tokenResult.accessToken);
-					const guestDetail = await ownerRez.fetchGuestDetail(String(booking.guest.id));
-					if (guestDetail) {
-						const detailEmail = guestDetail.email_addresses?.find((e: any) => e.is_default)?.address ||
-							guestDetail.email_addresses?.[0]?.address;
-						const detailPhone = guestDetail.phones?.find((p: any) => p.is_default)?.number ||
-							guestDetail.phones?.[0]?.number;
-						guestEmail = guestEmail || detailEmail;
-						guestPhone = guestPhone || detailPhone;
-					}
-				}
-			} catch (error) {
-				console.error('Failed to fetch guest detail for contact info:', error);
-			}
+			await supabase
+				.from('guests')
+				.upsert({
+					ownerrez_guest_id: booking.guest.id.toString(),
+					tenant_id: tenantId,
+					first_name: booking.guest.first_name,
+					last_name: booking.guest.last_name,
+					full_name: guestName,
+					email: guestEmail || undefined,
+					phone: guestPhone || undefined,
+					updated_at: new Date().toISOString()
+				}, { onConflict: 'tenant_id,ownerrez_guest_id' });
 		}
 
 		const platform = booking.source || booking.listing_site || 'Unassigned';
@@ -478,8 +440,6 @@ async function handleBookingUpdate(
 			ownerrez_booking_id: booking.id,
 			ownerrez_guest_id: booking.guest?.id?.toString(),
 			guest_name: guestName,
-			guest_email: guestEmail,
-			guest_phone: guestPhone,
 			arrival: booking.arrival,
 			departure: booking.departure,
 			total_amount: booking.total_amount || 0,
@@ -515,8 +475,23 @@ async function handleBookingUpdate(
 			return;
 		}
 
-		if (booking.tags && Array.isArray(booking.tags) && upsertedBooking) {
-			await replaceEntityTags(supabase, tenantId, 'booking_tags', 'booking_id', upsertedBooking.id, booking.tags);
+		if (upsertedBooking) {
+			let tags = booking.tags;
+			if ((!tags || !Array.isArray(tags) || tags.length === 0) && env) {
+				try {
+					const tokenResult = await getValidOwnerRezToken(env, tenantId);
+					if (tokenResult.accessToken) {
+						const ownerRez = new OwnerRezService(tokenResult.accessToken);
+						const detail = await ownerRez.fetchBookingDetail(String(booking.id));
+						tags = detail?.tags;
+					}
+				} catch (err) {
+					console.error('[Webhook] failed to fetch booking tags from API:', err);
+				}
+			}
+			if (tags && Array.isArray(tags) && tags.length > 0) {
+				await replaceEntityTags(supabase, tenantId, 'booking_tags', 'booking_id', upsertedBooking.id, tags);
+			}
 		}
 
 		// process charges directly from webhook payload (no extra API call needed)
@@ -557,24 +532,14 @@ async function handleBookingUpdate(
 
 async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 	const fullName = `${guest.first_name || ''} ${guest.last_name || ''}`.trim();
-	
+
 	const email = guest.email_addresses?.find((e: any) => e.is_default)?.address ||
 				 guest.email_addresses?.[0]?.address;
-	
+
 	const phone = guest.phones?.find((p: any) => p.is_default)?.number ||
 				 guest.phones?.[0]?.number;
 
-	if (fullName) {
-		const bookingUpdates: Record<string, string> = { updated_at: new Date().toISOString() };
-		if (email) bookingUpdates.guest_email = email;
-		if (phone) bookingUpdates.guest_phone = phone;
-		await supabase
-			.from('bookings')
-			.update(bookingUpdates)
-			.eq('tenant_id', tenantId)
-			.eq('guest_name', fullName);
-	}
-
+	// guest contact info lives only in the guests table — no booking back-fill needed
 	const { data: upsertedGuest } = await supabase
 		.from('guests')
 		.upsert({
