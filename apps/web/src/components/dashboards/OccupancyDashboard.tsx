@@ -432,7 +432,7 @@ export const OccupancyDashboard = () => {
                 stroke={CHART_INFRA.axis}
                 tick={{ fill: CHART_INFRA.axis }}
               />
-              <Tooltip content={<OccupancyChartTooltip />} />
+              <Tooltip content={<OccupancyChartTooltip />} isAnimationActive={false} />
               {comparisonMode !== 'none' && previousData && <Legend />}
               {occupancyGoal !== null && (
                 <ReferenceLine
@@ -485,7 +485,7 @@ export const OccupancyDashboard = () => {
               <span className="text-xs text-muted-foreground">Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}</span>
             )}
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto overflow-x-hidden pr-2">
+          <div className="max-h-80 overflow-y-auto overflow-x-hidden pr-2 divide-y divide-border">
             {sortedProperties.length > 0 ? (
               sortedProperties.map((property: OccupancyByProperty) => {
                 const occupancyPercent = property.rate * 100
@@ -495,7 +495,7 @@ export const OccupancyDashboard = () => {
                 return (
                   <div
                     key={property.propertyId}
-                    className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-muted/50 cursor-pointer px-2 -mx-2 rounded transition-colors"
+                    className="flex items-center justify-between py-3 px-2 -mx-2 rounded hover:bg-muted/50 cursor-pointer transition-colors"
                     onClick={() => handlePropertyClick(property)}
                   >
                     <div className="flex-1 min-w-0 mr-3">

@@ -323,7 +323,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                       <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
                       <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
                       <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-                      <Tooltip content={<PropertyPerformanceTooltip />} />
+                      <Tooltip content={<PropertyPerformanceTooltip />} isAnimationActive={false} />
                       <Line yAxisId="left" type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} name="Revenue" strokeWidth={2} />
                       <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} name="Occupancy" strokeWidth={2} />
                     </LineChart>

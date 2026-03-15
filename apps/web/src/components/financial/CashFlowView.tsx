@@ -281,7 +281,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
             <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
             <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-            <Tooltip content={<CashFlowChartTooltip />} />
+            <Tooltip content={<CashFlowChartTooltip />} isAnimationActive={false} />
             <Area
               type="monotone"
               dataKey="inflow"

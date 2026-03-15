@@ -448,7 +448,7 @@ export const OverviewDashboard = () => {
     }
 
     const otherCount = Math.max(0, totalPropertyCount - topProps.length)
-    if (otherCount > 0 || charts?.revenueLastWeek?.length > 0) {
+    if (otherCount > 0) {
       areas.push(
         <Area
           key="other"
@@ -458,7 +458,7 @@ export const OverviewDashboard = () => {
           stroke={otherColor}
           fill={otherColor}
           fillOpacity={0.6}
-          name={otherCount > 0 ? `Other (${otherCount} properties)` : 'Other'}
+          name={`Other (${otherCount} properties)`}
         />
       )
     }
@@ -487,9 +487,9 @@ export const OverviewDashboard = () => {
     }))
 
     const otherCount = Math.max(0, totalPropertyCount - topProps.length)
-    if (otherCount > 0 || charts?.revenueLastWeek?.length > 0) {
+    if (otherCount > 0) {
       items.push({
-        name: otherCount > 0 ? `Other (${otherCount})` : 'Other',
+        name: `Other (${otherCount})`,
         color: CHART_INFRA.reference
       })
     }
@@ -841,7 +841,7 @@ export const OverviewDashboard = () => {
                     stroke={CHART_INFRA.axis}
                     tick={{ fontSize: 11 }}
                   />
-                  <Tooltip content={<RevenueChartTooltip />} />
+                  <Tooltip content={<RevenueChartTooltip />} isAnimationActive={false} />
                   {revenueChartAreas}
                   {revenueGoal != null && (
                     <ReferenceLine

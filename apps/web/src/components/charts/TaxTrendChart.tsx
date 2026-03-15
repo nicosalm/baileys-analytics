@@ -109,7 +109,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
           <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
           <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-          <Tooltip content={<TaxChartTooltip />} />
+          <Tooltip content={<TaxChartTooltip />} isAnimationActive={false} />
           <Line
             type="monotone"
             dataKey="totalTax"

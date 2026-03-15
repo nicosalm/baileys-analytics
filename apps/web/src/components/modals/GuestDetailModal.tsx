@@ -616,7 +616,7 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
                       <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
                       <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
                       <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-                      <Tooltip content={<GuestSpendingTooltip />} />
+                      <Tooltip content={<GuestSpendingTooltip />} isAnimationActive={false} />
                       <Line
                         type="monotone"
                         dataKey="amount"
