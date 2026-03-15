@@ -47,8 +47,8 @@ const SEGMENT_COLORS: Record<string, string> = {
   'Linens': '#A855F7',
   'Pet Fees': '#D97706',
   'CC Fees': '#EA580C',
-  'Booking Fees': '#EC4899',
-  'Guest Platform Fee (est.)': '#6366F1',
+  'Host Fees': '#EC4899',
+  'Guest Fees': '#6366F1',
   'Other': '#9CA3AF',
   'Discounts': '#6B7280',
 }
@@ -122,8 +122,8 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
       { name: 'Linens', value: linens },
       { name: 'Pet Fees', value: petFees },
       { name: 'CC Fees', value: creditCardFees },
-      { name: 'Booking Fees', value: fees },
-      { name: 'Guest Platform Fee (est.)', value: guest },
+      { name: 'Host Fees', value: fees },
+      { name: 'Guest Fees', value: guest },
       { name: 'Other', value: otherSurcharges },
       { name: 'Discounts', value: discounts },
     ]
@@ -160,7 +160,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
 
   if (chartData.length === 0) {
     return (
-      <ChartWrapper title="Guest Spend Breakdown" subtitle="Where the guest dollar goes" height={260} actions={channelToggle} noData noDataMessage="No charge data for this channel">
+      <ChartWrapper title="Guest Spend Breakdown" subtitle="Per guest dollar" height={260} controls={channelToggle} noData noDataMessage="No charge data for this channel">
         <div />
       </ChartWrapper>
     )
@@ -169,10 +169,10 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
   return (
     <ChartWrapper
       title="Guest Spend Breakdown"
-      subtitle="Where the guest dollar goes"
+      subtitle="Per guest dollar"
       height="auto"
       responsive={false}
-      actions={channelToggle}
+      controls={channelToggle}
     >
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
@@ -220,11 +220,11 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1.5 justify-center text-xs px-4 pt-2 pb-1">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center text-xs px-4 pt-2 pb-1">
         {chartData.map((entry, index) => (
           <div key={entry.name} className="flex items-center gap-1.5">
             <div className="w-3 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: SEGMENT_COLORS[entry.name] || getChartColor(index) }} />
-            <span className="text-muted-foreground">{entry.name}</span>
+            <span className="text-muted-foreground whitespace-nowrap">{entry.name}</span>
           </div>
         ))}
       </div>

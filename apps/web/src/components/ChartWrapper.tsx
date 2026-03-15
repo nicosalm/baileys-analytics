@@ -17,6 +17,7 @@ export interface ChartWrapperProps {
   className?: string
   icon?: React.ComponentType<{ className?: string }>
   actions?: React.ReactNode
+  controls?: React.ReactNode
   tooltip?: string
   info?: string
   responsive?: boolean
@@ -35,6 +36,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   className,
   icon: Icon = BarChart3,
   actions,
+  controls,
   tooltip,
   info,
   responsive = true,
@@ -96,6 +98,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
           </div>
           {actions}
         </div>
+        {controls && <div className="mb-4">{controls}</div>}
         <div
           className="flex flex-col items-center justify-center text-muted-foreground"
           style={{ height: heightValue }}
@@ -121,6 +124,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
         </div>
         {actions}
       </div>
+      {controls && <div className="mb-4">{controls}</div>}
 
       {info && (
         <div className="bg-info-subtle border border-info/30 rounded-lg p-3 mb-4">
