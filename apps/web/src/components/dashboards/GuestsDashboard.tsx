@@ -3,7 +3,7 @@ import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage, parseISO } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
-import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X, Sparkles, Loader2 } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -29,17 +29,13 @@ const InquiriesTab = lazy(() => import('./InquiriesTab').then(m => ({ default: m
 type GuestSubTab = 'active' | 'cancelled' | 'inquiries'
 
 interface TagChartItem {
+    id: string
     name: string
     size: number
     value: number
     color: string
 }
 
-interface PlatformFeeItem {
-    platform: string
-    totalFees: number
-    bookingCount: number
-}
 
 
 const GuestSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
@@ -74,7 +70,7 @@ const GuestSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<num
 
 export const GuestsDashboard = () => {
     const { openModal } = useModal()
-    const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
+    const { filters, comparisonRange, comparisonMode, comparisonLabel, toggleTag } = useDashboard()
     const { showTips } = useTips()
     const { resolvedTheme } = useTheme()
     const comparisonDateRange = useComparisonDateRange()
@@ -246,8 +242,8 @@ export const GuestsDashboard = () => {
                 return (
                     <div>
                         <div className="font-medium">{guest.name}</div>
-                        {guest.email && <div className="text-sm text-muted-foreground truncate">{guest.email}</div>}
-                        {guest.phone && <div className="text-sm text-muted-foreground truncate">{guest.phone}</div>}
+                        {guest.email && <div className="text-xs text-muted-foreground truncate">{guest.email}</div>}
+                        {guest.phone && <div className="text-xs text-muted-foreground truncate">{guest.phone}</div>}
                     </div>
                 )
             }
@@ -352,11 +348,12 @@ export const GuestsDashboard = () => {
             return []
         }
 
-        const tagCounts = new Map<string, { name: string; color?: string; count: number }>()
+        const tagCounts = new Map<string, { id: string; name: string; color?: string; count: number }>()
 
         data.guests.forEach((guest: GuestListItem) => {
             guest.tags?.forEach((tag) => {
                 const existing = tagCounts.get(tag.id) || {
+                    id: tag.id,
                     name: tag.name,
                     color: tag.color,
                     count: 0
@@ -374,6 +371,7 @@ export const GuestsDashboard = () => {
         tagDistribution
             ?.slice(0, 15)
             .map((tag: GuestTagDistribution) => ({
+                id: tag.id,
                 name: tag.name || 'Unknown',
                 size: tag.count || 0,
                 value: tag.count || 0,
@@ -420,6 +418,16 @@ export const GuestsDashboard = () => {
         return (
             <div className="space-y-6">
                 {headerCard}
+                {showTips && (
+                    <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
+                        <div className="flex items-start">
+                            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+                            <div className="text-sm text-info-fg">
+                                <strong>Tip:</strong> Shows bookings cancelled during the selected period. Track cancellation patterns by platform and property to identify issues. Click any row to view the guest's full profile and booking history.
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>}>
                     <CancelledGuestsTab />
                 </Suspense>
@@ -431,6 +439,16 @@ export const GuestsDashboard = () => {
         return (
             <div className="space-y-6">
                 {headerCard}
+                {showTips && (
+                    <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
+                        <div className="flex items-start">
+                            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+                            <div className="text-sm text-info-fg">
+                                <strong>Tip:</strong> Recent periods show newly received inquiries, while seasons and fixed date ranges show demand for stays in that window. Hover over truncated notes to read the full message.
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>}>
                     <InquiriesTab />
                 </Suspense>
@@ -551,55 +569,7 @@ export const GuestsDashboard = () => {
                 />
             </div>
 
-            {/* Direct Booking Opportunity */}
-            {(data.metrics.directSavingsOpportunity > 0) && (
-                <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Sparkles className="w-5 h-5 text-muted-foreground" />
-                        <div>
-                            <h3 className="text-lg font-semibold">Direct Booking Opportunity</h3>
-                            <p className="text-sm text-muted-foreground">
-                                Fees paid to OTAs and credit card processors this period that could stay with guests (and you) via direct bookings
-                            </p>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-                        <div className="bg-muted/40 rounded-lg p-4 text-center">
-                            <div className="text-2xl font-bold text-warning">{formatCurrency(data.metrics.totalPlatformFees)}</div>
-                            <div className="text-sm text-muted-foreground mt-1">Platform fees</div>
-                            <div className="text-xs text-muted-foreground">Host fees + guest OTA fees (est.)</div>
-                        </div>
-                        <div className="bg-muted/40 rounded-lg p-4 text-center">
-                            <div className="text-2xl font-bold text-danger">{formatCurrency(data.metrics.totalCcFees)}</div>
-                            <div className="text-sm text-muted-foreground mt-1">Credit card fees</div>
-                            <div className="text-xs text-muted-foreground">Charged on direct bookings</div>
-                        </div>
-                        <div className="bg-success-subtle rounded-lg p-4 text-center border border-success/30">
-                            <div className="text-2xl font-bold text-success-fg">{formatCurrency(data.metrics.directSavingsOpportunity)}</div>
-                            <div className="text-sm text-success-fg/80 mt-1">Total avoidable fees</div>
-                            <div className="text-xs text-success-fg/70">Book direct via Zelle</div>
-                        </div>
-                    </div>
-                    {data.metrics.feesByPlatform.length > 0 && (
-                        <div className="space-y-2">
-                            <div className="text-xs font-medium text-muted-foreground mb-2">By platform</div>
-                            {data.metrics.feesByPlatform.map((pf: PlatformFeeItem) => (
-                                <div key={pf.platform} className="flex items-center gap-2 sm:gap-3">
-                                    <div className="w-20 sm:w-28 text-xs sm:text-sm text-muted-foreground truncate">{pf.platform}</div>
-                                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden hidden sm:block">
-                                        <div
-                                            className="h-full bg-warning rounded-full transition-all"
-                                            style={{ width: `${Math.min(100, (pf.totalFees / data.metrics.directSavingsOpportunity) * 100)}%` }}
-                                        />
-                                    </div>
-                                    <div className="text-xs sm:text-sm font-medium text-right ml-auto">{formatCurrency(pf.totalFees)}</div>
-                                    <div className="text-xs text-muted-foreground text-right hidden sm:block w-20">{pf.bookingCount} bookings</div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
+
 
             <div className="grid lg:grid-cols-2 gap-6">
                 <ChartWrapper
@@ -668,20 +638,30 @@ export const GuestsDashboard = () => {
 
                 <ChartWrapper
                     title="Guest Tags"
-                    subtitle="Most common guest categories"
+                    subtitle="Click a tag to filter the dashboard"
                     icon={BarChart3}
                     height={320}
                     noData={!tagChartData || tagChartData.length === 0}
                     noDataMessage="No tag data available"
                     responsive={false}
                 >
-                    <div className="space-y-3 overflow-y-auto max-h-[280px] pr-2">
+                    <div className="space-y-1 overflow-y-auto max-h-[280px] pr-1">
                         {tagChartData.map((tag: TagChartItem) => {
                             const percentage = tagChartDerived.maxCount > 0 ? (tag.value / tagChartDerived.maxCount) * 100 : 0
                             const overallPercent = tagChartDerived.totalTags > 0 ? ((tag.value / tagChartDerived.totalTags) * 100).toFixed(0) : '0'
+                            const isActive = filters.selectedTags.some(t => t.id === tag.id)
 
                             return (
-                                <div key={tag.name} className="flex items-center gap-3">
+                                <button
+                                    key={tag.name}
+                                    className={`flex items-center gap-3 w-full text-left rounded-lg px-2 py-1.5 transition-colors cursor-pointer ${
+                                        isActive
+                                            ? 'bg-primary/10 ring-1 ring-primary/20'
+                                            : 'hover:bg-muted/50'
+                                    }`}
+                                    onClick={() => toggleTag({ id: tag.id, name: tag.name, type: 'custom', color: tag.color })}
+                                    title={isActive ? `Remove "${tag.name}" filter` : `Filter by "${tag.name}"`}
+                                >
                                     <div className="flex-1">
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="text-sm font-medium text-foreground">{tag.name}</span>
@@ -691,16 +671,16 @@ export const GuestsDashboard = () => {
                                             </div>
                                         </div>
                                         <div className="w-full bg-muted rounded-full h-2">
-                                            <div 
+                                            <div
                                                 className="h-2 rounded-full transition-all"
-                                                style={{ 
+                                                style={{
                                                     width: `${percentage}%`,
                                                     backgroundColor: getTagColor(tag)
                                                 }}
                                             />
                                         </div>
                                     </div>
-                                </div>
+                                </button>
                             )
                         })}
                     </div>
@@ -769,7 +749,7 @@ export const GuestsDashboard = () => {
                     onSort={handleSort}
                     onRowClick={handleGuestClick}
                     getRowId={(guest) => guest.id}
-                    pageSize={10}
+                    pageSize={15}
                     enableSearch={true}
                     searchKeys={['name', 'email']}
                     showRowNumbers={true}

@@ -12,8 +12,11 @@ import { getMonthlyGoalValue } from '@/utils/goals'
 import {
   DollarSign, Wallet, Receipt,
   Info, Landmark, TrendingDown,
-  Calendar, ArrowUp, ArrowDown, GitBranch
+  Calendar, ArrowUp, ArrowDown, GitBranch, Download
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { authenticatedFetch } from '@/lib/api'
+import { useToast } from '@/contexts/toast'
 import { formatPercentage, formatCurrency, formatCompactCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { useDashboard } from '@/contexts/dashboard'
@@ -42,6 +45,19 @@ interface ChargeDetail {
   total: number
 }
 
+interface ChannelCharges {
+  taxes: number
+  fees: number
+  discounts: number
+  cleaning: number
+  linens: number
+  petFees: number
+  creditCardFees: number
+  otherSurcharges: number
+  grossRevenue: number
+  guestFees: number
+}
+
 interface ChargeComposition {
   taxes: number
   fees: number
@@ -52,6 +68,10 @@ interface ChargeComposition {
   creditCardFees: number
   otherSurcharges: number
   details: ChargeDetail[]
+  byChannel?: {
+    direct: ChannelCharges
+    ota: ChannelCharges
+  }
 }
 
 interface PLData {
@@ -64,6 +84,7 @@ interface PLData {
   previousPeriod?: PreviousPeriodData
   monthlyTrend: MonthlyTrendEntry[]
   chargeComposition?: ChargeComposition
+  effectiveTaxRate?: number
 }
 
 interface PLViewProps {
@@ -82,10 +103,37 @@ export const PLView: React.FC<PLViewProps> = ({
   comparisonDateRange = ''
 }) => {
   const { showTips } = useTips()
-  const { comparisonLabel } = useDashboard()
+  const { filters, comparisonLabel } = useDashboard()
+  const { addToast } = useToast()
   const { data: goalProgressData } = useGoalProgress()
   const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
   const [chargesExpanded, setChargesExpanded] = useState(false)
+
+  const handleDownloadCharges = async () => {
+    try {
+      const response = await authenticatedFetch(`/financial/charges-export?from=${filters.dateRange.from}&to=${filters.dateRange.to}`, {
+        method: 'GET'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to download report')
+      }
+
+      const csvData = await response.text()
+      const blob = new Blob([csvData], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `charge-composition-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+      addToast('success', 'Charge composition exported')
+    } catch {
+      addToast('error', 'Failed to download charge composition')
+    }
+  }
 
   const processedData = useMemo(() => {
     if (!data || !data.metrics) return null
@@ -317,7 +365,7 @@ export const PLView: React.FC<PLViewProps> = ({
           color="yellow"
           subValue={comparisonMode !== 'none' && comparison.previousTaxes > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : revenue.gross > 0 ? `${formatPercentage((revenue.taxes / revenue.gross) * 100, 1)} effective rate` : '0% effective rate'}
+            : `${formatPercentage(data?.effectiveTaxRate ?? (revenue.gross > 0 ? (revenue.taxes / revenue.gross) * 100 : 0), 1)} effective rate`}
           trend={comparisonMode !== 'none' && comparison.taxesGrowth !== 0 ? {
             value: comparison.taxesGrowth,
             isPositive: comparison.taxesGrowth < 0
@@ -344,7 +392,23 @@ export const PLView: React.FC<PLViewProps> = ({
         />
       </div>
 
-      {/* Revenue highlights */}
+      {/* P&L Chart - Direct without wrapper */}
+      <RevenueChart
+        data={monthly}
+        title={`${granularity} Profit & Loss Trend`}
+        subtitle={comparison.hasComparison
+          ? `Comparing with ${comparisonLabel}`
+          : undefined
+        }
+        showProfit={true}
+        showComparison={comparison.hasComparison}
+        comparisonLabel={comparisonLabel}
+        onPeriodClick={onPeriodClick}
+        height={360}
+        revenueGoal={revenueGoal}
+      />
+
+      {/* Revenue highlights — summarize the trend above */}
       {highlights.monthCount > 1 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
           <MetricCard
@@ -380,22 +444,6 @@ export const PLView: React.FC<PLViewProps> = ({
         </div>
       )}
 
-      {/* P&L Chart - Direct without wrapper */}
-      <RevenueChart
-        data={monthly}
-        title={`${granularity} Profit & Loss Trend`}
-        subtitle={comparison.hasComparison
-          ? `Comparing with ${comparisonLabel}`
-          : undefined
-        }
-        showProfit={true}
-        showComparison={comparison.hasComparison}
-        comparisonLabel={comparisonLabel}
-        onPeriodClick={onPeriodClick}
-        height={360}
-        revenueGoal={revenueGoal}
-      />
-      
       {/* Revenue Flow Sankey */}
       {platforms.length > 0 && (
         <ChartWrapper
@@ -433,11 +481,20 @@ export const PLView: React.FC<PLViewProps> = ({
               grossRevenue={revenue.gross}
               guestFees={revenue.guestFees}
               chargeComposition={data.chargeComposition}
+              byChannel={data.chargeComposition.byChannel}
             />
           </div>
           <div className="lg:col-span-2 bg-card rounded-lg shadow-sm border p-6">
-            <h4 className="font-semibold text-foreground mb-1">Booking Charge Composition</h4>
-            <p className="text-sm text-muted-foreground mb-4">Itemized charges from booking data, excluding base rent</p>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h4 className="font-semibold text-foreground mb-1">Booking Charge Composition</h4>
+                <p className="text-sm text-muted-foreground">Itemized charges from booking data, excluding base rent</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={handleDownloadCharges} className="text-muted-foreground hover:text-foreground">
+                <Download className="w-4 h-4" />
+                Export
+              </Button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               {data.chargeComposition.taxes > 0 && (
                 <div className="bg-info-subtle rounded-lg p-3">
@@ -477,7 +534,7 @@ export const PLView: React.FC<PLViewProps> = ({
               )}
               {data.chargeComposition.otherSurcharges > 0 && (
                 <div className="bg-muted/30 rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground font-medium">Other Surcharges</div>
+                  <div className="text-xs text-muted-foreground font-medium">Other</div>
                   <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.otherSurcharges)}</div>
                 </div>
               )}
@@ -516,6 +573,9 @@ export const PLView: React.FC<PLViewProps> = ({
                 </button>
               )}
             </div>
+            <p className="text-xs text-muted-foreground/60 mt-4 pt-3 border-t border-border/40">
+              Data sourced from OwnerRez. Counts may differ between tax types if a charge is missing in the source system.
+            </p>
           </div>
         </div>
       )}

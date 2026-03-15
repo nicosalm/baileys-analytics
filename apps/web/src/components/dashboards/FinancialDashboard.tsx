@@ -37,7 +37,8 @@ export const FinancialDashboard = () => {
     weeklyRevenue: data.pl.weeklyRevenue,
     previousPeriod: data.pl.previousPeriod,
     byMonth: data.pl.monthlyTrend,
-    chargeComposition: data.pl.chargeComposition
+    chargeComposition: data.pl.chargeComposition,
+    effectiveTaxRate: data.tax?.summary?.effectiveRate
   } : null, [data])
 
   const cashFlowData = useMemo(() => data ? {

@@ -332,27 +332,25 @@ export const OccupancyDashboard = () => {
           value={`${lowestPeriod.availableNights - lowestPeriod.bookedNights} open`}
           format="custom"
           subValue={
-            <>
-              {formatPeriodDisplay(lowestPeriod.month)} · {formatPercentage(lowestPeriod.rate * 100, 1)} booked
-              {occupancyGoal !== null && (() => {
-                const deviation = (lowestPeriod.rate * 100) - occupancyGoal
-                const isAbove = deviation >= 0
-                return (
-                  <span className={`ml-1.5 inline-flex items-center gap-0.5 ${isAbove ? 'text-success' : 'text-danger'}`}>
+            occupancyGoal !== null ? (() => {
+              const deviation = (lowestPeriod.rate * 100) - occupancyGoal
+              const isAbove = deviation >= 0
+              return (
+                <>
+                  {formatPeriodDisplay(lowestPeriod.month)} ·{' '}
+                  <span className={`inline-flex items-center gap-0.5 ${isAbove ? 'text-success' : 'text-danger'}`}>
                     {isAbove ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                     {Math.abs(deviation).toFixed(1)}% {isAbove ? 'above' : 'below'} goal
                   </span>
-                )
-              })()}
-            </>
+                </>
+              )
+            })() : `${formatPeriodDisplay(lowestPeriod.month)} · ${formatPercentage(lowestPeriod.rate * 100, 1)} booked`
           }
           tooltip={`The ${dataGranularity === 'Daily' ? 'day' : dataGranularity === 'Weekly' ? 'week' : 'month'} with the most unbooked nights${occupancyGoal !== null ? ` (your goal is ${occupancyGoal}%)` : ''}`}
           color="yellow"
           staggerIndex={3}
         />
       </div>
-
-      <WhatIfCalculator byProperty={currentData.byProperty} dateRange={filters.dateRange} />
 
       <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
         <div className="flex items-center justify-between mb-4">
@@ -402,6 +400,8 @@ export const OccupancyDashboard = () => {
           />
         )}
       </div>
+
+      <WhatIfCalculator byProperty={currentData.byProperty} dateRange={filters.dateRange} />
 
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">

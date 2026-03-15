@@ -2,8 +2,22 @@ import React, { useState, useCallback, useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
+import { Button } from '@/components/ui/button'
 import { getChartColor, resolveToken } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency } from '@baileys/utils'
+
+interface ChannelCharges {
+  taxes: number
+  fees: number
+  discounts: number
+  cleaning: number
+  linens: number
+  petFees: number
+  creditCardFees: number
+  otherSurcharges: number
+  grossRevenue: number
+  guestFees: number
+}
 
 interface GuestSpendChartProps {
   grossRevenue: number
@@ -18,7 +32,13 @@ interface GuestSpendChartProps {
     creditCardFees: number
     otherSurcharges: number
   }
+  byChannel?: {
+    direct: ChannelCharges
+    ota: ChannelCharges
+  }
 }
+
+type ChannelFilter = 'all' | 'direct' | 'ota'
 
 const SEGMENT_COLORS: Record<string, string> = {
   'Base Rent': '#3B82F6',
@@ -29,9 +49,15 @@ const SEGMENT_COLORS: Record<string, string> = {
   'CC Fees': '#EA580C',
   'Booking Fees': '#EC4899',
   'Guest Platform Fee (est.)': '#6366F1',
-  'Misc': '#9CA3AF',
+  'Other': '#9CA3AF',
   'Discounts': '#6B7280',
 }
+
+const CHANNEL_OPTIONS: { key: ChannelFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'direct', label: 'Direct' },
+  { key: 'ota', label: 'Platforms' },
+]
 
 const SpendTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (active && payload && payload.length) {
@@ -59,19 +85,35 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
   grossRevenue,
   guestFees,
   chargeComposition,
+  byChannel,
 }) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
+  const [channel, setChannel] = useState<ChannelFilter>('all')
 
   const { chartData, totalSpend } = useMemo(() => {
+    let comp: typeof chargeComposition
+    let gross: number
+    let guest: number
+
+    if (channel === 'all' || !byChannel) {
+      comp = chargeComposition
+      gross = grossRevenue
+      guest = guestFees
+    } else {
+      const ch = byChannel[channel]
+      comp = ch
+      gross = ch.grossRevenue
+      guest = ch.guestFees
+    }
+
     const {
       taxes, fees, discounts,
       cleaning, linens, petFees,
       creditCardFees, otherSurcharges
-    } = chargeComposition
+    } = comp
 
-    // base rent = gross revenue minus all non-rent charges
-    const baseRent = grossRevenue - taxes - cleaning - linens - petFees - creditCardFees - otherSurcharges - fees + discounts
-    const total = grossRevenue + guestFees
+    const baseRent = gross - taxes - cleaning - linens - petFees - creditCardFees - otherSurcharges - fees + discounts
+    const total = gross + guest
 
     const segments = [
       { name: 'Base Rent', value: Math.max(0, baseRent) },
@@ -81,8 +123,8 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
       { name: 'Pet Fees', value: petFees },
       { name: 'CC Fees', value: creditCardFees },
       { name: 'Booking Fees', value: fees },
-      { name: 'Guest Platform Fee (est.)', value: guestFees },
-      { name: 'Misc', value: otherSurcharges },
+      { name: 'Guest Platform Fee (est.)', value: guest },
+      { name: 'Other', value: otherSurcharges },
       { name: 'Discounts', value: discounts },
     ]
       .filter(s => s.value > 0)
@@ -90,7 +132,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
       .map(s => ({ ...s, percentage: total > 0 ? (s.value / total) * 100 : 0 }))
 
     return { chartData: segments, totalSpend: total }
-  }, [grossRevenue, guestFees, chargeComposition])
+  }, [grossRevenue, guestFees, chargeComposition, byChannel, channel])
 
   const handleMouseEnter = useCallback((_: unknown, index: number) => {
     setActiveIndex(index)
@@ -100,16 +142,38 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
     setActiveIndex(null)
   }, [])
 
+  const channelToggle = byChannel && (
+    <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
+      {CHANNEL_OPTIONS.map(opt => (
+        <Button
+          key={opt.key}
+          variant="ghost"
+          size="sm"
+          onClick={() => setChannel(opt.key)}
+          className={`h-7 px-2.5 text-xs ${channel === opt.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          {opt.label}
+        </Button>
+      ))}
+    </div>
+  )
+
   if (chartData.length === 0) {
     return (
-      <ChartWrapper title="Guest Spend Breakdown" height={260} noData noDataMessage="No charge data available">
+      <ChartWrapper title="Guest Spend Breakdown" subtitle="Where the guest dollar goes" height={260} actions={channelToggle} noData noDataMessage="No charge data for this channel">
         <div />
       </ChartWrapper>
     )
   }
 
   return (
-    <ChartWrapper title="Guest Spend Breakdown" subtitle="Where the guest dollar goes" height="auto" responsive={false}>
+    <ChartWrapper
+      title="Guest Spend Breakdown"
+      subtitle="Where the guest dollar goes"
+      height="auto"
+      responsive={false}
+      actions={channelToggle}
+    >
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

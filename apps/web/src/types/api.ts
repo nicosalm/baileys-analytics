@@ -219,6 +219,7 @@ export interface GuestSourceData {
 }
 
 export interface GuestTagDistribution {
+  id: string
   name: string
   count: number
   color?: string

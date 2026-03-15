@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -27,7 +27,7 @@ interface TaxByPropertyRow {
 
 interface TaxData {
   tax: {
-    summary: { totalTax: number; ownerRemitted: number; platformRemitted: number }
+    summary: { totalTax: number; ownerRemitted: number; platformRemitted: number; effectiveRate?: number }
     byProperty: TaxByPropertyRow[]
     byMonth: { month: string; totalTax: number; ownerRemitted?: number; platformRemitted?: number }[]
   }
@@ -56,6 +56,11 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   const { filters, comparisonLabel } = useDashboard()
   const { addToast } = useToast()
   const navigate = useNavigate()
+  const trendRef = useRef<HTMLDivElement>(null)
+
+  const scrollToTrend = useCallback(() => {
+    trendRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [])
 
   const handleDownloadTaxReport = async () => {
     try {
@@ -78,7 +83,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
       addToast('success', 'Tax report downloaded')
-    } catch (error) {
+    } catch {
       addToast('error', 'Failed to download tax report')
     }
   }
@@ -96,11 +101,10 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
     const ownerRemitted = summary?.ownerRemitted || summary?.totalTax || 0
     const platformRemitted = summary?.platformRemitted || 0
     
-    // Calculate effective tax rate
+    // use backend-computed effective rate (taxable base denominator) when available
     const grossRevenue = data.metrics?.revenue?.gross || 0
-    const effectiveTaxRate = grossRevenue > 0
-      ? (totalTax / grossRevenue) * 100
-      : 0
+    const effectiveTaxRate = summary?.effectiveRate
+      ?? (grossRevenue > 0 ? (totalTax / grossRevenue) * 100 : 0)
     
     // Calculate comparison metrics
     const previousGross = previousPeriod?.revenue?.gross || 0
@@ -179,11 +183,12 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
-          tooltip="Total occupancy and lodging tax collected"
+          tooltip="Total occupancy and lodging tax collected — click to view trend"
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
             value: taxData.comparison.taxGrowth,
-            isPositive: taxData.comparison.taxGrowth > 0  // Keep standard: up arrow for increases
+            isPositive: taxData.comparison.taxGrowth > 0
           } : undefined}
+          onClick={scrollToTrend}
         />
         <MetricCard
           icon={DollarSign}
@@ -224,12 +229,14 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       </div>
       
       {/* Tax Trend Chart */}
+      <div ref={trendRef}>
       <TaxTrendChart
         data={taxData.byMonth}
         title={`${taxData.granularity} Tax Trend`}
         onPeriodClick={onPeriodClick}
       />
-      
+      </div>
+
       {/* Tax Remittance and Property Details Side by Side */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Tax Remittance Widget */}

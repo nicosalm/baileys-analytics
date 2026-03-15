@@ -56,12 +56,8 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ## P0 — Data Accuracy Bugs
 
-### 1. Tax count mismatch: 63 DCTZ vs 64 WI charges
-> "Financials - booking charge composition - 63 DCTZ 64 WI - they should be the same"
-
-**Root cause confirmed via OwnerRez API**: The source data genuinely has 63 DCTZ charges and 64 WI charges across 2025 bookings (tax_id 4293 and 4294). One booking has a WI tax but no corresponding DCTZ — a data entry gap in OwnerRez, not a bug in our code.
-
-**Action**: No code fix needed. Our numbers accurately reflect the source. Consider adding a subtle "data from OwnerRez" footnote to the charge composition section so Jerry knows mismatches originate upstream.
+### ~~1. Tax count mismatch: 63 DCTZ vs 64 WI charges~~ → Addressed
+> Root cause: source data genuinely differs (63 DCTZ vs 64 WI in OwnerRez). Added "Data sourced from OwnerRez" footnote to charge composition section in PLView.
 
 ---
 
@@ -83,18 +79,8 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ## P1 — Important Features
 
-### 6. Guest list: add Cancellations and Inquiries tabs
-> "On guest list can you add a cancellations tab" / "A guest Ruth Blackburn cancelled this week, I want her details to call her"
-
-**Root cause confirmed**: `getGuestsData()` in `services/guests.ts:102` filters `.neq('status', 'canceled')`. Ruth Blackburn is in our DB (`status: canceled`, arrival: 2026-06-12, Airbnb, CBC, total_amount: $0) but excluded from all guest views. There are 20+ cancelled bookings in the DB (19 from OwnerRez + demo data).
-
-**Inquiry status**: OwnerRez has a `GET /v2/inquiries` endpoint. We do NOT currently sync inquiries — there is no `inquiries` table or sync job. This would need a new table + sync.
-
-**Fix**:
-- **Backend** (`services/guests.ts`): Add `getCancelledGuests()` function that queries `status = 'canceled'` and returns guest details (name, email, phone, property, arrival/departure, platform, total_amount). Keep it simple — just a list of cancelled bookings with guest info.
-- **Backend**: For inquiries, add an `inquiries` table and sync from `GET /v2/inquiries` in the sync job. Include `guest_id`, `property_id`, `arrival`, `departure`, `listing_site`, `comments`, `created_utc`.
-- **Frontend** (`GuestsDashboard.tsx`): Add tab navigation (Active | Cancelled | Inquiries) above the guest list. Active = current behavior. Cancelled = new endpoint. Inquiries = new endpoint.
-- **Guest search**: Ensure search covers all statuses. Currently search is client-side filtering of the already-fetched (active-only) list.
+### ~~6. Guest list: add Cancellations and Inquiries tabs~~ → Done
+> Sub-tabs (Active | Cancelled | Inquiries) in GuestsDashboard header. Cancelled tab queries `status = 'canceled'` with searchable table (name, email, property, dates, platform, amount, cancellation date). Inquiries tab reads from existing `inquiries` table (populated via webhooks). Both tabs lazy-loaded, date-filtered, cached with booking view invalidation. `fetchInquiries()` added to OwnerRez client for future initial sync.
 
 ---
 
@@ -107,13 +93,8 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ---
 
-### 9. Guest spend breakdown: Direct vs OTA toggle
-> "Could you put a toggle in that box — direct and OTA? I do not like to have platform fees diluted"
-
-**Fix**:
-- **Backend**: Split charge composition by booking platform. Already have `platform` on each booking. Compute separate `ChargeComposition` objects for direct vs OTA bookings.
-- **Frontend** (`GuestSpendChart.tsx`): Add a segmented control (All | Direct | OTA). When "OTA" selected, platform fees become more prominent in the breakdown. When "Direct", they disappear entirely.
-- Jerry's point is that blending direct and OTA dilutes the visibility of platform fees. In OTA-only view, fees as a percentage of total spend become much more striking.
+### ~~9. Guest spend breakdown: Direct vs OTA toggle~~ → Done
+> All | Direct | Platforms toggle in GuestSpendChart. Backend computes `byChannel` (direct vs OTA) charge composition in `getPLData()`. Frontend switches segments based on selected channel.
 
 ---
 
@@ -121,14 +102,8 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ---
 
-### 11. Charge composition CSV export
-> "Is there a way you can give me a spreadsheet of the booking charge composition?"
-
-**Fix**:
-- Add a CSV download button to the charge composition section (follow the existing pattern from `/tax/export` endpoint in `routes/tax.ts`)
-- Columns: Guest Name, Property, Arrival, Departure, Charge Type, Description, Amount, Is Taxable
-- Include one row per charge per booking (not aggregated — Jerry wants to reconcile against QuickBooks)
-- Add endpoint: `GET /financial/charges-export?from=...&to=...`
+### ~~11. Charge composition CSV export~~ → Done
+> Export button in PLView charge composition section. Endpoint `GET /financial/charges-export?from=...&to=...` returns CSV with columns: Guest Name, Property, Platform, Arrival, Departure, Charge Type, Description, Amount, Is Taxable.
 
 ---
 
@@ -143,20 +118,9 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ---
 
-### 14. Guest tags: property-code tags show nothing for current season
-> "When I click guest tags — all home cmc, cec, cdc, cbc, cnc — for current season nothing populates"
-
-**Interpreting Jerry's intent**: "When I click guest tags" most likely means he navigates to the Guest Tags section/chart on the Guests dashboard and selects the property-code tags (CMC, CEC, CDC, CBC, CNC — "all homes") using the FilterBar tag filter. For the current (2026) season, the dashboard shows empty because no 2026 bookings have these tags.
-
-**Two underlying issues**:
-
-**(a) Property-code tags have no 2026 bookings**: Tags CBC, CDC, CEC, CMC, CNC exist in the `tags` table but OwnerRez has NOT tagged any 2026 bookings with them (confirmed: 0 tags on all 24 active 2026 bookings in the OR API). For 2025, only 1 booking has "CEC". These are operational tags Jerry applies manually in OwnerRez; he hasn't tagged 2026 bookings yet. This is the primary reason for the empty state.
-
-**(b) Tag chart is display-only**: The "Guest Tags" bar chart in `GuestsDashboard.tsx` has no onClick handlers — tag rows are plain `<div>` elements. If Jerry is also trying to click individual tags in the chart to filter, that does nothing.
-
-**Fix**:
-- **(a)** Since these property-code tags functionally duplicate the Property filter, the best approach is to auto-populate them during sync: when syncing a booking for property CBC, automatically add the "CBC" tag to that booking's `booking_tags`. This ensures the property-code tags always have data. Alternatively, show an empty-state message: "No bookings have this tag for the selected period — try the Property filter instead."
-- **(b)** Make tag chart rows clickable → apply that tag to the FilterBar tag filter (add the tag ID to `selectedTags` in dashboard context). This gives Jerry the interactive filter-by-tag UX he likely expects.
+### ~~14. Guest tags: clickable tag bars~~ → Done (partial)
+> **(b)** Tag chart bars are now clickable — clicking a tag applies/removes it as a FilterBar tag filter via `toggleTag`. Active tags show a highlight ring. Hover states and titles guide the user.
+> **(a)** Property-code tags (CBC, CEC, etc.) still have no 2026 bookings — this is a data issue in OwnerRez (Jerry hasn't tagged them yet). Auto-populating during sync deferred.
 
 ---
 
@@ -165,15 +129,8 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ---
 
-### 16. CMC taxes → total revenue click behavior
-> "When I click cmc taxes and then total revenue what should happen?"
-
-**Context**: `TaxCenter.tsx` receives `onPropertyClick` and `onPeriodClick` as optional props. The property name is a `Button variant="link"` that calls `onPropertyClick?.(row.propertyId)`. There is no clickable "total revenue" element — the metric cards are not interactive.
-
-**Fix**: Define click-through behavior:
-- Click property name in tax table → open `PropertyDetailModal` (already exists) with focus on the tax/financial section
-- Click the "Total Tax Due" metric → scroll to or expand the trend chart
-- "Total Revenue" is not a separate clickable element in TaxCenter — Jerry may be referring to the P&L view's gross revenue metric. If he wants to cross-reference tax with revenue, consider adding a "View in P&L" link.
+### ~~16. CMC taxes → total revenue click behavior~~ → Done
+> Property names in tax table already clickable → PropertyDetailModal. "Total Tax Due" metric card now scrolls to trend chart on click. "Total Revenue" is in P&L view (separate tab), not actionable from TaxCenter.
 
 ---
 
