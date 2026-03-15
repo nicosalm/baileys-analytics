@@ -3,6 +3,16 @@
 Items from Jerry's testing session, analyzed against OwnerRez API data, Supabase DB, and codebase.
 Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have polish.
 
+## Final Audit (2026-03-15) — All Items Verified ✅
+
+All 19 of Jerry's original issues have been resolved or identified as external:
+- **Phases 1-4**: Platform normalization, is_taxable sync, net revenue formula, surcharge categorization — all verified working
+- **is_taxable bug**: Root cause was Cloudflare subrequest limit; fixed by reordering charge upserts before guest re-enrichment
+- **Features**: All Time period, Cancelled/Inquiries tabs, Direct/OTA toggle, CSV export, guest search, clickable tags, tax setup badge — all verified functional
+- **Booking tags fix**: Tag linking ran after re-enrichment step, hitting Cloudflare subrequest limit (same root cause as is_taxable). Moved tag linking before re-enrichment. Jerry needs re-sync.
+- **External**: Charge naming cleanup (Jerry's action), guest fees are estimates (labeled "(est.)")
+- **Remaining tech debt**: Guest re-enrichment still hits subrequest limits at chunk 300+ (not user-facing)
+
 ## Completed
 
 ### Phase 1 — Platform normalization (S4 + #13) ✅
@@ -118,9 +128,9 @@ Priority: P0 = data accuracy bug, P1 = important feature, P2 = nice-to-have poli
 
 ---
 
-### ~~14. Guest tags: clickable tag bars~~ → Done (partial)
+### ~~14. Guest tags: clickable tag bars~~ → Done
 > **(b)** Tag chart bars are now clickable — clicking a tag applies/removes it as a FilterBar tag filter via `toggleTag`. Active tags show a highlight ring. Hover states and titles guide the user.
-> **(a)** Property-code tags (CBC, CEC, etc.) still have no 2026 bookings — this is a data issue in OwnerRez (Jerry hasn't tagged them yet). Auto-populating during sync deferred.
+> **(a)** 2026 booking tags weren't linking because tag sync ran after re-enrichment step (subrequest limit — same root cause as is_taxable). Fixed by reordering. Requires re-sync.
 
 ---
 

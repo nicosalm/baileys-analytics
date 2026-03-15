@@ -140,6 +140,7 @@ export const CancelledGuestsTab = () => {
             sortBy="canceledUtc"
             sortOrder="desc"
             onRowClick={handleBookingClick}
+            showRowNumbers
             enableSearch
             searchKeys={['guestName', 'guestEmail', 'propertyName']}
         />

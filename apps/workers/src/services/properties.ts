@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
+import { getBookingIdsForTags } from '../utils/tag-filter';
 
 export interface PropertyMetrics {
   propertyId: string;
@@ -275,14 +276,9 @@ export async function getPropertiesData(
 
   let tagBookingIds: string[] | null = null;
   if (tagIds.length > 0) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
+    tagBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
 
-    if (taggedBookings && taggedBookings.length > 0) {
-      tagBookingIds = taggedBookings.map((tb: { booking_id: string }) => tb.booking_id);
-    } else {
+    if (!tagBookingIds) {
       const emptyMetrics: PropertyMetrics[] = properties.map((p: PropertyInfo) => ({
         propertyId: p.id,
         propertyName: p.name,

@@ -372,53 +372,7 @@ initialSyncChunked.post('/bookings', async (c) => {
       }
     }
 
-    // re-enrich contact info from the guests table
-    const { data: guestsWithContact } = await supabase
-      .from('guests')
-      .select('ownerrez_guest_id, email, phone')
-      .eq('tenant_id', tenantId)
-      .not('email', 'is', null)
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (guestsWithContact && guestsWithContact.length > 0) {
-      const ownerrezIds = allBookingData
-        .filter(b => b.ownerrez_guest_id && (!b.guest_email || !b.guest_phone))
-        .map(b => b.ownerrez_guest_id);
-
-      if (ownerrezIds.length > 0) {
-        const guestContactMap = new Map(
-          guestsWithContact.map(g => [String(g.ownerrez_guest_id), g])
-        );
-
-        const { data: bookingsToReEnrich } = await supabase
-          .from('bookings')
-          .select('id, ownerrez_guest_id, guest_email, guest_phone')
-          .eq('tenant_id', tenantId)
-          .or('guest_email.is.null,guest_phone.is.null');
-
-        if (bookingsToReEnrich) {
-          const updates: PromiseLike<any>[] = [];
-          for (const booking of bookingsToReEnrich) {
-            const contact = booking.ownerrez_guest_id && guestContactMap.get(String(booking.ownerrez_guest_id));
-            if (!contact) continue;
-
-            const fields: any = {};
-            if (!booking.guest_email && contact.email) fields.guest_email = contact.email;
-            if (!booking.guest_phone && contact.phone) fields.guest_phone = contact.phone;
-            if (Object.keys(fields).length > 0) {
-              updates.push(
-                supabase.from('bookings').update(fields).eq('id', booking.id)
-              );
-            }
-          }
-          for (let i = 0; i < updates.length; i += 10) {
-            await Promise.all(updates.slice(i, i + 10));
-          }
-        }
-      }
-    }
-
-    // batch ensure all tags exist and link
+    // batch ensure all tags exist and link (before re-enrichment to avoid subrequest limit)
     if (allTagNames.size > 0) {
       const { data: existingTags } = await supabase
         .from('tags')
@@ -471,6 +425,52 @@ initialSyncChunked.post('/bookings', async (c) => {
             await supabase
               .from('booking_tags')
               .upsert(chunk, { onConflict: 'booking_id,tag_id' });
+          }
+        }
+      }
+    }
+
+    // re-enrich contact info from the guests table (last — subrequest-heavy)
+    const { data: guestsWithContact } = await supabase
+      .from('guests')
+      .select('ownerrez_guest_id, email, phone')
+      .eq('tenant_id', tenantId)
+      .not('email', 'is', null)
+      .limit(SUPABASE_MAX_ROWS);
+
+    if (guestsWithContact && guestsWithContact.length > 0) {
+      const ownerrezIds = allBookingData
+        .filter(b => b.ownerrez_guest_id && (!b.guest_email || !b.guest_phone))
+        .map(b => b.ownerrez_guest_id);
+
+      if (ownerrezIds.length > 0) {
+        const guestContactMap = new Map(
+          guestsWithContact.map(g => [String(g.ownerrez_guest_id), g])
+        );
+
+        const { data: bookingsToReEnrich } = await supabase
+          .from('bookings')
+          .select('id, ownerrez_guest_id, guest_email, guest_phone')
+          .eq('tenant_id', tenantId)
+          .or('guest_email.is.null,guest_phone.is.null');
+
+        if (bookingsToReEnrich) {
+          const updates: PromiseLike<any>[] = [];
+          for (const booking of bookingsToReEnrich) {
+            const contact = booking.ownerrez_guest_id && guestContactMap.get(String(booking.ownerrez_guest_id));
+            if (!contact) continue;
+
+            const fields: any = {};
+            if (!booking.guest_email && contact.email) fields.guest_email = contact.email;
+            if (!booking.guest_phone && contact.phone) fields.guest_phone = contact.phone;
+            if (Object.keys(fields).length > 0) {
+              updates.push(
+                supabase.from('bookings').update(fields).eq('id', booking.id)
+              );
+            }
+          }
+          for (let i = 0; i < updates.length; i += 10) {
+            await Promise.all(updates.slice(i, i + 10));
           }
         }
       }

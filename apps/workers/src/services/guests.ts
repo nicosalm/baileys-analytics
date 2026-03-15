@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { normalizePlatform } from '../utils/platform';
+import { getBookingIdsForTags } from '../utils/tag-filter';
 
 export interface CancelledBooking {
   id: string;
@@ -168,14 +169,8 @@ export async function getGuestsData(
 
   let filteredBookingIds: string[] | null = null;
   if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings && taggedBookings.length > 0) {
-      filteredBookingIds = taggedBookings.map(tb => tb.booking_id);
-    } else {
+    filteredBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+    if (!filteredBookingIds) {
       return {
         metrics: {
           totalGuests: 0,

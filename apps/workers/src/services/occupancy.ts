@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
+import { getBookingIdsForTags } from '../utils/tag-filter';
 
 export interface OccupancyData {
   overall: number;
@@ -135,14 +136,9 @@ export async function getOccupancyData(
 
   let bookingIdFilter: string[] | null = null;
   if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
+    bookingIdFilter = await getBookingIdsForTags(supabase, tenantId, tagIds);
 
-    if (taggedBookings && taggedBookings.length > 0) {
-      bookingIdFilter = taggedBookings.map(tb => tb.booking_id);
-    } else {
+    if (!bookingIdFilter) {
       const endDate = new Date(to);
       const startDate = new Date(from);
       const totalDays = endDate >= startDate
@@ -280,14 +276,9 @@ async function fetchDailyOccupancy(
     .limit(SUPABASE_MAX_ROWS);
 
   if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings && taggedBookings.length > 0) {
-      const bookingIds = taggedBookings.map(tb => tb.booking_id);
-      bookingsQuery = bookingsQuery.in('id', bookingIds);
+    const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+    if (matchedBookingIds) {
+      bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
     } else {
       bookingsQuery = bookingsQuery.in('id', []);
     }

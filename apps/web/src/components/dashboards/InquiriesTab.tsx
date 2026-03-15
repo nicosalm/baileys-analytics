@@ -1,9 +1,12 @@
+import { useMemo } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useErrorToast } from '@/hooks/use-dashboard-utils'
-import { formatDateDisplay } from '@baileys/utils'
+import { formatDateDisplay, formatDateISO } from '@baileys/utils'
 import { StateWrapper } from '@/components/StateWrapper'
 import { PaginatedTable } from '@/components/tables'
 import { useDashboard } from '@/contexts/dashboard'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { getPlatformColor } from '@/lib/theme'
 
 interface InquiryItem {
     id: string
@@ -22,25 +25,25 @@ interface InquiryItem {
     updatedAt: string | null
 }
 
-const sourceStyles: Record<string, string> = {
-    channel: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-    widget: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-    in_person: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-}
-
 const sourceLabels: Record<string, string> = {
-    channel: 'OTA',
-    widget: 'Website',
+    channel: 'Channel',
+    widget: 'Direct',
     in_person: 'Direct',
 }
 
-function formatSource(source: string | null): string {
-    if (!source) return 'Unknown'
-    return sourceLabels[source] || source.charAt(0).toUpperCase() + source.slice(1)
+function getInquiryPlatform(listingSite: string | null, source: string | null): string {
+    if (listingSite) return listingSite
+    if (source) return sourceLabels[source] || source.charAt(0).toUpperCase() + source.slice(1)
+    return 'Unknown'
 }
 
 export const InquiriesTab = () => {
     const { filters } = useDashboard()
+    const isRecencyPeriod = filters.dateRange.to === formatDateISO(new Date())
+    const defaultSort = useMemo(() => ({
+        key: isRecencyPeriod ? 'createdAt' : 'arrival',
+        order: (isRecencyPeriod ? 'desc' : 'asc') as 'asc' | 'desc',
+    }), [isRecencyPeriod])
 
     const { data, error, isLoading } = useDashboardBatch(
         'guests-inquiries',
@@ -68,10 +71,16 @@ export const InquiriesTab = () => {
         )
     }
 
+    const filterLabel = isRecencyPeriod
+        ? `Showing inquiries received ${formatDateDisplay(filters.dateRange.from)} – ${formatDateDisplay(filters.dateRange.to)}`
+        : `Showing inquiries for stays ${formatDateDisplay(filters.dateRange.from)} – ${formatDateDisplay(filters.dateRange.to)}`
+
     return (
+        <TooltipProvider>
+        <p className="text-xs text-muted-foreground">{filterLabel}</p>
         <PaginatedTable
             data={data.inquiries}
-            emptyMessage="No inquiries in this period"
+            emptyMessage="No inquiries for stays in this period"
             columns={[
                 {
                     key: 'guestName',
@@ -96,7 +105,7 @@ export const InquiriesTab = () => {
                 },
                 {
                     key: 'arrival',
-                    header: 'Requested Dates',
+                    header: 'Dates',
                     sortable: true,
                     render: (inq: InquiryItem) => (
                         <span className="text-sm text-muted-foreground">
@@ -109,30 +118,39 @@ export const InquiriesTab = () => {
                 },
                 {
                     key: 'source',
-                    header: 'Source',
+                    header: 'Platform',
                     sortable: true,
                     render: (inq: InquiryItem) => {
-                        const style = sourceStyles[inq.source || ''] || 'bg-muted text-muted-foreground'
+                        const platform = getInquiryPlatform(inq.listingSite, inq.source)
                         return (
-                            <div className="flex flex-col gap-0.5">
-                                <span className={`inline-block w-fit px-2 py-0.5 text-xs rounded-full ${style}`}>
-                                    {formatSource(inq.source)}
-                                </span>
-                                {inq.listingSite && (
-                                    <span className="text-xs text-muted-foreground">{inq.listingSite}</span>
-                                )}
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 text-sm">
+                                <span
+                                    className="w-2 h-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: getPlatformColor(platform) }}
+                                />
+                                {platform}
+                            </span>
                         )
                     }
                 },
                 {
                     key: 'comments',
                     header: 'Notes',
-                    render: (inq: InquiryItem) => (
-                        <span className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]">
-                            {inq.comments || '–'}
-                        </span>
-                    )
+                    render: (inq: InquiryItem) => {
+                        if (!inq.comments) return <span className="text-xs text-muted-foreground">–</span>
+                        return (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="text-xs text-muted-foreground line-clamp-2 max-w-[250px] cursor-default">
+                                        {inq.comments}
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-sm whitespace-pre-wrap">
+                                    {inq.comments}
+                                </TooltipContent>
+                            </Tooltip>
+                        )
+                    }
                 },
                 {
                     key: 'createdAt',
@@ -146,10 +164,12 @@ export const InquiriesTab = () => {
                 },
             ]}
             pageSize={15}
-            sortBy="createdAt"
-            sortOrder="desc"
+            sortBy={defaultSort.key}
+            sortOrder={defaultSort.order}
+            showRowNumbers
             enableSearch
             searchKeys={['guestName', 'propertyName', 'listingSite', 'comments']}
         />
+        </TooltipProvider>
     )
 }

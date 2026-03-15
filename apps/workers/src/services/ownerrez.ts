@@ -158,7 +158,7 @@ export class OwnerRezService {
 	}
 
 	async fetchBookingDetail(bookingId: string): Promise<any> {
-		const response = await this.fetchWithTimeout(`${this.baseUrl}/bookings/${bookingId}`, {
+		const response = await this.fetchWithRetry(`${this.baseUrl}/bookings/${bookingId}`, {
 			headers: this.getHeaders()
 		});
 

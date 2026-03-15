@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { getBookingIdsForTags } from '../utils/tag-filter';
 
 export class MetricsService {
 	constructor(private supabase: SupabaseClient) {}
@@ -68,14 +69,9 @@ export class MetricsService {
 					.neq('status', 'canceled');
 
 				if (tagIds?.length) {
-					const { data: taggedBookings } = await this.supabase
-						.from('booking_tags')
-						.select('booking_id')
-						.in('tag_id', tagIds);
-					
-					const bookingIds = taggedBookings?.map(t => t.booking_id) || [];
-					if (bookingIds.length) {
-						bookingQuery = bookingQuery.in('id', bookingIds);
+					const matchedBookingIds = await getBookingIdsForTags(this.supabase, tenantId, tagIds);
+					if (matchedBookingIds) {
+						bookingQuery = bookingQuery.in('id', matchedBookingIds);
 					}
 				}
 

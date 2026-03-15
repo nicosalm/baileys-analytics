@@ -1,4 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
+import { normalizePlatform } from '../utils/platform';
 
 export interface InquiryItem {
 	id: string;
@@ -51,9 +52,17 @@ export async function getInquiriesData(
 		.order('created_at', { ascending: false })
 		.limit(200);
 
-	// filter by when the inquiry was received, not the requested stay dates
+	// heuristic: if the range ends today, the user picked a recency period
+	// (last 30 days, MTD, YTD, etc.) — filter by when the inquiry was received.
+	// if the range ends on a fixed past/future date, it's a demand window
+	// (a season, a specific month) — filter by requested arrival date.
 	if (from && to) {
-		query = query.gte('created_at', `${from}T00:00:00Z`).lte('created_at', `${to}T23:59:59Z`);
+		const today = new Date().toISOString().split('T')[0];
+		if (to === today) {
+			query = query.gte('created_at', `${from}T00:00:00Z`).lte('created_at', `${to}T23:59:59Z`);
+		} else {
+			query = query.gte('arrival', from).lte('arrival', to);
+		}
 	}
 
 	const { data: inquiries, error } = await query;
@@ -66,6 +75,11 @@ export async function getInquiriesData(
 		inquiries: inquiries.map(inq => {
 			const prop = inq.property_id ? propertyByOrId.get(String(inq.property_id)) : null;
 			const data = inq.data as Record<string, unknown> | null;
+			// prefer the actual OwnerRez timestamp over the DB column
+			// (created_at may have been set to the sync date if the OR fields were missing)
+			const receivedAt = (data?.created_utc as string)
+				?? (data?.received_utc as string)
+				?? inq.created_at;
 			return {
 				id: inq.id,
 				ownerrezInquiryId: inq.ownerrez_inquiry_id,
@@ -76,10 +90,10 @@ export async function getInquiriesData(
 				arrival: inq.arrival,
 				departure: inq.departure,
 				source: inq.status,
-				listingSite: (data?.listing_site as string) ?? null,
+				listingSite: data?.listing_site ? normalizePlatform(data.listing_site as string) : null,
 				comments: (data?.comments as string) ?? null,
 				guests: (data?.guests as number) ?? null,
-				createdAt: inq.created_at,
+				createdAt: receivedAt,
 				updatedAt: inq.updated_at,
 			};
 		}),

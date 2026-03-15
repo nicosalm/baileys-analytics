@@ -10,7 +10,11 @@ export function normalizePlatform(platform: string | null): string {
   if (normalized.includes('hopper')) return 'Hopper';
   if (normalized.includes('hometogo')) return 'HomeToGo';
   if (normalized.includes('tripadvisor')) return 'TripAdvisor';
+  if (normalized.includes('expedia') || normalized.includes('hotels.com')) return 'Expedia';
   if (normalized.includes('direct') || normalized.includes('owner') || normalized.includes('website') || normalized.includes('repeat')) return 'Direct';
 
-  return platform;
+  // custom domains (e.g. doorcountystay.com) are the tenant's own booking site
+  if (/\.\w{2,}$/.test(normalized)) return 'Direct';
+
+  return 'Other';
 }

@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
+import { getBookingIdsForTags } from '../utils/tag-filter';
 
 async function fetchBookings(
 	supabase: SupabaseClient,
@@ -25,13 +26,9 @@ async function fetchBookings(
 	}
 
 	if (tagIds.length > 0) {
-		const { data: taggedBookings } = await supabase
-			.from('booking_tags')
-			.select('booking_id')
-			.in('tag_id', tagIds);
-
-		if (taggedBookings && taggedBookings.length > 0) {
-			query = query.in('id', taggedBookings.map(tb => tb.booking_id));
+		const matchedIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+		if (matchedIds) {
+			query = query.in('id', matchedIds);
 		} else {
 			return [];
 		}

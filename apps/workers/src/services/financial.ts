@@ -4,6 +4,7 @@ import { TaxCalculator } from './tax-calculator';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
+import { getBookingIdsForTags } from '../utils/tag-filter';
 
 interface FinancialMetrics {
   revenue: {
@@ -60,6 +61,19 @@ interface WeeklyRevenue {
   bookings: number;
 }
 
+interface ChannelCharges {
+  taxes: number;
+  fees: number;
+  discounts: number;
+  cleaning: number;
+  linens: number;
+  petFees: number;
+  creditCardFees: number;
+  otherSurcharges: number;
+  grossRevenue: number;
+  guestFees: number;
+}
+
 export interface ChargeComposition {
   taxes: number;
   fees: number;
@@ -70,6 +84,10 @@ export interface ChargeComposition {
   creditCardFees: number;
   otherSurcharges: number;
   details: { type: string; description: string; total: number; count: number }[];
+  byChannel?: {
+    direct: ChannelCharges;
+    ota: ChannelCharges;
+  };
 }
 
 export interface PLData {
@@ -214,14 +232,9 @@ export async function getPLData(
     }
 
     if (hasTagFilter) {
-      const { data: taggedBookings } = await supabase
-        .from('booking_tags')
-        .select('booking_id')
-        .in('tag_id', tagIds);
-
-      if (taggedBookings) {
-        const bookingIds = taggedBookings.map(tb => tb.booking_id);
-        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+      if (matchedBookingIds) {
+        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
       }
     }
 
@@ -340,7 +353,19 @@ export async function getPLData(
   let compositionCreditCardFees = 0;
   let compositionOtherSurcharges = 0;
 
+  const emptyChannel = (): ChannelCharges => ({
+    taxes: 0, fees: 0, discounts: 0, cleaning: 0, linens: 0,
+    petFees: 0, creditCardFees: 0, otherSurcharges: 0, grossRevenue: 0, guestFees: 0,
+  });
+  const channelDirect = emptyChannel();
+  const channelOta = emptyChannel();
+
   bookings.forEach(b => {
+    const isDirect = normalizePlatform(b.platform) === 'Direct';
+    const ch = isDirect ? channelDirect : channelOta;
+    ch.grossRevenue += b.total_amount || 0;
+    ch.guestFees += b.guest_listing_site_fee || 0;
+
     const charges = b.booking_charges || [];
     charges.forEach((c: any) => {
       if (c.type === 'rent') return;
@@ -356,16 +381,19 @@ export async function getPLData(
 
       if (c.type === 'tax') {
         compositionTaxes += amount;
+        ch.taxes += amount;
         detailKey = `tax:${c.description || 'Tax'}`;
         displayType = 'tax';
         displayDescription = c.description || 'Tax';
       } else if (c.type === 'fee') {
         compositionFees += amount;
+        ch.fees += amount;
         detailKey = `fee:${c.description || 'Fee'}`;
         displayType = 'fee';
         displayDescription = c.description || 'Fee';
       } else if (c.type === 'discount') {
         compositionDiscounts += amount;
+        ch.discounts += amount;
         detailKey = `discount:${c.description || 'Discount'}`;
         displayType = 'discount';
         displayDescription = c.description || 'Discount';
@@ -375,16 +403,17 @@ export async function getPLData(
         if (category === 'tax') {
           // ownerrez sometimes sends taxes as type: 'surcharge'
           compositionTaxes += amount;
+          ch.taxes += amount;
           detailKey = `tax:${c.description || 'Tax'}`;
           displayType = 'tax';
           displayDescription = c.description || 'Tax';
         } else {
           switch (category) {
-            case 'cleaning': compositionCleaning += amount; break;
-            case 'linen': compositionLinens += amount; break;
-            case 'pet': compositionPetFees += amount; break;
-            case 'credit_card': compositionCreditCardFees += amount; break;
-            default: compositionOtherSurcharges += amount; break;
+            case 'cleaning': compositionCleaning += amount; ch.cleaning += amount; break;
+            case 'linen': compositionLinens += amount; ch.linens += amount; break;
+            case 'pet': compositionPetFees += amount; ch.petFees += amount; break;
+            case 'credit_card': compositionCreditCardFees += amount; ch.creditCardFees += amount; break;
+            default: compositionOtherSurcharges += amount; ch.otherSurcharges += amount; break;
           }
           detailKey = `surcharge:${category}`;
           displayType = category;
@@ -410,7 +439,8 @@ export async function getPLData(
     otherSurcharges: compositionOtherSurcharges,
     details: Array.from(chargeDetailMap.values())
       .map(({ bookingIds, ...rest }) => ({ ...rest, count: bookingIds.size }))
-      .sort((a, b) => b.total - a.total)
+      .sort((a, b) => b.total - a.total),
+    byChannel: { direct: channelDirect, ota: channelOta },
   };
 
   const monthlyData = buildTrendData(bookings, from, to, useDaily, useWeekly);
@@ -491,14 +521,9 @@ export async function getRevenueData(
     }
 
     if (hasTagFilter) {
-      const { data: taggedBookings } = await supabase
-        .from('booking_tags')
-        .select('booking_id')
-        .in('tag_id', tagIds);
-
-      if (taggedBookings) {
-        const bookingIds = taggedBookings.map(tb => tb.booking_id);
-        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+      if (matchedBookingIds) {
+        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
       }
     }
 
@@ -616,14 +641,9 @@ export async function getCashflowData(
     }
 
     if (hasTagFilter) {
-      const { data: taggedBookings } = await supabase
-        .from('booking_tags')
-        .select('booking_id')
-        .in('tag_id', tagIds);
-
-      if (taggedBookings) {
-        const bookingIds = taggedBookings.map(tb => tb.booking_id);
-        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+      if (matchedBookingIds) {
+        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
       }
     }
 
@@ -705,14 +725,9 @@ export async function getTaxData(
     }
 
     if (hasTagFilter) {
-      const { data: taggedBookings } = await supabase
-        .from('booking_tags')
-        .select('booking_id')
-        .in('tag_id', tagIds);
-
-      if (taggedBookings) {
-        const bookingIds = taggedBookings.map(tb => tb.booking_id);
-        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+      if (matchedBookingIds) {
+        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
       }
     }
 
@@ -829,13 +844,9 @@ export async function getFinancialBatchData(
   }
 
   if (hasTagFilter) {
-    const { data: taggedBookings } = await supabase
-      .from('booking_tags')
-      .select('booking_id')
-      .in('tag_id', tagIds);
-
-    if (taggedBookings) {
-      bookingsQuery = bookingsQuery.in('id', taggedBookings.map(tb => tb.booking_id));
+    const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+    if (matchedBookingIds) {
+      bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
     }
   }
 
