@@ -203,7 +203,7 @@ export interface SyncStatusResponse {
 }
 
 export function useDashboardBatch(
-  view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests',
+  view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests' | 'guests-cancelled' | 'guests-inquiries',
   from?: string,
   to?: string,
   tagIds?: string[],

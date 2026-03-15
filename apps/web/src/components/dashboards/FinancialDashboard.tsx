@@ -4,7 +4,7 @@ import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
 import { detectGranularity, formatChartDate } from '@/utils/chart-helpers'
-import { formatCompactCurrency } from '@baileys/utils'
+import {} from '@baileys/utils'
 
 import { StateWrapper } from '@/components/StateWrapper'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -202,56 +202,28 @@ export const FinancialDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Financial Center</h2>
-            <p className="text-muted-foreground text-sm mt-1 hidden sm:block">
-              Track your vacation rental income, expenses, and profitability
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {financialData?.metrics && (
-              <>
-                <div className="text-left sm:text-right">
-                  <div className="text-xs text-muted-foreground">
-                    {(financialData.metrics.operatingExpenses?.total || 0) > 0 ? 'Operating Profit' : 'Net Revenue'}
-                  </div>
-                  <div className="text-lg font-bold text-success">
-                    {formatCompactCurrency(
-                      (financialData.metrics.operatingExpenses?.total || 0) > 0
-                        ? (financialData.metrics.operatingProfit ?? (financialData.metrics.revenue?.net || 0) - (financialData.metrics.operatingExpenses?.total || 0))
-                        : (financialData.metrics.revenue?.net || 0)
-                    )}
-                  </div>
-                </div>
-                <div className="text-left sm:text-right">
-                  <div className="text-xs text-muted-foreground">Gross Revenue</div>
-                  <div className="text-lg font-bold text-foreground">
-                    {formatCompactCurrency(financialData.metrics.revenue?.gross || 0)}
-                  </div>
-                </div>
-              </>
-            )}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Financial Center</h2>
+                <p className="text-muted-foreground text-sm mt-1 hidden sm:block">
+                  Track your vacation rental income, expenses, and profitability
+                </p>
+              </div>
+            </div>
+            <TabsList className="w-full sm:w-auto">
+              <TabsTrigger value="pl">P&L View</TabsTrigger>
+              <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+              <TabsTrigger value="tax_center">Tax Center</TabsTrigger>
+            </TabsList>
           </div>
         </div>
-      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-card rounded-lg shadow-sm border border-border">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground hidden sm:block">Financial Analysis</h3>
-          <TabsList className="w-full sm:w-auto">
-            <TabsTrigger value="pl">P&L View</TabsTrigger>
-            <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-            <TabsTrigger value="tax_center">Tax Center</TabsTrigger>
-          </TabsList>
-        </div>
-
-        <div className="p-6">
-          <TabsContent value="pl" className="mt-0"><PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
-          <TabsContent value="cashflow" className="mt-0"><CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
-          <TabsContent value="tax_center" className="mt-0"><TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
-        </div>
+        <TabsContent value="pl" className="mt-6"><PLView data={financialData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
+        <TabsContent value="cashflow" className="mt-6"><CashFlowView data={cashFlowData} loading={isLoading} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
+        <TabsContent value="tax_center" className="mt-6"><TaxCenter data={taxData} loading={isLoading} onPropertyClick={handlePropertyClick} onPeriodClick={handlePeriodClick} comparisonMode={comparisonMode} comparisonDateRange={comparisonDateRange} /></TabsContent>
       </Tabs>
     </div>
   )

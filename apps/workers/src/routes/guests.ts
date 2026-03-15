@@ -155,9 +155,8 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			host_service_fee,
 			booking_charges(id, type, description, amount, position)
 		`)
-		.eq('tenant_id', tenantId)
-		.neq('status', 'canceled');
-	
+		.eq('tenant_id', tenantId);
+
 	if (email) {
 		query = query
 			.ilike('guest_name', name)

@@ -186,26 +186,31 @@ initialSyncChunked.post('/properties', async (c) => {
   }
 });
 
-// sync bookings for a specific property (step 2 - called multiple times)
-initialSyncChunked.post('/bookings/:propertyId', async (c) => {
+// sync all bookings across all properties in one batch (step 2)
+initialSyncChunked.post('/bookings', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
-  const ownerrezPropertyId = c.req.param('propertyId');
 
   const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
   if (tokenResult.error) {
     return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
   }
 
-  const { data: property } = await supabase
+  // build ownerrez_id -> db uuid mapping for all tenant properties
+  const { data: dbProperties } = await supabase
     .from('properties')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('ownerrez_id', ownerrezPropertyId)
-    .single();
+    .select('id, ownerrez_id')
+    .eq('tenant_id', tenantId);
 
-  if (!property) {
-    return c.json({ error: 'Property not found' }, 404);
+  if (!dbProperties || dbProperties.length === 0) {
+    return c.json({ error: 'No properties found — run properties sync first' }, 400);
+  }
+
+  const propertyUuidMap = new Map<string, string>();
+  const ownerrezPropertyIds: string[] = [];
+  for (const p of dbProperties) {
+    propertyUuidMap.set(String(p.ownerrez_id), p.id);
+    ownerrezPropertyIds.push(String(p.ownerrez_id));
   }
 
   const ownerRez = new OwnerRezService(tokenResult.accessToken);
@@ -217,28 +222,27 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
     const endDate = new Date();
     endDate.setFullYear(endDate.getFullYear() + 1);
 
+    // single API call with all property IDs comma-separated
     const bookings = await ownerRez.fetchBookings(
-      ownerrezPropertyId,
+      ownerrezPropertyIds,
       startDate.toISOString().split('T')[0],
       endDate.toISOString().split('T')[0]
     );
 
-    // Collect all data in memory first, then batch upsert to avoid
-    // hitting the Cloudflare Workers 1000 subrequest limit
     const allBlocks: any[] = [];
     const allBookingData: any[] = [];
     const allTagNames = new Set<string>();
-    // Map ownerrez_booking_id -> tag names for linking after upsert
     const bookingTagMap = new Map<number, string[]>();
-    // Map ownerrez_booking_id -> charges from the API response
     const bookingChargesMap = new Map<number, any[]>();
 
     for (const booking of bookings) {
+      const orPropertyId = String(booking.property_id);
+
       if (booking.is_block || booking.type === 'block') {
         allBlocks.push({
           ownerrez_block_id: booking.id,
           tenant_id: tenantId,
-          property_id: parseInt(ownerrezPropertyId),
+          property_id: booking.property_id,
           arrival: booking.arrival,
           departure: booking.departure,
           type: booking.type || 'block',
@@ -246,6 +250,9 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
           updated_at: new Date().toISOString()
         });
       } else {
+        const dbPropertyId = propertyUuidMap.get(orPropertyId);
+        if (!dbPropertyId) continue; // skip if property mapping missing
+
         const guestName = booking.guest
           ? `${booking.guest.first_name || ''} ${booking.guest.last_name || ''}`.trim()
           : booking.guest_name || 'Unknown';
@@ -263,7 +270,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
         const platform = booking.source || booking.listing_site || 'Unassigned';
         allBookingData.push({
           tenant_id: tenantId,
-          property_id: property.id,
+          property_id: dbPropertyId,
           ownerrez_booking_id: booking.id,
           ownerrez_guest_id: booking.guest?.id?.toString(),
           guest_name: guestName,
@@ -282,12 +289,10 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
           updated_at: new Date().toISOString()
         });
 
-        // Collect charges for batch processing
         if (booking.charges && Array.isArray(booking.charges) && booking.charges.length > 0) {
           bookingChargesMap.set(booking.id, booking.charges);
         }
 
-        // Collect tags for batch processing
         if (booking.tags && Array.isArray(booking.tags)) {
           const tagNames = booking.tags.map((t: any) => typeof t === 'string' ? t : (t.name || t));
           tagNames.forEach((n: string) => allTagNames.add(n));
@@ -296,7 +301,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       }
     }
 
-    // Batch upsert blocks in chunks of 100
+    // batch upsert blocks
     const CHUNK_SIZE = 100;
     for (let i = 0; i < allBlocks.length; i += CHUNK_SIZE) {
       const chunk = allBlocks.slice(i, i + CHUNK_SIZE);
@@ -308,7 +313,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       }
     }
 
-    // Batch upsert bookings in chunks of 100
+    // batch upsert bookings
     for (let i = 0; i < allBookingData.length; i += CHUNK_SIZE) {
       const chunk = allBookingData.slice(i, i + CHUNK_SIZE);
       const { error } = await supabase
@@ -319,7 +324,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       }
     }
 
-    // Upsert charges right after bookings (before re-enrichment to stay within subrequest limit)
+    // upsert charges
     if (bookingChargesMap.size > 0) {
       const chargeOwnerrezIds = [...bookingChargesMap.keys()].map(String);
       const { data: dbBookingsForCharges } = await supabase
@@ -367,13 +372,11 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       }
     }
 
-    // Re-enrich contact info from the guests table. The booking upsert above may
-    // have overwritten previously-enriched email/phone with null values from the API.
+    // re-enrich contact info from the guests table
     const { data: guestsWithContact } = await supabase
       .from('guests')
       .select('ownerrez_guest_id, email, phone')
       .eq('tenant_id', tenantId)
-      .or('email.neq.,phone.neq.')
       .not('email', 'is', null)
       .limit(SUPABASE_MAX_ROWS);
 
@@ -391,7 +394,6 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
           .from('bookings')
           .select('id, ownerrez_guest_id, guest_email, guest_phone')
           .eq('tenant_id', tenantId)
-          .eq('property_id', property.id)
           .or('guest_email.is.null,guest_phone.is.null');
 
         if (bookingsToReEnrich) {
@@ -409,7 +411,6 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
               );
             }
           }
-          // Run in parallel batches of 10
           for (let i = 0; i < updates.length; i += 10) {
             await Promise.all(updates.slice(i, i + 10));
           }
@@ -417,7 +418,7 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       }
     }
 
-    // Batch ensure all tags exist (1 fetch + 1 insert instead of N per tag)
+    // batch ensure all tags exist and link
     if (allTagNames.size > 0) {
       const { data: existingTags } = await supabase
         .from('tags')
@@ -443,7 +444,6 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
         }
       }
 
-      // Now link bookings to tags — need booking UUIDs from DB
       if (bookingTagMap.size > 0) {
         const ownerrezIds = [...bookingTagMap.keys()];
         const { data: dbBookings } = await supabase
@@ -466,7 +466,6 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
             }
           }
 
-          // Batch upsert booking_tags in chunks
           for (let i = 0; i < allLinks.length; i += CHUNK_SIZE) {
             const chunk = allLinks.slice(i, i + CHUNK_SIZE);
             await supabase
@@ -484,8 +483,9 @@ initialSyncChunked.post('/bookings/:propertyId', async (c) => {
       totalFromApi: bookings.length
     });
   } catch (error) {
-    console.error(`Failed to sync bookings for property ${ownerrezPropertyId}:`, error);
-    return c.json({ error: 'Failed to sync bookings' }, 500);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Failed to sync bookings:', message, error);
+    return c.json({ error: `Failed to sync bookings: ${message}` }, 500);
   }
 });
 
@@ -673,9 +673,10 @@ initialSyncChunked.post('/guest-contacts', async (c) => {
       return c.json({ success: true, enriched: 0, remaining: 0 });
     }
 
-    // Process up to 30 guests per call (with parallelism of 5, ~6 batches * ~0.5s = ~3s API time)
-    const BATCH_LIMIT = 30;
-    const PARALLEL_SIZE = 5;
+    // process up to 10 guests per call to stay within rate limits
+    // with retry-on-429 in fetchGuestDetail, this is safe but slower
+    const BATCH_LIMIT = 10;
+    const PARALLEL_SIZE = 3;
     const guestIdsToProcess = uniqueGuestIds.slice(0, BATCH_LIMIT);
     let enrichedCount = 0;
 
@@ -791,6 +792,72 @@ initialSyncChunked.post('/guest-contacts', async (c) => {
   } catch (error) {
     console.error('Failed to sync guest contacts:', error);
     return c.json({ error: 'Failed to sync guest contacts' }, 500);
+  }
+});
+
+// sync inquiries (step 5 — optional, runs after guest-contacts)
+initialSyncChunked.post('/inquiries', async (c) => {
+  const supabase = createSupabaseClient(c.env);
+  const tenantId = c.get('tenantId');
+
+  try {
+    const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
+    if (tokenResult.error) {
+      return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
+    }
+
+    const ownerRez = new OwnerRezService(tokenResult.accessToken);
+    // fetch last 2 years of inquiries
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    const inquiries = await ownerRez.fetchInquiries(twoYearsAgo.toISOString());
+
+    if (inquiries.length === 0) {
+      return c.json({ synced: 0, message: 'No inquiries found' });
+    }
+
+    const rows = inquiries.map((inq: Record<string, unknown>) => {
+      const guest = inq.guest as Record<string, unknown> | undefined;
+      const firstName = guest?.first_name as string | undefined;
+      const lastName = guest?.last_name as string | undefined;
+      const guestName = [firstName, lastName].filter(Boolean).join(' ') || null;
+
+      return {
+        tenant_id: tenantId,
+        ownerrez_inquiry_id: inq.id as number,
+        property_id: (inq.property_id as number) ?? null,
+        guest_name: guestName,
+        guest_email: null,
+        arrival: (inq.arrival as string) ?? null,
+        departure: (inq.departure as string) ?? null,
+        status: (inq.type as string) ?? null,
+        data: inq,
+        created_at: (inq.created_utc as string) ?? (inq.received_utc as string) ?? new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    });
+
+    // batch upsert in chunks of 100
+    const CHUNK_SIZE = 100;
+    let synced = 0;
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + CHUNK_SIZE);
+      const { error } = await supabase
+        .from('inquiries')
+        .upsert(chunk, { onConflict: 'ownerrez_inquiry_id,tenant_id' });
+
+      if (error) {
+        console.error(`Inquiry sync chunk error at offset ${i}:`, error);
+      } else {
+        synced += chunk.length;
+      }
+    }
+
+    return c.json({ synced, total: inquiries.length });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Failed to sync inquiries:', message, error);
+    return c.json({ error: `Failed to sync inquiries: ${message}`, synced: 0 }, 500);
   }
 });
 

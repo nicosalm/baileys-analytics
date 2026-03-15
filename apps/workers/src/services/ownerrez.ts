@@ -54,6 +54,27 @@ export class OwnerRezService {
 		return headers;
 	}
 
+	private async fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			const response = await this.fetchWithTimeout(url, options);
+
+			if (response.status === 429 && attempt < maxRetries) {
+				// respect Retry-After header, fallback to exponential backoff
+				const retryAfter = response.headers.get('Retry-After');
+				const delayMs = retryAfter
+					? parseInt(retryAfter, 10) * 1000
+					: Math.min(2000 * Math.pow(2, attempt), 30000);
+				await new Promise(r => setTimeout(r, delayMs));
+				continue;
+			}
+
+			return response;
+		}
+
+		// unreachable, but satisfies TS
+		throw new Error('Max retries exceeded');
+	}
+
 	private async fetchAllPages(url: string, options?: RequestInit): Promise<any[]> {
 		const allItems: any[] = [];
 		let currentUrl: string | null = url;
@@ -61,13 +82,11 @@ export class OwnerRezService {
 		let isFirstPage = true;
 
 		while (currentUrl && page < this.maxPages) {
-			// Only use the original method/body for the first request.
-			// Subsequent pagination URLs from next_page_url are GET requests.
 			const requestOptions: RequestInit = isFirstPage
 				? { ...options, headers: this.getHeaders() }
 				: { headers: this.getHeaders() };
 
-			const response = await this.fetchWithTimeout(currentUrl, requestOptions);
+			const response = await this.fetchWithRetry(currentUrl, requestOptions);
 
 			if (!response.ok) {
 				throw new Error(`API request failed: ${response.statusText} (${response.status})`);
@@ -109,16 +128,18 @@ export class OwnerRezService {
 		const params = new URLSearchParams();
 		params.append('include_tags', 'true');
 		params.append('include_fields', 'true');
+		params.append('limit', '100');
 
 		return this.fetchAllPages(`${this.baseUrl}/properties?${params.toString()}`);
 	}
 
-	async fetchBookings(propertyId?: string, startDate?: string, endDate?: string): Promise<any[]> {
+	async fetchBookings(propertyIds?: string | string[], startDate?: string, endDate?: string): Promise<any[]> {
 		const params = new URLSearchParams();
 
 		// ownerrez v2 api requires either property_ids or since_utc
-		if (propertyId) {
-			params.append('property_ids', propertyId);
+		const ids = Array.isArray(propertyIds) ? propertyIds.join(',') : propertyIds;
+		if (ids) {
+			params.append('property_ids', ids);
 		} else {
 			const sinceDate = startDate || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
 			params.append('since_utc', sinceDate);
@@ -131,6 +152,7 @@ export class OwnerRezService {
 		params.append('include_charges', 'true');
 		params.append('include_fields', 'true');
 		params.append('include_tags', 'true');
+		params.append('limit', '100');
 
 		return this.fetchAllPages(`${this.baseUrl}/bookings?${params.toString()}`);
 	}
@@ -148,7 +170,7 @@ export class OwnerRezService {
 	}
 
 	async fetchGuestDetail(guestId: string): Promise<any> {
-		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests/${guestId}`, {
+		const response = await this.fetchWithRetry(`${this.baseUrl}/guests/${guestId}`, {
 			headers: this.getHeaders()
 		});
 
@@ -174,6 +196,7 @@ export class OwnerRezService {
 		const params = new URLSearchParams();
 		params.append('include_tags', 'true');
 		params.append('include_fields', 'true');
+		params.append('limit', '100');
 
 		// default to 4 years ago if not specified
 		if (createdSinceUtc) {
@@ -185,6 +208,21 @@ export class OwnerRezService {
 		}
 
 		return this.fetchAllPages(`${this.baseUrl}/guests?${params.toString()}`);
+	}
+
+	async fetchInquiries(sinceUtc?: string): Promise<any[]> {
+		const params = new URLSearchParams();
+		params.append('include_guest', 'true');
+		params.append('limit', '100');
+		if (sinceUtc) {
+			params.append('since_utc', sinceUtc);
+		} else {
+			const oneYearAgo = new Date();
+			oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+			params.append('since_utc', oneYearAgo.toISOString());
+		}
+
+		return this.fetchAllPages(`${this.baseUrl}/inquiries?${params.toString()}`);
 	}
 
 	async searchGuests(query: string): Promise<any[]> {

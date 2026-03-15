@@ -1,9 +1,9 @@
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage, parseISO } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
-import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X, Sparkles } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X, Sparkles, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { PaginatedTable } from '@/components/tables'
 import { MetricCard } from '@/components/MetricCard'
@@ -16,11 +16,17 @@ import { useTips } from '@/hooks/use-tips'
 import { useTheme } from '@/contexts/theme'
 import { getPlatformColor, getTagColor, resolveToken } from '@/lib/theme'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import type { TooltipContentProps } from 'recharts'
 import {
     PieChart, Pie, Cell, Label, Tooltip, ResponsiveContainer
 } from 'recharts'
+
+const CancelledGuestsTab = lazy(() => import('./CancelledGuestsTab').then(m => ({ default: m.CancelledGuestsTab })))
+const InquiriesTab = lazy(() => import('./InquiriesTab').then(m => ({ default: m.InquiriesTab })))
+
+type GuestSubTab = 'active' | 'cancelled' | 'inquiries'
 
 interface TagChartItem {
     name: string
@@ -72,6 +78,7 @@ export const GuestsDashboard = () => {
     const { showTips } = useTips()
     const { resolvedTheme } = useTheme()
     const comparisonDateRange = useComparisonDateRange()
+    const [subTab, setSubTab] = useState<GuestSubTab>('active')
 
     const tagIds = useTagIds()
     const propertyIds = usePropertyIds()
@@ -389,32 +396,72 @@ export const GuestsDashboard = () => {
         return { maxCount, totalTags }
     }, [tagChartData, tagDistribution])
 
+    const headerCard = (
+        <div className="bg-card rounded-xl border border-border p-4">
+            <div className="flex flex-col gap-3">
+                <div>
+                    <h2 className="text-lg font-semibold text-foreground">Guest Center</h2>
+                    <p className="text-muted-foreground text-sm mt-1 hidden sm:block">
+                        Understand your guests and their booking patterns
+                    </p>
+                </div>
+                <Tabs value={subTab} onValueChange={(v) => setSubTab(v as GuestSubTab)}>
+                    <TabsList className="w-full sm:w-auto">
+                        <TabsTrigger value="active">Active</TabsTrigger>
+                        <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+                        <TabsTrigger value="inquiries">Inquiries</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </div>
+        </div>
+    )
+
+    if (subTab === 'cancelled') {
+        return (
+            <div className="space-y-6">
+                {headerCard}
+                <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>}>
+                    <CancelledGuestsTab />
+                </Suspense>
+            </div>
+        )
+    }
+
+    if (subTab === 'inquiries') {
+        return (
+            <div className="space-y-6">
+                {headerCard}
+                <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>}>
+                    <InquiriesTab />
+                </Suspense>
+            </div>
+        )
+    }
+
     if (isLoading || error || !data) {
         return (
-            <StateWrapper
-                loading={isLoading}
-                error={error}
-                empty={!data && !isLoading && !error}
-                loadingMessage="Loading guest analytics..."
-                emptyMessage="No guest data available"
-                emptySubMessage="Guest data will appear once bookings are synced"
-                onRetry={() => window.location.reload()}
-                minHeight={400}
-                className="py-12"
-            >
-                <div />
-            </StateWrapper>
+            <div className="space-y-6">
+                {headerCard}
+                <StateWrapper
+                    loading={isLoading}
+                    error={error}
+                    empty={!data && !isLoading && !error}
+                    loadingMessage="Loading guest analytics..."
+                    emptyMessage="No guest data available"
+                    emptySubMessage="Guest data will appear once bookings are synced"
+                    onRetry={() => window.location.reload()}
+                    minHeight={400}
+                    className="py-12"
+                >
+                    <div />
+                </StateWrapper>
+            </div>
         )
     }
 
     return (
         <div className="space-y-6">
-            <div className="bg-card rounded-xl border border-border p-4">
-                <h2 className="text-lg font-semibold text-foreground">Guest Analytics</h2>
-                <p className="text-muted-foreground text-sm mt-1">
-                    Understand your guests and their booking patterns
-                </p>
-            </div>
+            {headerCard}
 
             {showTips && (
                 <div className="bg-info-subtle border border-info/30 rounded-lg p-4">

@@ -11,7 +11,8 @@ import { getOverviewData } from './services/overview';
 import { getFinancialBatchData } from './services/financial';
 import { getPropertiesData } from './services/properties';
 import { getOccupancyData } from './services/occupancy';
-import { getGuestsData } from './services/guests';
+import { getGuestsData, getCancelledBookingsData } from './services/guests';
+import { getInquiriesData } from './services/inquiries';
 import { properties } from './routes/properties';
 import { propertyDetail } from './routes/property-detail';
 import { bookings } from './routes/bookings';
@@ -307,6 +308,16 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 			} else {
 				data = currentData;
 			}
+			break;
+		}
+
+		case 'guests-cancelled': {
+			data = await getCancelledBookingsData(supabase, tenantId, from, to, properties);
+			break;
+		}
+
+		case 'guests-inquiries': {
+			data = await getInquiriesData(supabase, tenantId, from, to);
 			break;
 		}
 

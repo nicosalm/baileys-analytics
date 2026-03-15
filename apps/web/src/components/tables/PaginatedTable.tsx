@@ -58,10 +58,40 @@ export function PaginatedTable<T extends Record<string, any>>({
   const [searchTerm, setSearchTerm] = React.useState('')
   const [currentPage, setCurrentPage] = React.useState(1)
 
-  const filteredData = React.useMemo(() => {
-    if (!enableSearch || !searchTerm) return data
+  // built-in sort state used when parent doesn't provide onSort
+  const [internalSortBy, setInternalSortBy] = React.useState(sortBy)
+  const [internalSortOrder, setInternalSortOrder] = React.useState(sortOrder)
 
-    return data.filter(item => {
+  const activeSortBy = onSort ? sortBy : internalSortBy
+  const activeSortOrder = onSort ? sortOrder : internalSortOrder
+
+  const sortedData = React.useMemo(() => {
+    // when parent controls sorting via onSort, data is pre-sorted
+    if (onSort || !activeSortBy) return data
+
+    return [...data].sort((a, b) => {
+      const aVal = a[activeSortBy as keyof T]
+      const bVal = b[activeSortBy as keyof T]
+
+      if (aVal == null && bVal == null) return 0
+      if (aVal == null) return 1
+      if (bVal == null) return -1
+
+      let cmp: number
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        cmp = aVal - bVal
+      } else {
+        cmp = String(aVal).localeCompare(String(bVal))
+      }
+
+      return activeSortOrder === 'desc' ? -cmp : cmp
+    })
+  }, [data, onSort, activeSortBy, activeSortOrder])
+
+  const filteredData = React.useMemo(() => {
+    if (!enableSearch || !searchTerm) return sortedData
+
+    return sortedData.filter(item => {
       const searchLower = searchTerm.toLowerCase()
 
       if (searchKeys.length > 0) {
@@ -78,7 +108,7 @@ export function PaginatedTable<T extends Record<string, any>>({
         return false
       })
     })
-  }, [data, searchTerm, enableSearch, searchKeys])
+  }, [sortedData, searchTerm, enableSearch, searchKeys])
 
   const paginatedData = React.useMemo(() => {
     const start = (currentPage - 1) * pageSize
@@ -92,8 +122,19 @@ export function PaginatedTable<T extends Record<string, any>>({
   }, [searchTerm])
 
   const handleSort = (column: string) => {
-    if (onSort && columns.find(c => c.key === column)?.sortable) {
+    if (!columns.find(c => c.key === column)?.sortable) return
+
+    if (onSort) {
       onSort(column)
+    } else {
+      // built-in sort: toggle order if same column, otherwise switch column
+      if (column === internalSortBy) {
+        setInternalSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+      } else {
+        setInternalSortBy(column)
+        setInternalSortOrder('desc')
+      }
+      setCurrentPage(1)
     }
   }
 
@@ -186,9 +227,9 @@ export function PaginatedTable<T extends Record<string, any>>({
                       >
                         <div className="flex items-center justify-between">
                           <span>{column.header}</span>
-                          {column.sortable && sortBy === column.key && (
+                          {column.sortable && activeSortBy === column.key && (
                             <span className="ml-2">
-                              {sortOrder === 'asc' ? (
+                              {activeSortOrder === 'asc' ? (
                                 <ChevronUp className="w-4 h-4" />
                               ) : (
                                 <ChevronDown className="w-4 h-4" />

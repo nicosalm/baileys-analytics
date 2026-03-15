@@ -35,16 +35,19 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
   const withRetry = async <T,>(
     fn: () => Promise<{ success: true; data: T } | { success: false; error: string; status?: number }>,
     retries = 2,
-    delay = 2000
+    delay = 3000
   ) => {
     let lastResult: Awaited<ReturnType<typeof fn>> | null = null
     for (let attempt = 0; attempt <= retries; attempt++) {
       lastResult = await fn()
       if (lastResult.success) return lastResult
-      // Don't retry on auth or client errors - only transient/server failures
-      if (lastResult.status && lastResult.status >= 400 && lastResult.status < 500) return lastResult
+      // retry on 429 (rate limit) and 5xx (server errors)
+      const status = lastResult.status || 0
+      const retryable = status === 429 || status >= 500
+      if (!retryable) return lastResult
       if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, delay))
+        // exponential backoff: 3s, 6s, 12s
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)))
       }
     }
     return lastResult!
@@ -91,7 +94,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       const properties = propertiesResult.data.properties || []
       const totalProperties = properties.length
 
-      // Step 3: Sync bookings for each property
+      // Step 3: Sync all bookings in one batch call
       setProgress({
         step: 'bookings',
         currentProperty: 0,
@@ -105,33 +108,27 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       let totalBookings = 0
       let totalBlocks = 0
 
-      for (let i = 0; i < properties.length; i++) {
-        const property = properties[i]
+      const bookingsResult = await withRetry(() =>
+        api.request<{
+          success: boolean;
+          bookingsCount: number;
+          blocksCount: number;
+        }>('/initial-sync-chunked/bookings', { method: 'POST' }),
+        2,
+        5000
+      )
 
-        setProgress(prev => ({
-          ...prev,
-          currentProperty: i + 1
-        }))
-
-        const bookingsResult = await withRetry(() =>
-          api.request<{
-            success: boolean;
-            bookingsCount: number;
-            blocksCount: number;
-          }>(`/initial-sync-chunked/bookings/${property.id}`, { method: 'POST' })
-        )
-
-        if (bookingsResult.success) {
-          totalBookings += bookingsResult.data.bookingsCount
-          totalBlocks += bookingsResult.data.blocksCount
-
-          setProgress(prev => ({
-            ...prev,
-            bookingsLoaded: totalBookings,
-            blocksLoaded: totalBlocks
-          }))
-        }
+      if (bookingsResult.success) {
+        totalBookings = bookingsResult.data.bookingsCount
+        totalBlocks = bookingsResult.data.blocksCount
       }
+
+      setProgress(prev => ({
+        ...prev,
+        currentProperty: totalProperties,
+        bookingsLoaded: totalBookings,
+        blocksLoaded: totalBlocks
+      }))
 
       // Step 4: Sync guests (non-blocking - don't fail the whole sync if this times out)
       setProgress({
@@ -168,7 +165,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       try {
         let remaining = 1
         let iterations = 0
-        const MAX_ITERATIONS = 20 // safety cap: 20 * 30 guests = 600 max
+        const MAX_ITERATIONS = 10 // safety cap: 10 * 10 guests = 100 max
         while (remaining > 0 && iterations < MAX_ITERATIONS) {
           const contactResult = await withRetry(() =>
             api.request<{
@@ -185,7 +182,16 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         // Guest contact enrichment is supplementary - don't block completion
       }
 
-      // Step 5: Mark as complete
+      // Step 5: Sync inquiries (non-blocking)
+      try {
+        await withRetry(() =>
+          api.request('/initial-sync-chunked/inquiries', { method: 'POST' })
+        )
+      } catch {
+        // inquiry sync is supplementary
+      }
+
+      // Step 6: Mark as complete
       await withRetry(() =>
         api.request('/initial-sync-chunked/complete', {
           method: 'POST',
@@ -222,11 +228,8 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
   const getProgressPercentage = () => {
     if (progress.step === 'checking') return 10
     if (progress.step === 'properties') return 25
-    if (progress.step === 'bookings' && progress.totalProperties) {
-      const propertyProgress = ((progress.currentProperty || 0) / progress.totalProperties) * 45
-      return 25 + propertyProgress
-    }
-    if (progress.step === 'guests') return 80
+    if (progress.step === 'bookings') return 50
+    if (progress.step === 'guests') return 75
     if (progress.step === 'guest-contacts') return 90
     if (progress.step === 'complete') return 100
     return 0
@@ -239,10 +242,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       case 'properties':
         return 'Loading your properties...'
       case 'bookings':
-        if (progress.currentProperty && progress.totalProperties) {
-          return `Syncing bookings (${progress.currentProperty} of ${progress.totalProperties} properties)...`
-        }
-        return 'Syncing bookings...'
+        return 'Syncing bookings across all properties...'
       case 'guests':
         return 'Syncing guest information and tags...'
       case 'guest-contacts':

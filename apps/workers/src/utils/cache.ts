@@ -24,7 +24,7 @@ export function getDashboardTtl(view: string): number {
 }
 
 // views that depend on booking data (invalidated on sync/webhook)
-const BOOKING_VIEWS = ['overview', 'financial', 'occupancy', 'guests', 'properties'];
+const BOOKING_VIEWS = ['overview', 'financial', 'occupancy', 'guests', 'guests-cancelled', 'guests-inquiries', 'properties'];
 
 // views affected by each config type
 const CONFIG_VIEW_DEPS: Record<string, string[]> = {

@@ -597,18 +597,24 @@ async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 }
 
 async function handleInquiryUpdate(supabase: any, tenantId: string, inquiry: any) {
+	const guest = inquiry.guest;
+	const guestName = guest
+		? [guest.first_name, guest.last_name].filter(Boolean).join(' ') || null
+		: null;
+
 	await supabase
 		.from('inquiries')
 		.upsert({
 			ownerrez_inquiry_id: inquiry.id,
 			tenant_id: tenantId,
-			property_id: inquiry.property_id,
-			guest_name: inquiry.guest_name,
-			guest_email: inquiry.guest_email,
-			arrival: inquiry.arrival,
-			departure: inquiry.departure,
-			status: inquiry.status,
+			property_id: inquiry.property_id ?? null,
+			guest_name: guestName,
+			guest_email: null,
+			arrival: inquiry.arrival ?? null,
+			departure: inquiry.departure ?? null,
+			status: inquiry.type ?? null,
 			data: inquiry,
+			created_at: inquiry.created_utc ?? inquiry.received_utc ?? new Date().toISOString(),
 			updated_at: new Date().toISOString()
 		}, { onConflict: 'ownerrez_inquiry_id,tenant_id' });
 }

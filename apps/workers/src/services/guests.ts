@@ -2,6 +2,74 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { normalizePlatform } from '../utils/platform';
 
+export interface CancelledBooking {
+  id: string;
+  guestName: string;
+  guestEmail?: string;
+  guestPhone?: string;
+  propertyName: string;
+  propertyId: string;
+  arrival: string;
+  departure: string;
+  totalAmount: number;
+  platform: string;
+  canceledUtc: string | null;
+  bookedUtc: string | null;
+}
+
+export interface CancelledBookingsData {
+  bookings: CancelledBooking[];
+  totalCount: number;
+}
+
+export async function getCancelledBookingsData(
+  supabase: SupabaseClient,
+  tenantId: string,
+  from?: string,
+  to?: string,
+  filterPropertyIds?: string[]
+): Promise<CancelledBookingsData> {
+  let query = supabase
+    .from('bookings')
+    .select('id, guest_name, guest_email, guest_phone, arrival, departure, total_amount, platform, property_id, canceled_utc, booked_utc, properties!inner(name)')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'canceled')
+    .order('canceled_utc', { ascending: false, nullsFirst: false })
+    .limit(200);
+
+  if (from && to) {
+    query = query.lte('arrival', to).gte('departure', from);
+  }
+
+  if (filterPropertyIds && filterPropertyIds.length > 0) {
+    query = query.in('property_id', filterPropertyIds);
+  }
+
+  const { data: bookings, error } = await query;
+
+  if (error || !bookings) {
+    return { bookings: [], totalCount: 0 };
+  }
+
+  return {
+    bookings: bookings.map((b: Record<string, unknown>) => ({
+      id: b.id as string,
+      guestName: b.guest_name as string,
+      guestEmail: (b.guest_email as string) || undefined,
+      guestPhone: (b.guest_phone as string) || undefined,
+      propertyName: (b.properties as Record<string, unknown>)?.name as string || '',
+      propertyId: b.property_id as string,
+      arrival: b.arrival as string,
+      departure: b.departure as string,
+      totalAmount: (b.total_amount as number) || 0,
+      platform: normalizePlatform(b.platform as string),
+      canceledUtc: b.canceled_utc as string | null,
+      bookedUtc: b.booked_utc as string | null,
+    })),
+    totalCount: bookings.length,
+  };
+}
+
 export interface FeePlatformBreakdown {
   platform: string;
   platformFees: number;
