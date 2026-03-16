@@ -10,8 +10,7 @@ interface ChannelCharges {
   taxes: number
   fees: number
   discounts: number
-  cleaning: number
-  linens: number
+  cleaningAndLinens: number
   petFees: number
   creditCardFees: number
   otherSurcharges: number
@@ -26,8 +25,7 @@ interface GuestSpendChartProps {
     taxes: number
     fees: number
     discounts: number
-    cleaning: number
-    linens: number
+    cleaningAndLinens: number
     petFees: number
     creditCardFees: number
     otherSurcharges: number
@@ -43,8 +41,7 @@ type ChannelFilter = 'all' | 'direct' | 'ota'
 const SEGMENT_COLORS: Record<string, string> = {
   'Base Rent': '#3B82F6',
   'Taxes': '#F59E0B',
-  'Cleaning': '#8B5CF6',
-  'Linens': '#A855F7',
+  'Cleaning & Linens': '#8B5CF6',
   'Pet Fees': '#D97706',
   'CC Fees': '#EA580C',
   'Host Fees': '#EC4899',
@@ -108,18 +105,17 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
 
     const {
       taxes, fees, discounts,
-      cleaning, linens, petFees,
+      cleaningAndLinens, petFees,
       creditCardFees, otherSurcharges
     } = comp
 
-    const baseRent = gross - taxes - cleaning - linens - petFees - creditCardFees - otherSurcharges - fees + discounts
+    const baseRent = gross - taxes - cleaningAndLinens - petFees - creditCardFees - otherSurcharges - fees + discounts
     const total = gross + guest
 
     const segments = [
       { name: 'Base Rent', value: Math.max(0, baseRent) },
       { name: 'Taxes', value: taxes },
-      { name: 'Cleaning', value: cleaning },
-      { name: 'Linens', value: linens },
+      { name: 'Cleaning & Linens', value: cleaningAndLinens },
       { name: 'Pet Fees', value: petFees },
       { name: 'CC Fees', value: creditCardFees },
       { name: 'Host Fees', value: fees },

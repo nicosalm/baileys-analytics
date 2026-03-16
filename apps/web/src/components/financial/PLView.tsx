@@ -49,8 +49,7 @@ interface ChannelCharges {
   taxes: number
   fees: number
   discounts: number
-  cleaning: number
-  linens: number
+  cleaningAndLinens: number
   petFees: number
   creditCardFees: number
   otherSurcharges: number
@@ -62,8 +61,7 @@ interface ChargeComposition {
   taxes: number
   fees: number
   discounts: number
-  cleaning: number
-  linens: number
+  cleaningAndLinens: number
   petFees: number
   creditCardFees: number
   otherSurcharges: number
@@ -502,16 +500,10 @@ export const PLView: React.FC<PLViewProps> = ({
                   <div className="text-lg font-bold text-info-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
                 </div>
               )}
-              {data.chargeComposition.cleaning > 0 && (
+              {data.chargeComposition.cleaningAndLinens > 0 && (
                 <div className="bg-purple-500/10 rounded-lg p-3">
-                  <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Cleaning</div>
-                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.cleaning)}</div>
-                </div>
-              )}
-              {data.chargeComposition.linens > 0 && (
-                <div className="bg-violet-500/10 rounded-lg p-3">
-                  <div className="text-xs text-violet-600 dark:text-violet-400 font-medium">Linens</div>
-                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.linens)}</div>
+                  <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Cleaning & Linens</div>
+                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.cleaningAndLinens)}</div>
                 </div>
               )}
               {data.chargeComposition.petFees > 0 && (
@@ -548,7 +540,6 @@ export const PLView: React.FC<PLViewProps> = ({
                       detail.type === 'fee' ? 'bg-warning' :
                       detail.type === 'discount' ? 'bg-success' :
                       detail.type === 'cleaning' ? 'bg-purple-500' :
-                      detail.type === 'linen' ? 'bg-violet-500' :
                       detail.type === 'pet' ? 'bg-amber-500' :
                       detail.type === 'credit_card' ? 'bg-orange-500' :
                       'bg-muted-foreground'

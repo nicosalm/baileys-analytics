@@ -65,8 +65,7 @@ interface ChannelCharges {
   taxes: number;
   fees: number;
   discounts: number;
-  cleaning: number;
-  linens: number;
+  cleaningAndLinens: number;
   petFees: number;
   creditCardFees: number;
   otherSurcharges: number;
@@ -78,8 +77,7 @@ export interface ChargeComposition {
   taxes: number;
   fees: number;
   discounts: number;
-  cleaning: number;
-  linens: number;
+  cleaningAndLinens: number;
   petFees: number;
   creditCardFees: number;
   otherSurcharges: number;
@@ -170,16 +168,14 @@ function normalizeSurchargeCategory(description: string): string {
   const d = (description || '').toLowerCase();
   if (/\btax\b/.test(d)) return 'tax';
   if (/\bpet\b/.test(d)) return 'pet';
-  if (d.includes('linen')) return 'linen';
-  if (d.includes('clean')) return 'cleaning';
+  if (d.includes('linen') || d.includes('clean')) return 'cleaning';
   if (d.includes('credit card')) return 'credit_card';
   return 'other_surcharge';
 }
 
 const SURCHARGE_DISPLAY_NAMES: Record<string, string> = {
   pet: 'Pet Fees',
-  linen: 'Linen Fees',
-  cleaning: 'Cleaning Fees',
+  cleaning: 'Cleaning & Linens',
   credit_card: 'Credit Card Fees',
   other_surcharge: 'Other Surcharges',
 };
@@ -348,13 +344,12 @@ export async function getPLData(
   let compositionFees = 0;
   let compositionDiscounts = 0;
   let compositionCleaning = 0;
-  let compositionLinens = 0;
   let compositionPetFees = 0;
   let compositionCreditCardFees = 0;
   let compositionOtherSurcharges = 0;
 
   const emptyChannel = (): ChannelCharges => ({
-    taxes: 0, fees: 0, discounts: 0, cleaning: 0, linens: 0,
+    taxes: 0, fees: 0, discounts: 0, cleaningAndLinens: 0,
     petFees: 0, creditCardFees: 0, otherSurcharges: 0, grossRevenue: 0, guestFees: 0,
   });
   const channelDirect = emptyChannel();
@@ -372,8 +367,8 @@ export async function getPLData(
       const amount = c.amount || 0;
       const desc = (c.description || '').toLowerCase();
 
-      // filter out zero-amount security deposits
-      if (desc.includes('security') && amount === 0) return;
+      // security deposits are refunded — exclude entirely
+      if (desc.includes('security')) return;
 
       let detailKey: string;
       let displayType: string;
@@ -409,8 +404,7 @@ export async function getPLData(
           displayDescription = c.description || 'Tax';
         } else {
           switch (category) {
-            case 'cleaning': compositionCleaning += amount; ch.cleaning += amount; break;
-            case 'linen': compositionLinens += amount; ch.linens += amount; break;
+            case 'cleaning': compositionCleaning += amount; ch.cleaningAndLinens += amount; break;
             case 'pet': compositionPetFees += amount; ch.petFees += amount; break;
             case 'credit_card': compositionCreditCardFees += amount; ch.creditCardFees += amount; break;
             default: compositionOtherSurcharges += amount; ch.otherSurcharges += amount; break;
@@ -432,8 +426,7 @@ export async function getPLData(
     taxes: compositionTaxes,
     fees: compositionFees,
     discounts: compositionDiscounts,
-    cleaning: compositionCleaning,
-    linens: compositionLinens,
+    cleaningAndLinens: compositionCleaning,
     petFees: compositionPetFees,
     creditCardFees: compositionCreditCardFees,
     otherSurcharges: compositionOtherSurcharges,
