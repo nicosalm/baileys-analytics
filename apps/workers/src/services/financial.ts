@@ -1,9 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { getActiveSeasons } from './seasons';
-import { TaxCalculator } from './tax-calculator';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
-import { normalizePlatform } from '../utils/platform';
+import { normalizePlatform, PLATFORM_REMITS_TAX } from '../utils/platform';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 
 interface FinancialMetrics {
@@ -167,9 +165,10 @@ export interface FinancialSharedData {
 function normalizeSurchargeCategory(description: string): string {
   const d = (description || '').toLowerCase();
   if (/\btax\b/.test(d)) return 'tax';
+  // credit card before pet — some CC fee descriptions contain the word "pet"
+  if (d.includes('credit card')) return 'credit_card';
   if (/\bpet\b/.test(d)) return 'pet';
   if (d.includes('linen') || d.includes('clean')) return 'cleaning';
-  if (d.includes('credit card')) return 'credit_card';
   return 'other_surcharge';
 }
 
@@ -198,7 +197,6 @@ export async function getPLData(
   filterPropertyIds: string[] = [],
   shared?: FinancialSharedData
 ): Promise<PLData> {
-  const seasons = await getActiveSeasons(supabase, tenantId);
   const hasTagFilter = tagIds.length > 0;
   const { useDaily, useWeekly } = determineGranularity(from, to);
 
@@ -381,11 +379,33 @@ export async function getPLData(
         displayType = 'tax';
         displayDescription = c.description || 'Tax';
       } else if (c.type === 'fee') {
-        compositionFees += amount;
-        ch.fees += amount;
-        detailKey = `fee:${c.description || 'Fee'}`;
-        displayType = 'fee';
-        displayDescription = c.description || 'Fee';
+        // some fee-type charges are actually surcharges — categorize by description
+        const feeCategory = normalizeSurchargeCategory(c.description);
+        if (feeCategory === 'pet') {
+          compositionPetFees += amount;
+          ch.petFees += amount;
+          detailKey = `surcharge:pet`;
+          displayType = 'pet';
+          displayDescription = SURCHARGE_DISPLAY_NAMES.pet;
+        } else if (feeCategory === 'cleaning') {
+          compositionCleaning += amount;
+          ch.cleaningAndLinens += amount;
+          detailKey = `surcharge:cleaning`;
+          displayType = 'cleaning';
+          displayDescription = SURCHARGE_DISPLAY_NAMES.cleaning;
+        } else if (feeCategory === 'credit_card') {
+          compositionCreditCardFees += amount;
+          ch.creditCardFees += amount;
+          detailKey = `surcharge:credit_card`;
+          displayType = 'credit_card';
+          displayDescription = SURCHARGE_DISPLAY_NAMES.credit_card;
+        } else {
+          compositionFees += amount;
+          ch.fees += amount;
+          detailKey = `fee:${c.description || 'Fee'}`;
+          displayType = 'fee';
+          displayDescription = c.description || 'Fee';
+        }
       } else if (c.type === 'discount') {
         compositionDiscounts += amount;
         ch.discounts += amount;
@@ -488,7 +508,6 @@ export async function getRevenueData(
   filterPropertyIds: string[] = [],
   shared?: FinancialSharedData
 ): Promise<RevenueData> {
-  const seasons = await getActiveSeasons(supabase, tenantId);
   const hasTagFilter = tagIds.length > 0;
   const { useDaily, useWeekly } = determineGranularity(from, to);
 
@@ -691,7 +710,6 @@ export async function getTaxData(
   filterPropertyIds: string[] = [],
   shared?: FinancialSharedData
 ): Promise<TaxData> {
-  const taxCalculator = new TaxCalculator(supabase);
   const hasTagFilter = tagIds.length > 0;
   const { useDaily, useWeekly } = determineGranularity(from, to);
 
@@ -728,14 +746,6 @@ export async function getTaxData(
     bookings = bookingsData || [];
   }
 
-  const { data: taxConfigs } = await supabase
-    .from('property_tax_configs')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .eq('is_active', true);
-
-  const platformFees: any[] = [];
-
   // when using shared data, bookings lack the joined `properties` field,
   // so build a lookup map from shared.properties instead
   const propertyLookup = shared?.properties
@@ -750,6 +760,7 @@ export async function getTaxData(
   // single pass: compute totals and per-property breakdown
   let totalRent = 0;
   let ownerTax = 0;
+  let platformTax = 0;
   let taxableBase = 0;
 
   const propertyTaxMap = new Map();
@@ -764,8 +775,13 @@ export async function getTaxData(
     }
 
     totalRent += b.total_amount || 0;
-    ownerTax += bookingTax;
     taxableBase += bookingTaxable;
+
+    if (PLATFORM_REMITS_TAX.has(normalizePlatform(b.platform))) {
+      platformTax += bookingTax;
+    } else {
+      ownerTax += bookingTax;
+    }
 
     const property = b.properties || (propertyLookup ? propertyLookup.get(b.property_id) : null);
     if (!property) return;
@@ -787,7 +803,6 @@ export async function getTaxData(
     propertyTaxMap.set(property.id, existing);
   });
 
-  const platformTax = platformFees.reduce((sum, pf) => sum + (pf.platform_tax_remitted || 0), 0);
   const totalTax = ownerTax + platformTax;
 
   const byProperty = Array.from(propertyTaxMap.values()).map(p => ({
@@ -795,7 +810,7 @@ export async function getTaxData(
     taxRate: p.totalRent > 0 ? (p.totalTax / p.totalRent) * 100 : 0
   }));
 
-  const byMonth = buildMonthlyTaxData(bookings, platformFees, from, to, useDaily, useWeekly, hasTaxableData);
+  const byMonth = buildMonthlyTaxData(bookings, from, to, useDaily, useWeekly, hasTaxableData);
 
   const effectiveDenominator = hasTaxableData ? taxableBase : totalRent;
 
@@ -1032,7 +1047,6 @@ function buildMonthlyRevenue(
 
 function buildMonthlyTaxData(
   bookings: any[],
-  platformFees: any[],
   from: string,
   to: string,
   useDaily: boolean,
@@ -1040,11 +1054,11 @@ function buildMonthlyTaxData(
   hasTaxableData: boolean = false
 ): any[] {
   const taxMap = new Map();
-  
+
   bookings.forEach(b => {
     const date = new Date(b.arrival);
     let key: string;
-    
+
     if (useDaily) {
       key = date.toISOString().split('T')[0];
     } else if (useWeekly) {
@@ -1054,7 +1068,7 @@ function buildMonthlyTaxData(
     } else {
       key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     }
-    
+
     const existing = taxMap.get(key) || {
       month: key,
       totalTax: 0,
@@ -1063,7 +1077,7 @@ function buildMonthlyTaxData(
       ownerRemitted: 0,
       platformRemitted: 0
     };
-    
+
     const charges = b.booking_charges || [];
     let bookingTax = 0;
     let bookingTaxable = 0;
@@ -1075,18 +1089,14 @@ function buildMonthlyTaxData(
     existing.totalTax += bookingTax;
     existing.totalRent += hasTaxableData ? bookingTaxable : (b.total_amount || 0);
     existing.bookingCount++;
-    existing.ownerRemitted += bookingTax;
+
+    if (PLATFORM_REMITS_TAX.has(normalizePlatform(b.platform))) {
+      existing.platformRemitted += bookingTax;
+    } else {
+      existing.ownerRemitted += bookingTax;
+    }
 
     taxMap.set(key, existing);
-  });
-
-  platformFees.forEach(pf => {
-    const key = useDaily || useWeekly ? pf.month + '-01' : pf.month;
-    const existing = taxMap.get(key);
-    if (existing) {
-      existing.platformRemitted += pf.platform_tax_remitted || 0;
-      existing.totalTax += pf.platform_tax_remitted || 0;
-    }
   });
 
   const startDate = new Date(from);

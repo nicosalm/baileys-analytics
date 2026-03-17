@@ -1,3 +1,7 @@
+// marketplace facilitators that collect and remit occupancy taxes on behalf of hosts
+// (covers all US states and most international jurisdictions where these platforms operate)
+export const PLATFORM_REMITS_TAX = new Set(['Airbnb', 'VRBO', 'Booking.com', 'Expedia']);
+
 export function normalizePlatform(platform: string | null): string {
   if (!platform) return 'Direct';
   const normalized = platform.toLowerCase().trim();

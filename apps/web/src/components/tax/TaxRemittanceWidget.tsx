@@ -21,25 +21,23 @@ export const TaxRemittanceWidget = ({
   
   const totals = taxData ? {
     revenue: taxData.summary.totalRent || 0,
-    platformFees: financialData?.pl?.metrics?.revenue?.platformFees || 0,
     totalTax: taxData.summary.totalTax || 0,
     platformRemitted: taxData.summary.platformRemitted || 0,
     ownerRemitted: taxData.summary.ownerRemitted || 0,
-    pending: 0, // No filing status in calculated data
-    overdue: 0  // No filing status in calculated data
-  } : { 
-    revenue: 0, 
-    platformFees: 0, 
-    totalTax: 0, 
-    platformRemitted: 0, 
+    pending: 0,
+    overdue: 0
+  } : {
+    revenue: 0,
+    totalTax: 0,
+    platformRemitted: 0,
     ownerRemitted: 0,
     pending: 0,
     overdue: 0
   }
-  
-  const effectiveRate = totals.revenue > 0 
-    ? (totals.totalTax / (totals.revenue + totals.platformFees)) * 100
-    : 0
+
+  // prefer backend-computed rate (uses taxable base when is_taxable data is available)
+  const effectiveRate = taxData?.summary?.effectiveRate
+    ?? (totals.revenue > 0 ? (totals.totalTax / totals.revenue) * 100 : 0)
   
   const platformPercentage = totals.totalTax > 0
     ? (totals.platformRemitted / totals.totalTax) * 100
@@ -79,9 +77,9 @@ export const TaxRemittanceWidget = ({
           {/* Total Tax Breakdown */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Revenue + Fees</span>
+              <span className="text-sm text-muted-foreground">Total Revenue</span>
               <span className="font-medium">
-                {formatCurrency(totals.revenue + totals.platformFees)}
+                {formatCurrency(totals.revenue)}
               </span>
             </div>
             
