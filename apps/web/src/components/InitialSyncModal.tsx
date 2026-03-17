@@ -58,7 +58,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       // Step 1: Check if sync is needed
       setProgress({ step: 'checking' })
       const statusResult = await withRetry(() =>
-        api.request<{ needed: boolean; completed: boolean }>('/initial-sync-chunked/status')
+        api.request<{ needed: boolean; completed: boolean }>('/sync/status')
       )
 
       if (!statusResult.success) {
@@ -84,7 +84,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           success: boolean;
           propertiesCount: number;
           properties: Array<{ id: string; name: string }>
-        }>('/initial-sync-chunked/properties', { method: 'POST' })
+        }>('/sync/properties', { method: 'POST' })
       )
 
       if (!propertiesResult.success) {
@@ -113,7 +113,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           success: boolean;
           bookingsCount: number;
           blocksCount: number;
-        }>('/initial-sync-chunked/bookings', { method: 'POST' }),
+        }>('/sync/bookings', { method: 'POST' }),
         2,
         5000
       )
@@ -147,7 +147,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
           api.request<{
             success: boolean;
             guestsCount: number;
-          }>('/initial-sync-chunked/guests', { method: 'POST' })
+          }>('/sync/guests', { method: 'POST' })
         )
         totalGuests = guestsResult.success ? guestsResult.data.guestsCount : 0
       } catch {
@@ -172,7 +172,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
               success: boolean
               enriched: number
               remaining: number
-            }>('/initial-sync-chunked/guest-contacts', { method: 'POST' })
+            }>('/sync/guest-contacts', { method: 'POST' })
           )
           if (!contactResult.success) break
           remaining = contactResult.data.remaining
@@ -185,7 +185,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       // Step 5: Sync inquiries (non-blocking)
       try {
         await withRetry(() =>
-          api.request('/initial-sync-chunked/inquiries', { method: 'POST' })
+          api.request('/sync/inquiries', { method: 'POST' })
         )
       } catch {
         // inquiry sync is supplementary
@@ -193,7 +193,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
       // Step 6: Mark as complete
       await withRetry(() =>
-        api.request('/initial-sync-chunked/complete', {
+        api.request('/sync/complete', {
           method: 'POST',
           body: JSON.stringify({
             totalProperties,

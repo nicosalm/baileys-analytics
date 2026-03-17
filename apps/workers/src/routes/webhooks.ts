@@ -2,7 +2,7 @@
 //
 // receives push notifications from ownerrez when entities change (bookings,
 // guests, properties, etc). this is the primary real-time sync mechanism —
-// initial-sync-chunked handles the one-time historical import, and webhooks
+// the sync routes handle the one-time historical import, and webhooks
 // keep everything in sync after that.
 //
 // processing model:

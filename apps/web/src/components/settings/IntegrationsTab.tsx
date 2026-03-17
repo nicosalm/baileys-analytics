@@ -69,7 +69,7 @@ export const IntegrationsTab = () => {
   const handleManualSync = async () => {
     // Reset the sync status to trigger a fresh sync
     try {
-      const result = await api.request('/initial-sync-chunked/reset', {
+      const result = await api.request('/sync/reset', {
         method: 'POST'
       })
       if (result.success) {

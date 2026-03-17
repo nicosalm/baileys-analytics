@@ -5,12 +5,12 @@ import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { normalizeBookingStatus, SUPABASE_MAX_ROWS, estimateGuestListingSiteFee } from '../constants';
 
-const initialSyncChunked = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const sync = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
-initialSyncChunked.use('/*', authMiddleware);
+sync.use('/*', authMiddleware);
 
 // check if initial sync is needed
-initialSyncChunked.get('/status', async (c) => {
+sync.get('/status', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
@@ -58,7 +58,7 @@ initialSyncChunked.get('/status', async (c) => {
 });
 
 // sync properties (step 1)
-initialSyncChunked.post('/properties', async (c) => {
+sync.post('/properties', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
@@ -187,7 +187,7 @@ initialSyncChunked.post('/properties', async (c) => {
 });
 
 // sync all bookings across all properties in one batch (step 2)
-initialSyncChunked.post('/bookings', async (c) => {
+sync.post('/bookings', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
@@ -458,7 +458,7 @@ initialSyncChunked.post('/bookings', async (c) => {
 });
 
 // sync all guests (step 3)
-initialSyncChunked.post('/guests', async (c) => {
+sync.post('/guests', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
@@ -590,7 +590,7 @@ initialSyncChunked.post('/guests', async (c) => {
 // The OwnerRez guests list API doesn't always return email_addresses/phones,
 // so we fetch individual guest details for those missing contact info.
 // Processes a batch per call to stay within CF's 30-sec timeout.
-initialSyncChunked.post('/guest-contacts', async (c) => {
+sync.post('/guest-contacts', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
@@ -708,7 +708,7 @@ initialSyncChunked.post('/guest-contacts', async (c) => {
 });
 
 // sync inquiries (step 5 — optional, runs after guest-contacts)
-initialSyncChunked.post('/inquiries', async (c) => {
+sync.post('/inquiries', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
@@ -774,7 +774,7 @@ initialSyncChunked.post('/inquiries', async (c) => {
 });
 
 // mark sync as complete
-initialSyncChunked.post('/complete', async (c) => {
+sync.post('/complete', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
   const { totalProperties, totalBookings, totalBlocks, totalGuests } = await c.req.json();
@@ -795,7 +795,7 @@ initialSyncChunked.post('/complete', async (c) => {
 });
 
 // reset sync status to allow manual re-sync
-initialSyncChunked.post('/reset', async (c) => {
+sync.post('/reset', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
@@ -822,4 +822,4 @@ initialSyncChunked.post('/reset', async (c) => {
   return c.json({ success: true });
 });
 
-export { initialSyncChunked };
+export { sync };

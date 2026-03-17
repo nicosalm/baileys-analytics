@@ -32,7 +32,7 @@ import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
 import { oauth } from './routes/oauth';
 import { webhooks } from './routes/webhooks';
-import { initialSyncChunked } from './routes/initial-sync-chunked';
+import { sync } from './routes/sync';
 import { health } from './routes/health';
 import { scheduled } from './scheduled';
 import { billing } from './routes/billing';
@@ -361,7 +361,7 @@ dashboardPaths.forEach(path => {
 
 // block write operations for demo users
 const demoBlockedPaths = [
-	'/api/initial-sync-chunked',
+	'/api/sync',
 	'/api/oauth',
 	'/api/account',
 	'/api/scheduler',
@@ -408,9 +408,9 @@ app.route('/api/expense-templates', expenseTemplatesRoute);
 // rate limit billing checkout to prevent abuse
 app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));
 
-// initial sync is a multi-step flow (reset + status + properties + N bookings + guests + contacts + complete)
+// sync is a multi-step flow (reset + status + properties + bookings + guests + contacts + complete)
 // limit must accommodate the full sequence
-app.use('/api/initial-sync-chunked/*', rateLimit({ max: 50, windowMs: 300000 }));
+app.use('/api/sync/*', rateLimit({ max: 50, windowMs: 300000 }));
 
 // rate limit destructive account operations
 app.use('/api/account/delete', rateLimit({ max: 3, windowMs: 300000 }));
@@ -423,7 +423,7 @@ app.route('/api/scheduler', scheduler);
 app.route('/api/validation', validation);
 app.route('/api/oauth', oauth);
 app.route('/api/webhooks', webhooks);
-app.route('/api/initial-sync-chunked', initialSyncChunked);
+app.route('/api/sync', sync);
 
 app.notFound((c) => {
 	return c.json({ error: 'Not Found' }, 404);

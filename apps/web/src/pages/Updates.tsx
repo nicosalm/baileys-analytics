@@ -54,7 +54,7 @@ const Linkify = ({ text }: { text: string }) => {
       // ![alt](url)
       elements.push(
         <img key={idx} src={match[3]} alt={match[2]}
-          className="rounded-lg my-3 max-w-full" loading="lazy" />
+          className="rounded-lg my-1.5 max-w-xs" loading="lazy" />
       )
     } else if (match[4]) {
       // [text](url)
