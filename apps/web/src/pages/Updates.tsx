@@ -37,24 +37,30 @@ const StatusBadge = () => {
   )
 }
 
-// supports [text](url) markdown links and auto-links bare URLs
-const LINK_REGEX = /(\[([^\]]+)\]\((https?:\/\/[^)]+)\))|(https?:\/\/[^\s<]+)/g
+// supports ![alt](url) images (absolute or relative paths), [text](url) links, and auto-links bare URLs
+const MARKDOWN_REGEX = /(!\[([^\]]*)\]\(([^)]+)\))|(\[([^\]]+)\]\((https?:\/\/[^)]+)\))|(https?:\/\/[^\s<]+)/g
 
 const Linkify = ({ text }: { text: string }) => {
   const elements: React.ReactNode[] = []
   let lastIndex = 0
 
-  for (const match of text.matchAll(LINK_REGEX)) {
+  for (const match of text.matchAll(MARKDOWN_REGEX)) {
     const idx = match.index!
     if (idx > lastIndex) {
       elements.push(<span key={lastIndex}>{text.slice(lastIndex, idx)}</span>)
     }
 
     if (match[1]) {
+      // ![alt](url)
+      elements.push(
+        <img key={idx} src={match[3]} alt={match[2]}
+          className="rounded-lg my-3 max-w-full" loading="lazy" />
+      )
+    } else if (match[4]) {
       // [text](url)
       elements.push(
-        <a key={idx} href={match[3]} target="_blank" rel="noopener noreferrer"
-          className="text-primary hover:underline underline-offset-2">{match[2]}</a>
+        <a key={idx} href={match[6]} target="_blank" rel="noopener noreferrer"
+          className="text-primary hover:underline underline-offset-2">{match[5]}</a>
       )
     } else {
       // bare URL
