@@ -46,12 +46,12 @@ export const TaxRemittanceWidget = ({
     : 0
   
   return (
+    <div className="bg-card rounded-lg shadow-sm border">
     <StateWrapper
       empty={!taxData || totals.totalTax === 0}
       emptyMessage="No tax data available for this period"
       minHeight={200}
     >
-      <div className="bg-card rounded-lg shadow-sm border">
         {/* Header */}
         <div className="p-4 border-b">
           <div className="flex justify-between items-start">
@@ -169,7 +169,7 @@ export const TaxRemittanceWidget = ({
             </div>
           )}
         </div>
-      </div>
     </StateWrapper>
+    </div>
   )
 }
