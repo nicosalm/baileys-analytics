@@ -42,15 +42,11 @@ export const FinancialDashboard = () => {
   } : null, [data])
 
   const cashFlowData = useMemo(() => data ? {
-    metrics: data.pl.metrics,
+    collected: data.cashflow?.collected ?? 0,
+    pending: data.cashflow?.pending ?? 0,
+    collectionRate: data.cashflow?.collectionRate ?? 0,
+    upcoming: data.cashflow?.upcoming ?? { next30Days: 0, next60Days: 0, next90Days: 0 },
     byMonth: data.revenue.byMonth,
-    platforms: data.pl.platforms,
-    previousPeriod: data.cashflow?.previousPeriod || data.pl.previousPeriod,
-    fees: data.revenue.fees,
-    taxes: data.revenue.taxes,
-    gross: data.revenue.gross,
-    net: data.revenue.net,
-    operatingExpenses: data.pl.metrics.operatingExpenses?.total || 0
   } : null, [data])
 
   const taxData = useMemo(() => data ? {
