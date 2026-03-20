@@ -12,7 +12,7 @@ import type { TooltipContentProps, MouseHandlerDataParam } from 'recharts'
 
 const CashFlowChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
-  const entry = payload[0]
+  const entry = payload.find(p => (p.value as number) > 0) ?? payload[0]
   const isCollected = entry.dataKey === 'collected'
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
@@ -100,7 +100,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Cash Flow:</strong> Collected is revenue from past arrivals in the period. Pending is from confirmed future arrivals. Pipeline cards show all upcoming bookings regardless of period filter.
+              <strong>Cash Flow:</strong> Collected is revenue from past arrivals in the period. Pending is from confirmed future arrivals. Pipeline cards show all upcoming bookings regardless of active filters.
             </div>
           </div>
         </div>
@@ -160,8 +160,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
             <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
             <Tooltip content={<CashFlowChartTooltip />} isAnimationActive={false} />
-            <Bar dataKey="collected" name="Collected" fill={resolveToken('--success')} fillOpacity={0.85} radius={[2, 2, 0, 0]} />
-            <Bar dataKey="pending" name="Pending" fill={resolveToken('--info')} fillOpacity={0.85} radius={[2, 2, 0, 0]} />
+            <Bar dataKey="collected" stackId="revenue" name="Collected" fill={resolveToken('--success')} fillOpacity={0.85} radius={[2, 2, 0, 0]} />
+            <Bar dataKey="pending" stackId="revenue" name="Pending" fill={resolveToken('--info')} fillOpacity={0.85} radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartWrapper>
