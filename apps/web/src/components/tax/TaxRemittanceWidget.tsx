@@ -1,24 +1,26 @@
 import { FileText, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
 import { formatCurrency, formatPercentage, format, parseDate } from '@baileys/utils'
-import { useDashboardBatch } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 
+interface TaxSummary {
+  totalRent?: number
+  totalTax?: number
+  platformRemitted?: number
+  ownerRemitted?: number
+  effectiveRate?: number
+}
+
 interface TaxRemittanceWidgetProps {
-  propertyId?: string
+  taxData: { summary: TaxSummary } | null | undefined
   periodStart: string
   periodEnd: string
 }
 
-export const TaxRemittanceWidget = ({ 
-  periodStart, 
-  periodEnd 
+export const TaxRemittanceWidget = ({
+  taxData,
+  periodStart,
+  periodEnd
 }: TaxRemittanceWidgetProps) => {
-  // Use batch endpoint to get calculated tax information
-  const { data: financialData, error, isLoading } = useDashboardBatch('financial', periodStart, periodEnd, [])
-  
-  // Extract tax data from financial response
-  const taxData = financialData?.tax
-  
   const totals = taxData ? {
     revenue: taxData.summary.totalRent || 0,
     totalTax: taxData.summary.totalTax || 0,
@@ -45,8 +47,6 @@ export const TaxRemittanceWidget = ({
   
   return (
     <StateWrapper
-      loading={isLoading}
-      error={error}
       empty={!taxData || totals.totalTax === 0}
       emptyMessage="No tax data available for this period"
       minHeight={200}

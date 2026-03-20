@@ -241,6 +241,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Tax Remittance Widget */}
         <TaxRemittanceWidget
+          taxData={data?.tax}
           periodStart={filters.dateRange.from}
           periodEnd={filters.dateRange.to}
         />
