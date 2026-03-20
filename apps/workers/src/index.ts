@@ -311,7 +311,10 @@ app.get('/api/dashboard-batch', authMiddleware, async (c) => {
 		}
 
 		case 'guests-cancelled': {
-			data = await getCancelledBookingsData(supabase, tenantId, from, to, properties);
+			// no date filter — cancelled guests should always be discoverable regardless of the
+			// selected period (e.g. a future booking cancelled this week won't have an arrival
+			// inside the current season). sorted by canceled_utc desc, limit 200.
+			data = await getCancelledBookingsData(supabase, tenantId, undefined, undefined, properties);
 			break;
 		}
 

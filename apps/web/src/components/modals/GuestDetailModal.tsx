@@ -128,7 +128,7 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
         <span>{formatCurrency(booking.totalAmount)}</span>
       </div>
 
-      {/* guest-facing fee (only for platforms that charge guests on top, e.g. Vrbo) */}
+      {/* guest-facing fee (only for platforms that charge guests on top, e.g. Airbnb/Vrbo) */}
       {guestFee > 0 && (
         <>
           <div className="flex justify-between text-sm">
@@ -140,6 +140,14 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
             <span>{formatCurrency(totalGuestPaid)}</span>
           </div>
         </>
+      )}
+
+      {/* host-side platform fee (deducted from payout, not visible in booking charges) */}
+      {hostFee > 0 && (
+        <div className="flex justify-between text-sm">
+          <span className="text-muted-foreground">{booking.platform} host fee <span className="text-xs">(est.)</span></span>
+          <span className="font-medium text-warning">{formatCurrency(hostFee)}</span>
+        </div>
       )}
 
       {/* direct booking savings callout */}

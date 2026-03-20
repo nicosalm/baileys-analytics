@@ -488,24 +488,6 @@ export async function saveExpenseTemplates(data: SaveExpenseTemplatesData): Prom
   )
 }
 
-export function useTaxRemittance(propertyId?: string, periodStart?: string, periodEnd?: string) {
-  const key = ['/tax-remittance', propertyId, periodStart, periodEnd].filter(Boolean)
-  return useSWR(key.length > 1 ? key : null, async () => {
-    const result = await api.getTaxRemittance(propertyId, periodStart, periodEnd)
-    if (!result.success) throw new Error(result.error)
-    return result.data?.data || result.data || []
-  })
-}
-
-export function useCalculatedTax(from?: string, to?: string, propertyId?: string) {
-  const key = from || to ? ['/tax-calculate-bulk', from, to, propertyId].filter(Boolean) : null
-  return useSWR(key, async () => {
-    const result = await api.calculateBulkTax(from, to, propertyId)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  })
-}
-
 export function usePropertyTaxStatus() {
   return useSWR('/tax/status', async () => {
     const result = await api.getPropertyTaxStatus()

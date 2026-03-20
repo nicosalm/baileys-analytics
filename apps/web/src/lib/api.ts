@@ -152,29 +152,6 @@ class ApiClient {
         })
     }
 
-    async getTaxRemittance(propertyId?: string, periodStart?: string, periodEnd?: string): Promise<ApiResult<{ data: Record<string, unknown>[] }>> {
-        const params = new URLSearchParams()
-        if (propertyId) params.append('property', propertyId)
-        if (periodStart) params.append('start', periodStart)
-        if (periodEnd) params.append('end', periodEnd)
-        return this.request(`/tax-remittance?${params}`)
-    }
-
-    async calculateTax(data: { bookingId: string }): Promise<ApiResult<Record<string, unknown>>> {
-        return this.request('/tax/calculate', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
-
-    async calculateBulkTax(from?: string, to?: string, propertyId?: string): Promise<ApiResult<Record<string, unknown>>> {
-        const params = new URLSearchParams()
-        if (from) params.append('from', from)
-        if (to) params.append('to', to)
-        if (propertyId) params.append('propertyId', propertyId)
-        return this.request(`/tax-calculate-bulk?${params}`)
-    }
-
     async getPropertyTaxStatus(): Promise<ApiResult<{ data: Record<string, unknown>[] }>> {
         return this.request('/tax/status')
     }
