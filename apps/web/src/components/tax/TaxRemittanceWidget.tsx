@@ -47,30 +47,30 @@ export const TaxRemittanceWidget = ({
   
   return (
     <div className="bg-card rounded-lg shadow-sm border">
-    <StateWrapper
-      empty={!taxData || totals.totalTax === 0}
-      emptyMessage="No tax data available for this period"
-      minHeight={200}
-    >
-        {/* Header */}
-        <div className="p-4 border-b">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="font-semibold text-foreground flex items-center">
-                <FileText className="w-4 h-4 mr-2" />
-                Tax Remittance Summary
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                {format(parseDate(periodStart), 'MMM d')} - {format(parseDate(periodEnd), 'MMM d, yyyy')}
-              </p>
-            </div>
-            {totals.overdue > 0 && (
-              <span className="px-2 py-1 bg-danger-subtle text-danger-fg text-xs font-medium rounded-sm">
-                {totals.overdue} Overdue
-              </span>
-            )}
+      {/* Header — always visible */}
+      <div className="p-4 border-b">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-semibold text-foreground flex items-center">
+              <FileText className="w-4 h-4 mr-2" />
+              Tax Remittance Summary
+            </h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {format(parseDate(periodStart), 'MMM d')} - {format(parseDate(periodEnd), 'MMM d, yyyy')}
+            </p>
           </div>
+          {totals.overdue > 0 && (
+            <span className="px-2 py-1 bg-danger-subtle text-danger-fg text-xs font-medium rounded-sm">
+              {totals.overdue} Overdue
+            </span>
+          )}
         </div>
+      </div>
+      <StateWrapper
+        empty={!taxData || totals.totalTax === 0}
+        emptyMessage="No tax data available for this period"
+        minHeight={200}
+      >
         
         {/* Main Content */}
         <div className="p-4 space-y-4">
