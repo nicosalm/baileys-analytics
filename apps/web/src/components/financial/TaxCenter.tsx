@@ -1,5 +1,4 @@
 import React, { useMemo, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { SimpleTable } from '@/components/tables'
@@ -22,7 +21,6 @@ interface TaxByPropertyRow {
   propertyName: string
   totalTax: number
   taxRate: number
-  status: 'configured' | 'needs_setup'
 }
 
 interface TaxData {
@@ -55,7 +53,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   const { showTips } = useTips()
   const { filters, comparisonLabel } = useDashboard()
   const { addToast } = useToast()
-  const navigate = useNavigate()
   const trendRef = useRef<HTMLDivElement>(null)
 
   const scrollToTrend = useCallback(() => {
@@ -224,7 +221,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           color="yellow"
           staggerIndex={3}
           subValue="Being tracked"
-          tooltip="Properties with tax jurisdictions configured"
+          tooltip="Properties with tax data in this period"
         />
       </div>
       
@@ -292,25 +289,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
                 header: 'Tax Rate',
                 render: (row: TaxByPropertyRow) => formatPercentage(row.taxRate, 2)
               },
-              {
-                key: 'status',
-                header: 'Status',
-                render: (row: TaxByPropertyRow) => (
-                  row.status === 'configured' ? (
-                    <span className="px-2 py-1 text-xs rounded-full bg-success-subtle text-success-fg">
-                      Configured
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => navigate('/settings?tab=expenses')}
-                      className="px-2 py-1 text-xs rounded-full bg-warning-subtle text-warning-fg hover:opacity-80 transition-opacity cursor-pointer"
-                      title="Click to configure tax jurisdictions"
-                    >
-                      Needs Setup
-                    </button>
-                  )
-                )
-              }
             ]}
           />
           </div>
@@ -323,7 +301,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           <div className="flex items-start">
             <AlertTriangle className="w-5 h-5 text-warning mr-2 mt-0.5" />
             <div className="text-sm text-warning-fg">
-              <strong>High Tax Rate:</strong> Effective rate is {formatPercentage(taxData.effectiveTaxRate, 2)} — verify your tax jurisdiction settings are correct.
+              <strong>High Tax Rate:</strong> Effective rate is {formatPercentage(taxData.effectiveTaxRate, 2)} — verify tax charges in OwnerRez are correct.
             </div>
           </div>
         </div>

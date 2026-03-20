@@ -807,8 +807,7 @@ export async function getTaxData(
 
   const byProperty = Array.from(propertyTaxMap.values()).map(p => ({
     ...p,
-    taxRate: p.totalRent > 0 ? (p.totalTax / p.totalRent) * 100 : 0,
-    status: p.totalTax > 0 ? 'configured' : 'needs_setup'
+    taxRate: p.totalRent > 0 ? (p.totalTax / p.totalRent) * 100 : 0
   }));
 
   const byMonth = buildMonthlyTaxData(bookings, from, to, useDaily, useWeekly, hasTaxableData);
