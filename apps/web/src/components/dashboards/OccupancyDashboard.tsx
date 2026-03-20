@@ -413,6 +413,8 @@ export const OccupancyDashboard = () => {
             }
             icon={TrendingUp}
             height={360}
+            noData={chartData.length === 0}
+            noDataMessage="No occupancy data for this period"
           >
             <LineChart data={chartData} onClick={handlePeriodClick} style={{ cursor: 'pointer' }}>
               <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />

@@ -428,6 +428,8 @@ export const PropertiesDashboard = () => {
           icon={Wallet}
           height={analysisChartHeight}
           responsive={false}
+          noData={profitability.length === 0}
+          noDataMessage="No profitability data for this period"
         >
           <div className="h-full flex flex-col">
             <div className="flex-1">
@@ -447,6 +449,8 @@ export const PropertiesDashboard = () => {
           icon={ScatterChart}
           height={analysisChartHeight}
           responsive={false}
+          noData={validProperties.length === 0}
+          noDataMessage="No property data for this period"
         >
           <div className="h-full flex flex-col">
             <div className="flex-1">

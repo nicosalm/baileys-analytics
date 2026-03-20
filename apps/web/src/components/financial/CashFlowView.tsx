@@ -145,7 +145,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         />
       </div>
 
-      <ChartWrapper title={`${detectGranularity(monthlyData, 'month')} Revenue — Collected vs Pending`} height={360}>
+      <ChartWrapper title={`${detectGranularity(monthlyData, 'month')} Revenue — Collected vs Pending`} height={360} noData={monthlyData.length === 0} noDataMessage="No revenue data for this period">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={monthlyData}

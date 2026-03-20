@@ -825,6 +825,8 @@ export const OverviewDashboard = () => {
           icon={Layers}
           height={340}
           responsive={false}
+          noData={revenueChartData.length === 0}
+          noDataMessage="No revenue data for this period"
         >
           <div className="h-full flex flex-col">
             <div className="flex-1">

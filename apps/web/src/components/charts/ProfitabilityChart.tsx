@@ -3,7 +3,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import type { TooltipContentProps, BarRectangleItem } from 'recharts'
 import { formatCurrency } from '@/utils/formatters'
 import { resolveToken, CHART_INFRA } from '@/lib/theme'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 
 interface PropertyProfitability {
   propertyId: string
@@ -121,16 +120,6 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
       onPropertyClick(p.propertyId, p.fullName || '')
     }
   }, [onPropertyClick])
-
-  if (chartData.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <EmptyQuadrants className="w-12 h-12 mb-2" />
-        <p className="text-sm font-medium">No profitability data</p>
-        <p className="text-xs text-muted-foreground/70 mt-1">Data will appear once bookings are synced</p>
-      </div>
-    )
-  }
 
   return (
     <ResponsiveContainer width="100%" height="100%">
