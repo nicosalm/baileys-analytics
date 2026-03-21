@@ -220,7 +220,12 @@ export const PLView: React.FC<PLViewProps> = ({
         profit: monthProfit,
         costs: monthFees + monthTaxes,
         previousRevenue: prevData ? (prevData.revenue || 0) : undefined,
-        previousProfit: prevData ? ((prevData.revenue || 0) * 0.7) : undefined
+        previousProfit: prevData ? (() => {
+          const pr = prevData.revenue || 0
+          const pf = prevData.hostFees ?? (pr * (hostFees / Math.max(grossRevenue, 1)))
+          const pt = prevData.taxes ?? (pr * (taxes / Math.max(grossRevenue, 1)))
+          return pr - pf - pt
+        })() : undefined
       }
     }) || []
     

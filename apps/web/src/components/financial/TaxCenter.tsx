@@ -162,7 +162,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Tax Tracking:</strong> Occupancy taxes collected in this period, split by owner-remitted and platform-remitted.
+              <strong>Tax Tracking:</strong> Occupancy taxes collected in this period, split by owner-remitted and platform-remitted. Remittance split is determined by platform name — verify with your tax advisor before filing.
             </div>
           </div>
         </div>

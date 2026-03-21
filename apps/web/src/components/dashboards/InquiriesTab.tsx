@@ -7,6 +7,7 @@ import { useDashboard } from '@/contexts/dashboard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getPlatformColor } from '@/lib/theme'
 import { ExternalLink, MessageSquare } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 interface InquiryItem {
     id: string
@@ -66,20 +67,33 @@ export const InquiriesTab = () => {
         )
     }
 
+    const inquiries = data.inquiries ?? []
+
     return (
         <TooltipProvider>
         <div className="bg-card rounded-lg shadow-sm border border-border">
             <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <MessageSquare className="w-5 h-5 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold">Inquiries ({data.inquiries?.length || 0})</h3>
+                    <h3 className="text-lg font-semibold">Inquiries ({inquiries.length})</h3>
                 </div>
                 <span className="text-xs text-muted-foreground">
                     Received {formatDateDisplay(filters.dateRange.from)} – {formatDateDisplay(filters.dateRange.to)}
                 </span>
             </div>
+            {inquiries.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-1.5 text-center">
+                    <p className="text-sm font-medium text-muted-foreground">No inquiries in this period</p>
+                    <p className="text-xs text-muted-foreground/70">
+                        Inquiries sync via webhook. If history is missing, run a manual sync from{' '}
+                        <Link to="/settings?tab=integrations" className="text-primary hover:text-primary/80">
+                            Settings → Integrations
+                        </Link>.
+                    </p>
+                </div>
+            ) : (
         <PaginatedTable
-            data={data.inquiries}
+            data={inquiries}
             emptyMessage="No inquiries received in this period"
             columns={[
                 {
@@ -195,6 +209,7 @@ export const InquiriesTab = () => {
             enableSearch
             searchKeys={['guestName', 'propertyName', 'listingSite', 'comments']}
         />
+            )}
         </div>
         </TooltipProvider>
     )
