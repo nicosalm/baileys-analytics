@@ -29,6 +29,8 @@ interface PlatformEntry {
 interface MonthlyTrendEntry {
   month: string
   revenue: number
+  hostFees?: number
+  taxes?: number
 }
 
 interface PreviousPeriodData {
@@ -206,8 +208,8 @@ export const PLView: React.FC<PLViewProps> = ({
                       previousPeriod?.monthlyTrend?.[index]
       
       const monthRevenue = m.revenue || 0
-      const monthFees = monthRevenue * (hostFees / Math.max(grossRevenue, 1))
-      const monthTaxes = monthRevenue * (taxes / Math.max(grossRevenue, 1))
+      const monthFees = m.hostFees ?? (monthRevenue * (hostFees / Math.max(grossRevenue, 1)))
+      const monthTaxes = m.taxes ?? (monthRevenue * (taxes / Math.max(grossRevenue, 1)))
       const monthProfit = monthRevenue - monthFees - monthTaxes
       
       return {

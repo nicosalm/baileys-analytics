@@ -51,6 +51,8 @@ interface MonthlyTrend {
   revenue: number;
   bookings: number;
   avgBookingValue: number;
+  hostFees: number;
+  taxes: number;
 }
 
 interface WeeklyRevenue {
@@ -933,8 +935,12 @@ function buildTrendData(
       key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
     }
     
-    const existing = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0 };
+    const existing = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
     existing.revenue += b.total_amount || 0;
+    existing.hostFees += b.host_service_fee || 0;
+    existing.taxes += (b.booking_charges || [])
+      .filter((c: { type: string }) => c.type === 'tax')
+      .reduce((sum: number, c: { amount: number }) => sum + (c.amount || 0), 0);
     existing.bookings++;
     trendMap.set(key, existing);
   });
@@ -946,7 +952,7 @@ function buildTrendData(
   if (useDaily) {
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const key = d.toISOString().split('T')[0];
-      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0 };
+      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
       data.avgBookingValue = data.bookings > 0 ? data.revenue / data.bookings : 0;
       result.push(data);
     }
@@ -956,14 +962,14 @@ function buildTrendData(
     
     for (let d = new Date(weekStart); d <= endDate; d.setDate(d.getDate() + 7)) {
       const key = d.toISOString().split('T')[0];
-      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0 };
+      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
       data.avgBookingValue = data.bookings > 0 ? data.revenue / data.bookings : 0;
       result.push(data);
     }
   } else {
     for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0 };
+      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
       data.avgBookingValue = data.bookings > 0 ? data.revenue / data.bookings : 0;
       result.push(data);
     }
