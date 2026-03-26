@@ -62,87 +62,99 @@ export const Landing = () => {
 
   return (
     <div className="dark min-h-screen flex flex-col bg-[var(--landing-bg)]">
-      {/* nav — light text on dark hero */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'bg-[var(--landing-bg)/0.85] backdrop-blur-md shadow-sm border-b border-white/5'
-          : 'bg-transparent'
-      }`}>
-        <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-6">
-              <Link to="/" className="flex items-center" onClick={handleLogoClick}>
-                <LogoCube />
-                <span className="text-xl font-semibold text-white ml-3">
-                  <span className="sm:hidden">Baileys</span>
-                  <span className="hidden sm:inline">{BRAND.name}</span>
-                </span>
-              </Link>
-              <div className="hidden md:flex items-center gap-5">
-                <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Features</a>
-                <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Pricing</a>
-                <Link to="/updates" className="text-sm text-white/70 hover:text-white transition-colors">Updates</Link>
+      {/* fixed header: banner + nav stacked */}
+      <div className="fixed top-0 left-0 right-0 z-50">
+        {/* announcement banner */}
+        <a
+          href="/updates/2026-04-10-launch.html"
+          className="block w-full"
+          style={{ background: 'oklch(0.18 0.09 300)', borderBottom: '1px solid oklch(0.28 0.10 300 / 0.5)' }}
+        >
+          <div className="max-w-6xl mx-auto px-4 md:px-6 py-2.5 text-center text-xs font-medium text-white/60 hover:text-white/80 transition-colors flex items-center justify-center gap-2">
+            <span>Baileys Analytics is now available — read the announcement</span>
+            <span className="text-white/35">→</span>
+          </div>
+        </a>
+
+        {/* nav — light text on dark hero */}
+        <nav className={`transition-all duration-300 ${scrolled
+            ? 'bg-[var(--landing-bg)/0.85] backdrop-blur-md shadow-sm border-b border-white/5'
+            : 'bg-transparent'
+          }`}>
+          <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-6">
+                <Link to="/" className="flex items-center" onClick={handleLogoClick}>
+                  <LogoCube />
+                  <span className="text-xl font-semibold text-white ml-3">
+                    <span className="sm:hidden">Baileys</span>
+                    <span className="hidden sm:inline">{BRAND.name}</span>
+                  </span>
+                </Link>
+                <div className="hidden md:flex items-center gap-5">
+                  <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Features</a>
+                  <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Pricing</a>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {isAuthenticated ? (
+                  <>
+                    <button
+                      onClick={handleLogout}
+                      className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm cursor-pointer"
+                    >
+                      Logout
+                    </button>
+                    <Link to="/dashboard/overview" className="whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
+                      Dashboard
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/login" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors">
+                      Log in
+                    </Link>
+                    <Link to="/signup" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity">
+                      Get Started
+                    </Link>
+                  </>
+                )}
+
+                {/* mobile hamburger */}
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <button className="md:hidden p-2 text-white/70 hover:text-white transition-colors cursor-pointer" aria-label="Open menu">
+                      <Menu className="w-6 h-6" />
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="dark bg-[var(--landing-bg)] border-white/10 w-64">
+                    <SheetTitle className="text-white sr-only">Navigation</SheetTitle>
+                    <nav className="flex flex-col gap-1 mt-4">
+                      <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Features</a>
+                      <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</a>
+                      <div className="h-px bg-white/10 my-2" />
+                      {isAuthenticated ? (
+                        <>
+                          <Link to="/dashboard/overview" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium text-white hover:bg-white/5 rounded-lg transition-colors">Dashboard</Link>
+                          <button onClick={() => { handleLogout(); setMobileMenuOpen(false) }} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left cursor-pointer">Logout</button>
+                        </>
+                      ) : (
+                        <>
+                          <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Log in</Link>
+                          <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="mx-4 mt-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm text-center">Get Started</Link>
+                        </>
+                      )}
+                    </nav>
+                  </SheetContent>
+                </Sheet>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {isAuthenticated ? (
-                <>
-                  <button
-                    onClick={handleLogout}
-                    className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm cursor-pointer"
-                  >
-                    Logout
-                  </button>
-                  <Link to="/dashboard/overview" className="whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
-                    Dashboard
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors">
-                    Log in
-                  </Link>
-                  <Link to="/signup" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity">
-                    Get Started
-                  </Link>
-                </>
-              )}
-
-              {/* mobile hamburger */}
-              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <button className="md:hidden p-2 text-white/70 hover:text-white transition-colors cursor-pointer" aria-label="Open menu">
-                    <Menu className="w-6 h-6" />
-                  </button>
-                </SheetTrigger>
-                <SheetContent side="right" className="dark bg-[var(--landing-bg)] border-white/10 w-64">
-                  <SheetTitle className="text-white sr-only">Navigation</SheetTitle>
-                  <nav className="flex flex-col gap-1 mt-4">
-                    <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Features</a>
-                    <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</a>
-                    <Link to="/updates" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Updates</Link>
-                    <div className="h-px bg-white/10 my-2" />
-                    {isAuthenticated ? (
-                      <>
-                        <Link to="/dashboard/overview" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium text-white hover:bg-white/5 rounded-lg transition-colors">Dashboard</Link>
-                        <button onClick={() => { handleLogout(); setMobileMenuOpen(false) }} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left cursor-pointer">Logout</button>
-                      </>
-                    ) : (
-                      <>
-                        <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Log in</Link>
-                        <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="mx-4 mt-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm text-center">Get Started</Link>
-                      </>
-                    )}
-                  </nav>
-                </SheetContent>
-              </Sheet>
-            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      </div>
 
       {/* hero — dark atmospheric gradient */}
-      <section className="landing-hero relative min-h-screen flex items-center justify-center pt-20">
+      <section className="landing-hero relative min-h-screen flex items-center justify-center pt-[7rem]">
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-24 md:py-32 text-center relative z-10">
           <div className="flex items-center justify-center gap-1.5 mb-6 hero-stagger" style={{ '--hero-index': 0 } as React.CSSProperties}>
             <span className="text-sm font-medium text-white/60">Built for</span>
@@ -218,9 +230,8 @@ export const Landing = () => {
       <section id="features" className="landing-section-secondary py-28 md:py-36">
         <div
           ref={feature1.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
-            feature1.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature1.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
@@ -251,9 +262,8 @@ export const Landing = () => {
       <section className="landing-section-primary py-28 md:py-36">
         <div
           ref={feature2.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
-            feature2.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature2.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="relative md:order-1">
@@ -284,9 +294,8 @@ export const Landing = () => {
       <section className="landing-section-secondary py-28 md:py-36">
         <div
           ref={feature3.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
-            feature3.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature3.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
@@ -317,9 +326,8 @@ export const Landing = () => {
       <section id="how-it-works" className="landing-section-primary py-28 md:py-36">
         <div
           ref={howItWorks.ref}
-          className={`max-w-4xl mx-auto px-4 md:px-6 transition-all duration-700 ${
-            howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
+          className={`max-w-4xl mx-auto px-4 md:px-6 transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
         >
           <div className="text-center mb-14">
             <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">Up and running in 5 minutes</h2>
@@ -330,25 +338,22 @@ export const Landing = () => {
             {/* connector line (desktop) */}
             <div className="hidden md:block absolute top-5 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-white/10 via-white/20 to-white/10" />
 
-            <div className={`text-center transition-all duration-700 ${
-              howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}>
+            <div className={`text-center transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}>
               <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">1</div>
               <h3 className="font-semibold text-white mb-1">Connect OwnerRez</h3>
               <p className="text-sm text-[var(--landing-caption)]">Click, authorize, done. We use OAuth so we never see your password.</p>
             </div>
 
-            <div className={`text-center transition-all duration-700 ${
-              howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`} style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}>
+            <div className={`text-center transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`} style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}>
               <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">2</div>
               <h3 className="font-semibold text-white mb-1">Data syncs automatically</h3>
               <p className="text-sm text-[var(--landing-caption)]">We pull 4 years of bookings, properties, and guests. Takes about 2 minutes.</p>
             </div>
 
-            <div className={`text-center transition-all duration-700 ${
-              howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`} style={{ transitionDelay: howItWorks.isInView ? '200ms' : '0ms' }}>
+            <div className={`text-center transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`} style={{ transitionDelay: howItWorks.isInView ? '200ms' : '0ms' }}>
               <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">3</div>
               <h3 className="font-semibold text-white mb-1">Start exploring</h3>
               <p className="text-sm text-[var(--landing-caption)]">Your dashboards are ready. Filter by date, property, or tag.</p>
@@ -361,9 +366,8 @@ export const Landing = () => {
       <section className="landing-section-secondary py-20 md:py-28">
         <div
           ref={quote.ref}
-          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${
-            quote.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
+          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${quote.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
         >
           <blockquote className="landing-serif text-xl md:text-2xl text-white/80 leading-relaxed font-normal italic">
             "OwnerRez is great at managing my properties and bookings. I just needed a deeper analytics layer on top of it. So we built one. Now I check my numbers every morning."
@@ -378,9 +382,8 @@ export const Landing = () => {
       <section id="pricing" className="landing-section-primary py-28 md:py-36">
         <div
           ref={pricing.ref}
-          className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${
-            pricing.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
+          className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${pricing.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
         >
           <div className="text-center mb-10">
             <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">One plan, one price</h2>
@@ -468,9 +471,8 @@ export const Landing = () => {
       <section className="landing-section-secondary py-20 md:py-28">
         <div
           ref={bottomCta.ref}
-          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${
-            bottomCta.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          }`}
+          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${bottomCta.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
         >
           <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
           {!isAuthenticated && (

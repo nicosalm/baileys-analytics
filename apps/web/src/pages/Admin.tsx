@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import { resolveToken } from '@/lib/theme'
@@ -14,7 +13,7 @@ import {
   Users, DollarSign, TrendingUp, Search, Trash2, AlertTriangle,
   Settings, LogOut, LayoutDashboard, RefreshCw, ChevronDown,
   Shield, Link2, Link2Off, AlertCircle, UserPlus, Building2, CalendarDays,
-  ExternalLink, Megaphone, Plus, Pencil, Eye, EyeOff, ArrowUpDown,
+  ExternalLink, ArrowUpDown,
   ChevronLeft, ChevronRight, ChevronUp, Activity
 } from 'lucide-react'
 import { LogoCube } from '@/components/LogoCube'
@@ -22,7 +21,6 @@ import { Footer } from '@/components/Footer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label as FormLabel } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
   AlertDialogDescription, AlertDialogFooter, AlertDialogCancel
@@ -67,16 +65,6 @@ interface UserDetail {
     status: string
     records_synced: number
   }>
-}
-
-interface Announcement {
-  id: string
-  title: string
-  body: string
-  author: string
-  published: boolean
-  created_at: string
-  updated_at: string
 }
 
 interface WebhookError {
@@ -653,7 +641,6 @@ const SortHeader = ({ label, field, current, dir, onSort, className }: {
 
 export const Admin = () => {
   const { state, logout } = useAuth()
-  const { addToast } = useToast()
   const navigate = useNavigate()
 
   // data state
@@ -663,8 +650,6 @@ export const Admin = () => {
   const [signupTrend, setSignupTrend] = useState<SignupTrendEntry[]>([])
   const [syncHealth, setSyncHealth] = useState<SyncHealth | null>(null)
   const [syncTotalConnected, setSyncTotalConnected] = useState(0)
-  const [announcements, setAnnouncements] = useState<Announcement[]>([])
-
   // ui state
   const [loading, setLoading] = useState(true)
   const [isVerified, setIsVerified] = useState(false)
@@ -681,25 +666,13 @@ export const Admin = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  // announcements form
-  const [announcementForm, setAnnouncementForm] = useState<{ open: boolean; editing: Announcement | null }>({ open: false, editing: null })
-  const [formTitle, setFormTitle] = useState('')
-  const [formBody, setFormBody] = useState('')
-  const [formPublished, setFormPublished] = useState(false)
-  const [formAuthor, setFormAuthor] = useState('Baileys Team')
-  const [savingAnnouncement, setSavingAnnouncement] = useState(false)
-  const [togglingAnnouncement, setTogglingAnnouncement] = useState<string | null>(null)
-  const [deletingAnnouncement, setDeletingAnnouncement] = useState<string | null>(null)
-  const [confirmDeleteAnnouncement, setConfirmDeleteAnnouncement] = useState<string | null>(null)
-
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadData = useCallback(async () => {
-    const [metricsRes, usersRes, errorsRes, announcementsRes, trendRes, syncRes] = await Promise.all([
+    const [metricsRes, usersRes, errorsRes, trendRes, syncRes] = await Promise.all([
       api.request<{ metrics: AdminMetrics }>('/admin/metrics', { method: 'GET' }),
       api.request<{ users: AdminUser[] }>('/admin/users', { method: 'GET' }),
       api.request<{ errors: WebhookError[] }>('/admin/errors', { method: 'GET' }),
-      api.request<{ announcements: Announcement[] }>('/announcements/all', { method: 'GET' }),
       api.request<{ trend: SignupTrendEntry[] }>('/admin/signup-trend', { method: 'GET' }),
       api.request<{ syncHealth: SyncHealth; totalConnected: number }>('/admin/sync-health', { method: 'GET' }),
     ])
@@ -707,7 +680,6 @@ export const Admin = () => {
     if (metricsRes.success && metricsRes.data) setMetrics(metricsRes.data.metrics)
     if (usersRes.success && usersRes.data) setUsers(usersRes.data.users)
     if (errorsRes.success && errorsRes.data) setErrors(errorsRes.data.errors)
-    if (announcementsRes.success && announcementsRes.data) setAnnouncements(announcementsRes.data.announcements)
     if (trendRes.success && trendRes.data) setSignupTrend(trendRes.data.trend)
     if (syncRes.success && syncRes.data) {
       setSyncHealth(syncRes.data.syncHealth)
@@ -779,83 +751,6 @@ export const Admin = () => {
     const result = await api.request<{ url: string }>(`/admin/users/${tenantId}/impersonate`, { method: 'POST' })
     if (result.success && result.data?.url) {
       window.open(result.data.url, '_blank')
-    }
-  }
-
-  // announcements handlers
-  const openAnnouncementForm = (announcement?: Announcement) => {
-    if (announcement) {
-      setFormTitle(announcement.title)
-      setFormBody(announcement.body)
-      setFormAuthor(announcement.author || 'Baileys Team')
-      setFormPublished(announcement.published)
-      setAnnouncementForm({ open: true, editing: announcement })
-    } else {
-      setFormTitle('')
-      setFormBody('')
-      setFormAuthor('Baileys Team')
-      setFormPublished(false)
-      setAnnouncementForm({ open: true, editing: null })
-    }
-  }
-
-  const refreshAnnouncements = async () => {
-    const res = await api.request<{ announcements: Announcement[] }>('/announcements/all', { method: 'GET' })
-    if (res.success && res.data) setAnnouncements(res.data.announcements)
-  }
-
-  const handleSaveAnnouncement = async () => {
-    if (!formTitle.trim() || !formBody.trim()) return
-    setSavingAnnouncement(true)
-    try {
-      const payload = { title: formTitle, body: formBody, author: formAuthor, published: formPublished }
-      const res = announcementForm.editing
-        ? await api.request(`/announcements/${announcementForm.editing.id}`, { method: 'PUT', body: JSON.stringify(payload) })
-        : await api.request('/announcements', { method: 'POST', body: JSON.stringify(payload) })
-      if (!res.success) throw new Error()
-      setAnnouncementForm({ open: false, editing: null })
-      await refreshAnnouncements()
-      addToast('success', announcementForm.editing ? 'Announcement updated' : 'Announcement created')
-    } catch {
-      addToast('error', 'Failed to save announcement')
-    } finally {
-      setSavingAnnouncement(false)
-    }
-  }
-
-  const handleTogglePublished = async (a: Announcement) => {
-    const newState = !a.published
-    setTogglingAnnouncement(a.id)
-    setAnnouncements(prev => prev.map(x => x.id === a.id ? { ...x, published: newState } : x))
-    try {
-      const res = await api.request(`/announcements/${a.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ published: newState })
-      })
-      if (!res.success) throw new Error()
-      addToast('success', newState ? 'Announcement published' : 'Announcement hidden')
-    } catch {
-      setAnnouncements(prev => prev.map(x => x.id === a.id ? { ...x, published: a.published } : x))
-      addToast('error', 'Failed to update announcement')
-    } finally {
-      setTogglingAnnouncement(null)
-    }
-  }
-
-  const handleDeleteAnnouncement = async (id: string) => {
-    setDeletingAnnouncement(id)
-    const prev = announcements
-    setAnnouncements(list => list.filter(a => a.id !== id))
-    try {
-      const res = await api.request(`/announcements/${id}`, { method: 'DELETE' })
-      if (!res.success) throw new Error()
-      addToast('success', 'Announcement deleted')
-      setConfirmDeleteAnnouncement(null)
-    } catch {
-      setAnnouncements(prev)
-      addToast('error', 'Failed to delete announcement')
-    } finally {
-      setDeletingAnnouncement(null)
     }
   }
 
@@ -1165,140 +1060,6 @@ export const Admin = () => {
           )}
         </div>
 
-        {/* announcements */}
-        <div className="bg-card rounded-lg shadow-sm border border-border">
-          <div className="p-4 md:p-6 border-b flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <Megaphone className="w-5 h-5" />
-              Announcements
-            </h2>
-            <Button size="sm" onClick={() => openAnnouncementForm()}>
-              <Plus className="w-4 h-4 mr-1" />
-              New
-            </Button>
-          </div>
-
-          {announcementForm.open && (
-            <div className="p-4 md:p-6 border-b bg-muted/30 space-y-3">
-              <Input
-                placeholder="Title"
-                value={formTitle}
-                onChange={e => setFormTitle(e.target.value)}
-              />
-              <Input
-                placeholder="Author (e.g. Baileys Team, Nico)"
-                value={formAuthor}
-                onChange={e => setFormAuthor(e.target.value)}
-              />
-              <Textarea
-                placeholder="Body (plain text, line breaks preserved)"
-                value={formBody}
-                onChange={e => setFormBody(e.target.value)}
-                rows={4}
-              />
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formPublished}
-                    onChange={e => setFormPublished(e.target.checked)}
-                    className="rounded"
-                  />
-                  Publish immediately
-                </label>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setAnnouncementForm({ open: false, editing: null })}>
-                    Cancel
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleSaveAnnouncement}
-                    disabled={!formTitle.trim() || !formBody.trim()}
-                    loading={savingAnnouncement}
-                    loadingText="Saving..."
-                  >
-                    {announcementForm.editing ? 'Update' : 'Create'}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="divide-y">
-            {announcements.length === 0 ? (
-              <div className="px-5 py-8 text-center text-sm text-muted-foreground">
-                No announcements yet
-              </div>
-            ) : announcements.map(a => (
-              <div key={a.id} className={`px-5 py-4 flex items-start justify-between gap-4 transition-opacity ${deletingAnnouncement === a.id ? 'opacity-50 pointer-events-none' : ''}`}>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-sm font-semibold text-foreground truncate">{a.title}</h3>
-                    {a.published ? (
-                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-success-subtle text-success-fg">Live</span>
-                    ) : (
-                      <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground">Draft</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">{a.body}</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    {new Date(a.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    {a.author && <> &middot; {a.author}</>}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => handleTogglePublished(a)}
-                    title={a.published ? 'Unpublish' : 'Publish'}
-                    disabled={togglingAnnouncement === a.id}
-                    className={togglingAnnouncement === a.id ? 'opacity-50' : ''}
-                  >
-                    {a.published ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => openAnnouncementForm(a)}
-                    title="Edit"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  {confirmDeleteAnnouncement === a.id ? (
-                    <div className="flex items-center gap-1 ml-1">
-                      <Button
-                        variant="destructive"
-                        size="xs"
-                        onClick={() => handleDeleteAnnouncement(a.id)}
-                        disabled={deletingAnnouncement === a.id}
-                      >
-                        Confirm
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => setConfirmDeleteAnnouncement(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() => setConfirmDeleteAnnouncement(a.id)}
-                      title="Delete"
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* delete confirmation modal */}

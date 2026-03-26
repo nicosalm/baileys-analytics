@@ -29,7 +29,6 @@ const NotFound = lazy(() => import('@/pages/NotFound').then(m => ({ default: m.N
 const AuthCallback = lazy(() => import('@/pages/AuthCallback').then(m => ({ default: m.AuthCallback })))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword').then(m => ({ default: m.ForgotPassword })))
 const Branding = lazy(() => import('@/pages/Branding').then(m => ({ default: m.Branding })))
-const Updates = lazy(() => import('@/pages/Updates').then(m => ({ default: m.Updates })))
 
 const ResetPassword = lazy(() => import('@/pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
 
@@ -64,7 +63,6 @@ export const App = () => {
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/branding" element={<Branding />} />
-              <Route path="/updates" element={<Updates />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Navigate to="/dashboard/overview" replace />} />

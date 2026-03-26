@@ -29,9 +29,6 @@ export const Help = () => {
             <a href="https://status.baileysanalytics.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 text-sm">
               → System status
             </a>
-            <Link to="/updates" className="text-primary hover:text-primary/80 text-sm">
-              → Updates & Changelog
-            </Link>
             <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80 text-sm">
               → Contact support
             </a>
