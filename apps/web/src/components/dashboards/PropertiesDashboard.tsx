@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react'
-import { formatCurrency, formatPercentage, sumBy, calculateAverage } from '@baileys/utils'
+import { formatCurrency, formatPercentage, sumBy } from '@baileys/utils'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
@@ -79,6 +79,7 @@ export const PropertiesDashboard = () => {
 
   const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN, totalNetRevenue } = useMemo(() => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
+    const totalBookedNights = sumBy(validProperties, (p: PropertyMetrics) => p.bookedNights)
     const totalRev = sumBy(validProperties, (p: PropertyMetrics) => p.revenue)
     const totalNet = profitability.length > 0
       ? sumBy(profitability, (p: PropertyProfitability) => p.netRevenue || 0)
@@ -86,7 +87,7 @@ export const PropertiesDashboard = () => {
     return {
       totalRevenue: totalRev,
       totalBookings: sumBy(validProperties, (p: PropertyMetrics) => p.bookings),
-      avgOccupancy: calculateAverage(validProperties.map((p: PropertyMetrics) => p.occupancyRate)),
+      avgOccupancy: totalAvailableNights > 0 ? totalBookedNights / totalAvailableNights : 0,
       avgRevPAN: totalAvailableNights > 0 ? totalRev / totalAvailableNights : 0,
       totalNetRevenue: totalNet
     }
@@ -95,11 +96,12 @@ export const PropertiesDashboard = () => {
   const { prevTotalRevenue, prevTotalBookings, prevAvgOccupancy, prevAvgRevPAN } = useMemo(() => {
     const prev = previousProperties || []
     const prevTotalAvailableNights = sumBy(prev, (p: PropertyMetrics) => p.availableNights)
+    const prevTotalBookedNights = sumBy(prev, (p: PropertyMetrics) => p.bookedNights)
     const prevTotalRev = sumBy(prev, (p: PropertyMetrics) => p.revenue)
     return {
       prevTotalRevenue: prevTotalRev,
       prevTotalBookings: sumBy(prev, (p: PropertyMetrics) => p.bookings),
-      prevAvgOccupancy: calculateAverage(prev.map((p: PropertyMetrics) => p.occupancyRate)),
+      prevAvgOccupancy: prevTotalAvailableNights > 0 ? prevTotalBookedNights / prevTotalAvailableNights : 0,
       prevAvgRevPAN: prevTotalAvailableNights > 0 ? prevTotalRev / prevTotalAvailableNights : 0
     }
   }, [previousProperties])

@@ -309,15 +309,15 @@ tax.get('/auto-detect', async (c) => {
 	
 	const jurisdictions = Array.from(taxGroups.values()).map((group: any) => {
 		const avgRate = (group.totalAmount / group.totalBookingAmount) * 100;
-		
+
 		return {
 			name: group.name,
-			rate: Math.round(avgRate * 100) / 100,
+			rate: avgRate,
 			ownerrezName: group.name,
 			pattern: group.name
 		};
 	}).sort((a, b) => b.rate - a.rate);
-	
+
 	const totalRate = jurisdictions.reduce((sum, j) => sum + j.rate, 0);
 	
 	return c.json({

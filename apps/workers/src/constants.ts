@@ -70,11 +70,11 @@ export function estimateGuestListingSiteFee(
   if (key.includes('airbnb')) {
     // post oct 27 2025: host-only model, guest pays no separate fee
     if (bookedDate && bookedDate >= AIRBNB_SPLIT_FEE_CUTOFF) return 0;
-    return Math.round(totalAmount * AIRBNB_GUEST_FEE_RATE * 100) / 100;
+    return totalAmount * AIRBNB_GUEST_FEE_RATE;
   }
 
   if (key.includes('vrbo')) {
-    return Math.round(totalAmount * VRBO_GUEST_FEE_RATE * 100) / 100;
+    return totalAmount * VRBO_GUEST_FEE_RATE;
   }
 
   // booking.com, direct, etc. — no guest fee

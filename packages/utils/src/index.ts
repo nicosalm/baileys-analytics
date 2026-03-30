@@ -21,9 +21,8 @@ export const clamp = (value: number, min: number, max: number): number => {
 };
 
 // Percentages & Rates
-export const calculatePercentage = (value: number, total: number, decimals = 1): number => {
-  const percentage = safeDivide(value, total, 0) * 100;
-  return Math.round(percentage * Math.pow(10, decimals)) / Math.pow(10, decimals);
+export const calculatePercentage = (value: number, total: number): number => {
+  return safeDivide(value, total, 0) * 100;
 };
 
 export const calculateGrowthRate = (current: number, previous: number): number => {
@@ -65,7 +64,7 @@ export const calculateStandardDeviation = (values: number[]): number => {
 
 // Financial Metrics
 export const calculateTax = (amount: number, taxRate: number): number => {
-  return Math.round(amount * taxRate * 100) / 100;
+  return amount * taxRate;
 };
 
 export const calculateCompoundTax = (
@@ -76,7 +75,7 @@ export const calculateCompoundTax = (
   let totalTax = 0;
 
   for (const { rate, compound = false } of taxRates) {
-    const tax = Math.round(taxableAmount * rate * 100) / 100;
+    const tax = taxableAmount * rate;
     totalTax += tax;
     if (compound) {
       taxableAmount += tax;

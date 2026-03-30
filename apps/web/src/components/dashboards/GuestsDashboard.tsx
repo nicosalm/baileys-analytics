@@ -91,7 +91,7 @@ export const GuestsDashboard = () => {
 
     const data = rawData?.current || rawData
     const previousData = rawData?.previous || null
-    
+
 
     const [sortBy, setSortBy] = useState<string>('periodSpent')
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -376,7 +376,7 @@ export const GuestsDashboard = () => {
     // memoized pie chart totals
     const sourceChartTotal = useMemo(() =>
         sourceChartData.reduce((sum: number, item: GuestSourceData) => sum + (item.count || 0), 0)
-    , [sourceChartData])
+        , [sourceChartData])
 
     // memoized tag chart derived values
     const tagChartDerived = useMemo(() => {
@@ -589,7 +589,7 @@ export const GuestsDashboard = () => {
                                     onMouseEnter={handleSourceMouseEnter}
                                     onMouseLeave={handleSourceMouseLeave}
                                 >
-                                    {sourceChartData.map((entry: GuestSourceData & {color: string}, index: number) => (
+                                    {sourceChartData.map((entry: GuestSourceData & { color: string }, index: number) => (
                                         <Cell
                                             key={`cell-${index}`}
                                             fill={entry.color}
@@ -618,7 +618,7 @@ export const GuestsDashboard = () => {
                         </ResponsiveContainer>
                     </div>
                     <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
-                        {sourceChartData.map((entry: GuestSourceData & {color: string}) => (
+                        {sourceChartData.map((entry: GuestSourceData & { color: string }) => (
                             <div key={entry.source} className="flex items-center gap-1.5">
                                 <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
                                 <span className="text-muted-foreground">{entry.source}</span>
@@ -645,11 +645,10 @@ export const GuestsDashboard = () => {
                             return (
                                 <button
                                     key={tag.name}
-                                    className={`flex items-center gap-3 w-full text-left rounded-lg px-2 py-1.5 transition-colors cursor-pointer ${
-                                        isActive
+                                    className={`flex items-center gap-3 w-full text-left rounded-lg px-2 py-1.5 transition-colors cursor-pointer ${isActive
                                             ? 'bg-primary/10 ring-1 ring-primary/20'
                                             : 'hover:bg-muted/50'
-                                    }`}
+                                        }`}
                                     onClick={() => toggleTag({ id: tag.id, name: tag.name, type: 'custom', color: tag.color })}
                                     title={isActive ? `Remove "${tag.name}" filter` : `Filter by "${tag.name}"`}
                                 >
@@ -684,8 +683,8 @@ export const GuestsDashboard = () => {
                 <div className="p-4 border-b border-border space-y-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Users className="w-5 h-5 text-muted-foreground" />
-                          <h3 className="text-lg font-semibold">Guest List ({sortedGuests.length})</h3>
+                            <Users className="w-5 h-5 text-muted-foreground" />
+                            <h3 className="text-lg font-semibold">Guest List ({sortedGuests.length})</h3>
                         </div>
                         <Select value={staysFilter} onValueChange={handleStaysFilter}>
                             <SelectTrigger className="w-[130px] h-8 text-sm">
@@ -709,13 +708,13 @@ export const GuestsDashboard = () => {
                                 className={`text-xs sm:text-sm ${viewMode === mode.key
                                     ? 'bg-card text-foreground shadow-sm'
                                     : 'text-muted-foreground hover:text-foreground'
-                                }`}
+                                    }`}
                             >
                                 {mode.label}
                             </Button>
                         ))}
                     </div>
-                    {(viewMode !== 'all' || staysFilter !== 'any') && (
+                    {(
                         <div className="text-xs text-muted-foreground">
                             {viewMode === 'all' && 'Showing all guests'}
                             {viewMode === 'repeat' && 'Showing returning guests (2+ lifetime stays)'}

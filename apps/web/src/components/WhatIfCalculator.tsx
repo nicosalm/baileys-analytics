@@ -101,7 +101,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
       const seasonFutureDays = Math.max(0, daysBetween(futureOverlapStart, overlapEnd) + 1)
       const fraction = seasonFutureDays / rangeDays
       return {
-        projectableOpenNights: Math.round(scope.openNights * fraction),
+        projectableOpenNights: scope.openNights * fraction,
         activeSeason,
         historical: false,
       }
@@ -112,7 +112,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
     const futureDays = Math.max(0, daysBetween(futureStart, rangeEnd) + 1)
     const fraction = futureDays / rangeDays
     return {
-      projectableOpenNights: Math.round(scope.openNights * fraction),
+      projectableOpenNights: scope.openNights * fraction,
       activeSeason: null,
       historical: false,
     }
@@ -184,7 +184,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
                   <span className="text-muted-foreground">
                     {nightContext.historical ? 'Open nights' : isSeasonal ? 'Season nights left' : 'Remaining nights'}
                   </span>
-                  <p className="font-semibold">{projectableNights}</p>
+                  <p className="font-semibold">{Math.round(projectableNights)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Current occupancy</span>
