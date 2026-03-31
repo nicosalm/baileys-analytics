@@ -481,7 +481,7 @@ async function handleBookingUpdate(
 				try {
 					const tokenResult = await getValidOwnerRezToken(env, tenantId);
 					if (tokenResult.accessToken) {
-						const ownerRez = new OwnerRezService(tokenResult.accessToken);
+						const ownerRez = new OwnerRezService(tokenResult.accessToken, env.CACHE);
 						const detail = await ownerRez.fetchBookingDetail(String(booking.id));
 						tags = detail?.tags;
 					}

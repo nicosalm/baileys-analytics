@@ -3,7 +3,7 @@ import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
-import { normalizeBookingStatus, SUPABASE_MAX_ROWS, estimateGuestListingSiteFee } from '../constants';
+import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 
 const sync = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -67,7 +67,7 @@ sync.post('/properties', async (c) => {
     return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
   }
 
-  const ownerRez = new OwnerRezService(tokenResult.accessToken);
+  const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
 
   try {
     const properties = await ownerRez.fetchProperties();
@@ -213,7 +213,7 @@ sync.post('/bookings', async (c) => {
     ownerrezPropertyIds.push(String(p.ownerrez_id));
   }
 
-  const ownerRez = new OwnerRezService(tokenResult.accessToken);
+  const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
 
   try {
     // sync 4 years of historical data plus 1 year future
@@ -467,7 +467,7 @@ sync.post('/guests', async (c) => {
     return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
   }
 
-  const ownerRez = new OwnerRezService(tokenResult.accessToken);
+  const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
 
   try {
     const guests = await ownerRez.fetchAllGuests();
@@ -574,8 +574,6 @@ sync.post('/guests', async (c) => {
       }
     }
 
-    // booking contact enrichment handled by the /guest-contacts step
-
     return c.json({
       success: true,
       guestsCount: allGuestData.length
@@ -586,128 +584,7 @@ sync.post('/guests', async (c) => {
   }
 });
 
-// sync guest contact details individually for guests missing email/phone (step 4)
-// The OwnerRez guests list API doesn't always return email_addresses/phones,
-// so we fetch individual guest details for those missing contact info.
-// Processes a batch per call to stay within CF's 30-sec timeout.
-sync.post('/guest-contacts', async (c) => {
-  const supabase = createSupabaseClient(c.env);
-  const tenantId = c.get('tenantId');
-
-  const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
-  if (tokenResult.error) {
-    return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
-  }
-
-  const ownerRez = new OwnerRezService(tokenResult.accessToken);
-
-  try {
-    // find guest records missing contact info that haven't been individually fetched yet
-    // (the detail API includes 'addresses' which the list API never does)
-    const { data: guestsMissingContact } = await supabase
-      .from('guests')
-      .select('ownerrez_guest_id')
-      .eq('tenant_id', tenantId)
-      .or('email.is.null,phone.is.null')
-      .is('data->addresses', null)
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (!guestsMissingContact || guestsMissingContact.length === 0) {
-      return c.json({ success: true, enriched: 0, remaining: 0 });
-    }
-
-    const uniqueGuestIds = [...new Set(
-      guestsMissingContact.map(g => g.ownerrez_guest_id).filter(Boolean)
-    )] as string[];
-
-    if (uniqueGuestIds.length === 0) {
-      return c.json({ success: true, enriched: 0, remaining: 0 });
-    }
-
-    const BATCH_LIMIT = 10;
-    const PARALLEL_SIZE = 3;
-    const guestIdsToProcess = uniqueGuestIds.slice(0, BATCH_LIMIT);
-    let enrichedCount = 0;
-
-    for (let i = 0; i < guestIdsToProcess.length; i += PARALLEL_SIZE) {
-      const batch = guestIdsToProcess.slice(i, i + PARALLEL_SIZE);
-
-      const results = await Promise.all(
-        batch.map(async (guestId) => {
-          try {
-            const guestDetail = await ownerRez.fetchGuestDetail(guestId);
-            if (!guestDetail) return { guestId, email: null, phone: null, guestDetail: null };
-
-            const email = guestDetail.email_addresses?.find((e: any) => e.is_default)?.address ||
-                         guestDetail.email_addresses?.[0]?.address;
-            const phone = guestDetail.phones?.find((p: any) => p.is_default)?.number ||
-                         guestDetail.phones?.[0]?.number;
-
-            return { guestId, email, phone, guestDetail };
-          } catch {
-            return { guestId, email: null, phone: null, guestDetail: null };
-          }
-        })
-      );
-
-      // stub records for failed/deleted guests so we don't retry
-      const failedGuestIds = results
-        .filter(r => !r.guestDetail)
-        .map(r => r.guestId);
-
-      if (failedGuestIds.length > 0) {
-        const stubs = failedGuestIds.map(guestId => ({
-          ownerrez_guest_id: guestId,
-          tenant_id: tenantId,
-          data: { addresses: [] },
-          updated_at: new Date().toISOString()
-        }));
-
-        await supabase
-          .from('guests')
-          .upsert(stubs, { onConflict: 'tenant_id,ownerrez_guest_id' });
-      }
-
-      // upsert successful results into guests table only (no booking updates)
-      const resultOps = results
-        .filter(r => r.guestDetail)
-        .map(async (result) => {
-          const fullName = `${result.guestDetail.first_name || ''} ${result.guestDetail.last_name || ''}`.trim();
-
-          await supabase
-            .from('guests')
-            .upsert({
-              ownerrez_guest_id: result.guestId,
-              tenant_id: tenantId,
-              first_name: result.guestDetail.first_name,
-              last_name: result.guestDetail.last_name,
-              full_name: fullName || undefined,
-              email: result.email || undefined,
-              phone: result.phone || undefined,
-              data: result.guestDetail,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'tenant_id,ownerrez_guest_id' });
-
-          return !!(result.email || result.phone);
-        });
-
-      const enrichResults = await Promise.all(resultOps);
-      enrichedCount += enrichResults.filter(Boolean).length;
-    }
-
-    return c.json({
-      success: true,
-      enriched: enrichedCount,
-      processed: guestIdsToProcess.length,
-      remaining: Math.max(0, uniqueGuestIds.length - BATCH_LIMIT)
-    });
-  } catch (error) {
-    console.error('Failed to sync guest contacts:', error);
-    return c.json({ error: 'Failed to sync guest contacts' }, 500);
-  }
-});
-
-// sync inquiries (step 5 — optional, runs after guest-contacts)
+// sync inquiries (step 4 — optional)
 sync.post('/inquiries', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
@@ -718,7 +595,7 @@ sync.post('/inquiries', async (c) => {
       return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
     }
 
-    const ownerRez = new OwnerRezService(tokenResult.accessToken);
+    const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
     // fetch last 2 years of inquiries
     const twoYearsAgo = new Date();
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
@@ -777,7 +654,7 @@ sync.post('/inquiries', async (c) => {
 sync.post('/complete', async (c) => {
   const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
-  const { totalProperties, totalBookings, totalBlocks, totalGuests } = await c.req.json();
+  const { totalBookings } = await c.req.json();
 
   await supabase
     .from('sync_status')

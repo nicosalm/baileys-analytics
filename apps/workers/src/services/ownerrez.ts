@@ -2,33 +2,22 @@ import { OWNERREZ_API } from '../constants';
 
 export class OwnerRezService {
 	private baseUrl = OWNERREZ_API.BASE_URL;
-	private accessToken?: string;
-	private clientId?: string;
-	private clientSecret?: string;
-	private username?: string;
-	private timeout: number = 10000;
-	private maxPages: number = 50;
+	private accessToken: string;
+	private cache?: KVNamespace;
+	private timeout = 10000;
+	private maxPages = 50;
 
-	constructor(accessTokenOrClientId: string, clientSecret?: string, username?: string) {
-		if (clientSecret) {
-			this.clientId = accessTokenOrClientId;
-			this.clientSecret = clientSecret;
-			this.username = username;
-		} else {
-			this.accessToken = accessTokenOrClientId;
-		}
+	constructor(accessToken: string, cache?: KVNamespace) {
+		this.accessToken = accessToken;
+		this.cache = cache;
 	}
 
 	private async fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-		
+
 		try {
-			const response = await fetch(url, {
-				...options,
-				signal: controller.signal
-			});
-			return response;
+			return await fetch(url, { ...options, signal: controller.signal });
 		} catch (error) {
 			if (error instanceof Error && error.name === 'AbortError') {
 				throw new Error(`Request timeout after ${this.timeout}ms`);
@@ -40,26 +29,55 @@ export class OwnerRezService {
 	}
 
 	private getHeaders(): Record<string, string> {
-		const headers: Record<string, string> = {
-			'Authorization': this.getAuthHeader(),
+		return {
+			'Authorization': `Bearer ${this.accessToken}`,
 			'Content-Type': 'application/json',
 			'Accept': 'application/json',
 			'User-Agent': 'Baileys-Analytics/1.0'
 		};
+	}
 
-		if (this.username && !this.accessToken) {
-			headers['Username'] = this.username;
+	// tracks shared outbound budget across all tenants against ownerrez's 300 req/5min per-IP limit.
+	//
+	// KV read-modify-write is not atomic: concurrent workers can read the same counter value
+	// and each decrement it independently, causing under-counting under high concurrency.
+	// this is intentionally best-effort — the counter provides visibility and mild back-pressure,
+	// but actual rate enforcement comes from ownerrez's 429 responses handled in fetchWithRetry.
+	//
+	// one token is consumed per logical request (not per retry attempt).
+	private async consumeToken(): Promise<void> {
+		if (!this.cache) return;
+
+		const BUDGET = 260; // conservative buffer below ownerrez's 300 req/5min limit
+		const WINDOW_MS = 5 * 60 * 1000;
+		const key = 'ownerrez:rate_budget';
+		const now = Date.now();
+
+		const state = await this.cache.get<{ tokens: number; windowStart: number }>(key, 'json');
+
+		let tokens: number;
+		let windowStart: number;
+
+		if (!state || now - state.windowStart >= WINDOW_MS) {
+			tokens = BUDGET - 1;
+			windowStart = now;
+		} else {
+			tokens = state.tokens - 1;
+			windowStart = state.windowStart;
 		}
 
-		return headers;
+		const ttl = Math.max(60, Math.ceil((WINDOW_MS - (now - windowStart)) / 1000));
+		await this.cache.put(key, JSON.stringify({ tokens, windowStart }), { expirationTtl: ttl });
 	}
 
 	private async fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+		// consume one token per logical request, before the first attempt only
+		await this.consumeToken();
+
 		for (let attempt = 0; attempt <= maxRetries; attempt++) {
 			const response = await this.fetchWithTimeout(url, options);
 
 			if (response.status === 429 && attempt < maxRetries) {
-				// respect Retry-After header, fallback to exponential backoff
 				const retryAfter = response.headers.get('Retry-After');
 				const delayMs = retryAfter
 					? parseInt(retryAfter, 10) * 1000
@@ -71,7 +89,6 @@ export class OwnerRezService {
 			return response;
 		}
 
-		// unreachable, but satisfies TS
 		throw new Error('Max retries exceeded');
 	}
 
@@ -81,8 +98,7 @@ export class OwnerRezService {
 		let page = 0;
 		let isFirstPage = true;
 
-		const originalUrl = new URL(url);
-		const originalParams = originalUrl.searchParams;
+		const originalParams = new URL(url).searchParams;
 
 		while (currentUrl && page < this.maxPages) {
 			const requestOptions: RequestInit = isFirstPage
@@ -111,16 +127,14 @@ export class OwnerRezService {
 				const nextUrl = nextPage.startsWith('/')
 					? new URL(`https://api.ownerrez.com${nextPage}`)
 					: new URL(nextPage);
-
-				for (const [key, value] of originalParams) {
-					if (!nextUrl.searchParams.has(key)) {
-						nextUrl.searchParams.set(key, value);
-					}
+				for (const [k, v] of originalParams) {
+					if (!nextUrl.searchParams.has(k)) nextUrl.searchParams.set(k, v);
 				}
 				currentUrl = nextUrl.toString();
 			} else {
 				currentUrl = null;
 			}
+
 			isFirstPage = false;
 			page++;
 		}
@@ -128,23 +142,13 @@ export class OwnerRezService {
 		return allItems;
 	}
 
-	private getAuthHeader(): string {
-		if (this.accessToken) {
-			return `Bearer ${this.accessToken}`;
-		} else if (this.clientId && this.clientSecret) {
-			const auth = btoa(`${this.clientId}:${this.clientSecret}`);
-			return `Basic ${auth}`;
-		}
-		throw new Error('No authentication method available');
-	}
-
 	async fetchProperties(): Promise<any[]> {
-		const params = new URLSearchParams();
-		params.append('include_tags', 'true');
-		params.append('include_fields', 'true');
-		params.append('limit', '100');
-
-		return this.fetchAllPages(`${this.baseUrl}/properties?${params.toString()}`);
+		const params = new URLSearchParams({
+			include_tags: 'true',
+			include_fields: 'true',
+			limit: '100'
+		});
+		return this.fetchAllPages(`${this.baseUrl}/properties?${params}`);
 	}
 
 	async fetchBookings(propertyIds?: string | string[], startDate?: string, endDate?: string): Promise<any[]> {
@@ -153,107 +157,65 @@ export class OwnerRezService {
 		// ownerrez v2 api requires either property_ids or since_utc
 		const ids = Array.isArray(propertyIds) ? propertyIds.join(',') : propertyIds;
 		if (ids) {
-			params.append('property_ids', ids);
+			params.set('property_ids', ids);
 		} else {
-			const sinceDate = startDate || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
-			params.append('since_utc', sinceDate);
+			params.set('since_utc', startDate || new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString());
 		}
 
-		if (startDate) params.append('from', startDate);
-		if (endDate) params.append('to', endDate);
+		if (startDate) params.set('from', startDate);
+		if (endDate) params.set('to', endDate);
 
-		params.append('include_guest', 'true');
-		params.append('include_charges', 'true');
-		params.append('include_fields', 'true');
-		params.append('include_tags', 'true');
-		params.append('limit', '100');
+		params.set('include_guest', 'true');
+		params.set('include_charges', 'true');
+		params.set('include_fields', 'true');
+		params.set('include_tags', 'true');
+		params.set('limit', '100');
 
-		return this.fetchAllPages(`${this.baseUrl}/bookings?${params.toString()}`);
+		return this.fetchAllPages(`${this.baseUrl}/bookings?${params}`);
 	}
 
 	async fetchBookingDetail(bookingId: string): Promise<any> {
-		const params = new URLSearchParams();
-		params.append('include_tags', 'true');
-		params.append('include_charges', 'true');
-		const response = await this.fetchWithRetry(`${this.baseUrl}/bookings/${bookingId}?${params.toString()}`, {
-			headers: this.getHeaders()
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch booking detail: ${response.statusText}`);
-		}
-
-		return await response.json();
+		const params = new URLSearchParams({ include_tags: 'true', include_charges: 'true' });
+		const response = await this.fetchWithRetry(
+			`${this.baseUrl}/bookings/${bookingId}?${params}`,
+			{ headers: this.getHeaders() }
+		);
+		if (!response.ok) throw new Error(`Failed to fetch booking detail: ${response.statusText}`);
+		return response.json();
 	}
 
-	async fetchGuestDetail(guestId: string): Promise<any> {
-		const response = await this.fetchWithRetry(`${this.baseUrl}/guests/${guestId}`, {
-			headers: this.getHeaders()
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to fetch guest detail: ${response.statusText}`);
-		}
-
-		return await response.json();
-	}
-
-	async fetchGuests(bookingIds: string[]): Promise<any[]> {
-		const params = new URLSearchParams();
-		params.append('include_tags', 'true');
-		params.append('include_fields', 'true');
-
-		return this.fetchAllPages(`${this.baseUrl}/guests?${params.toString()}`, {
-			method: 'POST',
-			body: JSON.stringify({ booking_ids: bookingIds })
-		});
-	}
-
+	// the guests list API returns full GuestModel including email_addresses, phones, and addresses —
+	// no separate per-guest detail calls are needed after this
 	async fetchAllGuests(createdSinceUtc?: string): Promise<any[]> {
-		const params = new URLSearchParams();
-		params.append('include_tags', 'true');
-		params.append('include_fields', 'true');
-		params.append('limit', '100');
+		const params = new URLSearchParams({
+			include_tags: 'true',
+			include_fields: 'true',
+			limit: '100'
+		});
 
-		// default to 4 years ago if not specified
 		if (createdSinceUtc) {
-			params.append('created_since_utc', createdSinceUtc);
+			params.set('created_since_utc', createdSinceUtc);
 		} else {
 			const fourYearsAgo = new Date();
 			fourYearsAgo.setFullYear(fourYearsAgo.getFullYear() - 4);
-			params.append('created_since_utc', fourYearsAgo.toISOString());
+			params.set('created_since_utc', fourYearsAgo.toISOString());
 		}
 
-		return this.fetchAllPages(`${this.baseUrl}/guests?${params.toString()}`);
+		return this.fetchAllPages(`${this.baseUrl}/guests?${params}`);
 	}
 
 	async fetchInquiries(sinceUtc?: string): Promise<any[]> {
-		const params = new URLSearchParams();
-		params.append('include_guest', 'true');
-		params.append('limit', '100');
+		const params = new URLSearchParams({ include_guest: 'true', limit: '100' });
+
 		if (sinceUtc) {
-			params.append('since_utc', sinceUtc);
+			params.set('since_utc', sinceUtc);
 		} else {
 			const oneYearAgo = new Date();
 			oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-			params.append('since_utc', oneYearAgo.toISOString());
+			params.set('since_utc', oneYearAgo.toISOString());
 		}
 
-		return this.fetchAllPages(`${this.baseUrl}/inquiries?${params.toString()}`);
+		return this.fetchAllPages(`${this.baseUrl}/inquiries?${params}`);
 	}
 
-	async searchGuests(query: string): Promise<any[]> {
-		const params = new URLSearchParams({ q: query, limit: '5' });
-
-		const response = await this.fetchWithTimeout(`${this.baseUrl}/guests?${params.toString()}`, {
-			headers: this.getHeaders()
-		});
-
-		if (!response.ok) {
-			throw new Error(`Failed to search guests: ${response.statusText}`);
-		}
-
-		const data = await response.json() as any;
-		return data.items || [];
-	}
 }

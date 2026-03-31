@@ -114,6 +114,7 @@ export interface GuestListItem {
   }>;
   periodBookings: number;
   periodSpent: number;
+  isRepeat: boolean;
 }
 
 export interface GuestSourceData {
@@ -326,26 +327,12 @@ export async function getGuestsData(
 
   const totalGuests = guestPeriodMap.size;
 
-  // Calculate repeat guests: guests in the period who also have bookings before the period start
-  let repeatGuests = 0;
-  if (hasDateFilter && from) {
-    for (const [guestId, periodData] of guestPeriodMap) {
-      const allTimeData = guestAllTimeMap.get(guestId);
-      if (allTimeData) {
-        // Check if this guest has any bookings before the period start
-        const hasHistoricalBookings = allTimeData.bookings.some(b => b.arrival < from);
-        if (hasHistoricalBookings) {
-          repeatGuests++;
-        }
-      }
-    }
-  } else {
-    // If no date filter, count guests with multiple bookings total
-    repeatGuests = Array.from(guestPeriodMap.entries()).filter(([guestId]) => {
-      const allTimeData = guestAllTimeMap.get(guestId);
-      return allTimeData && allTimeData.bookings.length > 1;
-    }).length;
-  }
+  // repeat = has visited more than once (all-time booking count)
+  // the period filter controls which guests are shown; repeat is a property of the guest
+  const repeatGuests = Array.from(guestPeriodMap.keys()).filter(guestId => {
+    const allTimeData = guestAllTimeMap.get(guestId);
+    return allTimeData && allTimeData.bookings.length > 1;
+  }).length;
 
   const repeatRate = totalGuests > 0 ? repeatGuests / totalGuests : 0;
 
@@ -460,27 +447,31 @@ export async function getGuestsData(
         : Array.from(new Set(periodData.bookings.map(b => propertyMap.get(b.property_id) || b.property_id))),
       tags: Array.from(guestTags).map(tagId => tagMap.get(tagId) || { id: tagId, name: 'Unknown' }),
       periodBookings: periodData.bookings.length,
-      periodSpent: periodData.totalSpent
+      periodSpent: periodData.totalSpent,
+      isRepeat: (allTimeData?.bookings.length ?? 0) > 1
     });
   }
 
   guestsList.sort((a, b) => b.periodSpent - a.periodSpent);
   const topSpenders = guestsList.slice(0, 10);
 
+  // build source breakdown from unique guests, assigning each to their most-used platform
+  // to avoid double-counting guests who booked via multiple platforms in the period
   const sourceMap = new Map<string, { count: Set<string>; revenue: number }>();
-  for (const booking of filteredPeriodBookings) {
-    if (!booking.guest_name) continue;
-
-    const source = normalizePlatform(booking.platform);
-    const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
-
-    if (!sourceMap.has(source)) {
-      sourceMap.set(source, { count: new Set(), revenue: 0 });
+  for (const [guestId, periodData] of guestPeriodMap) {
+    const platformCounts = new Map<string, number>();
+    for (const booking of periodData.bookings) {
+      const src = normalizePlatform(booking.platform);
+      platformCounts.set(src, (platformCounts.get(src) || 0) + 1);
     }
+    const primarySource = [...platformCounts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 
-    const sourceData = sourceMap.get(source)!;
+    if (!sourceMap.has(primarySource)) {
+      sourceMap.set(primarySource, { count: new Set(), revenue: 0 });
+    }
+    const sourceData = sourceMap.get(primarySource)!;
     sourceData.count.add(guestId);
-    sourceData.revenue += booking.total_amount || 0;
+    sourceData.revenue += periodData.totalSpent;
   }
 
   const guestsBySource: GuestSourceData[] = Array.from(sourceMap.entries()).map(([source, data]) => ({
@@ -572,6 +563,6 @@ export async function getGuestsData(
       directSavingsOpportunity,
       feesByPlatform
     },
-    guests: guestsList.slice(0, 100)
+    guests: guestsList
   };
 }

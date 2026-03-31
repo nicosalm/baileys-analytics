@@ -209,6 +209,7 @@ export interface GuestListItem {
   tags: Tag[]
   periodBookings?: number
   periodSpent?: number
+  isRepeat?: boolean
 }
 
 export interface GuestSourceData {

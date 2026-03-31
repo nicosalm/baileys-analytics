@@ -89,8 +89,8 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Guest contact information is missing.</h3>
               <p className="text-muted-foreground text-sm">
-                OwnerRez stores guest contact details separately from bookings. Run a Guest Details Sync from {' '}
-                <SLink tab="integrations">Settings → Integrations</SLink> to backfill missing emails and phone numbers.
+                Guest contacts are synced automatically during initial setup. If still missing, the guest may not have contact info on file in OwnerRez, or you can use "Re-sync All Data" in{' '}
+                <SLink tab="integrations">Settings → Integrations</SLink> to refresh.
               </p>
             </div>
 

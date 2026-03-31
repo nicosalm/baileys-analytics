@@ -33,11 +33,13 @@ pnpm deploy
 ## API Endpoints
 
 ### Sync Endpoints
-- `POST /api/initial-sync/full` - Full historical sync (4 years back, 1 year forward)
-- `POST /api/sync/recovery` - Recovery sync (last 7 days, requires X-Force-Sync header)
-- `POST /api/sync/properties` - Sync only properties
-- `POST /api/sync/guest-details` - Update guest contact information
-- `GET /api/sync-status` - Check current sync status
+- `GET /api/sync/status` - Check sync status
+- `POST /api/sync/properties` - Step 1: sync properties and tags
+- `POST /api/sync/bookings` - Step 2: sync all bookings, charges, and blocks
+- `POST /api/sync/guests` - Step 3: sync guests with contact info and tags
+- `POST /api/sync/inquiries` - Step 4: sync inquiries (optional)
+- `POST /api/sync/complete` - Mark initial sync as done
+- `POST /api/sync/reset` - Reset sync status to allow re-sync
 
 ### Webhook Endpoint
 - `POST /api/webhooks/ownerrez` - Receives real-time updates from OwnerRez

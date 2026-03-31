@@ -134,7 +134,7 @@ export const GuestsDashboard = () => {
 
         switch (viewMode) {
             case 'repeat':
-                filtered = filtered.filter(g => g.bookingCount > 1)
+                filtered = filtered.filter(g => g.isRepeat)
                 break
             case 'new':
                 filtered = filtered.filter(g => {
@@ -508,7 +508,7 @@ export const GuestsDashboard = () => {
                     label="Repeat Rate"
                     value={data.metrics.repeatRate * 100}
                     format="percent"
-                    tooltip="Guests with more than one booking"
+                    tooltip="Guests who have stayed before"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : `${data.metrics.repeatGuests} returning guests`

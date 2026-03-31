@@ -120,7 +120,6 @@ export const OwnerRezDataGuide = () => {
 
           <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
             <li><strong>Re-sync All Data</strong> re-imports all properties and bookings</li>
-            <li><strong>Guest Details Sync</strong> backfills missing contact information</li>
           </ul>
 
           <p className="text-muted-foreground text-sm mt-4">
@@ -156,7 +155,7 @@ export const OwnerRezDataGuide = () => {
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-1">Missing guest contact info</h3>
               <p className="text-muted-foreground text-sm">
-                Run a Guest Details Sync from <SLink tab="integrations">Settings → Integrations</SLink>. OwnerRez stores guest contact details separately from booking records.
+                Guest contacts (email, phone) are synced as part of the standard guest sync. If a guest's contact info is missing, either they haven't provided it in OwnerRez, or their record predates your initial sync — use "Re-sync All Data" in <SLink tab="integrations">Settings → Integrations</SLink> to refresh.
               </p>
             </div>
 

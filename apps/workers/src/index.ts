@@ -410,7 +410,7 @@ app.route('/api/expense-templates', expenseTemplatesRoute);
 // rate limit billing checkout to prevent abuse
 app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));
 
-// sync is a multi-step flow (reset + status + properties + bookings + guests + contacts + complete)
+// sync is a multi-step flow (reset + status + properties + bookings + guests + inquiries + complete)
 // limit must accommodate the full sequence
 app.use('/api/sync/*', rateLimit({ max: 50, windowMs: 300000 }));
 
