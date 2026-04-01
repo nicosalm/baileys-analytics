@@ -802,7 +802,7 @@ export const OverviewDashboard = () => {
           subValue={metrics.guests.total > 0 ? 'Return rate' : 'No data yet'}
           size="sm"
           color="gray"
-          tooltip="Guests with more than one booking"
+          tooltip="Guests with more than one lifetime booking"
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 7 : 6}
         />
         <MetricCard

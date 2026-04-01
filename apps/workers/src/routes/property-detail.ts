@@ -172,16 +172,28 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       }))
       .sort((a, b) => b.revenue - a.revenue);
     
-    const guestMap = new Map<string, number>();
+    const periodGuestKeys = new Set<string>();
     (bookings || []).forEach(booking => {
-      const guestKey = booking.ownerrez_guest_id || booking.guest_name;
-      if (guestKey) {
-        guestMap.set(guestKey, (guestMap.get(guestKey) || 0) + 1);
-      }
+      const key = booking.ownerrez_guest_id || booking.guest_name;
+      if (key) periodGuestKeys.add(key);
     });
-    
-    const totalGuests = guestMap.size;
-    const repeatGuests = Array.from(guestMap.values()).filter(count => count > 1).length;
+
+    const totalGuests = periodGuestKeys.size;
+
+    const { data: allTimePropertyBookings } = await supabase
+      .from('bookings')
+      .select('ownerrez_guest_id, guest_name')
+      .eq('property_id', propertyId)
+      .neq('status', 'canceled')
+      .limit(SUPABASE_MAX_ROWS);
+
+    const allTimeCountMap = new Map<string, number>();
+    (allTimePropertyBookings || []).forEach(b => {
+      const key = b.ownerrez_guest_id || b.guest_name;
+      if (key) allTimeCountMap.set(key, (allTimeCountMap.get(key) || 0) + 1);
+    });
+
+    const repeatGuests = Array.from(periodGuestKeys).filter(key => (allTimeCountMap.get(key) || 0) > 1).length;
     
     const recentBookings = (bookings || [])
       .slice(0, 10)

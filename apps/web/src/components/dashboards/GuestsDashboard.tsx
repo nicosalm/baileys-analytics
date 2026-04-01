@@ -508,7 +508,7 @@ export const GuestsDashboard = () => {
                     label="Repeat Rate"
                     value={data.metrics.repeatRate * 100}
                     format="percent"
-                    tooltip="Guests who have stayed before"
+                    tooltip="Guests with more than one lifetime booking"
                     subValue={comparisonMode !== 'none' && previousData?.metrics
                         ? <>vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} | {data.metrics.repeatGuests} returning{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
                         : `${data.metrics.repeatGuests} returning guests`
