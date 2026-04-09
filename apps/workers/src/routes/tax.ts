@@ -357,15 +357,15 @@ tax.post('/calculate', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
-	
+
 	if (!body.propertyId) {
 		return c.json({ error: 'Property ID is required' }, 400);
 	}
-	
+
 	const { bookingId, propertyId, amount } = body;
-	
+
 	const calculator = new TaxCalculator(supabase);
-	
+
 	const { data: taxConfig } = await supabase
 		.from('property_tax_configs')
 		.select('*')
@@ -373,27 +373,31 @@ tax.post('/calculate', async (c) => {
 		.eq('tenant_id', tenantId)
 		.eq('is_active', true)
 		.single();
-	
+
 	if (!taxConfig) {
-		return c.json({ 
+		return c.json({
 			totalTax: 0,
 			ownerRemitted: 0,
 			platformRemitted: 0,
 			breakdown: []
 		});
 	}
-	
+
+	// bookingId must belong to the caller's tenant — previously the lookup
+	// was scoped only by id, which let any authenticated user run tax math
+	// against other tenants' booking amounts
 	const booking = bookingId ? await supabase
 		.from('bookings')
 		.select('*')
 		.eq('id', bookingId)
+		.eq('tenant_id', tenantId)
 		.single()
 		.then(r => r.data) : { total_amount: amount, platform: 'Unassigned' };
-	
+
 	if (!booking) {
 		return c.json({ error: 'Booking not found' }, 404);
 	}
-	
+
 	const result = await calculator.calculateBookingTax(booking, taxConfig, null);
 	return c.json(result);
 });
