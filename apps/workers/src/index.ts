@@ -158,7 +158,11 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 	});
 });
 
-app.get('/api/dashboard-batch', authMiddleware, async (c) => {
+// subscriptionMiddleware is applied inline (not via the dashboardPaths.forEach
+// loop below) because Hono executes registered handlers in registration order —
+// the forEach is registered after this route, so middleware attached there would
+// never run for /api/dashboard-batch. Adding it inline guarantees the check fires.
+app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c) => {
 	const user = c.get('user');
 	const tenantId = c.get('tenantId');
 	const view = c.req.query('view') || 'overview';
