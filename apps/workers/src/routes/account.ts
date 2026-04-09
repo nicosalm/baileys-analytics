@@ -112,7 +112,46 @@ account.delete('/delete', authMiddleware, async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
 
   try {
-    // 0. audit log — snapshot before deletion
+    // 1. cancel stripe subscription FIRST — if this fails we must abort the
+    // deletion so we never leave a customer being billed for an account whose
+    // data we already wiped. this runs before the audit log and before any
+    // destructive db work.
+    if (c.env.STRIPE_SECRET_KEY) {
+      const { data: customer } = await supabase
+        .from('stripe_customers')
+        .select('stripe_customer_id')
+        .eq('tenant_id', tenantId)
+        .single();
+
+      if (customer?.stripe_customer_id) {
+        try {
+          const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
+            apiVersion: '2025-10-29.clover',
+            httpClient: Stripe.createFetchHttpClient()
+          });
+
+          // cancel all non-terminal subscriptions
+          for (const status of ['active', 'trialing', 'past_due'] as const) {
+            const subscriptions = await stripe.subscriptions.list({
+              customer: customer.stripe_customer_id,
+              status
+            });
+            for (const sub of subscriptions.data) {
+              await stripe.subscriptions.cancel(sub.id);
+            }
+          }
+        } catch (stripeError) {
+          console.error('Failed to cancel stripe subscription during account deletion:', stripeError);
+          return c.json({
+            error: 'We could not cancel your Stripe subscription. Your account was not deleted to prevent continued billing. Please try again in a few minutes or contact support.',
+            code: 'STRIPE_CANCELLATION_FAILED'
+          }, 500);
+        }
+      }
+    }
+
+    // 2. audit log — snapshot before deletion (after stripe cancel so we only
+    // record deletions we are actually going to complete)
     const [{ data: tenant }, { count: propCount }, { count: bookCount }, { data: sub }] = await Promise.all([
       supabase.from('tenants').select('email, company_name').eq('id', tenantId).single(),
       supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
@@ -132,40 +171,7 @@ account.delete('/delete', authMiddleware, async (c) => {
       });
     }
 
-    // 1. cancel stripe subscription if exists
-    if (c.env.STRIPE_SECRET_KEY) {
-      try {
-        const { data: customer } = await supabase
-          .from('stripe_customers')
-          .select('stripe_customer_id')
-          .eq('tenant_id', tenantId)
-          .single();
-
-        if (customer?.stripe_customer_id) {
-          // cancel subscription via stripe
-          const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-            apiVersion: '2025-10-29.clover',
-            httpClient: Stripe.createFetchHttpClient()
-          });
-
-          // cancel all non-terminal subscriptions
-          for (const status of ['active', 'trialing', 'past_due'] as const) {
-            const subscriptions = await stripe.subscriptions.list({
-              customer: customer.stripe_customer_id,
-              status
-            });
-            for (const sub of subscriptions.data) {
-              await stripe.subscriptions.cancel(sub.id);
-            }
-          }
-        }
-      } catch (stripeError) {
-        console.error('Failed to cancel stripe subscription:', stripeError);
-        // continue with deletion even if stripe fails
-      }
-    }
-
-    // 2. revoke ownerrez oauth token
+    // 3. revoke ownerrez oauth token
     try {
       const { data: token } = await supabase
         .from('oauth_tokens')
@@ -183,7 +189,7 @@ account.delete('/delete', authMiddleware, async (c) => {
       // continue with deletion
     }
 
-    // 3. delete all tenant data atomically via RPC
+    // 4. delete all tenant data atomically via RPC
     const { error: deleteDataError } = await supabase.rpc('delete_tenant_data', {
       p_tenant_id: tenantId
     });
@@ -193,7 +199,7 @@ account.delete('/delete', authMiddleware, async (c) => {
       return c.json({ error: 'Failed to delete account data. Please contact support.' }, 500);
     }
 
-    // 4. delete auth user (this will log them out)
+    // 5. delete auth user (this will log them out)
     const { error: deleteUserError } = await supabase.auth.admin.deleteUser(userId);
 
     if (deleteUserError) {
