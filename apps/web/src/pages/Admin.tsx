@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import { resolveToken } from '@/lib/theme'
@@ -641,6 +642,7 @@ const SortHeader = ({ label, field, current, dir, onSort, className }: {
 
 export const Admin = () => {
   const { state, logout } = useAuth()
+  const { addToast } = useToast()
   const navigate = useNavigate()
 
   // data state
@@ -665,6 +667,7 @@ export const Admin = () => {
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; user: AdminUser | null }>({ open: false, user: null })
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -736,11 +739,21 @@ export const Admin = () => {
     if (!deleteModal.user || deleteConfirmText !== 'DELETE') return
     try {
       setDeleting(true)
+      setDeleteError(null)
       const result = await api.request(`/admin/users/${deleteModal.user.id}`, { method: 'DELETE' })
       if (result.success) {
         await loadData()
         setDeleteModal({ open: false, user: null })
         setDeleteConfirmText('')
+        addToast('success', 'Account deleted')
+      } else {
+        // backend now aborts the whole delete if stripe cancellation fails
+        // (STRIPE_CANCELLATION_FAILED) and returns the user's data intact.
+        // surface the backend message so the admin knows the account is still
+        // alive and can retry or resolve stripe manually.
+        const message = result.error || 'Failed to delete account'
+        setDeleteError(message)
+        addToast('error', message)
       }
     } finally {
       setDeleting(false)
@@ -1067,6 +1080,7 @@ export const Admin = () => {
         if (!open) {
           setDeleteModal({ open: false, user: null })
           setDeleteConfirmText('')
+          setDeleteError(null)
         }
       }}>
         <AlertDialogContent>
@@ -1096,13 +1110,26 @@ export const Admin = () => {
             </ul>
           </div>
 
+          {deleteError && (
+            <div className="p-3 bg-danger-subtle rounded-lg border border-danger/30 flex gap-2">
+              <AlertCircle className="w-4 h-4 text-danger flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-danger-fg">
+                <p className="font-medium mb-1">Deletion aborted. The account is still active.</p>
+                <p>{deleteError}</p>
+              </div>
+            </div>
+          )}
+
           <div>
             <FormLabel className="mb-2">
               Type <span className="font-mono bg-muted px-1 rounded">DELETE</span> to confirm
             </FormLabel>
             <Input
               value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              onChange={(e) => {
+                setDeleteConfirmText(e.target.value)
+                if (deleteError) setDeleteError(null)
+              }}
               placeholder="DELETE"
             />
           </div>
