@@ -109,6 +109,19 @@ const webhookPayloadSchema = z.object({
 
 type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
 
+// constant-time string comparison via sha-256 digests. the raw strings may
+// differ in length, which would cause crypto.subtle.timingSafeEqual to throw
+// (and leak length via the exception path). hashing normalizes both sides to
+// 32 bytes so the compare runs in fixed time regardless of input.
+async function constantTimeStringEqual(a: string, b: string): Promise<boolean> {
+	const encoder = new TextEncoder();
+	const [aHash, bHash] = await Promise.all([
+		crypto.subtle.digest('SHA-256', encoder.encode(a)),
+		crypto.subtle.digest('SHA-256', encoder.encode(b)),
+	]);
+	return crypto.subtle.timingSafeEqual(new Uint8Array(aHash), new Uint8Array(bHash));
+}
+
 const webhooks = new Hono<{ Bindings: Env; Variables: { user: any } }>();
 
 // public health check (no auth) — used by updown.io monitoring
@@ -145,7 +158,7 @@ webhooks.get('/status/detail', authMiddleware, async (c) => {
 
 webhooks.post('/ownerrez', async (c) => {
 	const authHeader = c.req.header('Authorization');
-	
+
 	if (!authHeader || !authHeader.startsWith('Basic ')) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
@@ -156,12 +169,18 @@ webhooks.post('/ownerrez', async (c) => {
 
 	const expectedUser = c.env.OWNERREZ_WEBHOOK_USER;
 	const expectedPassword = c.env.OWNERREZ_WEBHOOK_PASSWORD;
-	
+
 	if (!expectedUser || !expectedPassword) {
 		return c.json({ error: 'Webhook not configured' }, 500);
 	}
 
-	if (username !== expectedUser || password !== expectedPassword) {
+	// constant-time compare so an attacker with the webhook endpoint cannot
+	// learn credential prefixes from response timing
+	const [userMatches, passMatches] = await Promise.all([
+		constantTimeStringEqual(username ?? '', expectedUser),
+		constantTimeStringEqual(password ?? '', expectedPassword),
+	]);
+	if (!userMatches || !passMatches) {
 		return c.json({ error: 'Invalid credentials' }, 401);
 	}
 
@@ -186,7 +205,11 @@ webhooks.post('/ownerrez', async (c) => {
 		return c.json({ status: 'ignored', reason: 'tenant_not_found' });
 	}
 
-	await supabase
+	// insert the event record with idempotency: if the same (tenant_id, event_id)
+	// already exists, treat this as a replay and return success without
+	// re-processing. this protects against duplicate delivery from ownerrez
+	// and from an attacker replaying captured webhook payloads.
+	const { error: insertError } = await supabase
 		.from('webhook_events')
 		.insert({
 			tenant_id: tenant.id,
@@ -199,6 +222,18 @@ webhooks.post('/ownerrez', async (c) => {
 			processed: false,
 			created_at: new Date().toISOString()
 		});
+
+	if (insertError) {
+		const isDuplicate = insertError.code === '23505'
+			|| insertError.message?.includes('duplicate')
+			|| insertError.message?.includes('unique');
+		if (isDuplicate) {
+			return c.json({ status: 'success', message: 'Duplicate event ignored' });
+		}
+		console.error('[Webhook] failed to persist event:', insertError);
+		// don't 500 here — returning a non-2xx would trip ownerrez's subscription
+		// deactivation logic. log and proceed.
+	}
 
 	if (payload.action === 'webhook_test') {
 		return c.json({ status: 'success', message: 'Webhook test received' });
