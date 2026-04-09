@@ -9,6 +9,28 @@ const seasons = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: stri
 
 seasons.use('/*', authMiddleware);
 
+// returns the max day in a given month, using a leap year for february so
+// feb 29 is accepted. seasons do not carry a year, so we allow the most
+// permissive date.
+function maxDayInMonth(month: number): number {
+	return new Date(2024, month, 0).getDate();
+}
+
+const seasonSchema = z.object({
+	name: z.string().min(1),
+	startMonth: z.number().int().min(1).max(12),
+	startDay: z.number().int().min(1).max(31),
+	endMonth: z.number().int().min(1).max(12),
+	endDay: z.number().int().min(1).max(31),
+	isActive: z.boolean().optional()
+}).refine(
+	d => d.startDay <= maxDayInMonth(d.startMonth),
+	{ message: 'startDay is not valid for startMonth', path: ['startDay'] }
+).refine(
+	d => d.endDay <= maxDayInMonth(d.endMonth),
+	{ message: 'endDay is not valid for endMonth', path: ['endDay'] }
+);
+
 seasons.get('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
@@ -47,16 +69,7 @@ seasons.post('/', clearCache('GET:'), async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
-	
-	const seasonSchema = z.object({
-		name: z.string().min(1),
-		startMonth: z.number().int().min(1).max(12),
-		startDay: z.number().int().min(1).max(31),
-		endMonth: z.number().int().min(1).max(12),
-		endDay: z.number().int().min(1).max(31),
-		isActive: z.boolean().optional()
-	});
-	
+
 	const validation = seasonSchema.safeParse(body);
 	if (!validation.success) {
 		return c.json({ 
@@ -122,16 +135,7 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
-	
-	const seasonSchema = z.object({
-		name: z.string().min(1),
-		startMonth: z.number().int().min(1).max(12),
-		startDay: z.number().int().min(1).max(31),
-		endMonth: z.number().int().min(1).max(12),
-		endDay: z.number().int().min(1).max(31),
-		isActive: z.boolean().optional()
-	});
-	
+
 	const validation = seasonSchema.safeParse(body);
 	if (!validation.success) {
 		return c.json({ 
