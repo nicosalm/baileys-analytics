@@ -4,6 +4,7 @@ import { createSupabaseClient } from '../services/supabase';
 import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
 import { getExpensesWithTemplateFallback } from '../services/expense-utils';
 import { normalizePlatform } from '../utils/platform';
+import { getBookingIdsForTags } from '../utils/tag-filter';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -48,22 +49,22 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         host_service_fee,
         guest_listing_site_fee
       `)
+      .eq('tenant_id', tenantId)
       .eq('property_id', propertyId)
       .lte('arrival', to)
       .gte('departure', from)
       .neq('status', 'canceled')
       .order('arrival')
       .limit(SUPABASE_MAX_ROWS);
-    
+
     if (tags && tags.length > 0) {
-      const { data: taggedBookings } = await supabase
-        .from('booking_tags')
-        .select('booking_id')
-        .in('tag_id', tags);
-      
-      if (taggedBookings && taggedBookings.length > 0) {
-        const bookingIds = taggedBookings.map(tb => tb.booking_id);
-        bookingsQuery = bookingsQuery.in('id', bookingIds);
+      // route through the shared helper so cross-tenant tag ids are filtered
+      // out before we hit the junction tables
+      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tags);
+      if (matchedBookingIds) {
+        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
+      } else {
+        bookingsQuery = bookingsQuery.in('id', []);
       }
     }
     
