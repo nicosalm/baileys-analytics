@@ -6,15 +6,34 @@ const bookings = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: str
 
 bookings.use('/*', authMiddleware);
 
+// max rows per /bookings request. the frontend useBookingsForRange hook
+// currently asks for 1000 at a time; anything above that is rejected so a
+// malicious client cannot ask for millions of rows and exhaust the worker.
+const BOOKINGS_MAX_LIMIT = 1000;
+const BOOKINGS_DEFAULT_LIMIT = 50;
+const BOOKINGS_MAX_OFFSET = 100000;
+
 bookings.get('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
-	const { limit = '50', offset = '0', propertyId, startDate, endDate } = c.req.query();
+	const { limit: limitParam, offset: offsetParam, propertyId, startDate, endDate } = c.req.query();
 
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
+
+	// clamp pagination params: non-numeric or out-of-range values fall back to
+	// the defaults rather than NaN (which supabase-js would forward as undefined).
+	const rawLimit = Number.parseInt(limitParam ?? '', 10);
+	const limit = Number.isFinite(rawLimit) && rawLimit > 0
+		? Math.min(rawLimit, BOOKINGS_MAX_LIMIT)
+		: BOOKINGS_DEFAULT_LIMIT;
+
+	const rawOffset = Number.parseInt(offsetParam ?? '', 10);
+	const offset = Number.isFinite(rawOffset) && rawOffset >= 0
+		? Math.min(rawOffset, BOOKINGS_MAX_OFFSET)
+		: 0;
+
 	let query = supabase
 		.from('bookings')
 		.select(`
@@ -23,8 +42,8 @@ bookings.get('/', async (c) => {
 		`)
 		.eq('tenant_id', tenantId)
 		.order('arrival', { ascending: false })
-		.limit(parseInt(limit))
-		.range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+		.limit(limit)
+		.range(offset, offset + limit - 1);
 	
 	if (propertyId) {
 		query = query.eq('property_id', propertyId);
