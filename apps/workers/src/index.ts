@@ -327,7 +327,10 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 		}
 
 		default:
-			data = { error: 'Invalid view' };
+			// return 400 immediately and skip the cache write — otherwise a
+			// typo in the view query param would poison the kv cache with an
+			// error payload for the whole ttl
+			return c.json({ error: 'Invalid view', view }, 400);
 	}
 
 	if (c.env.CACHE) {
