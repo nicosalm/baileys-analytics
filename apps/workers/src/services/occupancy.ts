@@ -379,76 +379,54 @@ export async function detectBookingGaps(
   for (const property of properties) {
     const propertyBookings = bookings?.filter(b => b.property_id === property.id) || [];
 
-    // check for gaps between bookings
+    // check for gaps between bookings. the first iteration uses `today` as
+    // the "last departure" so a property whose earliest upcoming booking is
+    // weeks or months out still surfaces as a current gap.
     let lastDeparture: Date | null = null;
 
     for (const booking of propertyBookings) {
       const arrivalDate = new Date(booking.arrival);
       const departureDate = new Date(booking.departure);
 
-      // if there's a gap between last departure and this arrival
-      if (lastDeparture) {
-        // Departure date is exclusive - property is available starting departure date
-        const gapStart = new Date(lastDeparture);
+      // gap source: either the previous booking's departure, or today for the
+      // very first booking in this property's list.
+      const gapStart = lastDeparture ? new Date(lastDeparture) : new Date(today);
+      const isFirstGap = lastDeparture === null;
 
-        if (gapStart < arrivalDate) {
-          const gapDays = Math.floor((arrivalDate.getTime() - gapStart.getTime()) / (1000 * 60 * 60 * 24));
+      if (gapStart < arrivalDate) {
+        const gapDays = Math.floor((arrivalDate.getTime() - gapStart.getTime()) / (1000 * 60 * 60 * 24));
 
-          // Report gaps of 1+ days (even single-night gaps are valuable)
-          if (gapDays >= 1) {
-            const daysUntilGap = Math.floor((gapStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            const propertyRate = propertyRates.get(property.id) || 0;
-            const estimatedRevenueLoss = gapDays * propertyRate;
-
-            let severity: BookingGap['severity'] = 'info';
-            if (daysUntilGap <= 7 && gapDays >= 3) severity = 'critical';
-            else if (daysUntilGap <= 14 || gapDays >= 4) severity = 'warning';
-
-            gaps.push({
-              propertyId: property.id,
-              propertyName: property.name,
-              gapStart: gapStart.toISOString().split('T')[0],
-              gapEnd: new Date(arrivalDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-              gapDays,
-              daysUntilGap,
-              estimatedRevenueLoss,
-              severity
-            });
-          }
-        }
-      }
-
-      lastDeparture = departureDate;
-    }
-
-    // check for gap from today to first booking
-    if (lastDeparture === null && propertyBookings.length > 0) {
-      const firstBooking = propertyBookings[0];
-      const arrivalDate = new Date(firstBooking.arrival);
-
-      if (today < arrivalDate) {
-        const gapDays = Math.floor((arrivalDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
+        // report gaps of 1+ days (even single-night gaps are valuable)
         if (gapDays >= 1) {
+          const daysUntilGap = Math.floor((gapStart.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           const propertyRate = propertyRates.get(property.id) || 0;
           const estimatedRevenueLoss = gapDays * propertyRate;
 
+          // severity thresholds: the first (current) gap is more urgent since
+          // the property is already vacant
           let severity: BookingGap['severity'] = 'info';
-          if (gapDays >= 7) severity = 'critical'; // no bookings for a week
-          else if (gapDays >= 3) severity = 'warning';
+          if (isFirstGap) {
+            if (gapDays >= 7) severity = 'critical';
+            else if (gapDays >= 3) severity = 'warning';
+          } else {
+            if (daysUntilGap <= 7 && gapDays >= 3) severity = 'critical';
+            else if (daysUntilGap <= 14 || gapDays >= 4) severity = 'warning';
+          }
 
           gaps.push({
             propertyId: property.id,
             propertyName: property.name,
-            gapStart: today.toISOString().split('T')[0],
+            gapStart: gapStart.toISOString().split('T')[0],
             gapEnd: new Date(arrivalDate.getTime() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             gapDays,
-            daysUntilGap: 0, // current gap
+            daysUntilGap: Math.max(0, daysUntilGap),
             estimatedRevenueLoss,
             severity
           });
         }
       }
+
+      lastDeparture = departureDate;
     }
 
     // check for gap after last booking until end date
