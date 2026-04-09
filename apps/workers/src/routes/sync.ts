@@ -611,12 +611,20 @@ sync.post('/inquiries', async (c) => {
       const lastName = guest?.last_name as string | undefined;
       const guestName = [firstName, lastName].filter(Boolean).join(' ') || null;
 
+      // extract guest email from email_addresses[] — preferring the default
+      // address, falling back to the first entry, then a top-level email
+      const emailAddresses = guest?.email_addresses as Array<{ address?: string; is_default?: boolean }> | undefined;
+      const guestEmail = emailAddresses?.find(e => e.is_default)?.address
+        ?? emailAddresses?.[0]?.address
+        ?? (guest?.email as string | undefined)
+        ?? null;
+
       return {
         tenant_id: tenantId,
         ownerrez_inquiry_id: inq.id as number,
         property_id: (inq.property_id as number) ?? null,
         guest_name: guestName,
-        guest_email: null,
+        guest_email: guestEmail,
         arrival: (inq.arrival as string) ?? null,
         departure: (inq.departure as string) ?? null,
         status: (inq.type as string) ?? null,

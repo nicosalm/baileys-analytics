@@ -566,6 +566,12 @@ async function handleInquiryUpdate(supabase: any, tenantId: string, inquiry: any
 	const guestName = guest
 		? [guest.first_name, guest.last_name].filter(Boolean).join(' ') || null
 		: null;
+	// extract guest email from email_addresses[] the same way handleGuestUpdate
+	// does — preferring the default address, falling back to the first entry
+	const guestEmail = guest?.email_addresses?.find((e: any) => e.is_default)?.address
+		?? guest?.email_addresses?.[0]?.address
+		?? guest?.email
+		?? null;
 
 	await supabase
 		.from('inquiries')
@@ -574,7 +580,7 @@ async function handleInquiryUpdate(supabase: any, tenantId: string, inquiry: any
 			tenant_id: tenantId,
 			property_id: inquiry.property_id ?? null,
 			guest_name: guestName,
-			guest_email: null,
+			guest_email: guestEmail,
 			arrival: inquiry.arrival ?? null,
 			departure: inquiry.departure ?? null,
 			status: inquiry.type ?? null,
