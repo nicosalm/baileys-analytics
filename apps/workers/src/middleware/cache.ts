@@ -6,16 +6,29 @@ interface CacheOptions {
 	condition?: (c: Context) => boolean;
 }
 
+// the default cache key MUST include the tenant id to prevent cross-tenant
+// response leakage. if the tenant id is not set (e.g. public route, or auth
+// middleware has not run yet), skip caching entirely rather than risk a leak.
 export function cache(options: CacheOptions = {}) {
 	const { ttl = 300, key, condition } = options;
-	
-	return async function cacheMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+
+	return async function cacheMiddleware(c: Context<{ Bindings: Env; Variables: { user: any; tenantId: string } }>, next: Next) {
 		if (condition && !condition(c)) {
 			return next();
 		}
-		
-		const cacheKey = key ? key(c) : `${c.req.method}:${c.req.url}`;
-		
+
+		let cacheKey: string | null;
+		if (key) {
+			cacheKey = key(c);
+		} else {
+			const tenantId = c.get('tenantId');
+			cacheKey = tenantId ? `${c.req.method}:${tenantId}:${c.req.url}` : null;
+		}
+
+		if (!cacheKey) {
+			return next();
+		}
+
 		if (c.req.method === 'GET' && c.env.CACHE) {
 			const cached = await c.env.CACHE.get(cacheKey);
 			if (cached) {
@@ -23,13 +36,13 @@ export function cache(options: CacheOptions = {}) {
 				return c.json(data.body, data.status);
 			}
 		}
-		
+
 		await next();
-		
+
 		if (c.req.method === 'GET' && c.res.status === 200 && c.env.CACHE) {
 			const response = c.res.clone();
 			const body = await response.json();
-			
+
 			await c.env.CACHE.put(
 				cacheKey,
 				JSON.stringify({ body, status: response.status }),
