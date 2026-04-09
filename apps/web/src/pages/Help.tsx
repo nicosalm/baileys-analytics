@@ -16,6 +16,17 @@ export const Help = () => {
           <p className="text-muted-foreground text-sm">Answers to common questions about Baileys Analytics.</p>
         </div>
 
+        {/* about this service */}
+        <div className="mb-6 p-4 rounded-xl border border-border bg-muted/30">
+          <h2 className="text-sm font-semibold text-foreground mb-2 mt-0">About Baileys Analytics</h2>
+          <p className="text-sm text-muted-foreground mb-2">
+            Baileys Analytics is built on top of the OwnerRez API. What we can show you depends on what OwnerRez exposes. Some figures, like guest-side platform fees, are estimated and labeled as such in the dashboard.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Data quality reflects the quality of the data in your OwnerRez account. If a guest is missing a phone number there, it will be missing here too.
+          </p>
+        </div>
+
         {/* quick links */}
         <div className="bg-info-subtle border border-info/20 rounded-xl p-4 mb-8">
           <h2 className="text-sm font-medium text-info-fg mb-2 mt-0">Quick Links</h2>
@@ -291,9 +302,9 @@ export const Help = () => {
 
         {/* contact */}
         <section className="pt-6 border-t">
-          <h2 className="text-lg font-semibold text-foreground mb-3">Contact</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-3">Contact & Feedback</h2>
           <p className="text-muted-foreground text-sm mb-4">
-            Question not answered above? Reach out directly.
+            Question not answered above? Reach out directly. Feature requests, UX suggestions, and bug reports are welcome. We read every message, and the roadmap is shaped by what hosts ask for.
           </p>
           <div className="flex flex-col sm:flex-row gap-2">
             <a

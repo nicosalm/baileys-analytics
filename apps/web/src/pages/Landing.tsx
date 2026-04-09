@@ -475,6 +475,7 @@ export const Landing = () => {
             }`}
         >
           <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
+          <p className="mt-4 text-sm text-white/40">Built with OwnerRez hosts, shaped by their feedback.</p>
           {!isAuthenticated && (
             <div className="mt-6 flex flex-col items-center gap-4">
               <Link to="/signup" className="whitespace-nowrap inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg">

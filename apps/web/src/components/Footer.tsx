@@ -92,7 +92,7 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li><Link to="/help" onClick={() => handleSamePageClick('/help')} className={linkClass}>Help</Link></li>
               <li><Link to="/docs/ownerrez-data" onClick={() => handleSamePageClick('/docs/ownerrez-data')} className={linkClass}>Data Guide</Link></li>
-              <li><a href="mailto:support@baileysanalytics.com" className={linkClass}>Support</a></li>
+              <li><a href="mailto:support@baileysanalytics.com" className={linkClass}>Support & Feedback</a></li>
             </ul>
           </div>
 

@@ -16,6 +16,16 @@ export const OwnerRezDataGuide = () => {
           <p className="text-muted-foreground text-sm">What is synced, how updates work, and what requires manual configuration.</p>
         </div>
 
+        {/* about this service */}
+        <div className="mb-8 p-4 rounded-xl border border-border bg-muted/30">
+          <p className="text-sm text-muted-foreground mb-2">
+            Baileys Analytics is a best-effort layer on top of the OwnerRez API. We surface what OwnerRez exposes and estimate what it does not. What appears on your dashboard reflects both the coverage of the OwnerRez API and the quality of the data in your OwnerRez account.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Where a figure is estimated rather than synced directly, it is labeled "(est.)" in the dashboard. Where manual configuration is required, this guide will say so.
+          </p>
+        </div>
+
         {/* what we sync */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-foreground mb-4">Synced Data</h2>
@@ -187,8 +197,11 @@ export const OwnerRezDataGuide = () => {
           </ul>
 
           <div className="mt-6 pt-6 border-t">
+            <p className="text-muted-foreground text-sm mb-2">
+              Something missing, wrong, or unclear? Tell us. Feature requests and feedback shape what we build next.
+            </p>
             <p className="text-muted-foreground text-sm">
-              Questions? Contact us at <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">support@baileysanalytics.com</a> or
+              Email <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">support@baileysanalytics.com</a> or
               visit the <Link to="/help" className="text-primary hover:text-primary/80">Help Center</Link>.
             </p>
           </div>
