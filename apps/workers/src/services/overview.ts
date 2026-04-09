@@ -68,7 +68,7 @@ export async function getOverviewData(
 		: null;
 
 	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([
-		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties),
+		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties, tagIds),
 		getChartsData(currentBookings, sharedProperties, from, to),
 		getAlerts(supabase, tenantId, from, to),
 		getRecentActivity(supabase, tenantId, from, to),
@@ -78,7 +78,7 @@ export async function getOverviewData(
 	let previousMetrics = null;
 	if (comparisonBookings) {
 		previousMetrics = await getCurrentPeriodMetrics(
-			supabase, tenantId, comparisonFrom!, comparisonTo!, comparisonBookings, sharedProperties
+			supabase, tenantId, comparisonFrom!, comparisonTo!, comparisonBookings, sharedProperties, tagIds
 		);
 	}
 
@@ -100,17 +100,45 @@ async function getCurrentPeriodMetrics(
 	from: string,
 	to: string,
 	bookings: any[],
-	properties: any[]
+	properties: any[],
+	tagIds: string[] = []
 ) {
 	const propertyCount = properties.length;
+	const propertyIds = properties.map(p => p.id);
 
-	const { count: canceledCount } = await supabase
-		.from('bookings')
-		.select('*', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId)
-		.lte('arrival', to)
-		.gte('departure', from)
-		.eq('status', 'canceled');
+	// canceledCount must honor the same property and tag filters as the active
+	// bookings query above, otherwise cancellationRate = canceled / (active+canceled)
+	// mixes tenant-wide cancellations with a filtered numerator and produces a
+	// meaningless ratio whenever the user has selected any filter.
+	let canceledCount = 0;
+	let canceledTagBookingIds: string[] | null = null;
+	let skipCanceledQuery = false;
+
+	if (tagIds.length > 0) {
+		canceledTagBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+		if (!canceledTagBookingIds) {
+			// no bookings match the tag filter — no cancellations can either
+			skipCanceledQuery = true;
+		}
+	}
+
+	if (!skipCanceledQuery && propertyIds.length > 0) {
+		let canceledQuery = supabase
+			.from('bookings')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.in('property_id', propertyIds)
+			.lte('arrival', to)
+			.gte('departure', from)
+			.eq('status', 'canceled');
+
+		if (canceledTagBookingIds) {
+			canceledQuery = canceledQuery.in('id', canceledTagBookingIds);
+		}
+
+		const { count } = await canceledQuery;
+		canceledCount = count || 0;
+	}
 
 	const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 	const totalBookings = bookings.length;
@@ -131,7 +159,6 @@ async function getCurrentPeriodMetrics(
 	}
 
 	// fetch operating expenses
-	const propertyIds = properties.map(p => p.id);
 	const expenseRows = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds);
 	const operatingExpensesTotal = expenseRows.reduce((sum, e) => sum + e.amount, 0);
 	const operatingExpensesByCategory: Record<string, number> = {};
