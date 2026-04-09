@@ -172,38 +172,4 @@ bookings.get('/:id', async (c) => {
 	});
 });
 
-bookings.get('/recent', async (c) => {
-	const supabase = createSupabaseClient(c.env);
-	const tenantId = c.get('tenantId');
-
-	if (!tenantId) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-	
-	const { data: recentBookings, error } = await supabase
-		.from('bookings')
-		.select(`
-			id,
-			guest_name,
-			arrival,
-			departure,
-			total_amount,
-			booking_status,
-			booked_utc,
-			properties!inner(name)
-		`)
-		.eq('tenant_id', tenantId)
-		.order('booked_utc', { ascending: false, nullsFirst: false })
-		.limit(10);
-	
-	if (error) {
-		return c.json({ error: error.message }, 500);
-	}
-	
-	return c.json(recentBookings?.map((b: any) => ({
-		...b,
-		property_name: b.properties?.name
-	})));
-});
-
 export { bookings };

@@ -126,36 +126,6 @@ properties.get('/:id/metrics', async (c) => {
 	});
 });
 
-properties.get('/platforms', async (c) => {
-	const supabase = createSupabaseClient(c.env);
-	const tenantId = c.get('tenantId');
-	const propertyId = c.req.query('propertyId');
-
-	if (!tenantId) {
-		return c.json({ error: 'Tenant not found' }, 404);
-	}
-
-	let query = supabase
-		.from('bookings')
-		.select('platform')
-		.eq('tenant_id', tenantId)
-		.not('platform', 'is', null);
-	
-	if (propertyId) {
-		query = query.eq('property_id', propertyId);
-	}
-	
-	const { data, error } = await query;
-	
-	if (error) {
-		return c.json({ error: error.message }, 500);
-	}
-	
-	const platforms = [...new Set(data?.map(b => b.platform).filter(Boolean))].sort();
-	
-	return c.json(platforms);
-});
-
 properties.get('/:propertyId/month/:year/:month', async (c) => {
 	const propertyId = c.req.param('propertyId');
 	const year = c.req.param('year');
