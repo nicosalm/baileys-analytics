@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { normalizePlatform } from '../utils/platform';
+import { csvEscape } from '../utils/csv';
 import { TaxCalculator } from '../services/tax-calculator';
 
 const tax = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
@@ -496,18 +497,19 @@ tax.get('/export', async (c) => {
 		description: `Effective Rate: ${totalRevenue > 0 ? ((totalTaxes / totalRevenue) * 100).toFixed(2) : 0}%`
 	});
 
-	// Generate CSV
+	// Generate CSV — every cell is routed through csvEscape which handles
+	// both standard rfc4180 quoting and formula injection defense.
 	const csvLines = [
 		headers.join(','),
 		...rows.map(row =>
 			[
-				`"${row.property}"`,
-				row.checkin,
-				row.checkout,
-				row.platform,
-				row.total,
-				row.taxes,
-				`"${row.description}"`
+				csvEscape(row.property),
+				csvEscape(row.checkin),
+				csvEscape(row.checkout),
+				csvEscape(row.platform),
+				csvEscape(row.total),
+				csvEscape(row.taxes),
+				csvEscape(row.description)
 			].join(',')
 		)
 	];

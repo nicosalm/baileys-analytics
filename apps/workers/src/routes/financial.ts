@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { normalizePlatform } from '../utils/platform';
+import { csvEscape } from '../utils/csv';
 
 const financial = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -51,15 +52,15 @@ financial.get('/charges-export', async (c) => {
 		if (charges.length === 0) return [];
 
 		return charges.map((charge: any) => [
-			`"${(booking.guest_name || 'Unknown').replace(/"/g, '""')}"`,
-			`"${booking.properties.name.replace(/"/g, '""')}"`,
-			`"${normalizePlatform(booking.platform)}"`,
-			booking.arrival,
-			booking.departure,
-			charge.type || '',
-			`"${(charge.description || '').replace(/"/g, '""')}"`,
-			charge.amount || 0,
-			charge.is_taxable ? 'Yes' : 'No'
+			csvEscape(booking.guest_name || 'Unknown'),
+			csvEscape(booking.properties.name),
+			csvEscape(normalizePlatform(booking.platform)),
+			csvEscape(booking.arrival),
+			csvEscape(booking.departure),
+			csvEscape(charge.type || ''),
+			csvEscape(charge.description || ''),
+			csvEscape(charge.amount ?? 0),
+			csvEscape(charge.is_taxable ? 'Yes' : 'No')
 		].join(','));
 	});
 
