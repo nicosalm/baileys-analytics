@@ -65,17 +65,17 @@ export const Landing = () => {
       {/* fixed header: banner + nav stacked */}
       <div className="fixed top-0 left-0 right-0 z-50">
         {/* announcement banner */}
-        {/* <a */}
-        {/*   href="/updates/2026-04-10-launch.html" */}
-        {/*   className="block w-full" */}
-        {/*   style={{ background: 'oklch(0.18 0.09 300)', borderBottom: '1px solid oklch(0.28 0.10 300 / 0.5)' }} */}
-        {/* > */}
-        {/*   <div className="max-w-6xl mx-auto px-4 md:px-6 py-2.5 text-center text-xs font-medium text-white/60 hover:text-white/80 transition-colors flex items-center justify-center gap-2"> */}
-        {/*     <span>Baileys Analytics is now available — read the announcement</span> */}
-        {/*     <span className="text-white/35">→</span> */}
-        {/*   </div> */}
-        {/* </a> */}
-        {/**/}
+        <a
+          href="/updates/2026-04-09-launch.html"
+          className="block w-full"
+          style={{ background: 'oklch(0.18 0.09 300)', borderBottom: '1px solid oklch(0.28 0.10 300 / 0.5)' }}
+        >
+          <div className="max-w-6xl mx-auto px-4 md:px-6 py-2.5 text-center text-xs font-medium text-white/60 hover:text-white/80 transition-colors flex items-center justify-center gap-2">
+            <span>Baileys Analytics is now available — read the announcement</span>
+            <span className="text-white/35">→</span>
+          </div>
+        </a>
+
         {/* nav — light text on dark hero */}
         <nav className={`transition-all duration-300 ${scrolled
           ? 'bg-[var(--landing-bg)/0.85] backdrop-blur-md shadow-sm border-b border-white/5'

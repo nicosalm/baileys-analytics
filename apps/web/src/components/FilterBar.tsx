@@ -1,4 +1,5 @@
 import React, { memo, useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { SmartPeriodSelector } from './SmartPeriodSelector'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags, useProperties } from '@/hooks/use-api'
@@ -205,7 +206,15 @@ export const MobileFilterControls: React.FC = () => {
         {isTagsLoading ? (
           <p className="text-sm text-muted-foreground px-1">Loading...</p>
         ) : availableTags.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-1">No tags available</p>
+          <div className="px-1 space-y-1">
+            <p className="text-sm text-muted-foreground">No tags found.</p>
+            <p className="text-xs text-muted-foreground/80 leading-relaxed">
+              Tags are imported from OwnerRez.{' '}
+              <Link to="/docs/ownerrez-data#tagging" className="text-primary hover:text-primary/80 underline-offset-2 hover:underline">
+                See how tagging works
+              </Link>
+            </p>
+          </div>
         ) : (
           <div className="space-y-0.5">
             {availableTags.map((tag) => (
@@ -344,7 +353,15 @@ export const FilterBar: React.FC = () => {
                 {isTagsLoading ? (
                   <div className="text-center py-4 text-muted-foreground">Loading tags...</div>
                 ) : availableTags.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">No tags available</div>
+                  <div className="py-4 px-3 space-y-1 text-center">
+                    <p className="text-sm text-muted-foreground">No tags found.</p>
+                    <p className="text-xs text-muted-foreground/80 leading-relaxed">
+                      Tags are imported from OwnerRez.{' '}
+                      <Link to="/docs/ownerrez-data#tagging" className="text-primary hover:text-primary/80 underline-offset-2 hover:underline">
+                        See how tagging works
+                      </Link>
+                    </p>
+                  </div>
                 ) : (
                   <div className="space-y-1">
                     {availableTags.map((tag) => (
