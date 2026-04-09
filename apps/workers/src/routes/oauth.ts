@@ -299,9 +299,9 @@ oauth.post('/callback', async (c) => {
 oauth.post('/disconnect', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-  
+
   try {
-    // Delete OAuth token
+    // delete OAuth token
     const { error: deleteError } = await supabase
       .from('oauth_tokens')
       .delete()
@@ -312,18 +312,27 @@ oauth.post('/disconnect', authMiddleware, async (c) => {
       throw deleteError;
     }
 
+    // clear all ownerrez connection fields on the tenant so the UI stops
+    // showing the account as connected and the webhook handler stops routing
+    // events here by ownerrez_user_id
     const { error: tenantError } = await supabase
       .from('tenants')
       .update({
         ownerrez_user_id: null,
+        ownerrez_connected: false,
+        ownerrez_disconnected_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
       .eq('id', tenantId);
 
+    if (tenantError) {
+      throw tenantError;
+    }
+
     return c.json({ success: true });
   } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to disconnect OwnerRez' 
+    return c.json({
+      error: error instanceof Error ? error.message : 'Failed to disconnect OwnerRez'
     }, 500);
   }
 });
