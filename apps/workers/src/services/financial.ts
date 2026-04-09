@@ -3,6 +3,7 @@ import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform, PLATFORM_REMITS_TAX } from '../utils/platform';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { subtractOneYear } from '../utils/date-filters';
 
 interface FinancialMetrics {
   revenue: {
@@ -593,9 +594,8 @@ export async function getRevenueData(
   if (shared?.lastYearBookings) {
     lastYearBookings = shared.lastYearBookings;
   } else {
-    const lastYear = new Date(from).getFullYear() - 1;
-    const lastYearFrom = from.replace(/\d{4}/, lastYear.toString());
-    const lastYearTo = to.replace(/\d{4}/, lastYear.toString());
+    const lastYearFrom = subtractOneYear(from);
+    const lastYearTo = subtractOneYear(to);
 
     // last-year comparison must honor the same property + tag filter as the
     // current-period query, otherwise YoY deltas compare a filtered current
@@ -934,9 +934,8 @@ export async function getFinancialBatchData(
     propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
   }
 
-  const lastYear = new Date(from).getFullYear() - 1;
-  const lastYearFrom = from.replace(/\d{4}/, lastYear.toString());
-  const lastYearTo = to.replace(/\d{4}/, lastYear.toString());
+  const lastYearFrom = subtractOneYear(from);
+  const lastYearTo = subtractOneYear(to);
 
   // upcoming bookings query: must share the same property + tag filter as the
   // main bookings query so the next-30/60/90 cards match the rest of the view.
