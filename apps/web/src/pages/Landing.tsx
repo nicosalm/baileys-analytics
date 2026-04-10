@@ -192,7 +192,7 @@ export const Landing = () => {
           )}
 
           <p className="text-sm text-white/40 hero-stagger" style={{ '--hero-index': 5 } as React.CSSProperties}>
-            $20/month or $192/year. Cancel anytime.
+            Starting at $20/month. Cancel anytime.
           </p>
 
           {/* hero image */}
@@ -386,8 +386,8 @@ export const Landing = () => {
             }`}
         >
           <div className="text-center mb-10">
-            <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">One plan, one price</h2>
-            <p className="text-sm uppercase tracking-[0.15em] text-white/40">Everything you need. No tiers, no upsells.</p>
+            <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">Pricing that makes sense</h2>
+            <p className="text-sm uppercase tracking-[0.15em] text-white/40">Full analytics for your rental portfolio.</p>
           </div>
 
           {/* billing toggle */}
