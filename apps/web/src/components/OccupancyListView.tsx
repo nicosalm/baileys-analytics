@@ -5,6 +5,7 @@ import { useBookingsForRange, type BookingRow } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/Pagination'
 
 interface OccupancyListViewProps {
   properties: { propertyId: string; propertyName: string }[]
@@ -18,6 +19,7 @@ type ListEntry =
 
 const INACTIVE_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected']
 const TRUNCATION_LIMIT = 1000
+const PAGE_SIZE = 15
 const GAP_SEVERITY_STYLES = {
   critical: 'bg-danger-subtle border-l-danger text-danger-fg',
   warning:  'bg-warning-subtle border-l-warning text-warning-fg',
@@ -55,11 +57,18 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   const [groupBy, setGroupBy] = useState<'property' | 'time'>('property')
   const [sortBy, setSortBy] = useState<'name' | 'occupancy'>('occupancy')
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set())
+  const [propertyPage, setPropertyPage] = useState(1)
+  const [timePage, setTimePage] = useState(1)
 
-  // reset collapsed state when properties change (tag filter, etc.)
+  // reset collapsed state and pages when data source changes
   useEffect(() => {
     setExpandedProperties(new Set())
-  }, [properties])
+    setPropertyPage(1)
+    setTimePage(1)
+  }, [properties, lookAhead])
+
+  // reset property page when sort changes (reorders groups)
+  useEffect(() => { setPropertyPage(1) }, [sortBy])
 
   const isTruncated = bookings?.length === TRUNCATION_LIMIT
 
@@ -327,71 +336,91 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       {/* By Property view */}
       {groupBy === 'property' && (
         <div className="space-y-2">
-          {propertyGroups.map(group => {
-            const isExpanded = expandedProperties.has(group.propertyId)
-            const occupancyPct = Math.round(group.occupancyRate * 100)
+          {propertyGroups
+            .slice((propertyPage - 1) * PAGE_SIZE, propertyPage * PAGE_SIZE)
+            .map(group => {
+              const isExpanded = expandedProperties.has(group.propertyId)
+              const occupancyPct = Math.round(group.occupancyRate * 100)
 
-            return (
-              <div key={group.propertyId} className="border border-border rounded-lg overflow-hidden">
-                {/* Property header */}
-                <button
-                  onClick={() => toggleProperty(group.propertyId)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    {isExpanded
-                      ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                      : <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    }
-                    <span className="font-medium text-sm text-foreground">{group.name}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{group.bookingCount} {group.bookingCount === 1 ? 'booking' : 'bookings'}</span>
-                    <span>{group.bookedNights} / {group.totalNights} nights</span>
-                    {group.gapCount > 0 && (
-                      <span className="text-warning">{group.gapCount} {group.gapCount === 1 ? 'gap' : 'gaps'}</span>
-                    )}
-                    <span className={`font-semibold ${
-                      occupancyPct >= 70 ? 'text-success' :
-                      occupancyPct >= 50 ? 'text-warning' :
-                      'text-danger'
-                    }`}>
-                      {occupancyPct}%
-                    </span>
-                    {group.avgNightlyRate > 0 && (
-                      <span className="text-muted-foreground/70">~{formatCurrency(group.avgNightlyRate)}/night</span>
-                    )}
-                  </div>
-                </button>
+              return (
+                <div key={group.propertyId} className="border border-border rounded-lg overflow-hidden">
+                  {/* Property header */}
+                  <button
+                    onClick={() => toggleProperty(group.propertyId)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      {isExpanded
+                        ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        : <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      }
+                      <span className="font-medium text-sm text-foreground">{group.name}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span>{group.bookingCount} {group.bookingCount === 1 ? 'booking' : 'bookings'}</span>
+                      <span>{group.bookedNights} / {group.totalNights} nights</span>
+                      {group.gapCount > 0 && (
+                        <span className="text-warning">{group.gapCount} {group.gapCount === 1 ? 'gap' : 'gaps'}</span>
+                      )}
+                      <span className={`font-semibold ${
+                        occupancyPct >= 70 ? 'text-success' :
+                        occupancyPct >= 50 ? 'text-warning' :
+                        'text-danger'
+                      }`}>
+                        {occupancyPct}%
+                      </span>
+                      {group.avgNightlyRate > 0 && (
+                        <span className="text-muted-foreground/70">~{formatCurrency(group.avgNightlyRate)}/night</span>
+                      )}
+                    </div>
+                  </button>
 
-                {/* Entries */}
-                {isExpanded && (
-                  <div className="divide-y divide-border">
-                    {group.entries.map((entry, idx) =>
-                      entry.type === 'booking' ? (
-                        <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} />
-                      ) : (
-                        <GapRow key={`g-${idx}`} entry={entry} />
-                      )
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+                  {/* Entries */}
+                  {isExpanded && (
+                    <div className="divide-y divide-border">
+                      {group.entries.map((entry, idx) =>
+                        entry.type === 'booking' ? (
+                          <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} />
+                        ) : (
+                          <GapRow key={`g-${idx}`} entry={entry} />
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          <Pagination
+            currentPage={propertyPage}
+            totalPages={Math.ceil(propertyGroups.length / PAGE_SIZE)}
+            totalItems={propertyGroups.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPropertyPage}
+          />
         </div>
       )}
 
       {/* By Time view */}
       {groupBy === 'time' && (
-        <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
-          {chronologicalEntries.map((entry, idx) =>
-            entry.type === 'booking' ? (
-              <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} showProperty />
-            ) : (
-              <GapRow key={`g-${idx}`} entry={entry} showProperty />
-            )
-          )}
+        <div>
+          <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
+            {chronologicalEntries
+              .slice((timePage - 1) * PAGE_SIZE, timePage * PAGE_SIZE)
+              .map((entry, idx) =>
+                entry.type === 'booking' ? (
+                  <BookingRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} showProperty />
+                ) : (
+                  <GapRow key={`g-${idx}`} entry={entry} showProperty />
+                )
+              )}
+          </div>
+          <Pagination
+            currentPage={timePage}
+            totalPages={Math.ceil(chronologicalEntries.length / PAGE_SIZE)}
+            totalItems={chronologicalEntries.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={setTimePage}
+          />
         </div>
       )}
     </div>

@@ -139,8 +139,8 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
         <YAxis
           type="category"
           dataKey="name"
-          width={80}
-          tick={{ fontSize: 12 }}
+          width={130}
+          tick={{ fontSize: 11 }}
           stroke={CHART_INFRA.axis}
         />
         <Tooltip content={<ProfitabilityTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} isAnimationActive={false} />

@@ -1,8 +1,11 @@
-import { memo, useState, useMemo, useCallback } from 'react'
+import { memo, useState, useMemo, useCallback, useEffect } from 'react'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
 import { PropertyMetrics } from '@/types/api'
 import { TrendingUp, TrendingDown, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react'
 import { useModal } from '@/contexts/modal'
+import { Pagination } from '@/components/Pagination'
+
+const PAGE_SIZE = 15
 
 type ComparisonMode = 'none' | 'previous-period' | 'previous-year'
 type SortField = 'name' | 'revenue' | 'revpan' | 'bookings' | 'occupancy' | 'trend' | 'margin'
@@ -47,6 +50,10 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
   const { openModal } = useModal()
   const [sortField, setSortField] = useState<SortField>('revpan')
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // reset page when data or sort changes
+  useEffect(() => { setCurrentPage(1) }, [properties, sortField, sortDirection])
 
   const handleSort = useCallback((field: SortField) => {
     setSortField(prevField => {
@@ -117,6 +124,12 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
 
     return sorted
   }, [properties, previousProperties, sortField, sortDirection])
+
+  const totalPages = Math.ceil(sortedProperties.length / PAGE_SIZE)
+  const paginatedProperties = sortedProperties.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
@@ -194,7 +207,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
             </tr>
           </thead>
           <tbody className="bg-card divide-y divide-border">
-            {sortedProperties.map((property) => {
+            {paginatedProperties.map((property) => {
               const previousProperty = previousProperties?.find(p => p.propertyId === property.propertyId)
               const trend = getTrend(property.revenue, previousProperty?.revenue)
               const isPositive = trend > 0
@@ -308,6 +321,15 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
             })}
           </tbody>
         </table>
+      </div>
+      <div className="px-6 pb-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={sortedProperties.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   )

@@ -13,6 +13,9 @@ import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS, CHART_INFRA, getChartColor, resolveToken } from '@/lib/theme'
+import { Pagination } from '@/components/Pagination'
+
+const MODAL_PAGE_SIZE = 10
 import type { TooltipContentProps } from 'recharts'
 
 interface PropertyMonthlyEntry {
@@ -110,6 +113,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
   const { filters } = useDashboard()
+  const [bookingsPage, setBookingsPage] = useState(1)
 
   const effectiveFrom = from || filters.dateRange.from
   const effectiveTo = to || filters.dateRange.to
@@ -338,9 +342,9 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
               <div className="p-4 border-b border-border">
                 <h3 className="font-semibold">Recent Bookings</h3>
               </div>
-              <div className="max-h-96 overflow-y-auto pr-2">
+              <div>
                 <table className="w-full">
-                  <thead className="bg-muted sticky top-0">
+                  <thead className="bg-muted/50">
                     <tr>
                       <th className="text-left p-4 text-sm font-medium text-foreground">Guest</th>
                       <th className="text-left p-4 text-sm font-medium text-foreground">Check In</th>
@@ -350,7 +354,9 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                     </tr>
                   </thead>
                   <tbody>
-                    {data.recentBookings?.map((booking: PropertyBooking) => (
+                    {data.recentBookings
+                      ?.slice((bookingsPage - 1) * MODAL_PAGE_SIZE, bookingsPage * MODAL_PAGE_SIZE)
+                      .map((booking: PropertyBooking) => (
                       <tr
                         key={booking.id}
                         className="border-t border-border hover:bg-muted/50 cursor-pointer"
@@ -377,6 +383,17 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                     ))}
                   </tbody>
                 </table>
+                {data.recentBookings && (
+                  <div className="px-4 pb-3">
+                    <Pagination
+                      currentPage={bookingsPage}
+                      totalPages={Math.ceil(data.recentBookings.length / MODAL_PAGE_SIZE)}
+                      totalItems={data.recentBookings.length}
+                      pageSize={MODAL_PAGE_SIZE}
+                      onPageChange={setBookingsPage}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>

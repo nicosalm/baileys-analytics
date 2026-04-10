@@ -11,7 +11,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
+import { Pagination } from '@/components/Pagination'
 import type { TooltipContentProps } from 'recharts'
+
+const MODAL_PAGE_SIZE = 10
 
 interface BookingCharge {
   type: string
@@ -170,12 +173,19 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
 
 const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: GuestDetailBooking[] }) => {
   const [expandedBooking, setExpandedBooking] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const totalPages = Math.ceil(bookingHistory.length / MODAL_PAGE_SIZE)
+  const paginatedBookings = bookingHistory.slice(
+    (currentPage - 1) * MODAL_PAGE_SIZE,
+    currentPage * MODAL_PAGE_SIZE
+  )
 
   return (
     <div className="bg-card rounded-lg border overflow-hidden">
-      <div className="max-h-[500px] overflow-y-auto pr-2">
+      <div>
         <table className="w-full">
-          <thead className="bg-muted sticky top-0">
+          <thead className="bg-muted/50">
             <tr>
               <th className="text-left p-4 text-sm font-medium text-foreground">Property</th>
               <th className="text-left p-4 text-sm font-medium text-foreground">Check In</th>
@@ -186,7 +196,7 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: GuestDetailBo
             </tr>
           </thead>
           <tbody>
-            {bookingHistory.map((booking, idx) => {
+            {paginatedBookings.map((booking, idx) => {
               const hasCharges = booking.charges && booking.charges.length > 0
               const bookingKey = booking.id ?? `booking-${idx}`
               const isExpanded = expandedBooking === booking.id
@@ -253,6 +263,15 @@ const BookingHistoryTable = ({ bookingHistory }: { bookingHistory: GuestDetailBo
             })}
           </tbody>
         </table>
+        <div className="px-4 pb-3">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={bookingHistory.length}
+            pageSize={MODAL_PAGE_SIZE}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
     </div>
   )

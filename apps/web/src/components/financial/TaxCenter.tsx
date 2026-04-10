@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback } from 'react'
+import React, { useMemo, useRef, useCallback, useState, useEffect } from 'react'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { SimpleTable } from '@/components/tables'
@@ -15,6 +15,7 @@ import { useDashboard } from '@/contexts/dashboard'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { authenticatedFetch } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
+import { Pagination } from '@/components/Pagination'
 
 interface TaxByPropertyRow {
   propertyId: string
@@ -54,6 +55,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   const { filters, comparisonLabel } = useDashboard()
   const { addToast } = useToast()
   const trendRef = useRef<HTMLDivElement>(null)
+  const [taxPropertyPage, setTaxPropertyPage] = useState(1)
+
+  const TAX_PAGE_SIZE = 15
 
   const scrollToTrend = useCallback(() => {
     trendRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -85,6 +89,9 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
     }
   }
   
+  // reset page when data changes
+  useEffect(() => { setTaxPropertyPage(1) }, [data])
+
   const taxData = useMemo(() => {
     if (!data?.tax) return null
     
@@ -264,7 +271,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           </div>
           <div className="p-4">
             <SimpleTable
-              data={taxData.byProperty}
+              data={taxData.byProperty.slice((taxPropertyPage - 1) * TAX_PAGE_SIZE, taxPropertyPage * TAX_PAGE_SIZE)}
               columns={[
               {
                 key: 'propertyName',
@@ -291,6 +298,13 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
               },
             ]}
           />
+            <Pagination
+              currentPage={taxPropertyPage}
+              totalPages={Math.ceil(taxData.byProperty.length / TAX_PAGE_SIZE)}
+              totalItems={taxData.byProperty.length}
+              pageSize={TAX_PAGE_SIZE}
+              onPageChange={setTaxPropertyPage}
+            />
           </div>
         </div>
       </div>

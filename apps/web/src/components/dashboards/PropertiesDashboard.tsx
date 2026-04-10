@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { formatCurrency, formatPercentage, sumBy } from '@baileys/utils'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { PropertyMetrics } from '@/types/api'
@@ -17,6 +17,9 @@ import { PropertyTable } from '@/components/tables/PropertyTable'
 import { SimpleTable } from '@/components/tables'
 import { ProfitabilityChart, ProfitabilityLegend } from '@/components/charts/ProfitabilityChart'
 import { PlatformPropertySankey } from '@/components/charts/PlatformPropertySankey'
+import { Pagination } from '@/components/Pagination'
+
+const CARDS_PAGE_SIZE = 12
 
 interface PropertyProfitability {
   propertyId: string
@@ -42,6 +45,7 @@ export const PropertiesDashboard = () => {
   const { openModal } = useModal()
   const comparisonDateRange = useComparisonDateRange()
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
+  const [cardsPage, setCardsPage] = useState(1)
 
 
   const tagIds = useTagIds()
@@ -76,6 +80,9 @@ export const PropertiesDashboard = () => {
   const validProperties = Array.isArray(properties)
     ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
     : [] as PropertyMetrics[]
+
+  // reset cards page when data changes
+  useEffect(() => { setCardsPage(1) }, [validProperties.length])
 
   const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN, totalNetRevenue } = useMemo(() => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
@@ -175,8 +182,9 @@ export const PropertiesDashboard = () => {
   }
 
   // dynamic chart height based on property count
-  // shared height for side-by-side analysis charts
-  const analysisChartHeight = Math.max(380, validProperties.length * 44 + 30)
+  const profitabilityNaturalHeight = Math.max(380, validProperties.length * 44 + 30)
+  const profitabilityCappedHeight = Math.min(600, profitabilityNaturalHeight)
+  const profitabilityNeedsScroll = profitabilityNaturalHeight > profitabilityCappedHeight
 
   return (
     <div className="space-y-6">
@@ -329,18 +337,29 @@ export const PropertiesDashboard = () => {
         </div>
 
         {viewMode === 'cards' ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {validProperties.map((property: PropertyMetrics) => {
-              const previousProperty = previousProperties?.find((p: PropertyMetrics) => p.propertyId === property.propertyId)
-              return (
-                <PropertyCard
-                  key={property.propertyId}
-                  property={property}
-                  previousProperty={previousProperty}
-                  comparisonMode={comparisonMode}
-                />
-              )
-            })}
+          <div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {validProperties
+                .slice((cardsPage - 1) * CARDS_PAGE_SIZE, cardsPage * CARDS_PAGE_SIZE)
+                .map((property: PropertyMetrics) => {
+                  const previousProperty = previousProperties?.find((p: PropertyMetrics) => p.propertyId === property.propertyId)
+                  return (
+                    <PropertyCard
+                      key={property.propertyId}
+                      property={property}
+                      previousProperty={previousProperty}
+                      comparisonMode={comparisonMode}
+                    />
+                  )
+                })}
+            </div>
+            <Pagination
+              currentPage={cardsPage}
+              totalPages={Math.ceil(validProperties.length / CARDS_PAGE_SIZE)}
+              totalItems={validProperties.length}
+              pageSize={CARDS_PAGE_SIZE}
+              onPageChange={setCardsPage}
+            />
           </div>
         ) : (
           <PropertyTable
@@ -422,23 +441,25 @@ export const PropertiesDashboard = () => {
       )}
 
       {/* Analysis Charts */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-6 items-start">
         {/* Net Profitability */}
         <ChartWrapper
           title="Net Profitability"
           subtitle="Revenue after fees, taxes, and expenses"
           icon={Wallet}
-          height={analysisChartHeight}
+          height={profitabilityCappedHeight}
           responsive={false}
           noData={profitability.length === 0}
           noDataMessage="No profitability data for this period"
         >
           <div className="h-full flex flex-col">
-            <div className="flex-1">
-              <ProfitabilityChart
-                data={profitability}
-                onPropertyClick={handleChartPropertyClick}
-              />
+            <div className={`flex-1 min-h-0 ${profitabilityNeedsScroll ? 'overflow-y-auto' : ''}`}>
+              <div style={{ height: `${profitabilityNaturalHeight}px` }}>
+                <ProfitabilityChart
+                  data={profitability}
+                  onPropertyClick={handleChartPropertyClick}
+                />
+              </div>
             </div>
             {profitability.length > 0 && <ProfitabilityLegend />}
           </div>
@@ -449,7 +470,7 @@ export const PropertiesDashboard = () => {
           title="Performance Matrix"
           subtitle="Revenue vs Occupancy Analysis"
           icon={ScatterChart}
-          height={analysisChartHeight}
+          height={400}
           responsive={false}
           noData={validProperties.length === 0}
           noDataMessage="No property data for this period"
@@ -467,22 +488,29 @@ export const PropertiesDashboard = () => {
       </div>
 
       {/* Platform → Property Revenue Flow */}
-      {platformMix.length > 0 && allPlatforms.length > 0 && (
-        <ChartWrapper
-          title="Revenue Flow by Platform"
-          subtitle="How booking platform revenue distributes across properties"
-          icon={GitBranch}
-          height={Math.max(360, (allPlatforms.length + validProperties.length) * 36 + 60)}
-          responsive={false}
-        >
-          <div className="h-full">
-            <PlatformPropertySankey
-              data={platformMix}
-              onPropertyClick={handleChartPropertyClick}
-            />
-          </div>
-        </ChartWrapper>
-      )}
+      {platformMix.length > 0 && allPlatforms.length > 0 && (() => {
+        const sankeyNatural = Math.max(360, (allPlatforms.length + validProperties.length) * 36 + 60)
+        const sankeyCapped = Math.min(600, sankeyNatural)
+        const sankeyScrollable = sankeyNatural > sankeyCapped
+        return (
+          <ChartWrapper
+            title="Revenue Flow by Platform"
+            subtitle="How booking platform revenue distributes across properties"
+            icon={GitBranch}
+            height={sankeyCapped}
+            responsive={false}
+          >
+            <div className={`h-full ${sankeyScrollable ? 'overflow-y-auto' : ''}`}>
+              <div style={{ height: `${sankeyNatural}px` }}>
+                <PlatformPropertySankey
+                  data={platformMix}
+                  onPropertyClick={handleChartPropertyClick}
+                />
+              </div>
+            </div>
+          </ChartWrapper>
+        )
+      })()}
     </div>
   )
 }

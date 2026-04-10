@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useState } from 'react'
 import { usePeriodDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatDateDisplay } from '@baileys/utils'
 import { Calendar, DollarSign, Home, TrendingUp, Info, ExternalLink } from 'lucide-react'
@@ -8,6 +8,9 @@ import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTips } from '@/hooks/use-tips'
+import { Pagination } from '@/components/Pagination'
+
+const MODAL_PAGE_SIZE = 10
 
 interface PeriodProperty {
   propertyId: string
@@ -41,6 +44,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
   const { closeModal, openModal } = useModal()
   const { showTips } = useTips()
   const { filters } = useDashboard()
+  const [bookingsPage, setBookingsPage] = useState(1)
 
   // memoized date calculations — clamp to dashboard date range so modal matches chart
   const { displayName, dateRangeStart, dateRangeEnd } = useMemo(() => {
@@ -223,9 +227,9 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
           <div className="p-4 border-b">
             <h3 className="font-semibold">Active Bookings on {displayName}</h3>
           </div>
-          <div className="max-h-96 overflow-y-auto pr-2">
+          <div>
             <table className="w-full">
-              <thead className="bg-muted/40 sticky top-0">
+              <thead className="bg-muted/50">
                 <tr>
                   <th className="text-left p-4 text-sm font-medium text-foreground">Guest</th>
                   <th className="text-left p-4 text-sm font-medium text-foreground">Property</th>
@@ -235,7 +239,9 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                 </tr>
               </thead>
               <tbody>
-                {data?.bookings?.map((booking: PeriodBooking) => (
+                {data?.bookings
+                  ?.slice((bookingsPage - 1) * MODAL_PAGE_SIZE, bookingsPage * MODAL_PAGE_SIZE)
+                  .map((booking: PeriodBooking) => (
                   <tr key={booking.id} className="border-t hover:bg-muted/40">
                     <td
                       className="p-4 cursor-pointer"
@@ -277,6 +283,17 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                 ))}
               </tbody>
             </table>
+            {data?.bookings && (
+              <div className="px-4 pb-3">
+                <Pagination
+                  currentPage={bookingsPage}
+                  totalPages={Math.ceil(data.bookings.length / MODAL_PAGE_SIZE)}
+                  totalItems={data.bookings.length}
+                  pageSize={MODAL_PAGE_SIZE}
+                  onPageChange={setBookingsPage}
+                />
+              </div>
+            )}
           </div>
         </div>
         </div>
