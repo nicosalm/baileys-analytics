@@ -523,6 +523,75 @@ export function useEarliestBookingDate() {
   }, { keepPreviousData: true })
 }
 
+export interface PacingMonthSummary {
+  month: string
+  label: string
+  daysInMonth: number
+  totalAvailableNights: number
+  current: { bookedNights: number; revenue: number; occupancy: number }
+  priorAtThisPoint: { bookedNights: number; revenue: number; occupancy: number }
+  priorFinal: { bookedNights: number; revenue: number; occupancy: number }
+  paceDelta: number
+}
+
+export interface PacingProperty {
+  propertyId: string
+  propertyName: string
+  propertyCode: string | null
+  currentNights: number
+  currentRevenue: number
+  priorNightsAtThisPoint: number
+  priorRevenueAtThisPoint: number
+  priorNightsFinal: number
+  priorRevenueFinal: number
+  availableNights: number
+  paceDelta: number
+}
+
+export interface PacingCurvePoint {
+  daysOut: number
+  currentNights: number
+  priorNights: number
+  currentRevenue: number
+  priorRevenue: number
+}
+
+export interface PacingMonthDetail {
+  byProperty: PacingProperty[]
+  curve: PacingCurvePoint[]
+  todayDaysOut: number
+}
+
+export interface PacingData {
+  months: PacingMonthSummary[]
+  details: Record<string, PacingMonthDetail>
+  propertyCount: number
+}
+
+export function usePacing(tagIds?: string[], propertyIds?: string[]) {
+  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
+  const validPropertyIds = propertyIds ? filterValidUUIDs(propertyIds) : undefined
+
+  const key = `pacing:${validTagIds?.join(',') || ''}:${validPropertyIds?.join(',') || ''}`
+
+  const result = useSWR<PacingData>(key, async () => {
+    const params = new URLSearchParams()
+    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+    if (validPropertyIds && validPropertyIds.length > 0) params.append('properties', validPropertyIds.join(','))
+
+    const res = await api.request<PacingData>(`/pacing?${params}`)
+    if (!res.success) throw new Error(res.error)
+    return res.data
+  }, { refreshInterval: 300000, keepPreviousData: true }) // 5 min refresh
+
+  const hasData = !!result.data
+  return {
+    ...result,
+    isLoading: result.isLoading || (!hasData && !result.error),
+    error: !hasData ? result.error : undefined,
+  }
+}
+
 export async function createSeason(data: SeasonFormData) {
   const result = await api.createSeason(data)
   if (result.success) {

@@ -10,6 +10,7 @@ import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from
 import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { WhatIfCalculator } from '@/components/WhatIfCalculator'
+import { PacingRunway } from '@/components/PacingRunway'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -351,6 +352,8 @@ export const OccupancyDashboard = () => {
           staggerIndex={3}
         />
       </div>
+
+      <PacingRunway />
 
       <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
         <div className="flex items-center justify-between mb-4">
