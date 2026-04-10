@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
-import { ChevronDown, ChevronRight, AlertTriangle, Info } from 'lucide-react'
+import { ChevronDown, ChevronRight, AlertTriangle, TrendingDown, Calendar, Info } from 'lucide-react'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { useBookingsForRange, type BookingRow } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -71,6 +71,9 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   useEffect(() => { setPropertyPage(1) }, [sortBy])
 
   const isTruncated = bookings?.length === TRUNCATION_LIMIT
+
+  const allExpanded =
+    properties.length > 0 && expandedProperties.size === properties.length
 
   const toggleProperty = useCallback((propertyId: string) => {
     setExpandedProperties(prev => {
@@ -271,22 +274,28 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
 
       {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Group toggle */}
           <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
             <Button
               variant="ghost"
               size="sm"
+              aria-pressed={groupBy === 'property'}
               onClick={() => setGroupBy('property')}
-              className={groupBy === 'property' ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}
+              className={groupBy === 'property'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'}
             >
               By Property
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              aria-pressed={groupBy === 'time'}
               onClick={() => setGroupBy('time')}
-              className={groupBy === 'time' ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}
+              className={groupBy === 'time'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'}
             >
               By Time
             </Button>
@@ -298,8 +307,11 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                 key={days}
                 variant="ghost"
                 size="sm"
+                aria-pressed={lookAhead === days}
                 onClick={() => setLookAhead(days)}
-                className={lookAhead === days ? 'bg-background text-foreground shadow-sm hover:bg-background' : 'text-muted-foreground'}
+                className={lookAhead === days
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'}
               >
                 {days}d
               </Button>
@@ -307,28 +319,40 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
           </div>
         </div>
         {groupBy === 'property' && (
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1 bg-muted p-0.5 rounded-md">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
               <Button
                 variant="ghost"
-                size="xs"
+                size="sm"
+                aria-pressed={sortBy === 'name'}
                 onClick={() => setSortBy('name')}
-                className={sortBy === 'name' ? 'bg-background text-foreground font-medium shadow-sm hover:bg-background' : 'text-muted-foreground'}
+                className={sortBy === 'name'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'}
               >
-                A-Z
+                Name
               </Button>
               <Button
                 variant="ghost"
-                size="xs"
+                size="sm"
+                aria-pressed={sortBy === 'occupancy'}
                 onClick={() => setSortBy('occupancy')}
-                className={sortBy === 'occupancy' ? 'bg-background text-foreground font-medium shadow-sm hover:bg-background' : 'text-muted-foreground'}
+                className={sortBy === 'occupancy'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'}
               >
-                Occupancy ▲
+                Occupancy
               </Button>
             </div>
-            <Button variant="link" size="sm" onClick={expandAll} className="text-xs text-muted-foreground hover:text-foreground p-0 h-auto">Expand all</Button>
-            <span>|</span>
-            <Button variant="link" size="sm" onClick={collapseAll} className="text-xs text-muted-foreground hover:text-foreground p-0 h-auto">Collapse all</Button>
+            <div className="w-px h-5 bg-border" aria-hidden />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={allExpanded ? collapseAll : expandAll}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {allExpanded ? 'Collapse all' : 'Expand all'}
+            </Button>
           </div>
         )}
       </div>
@@ -460,10 +484,16 @@ function GapRow({ entry, showProperty }: {
   entry: Extract<ListEntry, { type: 'gap' }>
   showProperty?: boolean
 }) {
+  const Icon = entry.severity === 'critical'
+    ? AlertTriangle
+    : entry.severity === 'warning'
+      ? TrendingDown
+      : Calendar
+
   return (
     <div className={`flex items-center justify-between px-4 py-2 border-l-4 ${GAP_SEVERITY_STYLES[entry.severity]}`}>
       <div className="flex items-center gap-2">
-        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+        <Icon className="w-3.5 h-3.5 shrink-0" />
         <div>
           <div className="flex items-center gap-2">
             {showProperty && (

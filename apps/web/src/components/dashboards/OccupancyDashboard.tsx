@@ -460,9 +460,9 @@ export const OccupancyDashboard = () => {
                 dataKey="rate"
                 stroke={METRIC_COLORS.occupancy}
                 strokeWidth={3}
-                dot={{ fill: METRIC_COLORS.occupancy, r: 6 }}
+                dot={{ fill: METRIC_COLORS.occupancy, r: 6, strokeWidth: 0 }}
                 style={{ cursor: 'pointer' }}
-                activeDot={{ r: 8 }}
+                activeDot={{ r: 8, fill: METRIC_COLORS.occupancy }}
                 name="Current Period"
               />
               {comparisonMode !== 'none' && previousData && (
@@ -472,7 +472,8 @@ export const OccupancyDashboard = () => {
                   stroke={CHART_INFRA.comparison}
                   strokeWidth={2}
                   strokeDasharray="5 5"
-                  dot={{ fill: CHART_INFRA.comparison, r: 4 }}
+                  dot={{ fill: CHART_INFRA.comparison, r: 4, strokeWidth: 0 }}
+                  activeDot={{ r: 6, fill: CHART_INFRA.comparison }}
                   name={comparisonLabel || 'Previous Period'}
                 />
               )}
@@ -500,30 +501,51 @@ export const OccupancyDashboard = () => {
                 return (
                   <div
                     key={property.propertyId}
-                    className="flex items-center justify-between py-3 px-2 -mx-2 rounded hover:bg-muted/50 cursor-pointer transition-colors"
+                    className="py-3 px-2 -mx-2 rounded hover:bg-muted/50 cursor-pointer transition-colors"
                     onClick={() => handlePropertyClick(property)}
                   >
-                    <div className="flex-1 min-w-0 mr-3">
-                      <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>
-                      <p className="text-xs text-muted-foreground">{property.bookedNights}/{property.availableNights} nights</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-sm font-semibold ${
-                        occupancyPercent >= 70 ? 'text-success' :
-                        occupancyPercent >= 50 ? 'text-warning' :
-                        'text-danger'
-                      }`}>
-                        {formatPercentage(occupancyPercent, 1)}
-                      </span>
-                      {comparisonMode !== 'none' && prevOccupancy !== null && (
-                        <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-success' : occupancyPercent < prevOccupancy ? 'text-danger' : 'text-muted-foreground'}`}>
-                          {occupancyPercent > prevOccupancy ? (
-                            <TrendingUp className="w-3 h-3" />
-                          ) : occupancyPercent < prevOccupancy ? (
-                            <TrendingDown className="w-3 h-3" />
-                          ) : null}
-                          {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0 mr-3">
+                        <p className="text-sm font-medium truncate">{property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}</p>
+                        <p className="text-xs text-muted-foreground">{property.bookedNights}/{property.availableNights} nights</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-sm font-semibold ${
+                          occupancyPercent >= 70 ? 'text-success' :
+                          occupancyPercent >= 50 ? 'text-warning' :
+                          'text-danger'
+                        }`}>
+                          {formatPercentage(occupancyPercent, 1)}
                         </span>
+                        {comparisonMode !== 'none' && prevOccupancy !== null && (
+                          <span className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-success' : occupancyPercent < prevOccupancy ? 'text-danger' : 'text-muted-foreground'}`}>
+                            {occupancyPercent > prevOccupancy ? (
+                              <TrendingUp className="w-3 h-3" />
+                            ) : occupancyPercent < prevOccupancy ? (
+                              <TrendingDown className="w-3 h-3" />
+                            ) : null}
+                            {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2 relative">
+                      <div className="w-full bg-muted rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full transition-all ${
+                            occupancyPercent >= 70 ? 'bg-success' :
+                            occupancyPercent >= 50 ? 'bg-warning' :
+                            'bg-danger'
+                          }`}
+                          style={{ width: `${Math.min(occupancyPercent, 100)}%` }}
+                        />
+                      </div>
+                      {comparisonMode !== 'none' && prevOccupancy !== null && prevOccupancy > 0 && (
+                        <div
+                          className="absolute top-0 w-0.5 h-1.5 bg-muted-foreground/50 rounded-full"
+                          style={{ left: `${Math.min(prevOccupancy, 100)}%` }}
+                          title={`Previous: ${formatPercentage(prevOccupancy, 0)}`}
+                        />
                       )}
                     </div>
                   </div>

@@ -4,7 +4,6 @@ import { ChevronDown, ChevronRight, Calculator, TrendingUp, ArrowRight, Calendar
 import { formatCurrency, formatPercentage, safeDivide } from '@baileys/utils'
 import { OccupancyByProperty } from '@/types/api'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useSeasons } from '@/hooks/use-api'
@@ -141,10 +140,10 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border">
-      <Button
-        variant="ghost"
+      <button
         onClick={() => setExpanded(prev => !prev)}
-        className="w-full flex items-center justify-between px-6 py-4 h-auto rounded-none"
+        aria-expanded={expanded}
+        className="w-full flex items-center justify-between px-6 py-4 cursor-pointer"
       >
         <div className="flex items-center gap-2">
           {expanded
@@ -155,7 +154,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
           <span className="font-bold text-foreground">What If?</span>
           <span className="text-sm text-muted-foreground font-normal">RevPAN scenario calculator</span>
         </div>
-      </Button>
+      </button>
 
       {expanded && (
         <div className="px-6 pb-6 pt-2 border-t border-border">
