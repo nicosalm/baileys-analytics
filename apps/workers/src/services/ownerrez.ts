@@ -4,8 +4,8 @@ export class OwnerRezService {
 	private baseUrl = OWNERREZ_API.BASE_URL;
 	private accessToken: string;
 	private cache?: KVNamespace;
-	private timeout = 10000;
-	private maxPages = 50;
+	private timeout = 25000;
+	private maxPages = 500;
 
 	constructor(accessToken: string, cache?: KVNamespace) {
 		this.accessToken = accessToken;
@@ -172,6 +172,114 @@ export class OwnerRezService {
 		params.set('limit', '100');
 
 		return this.fetchAllPages(`${this.baseUrl}/bookings?${params}`);
+	}
+
+	// fetches up to maxPages pages of bookings starting at offset, calling onPage
+	// per page. returns the next offset (null if no more pages).
+	async fetchBookingsChunked(
+		propertyIds: string[],
+		startDate: string,
+		endDate: string,
+		offset: number,
+		maxPages: number,
+		onPage: (items: any[]) => Promise<void>
+	): Promise<{ totalItems: number; nextOffset: number | null }> {
+		const params = new URLSearchParams();
+		params.set('property_ids', propertyIds.join(','));
+		params.set('from', startDate);
+		params.set('to', endDate);
+		params.set('include_guest', 'true');
+		params.set('include_charges', 'true');
+		params.set('include_fields', 'true');
+		params.set('include_tags', 'true');
+		params.set('limit', '100');
+		params.set('offset', String(offset));
+
+		return this.fetchPagesChunked(`${this.baseUrl}/bookings?${params}`, maxPages, onPage);
+	}
+
+	async fetchGuestsChunked(
+		offset: number,
+		maxPages: number,
+		onPage: (items: any[]) => Promise<void>,
+		createdSinceUtc?: string
+	): Promise<{ totalItems: number; nextOffset: number | null }> {
+		const params = new URLSearchParams({
+			include_tags: 'true',
+			include_fields: 'true',
+			limit: '100'
+		});
+		params.set('offset', String(offset));
+
+		if (createdSinceUtc) {
+			params.set('created_since_utc', createdSinceUtc);
+		} else {
+			const fourYearsAgo = new Date();
+			fourYearsAgo.setFullYear(fourYearsAgo.getFullYear() - 4);
+			params.set('created_since_utc', fourYearsAgo.toISOString());
+		}
+
+		return this.fetchPagesChunked(`${this.baseUrl}/guests?${params}`, maxPages, onPage);
+	}
+
+	// fetches up to maxPages pages, processing each via onPage callback.
+	// returns next offset if more pages exist, null if done.
+	private async fetchPagesChunked(
+		url: string,
+		maxPages: number,
+		onPage: (items: any[]) => Promise<void>
+	): Promise<{ totalItems: number; nextOffset: number | null }> {
+		let currentUrl: string | null = url;
+		let page = 0;
+		let totalItems = 0;
+
+		const originalParams = new URL(url).searchParams;
+
+		while (currentUrl && page < maxPages) {
+			const response = await this.fetchWithRetry(currentUrl, { headers: this.getHeaders() });
+
+			if (!response.ok) {
+				throw new Error(`API request failed: ${response.statusText} (${response.status})`);
+			}
+
+			const data = await response.json() as any;
+
+			if (Array.isArray(data)) {
+				if (data.length > 0) {
+					await onPage(data);
+					totalItems += data.length;
+				}
+				return { totalItems, nextOffset: null };
+			}
+
+			if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+				await onPage(data.items);
+				totalItems += data.items.length;
+			}
+
+			const nextPage = data.next_page_url || null;
+			if (nextPage) {
+				const nextUrl = nextPage.startsWith('/')
+					? new URL(`https://api.ownerrez.com${nextPage}`)
+					: new URL(nextPage);
+				for (const [k, v] of originalParams) {
+					if (!nextUrl.searchParams.has(k)) nextUrl.searchParams.set(k, v);
+				}
+				currentUrl = nextUrl.toString();
+			} else {
+				currentUrl = null;
+			}
+
+			page++;
+		}
+
+		// if we hit maxPages and there are more pages, return the next offset
+		if (currentUrl) {
+			const initialOffset = parseInt(originalParams.get('offset') || '0');
+			return { totalItems, nextOffset: initialOffset + totalItems };
+		}
+
+		return { totalItems, nextOffset: null };
 	}
 
 	async fetchBookingDetail(bookingId: string): Promise<any> {
