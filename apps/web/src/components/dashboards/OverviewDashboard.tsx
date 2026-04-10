@@ -23,6 +23,7 @@ import { getPlatformColor, getChartColor, CHART_INFRA, resolveToken } from '@/li
 import { getMonthlyGoalValue } from '@/utils/goals'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/Pagination'
 import { useNavigate, Link } from 'react-router-dom'
 
 interface RecentActivity {
@@ -1101,8 +1102,11 @@ export const OverviewDashboard = () => {
   )
 }
 
+const UPCOMING_PAGE_SIZE = 8
+
 const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
   const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'month'>('week')
+  const [page, setPage] = useState(1)
 
   const filtered = useMemo(() => {
     switch (filter) {
@@ -1116,6 +1120,14 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
         return upcoming
     }
   }, [upcoming, filter])
+
+  // reset page when filter changes
+  const handleFilterChange = useCallback((key: typeof filter) => {
+    setFilter(key)
+    setPage(1)
+  }, [])
+
+  const paginated = filtered.slice((page - 1) * UPCOMING_PAGE_SIZE, page * UPCOMING_PAGE_SIZE)
 
   return (
     <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
@@ -1135,7 +1147,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
               key={btn.key}
               variant="ghost"
               size="sm"
-              onClick={() => setFilter(btn.key)}
+              onClick={() => handleFilterChange(btn.key)}
               className={filter === btn.key
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -1146,9 +1158,9 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
           ))}
         </div>
       </div>
-      <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
-        {filtered.length > 0 ? (
-          filtered.map((booking: UpcomingBooking) => (
+      <div className="space-y-2">
+        {paginated.length > 0 ? (
+          paginated.map((booking: UpcomingBooking) => (
             <div key={booking.id} className="flex items-center justify-between py-2 border-b last:border-0">
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -1179,6 +1191,13 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
           </div>
         )}
       </div>
+      <Pagination
+        currentPage={page}
+        totalPages={Math.ceil(filtered.length / UPCOMING_PAGE_SIZE)}
+        totalItems={filtered.length}
+        pageSize={UPCOMING_PAGE_SIZE}
+        onPageChange={setPage}
+      />
     </div>
   )
 }

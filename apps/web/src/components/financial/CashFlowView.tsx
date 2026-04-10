@@ -123,7 +123,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           format="currency"
           color="blue"
           staggerIndex={1}
-          subValue="Confirmed future arrivals"
+          subValue="All confirmed future bookings"
         />
         <MetricCard
           icon={Calendar}

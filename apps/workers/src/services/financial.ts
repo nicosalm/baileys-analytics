@@ -730,18 +730,23 @@ export async function getCashflowData(
   const today = new Date();
   const collected = bookings?.filter(b => new Date(b.arrival) <= today)
     .reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-  const pending = bookings?.filter(b => new Date(b.arrival) > today)
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-  const total = collected + pending;
 
+  // pending = all confirmed future bookings (from the upcomingBookings query
+  // which uses arrival >= today). the main bookings query is bounded by the
+  // selected date range, so arrival > today is always empty when the range
+  // ends at or before today.
+  let pending = 0;
   let next30Days = 0, next60Days = 0, next90Days = 0;
   if (upcomingBookings) {
     for (const b of upcomingBookings) {
       const days = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       const amt = b.total_amount || 0;
+      pending += amt;
       if (days <= 90) { next90Days += amt; if (days <= 60) { next60Days += amt; if (days <= 30) { next30Days += amt; } } }
     }
   }
+
+  const total = collected + pending;
 
   return {
     collected,
