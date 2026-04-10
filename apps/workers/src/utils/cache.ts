@@ -24,7 +24,7 @@ export function getDashboardTtl(view: string): number {
 }
 
 // views that depend on booking data (invalidated on sync/webhook)
-const BOOKING_VIEWS = ['overview', 'financial', 'occupancy', 'guests', 'guests-cancelled', 'guests-inquiries', 'properties'];
+const BOOKING_VIEWS = ['overview', 'financial', 'occupancy', 'guests', 'guests-cancelled', 'guests-inquiries', 'properties', 'pacing'];
 
 // views affected by each config type
 const CONFIG_VIEW_DEPS: Record<string, string[]> = {
@@ -128,6 +128,44 @@ export function getCacheKey(
 	tags?: string[]
 ): string {
 	return `dashboard:${userId}:${view}:${from}:${to}:${tags?.join(',') || ''}`;
+}
+
+// KV keys are limited to 512 bytes. When filter params (property UUIDs, tags,
+// comparison dates) push past that, hash the variable segments into a short hex
+// digest so the key stays well under the limit.
+export async function buildDashboardCacheKey(
+	userId: string,
+	view: string,
+	from: string,
+	to: string,
+	extras: {
+		tags?: string[];
+		properties?: string[];
+		comparisonFrom?: string;
+		comparisonTo?: string;
+	} = {}
+): Promise<string> {
+	const suffix = [
+		extras.tags?.join(',') || '',
+		extras.properties?.join(',') || '',
+		extras.comparisonFrom || '',
+		extras.comparisonTo || '',
+	].join(':');
+
+	// only hash when the full key would risk exceeding the 512-byte limit
+	const prefix = `dashboard:${userId}:${view}:${from}:${to}`;
+	if (prefix.length + 1 + suffix.length <= 480) {
+		return `${prefix}:${suffix}`;
+	}
+
+	const hash = await crypto.subtle.digest(
+		'SHA-256',
+		new TextEncoder().encode(suffix)
+	);
+	const hex = [...new Uint8Array(hash)]
+		.map(b => b.toString(16).padStart(2, '0'))
+		.join('');
+	return `${prefix}:h_${hex.slice(0, 32)}`;
 }
 
 export async function getCachedData<T>(

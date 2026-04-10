@@ -29,6 +29,18 @@ export function cache(options: CacheOptions = {}) {
 			return next();
 		}
 
+		// KV keys are limited to 512 bytes; hash long keys
+		if (new TextEncoder().encode(cacheKey).length > 480) {
+			const hash = await crypto.subtle.digest(
+				'SHA-256',
+				new TextEncoder().encode(cacheKey)
+			);
+			const hex = [...new Uint8Array(hash)]
+				.map(b => b.toString(16).padStart(2, '0'))
+				.join('');
+			cacheKey = cacheKey.slice(0, 64) + ':h_' + hex.slice(0, 32);
+		}
+
 		if (c.req.method === 'GET' && c.env.CACHE) {
 			const cached = await c.env.CACHE.get(cacheKey);
 			if (cached) {

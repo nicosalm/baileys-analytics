@@ -177,7 +177,10 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const cacheKey = `dashboard:${user.id}:${view}:${from}:${to}:${tags?.join(',')}:${properties?.join(',')}:${comparisonFrom || ''}:${comparisonTo || ''}`;
+	const { buildDashboardCacheKey } = await import('./utils/cache');
+	const cacheKey = await buildDashboardCacheKey(user.id, view, from, to, {
+		tags, properties, comparisonFrom: comparisonFrom || undefined, comparisonTo: comparisonTo || undefined
+	});
 
 	// try to get from cache if available
 	if (c.env.CACHE) {
@@ -338,6 +341,38 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 		await c.env.CACHE.put(cacheKey, JSON.stringify(data), {
 			expirationTtl: getDashboardTtl(view)
 		});
+	}
+
+	return c.json(data);
+});
+
+app.get('/api/pacing', authMiddleware, subscriptionMiddleware, async (c) => {
+	const user = c.get('user');
+	const tenantId = c.get('tenantId');
+	const tags = c.req.query('tags')?.split(',').filter(Boolean) || [];
+	const filterPropertyIds = c.req.query('properties')?.split(',').filter(Boolean) || [];
+
+	if (!tenantId) {
+		return c.json({ error: 'Tenant not found' }, 404);
+	}
+
+	const { buildDashboardCacheKey } = await import('./utils/cache');
+	const cacheKey = await buildDashboardCacheKey(user.id, 'pacing', '', '', {
+		tags, properties: filterPropertyIds
+	});
+
+	if (c.env.CACHE) {
+		const cached = await c.env.CACHE.get(cacheKey, 'json');
+		if (cached) return c.json({ ...(cached as Record<string, unknown>), _cached: true });
+	}
+
+	const { getPacingData } = await import('./services/pacing');
+	const supabase = createSupabaseClient(c.env);
+	const data = await getPacingData(supabase, tenantId, tags, filterPropertyIds);
+
+	if (c.env.CACHE) {
+		// pacing changes daily at most; 1hr TTL is plenty
+		await c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: 3600 });
 	}
 
 	return c.json(data);
