@@ -438,6 +438,60 @@ admin.get('/errors', authMiddleware, adminMiddleware, async (c) => {
   }
 });
 
+// reset initial sync state for a tenant and return an impersonation link.
+// the impersonated tab will auto-run the client-side sync flow because
+// initial_sync_needed is marked pending.
+admin.post('/users/:tenantId/reset-sync', authMiddleware, adminMiddleware, async (c) => {
+  const tenantId = c.req.param('tenantId');
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+
+  try {
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('email')
+      .eq('id', tenantId)
+      .single();
+
+    if (!tenant?.email) {
+      return c.json({ error: 'Tenant not found' }, 404);
+    }
+
+    await supabase
+      .from('sync_status')
+      .delete()
+      .eq('tenant_id', tenantId)
+      .eq('sync_type', 'initial_sync_completed');
+
+    await supabase
+      .from('sync_status')
+      .upsert({
+        tenant_id: tenantId,
+        sync_type: 'initial_sync_needed',
+        last_sync: new Date().toISOString(),
+        status: 'pending',
+        records_synced: 0
+      }, { onConflict: 'tenant_id,sync_type' });
+
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: tenant.email,
+      options: {
+        redirectTo: `${c.env.FRONTEND_URL}/auth/callback?impersonate=1&sync=initial`,
+      },
+    });
+
+    if (error || !data?.properties?.action_link) {
+      console.error('Failed to generate impersonation link for resync:', error);
+      return c.json({ error: 'Sync reset, but failed to generate impersonation link' }, 500);
+    }
+
+    return c.json({ success: true, url: data.properties.action_link });
+  } catch (error) {
+    console.error('Failed to reset sync:', error);
+    return c.json({ error: 'Failed to reset sync' }, 500);
+  }
+});
+
 // impersonate user — generate a magic link to log in as them
 admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
@@ -457,6 +511,9 @@ admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, asyn
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'magiclink',
       email: tenant.email,
+      options: {
+        redirectTo: `${c.env.FRONTEND_URL}/auth/callback?impersonate=1`,
+      },
     });
 
     if (error || !data?.properties?.action_link) {

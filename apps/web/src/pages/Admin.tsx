@@ -767,6 +767,21 @@ export const Admin = () => {
     }
   }
 
+  const handleResetSync = async (tenantId: string, email: string) => {
+    if (!confirm(`Reset initial sync for ${email}? A new tab will open impersonating them and auto-run the sync.`)) return
+    const result = await api.request<{ url: string }>(`/admin/users/${tenantId}/reset-sync`, { method: 'POST' })
+    if (!result.success) {
+      addToast('error', result.error || 'Failed to reset sync')
+      return
+    }
+    if (!result.data?.url) {
+      addToast('error', 'Failed to reset sync')
+      return
+    }
+    window.open(result.data.url, '_blank')
+    addToast('success', 'Sync reset — impersonation tab will run initial sync')
+  }
+
   // sorting
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -976,6 +991,16 @@ export const Admin = () => {
                                   className="text-muted-foreground hover:text-info"
                                 >
                                   <ExternalLink className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  onClick={(e) => { e.stopPropagation(); handleResetSync(user.id, user.email) }}
+                                  title="Reset initial sync and impersonate"
+                                  className="text-muted-foreground hover:text-info"
+                                  disabled={!user.ownerrez_connected}
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
                                 </Button>
                                 <Button
                                   variant={user.subscription_exempt ? "destructive" : "outline"}

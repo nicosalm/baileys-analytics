@@ -80,10 +80,21 @@ export const AuthCallback = () => {
     const error = searchParams.get('error') || hashParams.get('error')
     const errorDescription = searchParams.get('error_description') || hashParams.get('error_description')
     const type = hashParams.get('type') || searchParams.get('type')
+    const hashAccessToken = hashParams.get('access_token')
+    const hashRefreshToken = hashParams.get('refresh_token')
 
     // Handle URL errors
     if (error) {
       handleError(errorDescription || error)
+      return
+    }
+
+    // Implicit flow — admin impersonation magic link lands here with tokens in the hash.
+    // supabase.auth.admin.generateLink returns an action_link that verifies on Supabase's
+    // side and redirects back with #access_token + #refresh_token. Persist via setSession
+    // so the main client (storageKey: baileys-auth) picks it up on the next load.
+    if (hashAccessToken && hashRefreshToken) {
+      handleImplicitFlow(hashAccessToken, hashRefreshToken, type)
       return
     }
 
@@ -99,6 +110,45 @@ export const AuthCallback = () => {
 
     // Supabase auth (OAuth or email confirmation)
     handleSupabaseAuth(code, type)
+
+    async function handleImplicitFlow(accessToken: string, refreshToken: string, type: string | null) {
+      try {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        })
+
+        if (sessionError) {
+          handleError(sessionError.message || 'Failed to establish session')
+          return
+        }
+
+        // scrub tokens from the URL so they aren't left in history
+        window.history.replaceState(null, '', window.location.pathname + window.location.search)
+
+        if (hasCompleted.current) return
+        hasCompleted.current = true
+
+        // impersonation flows set ?impersonate=1 on redirectTo; reset-sync also sets ?sync=initial
+        const isImpersonation = searchParams.get('impersonate') === '1'
+        const wantsInitialSync = searchParams.get('sync') === 'initial'
+
+        setStatus('success')
+        setMessage(isImpersonation ? 'Impersonation session started' : 'Signed in successfully!')
+
+        const target = isImpersonation
+          ? `/dashboard/overview${wantsInitialSync ? '?sync=initial' : ''}`
+          : type === 'recovery'
+            ? '/reset-password'
+            : type === 'email_change'
+              ? '/settings'
+              : '/dashboard/overview'
+
+        setTimeout(() => navigate(target, { replace: true }), 500)
+      } catch {
+        handleError('Authentication failed. Please try again.')
+      }
+    }
 
     async function handleSupabaseAuth(code: string | null, type: string | null) {
       // If we have a code, go straight to exchange - don't call getSession() first
