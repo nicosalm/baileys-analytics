@@ -3,6 +3,7 @@ import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { warnIfTruncated } from '../utils/truncation-warn';
 
 export interface PropertyMetrics {
   propertyId: string;
@@ -370,6 +371,7 @@ async function fetchBookings(
   }
 
   const { data } = await query;
+  warnIfTruncated(data, { service: 'properties', query: 'fetchBookings', tenantId, from, to });
   return (data as BookingRow[]) || [];
 }
 
@@ -378,26 +380,24 @@ async function fetchFirstBookingDates(
   tenantId: string,
   properties: PropertyInfo[]
 ): Promise<Map<string, Date | null>> {
-  const { data: firstBookings } = await supabase
-    .from('bookings')
-    .select('property_id, arrival')
-    .eq('tenant_id', tenantId)
-    .neq('status', 'canceled')
-    .order('arrival', { ascending: true });
-
+  // fetch the earliest booking per property in parallel. a single ordered query
+  // hits the supabase default 1000-row cap on tenants with many bookings, which
+  // silently drops properties whose first booking falls beyond that window.
   const firstBookingDates = new Map<string, Date | null>();
-  for (const property of properties) {
-    if (firstBookings) {
-      const first = firstBookings.find((b: { property_id: string; arrival: string }) => b.property_id === property.id);
-      if (first) {
-        firstBookingDates.set(property.id, new Date(first.arrival));
-      } else {
-        firstBookingDates.set(property.id, null);
-      }
-    } else {
-      firstBookingDates.set(property.id, null);
-    }
-  }
+  await Promise.all(
+    properties.map(async (property) => {
+      const { data } = await supabase
+        .from('bookings')
+        .select('arrival')
+        .eq('tenant_id', tenantId)
+        .eq('property_id', property.id)
+        .neq('status', 'canceled')
+        .order('arrival', { ascending: true })
+        .limit(1);
+      const first = data?.[0] as { arrival: string } | undefined;
+      firstBookingDates.set(property.id, first ? new Date(first.arrival) : null);
+    })
+  );
 
   return firstBookingDates;
 }

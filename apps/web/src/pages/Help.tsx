@@ -147,7 +147,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How much does Baileys Analytics cost?</h3>
               <p className="text-muted-foreground text-sm">
-                Pricing is $20/month or $192/year (20% discount). All plans include unlimited properties and data exports.
+                Pricing is $20/month or $192/year (20% discount). All plans include unlimited properties and full Data API access.
               </p>
             </div>
 
@@ -255,7 +255,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Can I export my data?</h3>
               <p className="text-muted-foreground text-sm">
-                Yes. Export all data as JSON from <SLink tab="account">Settings → Account</SLink>. You can also query data programmatically through the <Link to="/docs/api" className="text-primary hover:text-primary/80">Data API</Link>.
+                Yes. Query your data programmatically through the <Link to="/docs/api" className="text-primary hover:text-primary/80">Data API</Link>. All properties, bookings, guests, and related records are accessible as JSON.
               </p>
             </div>
 

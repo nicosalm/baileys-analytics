@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Download, Trash2, AlertTriangle, Lock, MessageSquare, ChevronRight, Check } from 'lucide-react'
+import { Trash2, AlertTriangle, Lock, MessageSquare, ChevronRight, Check } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
@@ -16,7 +16,6 @@ interface AccountTabProps {
 export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps) => {
   const { state, logout, setCompanyName } = useAuth()
   const { addToast } = useToast()
-  const [exportLoading, setExportLoading] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -56,35 +55,6 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       addToast('error', 'Failed to update company name')
     } finally {
       setCompanyNameSaving(false)
-    }
-  }
-
-  const handleExportData = async () => {
-    try {
-      setExportLoading(true)
-      const result = await api.request('/account/export', { method: 'GET' })
-
-      if (result.success && result.data) {
-        // create download link
-        const dataStr = JSON.stringify(result.data, null, 2)
-        const dataBlob = new Blob([dataStr], { type: 'application/json' })
-        const url = URL.createObjectURL(dataBlob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `baileys-analytics-data-${new Date().toISOString().split('T')[0]}.json`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-
-        addToast('success', 'Data exported successfully')
-      } else {
-        addToast('error', 'Failed to export data')
-      }
-    } catch (error) {
-      addToast('error', 'Failed to export data')
-    } finally {
-      setExportLoading(false)
     }
   }
 
@@ -205,19 +175,6 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           </div>
         </div>
       )}
-
-      {/* data export */}
-      <div className="bg-card rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-1">Export Your Data</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Download everything as JSON: properties, bookings, guests, and settings
-        </p>
-
-        <Button onClick={handleExportData} loading={exportLoading}>
-          <Download className="w-4 h-4" />
-          Export Data as JSON
-        </Button>
-      </div>
 
       {/* danger zone */}
       <div className="bg-card rounded-lg shadow-sm border border-danger/30 p-6">

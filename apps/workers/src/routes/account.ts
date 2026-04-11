@@ -46,65 +46,6 @@ account.patch('/company-name', authMiddleware, async (c) => {
   return c.json({ success: true, company_name: trimmed });
 });
 
-// export all user data
-account.get('/export', authMiddleware, async (c) => {
-  const tenantId = c.get('tenantId');
-  const user = c.get('user');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-
-  try {
-    // gather all user data
-    const [
-      { data: tenant },
-      { data: properties },
-      { data: bookings },
-      { data: guests },
-      { data: seasons },
-      { data: taxConfigs },
-      { data: subscription },
-      { data: expenseTemplates }
-    ] = await Promise.all([
-      supabase.from('tenants').select('*').eq('id', tenantId).single(),
-      supabase.from('properties').select('*').eq('tenant_id', tenantId),
-      supabase.from('bookings').select('*').eq('tenant_id', tenantId),
-      supabase.from('guests').select('*').eq('tenant_id', tenantId),
-      supabase.from('season_configurations').select('*').eq('tenant_id', tenantId),
-      supabase.from('property_tax_configs').select('*').eq('tenant_id', tenantId),
-      supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).single(),
-      supabase.from('expense_templates').select('*').eq('tenant_id', tenantId)
-    ]);
-
-    const exportData = {
-      exported_at: new Date().toISOString(),
-      user: {
-        id: user.id,
-        email: user.email,
-        created_at: user.created_at
-      },
-      tenant,
-      properties,
-      bookings,
-      guests,
-      seasons,
-      tax_configs: taxConfigs,
-      subscription,
-      expense_templates: expenseTemplates,
-      metadata: {
-        total_properties: properties?.length || 0,
-        total_bookings: bookings?.length || 0,
-        total_guests: guests?.length || 0,
-        export_format: 'json',
-        version: '1.0'
-      }
-    };
-
-    return c.json(exportData);
-  } catch (error) {
-    console.error('Failed to export data:', error);
-    return c.json({ error: 'Failed to export data' }, 500);
-  }
-});
-
 // delete account permanently
 account.delete('/delete', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');

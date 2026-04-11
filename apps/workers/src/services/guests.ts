@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { normalizePlatform } from '../utils/platform';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { warnIfTruncated } from '../utils/truncation-warn';
 
 export interface CancelledBooking {
   id: string;
@@ -194,6 +195,7 @@ export async function getGuestsData(
   }
 
   const { data: periodBookings } = await bookingsQuery;
+  warnIfTruncated(periodBookings, { service: 'guests', query: 'periodBookings', tenantId, from, to });
 
   if (!periodBookings || periodBookings.length === 0) {
     return {
@@ -225,6 +227,7 @@ export async function getGuestsData(
     .eq('tenant_id', tenantId)
     .neq('status', 'canceled')
     .limit(SUPABASE_MAX_ROWS);
+  warnIfTruncated(allBookings, { service: 'guests', query: 'allBookings', tenantId });
 
   // helper to extract joined guest contact from booking
   const getGuestContact = (booking: Record<string, unknown>) => {

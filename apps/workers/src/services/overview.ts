@@ -3,6 +3,7 @@ import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { warnIfTruncated } from '../utils/truncation-warn';
 
 async function fetchBookings(
 	supabase: SupabaseClient,
@@ -35,6 +36,7 @@ async function fetchBookings(
 	}
 
 	const { data } = await query;
+	warnIfTruncated(data, { service: 'overview', query: 'fetchBookings', tenantId, from, to });
 	return data || [];
 }
 
@@ -661,14 +663,11 @@ async function getUpcomingBookings(
 	endOfToday.setDate(endOfToday.getDate() + 1);
 	const endOfWeek = new Date(today);
 	endOfWeek.setDate(endOfWeek.getDate() + 7);
-	const endOfMonth = new Date(today);
-	endOfMonth.setDate(endOfMonth.getDate() + 30);
 
 	return bookings.map((b: any) => {
 		const arrivalDate = new Date(b.arrival);
 		const departureDate = new Date(b.departure);
 		const isCheckIn = arrivalDate >= todayDate;
-		const isCheckOut = departureDate >= todayDate && departureDate <= endOfMonth && arrivalDate < todayDate;
 
 		return {
 			id: b.id,

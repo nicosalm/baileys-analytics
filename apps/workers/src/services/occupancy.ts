@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { warnIfTruncated } from '../utils/truncation-warn';
 
 export interface OccupancyData {
   overall: number;
@@ -285,6 +286,7 @@ async function fetchDailyOccupancy(
   }
 
   const { data: bookings } = await bookingsQuery;
+  warnIfTruncated(bookings, { service: 'occupancy', query: 'bookingsQuery', tenantId, from, to });
 
   const dailyOccupancy: DailyOccupancy[] = [];
   const startDate = new Date(from);

@@ -4,6 +4,7 @@ import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform, PLATFORM_REMITS_TAX } from '../utils/platform';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { subtractOneYear } from '../utils/date-filters';
+import { warnIfTruncated } from '../utils/truncation-warn';
 
 interface FinancialMetrics {
   revenue: {
@@ -993,6 +994,10 @@ export async function getFinancialBatchData(
   const properties = propertiesResult.data || [];
   const upcomingBookings = upcomingResult.data || [];
   const lastYearBookings = lastYearResult.data || [];
+
+  warnIfTruncated(bookingsResult.data, { service: 'financial', query: 'bookings', tenantId, from, to });
+  warnIfTruncated(upcomingResult.data, { service: 'financial', query: 'upcomingBookings', tenantId, from, to });
+  warnIfTruncated(lastYearResult.data, { service: 'financial', query: 'lastYearBookings', tenantId, from, to });
 
   const shared: FinancialSharedData = { bookings, properties, upcomingBookings };
 
