@@ -1,11 +1,43 @@
 import { api } from './api';
+import type { TierSlug } from '@baileys/constants';
 
-interface SubscriptionResponse {
-  subscription: {
-    status: string
-    billing_cycle?: string
-    current_period_end?: string
-  } | null
+export interface SubscriptionInfo {
+  status: string
+  billing_cycle?: string
+  current_period_end?: string
+  tier?: string | null
+  unit_amount?: number | null
+  stripe_price_id?: string | null
+}
+
+export interface PendingTier {
+  tier: TierSlug
+  tierName: string
+  monthlyDollars: number | null
+  yearlyDollars: number | null
+  effectiveAt: string
+}
+
+export interface TierStatus {
+  propertyCount: number
+  currentTier: TierSlug
+  currentTierName: string
+  currentTierMaxProperties: number | null
+  currentMonthlyDollars: number | null
+  resolvedTier: TierSlug
+  resolvedTierName: string
+  resolvedMonthlyDollars: number | null
+  resolvedYearlyDollars: number | null
+  isOverage: boolean
+  needsContactSales: boolean
+  upgradeAt: string | null
+  billingCycle: 'monthly' | 'yearly'
+  pending: PendingTier | null
+}
+
+export interface SubscriptionResponse {
+  subscription: SubscriptionInfo | null
+  tierStatus: TierStatus | null
   isExempt: boolean
 }
 
@@ -24,15 +56,19 @@ interface UsageMetric {
 
 // billing api client
 class BillingClient {
+  // returns the combined subscription + tierStatus payload. The two used to be
+  // separate endpoints, which raced — when fired in parallel, the banner could
+  // appear or disappear depending on which DB write landed first. The combined
+  // endpoint is the deterministic version.
   async getSubscription() {
     const result = await api.request<SubscriptionResponse>('/billing/subscription');
     return result.success ? result.data : null;
   }
 
-  async createCheckoutSession(priceId: string, isYearly: boolean = false) {
+  async createCheckoutSession(tier: TierSlug, isYearly: boolean = false) {
     const result = await api.request<{ url: string; sessionId: string }>('/billing/create-checkout-session', {
       method: 'POST',
-      body: JSON.stringify({ priceId, isYearly })
+      body: JSON.stringify({ tier, isYearly })
     });
 
     if (!result.success) {

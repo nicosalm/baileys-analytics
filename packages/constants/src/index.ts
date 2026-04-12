@@ -26,3 +26,4 @@ export const BOOKING_STATUS = {
 } as const;
 
 export * from './tax'
+export * from './tiers'

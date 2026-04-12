@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { StripeService } from '../services/stripe';
+import { markPendingTierIfNeeded, TIER_PRICE_ENV_VARS } from '../services/tier-reconciliation';
+import { PURCHASABLE_TIER_SLUGS, type TierSlug } from '@baileys/constants';
 
 const billing = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -29,34 +31,52 @@ billing.post('/webhook', async (c) => {
 // all other billing routes require authentication
 billing.use('/*', authMiddleware);
 
-// get current subscription
+// Combined subscription + tier status read. Returns everything BillingTab
+// needs in a single round trip — that's deliberate. The previous split (one
+// route mutated state via reconciliation, the other read it) raced when the
+// frontend fired both in parallel and the banner appearance was
+// non-deterministic. Sequencing fixes the symptom; combining fixes the cause.
 billing.get('/subscription', async (c) => {
   try {
     const supabase = createSupabaseClient(c.env);
     const tenantId = c.get('tenantId');
 
-    // check if tenant is exempt from subscriptions first
+    // exempt tenants short-circuit before any Stripe calls
     const { data: tenant } = await supabase
       .from('tenants')
       .select('subscription_exempt')
       .eq('id', tenantId)
       .single();
 
-    // if exempt, return early without hitting stripe
     if (tenant?.subscription_exempt === true) {
       return c.json({
         subscription: null,
-        isExempt: true
+        tierStatus: null,
+        isExempt: true,
       });
     }
 
-    // only create stripe service if we need to check subscription
     const stripeService = new StripeService(c.env, supabase);
+
+    // Lazy DB-only reconciliation. Records pending_* if the customer has
+    // outgrown their tier and returns the resulting TierStatus in one shot.
+    // NEVER touches Stripe — that's the cron's job. This means the displayed
+    // subscription stays consistent until the renewal actually happens,
+    // eliminating the "wait, am I being charged Portfolio already?" confusion.
+    // Wrapped in try/catch so a DB hiccup can't break the billing page.
+    let tierStatus = null;
+    try {
+      tierStatus = await markPendingTierIfNeeded(c.env, supabase, tenantId);
+    } catch (err) {
+      console.error('markPendingTierIfNeeded failed during /subscription read:', err);
+    }
+
     const subscription = await stripeService.getSubscription(tenantId);
 
     return c.json({
       subscription,
-      isExempt: false
+      tierStatus,
+      isExempt: false,
     });
   } catch (error) {
     console.error('Error fetching subscription:', error);
@@ -72,10 +92,19 @@ billing.post('/create-checkout-session', async (c) => {
     const tenantId = c.get('tenantId');
     const user = c.get('user');
 
-    const { priceId, isYearly } = await c.req.json();
+    const { tier, isYearly } = await c.req.json<{ tier?: string; isYearly?: boolean }>();
 
-    // single tier pricing - map to yearly or monthly
-    const stripePriceId = isYearly ? c.env.STRIPE_PRICE_YEARLY : c.env.STRIPE_PRICE_MONTHLY;
+    if (!tier || !PURCHASABLE_TIER_SLUGS.includes(tier as TierSlug)) {
+      return c.json({ error: 'Invalid or non-purchasable tier' }, 400);
+    }
+
+    const envVars = TIER_PRICE_ENV_VARS[tier as Exclude<TierSlug, 'enterprise'>];
+    const stripePriceId = c.env[isYearly ? envVars.yearly : envVars.monthly];
+
+    if (typeof stripePriceId !== 'string' || !stripePriceId) {
+      console.error(`Missing Stripe price env var for tier=${tier} yearly=${isYearly}`);
+      return c.json({ error: 'Tier not yet configured' }, 500);
+    }
 
     const successUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=success`;
     const cancelUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=cancel`;

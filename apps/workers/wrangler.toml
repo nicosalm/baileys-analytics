@@ -15,8 +15,14 @@ subrequests = 10_000
 # binding = "CACHE"
 # id = "cache_namespace_id_placeholder"
 
-# [triggers]
-# crons = []  # No scheduled jobs needed with webhook-based syncing
+# cron pushes pending tier upgrades into Stripe shortly before each customer's
+# renewal. Hourly cadence is required: the lead-time gate in
+# applyPendingTierUpgrades is 2 hours, and we need at least one cron run inside
+# that window for every renewal — otherwise a customer can get billed at the
+# old price for an entire extra cycle. See apps/workers/src/scheduled.ts and
+# CRON_LEAD_TIME_MS in services/tier-reconciliation.ts.
+[triggers]
+crons = ["0 * * * *"]
 
 [vars]
 FRONTEND_URL = "http://localhost:5173"

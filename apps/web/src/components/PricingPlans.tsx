@@ -1,59 +1,47 @@
 import React, { useState } from 'react';
 import { Check } from 'lucide-react';
+import { TIERS, getTierMonthlyDollars, getTierYearlyDollars, type Tier, type TierSlug } from '@baileys/constants';
 import { billingClient } from '@/lib/stripe';
 import { useToast } from '@/contexts/toast';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { renderInlineBold } from '@/utils/inline-bold';
 
+const SALES_EMAIL = 'support@baileysanalytics.com';
 
 interface PricingPlansProps {
-  currentPlan?: string;
+  currentTier?: TierSlug;
   onPlanSelect?: () => void;
 }
 
-const PLANS = [
-  {
-    id: 'standard',
-    name: 'Standard',
-    monthlyPrice: 20,
-    yearlyPrice: 192,
-    yearlyMonthly: 16,
-    features: [
-      'Full OwnerRez sync (4 years of data)',
-      '5 dashboards with filtering',
-      'Comparison mode & seasonal filters',
-      'Real-time webhook updates',
-      'Cancel anytime',
-    ],
-  },
-];
-
 export const PricingPlans: React.FC<PricingPlansProps> = ({
-  currentPlan,
-  onPlanSelect
+  currentTier,
+  onPlanSelect,
 }) => {
   const [yearlyBilling, setYearlyBilling] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [loadingTier, setLoadingTier] = useState<TierSlug | null>(null);
   const { addToast } = useToast();
 
-  const handleSelectPlan = async (planId: string) => {
+  const handleSelectTier = async (tier: Tier) => {
+    if (tier.contactSales) {
+      window.location.href = `mailto:${SALES_EMAIL}?subject=Enterprise%20pricing%20inquiry`;
+      return;
+    }
     try {
-      setLoading(true);
-      await billingClient.createCheckoutSession(planId, yearlyBilling);
-      if (onPlanSelect) {
-        onPlanSelect();
-      }
-    } catch (error) {
+      setLoadingTier(tier.slug);
+      await billingClient.createCheckoutSession(tier.slug, yearlyBilling);
+      onPlanSelect?.();
+    } catch {
       addToast('error', 'Failed to start subscription. Please try again.');
     } finally {
-      setLoading(false);
+      setLoadingTier(null);
     }
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full">
       {/* billing toggle */}
-      <div className="flex justify-center items-center gap-3 mb-8">
+      <div className="flex justify-center items-center gap-3 mb-6">
         <span className={`text-sm transition-colors ${!yearlyBilling ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
           Monthly
         </span>
@@ -64,69 +52,81 @@ export const PricingPlans: React.FC<PricingPlansProps> = ({
       </div>
 
       {/* cards */}
-      <div className={PLANS.length === 1 ? 'max-w-sm mx-auto' : 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto'}>
-        {PLANS.map((plan) => {
-          const price = yearlyBilling ? plan.yearlyMonthly : plan.monthlyPrice;
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {TIERS.map((tier) => {
+          const isCurrent = currentTier === tier.slug;
+          const isLoading = loadingTier === tier.slug;
+          const isContact = tier.contactSales;
+          const monthlyDollars = getTierMonthlyDollars(tier, yearlyBilling);
+          const yearlyDollars = getTierYearlyDollars(tier);
 
           return (
-            <div key={plan.id} className="relative group">
-              {/* gradient border glow */}
-              <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-[oklch(0.78_0.08_265)] via-[oklch(0.60_0.10_272)] to-[oklch(0.45_0.12_280)] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
-
-              <div className="relative bg-card rounded-2xl px-8 py-10 flex flex-col min-h-[480px]">
-                {/* plan name */}
-                <div className="text-center mb-8">
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-6">
-                    {plan.name}
-                  </p>
-
-                  {/* price */}
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-5xl font-bold tracking-tight text-foreground">
-                      ${price}
+            <div
+              key={tier.slug}
+              className={`bg-card rounded-lg shadow-sm border p-5 flex flex-col transition-colors ${
+                isCurrent ? 'border-primary/40 ring-1 ring-primary/20' : ''
+              }`}
+            >
+              {/* header */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-base font-semibold text-foreground">{tier.name}</h3>
+                  {isCurrent && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                      Current
                     </span>
-                    <span className="text-base text-muted-foreground font-normal">
-                      /mo
-                    </span>
-                  </div>
-
-                  {/* billing context */}
-                  <div className="mt-2 h-5">
-                    {yearlyBilling
-                      ? <p className="text-sm text-success font-medium">${plan.yearlyPrice}/year — save ${plan.monthlyPrice * 12 - plan.yearlyPrice}</p>
-                      : <p className="text-sm text-muted-foreground">Billed monthly</p>
-                    }
-                  </div>
+                  )}
                 </div>
-
-                {/* divider */}
-                <div className="h-px bg-border mb-8" />
-
-                {/* features */}
-                <div className="space-y-3.5 mb-auto">
-                  {plan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start gap-3">
-                      <div className="mt-0.5 w-4.5 h-4.5 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
-                        <Check className="w-3 h-3 text-success" strokeWidth={2.5} />
-                      </div>
-                      <span className="text-sm text-foreground/80 leading-snug">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* cta */}
-                <div className="mt-10">
-                  <Button
-                    onClick={() => handleSelectPlan(plan.id)}
-                    disabled={!!currentPlan || loading}
-                    loading={loading}
-                    loadingText="Processing..."
-                    className="w-full h-11 rounded-full text-sm font-semibold"
-                  >
-                    {currentPlan ? 'Current Plan' : 'Subscribe'}
-                  </Button>
-                </div>
+                <p className="text-xs text-muted-foreground">{tier.tagline}</p>
               </div>
+
+              {/* price */}
+              <div className="mb-4">
+                {isContact || monthlyDollars == null ? (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold tracking-tight text-foreground">Custom</span>
+                  </div>
+                ) : (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold tracking-tight text-foreground">
+                      ${monthlyDollars}
+                    </span>
+                    <span className="text-sm text-muted-foreground">/mo</span>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-1 h-4">
+                  {isContact
+                    ? 'Quoted per account'
+                    : yearlyBilling && yearlyDollars != null
+                      ? `$${yearlyDollars} billed yearly`
+                      : 'Billed monthly'}
+                </p>
+              </div>
+
+              <div className="h-px bg-border mb-4" />
+
+              {/* features */}
+              <ul className="space-y-2 mb-5 flex-1">
+                {tier.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <Check className="w-3.5 h-3.5 text-success mt-0.5 flex-shrink-0" strokeWidth={2.5} />
+                    <span className="text-xs text-foreground/80 leading-snug">{renderInlineBold(feature, 'font-semibold text-foreground')}</span>
+                  </li>
+                ))}
+              </ul>
+
+              {/* cta */}
+              <Button
+                onClick={() => handleSelectTier(tier)}
+                disabled={isCurrent || isLoading}
+                loading={isLoading}
+                loadingText="Processing..."
+                variant={isContact ? 'outline' : 'default'}
+                className="w-full"
+                size="sm"
+              >
+                {isCurrent ? 'Current plan' : isContact ? 'Contact sales' : 'Subscribe'}
+              </Button>
             </div>
           );
         })}

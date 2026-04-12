@@ -10,6 +10,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
+    "@baileys/constants": "workspace:*",
     "@baileys/schemas": "workspace:*",
     "@baileys/utils": "workspace:*",
     "@stripe/stripe-js": "^8.7.0",

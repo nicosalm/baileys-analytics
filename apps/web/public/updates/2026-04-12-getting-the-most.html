@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg+xml" href="/baileysanalytics.svg" />
+  <title>Getting the most out of your Baileys Analytics subscription — Baileys Analytics</title>
+  <meta name="description" content="A 20-minute setup checklist that turns an empty filter bar and a fragmented P&L into dashboards you actually trust." />
+  <style>
+    @font-face {
+      font-family: 'DM Sans';
+      src: url('/fonts/DMSans-Regular.woff2') format('woff2');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'DM Sans';
+      src: url('/fonts/DMSans-Medium.woff2') format('woff2');
+      font-weight: 500; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'DM Sans';
+      src: url('/fonts/DMSans-SemiBold.woff2') format('woff2');
+      font-weight: 600; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Newsreader';
+      src: url('/fonts/Newsreader-Regular.woff2') format('woff2');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'Newsreader';
+      src: url('/fonts/Newsreader-SemiBold.woff2') format('woff2');
+      font-weight: 600; font-style: normal; font-display: swap;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:            #0d1117;
+      --bg-alt:        #131720;
+      --border:        rgba(255,255,255,0.07);
+      --border-strong: rgba(255,255,255,0.12);
+      --text:          #c4c7cf;
+      --text-bright:   #e8eaf0;
+      --text-muted:    #6e7380;
+      --primary:       #8b9cf4;
+      --primary-bg:    rgba(139,156,244,0.12);
+      --primary-ring:  rgba(139,156,244,0.22);
+    }
+
+    html {
+      font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+    /* nav */
+    .site-nav {
+      border-bottom: 1px solid var(--border);
+      background: rgba(13,17,23,0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .nav-inner {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-bright);
+    }
+    .logo:hover { color: #fff; text-decoration: none; }
+    .logo-svg { flex-shrink: 0; display: block; }
+    .logo-text { display: flex; flex-direction: column; gap: 1px; }
+    .logo-name { font-weight: 600; font-size: 15px; line-height: 1.2; }
+    .logo-sub { font-size: 11px; color: var(--text-muted); line-height: 1.2; }
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .back-link:hover { color: var(--text-bright); text-decoration: none; }
+    .back-link svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* layout */
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 52px 24px 96px;
+    }
+
+    /* post header */
+    .post-header {
+      margin-bottom: 44px;
+      padding-bottom: 36px;
+      border-bottom: 1px solid var(--border);
+    }
+    .post-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .dot { opacity: 0.35; }
+    .post-title {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: clamp(30px, 5vw, 42px);
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.18;
+      letter-spacing: -0.025em;
+      margin-bottom: 18px;
+    }
+    .post-lead {
+      font-size: 17px;
+      color: var(--text-bright);
+      line-height: 1.7;
+      font-weight: 400;
+    }
+
+    /* body */
+    .post-body { font-size: 15px; line-height: 1.78; }
+
+    .post-body h2 {
+      font-family: 'Newsreader', Georgia, serif;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-bright);
+      margin: 44px 0 14px;
+      letter-spacing: -0.01em;
+    }
+    .post-body h2:first-child { margin-top: 0; }
+
+    .post-body p { margin-bottom: 16px; color: var(--text); }
+    .post-body p:last-child { margin-bottom: 0; }
+
+    .post-body ul {
+      margin: 8px 0 16px;
+      padding: 0;
+      list-style: none;
+    }
+    .post-body li {
+      padding: 5px 0 5px 22px;
+      position: relative;
+      color: var(--text);
+    }
+    .post-body li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 14px;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--primary);
+      opacity: 0.55;
+    }
+
+    .post-body strong { color: var(--text-bright); font-weight: 600; }
+
+    .post-body code {
+      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+      font-size: 13px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text-bright);
+      border: 1px solid var(--border);
+    }
+
+    /* hero image */
+    .post-hero-image {
+      margin: 0 0 48px;
+    }
+    .post-hero-image img {
+      width: 100%;
+      display: block;
+      border-radius: 16px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 80px rgba(139,156,244,0.14);
+      outline: 1px solid rgba(255,255,255,0.1);
+      outline-offset: -1px;
+    }
+
+    /* inline figure */
+    .post-figure {
+      margin: 28px 0 32px;
+    }
+    .post-figure img {
+      width: 100%;
+      display: block;
+      border-radius: 12px;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.45), 0 0 60px rgba(139,156,244,0.1);
+      outline: 1px solid rgba(255,255,255,0.08);
+      outline-offset: -1px;
+    }
+    .post-figure figcaption {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+      font-style: italic;
+    }
+
+    /* callout */
+    .callout {
+      border: 1px solid var(--primary-ring);
+      background: var(--primary-bg);
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin: 24px 0;
+    }
+    .callout p { margin: 0; color: var(--text-bright); font-size: 14px; }
+    .callout strong { color: var(--primary); }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 44px 0;
+    }
+
+    /* footer */
+    .post-footer {
+      margin-top: 60px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .post-footer-left { font-size: 13px; color: var(--text-muted); }
+    .post-footer-right { font-size: 13px; font-weight: 500; }
+
+    @media (max-width: 600px) {
+      main { padding: 36px 16px 72px; }
+      .nav-inner { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      <svg width="36" height="36" viewBox="0 0 1000 1000" class="logo-svg" aria-hidden="true">
+        <rect x="0"   y="0"   width="500" height="500" fill="#dbeafe"/>
+        <rect x="500" y="0"   width="500" height="500" fill="#60a5fa"/>
+        <rect x="0"   y="500" width="500" height="500" fill="#3b82f6"/>
+        <rect x="500" y="500" width="500" height="500" fill="#1e3a8a"/>
+      </svg>
+      <div class="logo-text">
+        <span class="logo-name">Baileys Analytics</span>
+        <span class="logo-sub">Updates</span>
+      </div>
+    </a>
+    <a href="/" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back to home
+    </a>
+  </div>
+</nav>
+
+<main>
+  <article>
+    <header class="post-header">
+      <div class="post-meta">
+        <time datetime="2026-04-12">April 12, 2026</time>
+        <span class="dot">&middot;</span>
+        <span>Nico Salm, Lead Developer</span>
+      </div>
+      <h1 class="post-title">Getting the most out of your Baileys Analytics subscription.</h1>
+      <p class="post-lead">
+        Every dashboard in Baileys Analytics is a reflection of your OwnerRez account. Spend twenty minutes cleaning it up, and the numbers that come out the other side get sharper overnight.
+      </p>
+    </header>
+
+    <div class="post-hero-image">
+      <picture>
+        <source srcset="/demo/demo2.avif" type="image/avif" />
+        <img src="/demo/demo2.jpeg" alt="Revenue flow sankey and booking charge composition in Baileys Analytics" />
+      </picture>
+    </div>
+
+    <div class="post-body">
+
+      <p>
+        Baileys does not invent data. It surfaces what OwnerRez exposes, and when a field is missing upstream, the dashboards show that honestly rather than guessing. The trade-off is that a few blank fields in OwnerRez can make whole sections of the app look empty or lopsided. This post is a checklist of the five things to fix, in order of impact.
+      </p>
+
+      <div class="callout">
+        <p><strong>Before you start:</strong> Baileys picks up most OwnerRez changes automatically via webhooks, usually within minutes. For a full refresh that reprocesses the last four years of bookings, open <strong>Settings &rarr; Integrations</strong> and click <strong>Re-sync All Data</strong>. Every re-sync re-categorizes your historical bookings against the current OwnerRez data, so a rename today fixes the whole history, not just new reservations.</p>
+      </div>
+
+      <h2>1. Tag every property</h2>
+
+      <p>
+        Tags are the most powerful filter in the app. Every dashboard, every chart, every metric can be sliced by tag. Selecting a single tag like <em>lakefront</em> narrows the whole app to just that subset. Selecting two or more widens the view to include anything matching any of them. That is how you pull up every lakefront and hot-tub home in one click, without going property by property.
+      </p>
+
+      <p>
+        Tags come directly from OwnerRez. Add them on each property there, and Baileys picks them up on the next sync. Use the dimensions you actually manage with: location, bedroom count, pet policy, amenities, whatever matches how you think about the portfolio.
+      </p>
+
+      <p>
+        If you are tagging a large portfolio for the first time, one warning: tag names are matched as-is, so <em>Lake Access</em> and <em>lake-access</em> count as two different tags. Pick a convention and stick to it. Five tags you actually use beats twenty that are nearly identical.
+      </p>
+
+      <h2>2. Name your surcharges so Baileys can categorize them</h2>
+
+      <p>
+        Baileys breaks your P&amp;L into four surcharge buckets: <strong>Cleaning &amp; Linens</strong>, <strong>Pet Fees</strong>, <strong>Credit Card Fees</strong>, and <strong>Other Surcharges</strong>. The routing is a simple keyword rule against the charge description you set in OwnerRez:
+      </p>
+
+      <ul>
+        <li>Descriptions containing <code>clean</code> or <code>linen</code> route to Cleaning &amp; Linens</li>
+        <li>Descriptions containing <code>pet</code> route to Pet Fees</li>
+        <li>Descriptions containing <code>credit card</code> route to Credit Card Fees</li>
+        <li>Everything else lands in Other Surcharges</li>
+      </ul>
+
+      <p>
+        If your charge composition donut has a large Other Surcharges wedge, that is almost always a naming problem upstream. A template called <em>Housekeeping Fee</em> lands in Other because the word "clean" does not appear in it. Rename it to <em>Cleaning Fee</em> and the whole history moves to the right bucket on the next sync. Same pattern for pet fees called <em>Animal Deposit</em> and credit card surcharges called <em>Processing Fee</em>. The rule reads the charge <strong>description</strong>, not the charge type, so rename the template, not the type.
+      </p>
+
+      <h2>3. Clean up your custom booking source names</h2>
+
+      <p>
+        Baileys automatically normalizes the major channels. Airbnb, VRBO, Booking.com, Expedia, Google Vacation Rentals, Hopper, HomeToGo, and TripAdvisor all get detected regardless of capitalization or minor spelling differences. Direct-style sources (anything containing <em>direct</em>, <em>owner</em>, <em>website</em>, or <em>repeat</em>, plus any source that is a raw domain like <em>doorcountystay.com</em>) are all rolled up as Direct. Anything else falls into a bucket called <em>Other</em>.
+      </p>
+
+      <p>
+        To find out whether this is affecting you, open the <strong>Properties</strong> dashboard and look at the <em>Booking Sources</em> chart. If you see a meaningful <em>Other</em> slice, rename those sources in OwnerRez so they contain a keyword Baileys recognizes. Renaming only affects the display label; it does not touch channel sync, historical reports, or anything else inside OwnerRez.
+      </p>
+
+      <p>
+        One more thing worth tidying: if you have three variants of the same channel (say <em>Manual</em>, <em>Phone</em>, and <em>Walk-in</em>) that all really mean "direct," consolidating them prevents your platform breakdown from fragmenting into slivers.
+      </p>
+
+      <h2>4. Set a Private Code for each property</h2>
+
+      <p>
+        OwnerRez has a field called <strong>Private Code</strong> on every property, usually a short two or three letter abbreviation. Baileys uses that code on space-constrained views where the full property name would wrap or clip: stacked bars, small tables, property tiles on the performance matrix, and the compact charts on the properties dashboard.
+      </p>
+
+      <p>
+        If the field is blank, Baileys falls back to the full property name and truncates it, which often looks strange (<em>Harbor Light Cot...</em>). Two or three letters is enough. Set it once in OwnerRez, re-sync, and every compact chart in the app becomes immediately readable.
+      </p>
+
+      <figure class="post-figure">
+        <picture>
+          <source srcset="/demo/demo3.avif" type="image/avif" />
+          <img src="/demo/demo3.jpeg" alt="Property performance table showing short private codes next to property names" />
+        </picture>
+        <figcaption>The property performance table uses private codes (HLC, CLB, BVL, SRC, NWR, EBH) so every row stays readable at a glance.</figcaption>
+      </figure>
+
+      <h2>5. Fill in the Baileys side</h2>
+
+      <p>
+        Two things to set up inside Baileys itself:
+      </p>
+
+      <ul>
+        <li><strong>Operating expenses.</strong> Add your recurring monthly costs under <strong>Settings &rarr; Expenses</strong>. Categories are cleaning, management, utilities, maintenance, insurance, and other. Mortgage, property tax, software, and accounting fees all go under <em>other</em>. Save a cost as a template on a property and it applies to every future month automatically, so you enter each number once instead of every month. Without these, the P&amp;L only reflects booking-level costs and your net margin looks higher than reality.</li>
+        <li><strong>Goals.</strong> Set portfolio-wide targets under <strong>Settings &rarr; Goals</strong>. Seven metrics are supported, from revenue and occupancy through to average stay length and repeat guest rate, each on a monthly, quarterly, or yearly cadence. Progress shows up in the "Your Goals" panel on the overview dashboard, and an active monthly revenue goal also draws a reference line on the revenue composition chart.</li>
+      </ul>
+
+      <p>
+        Taxes are not something you configure in Baileys. If OwnerRez is collecting and recording taxes on your bookings, Baileys reads them straight off the charges and splits gross revenue from tax automatically. If your tax numbers look wrong, the fix is in OwnerRez tax rules, not on our side.
+      </p>
+
+      <h2>Tell me what's missing</h2>
+
+      <p>
+        I built the integration. My business partner is a six-year OwnerRez user who keeps me honest about what actually happens day to day. Between us we have seen a handful of portfolios and a handful of workflows, but yours is different, and that difference is exactly what I want to hear about!
+      </p>
+
+      <p>
+        If something feels off, if a chart answers the wrong question, if a filter you need does not exist, if a metric does not match how you run the business, tell me. If there is a view that would save you an hour a week, tell me that too. I read every message, and the roadmap follows what hosts actually ask for.
+      </p>
+
+      <p>
+        Baileys is also improving week over week. Some of what you want we can build right away on data we already have. Some of it depends on fields OwnerRez has not yet exposed, and we are working closely with their team to change that. <a href="https://www.ownerrez.com/forums/developers/api-expose-guest-listing-site-fee-on-v2bookingsid" target="_blank" rel="noopener">Here is one request we have open with them right now</a>. Either way, telling us what is missing is what moves the needle, on both sides.
+      </p>
+
+      <div class="callout">
+        <p>
+          <strong>Found a bug or have an idea?</strong> Email me directly at <a href="mailto:nico@baileysanalytics.com">nico@baileysanalytics.com</a>. Short notes are welcome. Screenshots are even better! &mdash; Nico
+        </p>
+      </div>
+
+    </div>
+  </article>
+
+  <div class="post-footer">
+    <span class="post-footer-left">Baileys Analytics &middot; April 2026</span>
+    <a href="/" class="post-footer-right">&larr; Back to home</a>
+  </div>
+</main>
+
+</body>
+</html>

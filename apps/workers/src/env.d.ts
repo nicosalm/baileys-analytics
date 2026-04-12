@@ -22,9 +22,18 @@ interface Env {
 	STRIPE_PUBLISHABLE_KEY: string;
 	STRIPE_WEBHOOK_SECRET: string;
 
-	// stripe price ids (single tier)
+	// stripe price ids - legacy single-tier (kept for grandfathered subscribers,
+	// not referenced by checkout flow anymore)
 	STRIPE_PRICE_MONTHLY: string;
 	STRIPE_PRICE_YEARLY: string;
+
+	// stripe price ids - tiered pricing
+	STRIPE_PRICE_STARTER_MONTHLY: string;
+	STRIPE_PRICE_STARTER_YEARLY: string;
+	STRIPE_PRICE_GROWTH_MONTHLY: string;
+	STRIPE_PRICE_GROWTH_YEARLY: string;
+	STRIPE_PRICE_PORTFOLIO_MONTHLY: string;
+	STRIPE_PRICE_PORTFOLIO_YEARLY: string;
 
 	// email service
 	RESEND_API_KEY: string;

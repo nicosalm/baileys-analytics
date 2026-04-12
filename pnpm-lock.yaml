@@ -39,6 +39,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@baileys/constants':
+        specifier: workspace:*
+        version: link:../../packages/constants
       '@baileys/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas
@@ -136,6 +139,9 @@ importers:
 
   apps/workers:
     dependencies:
+      '@baileys/constants':
+        specifier: workspace:*
+        version: link:../../packages/constants
       '@baileys/schemas':
         specifier: workspace:*
         version: link:../../packages/schemas

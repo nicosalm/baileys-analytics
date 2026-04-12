@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
 import {
   ArrowRight, Check,
-  Shield, Zap, Lock, Building2, Calendar, DollarSign, Menu
+  Shield, Zap, Lock, Building2, Calendar, DollarSign, Menu,
+  TrendingUp, Users
 } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
 import {
@@ -12,10 +13,36 @@ import {
 } from '@/components/ui/sheet'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
+import { TIERS, getTierMonthlyDollars, getTierYearlyDollars } from '@baileys/constants'
 import { useInView } from '@/hooks'
+import { useCountUp } from '@/hooks/use-count-up'
 import { usePageTitle } from '@/hooks/use-page-title'
+import { renderInlineBold } from '@/utils/inline-bold'
 import { Switch } from '@/components/ui/switch'
 import { LogoCube } from '@/components/LogoCube'
+
+const StatItem: React.FC<{
+  target: number
+  prefix?: string
+  suffix?: string
+  label: string
+  delay?: number
+  inView: boolean
+}> = ({ target, prefix = '', suffix = '', label, delay = 0, inView }) => {
+  const [current, setCurrent] = useState(0)
+  useEffect(() => {
+    if (inView) setCurrent(target)
+  }, [inView, target])
+  const animated = useCountUp(current, 1400, delay)
+  return (
+    <div className="text-center">
+      <div className="landing-serif text-3xl md:text-5xl font-semibold text-white tracking-tight tabular-nums">
+        {prefix}{Math.round(animated)}{suffix}
+      </div>
+      <p className="text-xs text-white/40 mt-2 uppercase tracking-wider">{label}</p>
+    </div>
+  )
+}
 
 export const Landing = () => {
   usePageTitle()
@@ -27,9 +54,12 @@ export const Landing = () => {
   const [demoLoading, setDemoLoading] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  const stats = useInView()
   const feature1 = useInView()
   const feature2 = useInView()
   const feature3 = useInView()
+  const feature4 = useInView()
+  const feature5 = useInView()
   const howItWorks = useInView()
   const quote = useInView()
   const pricing = useInView()
@@ -66,12 +96,12 @@ export const Landing = () => {
       <div className="fixed top-0 left-0 right-0 z-50">
         {/* announcement banner */}
         <a
-          href="/updates/2026-04-09-launch.html"
+          href="/updates/2026-04-12-getting-the-most.html"
           className="block w-full"
           style={{ background: 'oklch(0.18 0.09 300)', borderBottom: '1px solid oklch(0.28 0.10 300 / 0.5)' }}
         >
           <div className="max-w-6xl mx-auto px-4 md:px-6 py-2.5 text-center text-xs font-medium text-white/60 hover:text-white/80 transition-colors flex items-center justify-center gap-2">
-            <span>Baileys Analytics is now available — read the announcement</span>
+            <span>New: getting the most out of your Baileys Analytics subscription</span>
             <span className="text-white/35">→</span>
           </div>
         </a>
@@ -162,21 +192,19 @@ export const Landing = () => {
               <source srcSet="/logos/ownerrez-wide.avif" type="image/avif" />
               <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5 brightness-0 invert opacity-70" />
             </picture>
-            <span className="text-sm font-medium text-white/60">users</span>
+            <span className="text-sm font-medium text-white/60">hosts</span>
           </div>
 
-          <p className="text-sm text-white/50 mb-4 hero-stagger" style={{ '--hero-index': 1 } as React.CSSProperties}>For OwnerRez hosts managing 2+ properties</p>
-
-          <h1 className="landing-serif text-5xl sm:text-6xl md:text-7xl font-semibold text-white mb-6 tracking-tight leading-[1.1] hero-stagger" style={{ '--hero-index': 2 } as React.CSSProperties}>
+          <h1 className="landing-serif text-5xl sm:text-6xl md:text-7xl font-semibold text-white mb-6 tracking-tight leading-[1.1] hero-stagger" style={{ '--hero-index': 1 } as React.CSSProperties}>
             Know your real numbers.
           </h1>
 
-          <p className="text-lg md:text-xl font-light text-[var(--landing-body-bright)] mb-10 max-w-2xl mx-auto leading-relaxed hero-stagger" style={{ '--hero-index': 3 } as React.CSSProperties}>
-            Pull in booking data from OwnerRez. See revenue, occupancy, and profit breakdowns in minutes.
+          <p className="text-lg md:text-xl font-light text-[var(--landing-body-bright)] mb-10 max-w-2xl mx-auto leading-relaxed hero-stagger" style={{ '--hero-index': 2 } as React.CSSProperties}>
+            Auto-sync 4 years of OwnerRez bookings. See pacing, P&L, and occupancy by property in minutes.
           </p>
 
           {!isAuthenticated && (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6 hero-stagger" style={{ '--hero-index': 4 } as React.CSSProperties}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6 hero-stagger" style={{ '--hero-index': 3 } as React.CSSProperties}>
               <Link to="/signup" className="whitespace-nowrap px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center">
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -191,12 +219,12 @@ export const Landing = () => {
             </div>
           )}
 
-          <p className="text-sm text-white/40 hero-stagger" style={{ '--hero-index': 5 } as React.CSSProperties}>
-            Starting at $20/month. Cancel anytime.
+          <p className="text-sm text-white/40 hero-stagger" style={{ '--hero-index': 4 } as React.CSSProperties}>
+            From $17/month, billed yearly. Cancel anytime.
           </p>
 
           {/* hero image */}
-          <div className="mt-16 md:mt-24 hero-stagger" style={{ '--hero-index': 6 } as React.CSSProperties}>
+          <div className="mt-16 md:mt-24 hero-stagger" style={{ '--hero-index': 5 } as React.CSSProperties}>
             <div className="relative max-w-4xl mx-auto">
               <div className="absolute -inset-6 bg-[var(--landing-glow-hero)] rounded-3xl blur-2xl" />
               <div className="relative rounded-2xl shadow-2xl overflow-hidden ring-1 ring-white/10">
@@ -226,6 +254,25 @@ export const Landing = () => {
         </div>
       </section>
 
+      {/* stats band (primary bg) */}
+      <section className="landing-section-primary py-16 md:py-20 border-y border-white/5">
+        <div
+          ref={stats.ref}
+          className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${stats.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+        >
+          <p className="text-center text-xs uppercase tracking-[0.15em] text-white/40 mb-10">
+            Already tracking
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+            <StatItem target={15} prefix="$" suffix="M+" label="in bookings" delay={0} inView={stats.isInView} />
+            <StatItem target={22} suffix="K+" label="reservations" delay={120} inView={stats.isInView} />
+            <StatItem target={43} suffix="K+" label="nights analyzed" delay={240} inView={stats.isInView} />
+            <StatItem target={74} label="properties" delay={360} inView={stats.isInView} />
+          </div>
+        </div>
+      </section>
+
       {/* feature 1 — revenue breakdown (secondary bg) */}
       <section id="features" className="landing-section-secondary py-28 md:py-36">
         <div
@@ -242,7 +289,7 @@ export const Landing = () => {
                 See where your money actually goes
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                Track platform fees, cleaning costs, and taxes by property. Know your real margins, not just gross revenue.
+                P&L by property, not just topline revenue. Platform fees, cleaning, and taxes laid out for every month. Click any row to see the bookings behind the numbers.
               </p>
             </div>
             <div className="relative">
@@ -283,7 +330,7 @@ export const Landing = () => {
                 Find your best and worst performers
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                Sort by occupancy, revenue, or profit. Compare properties side by side and know which ones are pulling their weight.
+                Rank every property by ADR, RevPAN, occupancy, or profit. Compare them side by side and know which ones are pulling their weight.
               </p>
             </div>
           </div>
@@ -306,7 +353,7 @@ export const Landing = () => {
                 Spot gaps before they cost you
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                Visualize booked vs. available nights. See seasonal patterns and year-over-year trends at a glance.
+                A daily occupancy heatmap of booked vs. open nights. Filter by season, compare periods, and see exactly where the gaps are.
               </p>
             </div>
             <div className="relative">
@@ -315,6 +362,70 @@ export const Landing = () => {
                 <picture>
                   <source srcSet="/demo/demo4.avif" type="image/avif" />
                   <img src="/demo/demo4.jpeg" alt="Occupancy heatmap dashboard" className="w-full" loading="lazy" />
+                </picture>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* feature 4 — pacing (primary bg) */}
+      <section className="landing-section-primary py-28 md:py-36">
+        <div
+          ref={feature4.ref}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature4.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+        >
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+            <div className="relative md:order-1">
+              <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
+              <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
+                <picture>
+                  <source srcSet="/demo/demo5.avif" type="image/avif" />
+                  <img src="/demo/demo5.jpeg" alt="Year-over-year pacing runway" className="w-full" loading="lazy" />
+                </picture>
+              </div>
+            </div>
+            <div className="md:order-2">
+              <div className="w-10 h-10 bg-[var(--landing-icon-bg)] rounded-xl flex items-center justify-center mb-5">
+                <TrendingUp className="w-5 h-5 text-[var(--landing-icon-fg)]" />
+              </div>
+              <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+                Know if this year is beating last year
+              </h2>
+              <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
+                Month-by-month pacing against the same point last year. Spot a soft shoulder season early and adjust rates before peak season locks in.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* feature 5 — guests (secondary bg) */}
+      <section className="landing-section-secondary py-28 md:py-36">
+        <div
+          ref={feature5.ref}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature5.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            }`}
+        >
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+            <div>
+              <div className="w-10 h-10 bg-[var(--landing-icon-bg)] rounded-xl flex items-center justify-center mb-5">
+                <Users className="w-5 h-5 text-[var(--landing-icon-fg)]" />
+              </div>
+              <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-4 tracking-tight">
+                Every guest, in one searchable list
+              </h2>
+              <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
+                Past and upcoming guests with contact info, tags, and full booking history. Click into any guest to see every stay, every charge, and every fee they've ever paid.
+              </p>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-4 bg-[var(--landing-glow)] rounded-3xl blur-2xl" />
+              <div className="relative rounded-2xl ring-1 ring-white/10 overflow-hidden">
+                <picture>
+                  <source srcSet="/demo/demo6.avif" type="image/avif" />
+                  <img src="/demo/demo6.jpeg" alt="Guest list with tags and contact info" className="w-full" loading="lazy" />
                 </picture>
               </div>
             </div>
@@ -349,7 +460,7 @@ export const Landing = () => {
               }`} style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}>
               <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">2</div>
               <h3 className="font-semibold text-white mb-1">Data syncs automatically</h3>
-              <p className="text-sm text-[var(--landing-caption)]">We pull 4 years of bookings, properties, and guests. Takes about 2 minutes.</p>
+              <p className="text-sm text-[var(--landing-caption)]">We pull 4 years of bookings, properties, and guests. Usually done in a few minutes.</p>
             </div>
 
             <div className={`text-center transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
@@ -382,16 +493,16 @@ export const Landing = () => {
       <section id="pricing" className="landing-section-primary py-28 md:py-36">
         <div
           ref={pricing.ref}
-          className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${pricing.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          className={`max-w-7xl mx-auto px-4 md:px-6 transition-all duration-700 ${pricing.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
         >
           <div className="text-center mb-10">
             <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">Pricing that makes sense</h2>
-            <p className="text-sm uppercase tracking-[0.15em] text-white/40">Full analytics for your rental portfolio.</p>
+            <p className="text-sm uppercase tracking-[0.15em] text-white/40">Pick the tier that fits your portfolio.</p>
           </div>
 
           {/* billing toggle */}
-          <div className="flex justify-center items-center gap-3 mb-8">
+          <div className="flex justify-center items-center gap-3 mb-10">
             <span className={`text-sm transition-colors ${!yearlyBilling ? 'text-white font-medium' : 'text-white/40'}`}>Monthly</span>
             <Switch
               checked={yearlyBilling}
@@ -401,69 +512,93 @@ export const Landing = () => {
             <span className={`text-sm transition-colors ${yearlyBilling ? 'text-white font-medium' : 'text-white/40'}`}>Yearly</span>
           </div>
 
-          <div className="max-w-sm mx-auto">
-            <div className="relative group">
-              {/* gradient border glow */}
-              <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary via-[oklch(0.60_0.10_272)] to-[oklch(0.45_0.12_280)] opacity-80 group-hover:opacity-100 transition-opacity duration-300" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {TIERS.map((tier) => {
+              const isContact = tier.contactSales
+              const monthlyDisplay = getTierMonthlyDollars(tier, yearlyBilling)
+              const yearlyTotal = getTierYearlyDollars(tier)
 
-              <div className="relative bg-[var(--landing-card)] rounded-2xl px-8 py-10 md:px-10 flex flex-col min-h-[480px]">
-                {/* plan label */}
-                <div className="text-center mb-8">
-                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-6">
-                    Standard
-                  </p>
+              return (
+                <div key={tier.slug} className="relative group">
+                  {/* gradient border glow */}
+                  <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary via-[oklch(0.60_0.10_272)] to-[oklch(0.45_0.12_280)] opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
 
-                  {/* price */}
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="landing-serif text-5xl font-semibold tracking-tight text-white">
-                      ${yearlyBilling ? '16' : '20'}
-                    </span>
-                    <span className="text-base text-white/40 font-normal">/mo</span>
-                  </div>
+                  <div className="relative bg-[var(--landing-card)] rounded-2xl px-6 py-8 flex flex-col min-h-[480px]">
+                    {/* plan label */}
+                    <div className="text-center mb-6">
+                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-1">
+                        {tier.name}
+                      </p>
+                      <p className="text-xs text-white/30 mb-5">{tier.tagline}</p>
 
-                  {/* billing context */}
-                  <div className="mt-2 h-5">
-                    {yearlyBilling
-                      ? <p className="text-sm text-success font-medium">$192/year — save $48</p>
-                      : <p className="text-sm text-white/40">Billed monthly</p>
-                    }
-                  </div>
-                </div>
+                      {/* price */}
+                      {isContact ? (
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="landing-serif text-4xl font-semibold tracking-tight text-white">Custom</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="landing-serif text-4xl font-semibold tracking-tight text-white">
+                            ${monthlyDisplay}
+                          </span>
+                          <span className="text-sm text-white/40 font-normal">/mo</span>
+                        </div>
+                      )}
 
-                {/* divider */}
-                <div className="h-px bg-white/10 mb-8" />
-
-                {/* features */}
-                <div className="space-y-3.5 mb-auto">
-                  {[
-                    'Full OwnerRez sync (4 years of data)',
-                    '5 dashboards with filtering',
-                    'Comparison mode & seasonal filters',
-                    'Real-time webhook updates',
-                    'Cancel anytime',
-                  ].map(item => (
-                    <div key={item} className="flex items-start gap-3">
-                      <div className="mt-0.5 w-4.5 h-4.5 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
-                        <Check className="w-3 h-3 text-success" strokeWidth={2.5} />
+                      {/* billing context */}
+                      <div className="mt-2 h-5">
+                        {isContact ? (
+                          <p className="text-sm text-white/40">Quoted per account</p>
+                        ) : yearlyBilling ? (
+                          <p className="text-sm text-success font-medium">${yearlyTotal}/year</p>
+                        ) : (
+                          <p className="text-sm text-white/40">Billed monthly</p>
+                        )}
                       </div>
-                      <span className="text-sm text-[var(--landing-body)] leading-snug">{item}</span>
                     </div>
-                  ))}
-                </div>
 
-                {/* cta */}
-                <div className="mt-10">
-                  <Link to="/signup" className="block w-full h-11 leading-[2.75rem] text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold">
-                    Subscribe
-                  </Link>
+                    {/* divider */}
+                    <div className="h-px bg-white/10 mb-6" />
 
-                  <p className="text-center text-xs text-white/30 mt-3">
-                    {yearlyBilling ? '$192/year' : '$20/month'}. Cancel anytime.
-                  </p>
+                    {/* features */}
+                    <div className="space-y-3 mb-auto">
+                      {tier.features.map((feature) => (
+                        <div key={feature} className="flex items-start gap-2.5">
+                          <div className="mt-0.5 w-4 h-4 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
+                            <Check className="w-2.5 h-2.5 text-success" strokeWidth={2.5} />
+                          </div>
+                          <span className="text-sm text-[var(--landing-body)] leading-snug">{renderInlineBold(feature, 'font-semibold text-white')}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* cta */}
+                    <div className="mt-8">
+                      {isContact ? (
+                        <a
+                          href="mailto:support@baileysanalytics.com?subject=Enterprise%20pricing%20inquiry"
+                          className="block w-full h-10 leading-10 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold"
+                        >
+                          Contact sales
+                        </a>
+                      ) : (
+                        <Link
+                          to="/signup"
+                          className="block w-full h-10 leading-10 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold"
+                        >
+                          Get started
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              )
+            })}
           </div>
+
+          <p className="text-center text-xs text-white/30 mt-8">
+            Same features at every tier. Cancel anytime.
+          </p>
         </div>
       </section>
 
@@ -477,12 +612,18 @@ export const Landing = () => {
           <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
           <p className="mt-4 text-sm text-white/40">Built with OwnerRez hosts, shaped by their feedback.</p>
           {!isAuthenticated && (
-            <div className="mt-6 flex flex-col items-center gap-4">
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link to="/signup" className="whitespace-nowrap inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg">
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
-              <p className="text-sm text-white/30">Try the demo first. Subscribe when you're ready.</p>
+              <button
+                onClick={handleTryDemo}
+                disabled={demoLoading}
+                className="whitespace-nowrap px-8 py-4 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-lg disabled:opacity-50 cursor-pointer"
+              >
+                {demoLoading ? 'Loading...' : 'Try the Demo'}
+              </button>
             </div>
           )}
         </div>

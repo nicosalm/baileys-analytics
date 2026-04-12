@@ -1,8 +1,9 @@
 import Stripe from 'stripe';
 import { SupabaseClient } from '@supabase/supabase-js';
+import { DEFERRED_TIER_METADATA_KEY } from './tier-reconciliation';
 
 export class StripeService {
-  private stripe: Stripe;
+  readonly stripe: Stripe;
   private supabase: SupabaseClient;
   private env: Env;
 
@@ -107,13 +108,37 @@ export class StripeService {
     return { url: session.url };
   }
 
-  // get subscription status
+  // get subscription status. lazily backfills tier/unit_amount/stripe_price_id
+  // by reading the live Stripe subscription if those columns are null. this lets
+  // pre-existing rows (created before the tier columns existed) self-heal on
+  // first read instead of needing a one-shot backfill script.
   async getSubscription(tenantId: string) {
     const { data: subscription } = await this.supabase
       .from('subscriptions')
       .select('*')
       .eq('tenant_id', tenantId)
       .single();
+
+    if (!subscription) return null;
+
+    if (subscription.tier == null && subscription.stripe_subscription_id) {
+      try {
+        const live = await this.stripe.subscriptions.retrieve(subscription.stripe_subscription_id);
+        const priceObj = live.items.data[0]?.price;
+        const tier = (priceObj?.metadata?.tier as string | undefined) ?? 'legacy';
+        const unit_amount = priceObj?.unit_amount ?? null;
+        const stripe_price_id = priceObj?.id ?? null;
+
+        await this.supabase
+          .from('subscriptions')
+          .update({ tier, unit_amount, stripe_price_id })
+          .eq('tenant_id', tenantId);
+
+        return { ...subscription, tier, unit_amount, stripe_price_id };
+      } catch (err) {
+        console.error('Failed to backfill subscription tier from Stripe:', err);
+      }
+    }
 
     return subscription;
   }
@@ -181,7 +206,7 @@ export class StripeService {
     }
 
     // atomic idempotency: insert event, skip if already exists
-    const { data: inserted, error: insertError } = await this.supabase
+    const { error: insertError } = await this.supabase
       .from('stripe_webhook_events')
       .insert({
         stripe_event_id: event.id,
@@ -287,10 +312,58 @@ export class StripeService {
       .single();
     if (!tenantExists) return tenantId;
 
-    // determine billing cycle from price interval
-    const priceId = subscription.items.data[0]?.price.id;
-    const interval = subscription.items.data[0]?.price.recurring?.interval;
+    // resolve plan details from the active price. tier comes from price.metadata
+    // which we set on every new tier price; legacy grandfathered prices have no
+    // metadata so they store as 'legacy'.
+    const priceObj = subscription.items.data[0]?.price;
+    const interval = priceObj?.recurring?.interval;
     const billing_cycle = interval === 'year' ? 'yearly' : 'monthly';
+    const livePriceTier = (priceObj?.metadata?.tier as string | undefined) ?? 'legacy';
+    const unit_amount = priceObj?.unit_amount ?? null;
+    const stripe_price_id = priceObj?.id ?? null;
+
+    // Deferred tier change detection: when the cron pushes a pending tier into
+    // Stripe, it tags the subscription with DEFERRED_TIER_METADATA_KEY = <new
+    // tier slug>. The customer.subscription.updated webhook fires immediately
+    // (price changed) but we DON'T want to flip the displayed tier yet — that
+    // should happen only when the renewal invoice is actually paid. So when
+    // the metadata is present and points at the same tier the new live price
+    // resolves to, we leave tier/unit_amount on their existing DB values and
+    // only sync the auxiliary fields. handleInvoicePaymentSucceeded promotes
+    // the change once billing actually happens.
+    const deferredTier = subscription.metadata?.[DEFERRED_TIER_METADATA_KEY] as string | undefined;
+    const isDeferredInFlight = deferredTier != null && deferredTier === livePriceTier;
+
+    let tierWrite: string | null;
+    let unitAmountWrite: number | null;
+    let stripePriceIdWrite: string | null;
+
+    if (isDeferredInFlight) {
+      // preserve the customer-facing tier/amount; only the cron's pending
+      // record knows the new state, and that's what the UI reads. Defensive
+      // fallback: if for any reason the existing row is missing (shouldn't be
+      // possible — the cron only sets the deferred metadata on a sub that
+      // already had a row in DB), fall back to live price values rather than
+      // blanking out the tier columns.
+      const { data: existing } = await this.supabase
+        .from('subscriptions')
+        .select('tier, unit_amount, stripe_price_id')
+        .eq('tenant_id', tenantId)
+        .single();
+      if (existing?.tier != null) {
+        tierWrite = existing.tier as string;
+        unitAmountWrite = (existing.unit_amount as number | null) ?? unit_amount;
+        stripePriceIdWrite = (existing.stripe_price_id as string | null) ?? stripe_price_id;
+      } else {
+        tierWrite = livePriceTier;
+        unitAmountWrite = unit_amount;
+        stripePriceIdWrite = stripe_price_id;
+      }
+    } else {
+      tierWrite = livePriceTier;
+      unitAmountWrite = unit_amount;
+      stripePriceIdWrite = stripe_price_id;
+    }
 
     // upsert subscription
     await this.supabase
@@ -300,6 +373,9 @@ export class StripeService {
         stripe_subscription_id: subscription.id,
         stripe_customer_id: subscription.customer as string,
         billing_cycle: billing_cycle,
+        tier: tierWrite,
+        unit_amount: unitAmountWrite,
+        stripe_price_id: stripePriceIdWrite,
         status: subscription.status,
         current_period_start: (subscription as any).current_period_start ? new Date((subscription as any).current_period_start * 1000).toISOString() : null,
         current_period_end: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null,
@@ -354,13 +430,20 @@ export class StripeService {
       .single();
     if (!tenantExists) return tenantId;
 
-    // update subscription status
+    // update subscription status. also clear any pending tier row — if the
+    // customer cancelled while in overage, we don't want a stale pending row
+    // to attach itself to a future re-subscription with a different
+    // stripe_subscription_id.
     await this.supabase
       .from('subscriptions')
       .update({
         status: 'canceled',
         canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : new Date().toISOString(),
-        ended_at: subscription.ended_at ? new Date(subscription.ended_at * 1000).toISOString() : new Date().toISOString()
+        ended_at: subscription.ended_at ? new Date(subscription.ended_at * 1000).toISOString() : new Date().toISOString(),
+        pending_tier: null,
+        pending_price_id: null,
+        pending_unit_amount: null,
+        pending_effective_at: null,
       })
       .eq('stripe_subscription_id', subscription.id);
 
@@ -405,7 +488,80 @@ export class StripeService {
         onConflict: 'stripe_invoice_id'
       });
 
+    // Promote a deferred tier change if there is one. The cron sets metadata
+    // on the Stripe subscription and writes a pending row in DB; both got
+    // suppressed from the customer view by handleSubscriptionUpdate. Now that
+    // an actual invoice has been paid (= the new period started), it's safe to
+    // promote. Read stripe_subscription_id from our DB rather than from the
+    // invoice payload — the invoice.subscription field was deprecated/moved
+    // in newer Stripe API versions and casting through `any` would silently
+    // drop it. Our DB row is authoritative because handleSubscriptionUpdate
+    // would have written it.
+    try {
+      const { data: dbSub } = await this.supabase
+        .from('subscriptions')
+        .select('stripe_subscription_id')
+        .eq('tenant_id', customer.tenant_id)
+        .single();
+      if (dbSub?.stripe_subscription_id) {
+        await this.promoteDeferredTierChangeIfAny(customer.tenant_id, dbSub.stripe_subscription_id);
+      }
+    } catch (err) {
+      console.error(`promoteDeferredTierChangeIfAny failed for ${customer.tenant_id}:`, err);
+    }
+
     return customer.tenant_id;
+  }
+
+  // Reads the live Stripe sub; if it's tagged with DEFERRED_TIER_METADATA_KEY,
+  // copies pending_* → tier/unit_amount/stripe_price_id, clears the pending
+  // row, and strips the metadata flag from Stripe. Idempotent: a no-op if the
+  // metadata isn't set.
+  private async promoteDeferredTierChangeIfAny(tenantId: string, subscriptionId: string): Promise<void> {
+    const live = await this.stripe.subscriptions.retrieve(subscriptionId);
+    const deferredTier = live.metadata?.[DEFERRED_TIER_METADATA_KEY];
+    if (!deferredTier) return;
+
+    const priceObj = live.items.data[0]?.price;
+    const livePriceTier = (priceObj?.metadata?.tier as string | undefined) ?? 'legacy';
+    if (livePriceTier !== deferredTier) {
+      // Stripe is no longer on the deferred tier (maybe the customer moved
+      // again via portal). just clear the flag.
+      await this.stripe.subscriptions.update(subscriptionId, {
+        metadata: { ...live.metadata, [DEFERRED_TIER_METADATA_KEY]: null },
+      });
+      await this.supabase
+        .from('subscriptions')
+        .update({
+          pending_tier: null,
+          pending_price_id: null,
+          pending_unit_amount: null,
+          pending_effective_at: null,
+        })
+        .eq('tenant_id', tenantId);
+      return;
+    }
+
+    // Promote: write live price details into the tier columns. We trust the
+    // live Stripe state over our DB pending_* row in case anything drifted.
+    await this.supabase
+      .from('subscriptions')
+      .update({
+        tier: deferredTier,
+        unit_amount: priceObj?.unit_amount ?? null,
+        stripe_price_id: priceObj?.id ?? null,
+        pending_tier: null,
+        pending_price_id: null,
+        pending_unit_amount: null,
+        pending_effective_at: null,
+      })
+      .eq('tenant_id', tenantId);
+
+    // Strip the metadata so subsequent webhooks (e.g. unrelated portal edits)
+    // don't keep getting suppressed.
+    await this.stripe.subscriptions.update(subscriptionId, {
+      metadata: { ...live.metadata, [DEFERRED_TIER_METADATA_KEY]: null },
+    });
   }
 
   private async handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<string | null> {

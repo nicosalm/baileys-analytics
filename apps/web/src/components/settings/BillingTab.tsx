@@ -1,20 +1,41 @@
 import { useState, useEffect } from 'react';
 import {
   ExternalLink,
-  AlertCircle, CheckCircle
+  AlertCircle, CheckCircle, Sparkles, TrendingUp
 } from 'lucide-react';
 import { LoadingState } from '@/components/LoadingState';
-import { billingClient } from '@/lib/stripe';
+import { billingClient, type SubscriptionInfo, type TierStatus, type PendingTier } from '@/lib/stripe';
 import { PricingPlans } from '@/components/PricingPlans';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/contexts/toast';
 import { formatDateDisplay } from '@baileys/utils';
+import { getTierBySlug } from '@baileys/constants';
 
-interface SubscriptionInfo {
-  status: string
-  billing_cycle?: string
-  current_period_end?: string
-}
+// Resolve display name and per-month dollar amount for the current plan.
+// Legacy customers (pre-tier launch) are shown as "Early Supporter" with the
+// actual Stripe unit_amount — they stay on their original flat price until
+// ops manually migrates them via a DB tier update (see
+// LEGACY_MIGRATION_TARGET_DATE in packages/constants/src/tiers.ts). This
+// branch also covers the brief window after signup before lazy backfill
+// writes the tier column, and silently survives Stripe-side mode mismatches
+// in local dev.
+const resolvePlanDisplay = (subscription: SubscriptionInfo) => {
+  const isYearly = subscription.billing_cycle === 'yearly';
+  const tierSlug = subscription.tier;
+  const tier = tierSlug ? getTierBySlug(tierSlug) : undefined;
+
+  const planName = tier?.name ?? 'Baileys Analytics';
+  const isLegacy = !tier;
+
+  const monthlyDollars = subscription.unit_amount != null
+    ? Math.round(subscription.unit_amount / 100 / (isYearly ? 12 : 1))
+    : null;
+  const totalCharge = subscription.unit_amount != null
+    ? Math.round(subscription.unit_amount / 100)
+    : null;
+
+  return { planName, isLegacy, monthlyDollars, totalCharge, isYearly };
+};
 
 interface BillingHistoryEntry {
   id: string
@@ -26,6 +47,7 @@ interface BillingHistoryEntry {
 export const BillingTab = () => {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [billingHistory, setBillingHistory] = useState<BillingHistoryEntry[]>([]);
+  const [tierStatus, setTierStatus] = useState<TierStatus | null>(null);
   const [isExempt, setIsExempt] = useState(false);
   const [loading, setLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -38,13 +60,18 @@ export const BillingTab = () => {
   const loadBillingData = async () => {
     setLoading(true);
     try {
+      // Single combined endpoint for sub + tier status — eliminates the race
+      // where the previous parallel calls could land in either order and the
+      // overage banner blinked depending on timing. History stays parallel
+      // because it doesn't share state with the others.
       const [subData, history] = await Promise.all([
         billingClient.getSubscription(),
-        billingClient.getBillingHistory()
+        billingClient.getBillingHistory(),
       ]);
 
       setSubscription(subData?.subscription || null);
       setIsExempt(subData?.isExempt || false);
+      setTierStatus(subData?.tierStatus || null);
       setBillingHistory(history);
     } catch (error) {
       addToast('error', 'Failed to load billing information');
@@ -72,11 +99,11 @@ export const BillingTab = () => {
   if (isExempt) {
     return (
       <div className="space-y-6">
-        <div className="bg-success-subtle border border-success/30 rounded-lg p-6">
+        <div className="bg-success-subtle border border-success/30 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <CheckCircle className="w-6 h-6 text-success mt-0.5" />
+            <CheckCircle className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="text-lg font-semibold text-success-fg">Complimentary Access</h3>
+              <h3 className="font-semibold text-success-fg">Complimentary Access</h3>
               <p className="text-sm text-success-fg mt-1">
                 This account has been granted free unlimited access to all features of Baileys Analytics.
               </p>
@@ -84,7 +111,7 @@ export const BillingTab = () => {
           </div>
         </div>
 
-        <div className="bg-card rounded-lg shadow-sm border p-6">
+        <div className="bg-card rounded-lg shadow-sm border p-5">
           <h3 className="text-lg font-semibold text-foreground mb-4">Account Benefits</h3>
           <ul className="space-y-3">
             <li className="flex items-start gap-2">
@@ -146,29 +173,124 @@ export const BillingTab = () => {
     }).format(amount / 100);
   };
 
+  const { planName, isLegacy, monthlyDollars, totalCharge, isYearly } = resolvePlanDisplay(subscription);
+
+  // overage banner: shows for non-legacy customers whose property count has
+  // outgrown their tier. legacy customers stay invisible to the tier system
+  // entirely (tierStatus is null for them). Prefer the pending row when set —
+  // it's the deterministic record of "the change has been queued, here's
+  // what's coming." Falling back to the live status fields covers the brief
+  // window before the first /subscription read writes the pending row.
+  const showOverage = tierStatus?.isOverage === true;
+  const pending: PendingTier | null = tierStatus?.pending ?? null;
+
+  // properties row: real count vs. tier limit when we know both. Falls back to
+  // "Unlimited" for legacy/exempt/contact-sales paths where we don't have a
+  // numeric cap to render.
+  const propertiesLabel = tierStatus
+    ? tierStatus.currentTierMaxProperties != null
+      ? `${tierStatus.propertyCount} / ${tierStatus.currentTierMaxProperties}`
+      : `${tierStatus.propertyCount}`
+    : 'Unlimited';
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {showOverage && tierStatus && (
+        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <TrendingUp className="w-5 h-5 text-info mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-info-fg">
+                You've outgrown {tierStatus.currentTierName}
+              </h3>
+              {tierStatus.needsContactSales ? (
+                <p className="text-sm text-info-fg mt-1">
+                  You now have {tierStatus.propertyCount} properties, which is above the {tierStatus.currentTierName} limit.
+                  Get in touch to set up an Enterprise plan tailored to your portfolio.
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm text-info-fg mt-1">
+                    {(() => {
+                      const targetTierName = pending?.tierName ?? tierStatus.resolvedTierName;
+                      const targetYearlyDollars = pending?.yearlyDollars ?? tierStatus.resolvedYearlyDollars;
+                      const targetMonthlyDollars = pending?.monthlyDollars ?? tierStatus.resolvedMonthlyDollars;
+                      const effectiveAt = pending?.effectiveAt ?? tierStatus.upgradeAt;
+                      return (
+                        <>
+                          You now have {tierStatus.propertyCount} properties. Your plan will move to{' '}
+                          <span className="font-semibold">{targetTierName}</span>
+                          {tierStatus.billingCycle === 'yearly' && targetYearlyDollars != null ? (
+                            <> (${targetYearlyDollars}/year{targetMonthlyDollars != null ? `, about $${targetMonthlyDollars}/mo` : ''})</>
+                          ) : targetMonthlyDollars != null ? (
+                            <> (${targetMonthlyDollars}/mo)</>
+                          ) : null}{' '}
+                          on your next renewal
+                          {effectiveAt && <> on {formatDateDisplay(effectiveAt)}</>}.
+                        </>
+                      );
+                    })()}
+                  </p>
+                  <p className="text-xs text-info-fg/80 mt-1">
+                    No charges happen now. You'll keep paying your current rate until renewal day.
+                  </p>
+                </>
+              )}
+              {tierStatus.needsContactSales && (
+                <div className="mt-3">
+                  <a
+                    href="mailto:support@baileysanalytics.com?subject=Enterprise%20pricing%20inquiry"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-info-fg underline underline-offset-2"
+                  >
+                    Contact sales
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* current plan with payment info */}
       <div className="bg-card rounded-lg shadow-sm border p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Current Plan</h3>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-sm font-medium bg-info-subtle text-info-fg">
-                Baileys Analytics
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-info-subtle text-info-fg">
+                {planName}
               </span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subscription.status)}`}>
+              {isLegacy && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-900 border border-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-400/30"
+                  title="Thank you for being one of our first subscribers."
+                >
+                  <Sparkles className="w-3 h-3" strokeWidth={2.5} />
+                  Early Supporter
+                </span>
+              )}
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subscription.status)}`}>
                 {subscription.status.replace('_', ' ').toUpperCase()}
               </span>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-2xl font-bold text-foreground">
-              {subscription.billing_cycle === 'yearly' ? '$16' : '$20'}
-            </p>
-            <p className="text-muted-foreground text-xs">
-              {subscription.billing_cycle === 'yearly' ? '/mo (billed annually)' : '/month'}
-            </p>
+            {isYearly && totalCharge != null ? (
+              <>
+                <p className="text-2xl font-bold text-foreground">${totalCharge}</p>
+                <p className="text-muted-foreground text-xs">
+                  /year{monthlyDollars != null && <> (${monthlyDollars}/mo)</>}
+                </p>
+              </>
+            ) : monthlyDollars != null ? (
+              <>
+                <p className="text-2xl font-bold text-foreground">${monthlyDollars}</p>
+                <p className="text-muted-foreground text-xs">/month</p>
+              </>
+            ) : (
+              <p className="text-muted-foreground text-xs">Manage in Stripe</p>
+            )}
           </div>
         </div>
 
@@ -187,7 +309,7 @@ export const BillingTab = () => {
           </div>
           <div>
             <span className="text-muted-foreground">Properties</span>
-            <p className="font-medium text-foreground">Unlimited</p>
+            <p className="font-medium text-foreground">{propertiesLabel}</p>
           </div>
         </div>
 
