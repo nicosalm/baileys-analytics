@@ -579,10 +579,17 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
           <p className="font-medium text-foreground">{detail.stats.bookings.toLocaleString()}</p>
         </div>
         <div>
-          <p className="text-muted-foreground text-xs mb-1">Period ends</p>
+          <p className="text-muted-foreground text-xs mb-1">Renews</p>
           <p className="font-medium text-foreground">
             {detail.subscription?.current_period_end
-              ? new Date(detail.subscription.current_period_end).toLocaleDateString()
+              ? (() => {
+                  const end = new Date(detail.subscription.current_period_end)
+                  const days = Math.ceil((end.getTime() - Date.now()) / 86400000)
+                  const label = days > 0
+                    ? `in ${days}d`
+                    : days === 0 ? 'today' : `${Math.abs(days)}d ago`
+                  return <span title={end.toLocaleString()}>{label}</span>
+                })()
               : '-'}
           </p>
         </div>

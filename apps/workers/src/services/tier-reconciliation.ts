@@ -350,8 +350,10 @@ export async function applyPendingTierUpgrades(
 
       // only push within the lead-time window relative to the LIVE renewal
       // date — protects against the recorded effective_at being stale.
-      const liveRenewalMs = (live as unknown as { current_period_end?: number }).current_period_end != null
-        ? (live as unknown as { current_period_end: number }).current_period_end * 1000
+      // stripe SDK v19+ moved current_period_end to SubscriptionItem
+      const liveItem = live.items.data[0];
+      const liveRenewalMs = liveItem?.current_period_end != null
+        ? liveItem.current_period_end * 1000
         : null;
       if (liveRenewalMs == null || liveRenewalMs - Date.now() > CRON_LEAD_TIME_MS) {
         // not yet within the lead window — leave for next cron tick

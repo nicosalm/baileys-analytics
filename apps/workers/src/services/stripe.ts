@@ -365,6 +365,9 @@ export class StripeService {
       stripePriceIdWrite = stripe_price_id;
     }
 
+    // stripe SDK v19+ moved current_period fields from Subscription to SubscriptionItem
+    const periodItem = subscription.items.data[0];
+
     // upsert subscription
     await this.supabase
       .from('subscriptions')
@@ -377,8 +380,8 @@ export class StripeService {
         unit_amount: unitAmountWrite,
         stripe_price_id: stripePriceIdWrite,
         status: subscription.status,
-        current_period_start: (subscription as any).current_period_start ? new Date((subscription as any).current_period_start * 1000).toISOString() : null,
-        current_period_end: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null,
+        current_period_start: periodItem?.current_period_start ? new Date(periodItem.current_period_start * 1000).toISOString() : null,
+        current_period_end: periodItem?.current_period_end ? new Date(periodItem.current_period_end * 1000).toISOString() : null,
         trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
         trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
         cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
@@ -401,7 +404,7 @@ export class StripeService {
       .update({
         subscription_status: subscription.status,
         trial_ends_at: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        subscription_ends_at: (subscription as any).current_period_end ? new Date((subscription as any).current_period_end * 1000).toISOString() : null
+        subscription_ends_at: periodItem?.current_period_end ? new Date(periodItem.current_period_end * 1000).toISOString() : null
       })
       .eq('id', tenantId);
 
