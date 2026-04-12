@@ -300,6 +300,46 @@ export function useTags() {
   })
 }
 
+export interface PropertyGroup {
+  id: string
+  name: string
+  description?: string
+  propertyIds: string[]
+  memberCount: number
+}
+
+export function usePropertyGroups() {
+  return useSWR<PropertyGroup[]>('/property-groups', async () => {
+    const result = await api.getPropertyGroups()
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  })
+}
+
+export async function createPropertyGroup(data: { name: string; description?: string; propertyIds: string[] }) {
+  const result = await api.createPropertyGroup(data)
+  if (result.success) {
+    await globalMutate('/property-groups')
+  }
+  return result
+}
+
+export async function updatePropertyGroup(id: string, data: { name?: string; description?: string; propertyIds?: string[] }) {
+  const result = await api.updatePropertyGroup(id, data)
+  if (result.success) {
+    await globalMutate('/property-groups')
+  }
+  return result
+}
+
+export async function deletePropertyGroup(id: string) {
+  const result = await api.deletePropertyGroup(id)
+  if (result.success) {
+    await globalMutate('/property-groups')
+  }
+  return result
+}
+
 export function useWebhookHealth() {
   return useSWR<WebhookHealthResponse>('webhook-health', async () => {
     const result = await api.request<WebhookHealthResponse>('/webhooks/health')

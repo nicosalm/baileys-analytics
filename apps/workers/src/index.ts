@@ -24,6 +24,7 @@ import { seasonalAnalysis } from './routes/seasonal-analysis';
 import { seasons } from './routes/seasons';
 import { goals } from './routes/goals';
 import { tags } from './routes/tags';
+import { propertyGroups } from './routes/property-groups';
 import { tax } from './routes/tax';
 import { platformFees as platformFeesRoute } from './routes/platform-fees';
 import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses'
@@ -444,6 +445,7 @@ app.route('/api/seasonal-analysis', seasonalAnalysis);
 app.route('/api/seasons', seasons);
 app.route('/api/goals', goals);
 app.route('/api/tags', tags);
+app.route('/api/property-groups', propertyGroups);
 app.route('/api/tax', tax);
 app.route('/api/platform-fees', platformFeesRoute);
 app.route('/api/operating-expenses', operatingExpensesRoute);

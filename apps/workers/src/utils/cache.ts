@@ -33,6 +33,7 @@ const CONFIG_VIEW_DEPS: Record<string, string[]> = {
 	operatingExpenses: ['financial', 'properties', 'overview'],
 	platformFees: ['financial', 'overview'],
 	tags: BOOKING_VIEWS,
+	propertyGroups: [],
 };
 
 export async function invalidateDashboardCache(

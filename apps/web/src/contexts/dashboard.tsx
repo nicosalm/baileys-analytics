@@ -17,6 +17,7 @@ type DashboardContextValue = {
   toggleTag: (tag: Tag) => void
   clearTags: () => void
   toggleProperty: (propertyId: string) => void
+  applyGroupSelection: (propertyIds: string[], action: 'add' | 'remove') => void
   clearFilters: () => void
   getShareableUrl: () => string
 }
@@ -268,6 +269,21 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     }))
   }, [])
 
+  const applyGroupSelection = useCallback(
+    (propertyIds: string[], action: 'add' | 'remove') => {
+      setFilters(prev => {
+        const current = new Set(prev.selectedProperties)
+        if (action === 'add') {
+          propertyIds.forEach(id => current.add(id))
+        } else {
+          propertyIds.forEach(id => current.delete(id))
+        }
+        return { ...prev, selectedProperties: Array.from(current) }
+      })
+    },
+    []
+  )
+
   const clearFilters = useCallback(() => {
     setFilters(prev => ({
       ...prev,
@@ -298,6 +314,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
       toggleTag,
       clearTags,
       toggleProperty,
+      applyGroupSelection,
       clearFilters,
       getShareableUrl
     }}>

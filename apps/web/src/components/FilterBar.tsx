@@ -1,9 +1,10 @@
-import React, { memo, useState, useEffect } from 'react'
+import React, { memo, useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { SmartPeriodSelector } from './SmartPeriodSelector'
 import { useDashboard } from '@/contexts/dashboard'
-import { useTags, useProperties } from '@/hooks/use-api'
-import { Filter, X, ChevronDown, ChevronRight, Home } from 'lucide-react'
+import { useTags, useProperties, usePropertyGroups } from '@/hooks/use-api'
+import type { PropertyGroup } from '@/hooks/use-api'
+import { Filter, X, ChevronDown, ChevronRight, Home, Layers } from 'lucide-react'
 import { cn } from '@baileys/utils'
 import { getTagColor } from '@/lib/theme'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
@@ -64,6 +65,50 @@ const PropertyButton = memo(({ property, isSelected, onToggle }: PropertyButtonP
 ))
 
 PropertyButton.displayName = 'PropertyButton'
+
+type GroupSelectionState = 'all' | 'partial' | 'none'
+
+interface GroupButtonProps {
+  group: PropertyGroup
+  selectionState: GroupSelectionState
+  selectedCount: number
+  onToggle: () => void
+  onHoverStart: () => void
+  onHoverEnd: () => void
+}
+
+const GroupButton = memo(({ group, selectionState, selectedCount, onToggle, onHoverStart, onHoverEnd }: GroupButtonProps) => (
+  <Button
+    variant="ghost"
+    onClick={onToggle}
+    onMouseEnter={onHoverStart}
+    onMouseLeave={onHoverEnd}
+    className={cn(
+      "w-full justify-start px-3 py-2 h-auto text-sm",
+      selectionState !== 'none'
+        ? "bg-primary/10 text-primary font-medium"
+        : "text-foreground"
+    )}
+  >
+    <div className="flex items-center gap-2 w-full">
+      <div
+        className={cn(
+          "w-3 h-3 rounded-sm flex-shrink-0 border transition-colors",
+          selectionState === 'all' && "bg-primary border-primary",
+          selectionState === 'partial' && "bg-primary/50 border-primary",
+          selectionState === 'none' && "border-border"
+        )}
+      />
+      <Layers className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
+      <span className="flex-1 text-left truncate">{group.name}</span>
+      <span className="text-xs text-muted-foreground tabular-nums">
+        {selectedCount}/{group.propertyIds.length}
+      </span>
+    </div>
+  </Button>
+))
+
+GroupButton.displayName = 'GroupButton'
 
 const ActiveFilterPills: React.FC<{
   filters: ReturnType<typeof useDashboard>['filters']
@@ -260,14 +305,35 @@ export const FilterBar: React.FC = () => {
     updateDateRange,
     toggleTag,
     toggleProperty,
+    applyGroupSelection,
     clearFilters
   } = useDashboard()
 
   const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
   const { data: availableProperties = [], isLoading: isPropertiesLoading } = useProperties()
+  const { data: availableGroups = [] } = usePropertyGroups()
 
   const [tagsOpen, setTagsOpen] = useState(false)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
+  const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
+
+  const hoveredGroup = useMemo(
+    () => hoveredGroupId ? availableGroups.find(g => g.id === hoveredGroupId) : null,
+    [hoveredGroupId, availableGroups]
+  )
+
+  const groupSelections = useMemo(() => {
+    const selected = new Set(filters.selectedProperties)
+    return availableGroups.map(group => {
+      const count = group.propertyIds.filter(id => selected.has(id)).length
+      const state: GroupSelectionState =
+        count === 0 ? 'none' :
+        count === group.propertyIds.length ? 'all' : 'partial'
+      return { groupId: group.id, state, count }
+    })
+  }, [availableGroups, filters.selectedProperties])
+
+  const hasGroups = availableGroups.length > 0
 
   // close popovers on scroll to prevent overlap with sticky header
   useEffect(() => {
@@ -291,7 +357,10 @@ export const FilterBar: React.FC = () => {
               comparisonRange={comparisonRange}
             />
 
-            <Popover open={propertiesOpen} onOpenChange={setPropertiesOpen}>
+            <Popover open={propertiesOpen} onOpenChange={(open) => {
+              setPropertiesOpen(open)
+              if (!open) setHoveredGroupId(null)
+            }}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -310,11 +379,61 @@ export const FilterBar: React.FC = () => {
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3">
+              <PopoverContent
+                align="start"
+                className={hasGroups ? "w-[440px] p-0" : "min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3"}
+              >
                 {isPropertiesLoading ? (
-                  <div className="text-center py-4 text-muted-foreground">Loading properties...</div>
+                  <div className={cn("text-center py-4 text-muted-foreground", hasGroups && "p-2")}>Loading properties...</div>
                 ) : availableProperties.length === 0 ? (
-                  <div className="text-center py-4 text-muted-foreground">No properties available</div>
+                  <div className={cn("text-center py-4 text-muted-foreground", hasGroups && "p-2")}>No properties available</div>
+                ) : hasGroups ? (
+                  <div className="flex divide-x divide-border">
+                    <div className="w-[45%] p-2 overflow-y-auto max-h-[340px]">
+                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 pb-1">Groups</div>
+                      <div className="space-y-1">
+                        {availableGroups.map((group) => {
+                          const sel = groupSelections.find(s => s.groupId === group.id)
+                          return (
+                            <GroupButton
+                              key={group.id}
+                              group={group}
+                              selectionState={sel?.state || 'none'}
+                              selectedCount={sel?.count || 0}
+                              onToggle={() => {
+                                const action = sel?.state === 'all' ? 'remove' : 'add'
+                                applyGroupSelection(group.propertyIds, action)
+                              }}
+                              onHoverStart={() => setHoveredGroupId(group.id)}
+                              onHoverEnd={() => setHoveredGroupId(null)}
+                            />
+                          )
+                        })}
+                      </div>
+                    </div>
+                    <div className="flex-1 p-2 overflow-y-auto max-h-[340px]">
+                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 pb-1">Properties</div>
+                      <div className="space-y-1">
+                        {availableProperties.map((property) => (
+                          <div
+                            key={property.id}
+                            className={cn(
+                              "transition-opacity duration-150",
+                              hoveredGroup && !hoveredGroup.propertyIds.includes(property.id)
+                                ? "opacity-30"
+                                : "opacity-100"
+                            )}
+                          >
+                            <PropertyButton
+                              property={property}
+                              isSelected={filters.selectedProperties.includes(property.id)}
+                              onToggle={toggleProperty}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="space-y-1">
                     {availableProperties.map((property) => (

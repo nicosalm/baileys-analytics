@@ -7,6 +7,7 @@ import type {
   ExpenseTemplateRow,
   OperatingExpenseRow,
   PropertyTaxConfigRow,
+  PropertyGroup,
   SaveExpenseTemplatesData,
   SaveOperatingExpenseData,
   SaveOperatingExpensesBulkData,
@@ -212,6 +213,30 @@ class ApiClient {
         return this.request(`/seasons/${id}`, {
             method: 'PATCH',
             body: JSON.stringify({ isActive })
+        })
+    }
+
+    async getPropertyGroups(): Promise<ApiResult<PropertyGroup[]>> {
+        return this.request('/property-groups')
+    }
+
+    async createPropertyGroup(data: { name: string; description?: string; propertyIds: string[] }): Promise<ApiResult<PropertyGroup>> {
+        return this.request('/property-groups', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async updatePropertyGroup(id: string, data: { name?: string; description?: string; propertyIds?: string[] }): Promise<ApiResult<PropertyGroup>> {
+        return this.request(`/property-groups/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        })
+    }
+
+    async deletePropertyGroup(id: string): Promise<ApiResult<void>> {
+        return this.request(`/property-groups/${id}`, {
+            method: 'DELETE'
         })
     }
 
