@@ -99,9 +99,16 @@ export const OccupancyDashboard = () => {
   const timeSeriesData = currentData?.byMonth || []
   const dataGranularity = detectGranularity(timeSeriesData, 'month')
 
+  const prevByMonthMap = useMemo(() => {
+    const map = new Map<string, OccupancyTrendData>()
+    for (const pd of (previousData?.byMonth ?? []) as OccupancyTrendData[]) {
+      map.set(pd.month, pd)
+    }
+    return map
+  }, [previousData?.byMonth])
+
   const chartData = useMemo(() => timeSeriesData.map((dataPoint: OccupancyTrendData, index: number) => {
-    const prevDataPoint = previousData?.byMonth?.find((pd: OccupancyTrendData) => pd.month === dataPoint.month) ||
-                         (previousData?.byMonth?.[index])
+    const prevDataPoint = prevByMonthMap.get(dataPoint.month) || (previousData?.byMonth?.[index])
 
     let label: string
     if (dataGranularity === 'Daily') {
@@ -132,7 +139,7 @@ export const OccupancyDashboard = () => {
       bookedNights: dataPoint.bookedNights,
       availableNights: dataPoint.availableNights
     }
-  }), [timeSeriesData, previousData?.byMonth, dataGranularity])
+  }), [timeSeriesData, prevByMonthMap, previousData?.byMonth, dataGranularity])
 
   const sortedProperties = useMemo(() =>
     (currentData?.byProperty || [])
@@ -141,6 +148,14 @@ export const OccupancyDashboard = () => {
       .slice(0, 10),
     [currentData?.byProperty]
   )
+
+  const prevByPropertyMap = useMemo(() => {
+    const map = new Map<string, OccupancyByProperty>()
+    for (const p of (previousData?.byProperty ?? []) as OccupancyByProperty[]) {
+      map.set(p.propertyId, p)
+    }
+    return map
+  }, [previousData?.byProperty])
 
   const formatPeriodDisplay = useCallback((dateStr: string): string => {
     if (!dateStr) return 'N/A'
@@ -495,7 +510,7 @@ export const OccupancyDashboard = () => {
             {sortedProperties.length > 0 ? (
               sortedProperties.map((property: OccupancyByProperty) => {
                 const occupancyPercent = property.rate * 100
-                const prevProperty = previousData?.byProperty?.find((p: OccupancyByProperty) => p.propertyId === property.propertyId)
+                const prevProperty = prevByPropertyMap.get(property.propertyId)
                 const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
 
                 return (

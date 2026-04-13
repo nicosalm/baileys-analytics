@@ -70,17 +70,17 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
   const normalizedValue = ((safeValue - min) / safeDivisor) * 100
   const clampedValue = Math.min(Math.max(normalizedValue, 0), 100)
 
-  // Calculate which sector is active (the one the needle points to)
-  const activeSectorIndex = colorData.findIndex((_, index, arr) => {
-    const curMax = [...arr]
-      .slice(0, index + 1)
-      .reduce((a, b) => ({ value: a.value + b.value }), { value: 0 })
-      .value
-    const curMin = index > 0 
-      ? [...arr].slice(0, index).reduce((a, b) => ({ value: a.value + b.value }), { value: 0 }).value
-      : 0
-    return (clampedValue > curMin) && (clampedValue <= curMax)
-  })
+  // calculate which sector is active (the one the needle points to)
+  let activeSectorIndex = -1
+  let cumulative = 0
+  for (let i = 0; i < colorData.length; i++) {
+    const prevCumulative = cumulative
+    cumulative += colorData[i].value
+    if (clampedValue > prevCumulative && clampedValue <= cumulative) {
+      activeSectorIndex = i
+      break
+    }
+  }
 
   const cx = width / 2
   const cy = height - 20

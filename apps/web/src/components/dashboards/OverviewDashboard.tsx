@@ -372,6 +372,7 @@ export const OverviewDashboard = () => {
       .slice(0, MAX_INDIVIDUAL_PROPERTIES)
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
+    const topPropsIndexMap = new Map<string, number>(topProps.map((p: TopProperty, i: number) => [p.name, i]))
 
     if (!charts.revenueLastWeek || charts.revenueLastWeek.length === 0) {
       return []
@@ -416,7 +417,7 @@ export const OverviewDashboard = () => {
           }
         }
 
-        const topIndex = topProps.findIndex((p: TopProperty) => p.name === propName)
+        const topIndex = propName != null ? (topPropsIndexMap.get(propName) ?? -1) : -1
         if (topIndex >= 0 && topIndex < MAX_INDIVIDUAL_PROPERTIES) {
           dataByDate[dateKey][`prop${topIndex + 1}`] = (Number(dataByDate[dateKey][`prop${topIndex + 1}`]) || 0) + (item.revenue || 0)
         } else if (propName) {

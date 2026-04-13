@@ -74,6 +74,16 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
     })
   }, [openModal])
 
+  const profitabilityMap = useMemo(() =>
+    new Map(profitability?.map(p => [p.propertyId, p]) ?? []),
+    [profitability]
+  )
+
+  const previousMap = useMemo(() =>
+    new Map(previousProperties?.map(p => [p.propertyId, p]) ?? []),
+    [previousProperties]
+  )
+
   const sortedProperties = useMemo(() => {
     const sorted = [...properties].sort((a, b) => {
       let aValue: string | number, bValue: string | number
@@ -99,18 +109,20 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
           aValue = a.revenue / Math.max(a.availableNights, 1)
           bValue = b.revenue / Math.max(b.availableNights, 1)
           break
-        case 'margin':
-          const aProf = profitability?.find(p => p.propertyId === a.propertyId)
-          const bProf = profitability?.find(p => p.propertyId === b.propertyId)
+        case 'margin': {
+          const aProf = profitabilityMap.get(a.propertyId)
+          const bProf = profitabilityMap.get(b.propertyId)
           aValue = aProf && aProf.grossRevenue > 0 ? (aProf.netRevenue / aProf.grossRevenue) * 100 : 0
           bValue = bProf && bProf.grossRevenue > 0 ? (bProf.netRevenue / bProf.grossRevenue) * 100 : 0
           break
-        case 'trend':
-          const aPrev = previousProperties?.find(p => p.propertyId === a.propertyId)
-          const bPrev = previousProperties?.find(p => p.propertyId === b.propertyId)
+        }
+        case 'trend': {
+          const aPrev = previousMap.get(a.propertyId)
+          const bPrev = previousMap.get(b.propertyId)
           aValue = getTrend(a.revenue, aPrev?.revenue)
           bValue = getTrend(b.revenue, bPrev?.revenue)
           break
+        }
         default:
           return 0
       }
@@ -123,7 +135,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
     })
 
     return sorted
-  }, [properties, previousProperties, sortField, sortDirection])
+  }, [properties, profitabilityMap, previousMap, sortField, sortDirection])
 
   const totalPages = Math.ceil(sortedProperties.length / PAGE_SIZE)
   const paginatedProperties = sortedProperties.slice(
@@ -208,7 +220,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
           </thead>
           <tbody className="bg-card divide-y divide-border">
             {paginatedProperties.map((property) => {
-              const previousProperty = previousProperties?.find(p => p.propertyId === property.propertyId)
+              const previousProperty = previousMap.get(property.propertyId)
               const trend = getTrend(property.revenue, previousProperty?.revenue)
               const isPositive = trend > 0
 
@@ -239,7 +251,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                     )}
                   </td>
                   {profitability && profitability.length > 0 && (() => {
-                    const prof = profitability.find(p => p.propertyId === property.propertyId)
+                    const prof = profitabilityMap.get(property.propertyId)
                     const margin = prof && prof.grossRevenue > 0 ? (prof.netRevenue / prof.grossRevenue) * 100 : 0
                     return (
                       <td className="px-6 py-4 whitespace-nowrap">

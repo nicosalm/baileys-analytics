@@ -126,6 +126,11 @@ export const PropertiesDashboard = () => {
       .map(([name]) => name)
   }, [platformMix])
 
+  const previousPropertiesMap = useMemo(() =>
+    new Map(previousProperties?.map(p => [p.propertyId, p]) ?? []),
+    [previousProperties]
+  )
+
   // memoized view toggle handlers
   const handleViewCards = useCallback(() => setViewMode('cards'), [])
   const handleViewTable = useCallback(() => setViewMode('table'), [])
@@ -342,7 +347,7 @@ export const PropertiesDashboard = () => {
               {validProperties
                 .slice((cardsPage - 1) * CARDS_PAGE_SIZE, cardsPage * CARDS_PAGE_SIZE)
                 .map((property: PropertyMetrics) => {
-                  const previousProperty = previousProperties?.find((p: PropertyMetrics) => p.propertyId === property.propertyId)
+                  const previousProperty = previousPropertiesMap.get(property.propertyId)
                   return (
                     <PropertyCard
                       key={property.propertyId}
