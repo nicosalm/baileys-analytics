@@ -29,7 +29,7 @@ export const TIERS: readonly Tier[] = [
     yearlyPriceCents: 19900,
     features: [
       '4 years of OwnerRez history, synced automatically',
-      '5 dashboards, filter by date, property, or tag',
+      '5 dashboards, filter by property, tag, or custom group',
       'Pacing, ADR, occupancy heatmap & gap alerts',
       'P&L by property, revenue goals & RevPAN calculator',
       'Click into any month, property, or guest',
@@ -47,7 +47,7 @@ export const TIERS: readonly Tier[] = [
     yearlyPriceCents: 39900,
     features: [
       '4 years of OwnerRez history, synced automatically',
-      '5 dashboards, filter by date, property, or tag',
+      '5 dashboards, filter by property, tag, or custom group',
       'Pacing, ADR, occupancy heatmap & gap alerts',
       'P&L by property, revenue goals & RevPAN calculator',
       'Click into any month, property, or guest',
@@ -65,7 +65,7 @@ export const TIERS: readonly Tier[] = [
     yearlyPriceCents: 79900,
     features: [
       '4 years of OwnerRez history, synced automatically',
-      '5 dashboards, filter by date, property, or tag',
+      '5 dashboards, filter by property, tag, or custom group',
       'Pacing, ADR, occupancy heatmap & gap alerts',
       'P&L by property, revenue goals & RevPAN calculator',
       'Click into any month, property, or guest',

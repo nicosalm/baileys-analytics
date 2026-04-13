@@ -265,10 +265,10 @@ export const Landing = () => {
             Already tracking
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-            <StatItem target={15} prefix="$" suffix="M+" label="in bookings" delay={0} inView={stats.isInView} />
-            <StatItem target={22} suffix="K+" label="reservations" delay={120} inView={stats.isInView} />
-            <StatItem target={43} suffix="K+" label="nights analyzed" delay={240} inView={stats.isInView} />
-            <StatItem target={74} label="properties" delay={360} inView={stats.isInView} />
+            <StatItem target={17} prefix="$" suffix="M+" label="in bookings" delay={0} inView={stats.isInView} />
+            <StatItem target={26} suffix="K+" label="reservations" delay={120} inView={stats.isInView} />
+            <StatItem target={53} suffix="K+" label="nights analyzed" delay={240} inView={stats.isInView} />
+            <StatItem target={85} label="properties" delay={360} inView={stats.isInView} />
           </div>
         </div>
       </section>
@@ -330,7 +330,7 @@ export const Landing = () => {
                 Find your best and worst performers
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                Rank every property by ADR, RevPAN, occupancy, or profit. Compare them side by side and know which ones are pulling their weight.
+                Rank every property by ADR, RevPAN, occupancy, or profit. Organize large portfolios into custom property groups, then compare performance across them.
               </p>
             </div>
           </div>
