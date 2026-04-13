@@ -202,10 +202,11 @@ export const PLView: React.FC<PLViewProps> = ({
       percentage: grossRevenue > 0 ? (p.grossRevenue / grossRevenue) * 100 : 0
     })) || []
     
+    const prevTrendMap = new Map(
+      (previousPeriod?.monthlyTrend as MonthlyTrendEntry[] | undefined)?.map(pm => [pm.month, pm]) ?? []
+    )
     const monthlyData = monthlyTrend?.map((m: MonthlyTrendEntry, index: number) => {
-      // Find matching previous period data
-      const prevData = previousPeriod?.monthlyTrend?.find((pm: MonthlyTrendEntry) => pm.month === m.month) ||
-                      previousPeriod?.monthlyTrend?.[index]
+      const prevData = prevTrendMap.get(m.month) || previousPeriod?.monthlyTrend?.[index]
       
       const monthRevenue = m.revenue || 0
       const monthFees = m.hostFees ?? (monthRevenue * (hostFees / Math.max(grossRevenue, 1)))

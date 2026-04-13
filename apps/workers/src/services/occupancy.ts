@@ -305,7 +305,6 @@ async function fetchDailyOccupancy(
     }
   }
 
-  // iterate days to read from grid
   const dailyOccupancy: DailyOccupancy[] = [];
   for (let epoch = startEpoch; epoch <= endEpoch; epoch++) {
     const d = new Date(epoch * MS_PER_DAY);

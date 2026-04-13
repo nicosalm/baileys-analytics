@@ -313,6 +313,9 @@ export async function getPacingData(
 			const priorPt = priorPtByProp.get(p.id) || emptyBucket;
 			const priorFin = priorFinByProp.get(p.id) || emptyBucket;
 			const propAvail = Math.max(0, tm.days - (blockedByProp.get(p.id) || 0));
+			const priorPropAvail = tm.priorDays; // no prior-year block data
+			const curPropOcc = propAvail > 0 ? curr.nights / propAvail : 0;
+			const priorPtPropOcc = priorPropAvail > 0 ? priorPt.nights / priorPropAvail : 0;
 			return {
 				propertyId: p.id,
 				propertyName: p.name,
@@ -324,7 +327,7 @@ export async function getPacingData(
 				priorNightsFinal: priorFin.nights,
 				priorRevenueFinal: priorFin.revenue,
 				availableNights: propAvail,
-				paceDelta: propAvail > 0 ? ((curr.nights / propAvail) - (priorPt.nights / propAvail)) * 100 : 0,
+				paceDelta: (curPropOcc - priorPtPropOcc) * 100,
 			};
 		}).sort((a, b) => a.paceDelta - b.paceDelta); // worst-pacing first
 

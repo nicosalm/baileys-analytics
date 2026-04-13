@@ -70,7 +70,7 @@ export const GaugeChart: React.FC<GaugeChartProps> = ({
   const normalizedValue = ((safeValue - min) / safeDivisor) * 100
   const clampedValue = Math.min(Math.max(normalizedValue, 0), 100)
 
-  // calculate which sector is active (the one the needle points to)
+  // calculate which sector the needle points to
   let activeSectorIndex = -1
   let cumulative = 0
   for (let i = 0; i < colorData.length; i++) {

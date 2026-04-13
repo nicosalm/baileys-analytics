@@ -127,21 +127,23 @@ export function useMultiSeriesData(
     
     const { fillMissing = false, defaultValue = 0 } = options
     
-    // Get all unique x values
+    // index each series by x for O(1) lookup
     const allXValues = new Set<string | number>()
-    series.forEach(s => {
-      s.data.forEach(point => allXValues.add(point.x))
+    const seriesIndexes = series.map(s => {
+      const index = new Map<string | number, number>()
+      for (const point of s.data) {
+        allXValues.add(point.x)
+        index.set(point.x, point.y)
+      }
+      return { label: s.label, index }
     })
-    
-    // Build chart data
+
     const chartData = Array.from(allXValues).sort().map(x => {
       const dataPoint: Record<string, string | number | undefined> = { x }
-      
-      series.forEach(s => {
-        const point = s.data.find(p => p.x === x)
-        dataPoint[s.label] = point ? point.y : (fillMissing ? defaultValue : undefined)
-      })
-      
+      for (const s of seriesIndexes) {
+        const y = s.index.get(x)
+        dataPoint[s.label] = y !== undefined ? y : (fillMissing ? defaultValue : undefined)
+      }
       return dataPoint
     })
     

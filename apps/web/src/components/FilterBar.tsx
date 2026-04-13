@@ -118,12 +118,13 @@ const ActiveFilterPills: React.FC<{
   clearFilters: () => void
 }> = ({ filters, availableProperties, toggleTag, toggleProperty, clearFilters }) => {
   const hasActiveFilters = filters.selectedTags.length > 0 || filters.selectedProperties.length > 0
+  const propertyById = useMemo(() => new Map(availableProperties.map(p => [p.id, p])), [availableProperties])
   if (!hasActiveFilters) return null
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {filters.selectedProperties.map((propertyId) => {
-        const property = availableProperties.find((p) => p.id === propertyId)
+        const property = propertyById.get(propertyId)
         return (
           <span
             key={propertyId}
@@ -215,6 +216,7 @@ export const MobileFilterControls: React.FC = () => {
 
   const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
   const { data: availableProperties = [], isLoading: isPropertiesLoading } = useProperties()
+  const mobileSelectedSet = useMemo(() => new Set(filters.selectedProperties), [filters.selectedProperties])
   const hasActiveFilters = filters.selectedTags.length > 0 || filters.selectedProperties.length > 0
 
   return (
@@ -239,7 +241,7 @@ export const MobileFilterControls: React.FC = () => {
               <PropertyButton
                 key={property.id}
                 property={property}
-                isSelected={filters.selectedProperties.includes(property.id)}
+                isSelected={mobileSelectedSet.has(property.id)}
                 onToggle={toggleProperty}
               />
             ))}
@@ -317,9 +319,16 @@ export const FilterBar: React.FC = () => {
   const [propertiesOpen, setPropertiesOpen] = useState(false)
   const [hoveredGroupId, setHoveredGroupId] = useState<string | null>(null)
 
+  const selectedPropertySet = useMemo(() => new Set(filters.selectedProperties), [filters.selectedProperties])
+
   const hoveredGroup = useMemo(
     () => hoveredGroupId ? availableGroups.find(g => g.id === hoveredGroupId) : null,
     [hoveredGroupId, availableGroups]
+  )
+
+  const hoveredPropertySet = useMemo(
+    () => hoveredGroup ? new Set(hoveredGroup.propertyIds) : null,
+    [hoveredGroup]
   )
 
   const groupSelections = useMemo(() => {
@@ -419,14 +428,14 @@ export const FilterBar: React.FC = () => {
                             key={property.id}
                             className={cn(
                               "transition-opacity duration-150",
-                              hoveredGroup && !hoveredGroup.propertyIds.includes(property.id)
+                              hoveredPropertySet && !hoveredPropertySet.has(property.id)
                                 ? "opacity-30"
                                 : "opacity-100"
                             )}
                           >
                             <PropertyButton
                               property={property}
-                              isSelected={filters.selectedProperties.includes(property.id)}
+                              isSelected={selectedPropertySet.has(property.id)}
                               onToggle={toggleProperty}
                             />
                           </div>
@@ -440,7 +449,7 @@ export const FilterBar: React.FC = () => {
                       <PropertyButton
                         key={property.id}
                         property={property}
-                        isSelected={filters.selectedProperties.includes(property.id)}
+                        isSelected={selectedPropertySet.has(property.id)}
                         onToggle={toggleProperty}
                       />
                     ))}

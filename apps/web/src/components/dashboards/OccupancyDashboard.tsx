@@ -99,13 +99,10 @@ export const OccupancyDashboard = () => {
   const timeSeriesData = currentData?.byMonth || []
   const dataGranularity = detectGranularity(timeSeriesData, 'month')
 
-  const prevByMonthMap = useMemo(() => {
-    const map = new Map<string, OccupancyTrendData>()
-    for (const pd of (previousData?.byMonth ?? []) as OccupancyTrendData[]) {
-      map.set(pd.month, pd)
-    }
-    return map
-  }, [previousData?.byMonth])
+  const prevByMonthMap = useMemo(() =>
+    new Map((previousData?.byMonth as OccupancyTrendData[] ?? []).map(pd => [pd.month, pd])),
+    [previousData?.byMonth]
+  )
 
   const chartData = useMemo(() => timeSeriesData.map((dataPoint: OccupancyTrendData, index: number) => {
     const prevDataPoint = prevByMonthMap.get(dataPoint.month) || (previousData?.byMonth?.[index])
@@ -139,7 +136,7 @@ export const OccupancyDashboard = () => {
       bookedNights: dataPoint.bookedNights,
       availableNights: dataPoint.availableNights
     }
-  }), [timeSeriesData, prevByMonthMap, previousData?.byMonth, dataGranularity])
+  }), [timeSeriesData, prevByMonthMap, dataGranularity])
 
   const sortedProperties = useMemo(() =>
     (currentData?.byProperty || [])
@@ -149,13 +146,10 @@ export const OccupancyDashboard = () => {
     [currentData?.byProperty]
   )
 
-  const prevByPropertyMap = useMemo(() => {
-    const map = new Map<string, OccupancyByProperty>()
-    for (const p of (previousData?.byProperty ?? []) as OccupancyByProperty[]) {
-      map.set(p.propertyId, p)
-    }
-    return map
-  }, [previousData?.byProperty])
+  const prevByPropertyMap = useMemo(() =>
+    new Map((previousData?.byProperty as OccupancyByProperty[] ?? []).map(p => [p.propertyId, p])),
+    [previousData?.byProperty]
+  )
 
   const formatPeriodDisplay = useCallback((dateStr: string): string => {
     if (!dateStr) return 'N/A'
