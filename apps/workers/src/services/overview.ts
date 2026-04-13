@@ -1,9 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
+import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
-import { warnIfTruncated } from '../utils/truncation-warn';
 
 async function fetchBookings(
 	supabase: SupabaseClient,
@@ -13,31 +12,25 @@ async function fetchBookings(
 	tagIds: string[] = [],
 	filterPropertyIds: string[] = []
 ) {
-	let query = supabase
-		.from('bookings')
-		.select('id, total_amount, arrival, departure, ownerrez_guest_id, guest_name, platform, property_id, host_service_fee, guest_listing_site_fee')
-		.eq('tenant_id', tenantId)
-		.lte('arrival', to)
-		.gte('departure', from)
-		.neq('status', 'canceled')
-		.limit(SUPABASE_MAX_ROWS);
-
-	if (filterPropertyIds.length > 0) {
-		query = query.in('property_id', filterPropertyIds);
-	}
-
+	let matchedBookingIds: string[] | null = null;
 	if (tagIds.length > 0) {
-		const matchedIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-		if (matchedIds) {
-			query = query.in('id', matchedIds);
-		} else {
-			return [];
-		}
+		matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+		if (!matchedBookingIds) return [];
 	}
 
-	const { data } = await query;
-	warnIfTruncated(data, { service: 'overview', query: 'fetchBookings', tenantId, from, to });
-	return data || [];
+	return fetchAllRows(() => {
+		let q = supabase
+			.from('bookings')
+			.select('id, total_amount, arrival, departure, ownerrez_guest_id, guest_name, platform, property_id, host_service_fee, guest_listing_site_fee')
+			.eq('tenant_id', tenantId)
+			.lte('arrival', to)
+			.gte('departure', from)
+			.neq('status', 'canceled')
+			.order('id');
+		if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+		if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+		return q;
+	});
 }
 
 export async function getOverviewData(
@@ -64,10 +57,12 @@ export async function getOverviewData(
 
 	const sharedProperties = properties || [];
 
-	const currentBookings = await fetchBookings(supabase, tenantId, from, to, tagIds, filterPropertyIds);
-	const comparisonBookings = comparisonFrom && comparisonTo
-		? await fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds, filterPropertyIds)
-		: null;
+	const [currentBookings, comparisonBookings] = await Promise.all([
+		fetchBookings(supabase, tenantId, from, to, tagIds, filterPropertyIds),
+		comparisonFrom && comparisonTo
+			? fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds, filterPropertyIds)
+			: null
+	]);
 
 	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([
 		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties, tagIds),
@@ -151,13 +146,14 @@ async function getCurrentPeriodMetrics(
 	const bookingIds = bookings.map(b => b.id);
 	let taxes = 0;
 	if (bookingIds.length > 0) {
-		const { data: taxCharges } = await supabase
-			.from('booking_charges')
-			.select('amount')
-			.in('booking_id', bookingIds)
-			.eq('type', 'tax')
-			.limit(SUPABASE_MAX_ROWS);
-		taxes = (taxCharges || []).reduce((sum: number, c: any) => sum + (parseFloat(c.amount) || 0), 0);
+		const taxCharges = await fetchChunked(bookingIds, ids =>
+			supabase
+				.from('booking_charges')
+				.select('amount')
+				.in('booking_id', ids)
+				.eq('type', 'tax')
+		);
+		taxes = taxCharges.reduce((sum: number, c: any) => sum + (parseFloat(c.amount) || 0), 0);
 	}
 
 	// fetch operating expenses
@@ -463,14 +459,16 @@ async function getAlerts(
 
 	const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 	
-	const { data: upcomingBookings } = await supabase
-		.from('bookings')
-		.select('arrival, departure')
-		.eq('tenant_id', tenantId)
-		.gte('arrival', today.toISOString().split('T')[0])
-		.lte('arrival', thirtyDaysFromNow.toISOString().split('T')[0])
-		.neq('status', 'canceled')
-		.limit(SUPABASE_MAX_ROWS);
+	const upcomingBookings = await fetchAllRows(() =>
+		supabase
+			.from('bookings')
+			.select('arrival, departure')
+			.eq('tenant_id', tenantId)
+			.gte('arrival', today.toISOString().split('T')[0])
+			.lte('arrival', thirtyDaysFromNow.toISOString().split('T')[0])
+			.neq('status', 'canceled')
+			.order('id')
+	);
 
 	const { count: propertyCount } = await supabase
 		.from('properties')
@@ -482,7 +480,7 @@ async function getAlerts(
 		const totalPossibleNights = 30 * propertyCount;
 		let bookedNights = 0;
 		
-		upcomingBookings?.forEach(b => {
+		upcomingBookings.forEach(b => {
 			const nights = Math.ceil(
 				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
 			);

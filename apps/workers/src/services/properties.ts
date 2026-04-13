@@ -1,9 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
+import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
-import { warnIfTruncated } from '../utils/truncation-warn';
 
 export interface PropertyMetrics {
   propertyId: string;
@@ -356,23 +355,19 @@ async function fetchBookings(
   propertyIds: string[],
   tagBookingIds: string[] | null
 ): Promise<BookingRow[]> {
-  let query = supabase
-    .from('bookings')
-    .select('id, property_id, arrival, departure, total_amount, host_service_fee, guest_listing_site_fee, platform')
-    .eq('tenant_id', tenantId)
-    .in('property_id', propertyIds)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  if (tagBookingIds) {
-    query = query.in('id', tagBookingIds);
-  }
-
-  const { data } = await query;
-  warnIfTruncated(data, { service: 'properties', query: 'fetchBookings', tenantId, from, to });
-  return (data as BookingRow[]) || [];
+  return fetchAllRows(() => {
+    let q = supabase
+      .from('bookings')
+      .select('id, property_id, arrival, departure, total_amount, host_service_fee, guest_listing_site_fee, platform')
+      .eq('tenant_id', tenantId)
+      .in('property_id', propertyIds)
+      .lte('arrival', to)
+      .gte('departure', from)
+      .neq('status', 'canceled')
+      .order('id');
+    if (tagBookingIds) q = q.in('id', tagBookingIds);
+    return q;
+  }) as Promise<BookingRow[]>;
 }
 
 async function fetchFirstBookingDates(
@@ -409,14 +404,15 @@ async function fetchTaxCharges(
   if (bookings.length === 0) return [];
 
   const bookingIds = bookings.map(b => b.id);
-  const { data: charges } = await supabase
-    .from('booking_charges')
-    .select('booking_id, amount')
-    .in('booking_id', bookingIds)
-    .eq('type', 'tax')
-    .limit(SUPABASE_MAX_ROWS);
+  const charges = await fetchChunked(bookingIds, ids =>
+    supabase
+      .from('booking_charges')
+      .select('booking_id, amount')
+      .in('booking_id', ids)
+      .eq('type', 'tax')
+  );
 
-  return (charges || []).map((c: { booking_id: string; amount: string | number }) => ({
+  return charges.map((c: { booking_id: string; amount: string | number }) => ({
     booking_id: c.booking_id,
     amount: parseFloat(String(c.amount)) || 0
   }));

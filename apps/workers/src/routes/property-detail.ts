@@ -1,9 +1,10 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
-import { SUPABASE_MAX_ROWS, MS_PER_DAY } from '../constants';
+import { MS_PER_DAY } from '../constants';
 import { getExpensesWithTemplateFallback } from '../services/expense-utils';
 import { normalizePlatform } from '../utils/platform';
+import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
@@ -35,62 +36,44 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       return c.json({ error: 'Property not found' }, 404);
     }
     
-    let bookingsQuery = supabase
-      .from('bookings')
-      .select(`
-        id,
-        arrival,
-        departure,
-        total_amount,
-        guest_name,
-        ownerrez_guest_id,
-        status,
-        platform,
-        host_service_fee,
-        guest_listing_site_fee
-      `)
-      .eq('tenant_id', tenantId)
-      .eq('property_id', propertyId)
-      .lte('arrival', to)
-      .gte('departure', from)
-      .neq('status', 'canceled')
-      .order('arrival')
-      .limit(SUPABASE_MAX_ROWS);
-
+    let matchedBookingIds: string[] | null = null;
     if (tags && tags.length > 0) {
-      // route through the shared helper so cross-tenant tag ids are filtered
-      // out before we hit the junction tables
-      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tags);
-      if (matchedBookingIds) {
-        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
-      } else {
-        bookingsQuery = bookingsQuery.in('id', []);
-      }
+      matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tags);
     }
-    
-    const [bookingsResult, expensesList] = await Promise.all([
-      bookingsQuery,
+
+    const [bookings, expensesList] = await Promise.all([
+      fetchAllRows(() => {
+        let q = supabase
+          .from('bookings')
+          .select('id, arrival, departure, total_amount, guest_name, ownerrez_guest_id, status, platform, host_service_fee, guest_listing_site_fee')
+          .eq('tenant_id', tenantId)
+          .eq('property_id', propertyId)
+          .lte('arrival', to)
+          .gte('departure', from)
+          .neq('status', 'canceled')
+          .order('arrival');
+        if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+        else if (tags && tags.length > 0) q = q.in('id', []);
+        return q;
+      }),
       getExpensesWithTemplateFallback(supabase, tenantId, from, to, [propertyId], propertyId)
     ]);
 
-    const { data: bookings, error: bookingsError } = bookingsResult;
-
-    if (bookingsError) throw bookingsError;
-
     const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const totalHostFees = (bookings || []).reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
+    const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
 
-    // Query booking_charges for tax amounts
+    // query booking_charges for tax amounts
     let totalTaxes = 0;
-    if (bookings && bookings.length > 0) {
+    if (bookings.length > 0) {
       const bookingIds = bookings.map(b => b.id);
-      const { data: charges } = await supabase
-        .from('booking_charges')
-        .select('amount')
-        .in('booking_id', bookingIds)
-        .eq('type', 'tax')
-        .limit(SUPABASE_MAX_ROWS);
-      totalTaxes = (charges || []).reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+      const charges = await fetchChunked(bookingIds, ids =>
+        supabase
+          .from('booking_charges')
+          .select('amount')
+          .in('booking_id', ids)
+          .eq('type', 'tax')
+      );
+      totalTaxes = charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
     }
 
     const combinedPlatformFees = totalHostFees;
@@ -106,7 +89,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     const occupiedDays = new Set<string>();
     const monthOccupiedDays = new Map<string, Set<string>>();
 
-    (bookings || []).forEach(booking => {
+    bookings.forEach(booking => {
       totalRevenue += booking.total_amount || 0;
 
       const platform = normalizePlatform(booking.platform);
@@ -174,29 +157,32 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       .sort((a, b) => b.revenue - a.revenue);
     
     const periodGuestKeys = new Set<string>();
-    (bookings || []).forEach(booking => {
+    bookings.forEach(booking => {
       const key = booking.ownerrez_guest_id || booking.guest_name;
       if (key) periodGuestKeys.add(key);
     });
 
     const totalGuests = periodGuestKeys.size;
 
-    const { data: allTimePropertyBookings } = await supabase
-      .from('bookings')
-      .select('ownerrez_guest_id, guest_name')
-      .eq('property_id', propertyId)
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
+    const allTimePropertyBookings = await fetchAllRows(() =>
+      supabase
+        .from('bookings')
+        .select('ownerrez_guest_id, guest_name')
+        .eq('tenant_id', tenantId)
+        .eq('property_id', propertyId)
+        .neq('status', 'canceled')
+        .order('id')
+    );
 
     const allTimeCountMap = new Map<string, number>();
-    (allTimePropertyBookings || []).forEach(b => {
+    allTimePropertyBookings.forEach(b => {
       const key = b.ownerrez_guest_id || b.guest_name;
       if (key) allTimeCountMap.set(key, (allTimeCountMap.get(key) || 0) + 1);
     });
 
     const repeatGuests = Array.from(periodGuestKeys).filter(key => (allTimeCountMap.get(key) || 0) > 1).length;
     
-    const recentBookings = (bookings || [])
+    const recentBookings = bookings
       .slice(0, 10)
       .map(booking => {
         const guestId = booking.ownerrez_guest_id

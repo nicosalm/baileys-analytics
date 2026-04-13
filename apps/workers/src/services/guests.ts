@@ -1,8 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_MAX_ROWS } from '../constants';
 import { normalizePlatform } from '../utils/platform';
+import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
-import { warnIfTruncated } from '../utils/truncation-warn';
 
 export interface CancelledBooking {
   id: string;
@@ -153,23 +152,6 @@ export async function getGuestsData(
   const hasTagFilter = tagIds && tagIds.length > 0;
   const hasPropertyFilter = filterPropertyIds && filterPropertyIds.length > 0;
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('id, guest_name, ownerrez_guest_id, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee, guests(email, phone)')
-    .eq('tenant_id', tenantId)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  if (hasPropertyFilter) {
-    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-  }
-
-  if (hasDateFilter) {
-    bookingsQuery = bookingsQuery
-      .lte('arrival', to)
-      .gte('departure', from);
-  }
-
   let filteredBookingIds: string[] | null = null;
   if (hasTagFilter) {
     filteredBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
@@ -194,10 +176,20 @@ export async function getGuestsData(
     }
   }
 
-  const { data: periodBookings } = await bookingsQuery;
-  warnIfTruncated(periodBookings, { service: 'guests', query: 'periodBookings', tenantId, from, to });
+  const filteredPeriodBookings = await fetchAllRows(() => {
+    let q = supabase
+      .from('bookings')
+      .select('id, guest_name, ownerrez_guest_id, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee, guests(email, phone)')
+      .eq('tenant_id', tenantId)
+      .neq('status', 'canceled')
+      .order('id');
+    if (hasPropertyFilter) q = q.in('property_id', filterPropertyIds!);
+    if (hasDateFilter) q = q.lte('arrival', to!).gte('departure', from!);
+    if (filteredBookingIds) q = q.in('id', filteredBookingIds);
+    return q;
+  });
 
-  if (!periodBookings || periodBookings.length === 0) {
+  if (filteredPeriodBookings.length === 0) {
     return {
       metrics: {
         totalGuests: 0,
@@ -217,17 +209,14 @@ export async function getGuestsData(
     };
   }
 
-  const filteredPeriodBookings = filteredBookingIds
-    ? periodBookings.filter(b => filteredBookingIds.includes(b.id))
-    : periodBookings;
-
-  const { data: allBookings } = await supabase
-    .from('bookings')
-    .select('id, guest_name, ownerrez_guest_id, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee, guests(email, phone)')
-    .eq('tenant_id', tenantId)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-  warnIfTruncated(allBookings, { service: 'guests', query: 'allBookings', tenantId });
+  const allBookings = await fetchAllRows(() =>
+    supabase
+      .from('bookings')
+      .select('id, guest_name, ownerrez_guest_id, arrival, departure, total_amount, platform, property_id, guest_listing_site_fee, host_service_fee, guests(email, phone)')
+      .eq('tenant_id', tenantId)
+      .neq('status', 'canceled')
+      .order('id')
+  );
 
   // helper to extract joined guest contact from booking
   const getGuestContact = (booking: Record<string, unknown>) => {
@@ -285,8 +274,7 @@ export async function getGuestsData(
     guest.totalNights += nights;
   }
 
-  if (allBookings) {
-    for (const booking of allBookings) {
+  for (const booking of allBookings) {
       if (!booking.guest_name) continue;
 
       const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
@@ -326,7 +314,6 @@ export async function getGuestsData(
         guest.lastVisit = booking.arrival;
       }
     }
-  }
 
   const totalGuests = guestPeriodMap.size;
 
@@ -365,10 +352,10 @@ export async function getGuestsData(
   }
 
   const bookingIds = filteredPeriodBookings.map(b => b.id);
-  const { data: bookingTags } = await supabase
-    .from('booking_tags')
-    .select('booking_id, tag_id')
-    .in('booking_id', bookingIds);
+  const bookingTags = bookingIds.length > 0
+    ? await fetchChunked(bookingIds, ids =>
+        supabase.from('booking_tags').select('booking_id, tag_id').in('booking_id', ids))
+    : [];
 
   // collect ownerrez_guest_ids from period bookings to look up guest tags
   const uniqueOwnerrezGuestIds = new Set<string>();
@@ -401,8 +388,7 @@ export async function getGuestsData(
 
   const guestTagsMap = new Map<string, Set<string>>();
 
-  if (bookingTags) {
-    for (const bt of bookingTags) {
+  for (const bt of bookingTags) {
       const booking = filteredPeriodBookings.find(b => b.id === bt.booking_id);
       if (booking && booking.guest_name) {
         const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
@@ -411,7 +397,6 @@ export async function getGuestsData(
         }
         guestTagsMap.get(guestId)!.add(bt.tag_id);
       }
-    }
   }
 
   for (const guest of guestRecords) {
@@ -525,20 +510,15 @@ export async function getGuestsData(
   // fetch CC charges for the period bookings
   let totalCcFees = 0;
   if (bookingIds.length > 0) {
-    const { data: ccCharges } = await supabase
-      .from('booking_charges')
-      .select('booking_id, amount')
-      .in('booking_id', bookingIds)
-      .ilike('description', '%credit card%');
-
-    if (ccCharges) {
-      const bookingPlatformMap = new Map(filteredPeriodBookings.map(b => [b.id, normalizePlatform(b.platform)]));
-      for (const charge of ccCharges) {
-        totalCcFees += charge.amount || 0;
-        const platform = bookingPlatformMap.get(charge.booking_id) || 'Unknown';
-        if (platformFeeMap.has(platform)) {
-          platformFeeMap.get(platform)!.ccFees += charge.amount || 0;
-        }
+    const ccCharges = await fetchChunked(bookingIds, ids =>
+      supabase.from('booking_charges').select('booking_id, amount').in('booking_id', ids).ilike('description', '%credit card%')
+    );
+    const bookingPlatformMap = new Map(filteredPeriodBookings.map(b => [b.id, normalizePlatform(b.platform)]));
+    for (const charge of ccCharges) {
+      totalCcFees += charge.amount || 0;
+      const platform = bookingPlatformMap.get(charge.booking_id) || 'Unknown';
+      if (platformFeeMap.has(platform)) {
+        platformFeeMap.get(platform)!.ccFees += charge.amount || 0;
       }
     }
   }

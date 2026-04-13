@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_MAX_ROWS } from '../constants';
+import { fetchAllRows } from '../utils/fetch-all';
 
 type GoalPeriod = 'monthly' | 'quarterly' | 'yearly';
 
@@ -57,14 +57,16 @@ async function getGoalMetrics(
 	from: string,
 	to: string
 ): Promise<GoalMetrics> {
-	const { data: bookings } = await supabase
-		.from('bookings')
-		.select('*')
-		.eq('tenant_id', tenantId)
-		.lte('arrival', to)
-		.gte('departure', from)
-		.neq('status', 'canceled')
-		.limit(SUPABASE_MAX_ROWS);
+	const bookings = await fetchAllRows(() =>
+		supabase
+			.from('bookings')
+			.select('*')
+			.eq('tenant_id', tenantId)
+			.lte('arrival', to)
+			.gte('departure', from)
+			.neq('status', 'canceled')
+			.order('id')
+	);
 
 	const { count: propertyCount } = await supabase
 		.from('properties')
@@ -72,12 +74,12 @@ async function getGoalMetrics(
 		.eq('tenant_id', tenantId)
 		.eq('active', true);
 
-	const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-	const totalBookings = bookings?.length || 0;
+	const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+	const totalBookings = bookings.length;
 	const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
 	let totalNights = 0;
-	bookings?.forEach(b => {
+	bookings.forEach(b => {
 		const nights = Math.ceil(
 			(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
 		);
@@ -92,19 +94,21 @@ async function getGoalMetrics(
 	const occupancy = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
 
 	const uniqueGuests = new Set(
-		bookings?.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()).filter(Boolean)
+		bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()).filter(Boolean)
 	);
 	const totalGuests = uniqueGuests.size;
 
-	const { data: allTimeBookings } = await supabase
-		.from('bookings')
-		.select('ownerrez_guest_id, guest_name')
-		.eq('tenant_id', tenantId)
-		.neq('status', 'canceled')
-		.limit(SUPABASE_MAX_ROWS);
+	const allTimeBookings = await fetchAllRows(() =>
+		supabase
+			.from('bookings')
+			.select('ownerrez_guest_id, guest_name')
+			.eq('tenant_id', tenantId)
+			.neq('status', 'canceled')
+			.order('id')
+	);
 
 	const allTimeCountMap = new Map<string, number>();
-	allTimeBookings?.forEach(b => {
+	allTimeBookings.forEach(b => {
 		const key = b.ownerrez_guest_id || b.guest_name?.toLowerCase();
 		if (key) allTimeCountMap.set(key, (allTimeCountMap.get(key) || 0) + 1);
 	});

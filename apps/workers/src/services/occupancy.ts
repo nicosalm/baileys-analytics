@@ -1,7 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_MAX_ROWS } from '../constants';
+import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
-import { warnIfTruncated } from '../utils/truncation-warn';
 
 export interface OccupancyData {
   overall: number;
@@ -266,27 +265,26 @@ async function fetchDailyOccupancy(
   const totalProperties = properties.length;
   const propertyIds = properties.map(p => p.id);
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('property_id, arrival, departure')
-    .eq('tenant_id', tenantId)
-    .in('property_id', propertyIds)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
+  let matchedBookingIds: string[] | null = null;
   if (hasTagFilter) {
-    const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-    if (matchedBookingIds) {
-      bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
-    } else {
-      bookingsQuery = bookingsQuery.in('id', []);
-    }
+    matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
   }
 
-  const { data: bookings } = await bookingsQuery;
-  warnIfTruncated(bookings, { service: 'occupancy', query: 'bookingsQuery', tenantId, from, to });
+  const bookings = await fetchAllRows(() => {
+    let q = supabase
+      .from('bookings')
+      .select('property_id, arrival, departure')
+      .eq('tenant_id', tenantId)
+      .in('property_id', propertyIds)
+      .lte('arrival', to)
+      .gte('departure', from)
+      .neq('status', 'canceled')
+      .order('id');
+    if (hasTagFilter) {
+      q = matchedBookingIds ? q.in('id', matchedBookingIds) : q.in('id', []);
+    }
+    return q;
+  });
 
   const dailyOccupancy: DailyOccupancy[] = [];
   const startDate = new Date(from);
@@ -297,15 +295,13 @@ async function fetchDailyOccupancy(
     const dateStr = currentDate.toISOString().split('T')[0];
     const bookedProperties = new Set<string>();
 
-    if (bookings) {
-      for (const booking of bookings) {
-        const arrivalDate = new Date(booking.arrival);
-        const departureDate = new Date(booking.departure);
+    for (const booking of bookings) {
+      const arrivalDate = new Date(booking.arrival);
+      const departureDate = new Date(booking.departure);
 
-        // Departure date is exclusive (checkout day - property becomes available)
-        if (currentDate >= arrivalDate && currentDate < departureDate) {
-          bookedProperties.add(booking.property_id);
-        }
+      // Departure date is exclusive (checkout day - property becomes available)
+      if (currentDate >= arrivalDate && currentDate < departureDate) {
+        bookedProperties.add(booking.property_id);
       }
     }
 
@@ -365,21 +361,22 @@ export async function detectBookingGaps(
   }
 
   // fetch bookings for the period
-  const { data: bookings } = await supabase
-    .from('bookings')
-    .select('property_id, arrival, departure')
-    .eq('tenant_id', tenantId)
-    .gte('arrival', today.toISOString())
-    .lte('arrival', endDate.toISOString())
-    .neq('status', 'canceled')
-    .order('property_id', { ascending: true })
-    .order('arrival', { ascending: true })
-    .limit(SUPABASE_MAX_ROWS);
+  const bookings = await fetchAllRows(() =>
+    supabase
+      .from('bookings')
+      .select('property_id, arrival, departure')
+      .eq('tenant_id', tenantId)
+      .gte('arrival', today.toISOString())
+      .lte('arrival', endDate.toISOString())
+      .neq('status', 'canceled')
+      .order('property_id', { ascending: true })
+      .order('arrival', { ascending: true })
+  );
 
   const gaps: BookingGap[] = [];
 
   for (const property of properties) {
-    const propertyBookings = bookings?.filter(b => b.property_id === property.id) || [];
+    const propertyBookings = bookings.filter(b => b.property_id === property.id);
 
     // check for gaps between bookings. the first iteration uses `today` as
     // the "last departure" so a property whose earliest upcoming booking is

@@ -1,10 +1,9 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { SUPABASE_MAX_ROWS } from '../constants';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform, PLATFORM_REMITS_TAX } from '../utils/platform';
+import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { subtractOneYear } from '../utils/date-filters';
-import { warnIfTruncated } from '../utils/truncation-warn';
 
 interface FinancialMetrics {
   revenue: {
@@ -213,32 +212,11 @@ export async function getPLData(
     properties = shared.properties;
     upcomingBookings = shared.upcomingBookings;
   } else {
-    let bookingsQuery = supabase
-      .from('bookings')
-      .select(`
-        *,
-        booking_charges(amount, type, description, is_taxable)
-      `)
-      .eq('tenant_id', tenantId)
-      .lte('arrival', to)
-      .gte('departure', from)
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (filterPropertyIds.length > 0) {
-      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-    }
-
     let matchedBookingIds: string[] | null = null;
     let tagFilterMatchedNothing = false;
     if (hasTagFilter) {
       matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-      if (matchedBookingIds) {
-        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
-      } else {
-        tagFilterMatchedNothing = true;
-        bookingsQuery = bookingsQuery.in('id', []);
-      }
+      if (!matchedBookingIds) tagFilterMatchedNothing = true;
     }
 
     let propertiesQuery = supabase
@@ -246,39 +224,36 @@ export async function getPLData(
       .select('*')
       .eq('tenant_id', tenantId)
       .eq('active', true);
+    if (filterPropertyIds.length > 0) propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
 
-    if (filterPropertyIds.length > 0) {
-      propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
-    }
-
-    // upcoming bookings query must share the same property + tag filter as the
-    // main bookings query so next-30/60/90 totals match the filtered view.
-    let upcomingQuery = supabase
-      .from('bookings')
-      .select('total_amount, arrival')
-      .eq('tenant_id', tenantId)
-      .gte('arrival', new Date().toISOString().split('T')[0])
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (filterPropertyIds.length > 0) {
-      upcomingQuery = upcomingQuery.in('property_id', filterPropertyIds);
-    }
-    if (matchedBookingIds) {
-      upcomingQuery = upcomingQuery.in('id', matchedBookingIds);
-    } else if (tagFilterMatchedNothing) {
-      upcomingQuery = upcomingQuery.in('id', []);
-    }
-
-    const [bookingsResult, propertiesResult, upcomingResult] = await Promise.all([
-      bookingsQuery,
+    const [fetchedBookings, propertiesResult, fetchedUpcoming] = await Promise.all([
+      fetchAllRows(() => {
+        let q = supabase.from('bookings')
+          .select('*, booking_charges(amount, type, description, is_taxable)')
+          .eq('tenant_id', tenantId).lte('arrival', to).gte('departure', from)
+          .neq('status', 'canceled').order('id');
+        if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+        if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+        else if (tagFilterMatchedNothing) q = q.in('id', []);
+        return q;
+      }),
       propertiesQuery,
-      upcomingQuery
+      fetchAllRows(() => {
+        let q = supabase.from('bookings')
+          .select('total_amount, arrival')
+          .eq('tenant_id', tenantId)
+          .gte('arrival', new Date().toISOString().split('T')[0])
+          .neq('status', 'canceled').order('id');
+        if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+        if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+        else if (tagFilterMatchedNothing) q = q.in('id', []);
+        return q;
+      }),
     ]);
 
-    bookings = bookingsResult.data || [];
+    bookings = fetchedBookings;
     properties = propertiesResult.data || [];
-    upcomingBookings = upcomingResult.data || [];
+    upcomingBookings = fetchedUpcoming;
   }
 
   const propertyIds = properties.map((p: any) => p.id);
@@ -538,31 +513,23 @@ export async function getRevenueData(
   if (shared?.bookings) {
     bookings = shared.bookings;
   } else {
-    let bookingsQuery = supabase
-      .from('bookings')
-      .select(`
-        *,
-        booking_charges(amount, type)
-      `)
-      .eq('tenant_id', tenantId)
-      .lte('arrival', to)
-      .gte('departure', from)
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (filterPropertyIds.length > 0) {
-      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-    }
-
+    let matchedBookingIds: string[] | null = null;
+    let tagFilterMatchedNothing = false;
     if (hasTagFilter) {
-      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-      if (matchedBookingIds) {
-        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
-      }
+      matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+      if (!matchedBookingIds) tagFilterMatchedNothing = true;
     }
 
-    const { data: bookingsData } = await bookingsQuery;
-    bookings = bookingsData || [];
+    bookings = await fetchAllRows(() => {
+      let q = supabase.from('bookings')
+        .select('*, booking_charges(amount, type)')
+        .eq('tenant_id', tenantId).lte('arrival', to).gte('departure', from)
+        .neq('status', 'canceled').order('id');
+      if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+      if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+      else if (tagFilterMatchedNothing) q = q.in('id', []);
+      return q;
+    });
   }
 
   const gross = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
@@ -598,38 +565,21 @@ export async function getRevenueData(
     const lastYearFrom = subtractOneYear(from);
     const lastYearTo = subtractOneYear(to);
 
-    // last-year comparison must honor the same property + tag filter as the
-    // current-period query, otherwise YoY deltas compare a filtered current
-    // period against an all-properties historical snapshot.
-    let lastYearQuery = supabase
-      .from('bookings')
-      .select(`
-        total_amount,
-        host_service_fee,
-        guest_listing_site_fee,
-        booking_charges(amount, type)
-      `)
-      .eq('tenant_id', tenantId)
-      .lte('arrival', lastYearTo)
-      .gte('departure', lastYearFrom)
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (filterPropertyIds.length > 0) {
-      lastYearQuery = lastYearQuery.in('property_id', filterPropertyIds);
-    }
-
+    let matchedBookingIds: string[] | null = null;
     if (hasTagFilter) {
-      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-      if (matchedBookingIds) {
-        lastYearQuery = lastYearQuery.in('id', matchedBookingIds);
-      } else {
-        lastYearQuery = lastYearQuery.in('id', []);
-      }
+      matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
     }
 
-    const { data: lastYearBookingsData } = await lastYearQuery;
-    lastYearBookings = lastYearBookingsData || [];
+    lastYearBookings = await fetchAllRows(() => {
+      let q = supabase.from('bookings')
+        .select('total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
+        .eq('tenant_id', tenantId).lte('arrival', lastYearTo).gte('departure', lastYearFrom)
+        .neq('status', 'canceled').order('id');
+      if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+      if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+      else if (hasTagFilter) q = q.in('id', []);
+      return q;
+    });
   }
 
   const lastYearGross = lastYearBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
@@ -670,67 +620,49 @@ export async function getCashflowData(
 ): Promise<CashflowData> {
   const hasTagFilter = tagIds.length > 0;
 
-  let bookings: any[] | null;
-  let upcomingBookings: any[] | null;
+  let bookings: any[];
+  let upcomingBookings: any[];
 
   if (shared?.bookings && shared?.upcomingBookings) {
     bookings = shared.bookings;
     upcomingBookings = shared.upcomingBookings;
   } else {
-    let bookingsQuery = supabase
-      .from('bookings')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .lte('arrival', to)
-      .gte('departure', from)
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (filterPropertyIds.length > 0) {
-      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-    }
-
     let matchedBookingIds: string[] | null = null;
     let tagFilterMatchedNothing = false;
     if (hasTagFilter) {
       matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-      if (matchedBookingIds) {
-        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
-      } else {
-        tagFilterMatchedNothing = true;
-        bookingsQuery = bookingsQuery.in('id', []);
-      }
+      if (!matchedBookingIds) tagFilterMatchedNothing = true;
     }
 
-    const { data: bookingsData } = await bookingsQuery;
-    bookings = bookingsData;
+    const [fetchedBookings, fetchedUpcoming] = await Promise.all([
+      fetchAllRows(() => {
+        let q = supabase.from('bookings').select('*')
+          .eq('tenant_id', tenantId).lte('arrival', to).gte('departure', from)
+          .neq('status', 'canceled').order('id');
+        if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+        if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+        else if (tagFilterMatchedNothing) q = q.in('id', []);
+        return q;
+      }),
+      fetchAllRows(() => {
+        let q = supabase.from('bookings').select('total_amount, arrival')
+          .eq('tenant_id', tenantId)
+          .gte('arrival', new Date().toISOString().split('T')[0])
+          .neq('status', 'canceled').order('id');
+        if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+        if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+        else if (tagFilterMatchedNothing) q = q.in('id', []);
+        return q;
+      }),
+    ]);
 
-    // upcoming bookings query must share the same property + tag filter as the
-    // main bookings query so next-30/60/90 totals match the filtered view.
-    let upcomingQuery = supabase
-      .from('bookings')
-      .select('total_amount, arrival')
-      .eq('tenant_id', tenantId)
-      .gte('arrival', new Date().toISOString().split('T')[0])
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (filterPropertyIds.length > 0) {
-      upcomingQuery = upcomingQuery.in('property_id', filterPropertyIds);
-    }
-    if (matchedBookingIds) {
-      upcomingQuery = upcomingQuery.in('id', matchedBookingIds);
-    } else if (tagFilterMatchedNothing) {
-      upcomingQuery = upcomingQuery.in('id', []);
-    }
-
-    const { data: upcomingData } = await upcomingQuery;
-    upcomingBookings = upcomingData;
+    bookings = fetchedBookings;
+    upcomingBookings = fetchedUpcoming;
   }
 
   const today = new Date();
-  const collected = bookings?.filter(b => new Date(b.arrival) <= today)
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+  const collected = bookings.filter(b => new Date(b.arrival) <= today)
+    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
   // pending = all confirmed future bookings (from the upcomingBookings query
   // which uses arrival >= today). the main bookings query is bounded by the
@@ -738,13 +670,11 @@ export async function getCashflowData(
   // ends at or before today.
   let pending = 0;
   let next30Days = 0, next60Days = 0, next90Days = 0;
-  if (upcomingBookings) {
-    for (const b of upcomingBookings) {
+  for (const b of upcomingBookings) {
       const days = Math.ceil((new Date(b.arrival).getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       const amt = b.total_amount || 0;
       pending += amt;
       if (days <= 90) { next90Days += amt; if (days <= 60) { next60Days += amt; if (days <= 30) { next30Days += amt; } } }
-    }
   }
 
   const total = collected + pending;
@@ -778,32 +708,20 @@ export async function getTaxData(
   if (shared?.bookings) {
     bookings = shared.bookings;
   } else {
-    let bookingsQuery = supabase
-      .from('bookings')
-      .select(`
-        *,
-        properties!inner(id, name, internal_code),
-        booking_charges(amount, type, is_taxable)
-      `)
-      .eq('tenant_id', tenantId)
-      .lte('arrival', to)
-      .gte('departure', from)
-      .neq('status', 'canceled')
-      .limit(SUPABASE_MAX_ROWS);
-
-    if (filterPropertyIds.length > 0) {
-      bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-    }
-
+    let matchedBookingIds: string[] | null = null;
     if (hasTagFilter) {
-      const matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-      if (matchedBookingIds) {
-        bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
-      }
+      matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
     }
 
-    const { data: bookingsData } = await bookingsQuery;
-    bookings = bookingsData || [];
+    bookings = await fetchAllRows(() => {
+      let q = supabase.from('bookings')
+        .select('*, properties!inner(id, name, internal_code), booking_charges(amount, type, is_taxable)')
+        .eq('tenant_id', tenantId).lte('arrival', to).gte('departure', from)
+        .neq('status', 'canceled').order('id');
+      if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+      if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+      return q;
+    });
   }
 
   // when using shared data, bookings lack the joined `properties` field,
@@ -911,24 +829,20 @@ export async function getFinancialBatchData(
     }
   }
 
-  let bookingsQuery = supabase
-    .from('bookings')
-    .select('*, booking_charges(amount, type, description, is_taxable)')
-    .eq('tenant_id', tenantId)
-    .lte('arrival', to)
-    .gte('departure', from)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  if (filterPropertyIds.length > 0) {
-    bookingsQuery = bookingsQuery.in('property_id', filterPropertyIds);
-  }
-
-  if (matchedBookingIds) {
-    bookingsQuery = bookingsQuery.in('id', matchedBookingIds);
-  } else if (tagFilterMatchedNothing) {
-    bookingsQuery = bookingsQuery.in('id', []);
-  }
+  const buildBookingsQuery = () => {
+    let q = supabase
+      .from('bookings')
+      .select('*, booking_charges(amount, type, description, is_taxable)')
+      .eq('tenant_id', tenantId)
+      .lte('arrival', to)
+      .gte('departure', from)
+      .neq('status', 'canceled')
+      .order('id');
+    if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+    if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+    else if (tagFilterMatchedNothing) q = q.in('id', []);
+    return q;
+  };
 
   let propertiesQuery = supabase
     .from('properties')
@@ -945,59 +859,46 @@ export async function getFinancialBatchData(
 
   // upcoming bookings query: must share the same property + tag filter as the
   // main bookings query so the next-30/60/90 cards match the rest of the view.
-  let upcomingQuery = supabase
-    .from('bookings')
-    .select('total_amount, arrival')
-    .eq('tenant_id', tenantId)
-    .gte('arrival', new Date().toISOString().split('T')[0])
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
-
-  if (filterPropertyIds.length > 0) {
-    upcomingQuery = upcomingQuery.in('property_id', filterPropertyIds);
-  }
-  if (matchedBookingIds) {
-    upcomingQuery = upcomingQuery.in('id', matchedBookingIds);
-  } else if (tagFilterMatchedNothing) {
-    upcomingQuery = upcomingQuery.in('id', []);
-  }
+  const buildUpcomingQuery = () => {
+    let q = supabase
+      .from('bookings')
+      .select('total_amount, arrival')
+      .eq('tenant_id', tenantId)
+      .gte('arrival', new Date().toISOString().split('T')[0])
+      .neq('status', 'canceled')
+      .order('id');
+    if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+    if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+    else if (tagFilterMatchedNothing) q = q.in('id', []);
+    return q;
+  };
 
   // last-year comparison query: same filters so YoY comparisons aren't
   // comparing a property-filtered current period against an all-properties
   // last-year snapshot.
-  let lastYearQuery = supabase
-    .from('bookings')
-    .select('total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
-    .eq('tenant_id', tenantId)
-    .lte('arrival', lastYearTo)
-    .gte('departure', lastYearFrom)
-    .neq('status', 'canceled')
-    .limit(SUPABASE_MAX_ROWS);
+  const buildLastYearQuery = () => {
+    let q = supabase
+      .from('bookings')
+      .select('total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
+      .eq('tenant_id', tenantId)
+      .lte('arrival', lastYearTo)
+      .gte('departure', lastYearFrom)
+      .neq('status', 'canceled')
+      .order('id');
+    if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
+    if (matchedBookingIds) q = q.in('id', matchedBookingIds);
+    else if (tagFilterMatchedNothing) q = q.in('id', []);
+    return q;
+  };
 
-  if (filterPropertyIds.length > 0) {
-    lastYearQuery = lastYearQuery.in('property_id', filterPropertyIds);
-  }
-  if (matchedBookingIds) {
-    lastYearQuery = lastYearQuery.in('id', matchedBookingIds);
-  } else if (tagFilterMatchedNothing) {
-    lastYearQuery = lastYearQuery.in('id', []);
-  }
-
-  const [bookingsResult, propertiesResult, upcomingResult, lastYearResult] = await Promise.all([
-    bookingsQuery,
+  const [bookings, propertiesResult, upcomingBookings, lastYearBookings] = await Promise.all([
+    fetchAllRows(buildBookingsQuery),
     propertiesQuery,
-    upcomingQuery,
-    lastYearQuery
+    fetchAllRows(buildUpcomingQuery),
+    fetchAllRows(buildLastYearQuery)
   ]);
 
-  const bookings = bookingsResult.data || [];
   const properties = propertiesResult.data || [];
-  const upcomingBookings = upcomingResult.data || [];
-  const lastYearBookings = lastYearResult.data || [];
-
-  warnIfTruncated(bookingsResult.data, { service: 'financial', query: 'bookings', tenantId, from, to });
-  warnIfTruncated(upcomingResult.data, { service: 'financial', query: 'upcomingBookings', tenantId, from, to });
-  warnIfTruncated(lastYearResult.data, { service: 'financial', query: 'lastYearBookings', tenantId, from, to });
 
   const shared: FinancialSharedData = { bookings, properties, upcomingBookings };
 

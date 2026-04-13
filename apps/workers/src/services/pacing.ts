@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { SUPABASE_MAX_ROWS } from '../constants';
+import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -161,30 +162,25 @@ export async function getPacingData(
 	const priorTo = `${last.priorYear}-${String(last.month + 1).padStart(2, '0')}-${String(last.priorDays).padStart(2, '0')}`;
 
 	// two queries: current year target months + prior year equivalent months
-	let currentQuery = supabase
-		.from('bookings')
-		.select('id, arrival, departure, total_amount, property_id, booked_utc')
-		.eq('tenant_id', tenantId)
-		.neq('status', 'canceled')
-		.lte('arrival', currentTo)
-		.gte('departure', currentFrom)
-		.in('property_id', propertyIds)
-		.limit(SUPABASE_MAX_ROWS);
+	const buildCurrentQuery = () => {
+		let q = supabase.from('bookings')
+			.select('id, arrival, departure, total_amount, property_id, booked_utc')
+			.eq('tenant_id', tenantId).neq('status', 'canceled')
+			.lte('arrival', currentTo).gte('departure', currentFrom)
+			.in('property_id', propertyIds).order('id');
+		if (bookingIdFilter) q = q.in('id', bookingIdFilter);
+		return q;
+	};
 
-	let priorQuery = supabase
-		.from('bookings')
-		.select('id, arrival, departure, total_amount, property_id, booked_utc')
-		.eq('tenant_id', tenantId)
-		.neq('status', 'canceled')
-		.lte('arrival', priorTo)
-		.gte('departure', priorFrom)
-		.in('property_id', propertyIds)
-		.limit(SUPABASE_MAX_ROWS);
-
-	if (bookingIdFilter) {
-		currentQuery = currentQuery.in('id', bookingIdFilter);
-		priorQuery = priorQuery.in('id', bookingIdFilter);
-	}
+	const buildPriorQuery = () => {
+		let q = supabase.from('bookings')
+			.select('id, arrival, departure, total_amount, property_id, booked_utc')
+			.eq('tenant_id', tenantId).neq('status', 'canceled')
+			.lte('arrival', priorTo).gte('departure', priorFrom)
+			.in('property_id', propertyIds).order('id');
+		if (bookingIdFilter) q = q.in('id', bookingIdFilter);
+		return q;
+	};
 
 	// blocks query: only current year (prior year available nights stay as-is for fair comparison)
 	const blocksQuery = supabase
@@ -196,9 +192,11 @@ export async function getPacingData(
 		.in('property_id', propertyIds)
 		.limit(SUPABASE_MAX_ROWS);
 
-	const [currentResult, priorResult, blocksResult] = await Promise.all([currentQuery, priorQuery, blocksQuery]);
-	const currentBookings = currentResult.data || [];
-	const priorBookings = priorResult.data || [];
+	const [currentBookings, priorBookings, blocksResult] = await Promise.all([
+		fetchAllRows(buildCurrentQuery),
+		fetchAllRows(buildPriorQuery),
+		blocksQuery
+	]);
 	const blocks = blocksResult.data || [];
 
 	// prior year "as of" date: today shifted back 1 year, clamped for leap days

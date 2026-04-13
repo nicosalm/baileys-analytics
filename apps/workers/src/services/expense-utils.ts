@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js'
-import { SUPABASE_MAX_ROWS } from '../constants'
+import { fetchAllRows } from '../utils/fetch-all'
 import { buildYearMonthFilter } from '../utils/date-filters'
 
 export async function getExpensesWithTemplateFallback(
@@ -21,14 +21,16 @@ export async function getExpensesWithTemplateFallback(
 
   const filteredIds = propertyFilter ? [propertyFilter] : propertyIds
 
-  const [expensesResult, templatesResult] = await Promise.all([
-    supabase
-      .from('operating_expenses')
-      .select('property_id, year, month, category, amount')
-      .eq('tenant_id', tenantId)
-      .in('property_id', filteredIds)
-      .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
-      .limit(SUPABASE_MAX_ROWS),
+  const [expenses, templatesResult] = await Promise.all([
+    fetchAllRows(() =>
+      supabase
+        .from('operating_expenses')
+        .select('property_id, year, month, category, amount')
+        .eq('tenant_id', tenantId)
+        .in('property_id', filteredIds)
+        .or(buildYearMonthFilter(fromYear, fromMonth, toYear, toMonth))
+        .order('property_id')
+    ),
     supabase
       .from('expense_templates')
       .select('property_id, category, amount')
@@ -36,7 +38,6 @@ export async function getExpensesWithTemplateFallback(
       .in('property_id', filteredIds)
   ])
 
-  const expenses = expensesResult.data || []
   const templates = templatesResult.data || []
 
   // build a set of property-year-month combos that have at least one explicit entry
