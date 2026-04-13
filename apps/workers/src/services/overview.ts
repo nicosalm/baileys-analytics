@@ -257,9 +257,10 @@ function getChartsData(
 
 	const revenueData = buildRevenueChartData(bookings, from, to, revenueUseDaily, revenueUseWeekly);
 
+	const propertyById = new Map(properties.map(p => [p.id, p]));
 	const propertyRevenue = new Map();
 	bookings.forEach(b => {
-		const property = properties.find(p => p.id === b.property_id);
+		const property = propertyById.get(b.property_id);
 		if (property) {
 			const current = propertyRevenue.get(property.name) || { name: property.name, code: property.internal_code || null, revenue: 0, bookings: 0 };
 			current.revenue += b.total_amount || 0;
@@ -458,15 +459,53 @@ async function getAlerts(
 	const alerts = [];
 
 	const today = new Date();
+	const todayStr = today.toISOString().split('T')[0];
 	const sevenDaysFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-	
-	const { count: upcomingCount } = await supabase
-		.from('bookings')
-		.select('*', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId)
-		.gte('arrival', today.toISOString().split('T')[0])
-		.lte('arrival', sevenDaysFromNow.toISOString().split('T')[0])
-		.neq('status', 'canceled');
+	const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+	const [
+		{ count: upcomingCount },
+		upcomingBookings,
+		{ count: propertyCount },
+		{ count: totalBookings },
+		{ count: canceledBookings },
+	] = await Promise.all([
+		supabase
+			.from('bookings')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.gte('arrival', todayStr)
+			.lte('arrival', sevenDaysFromNow.toISOString().split('T')[0])
+			.neq('status', 'canceled'),
+		fetchAllRows(() =>
+			supabase
+				.from('bookings')
+				.select('arrival, departure')
+				.eq('tenant_id', tenantId)
+				.gte('arrival', todayStr)
+				.lte('arrival', thirtyDaysFromNow.toISOString().split('T')[0])
+				.neq('status', 'canceled')
+				.order('id')
+		),
+		supabase
+			.from('properties')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.eq('active', true),
+		supabase
+			.from('bookings')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.lte('arrival', to)
+			.gte('departure', from),
+		supabase
+			.from('bookings')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.lte('arrival', to)
+			.gte('departure', from)
+			.eq('status', 'canceled'),
+	]);
 
 	if (upcomingCount && upcomingCount > 0) {
 		alerts.push({
@@ -478,29 +517,10 @@ async function getAlerts(
 		});
 	}
 
-	const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-	
-	const upcomingBookings = await fetchAllRows(() =>
-		supabase
-			.from('bookings')
-			.select('arrival, departure')
-			.eq('tenant_id', tenantId)
-			.gte('arrival', today.toISOString().split('T')[0])
-			.lte('arrival', thirtyDaysFromNow.toISOString().split('T')[0])
-			.neq('status', 'canceled')
-			.order('id')
-	);
-
-	const { count: propertyCount } = await supabase
-		.from('properties')
-		.select('*', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId)
-		.eq('active', true);
-
 	if (propertyCount) {
 		const totalPossibleNights = 30 * propertyCount;
 		let bookedNights = 0;
-		
+
 		upcomingBookings.forEach(b => {
 			const nights = Math.ceil(
 				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
@@ -520,21 +540,6 @@ async function getAlerts(
 			});
 		}
 	}
-
-	const { count: totalBookings } = await supabase
-		.from('bookings')
-		.select('*', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId)
-		.lte('arrival', to)
-		.gte('departure', from);
-
-	const { count: canceledBookings } = await supabase
-		.from('bookings')
-		.select('*', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId)
-		.lte('arrival', to)
-		.gte('departure', from)
-		.eq('status', 'canceled');
 
 	if (totalBookings && canceledBookings) {
 		const cancellationRate = (canceledBookings / totalBookings) * 100;

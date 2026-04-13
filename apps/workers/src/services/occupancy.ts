@@ -286,33 +286,37 @@ async function fetchDailyOccupancy(
     return q;
   });
 
-  const dailyOccupancy: DailyOccupancy[] = [];
+  const MS_PER_DAY = 1000 * 60 * 60 * 24;
   const startDate = new Date(from);
   const endDate = new Date(to);
+  const startEpoch = Math.floor(startDate.getTime() / MS_PER_DAY);
+  const endEpoch = Math.floor(endDate.getTime() / MS_PER_DAY);
 
-  let currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    const dateStr = currentDate.toISOString().split('T')[0];
-    const bookedProperties = new Set<string>();
-
-    for (const booking of bookings) {
-      const arrivalDate = new Date(booking.arrival);
-      const departureDate = new Date(booking.departure);
-
-      // Departure date is exclusive (checkout day - property becomes available)
-      if (currentDate >= arrivalDate && currentDate < departureDate) {
-        bookedProperties.add(booking.property_id);
-      }
+  // single pass over bookings to build grid: epochDay -> Set<propertyId>
+  const grid = new Map<number, Set<string>>();
+  for (const booking of bookings) {
+    const bStart = Math.max(Math.floor(new Date(booking.arrival).getTime() / MS_PER_DAY), startEpoch);
+    // departure is exclusive (checkout day)
+    const bEnd = Math.min(Math.floor(new Date(booking.departure).getTime() / MS_PER_DAY), endEpoch + 1);
+    for (let d = bStart; d < bEnd; d++) {
+      let set = grid.get(d);
+      if (!set) { set = new Set(); grid.set(d, set); }
+      set.add(booking.property_id);
     }
+  }
 
+  // iterate days to read from grid
+  const dailyOccupancy: DailyOccupancy[] = [];
+  for (let epoch = startEpoch; epoch <= endEpoch; epoch++) {
+    const d = new Date(epoch * MS_PER_DAY);
+    const dateStr = d.toISOString().split('T')[0];
+    const bookedCount = grid.get(epoch)?.size ?? 0;
     dailyOccupancy.push({
       date: dateStr,
-      occupancyRate: totalProperties > 0 ? bookedProperties.size / totalProperties : 0,
-      bookedProperties: bookedProperties.size,
+      occupancyRate: totalProperties > 0 ? bookedCount / totalProperties : 0,
+      bookedProperties: bookedCount,
       totalProperties
     });
-
-    currentDate.setDate(currentDate.getDate() + 1);
   }
 
   return dailyOccupancy;
@@ -375,8 +379,15 @@ export async function detectBookingGaps(
 
   const gaps: BookingGap[] = [];
 
+  const bookingsByProperty = new Map<string, typeof bookings>();
+  for (const b of bookings) {
+    let arr = bookingsByProperty.get(b.property_id);
+    if (!arr) { arr = []; bookingsByProperty.set(b.property_id, arr); }
+    arr.push(b);
+  }
+
   for (const property of properties) {
-    const propertyBookings = bookings.filter(b => b.property_id === property.id);
+    const propertyBookings = bookingsByProperty.get(property.id) || [];
 
     // check for gaps between bookings. the first iteration uses `today` as
     // the "last departure" so a property whose earliest upcoming booking is

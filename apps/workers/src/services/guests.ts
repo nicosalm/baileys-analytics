@@ -394,9 +394,10 @@ export async function getGuestsData(
   }
 
   const guestTagsMap = new Map<string, Set<string>>();
+  const bookingById = new Map(filteredPeriodBookings.map(b => [b.id, b]));
 
   for (const bt of bookingTags) {
-      const booking = filteredPeriodBookings.find(b => b.id === bt.booking_id);
+      const booking = bookingById.get(bt.booking_id);
       if (booking && booking.guest_name) {
         const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
         if (!guestTagsMap.has(guestId)) {
