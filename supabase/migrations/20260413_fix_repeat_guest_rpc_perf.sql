@@ -16,7 +16,7 @@ security definer
 set search_path = public
 as $$
   with all_time_counts as (
-    select coalesce(ownerrez_guest_id, lower(guest_name)) as gid, count(*) as cnt
+    select coalesce(ownerrez_guest_id, lower(trim(guest_name))) as gid, count(*) as cnt
     from bookings
     where tenant_id = p_tenant_id
       and status != 'canceled'
@@ -24,7 +24,7 @@ as $$
     group by 1
   ),
   current_guests as (
-    select distinct coalesce(ownerrez_guest_id, lower(guest_name)) as gid
+    select distinct coalesce(ownerrez_guest_id, lower(trim(guest_name))) as gid
     from bookings
     where tenant_id = p_tenant_id
       and status != 'canceled'

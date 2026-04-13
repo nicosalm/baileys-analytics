@@ -399,24 +399,28 @@ function buildOccupancyChartData(
 		// single pass over bookings to accumulate nights per month
 		const monthNights = new Map<string, number>();
 
+		// departure is exclusive (checkout day), period end is inclusive.
+		// convert inclusive boundaries to exclusive (+1 day) so all comparisons are uniform.
+		const endExcl = new Date(endDate.getTime() + MS_PER_DAY);
+
 		for (const b of bookings) {
 			const arrivalDate = new Date(b.arrival);
 			const departureDate = new Date(b.departure);
 			const bStart = arrivalDate > startDate ? arrivalDate : startDate;
-			const bEnd = departureDate < endDate ? departureDate : endDate;
+			const bEnd = departureDate < endExcl ? departureDate : endExcl;
 
-			// walk month boundaries this booking spans
 			let cursor = new Date(bStart.getFullYear(), bStart.getMonth(), 1);
-			while (cursor <= bEnd) {
+			while (cursor < bEnd) {
 				const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
-				const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+				// first day of next month = exclusive end of this month
+				const monthEndExcl = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
 				const effectiveStart = monthStart > startDate ? monthStart : startDate;
-				const effectiveEnd = monthEnd < endDate ? monthEnd : endDate;
+				const effectiveEndExcl = monthEndExcl < endExcl ? monthEndExcl : endExcl;
 
-				if (arrivalDate <= effectiveEnd && departureDate > effectiveStart) {
+				if (arrivalDate < effectiveEndExcl && departureDate > effectiveStart) {
 					const overlapStart = arrivalDate > effectiveStart ? arrivalDate : effectiveStart;
-					const overlapEnd = departureDate < effectiveEnd ? departureDate : effectiveEnd;
-					const nights = Math.ceil((overlapEnd.getTime() - overlapStart.getTime()) / MS_PER_DAY);
+					const overlapEnd = departureDate < effectiveEndExcl ? departureDate : effectiveEndExcl;
+					const nights = Math.round((overlapEnd.getTime() - overlapStart.getTime()) / MS_PER_DAY);
 					const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
 					monthNights.set(key, (monthNights.get(key) || 0) + nights);
 				}

@@ -94,29 +94,21 @@ async function getGoalMetrics(
 	const occupancy = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
 
 	const uniqueGuests = new Set(
-		bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()).filter(Boolean)
+		bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean)
 	);
 	const totalGuests = uniqueGuests.size;
 
-	const allTimeBookings = await fetchAllRows(() =>
-		supabase
-			.from('bookings')
-			.select('ownerrez_guest_id, guest_name')
-			.eq('tenant_id', tenantId)
-			.neq('status', 'canceled')
-			.order('id')
-	);
-
-	const allTimeCountMap = new Map<string, number>();
-	allTimeBookings.forEach(b => {
-		const key = b.ownerrez_guest_id || b.guest_name?.toLowerCase();
-		if (key) allTimeCountMap.set(key, (allTimeCountMap.get(key) || 0) + 1);
-	});
-
 	let repeatGuests = 0;
-	uniqueGuests.forEach(guestId => {
-		if ((allTimeCountMap.get(guestId) || 0) > 1) repeatGuests++;
-	});
+	if (totalGuests > 0) {
+		const bookingIds = bookings.map(b => b.id);
+		const { data: repeatCount } = await supabase.rpc('get_repeat_guest_count', {
+			p_tenant_id: tenantId,
+			p_from: from,
+			p_to: to,
+			p_booking_ids: bookingIds.length > 0 ? bookingIds : null,
+		});
+		repeatGuests = Number(repeatCount ?? 0);
+	}
 
 	const repeatRate = totalGuests > 0 ? (repeatGuests / totalGuests) * 100 : 0;
 
