@@ -34,32 +34,56 @@ admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
 
   try {
-    // get counts
+    // db counts + exempt tenants
     const [
       { count: totalTenants },
       { count: totalProperties },
       { count: totalBookings },
-      { data: activeSubscriptions },
+      { count: exemptCount },
     ] = await Promise.all([
       supabase.from('tenants').select('id', { count: 'exact', head: true }),
       supabase.from('properties').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('id', { count: 'exact', head: true }),
-      supabase
-        .from('subscriptions')
-        .select('billing_cycle, status, unit_amount')
-        .eq('status', 'active'),
+      supabase.from('tenants').select('id', { count: 'exact', head: true }).eq('subscription_exempt', true),
     ]);
 
-    // calculate MRR from actual unit_amount (stored in cents)
+    // fetch active subscriptions from stripe for accurate MRR + tier breakdown
     let mrr = 0;
-    activeSubscriptions?.forEach(sub => {
-      const cents = sub.unit_amount ?? 0;
-      if (sub.billing_cycle === 'monthly') {
-        mrr += cents / 100;
-      } else if (sub.billing_cycle === 'yearly') {
-        mrr += cents / 100 / 12;
+    const tierCounts: Record<string, number> = {};
+    let activeSubCount = 0;
+
+    if (c.env.STRIPE_SECRET_KEY) {
+      const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
+        apiVersion: '2025-10-29.clover',
+        httpClient: Stripe.createFetchHttpClient()
+      });
+
+      const subs = await stripe.subscriptions.list({ status: 'active', limit: 100 });
+
+      for (const sub of subs.data) {
+        const priceObj = sub.items.data[0]?.price;
+        const cents = priceObj?.unit_amount ?? 0;
+        const interval = priceObj?.recurring?.interval;
+        const tier = (priceObj?.metadata?.tier as string) || 'legacy';
+
+        if (interval === 'month') {
+          mrr += cents / 100;
+        } else if (interval === 'year') {
+          mrr += cents / 100 / 12;
+        }
+
+        tierCounts[tier] = (tierCounts[tier] || 0) + 1;
+        activeSubCount++;
       }
-    });
+    }
+
+    const inactive = Math.max(0, (totalTenants || 0) - activeSubCount - (exemptCount || 0));
+
+    const subscriptionMix = [
+      ...Object.entries(tierCounts).map(([tier, count]) => ({ tier, count })),
+      ...(exemptCount ? [{ tier: 'exempt', count: exemptCount }] : []),
+      ...(inactive > 0 ? [{ tier: 'inactive', count: inactive }] : []),
+    ];
 
     // recent signups (last 7 days)
     const sevenDaysAgo = new Date();
@@ -76,9 +100,10 @@ admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
         totalTenants: totalTenants || 0,
         totalProperties: totalProperties || 0,
         totalBookings: totalBookings || 0,
-        activeSubscriptions: activeSubscriptions?.length || 0,
+        activeSubscriptions: activeSubCount,
         mrr: Math.round(mrr),
         recentSignups: recentSignups || 0,
+        subscriptionMix,
       }
     });
   } catch (error) {

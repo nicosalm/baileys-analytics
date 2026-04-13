@@ -29,6 +29,11 @@ import {
 
 // --- types ---
 
+interface SubscriptionMixEntry {
+  tier: string
+  count: number
+}
+
 interface AdminMetrics {
   totalUsers: number
   totalTenants: number
@@ -37,6 +42,7 @@ interface AdminMetrics {
   activeSubscriptions: number
   mrr: number
   recentSignups: number
+  subscriptionMix: SubscriptionMixEntry[]
 }
 
 interface AdminUser {
@@ -228,28 +234,47 @@ const SignupTrendChart = memo(({ data }: { data: SignupTrendEntry[] }) => {
 })
 SignupTrendChart.displayName = 'SignupTrendChart'
 
-const DONUT_TOKENS = ['--card', '--chart-series-1', '--chart-series-2', '--muted-foreground'] as const
+const DONUT_TOKENS = ['--card', '--chart-series-1', '--chart-series-2', '--chart-series-3', '--chart-series-4', '--muted-foreground'] as const
 
-const SubscriptionDonut = memo(({ users }: { users: AdminUser[] }) => {
+const TIER_LABELS: Record<string, string> = {
+  legacy: 'Legacy',
+  starter: 'Starter',
+  growth: 'Growth',
+  portfolio: 'Portfolio',
+  exempt: 'Exempt',
+  inactive: 'Inactive',
+}
+
+const TIER_COLOR_KEYS: Record<string, typeof DONUT_TOKENS[number] | null> = {
+  legacy: '--chart-series-4',
+  starter: '--chart-series-1',
+  growth: '--chart-series-2',
+  portfolio: '--chart-series-3',
+  exempt: null,
+  inactive: '--muted-foreground',
+}
+
+const EXEMPT_COLOR = '#a855f7'
+
+const SubscriptionDonut = memo(({ mix }: { mix: SubscriptionMixEntry[] }) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const t = useResolvedTokens(DONUT_TOKENS)
 
   const { data, dataColors, total } = useMemo(() => {
-    const monthly = users.filter(u => u.subscription?.status === 'active' && u.subscription?.billing_cycle === 'monthly').length
-    const yearly = users.filter(u => u.subscription?.status === 'active' && u.subscription?.billing_cycle === 'yearly').length
-    const exempt = users.filter(u => u.subscription_exempt).length
-    const inactive = users.length - monthly - yearly - exempt
-
-    const allEntries = [
-      { name: 'Monthly', value: monthly, colorKey: '--chart-series-1' as const },
-      { name: 'Yearly', value: yearly, colorKey: '--chart-series-2' as const },
-      { name: 'Exempt', value: exempt, colorKey: null },
-      { name: 'Inactive', value: inactive, colorKey: '--muted-foreground' as const },
-    ]
-    const filtered = allEntries.filter(d => d.value > 0)
-    const colors = filtered.map(d => d.colorKey ? t[d.colorKey] : '#a855f7')
-    return { data: filtered, dataColors: colors, total: users.length }
-  }, [users, t])
+    const entries = mix
+      .filter(s => s.count > 0)
+      .map(s => ({
+        name: TIER_LABELS[s.tier] || s.tier,
+        value: s.count,
+        tier: s.tier,
+      }))
+    const colors = entries.map(d => {
+      const key = TIER_COLOR_KEYS[d.tier]
+      if (key === null) return EXEMPT_COLOR
+      return key ? t[key] : t['--muted-foreground']
+    })
+    return { data: entries, dataColors: colors, total: mix.reduce((s, e) => s + e.count, 0) }
+  }, [mix, t])
 
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border p-5">
@@ -907,7 +932,7 @@ export const Admin = () => {
             <SignupTrendChart data={signupTrend} />
           </div>
           <div className="md:col-span-2 [&>*]:h-full">
-            <SubscriptionDonut users={users} />
+            {metrics && <SubscriptionDonut mix={metrics.subscriptionMix} />}
           </div>
         </div>
 
