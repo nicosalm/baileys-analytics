@@ -112,7 +112,6 @@ const PreferencesTab = () => {
   const { showTips, toggleTips } = useTips()
   const { addToast } = useToast()
   const { theme, setTheme } = useTheme()
-  const [notifications, setNotifications] = useState(true)
 
   const handleToggleTips = () => {
     toggleTips()
@@ -161,19 +160,6 @@ const PreferencesTab = () => {
         </div>
       </div>
 
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-1">Notifications</h3>
-        <p className="text-sm text-muted-foreground mb-4">Choose how you'd like to hear from us</p>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="text-sm font-medium text-foreground">Email Notifications</span>
-              <p className="text-xs text-muted-foreground mt-0.5">Receive updates about your account and syncs</p>
-            </div>
-            <Switch checked={notifications} onCheckedChange={setNotifications} />
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
