@@ -337,7 +337,7 @@ export const Signup = () => {
               <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">3</div>
               <div>
                 <h4 className="font-semibold mb-1">See your insights instantly</h4>
-                <p className="text-white/80 text-sm">5 dashboards with your actual revenue, occupancy, and guest data</p>
+                <p className="text-white/80 text-sm">P&L, pacing, occupancy, and guest data. Ready to explore.</p>
               </div>
             </div>
           </div>

@@ -17,7 +17,6 @@ import { TIERS, getTierMonthlyDollars, getTierYearlyDollars } from '@baileys/con
 import { useInView } from '@/hooks'
 import { useCountUp } from '@/hooks/use-count-up'
 import { usePageTitle } from '@/hooks/use-page-title'
-import { renderInlineBold } from '@/utils/inline-bold'
 import { Switch } from '@/components/ui/switch'
 import { LogoCube } from '@/components/LogoCube'
 
@@ -498,7 +497,7 @@ export const Landing = () => {
         >
           <div className="text-center mb-10">
             <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">Pricing that makes sense</h2>
-            <p className="text-sm uppercase tracking-[0.15em] text-white/40">Pick the tier that fits your portfolio.</p>
+            <p className="text-sm uppercase tracking-[0.15em] text-white/40">One product, priced by portfolio size.</p>
           </div>
 
           {/* billing toggle */}
@@ -512,92 +511,78 @@ export const Landing = () => {
             <span className={`text-sm transition-colors ${yearlyBilling ? 'text-white font-medium' : 'text-white/40'}`}>Yearly</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {TIERS.map((tier) => {
-              const isContact = tier.contactSales
+          {/* price cards - compact, no repeated features */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto mb-14">
+            {TIERS.filter(t => !t.contactSales).map((tier) => {
               const monthlyDisplay = getTierMonthlyDollars(tier, yearlyBilling)
               const yearlyTotal = getTierYearlyDollars(tier)
-
               return (
                 <div key={tier.slug} className="relative group">
-                  {/* gradient border glow */}
                   <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-primary via-[oklch(0.60_0.10_272)] to-[oklch(0.45_0.12_280)] opacity-60 group-hover:opacity-100 transition-opacity duration-300" />
-
-                  <div className="relative bg-[var(--landing-card)] rounded-2xl px-6 py-8 flex flex-col min-h-[480px]">
-                    {/* plan label */}
-                    <div className="text-center mb-6">
-                      <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-1">
-                        {tier.name}
-                      </p>
-                      <p className="text-xs text-white/30 mb-5">{tier.tagline}</p>
-
-                      {/* price */}
-                      {isContact ? (
-                        <div className="flex items-baseline justify-center gap-1">
-                          <span className="landing-serif text-4xl font-semibold tracking-tight text-white">Custom</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-baseline justify-center gap-1">
-                          <span className="landing-serif text-4xl font-semibold tracking-tight text-white">
-                            ${monthlyDisplay}
-                          </span>
-                          <span className="text-sm text-white/40 font-normal">/mo</span>
-                        </div>
-                      )}
-
-                      {/* billing context */}
-                      <div className="mt-2 h-5">
-                        {isContact ? (
-                          <p className="text-sm text-white/40">Quoted per account</p>
-                        ) : yearlyBilling ? (
-                          <p className="text-sm text-success font-medium">${yearlyTotal}/year</p>
-                        ) : (
-                          <p className="text-sm text-white/40">Billed monthly</p>
-                        )}
-                      </div>
+                  <div className="relative bg-[var(--landing-card)] rounded-2xl px-6 py-8 flex flex-col items-center">
+                    <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-1">{tier.name}</p>
+                    <p className="text-sm text-white/50 mb-5">{tier.tagline}</p>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="landing-serif text-4xl font-semibold tracking-tight text-white">
+                        ${monthlyDisplay}
+                      </span>
+                      <span className="text-sm text-white/40 font-normal">/mo</span>
                     </div>
-
-                    {/* divider */}
-                    <div className="h-px bg-white/10 mb-6" />
-
-                    {/* features */}
-                    <div className="space-y-3 mb-auto">
-                      {tier.features.map((feature) => (
-                        <div key={feature} className="flex items-start gap-2.5">
-                          <div className="mt-0.5 w-4 h-4 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
-                            <Check className="w-2.5 h-2.5 text-success" strokeWidth={2.5} />
-                          </div>
-                          <span className="text-sm text-[var(--landing-body)] leading-snug">{renderInlineBold(feature, 'font-semibold text-white')}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* cta */}
-                    <div className="mt-8">
-                      {isContact ? (
-                        <a
-                          href="mailto:support@baileysanalytics.com?subject=Enterprise%20pricing%20inquiry"
-                          className="block w-full h-10 leading-10 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold"
-                        >
-                          Contact sales
-                        </a>
+                    <div className="mt-2 h-5 mb-6">
+                      {yearlyBilling ? (
+                        <p className="text-sm text-success font-medium">${yearlyTotal}/year</p>
                       ) : (
-                        <Link
-                          to="/signup"
-                          className="block w-full h-10 leading-10 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold"
-                        >
-                          Get started
-                        </Link>
+                        <p className="text-sm text-white/40">Billed monthly</p>
                       )}
                     </div>
+                    <Link
+                      to="/signup"
+                      className="block w-full h-10 leading-10 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold"
+                    >
+                      Get started
+                    </Link>
                   </div>
                 </div>
               )
             })}
           </div>
 
+          {/* features listed once */}
+          <div className="max-w-2xl mx-auto mb-14">
+            <p className="text-center text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-6">Included in every plan</p>
+            <div className="grid sm:grid-cols-2 gap-x-10 gap-y-3">
+              {TIERS[0].features.map((feature) => (
+                <div key={feature} className="flex items-start gap-2.5">
+                  <div className="mt-0.5 w-4 h-4 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-2.5 h-2.5 text-success" strokeWidth={2.5} />
+                  </div>
+                  <span className="text-sm text-[var(--landing-body)] leading-snug">{feature}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* enterprise callout */}
+          <div className="max-w-3xl mx-auto">
+            <div className="relative group">
+              <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-[oklch(0.45_0.12_280)] via-primary to-[oklch(0.45_0.12_280)] opacity-40 group-hover:opacity-70 transition-opacity duration-300" />
+              <div className="relative bg-[var(--landing-card)] rounded-2xl px-8 py-6 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+                <div className="flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-1">Enterprise</p>
+                  <p className="text-white font-medium">20+ properties with custom pricing, dedicated onboarding, and roadmap input.</p>
+                </div>
+                <a
+                  href="mailto:support@baileysanalytics.com?subject=Enterprise%20pricing%20inquiry"
+                  className="whitespace-nowrap inline-block px-6 h-10 leading-10 text-center bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity text-sm font-semibold"
+                >
+                  Contact us
+                </a>
+              </div>
+            </div>
+          </div>
+
           <p className="text-center text-xs text-white/30 mt-8">
-            Same features at every tier. Cancel anytime.
+            Cancel anytime.
           </p>
         </div>
       </section>

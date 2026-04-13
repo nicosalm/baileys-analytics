@@ -268,24 +268,24 @@ export const Login = () => {
         <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
 
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h3 className="landing-serif text-4xl font-semibold mb-6">Analytics for Your OwnerRez Data</h3>
+          <h3 className="landing-serif text-4xl font-semibold mb-6">Know your real numbers.</h3>
           <p className="text-lg text-white/80 mb-8">
-            Track revenue, occupancy, and guest metrics across all your properties.
+            P&L, pacing, and occupancy across every property. Updated in real time.
           </p>
 
           {/* Feature highlights */}
           <div className="space-y-4">
             <div className="flex items-start">
               <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="text-white/80">6 specialized dashboards</p>
+              <p className="text-white/80">See where your money actually goes</p>
             </div>
             <div className="flex items-start">
               <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="text-white/80">Platform fee tracking for taxes</p>
+              <p className="text-white/80">Spot gaps before they cost you</p>
             </div>
             <div className="flex items-start">
               <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="text-white/80">Cross-property comparison</p>
+              <p className="text-white/80">Compare every property side by side</p>
             </div>
           </div>
         </div>

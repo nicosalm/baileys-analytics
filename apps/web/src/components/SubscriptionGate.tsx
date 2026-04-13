@@ -21,19 +21,6 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
   const navigate = useNavigate();
   const { logout, state } = useAuth();
 
-  // demo users bypass subscription gate entirely
-  if (state.status === 'authenticated' && state.user.isDemo) {
-    return <>{children}</>;
-  }
-
-  // pages that don't require subscription
-  const publicPaths = ['/settings', '/login', '/signup', '/forgot-password', '/reset-password'];
-  const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
-
-  useEffect(() => {
-    checkSubscription();
-  }, []);
-
   const checkSubscription = async () => {
     try {
       const data = await billingClient.getSubscription();
@@ -52,7 +39,18 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
     }
   };
 
+  useEffect(() => {
+    checkSubscription();
+  }, []);
+
+  // demo users bypass subscription gate entirely
+  if (state.status === 'authenticated' && state.user.isDemo) {
+    return <>{children}</>;
+  }
+
   // always allow access to settings page so they can manage billing
+  const publicPaths = ['/settings', '/login', '/signup', '/forgot-password', '/reset-password'];
+  const isPublicPath = publicPaths.some(path => location.pathname.startsWith(path));
   if (isPublicPath) {
     return <>{children}</>;
   }
@@ -99,7 +97,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
               <h2 className="text-2xl font-bold text-foreground mb-2">Get started</h2>
               <p className="text-muted-foreground">Unlock financial clarity for your rentals.</p>
             </div>
-            <PricingPlans onPlanSelect={checkSubscription} />
+            <PricingPlans />
           </div>
         </div>
 

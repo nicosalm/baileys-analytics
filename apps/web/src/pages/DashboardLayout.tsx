@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/auth'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
 import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft, Eye, Menu } from 'lucide-react'
-import { lazy, Suspense, useState, useEffect } from 'react'
+import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import {
   Sheet, SheetTrigger, SheetContent, SheetTitle
 } from '@/components/ui/sheet'
@@ -134,10 +134,14 @@ export const DashboardLayout = () => {
   usePageTitle(tabLabel)
   const { state, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showInitialSync, setShowInitialSync] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [connectLoading, setConnectLoading] = useState(false)
+  const { addToast } = useToast()
+  const syncChecked = useRef(false)
 
   useEffect(() => {
     const syncParam = searchParams.get('sync')
@@ -167,12 +171,24 @@ export const DashboardLayout = () => {
     checkAdminStatus()
   }, [])
 
+  // detect incomplete initial sync (e.g. user refreshed mid-sync)
+  useEffect(() => {
+    if (syncChecked.current || showInitialSync) return
+    if (state.status !== 'authenticated') return
+    if (!state.user.hasOwnerRezConnection || state.user.isDemo) return
+
+    syncChecked.current = true
+    api.request<{ needed: boolean; completed: boolean }>('/sync/status').then(result => {
+      if (result.success && result.data.needed && !result.data.completed) {
+        setShowInitialSync(true)
+      }
+    }).catch(() => {})
+  }, [state.status, showInitialSync])
+
   if (state.status !== 'authenticated') return null
 
   const { user } = state
   const isDemo = user.isDemo === true
-
-  const location = useLocation()
 
   const handleLogout = async () => {
     await logout()
@@ -188,9 +204,18 @@ export const DashboardLayout = () => {
 
   if (!user.hasOwnerRezConnection) {
     const handleConnect = async () => {
-      const result = await api.initiateOAuth()
-      if (result.success) {
-        window.location.href = result.data.authUrl
+      setConnectLoading(true)
+      try {
+        const result = await api.initiateOAuth()
+        if (result.success) {
+          window.location.href = result.data.authUrl
+        } else {
+          addToast('error', 'Failed to connect to OwnerRez. Please try again.')
+          setConnectLoading(false)
+        }
+      } catch {
+        addToast('error', 'Failed to connect to OwnerRez. Please try again.')
+        setConnectLoading(false)
       }
     }
 
@@ -254,6 +279,8 @@ export const DashboardLayout = () => {
 
               <Button
                 onClick={handleConnect}
+                loading={connectLoading}
+                loadingText="Connecting..."
                 className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
               >
                 Connect OwnerRez

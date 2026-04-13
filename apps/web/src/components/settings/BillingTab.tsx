@@ -8,7 +8,7 @@ import { billingClient, type SubscriptionInfo, type TierStatus, type PendingTier
 import { PricingPlans } from '@/components/PricingPlans';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/contexts/toast';
-import { formatDateDisplay } from '@baileys/utils';
+import { formatDateDisplay, formatCurrency } from '@baileys/utils';
 import { getTierBySlug } from '@baileys/constants';
 
 // Resolve display name and per-month dollar amount for the current plan.
@@ -148,7 +148,7 @@ export const BillingTab = () => {
           </div>
         </div>
 
-        <PricingPlans onPlanSelect={loadBillingData} />
+        <PricingPlans />
       </div>
     );
   }
@@ -164,13 +164,6 @@ export const BillingTab = () => {
       default:
         return 'bg-muted text-muted-foreground';
     }
-  };
-
-  const formatPrice = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'usd'
-    }).format(amount / 100);
   };
 
   const { planName, isLegacy, monthlyDollars, totalCharge, isYearly } = resolvePlanDisplay(subscription);
@@ -193,6 +186,11 @@ export const BillingTab = () => {
       : `${tierStatus.propertyCount}`
     : 'Unlimited';
 
+  const targetTierName = pending?.tierName ?? tierStatus?.resolvedTierName;
+  const targetYearlyDollars = pending?.yearlyDollars ?? tierStatus?.resolvedYearlyDollars;
+  const targetMonthlyDollars = pending?.monthlyDollars ?? tierStatus?.resolvedMonthlyDollars;
+  const effectiveAt = pending?.effectiveAt ?? tierStatus?.upgradeAt;
+
   return (
     <div className="space-y-6">
       {showOverage && tierStatus && (
@@ -211,25 +209,15 @@ export const BillingTab = () => {
               ) : (
                 <>
                   <p className="text-sm text-info-fg mt-1">
-                    {(() => {
-                      const targetTierName = pending?.tierName ?? tierStatus.resolvedTierName;
-                      const targetYearlyDollars = pending?.yearlyDollars ?? tierStatus.resolvedYearlyDollars;
-                      const targetMonthlyDollars = pending?.monthlyDollars ?? tierStatus.resolvedMonthlyDollars;
-                      const effectiveAt = pending?.effectiveAt ?? tierStatus.upgradeAt;
-                      return (
-                        <>
-                          You now have {tierStatus.propertyCount} properties. Your plan will move to{' '}
-                          <span className="font-semibold">{targetTierName}</span>
-                          {tierStatus.billingCycle === 'yearly' && targetYearlyDollars != null ? (
-                            <> (${targetYearlyDollars}/year{targetMonthlyDollars != null ? `, about $${targetMonthlyDollars}/mo` : ''})</>
-                          ) : targetMonthlyDollars != null ? (
-                            <> (${targetMonthlyDollars}/mo)</>
-                          ) : null}{' '}
-                          on your next renewal
-                          {effectiveAt && <> on {formatDateDisplay(effectiveAt)}</>}.
-                        </>
-                      );
-                    })()}
+                    You now have {tierStatus.propertyCount} properties. Your plan will move to{' '}
+                    <span className="font-semibold">{targetTierName}</span>
+                    {tierStatus.billingCycle === 'yearly' && targetYearlyDollars != null ? (
+                      <> (${targetYearlyDollars}/year{targetMonthlyDollars != null ? `, about $${targetMonthlyDollars}/mo` : ''})</>
+                    ) : targetMonthlyDollars != null ? (
+                      <> (${targetMonthlyDollars}/mo)</>
+                    ) : null}{' '}
+                    on your next renewal
+                    {effectiveAt && <> on {formatDateDisplay(effectiveAt)}</>}.
                   </p>
                   <p className="text-xs text-info-fg/80 mt-1">
                     No charges happen now. You'll keep paying your current rate until renewal day.
@@ -242,7 +230,7 @@ export const BillingTab = () => {
                     href="mailto:support@baileysanalytics.com?subject=Enterprise%20pricing%20inquiry"
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-info-fg underline underline-offset-2"
                   >
-                    Contact sales
+                    Contact us
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
@@ -333,7 +321,7 @@ export const BillingTab = () => {
               >
                 <div>
                   <p className="text-sm font-medium text-foreground">
-                    {formatPrice(payment.amount)}
+                    {formatCurrency(payment.amount / 100)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {formatDateDisplay(payment.created_at)}
