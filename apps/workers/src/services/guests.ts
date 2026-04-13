@@ -317,12 +317,19 @@ export async function getGuestsData(
 
   const totalGuests = guestPeriodMap.size;
 
-  // repeat = has visited more than once (all-time booking count)
-  // the period filter controls which guests are shown; repeat is a property of the guest
-  const repeatGuests = Array.from(guestPeriodMap.keys()).filter(guestId => {
-    const allTimeData = guestAllTimeMap.get(guestId);
-    return allTimeData && allTimeData.bookings.length > 1;
-  }).length;
+  // repeat guest count via the same RPC that overview uses, so both dashboards agree.
+  // the per-guest isRepeat flag below still uses guestAllTimeMap for the guest list.
+  let repeatGuests = 0;
+  if (totalGuests > 0) {
+    const periodBookingIds = filteredPeriodBookings.map(b => b.id);
+    const { data: repeatCount } = await supabase.rpc('get_repeat_guest_count', {
+      p_tenant_id: tenantId,
+      p_from: from || null,
+      p_to: to || null,
+      p_booking_ids: periodBookingIds.length > 0 ? periodBookingIds : null,
+    });
+    repeatGuests = Number(repeatCount ?? 0);
+  }
 
   const repeatRate = totalGuests > 0 ? repeatGuests / totalGuests : 0;
 

@@ -182,11 +182,14 @@ async function getCurrentPeriodMetrics(
 	const periodStart = new Date(from);
 	const periodEnd = new Date(to);
 	const occupiedPropertyDays = new Set<string>();
+	// departure is exclusive (checkout day) but periodEnd is inclusive,
+	// so use periodEnd + 1 day as the exclusive upper bound
+	const periodEndExcl = new Date(periodEnd.getTime() + MS_PER_DAY);
 	for (const b of bookings) {
 		const arrival = new Date(b.arrival);
 		const departure = new Date(b.departure);
 		const clippedStart = arrival > periodStart ? arrival : periodStart;
-		const clippedEnd = departure < periodEnd ? departure : periodEnd;
+		const clippedEnd = departure < periodEndExcl ? departure : periodEndExcl;
 		for (let d = new Date(clippedStart); d < clippedEnd; d.setDate(d.getDate() + 1)) {
 			occupiedPropertyDays.add(`${b.property_id}_${d.toISOString().split('T')[0]}`);
 		}
