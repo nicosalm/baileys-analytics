@@ -248,7 +248,7 @@ export async function getGuestsData(
   }>();
 
   for (const booking of filteredPeriodBookings) {
-    if (!booking.guest_name) continue;
+    if (!booking.guest_name && !booking.ownerrez_guest_id) continue;
 
     const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
     const contact = getGuestContact(booking as Record<string, unknown>);
@@ -275,7 +275,7 @@ export async function getGuestsData(
   }
 
   for (const booking of allBookings) {
-      if (!booking.guest_name) continue;
+      if (!booking.guest_name && !booking.ownerrez_guest_id) continue;
 
       const guestId = createGuestId(booking.ownerrez_guest_id, booking.guest_name);
 

@@ -166,22 +166,36 @@ async function getCurrentPeriodMetrics(
 
 	const netRevenue = totalRevenue - platformFees - taxes;
 	const operatingProfit = netRevenue - operatingExpensesTotal;
-	let totalNights = 0;
+
+	// avgNights = average booking duration (full booking length, not clipped)
+	let totalBookingNights = 0;
 	bookings.forEach(b => {
-		const nights = Math.ceil(
+		totalBookingNights += Math.ceil(
 			(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
 		);
-		totalNights += nights;
 	});
-	const avgNights = totalBookings > 0 ? totalNights / totalBookings : 0;
+	const avgNights = totalBookings > 0 ? totalBookingNights / totalBookings : 0;
 
-	const startDate = new Date(from);
-	const endDate = new Date(to);
-	const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+	// occupancy = booked property-days / total property-days
+	// clip each booking to the period window and deduplicate per property-day
+	const MS_PER_DAY = 1000 * 60 * 60 * 24;
+	const periodStart = new Date(from);
+	const periodEnd = new Date(to);
+	const occupiedPropertyDays = new Set<string>();
+	for (const b of bookings) {
+		const arrival = new Date(b.arrival);
+		const departure = new Date(b.departure);
+		const clippedStart = arrival > periodStart ? arrival : periodStart;
+		const clippedEnd = departure < periodEnd ? departure : periodEnd;
+		for (let d = new Date(clippedStart); d < clippedEnd; d.setDate(d.getDate() + 1)) {
+			occupiedPropertyDays.add(`${b.property_id}_${d.toISOString().split('T')[0]}`);
+		}
+	}
+	const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / MS_PER_DAY) + 1;
 	const totalPossibleNights = totalDays * (propertyCount || 1);
-	const occupancyRate = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
+	const occupancyRate = totalPossibleNights > 0 ? (occupiedPropertyDays.size / totalPossibleNights) * 100 : 0;
 
-	const uniqueGuests = new Set(bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()).filter(Boolean));
+	const uniqueGuests = new Set(bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
 
 	// repeat guest rate via SQL (avoids fetching all historical bookings)

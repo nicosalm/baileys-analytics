@@ -229,15 +229,22 @@ export const PLView: React.FC<PLViewProps> = ({
       }
     }) || []
     
-    // revenue highlights from monthly data
-    const monthlyRevenues = monthlyData.map((m: { revenue: number }) => m.revenue || 0)
-    const avgMonthlyRevenue = monthlyRevenues.length > 0
-      ? monthlyRevenues.reduce((sum: number, r: number) => sum + r, 0) / monthlyRevenues.length
+    // aggregate trend entries to actual months before computing highlights
+    // (trend data can be daily or weekly, but best/lowest should be per-month)
+    const monthAgg = new Map<string, number>()
+    for (const m of monthlyData) {
+      const monthKey = m.month.substring(0, 7)
+      monthAgg.set(monthKey, (monthAgg.get(monthKey) || 0) + (m.revenue || 0))
+    }
+    const monthEntries = Array.from(monthAgg.entries()).map(([month, revenue]) => ({ month, revenue }))
+    const monthRevenues = monthEntries.map(m => m.revenue)
+    const avgMonthlyRevenue = monthRevenues.length > 0
+      ? monthRevenues.reduce((sum, r) => sum + r, 0) / monthRevenues.length
       : 0
-    const bestMonthValue = monthlyRevenues.length > 0 ? Math.max(...monthlyRevenues) : 0
-    const lowestMonthValue = monthlyRevenues.length > 0 ? Math.min(...monthlyRevenues) : 0
-    const bestMonth = monthlyData.find(m => (m.revenue || 0) === bestMonthValue)
-    const lowestMonth = monthlyData.find(m => (m.revenue || 0) === lowestMonthValue)
+    const bestMonthValue = monthRevenues.length > 0 ? Math.max(...monthRevenues) : 0
+    const lowestMonthValue = monthRevenues.length > 0 ? Math.min(...monthRevenues) : 0
+    const bestMonth = monthEntries.find(m => m.revenue === bestMonthValue)
+    const lowestMonth = monthEntries.find(m => m.revenue === lowestMonthValue)
 
     const formatMonthLabel = (month?: string) => {
       if (!month) return undefined
@@ -287,7 +294,7 @@ export const PLView: React.FC<PLViewProps> = ({
         bestMonthLabel: formatMonthLabel(bestMonth?.month),
         lowestMonthValue,
         lowestMonthLabel: formatMonthLabel(lowestMonth?.month),
-        monthCount: monthlyData.length
+        monthCount: monthEntries.length
       }
     }
   }, [data, comparisonMode, comparisonLabel])
