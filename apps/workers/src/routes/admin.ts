@@ -39,24 +39,25 @@ admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
       { count: totalTenants },
       { count: totalProperties },
       { count: totalBookings },
-      { data: activeSubscriptions }
+      { data: activeSubscriptions },
     ] = await Promise.all([
       supabase.from('tenants').select('id', { count: 'exact', head: true }),
       supabase.from('properties').select('id', { count: 'exact', head: true }),
       supabase.from('bookings').select('id', { count: 'exact', head: true }),
       supabase
         .from('subscriptions')
-        .select('billing_cycle, status')
-        .eq('status', 'active')
+        .select('billing_cycle, status, unit_amount')
+        .eq('status', 'active'),
     ]);
 
-    // calculate MRR
+    // calculate MRR from actual unit_amount (stored in cents)
     let mrr = 0;
     activeSubscriptions?.forEach(sub => {
+      const cents = sub.unit_amount ?? 0;
       if (sub.billing_cycle === 'monthly') {
-        mrr += 20;
+        mrr += cents / 100;
       } else if (sub.billing_cycle === 'yearly') {
-        mrr += 16; // $192/year = $16/month
+        mrr += cents / 100 / 12;
       }
     });
 
@@ -71,13 +72,13 @@ admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
 
     return c.json({
       metrics: {
-        totalUsers: totalTenants || 0, // tenants are users
+        totalUsers: totalTenants || 0,
         totalTenants: totalTenants || 0,
         totalProperties: totalProperties || 0,
         totalBookings: totalBookings || 0,
         activeSubscriptions: activeSubscriptions?.length || 0,
         mrr: Math.round(mrr),
-        recentSignups: recentSignups || 0
+        recentSignups: recentSignups || 0,
       }
     });
   } catch (error) {

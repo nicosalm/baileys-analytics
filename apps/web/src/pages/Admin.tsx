@@ -13,7 +13,7 @@ import {
 import {
   Users, DollarSign, TrendingUp, Search, Trash2, AlertTriangle,
   Settings, LogOut, LayoutDashboard, RefreshCw, ChevronDown,
-  Shield, Link2, Link2Off, AlertCircle, UserPlus, Building2, CalendarDays,
+  Shield, Link2, Link2Off, AlertCircle, UserPlus,
   ExternalLink, ArrowUpDown,
   ChevronLeft, ChevronRight, ChevronUp, Activity
 } from 'lucide-react'
@@ -139,49 +139,26 @@ const USERS_PER_PAGE = 15
 
 // --- metric strip ---
 
-const MetricStrip = memo(({ metrics, errorCount }: { metrics: AdminMetrics; errorCount: number }) => (
-  <div className="space-y-4">
-    {/* primary metrics */}
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-      {[
-        { icon: Users, label: 'Total Users', value: String(metrics.totalUsers) },
-        { icon: TrendingUp, label: 'Active Subs', value: String(metrics.activeSubscriptions) },
-        { icon: DollarSign, label: 'MRR', value: `$${metrics.mrr}` },
-        { icon: UserPlus, label: 'Signups (7d)', value: String(metrics.recentSignups) },
-      ].map(({ icon: Icon, label, value }, i) => (
-        <div
-          key={label}
-          className="bg-card rounded-lg shadow-sm border border-border px-4 py-3 stagger-fade-in"
-          style={{ '--stagger-index': i } as React.CSSProperties}
-        >
-          <div className="flex items-center gap-2 mb-1">
-            <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{label}</span>
-          </div>
-          <span className="text-xl font-bold text-foreground">{value}</span>
+const MetricStrip = memo(({ metrics }: { metrics: AdminMetrics }) => (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    {[
+      { icon: Users, label: 'Total Users', value: String(metrics.totalUsers) },
+      { icon: TrendingUp, label: 'Active Subs', value: String(metrics.activeSubscriptions) },
+      { icon: DollarSign, label: 'MRR', value: `$${metrics.mrr}` },
+      { icon: UserPlus, label: 'Signups (7d)', value: String(metrics.recentSignups) },
+    ].map(({ icon: Icon, label, value }, i) => (
+      <div
+        key={label}
+        className="bg-card rounded-lg shadow-sm border border-border px-4 py-3 stagger-fade-in"
+        style={{ '--stagger-index': i } as React.CSSProperties}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{label}</span>
         </div>
-      ))}
-    </div>
-    {/* secondary metrics */}
-    <div className="grid grid-cols-3 gap-4">
-      {[
-        { icon: Building2, label: 'Properties', value: String(metrics.totalProperties) },
-        { icon: CalendarDays, label: 'Bookings', value: metrics.totalBookings.toLocaleString() },
-        { icon: AlertCircle, label: 'Errors', value: String(errorCount), danger: errorCount > 0 },
-      ].map(({ icon: Icon, label, value, danger }, i) => (
-        <div
-          key={label}
-          className="bg-card rounded-lg shadow-sm border border-border px-4 py-3 flex items-center gap-3 stagger-fade-in"
-          style={{ '--stagger-index': i + 4 } as React.CSSProperties}
-        >
-          <Icon className={`w-3.5 h-3.5 ${danger ? 'text-danger' : 'text-muted-foreground'}`} />
-          <div>
-            <span className="text-xs text-muted-foreground">{label}</span>
-            <p className="text-sm font-semibold text-foreground leading-tight">{value}</p>
-          </div>
-        </div>
-      ))}
-    </div>
+        <span className="text-xl font-bold text-foreground">{value}</span>
+      </div>
+    ))}
   </div>
 ))
 MetricStrip.displayName = 'MetricStrip'
@@ -676,6 +653,14 @@ export const Admin = () => {
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
+  // reset sync modal
+  const [resetSyncModal, setResetSyncModal] = useState<{ open: boolean; user: AdminUser | null }>({ open: false, user: null })
+  const [resettingSync, setResettingSync] = useState(false)
+
+  // exemption modal
+  const [exemptModal, setExemptModal] = useState<{ open: boolean; user: AdminUser | null }>({ open: false, user: null })
+  const [exempting, setExempting] = useState(false)
+
   const autoRefreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadData = useCallback(async () => {
@@ -731,14 +716,22 @@ export const Admin = () => {
     setRefreshing(false)
   }
 
-  const handleGrantExemption = async (tenantId: string, currentStatus: boolean) => {
-    const result = await api.request(`/admin/users/${tenantId}/exempt`, {
-      method: 'POST',
-      body: JSON.stringify({ exempt: !currentStatus })
-    })
-    if (result.success) {
-      const usersResult = await api.request<{ users: AdminUser[] }>('/admin/users', { method: 'GET' })
-      if (usersResult.success && usersResult.data) setUsers(usersResult.data.users)
+  const handleGrantExemption = async () => {
+    const user = exemptModal.user
+    if (!user) return
+    try {
+      setExempting(true)
+      const result = await api.request(`/admin/users/${user.id}/exempt`, {
+        method: 'POST',
+        body: JSON.stringify({ exempt: !user.subscription_exempt })
+      })
+      if (result.success) {
+        const usersResult = await api.request<{ users: AdminUser[] }>('/admin/users', { method: 'GET' })
+        if (usersResult.success && usersResult.data) setUsers(usersResult.data.users)
+        setExemptModal({ open: false, user: null })
+      }
+    } finally {
+      setExempting(false)
     }
   }
 
@@ -774,19 +767,26 @@ export const Admin = () => {
     }
   }
 
-  const handleResetSync = async (tenantId: string, email: string) => {
-    if (!confirm(`Reset initial sync for ${email}? A new tab will open impersonating them and auto-run the sync.`)) return
-    const result = await api.request<{ url: string }>(`/admin/users/${tenantId}/reset-sync`, { method: 'POST' })
-    if (!result.success) {
-      addToast('error', result.error || 'Failed to reset sync')
-      return
+  const handleResetSync = async () => {
+    const user = resetSyncModal.user
+    if (!user) return
+    try {
+      setResettingSync(true)
+      const result = await api.request<{ url: string }>(`/admin/users/${user.id}/reset-sync`, { method: 'POST' })
+      if (!result.success) {
+        addToast('error', result.error || 'Failed to reset sync')
+        return
+      }
+      if (!result.data?.url) {
+        addToast('error', 'Failed to reset sync')
+        return
+      }
+      window.open(result.data.url, '_blank')
+      addToast('success', 'Sync reset — impersonation tab will run initial sync')
+      setResetSyncModal({ open: false, user: null })
+    } finally {
+      setResettingSync(false)
     }
-    if (!result.data?.url) {
-      addToast('error', 'Failed to reset sync')
-      return
-    }
-    window.open(result.data.url, '_blank')
-    addToast('success', 'Sync reset — impersonation tab will run initial sync')
   }
 
   // sorting
@@ -899,7 +899,7 @@ export const Admin = () => {
         </div>
 
         {/* metrics */}
-        {metrics && <MetricStrip metrics={metrics} errorCount={errors.length} />}
+        {metrics && <MetricStrip metrics={metrics} />}
 
         {/* growth charts: signup trend (wider) + subscription donut */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 stagger-fade-in" style={{ '--stagger-index': 7 } as React.CSSProperties}>
@@ -1002,7 +1002,7 @@ export const Admin = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon-xs"
-                                  onClick={(e) => { e.stopPropagation(); handleResetSync(user.id, user.email) }}
+                                  onClick={(e) => { e.stopPropagation(); setResetSyncModal({ open: true, user }) }}
                                   title="Reset initial sync and impersonate"
                                   className="text-muted-foreground hover:text-info"
                                   disabled={!user.ownerrez_connected}
@@ -1012,7 +1012,7 @@ export const Admin = () => {
                                 <Button
                                   variant={user.subscription_exempt ? "destructive" : "outline"}
                                   size="xs"
-                                  onClick={(e) => { e.stopPropagation(); handleGrantExemption(user.id, user.subscription_exempt) }}
+                                  onClick={(e) => { e.stopPropagation(); setExemptModal({ open: true, user }) }}
                                   title={user.subscription_exempt ? 'Revoke exemption' : 'Grant exemption'}
                                 >
                                   <Shield className="w-3.5 h-3.5 md:mr-1" />
@@ -1176,6 +1176,86 @@ export const Admin = () => {
               loadingText="Deleting..."
             >
               Delete Account
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* reset sync confirmation modal */}
+      <AlertDialog open={resetSyncModal.open} onOpenChange={(open) => {
+        if (!open) setResetSyncModal({ open: false, user: null })
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-info-subtle rounded-full flex items-center justify-center flex-shrink-0">
+                <RefreshCw className="w-5 h-5 text-info" />
+              </div>
+              <div>
+                <AlertDialogTitle>Reset Sync</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Reset the initial sync for <strong>{resetSyncModal.user?.email}</strong>?
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+
+          <div className="p-3 bg-muted/50 rounded-lg border">
+            <p className="text-sm text-muted-foreground">
+              This will clear the sync state and open a new tab impersonating the user to re-run the initial data sync from OwnerRez.
+            </p>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              onClick={handleResetSync}
+              loading={resettingSync}
+              loadingText="Resetting..."
+            >
+              <RefreshCw className="w-4 h-4" />
+              Reset Sync
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* exemption confirmation modal */}
+      <AlertDialog open={exemptModal.open} onOpenChange={(open) => {
+        if (!open) setExemptModal({ open: false, user: null })
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                exemptModal.user?.subscription_exempt ? 'bg-danger-subtle' : 'bg-purple-subtle'
+              }`}>
+                <Shield className={`w-5 h-5 ${exemptModal.user?.subscription_exempt ? 'text-danger' : 'text-purple-fg'}`} />
+              </div>
+              <div>
+                <AlertDialogTitle>
+                  {exemptModal.user?.subscription_exempt ? 'Revoke Exemption' : 'Grant Exemption'}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {exemptModal.user?.subscription_exempt
+                    ? <>Remove free access for <strong>{exemptModal.user?.email}</strong>? They will need an active subscription to continue using the platform.</>
+                    : <>Grant free unlimited access to <strong>{exemptModal.user?.email}</strong>? This bypasses all subscription checks.</>
+                  }
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <Button
+              variant={exemptModal.user?.subscription_exempt ? 'destructive' : 'default'}
+              onClick={handleGrantExemption}
+              loading={exempting}
+              loadingText={exemptModal.user?.subscription_exempt ? 'Revoking...' : 'Granting...'}
+            >
+              <Shield className="w-4 h-4" />
+              {exemptModal.user?.subscription_exempt ? 'Revoke Exemption' : 'Grant Exemption'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

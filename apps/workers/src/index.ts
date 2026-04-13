@@ -395,7 +395,9 @@ const dashboardPaths = [
 	'/api/seasons',
 	'/api/goals',
 	'/api/tags',
-	'/api/expense-templates'
+	'/api/expense-templates',
+	'/api/operating-expenses',
+	'/api/property-groups',
 ];
 
 // apply subscription check to dashboard routes
@@ -424,6 +426,7 @@ const demoReadOnlyPaths = [
 	'/api/operating-expenses',
 	'/api/expense-templates',
 	'/api/tax',
+	'/api/property-groups',
 ];
 demoReadOnlyPaths.forEach(path => {
 	app.post(path, authMiddleware, demoGuard);
