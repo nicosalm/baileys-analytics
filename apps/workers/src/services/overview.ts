@@ -502,9 +502,12 @@ async function getAlerts(
 
 	if (propertyCount) {
 		const totalPossibleNights = 30 * propertyCount;
-		// clip each booking to [today, today+30d) so long stays don't inflate the numerator
-		const windowStartMs = today.getTime();
-		const windowEndMs = thirtyDaysFromNow.getTime();
+		// align the window to UTC midnight to match the DATE-typed arrival/departure
+		// columns. using today.getTime() directly would clip by the current time-of-day
+		// and systematically undercount nights of stays arriving today or extending past
+		// the window end.
+		const windowStartMs = Math.floor(today.getTime() / MS_PER_DAY) * MS_PER_DAY;
+		const windowEndMs = windowStartMs + 30 * MS_PER_DAY;
 		let bookedNights = 0;
 
 		upcomingBookings.forEach(b => {
