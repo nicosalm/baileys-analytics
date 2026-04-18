@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import { clearCache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
+import { prorateBooking } from '../utils/prorate';
 
 const seasons = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -281,6 +282,8 @@ seasons.get('/analysis', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 	
+	// overlap query so bookings that span a season boundary contribute nights
+	// and revenue to both seasons proportionally
 	const [{ data: seasons }, { data: bookings }] = await Promise.all([
 		supabase
 			.from('season_configurations')
@@ -288,36 +291,38 @@ seasons.get('/analysis', async (c) => {
 			.eq('tenant_id', tenantId),
 		supabase
 			.from('bookings')
-			.select('arrival, departure, total_amount')
+			.select('id, arrival, departure, total_amount')
 			.eq('tenant_id', tenantId)
-			.gte('arrival', `${year}-01-01`)
 			.lte('arrival', `${year}-12-31`)
+			.gte('departure', `${year}-01-01`)
+			.neq('status', 'canceled')
 	]);
-	
+
+	const lastDayOfMonth = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+
 	const seasonAnalysis = seasons?.map(season => {
-		const seasonBookings = bookings?.filter(booking => {
-			if (!booking.arrival) return false;
-			const arrivalMonth = new Date(booking.arrival).getMonth() + 1;
-			return arrivalMonth >= season.start_month && arrivalMonth <= season.end_month;
-		}) || [];
-		
-		const revenue = seasonBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-		const nights = seasonBookings.reduce((sum, b) => {
-			if (b.arrival && b.departure) {
-				return sum + Math.ceil(
-					(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / 
-					(1000 * 60 * 60 * 24)
-				);
-			}
-			return sum;
-		}, 0);
-		
+		const y = parseInt(year);
+		const seasonFrom = `${year}-${String(season.start_month).padStart(2, '0')}-01`;
+		const seasonTo = `${year}-${String(season.end_month).padStart(2, '0')}-${String(lastDayOfMonth(y, season.end_month)).padStart(2, '0')}`;
+
+		let revenue = 0;
+		let nights = 0;
+		let bookingCount = 0;
+		for (const b of bookings || []) {
+			const pr = prorateBooking(b, seasonFrom, seasonTo);
+			if (pr.overlapNights <= 0) continue;
+			revenue += pr.revenue;
+			nights += pr.overlapNights;
+			// count a booking in this season if any of its nights fall in the season window
+			bookingCount += 1;
+		}
+
 		return {
 			...season,
-			bookingCount: seasonBookings.length,
+			bookingCount,
 			revenue,
 			nights,
-			averageBookingValue: seasonBookings.length > 0 ? revenue / seasonBookings.length : 0
+			averageBookingValue: bookingCount > 0 ? revenue / bookingCount : 0
 		};
 	});
 	

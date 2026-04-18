@@ -115,6 +115,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           color="green"
           staggerIndex={0}
           subValue={`${data.collectionRate.toFixed(1)}% of period revenue`}
+          tooltip="In-range revenue from stays that have already arrived."
         />
         <MetricCard
           icon={Clock}
@@ -124,6 +125,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           color="blue"
           staggerIndex={1}
           subValue="All confirmed future bookings"
+          tooltip="Revenue on the books for stays yet to arrive. Not limited to this date range."
         />
         <MetricCard
           icon={Calendar}
@@ -133,6 +135,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           color="yellow"
           staggerIndex={2}
           subValue="Arriving within 30 days"
+          tooltip="Full booking value for every stay arriving in the next 30 days."
         />
         <MetricCard
           icon={TrendingUp}
@@ -142,6 +145,7 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           color="purple"
           staggerIndex={3}
           subValue="Revenue pipeline"
+          tooltip="Full booking value for every stay arriving in the next 90 days."
         />
       </div>
 

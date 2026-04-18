@@ -224,7 +224,7 @@ export const PropertiesDashboard = () => {
           label="Total Revenue"
           value={totalRevenue}
           format="currency"
-          tooltip="Gross booking revenue, all properties"
+          tooltip="Nightly revenue for stays in this range. Stays that cross the boundary split by night."
           subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
             ? <>vs {comparisonLabel}: {formatCurrency(prevTotalRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${totalBookings} bookings | All properties`
@@ -274,7 +274,7 @@ export const PropertiesDashboard = () => {
           label="Occupancy Rate"
           value={avgOccupancy * 100}
           format="percent"
-          tooltip="Booked nights as a share of available nights"
+          tooltip="Booked nights ÷ calendar nights in this range, averaged across properties."
           subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
             ? <>vs {comparisonLabel}: {formatPercentage(prevAvgOccupancy * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "Across all properties"

@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { prorateBooking } from '../utils/prorate';
 
 export class MetricsService {
 	constructor(private supabase: SupabaseClient) {}
@@ -39,33 +40,37 @@ export class MetricsService {
 					.limit(1)
 					.single();
 
+				// Available nights = calendar window minus pre-onboarding days.
+				// No today-clamp: a future or forward-looking window should show
+				// sellable inventory, not zero. Matches the semantic used by
+				// services/properties.ts, services/occupancy.ts RPCs, and
+				// services/overview.ts.
 				let availableNights = 0;
 				const startDate = new Date(fromDate);
 				const endDate = new Date(toDate);
-				const today = new Date();
-				const effectiveEnd = endDate > today ? today : endDate;
 
 				if (firstBooking?.arrival) {
 					const firstBookingDate = new Date(firstBooking.arrival);
-					if (firstBookingDate <= effectiveEnd) {
+					if (firstBookingDate <= endDate) {
 						const effectiveStart = firstBookingDate > startDate ? firstBookingDate : startDate;
 						availableNights = Math.ceil(
-							(effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
+							(endDate.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
 						) + 1;
 					}
 				} else {
 					availableNights = Math.ceil(
-						(effectiveEnd.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+						(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
 					) + 1;
 				}
 
+				// overlap filter so a stay starting before the window and ending inside still counts
 				let bookingQuery = this.supabase
 					.from('bookings')
 					.select('id, arrival, departure, total_amount')
 					.eq('property_id', property.id)
 					.eq('tenant_id', tenantId)
-					.gte('arrival', fromDate)
 					.lte('arrival', toDate)
+					.gte('departure', fromDate)
 					.neq('status', 'canceled');
 
 				if (tagIds?.length) {
@@ -77,24 +82,16 @@ export class MetricsService {
 
 				const { data: bookings } = await bookingQuery;
 
-				const totalRevenue = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-				const bookingCount = bookings?.length || 0;
-
+				// Prorate revenue and overlap-nights to the full window (no today clamp)
+				// so numerator and denominator use the same domain.
+				let totalRevenue = 0;
 				let bookedNights = 0;
-				bookings?.forEach(booking => {
-					if (booking.arrival && booking.departure) {
-						const arrival = new Date(booking.arrival);
-						const departure = new Date(booking.departure);
-						const effectiveArrival = arrival < startDate ? startDate : arrival;
-						const effectiveDeparture = departure > effectiveEnd ? effectiveEnd : departure;
-						
-						if (effectiveArrival <= effectiveDeparture) {
-							bookedNights += Math.ceil(
-								(effectiveDeparture.getTime() - effectiveArrival.getTime()) / (1000 * 60 * 60 * 24)
-							);
-						}
-					}
+				bookings?.forEach(b => {
+					const pr = prorateBooking(b, fromDate, toDate);
+					totalRevenue += pr.revenue;
+					bookedNights += pr.overlapNights;
 				});
+				const bookingCount = bookings?.length || 0;
 
 				const occupancyRate = availableNights > 0 ? (bookedNights / availableNights) * 100 : 0;
 				const avgNightlyRate = bookedNights > 0 ? totalRevenue / bookedNights : 0;

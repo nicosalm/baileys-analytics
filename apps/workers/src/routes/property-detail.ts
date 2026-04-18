@@ -6,6 +6,7 @@ import { getExpensesWithTemplateFallback } from '../services/expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { prorateBooking, bucketBooking, arrivalInPeriodMap, sumChargesForArrivalsInPeriod, effectiveDaysInMonth } from '../utils/prorate';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -60,50 +61,43 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     ]);
 
     const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
 
-    // query booking_charges for tax amounts
-    let totalTaxes = 0;
-    if (bookings.length > 0) {
-      const bookingIds = bookings.map(b => b.id);
-      const charges = await fetchChunked(bookingIds, ids =>
-        supabase
-          .from('booking_charges')
-          .select('amount')
-          .in('booking_id', ids)
-          .eq('type', 'tax')
-      );
-      totalTaxes = charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
-    }
-
-    const combinedPlatformFees = totalHostFees;
-
+    // prorate revenue + host fees by the booking's overlap with [from, to].
+    // Taxes use a different rule (arrival-in-period, full amount) below.
     let totalRevenue = 0;
+    let totalHostFees = 0;
     const platformRevenue = new Map<string, number>();
-    const monthlyData = new Map<string, { revenue: number; bookings: number }>();
+    const monthlyData = new Map<string, { revenue: number; bookings: number; nights: number }>();
 
-    const periodStart = new Date(from);
-    const periodEnd = new Date(to);
-
-    // Deduplicate occupancy: count each day at most once (single property)
     const occupiedDays = new Set<string>();
     const monthOccupiedDays = new Map<string, Set<string>>();
 
     bookings.forEach(booking => {
-      totalRevenue += booking.total_amount || 0;
+      const pr = prorateBooking(booking, from, to);
+      totalRevenue += pr.revenue;
+      totalHostFees += pr.hostFee;
 
       const platform = normalizePlatform(booking.platform);
-      platformRevenue.set(platform, (platformRevenue.get(platform) || 0) + (booking.total_amount || 0));
+      platformRevenue.set(platform, (platformRevenue.get(platform) || 0) + pr.revenue);
 
-      const month = booking.arrival.substring(0, 7);
-      const monthData = monthlyData.get(month) || { revenue: 0, bookings: 0 };
-      monthData.revenue += booking.total_amount || 0;
-      monthData.bookings += 1;
-      monthlyData.set(month, monthData);
+      // bucket revenue by the month each night belongs to (not just arrival month)
+      for (const bkt of bucketBooking(booking, from, to, 'month')) {
+        const cur = monthlyData.get(bkt.key) || { revenue: 0, bookings: 0, nights: 0 };
+        cur.revenue += bkt.revenue;
+        cur.nights += bkt.nights;
+        monthlyData.set(bkt.key, cur);
+      }
+      // booking counts stay whole, attributed to arrival month
+      const arrivalMonth = booking.arrival.substring(0, 7);
+      const arrCur = monthlyData.get(arrivalMonth) || { revenue: 0, bookings: 0, nights: 0 };
+      arrCur.bookings += 1;
+      monthlyData.set(arrivalMonth, arrCur);
 
       if (booking.arrival && booking.departure) {
         const arrival = new Date(booking.arrival);
         const departure = new Date(booking.departure);
+        const periodStart = new Date(from);
+        const periodEnd = new Date(to);
         const clampedStart = new Date(Math.max(arrival.getTime(), periodStart.getTime()));
         const clampedEnd = new Date(Math.min(departure.getTime(), periodEnd.getTime() + MS_PER_DAY));
 
@@ -123,6 +117,28 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       }
     });
 
+    // tax totals are NOT prorated — tax liability attaches to the guest's
+    // arrival (the taxable event) so this matches what the host remits.
+    // Include only bookings whose arrival falls in the selected period.
+    const arrivalInPeriod = arrivalInPeriodMap(bookings, from, to);
+    let totalTaxes = 0;
+    if (bookings.length > 0) {
+      const bookingIds = bookings.map(b => b.id);
+      const charges = await fetchChunked(bookingIds, ids =>
+        supabase
+          .from('booking_charges')
+          .select('booking_id, amount')
+          .in('booking_id', ids)
+          .eq('type', 'tax')
+      );
+      totalTaxes = sumChargesForArrivalsInPeriod(charges, arrivalInPeriod);
+    }
+
+    const combinedPlatformFees = totalHostFees;
+
+    const periodStart = new Date(from);
+    const periodEnd = new Date(to);
+
     const totalNights = occupiedDays.size;
     const totalDays = Math.ceil(
       (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24) + 1
@@ -133,18 +149,18 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     const sortedMonths = Array.from(monthlyData.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([month, data]) => {
-        const daysInMonth = new Date(
-          parseInt(month.split('-')[0]),
-          parseInt(month.split('-')[1]),
-          0
-        ).getDate();
+        // Denominator clipped to the user's window so edge months (e.g. a range
+        // starting Feb 20 through Mar 10) don't dilute occupancy with days
+        // outside the selected range.
+        const [y, m] = month.split('-').map(Number);
+        const daysInMonth = effectiveDaysInMonth(y, m - 1, from, to);
         const monthNights = monthOccupiedDays.get(month)?.size || 0;
 
         return {
           month,
           revenue: data.revenue,
           bookings: data.bookings,
-          occupancy: (monthNights / daysInMonth) * 100
+          occupancy: daysInMonth > 0 ? (monthNights / daysInMonth) * 100 : 0
         };
       });
     

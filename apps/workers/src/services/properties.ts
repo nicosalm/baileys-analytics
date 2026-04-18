@@ -3,6 +3,7 @@ import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { prorateBooking, isArrivalInPeriod } from '../utils/prorate';
 
 export interface PropertyMetrics {
   propertyId: string;
@@ -87,27 +88,13 @@ function computePropertyMetrics(
     };
 
     const propBookings = bookingsByProperty.get(property.id) || [];
-    const periodStart = new Date(from);
-    const periodEnd = new Date(to);
-    const today = new Date();
 
     for (const booking of propBookings) {
-      const arrivalDate = new Date(booking.arrival);
-      const departureDate = new Date(booking.departure);
-
-      const effectiveArrival = arrivalDate < periodStart ? periodStart : arrivalDate;
-      const effectiveDeparture = departureDate > periodEnd ? periodEnd :
-                                  departureDate > today ? today : departureDate;
-
-      if (effectiveArrival <= effectiveDeparture && effectiveArrival <= periodEnd && effectiveDeparture >= periodStart) {
-        const nights = Math.ceil(
-          (effectiveDeparture.getTime() - effectiveArrival.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        metrics.revenue += booking.total_amount || 0;
-        metrics.bookings++;
-        metrics.bookedNights += nights;
-      }
+      const pr = prorateBooking(booking, from, to);
+      if (pr.overlapNights <= 0) continue;
+      metrics.revenue += pr.revenue;
+      metrics.bookings++;
+      metrics.bookedNights += pr.overlapNights;
     }
 
     if (metrics.bookedNights > 0) {
@@ -124,27 +111,26 @@ function computePropertyMetrics(
 }
 
 function calculateAvailableNights(from: string, to: string, firstBookingDate: Date | null): number {
+  // Available nights = calendar span minus any days before the property was
+  // onboarded. We deliberately DO NOT clamp the end to today: a user selecting
+  // a future window (e.g. Summer 2026 viewed in April) should see the full
+  // sellable inventory, not zero. Numerator (prorated booked nights) is
+  // computed over the same full window so the ratio stays self-consistent.
   const startDate = new Date(from);
   const endDate = new Date(to);
-  const today = new Date();
 
   if (!firstBookingDate || firstBookingDate > endDate) {
     return 0;
   }
 
-  let effectiveStart = startDate;
-  if (firstBookingDate > startDate) {
-    effectiveStart = firstBookingDate;
-  }
+  const effectiveStart = firstBookingDate > startDate ? firstBookingDate : startDate;
 
-  const effectiveEnd = endDate > today ? today : endDate;
-
-  if (effectiveStart > effectiveEnd) {
+  if (effectiveStart > endDate) {
     return 0;
   }
 
   const nights = Math.ceil(
-    (effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
+    (endDate.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
   ) + 1;
 
   return Math.max(0, nights);
@@ -154,7 +140,9 @@ function computePropertyProfitability(
   properties: PropertyInfo[],
   bookings: BookingRow[],
   taxCharges: { booking_id: string; amount: number }[],
-  expenses: { property_id: string; category: string; amount: number }[]
+  expenses: { property_id: string; category: string; amount: number }[],
+  from: string,
+  to: string
 ): PropertyProfitability[] {
   const bookingsByProperty = new Map<string, BookingRow[]>();
   for (const b of bookings) {
@@ -166,18 +154,21 @@ function computePropertyProfitability(
     }
   }
 
-  // build booking -> property lookup for tax charges
+  // Revenue/host-fees use service-period proration (below). Taxes attribute to
+  // the booking's arrival date in full — matches what owners remit to the city.
   const bookingPropertyMap = new Map<string, string>();
+  const arrivalInPeriodByBookingId = new Map<string, boolean>();
   for (const b of bookings) {
     bookingPropertyMap.set(b.id, b.property_id);
+    arrivalInPeriodByBookingId.set(b.id, isArrivalInPeriod(b, from, to));
   }
 
   const taxByProperty = new Map<string, number>();
   for (const c of taxCharges) {
+    if (!arrivalInPeriodByBookingId.get(c.booking_id)) continue;
     const propId = bookingPropertyMap.get(c.booking_id);
-    if (propId) {
-      taxByProperty.set(propId, (taxByProperty.get(propId) || 0) + c.amount);
-    }
+    if (!propId) continue;
+    taxByProperty.set(propId, (taxByProperty.get(propId) || 0) + c.amount);
   }
 
   const expensesByProperty = new Map<string, number>();
@@ -190,8 +181,9 @@ function computePropertyProfitability(
     let revenue = 0;
     let fees = 0;
     for (const b of propBookings) {
-      revenue += b.total_amount || 0;
-      fees += b.host_service_fee || 0;
+      const pr = prorateBooking(b, from, to);
+      revenue += pr.revenue;
+      fees += pr.hostFee;
     }
     const taxes = taxByProperty.get(p.id) || 0;
     const opex = expensesByProperty.get(p.id) || 0;
@@ -210,7 +202,9 @@ function computePropertyProfitability(
 
 function computePropertyPlatformMix(
   properties: PropertyInfo[],
-  bookings: BookingRow[]
+  bookings: BookingRow[],
+  from: string,
+  to: string
 ): PropertyPlatformMix[] {
   const propMap = new Map<string, Map<string, { bookings: number; revenue: number }>>();
   for (const p of properties) {
@@ -220,9 +214,10 @@ function computePropertyPlatformMix(
     const platforms = propMap.get(b.property_id);
     if (!platforms) continue;
     const platform = normalizePlatform(b.platform);
+    const pr = prorateBooking(b, from, to);
     const entry = platforms.get(platform) || { bookings: 0, revenue: 0 };
     entry.bookings++;
-    entry.revenue += b.total_amount || 0;
+    entry.revenue += pr.revenue;
     platforms.set(platform, entry);
   }
 
@@ -323,8 +318,8 @@ export async function getPropertiesData(
   ]);
 
   const currentMetrics = computePropertyMetrics(properties, currentBookings, from, to, firstBookingDates);
-  const profitability = computePropertyProfitability(properties, currentBookings, taxCharges, expenses);
-  const platformMix = computePropertyPlatformMix(properties, currentBookings);
+  const profitability = computePropertyProfitability(properties, currentBookings, taxCharges, expenses, from, to);
+  const platformMix = computePropertyPlatformMix(properties, currentBookings, from, to);
 
   if (comparisonFrom && comparisonTo) {
     const compBookings = await fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, propertyIds, tagBookingIds);

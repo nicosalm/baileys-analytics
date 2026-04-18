@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { cache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
+import { bucketBooking, effectiveDaysInMonth } from '../utils/prorate';
 
 const occupancy = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -110,59 +111,59 @@ occupancy.get('/trends', cache({ ttl: 7200 }), async (c) => {
 	const startDate = new Date();
 	startDate.setMonth(startDate.getMonth() - parseInt(months));
 	
+	// overlap query so a booking starting in month N-1 that spans into month N
+	// contributes its in-period nights to both months' revenue/occupancy numbers.
+	const periodFromStr = startDate.toISOString().slice(0, 10);
+	const periodToStr = endDate.toISOString().slice(0, 10);
+
 	let query = supabase
 		.from('bookings')
-		.select('arrival, departure, total_amount, property_id')
+		.select('id, arrival, departure, total_amount, property_id')
 		.eq('tenant_id', tenantId)
-		.gte('arrival', startDate.toISOString())
-		.lte('arrival', endDate.toISOString());
-	
+		.lte('arrival', periodToStr)
+		.gte('departure', periodFromStr)
+		.neq('status', 'canceled');
+
 	if (propertyId) {
 		query = query.eq('property_id', propertyId);
 	}
-	
+
 	const { data: bookings } = await query;
-	
-	const monthlyData: Record<string, any> = {};
-	
+
+	const monthlyData: Record<string, { bookings: number; revenue: number; nights: number }> = {};
+
 	bookings?.forEach(booking => {
 		if (!booking.arrival) return;
-		
-		const monthKey = new Date(booking.arrival).toISOString().slice(0, 7);
-		
-		if (!monthlyData[monthKey]) {
-			monthlyData[monthKey] = {
-				bookings: 0,
-				revenue: 0,
-				nights: 0
-			};
+
+		// revenue and nights split across every month the booking overlaps
+		for (const bkt of bucketBooking(booking, periodFromStr, periodToStr, 'month')) {
+			if (!monthlyData[bkt.key]) {
+				monthlyData[bkt.key] = { bookings: 0, revenue: 0, nights: 0 };
+			}
+			monthlyData[bkt.key].revenue += bkt.revenue;
+			monthlyData[bkt.key].nights += bkt.nights;
 		}
-		
-		monthlyData[monthKey].bookings++;
-		monthlyData[monthKey].revenue += booking.total_amount || 0;
-		
-		if (booking.arrival && booking.departure) {
-			const nights = Math.ceil(
-				(new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / 
-				(1000 * 60 * 60 * 24)
-			);
-			monthlyData[monthKey].nights += nights;
+
+		// booking count attributed to arrival month only
+		const arrivalMonth = new Date(booking.arrival).toISOString().slice(0, 7);
+		if (!monthlyData[arrivalMonth]) {
+			monthlyData[arrivalMonth] = { bookings: 0, revenue: 0, nights: 0 };
 		}
+		monthlyData[arrivalMonth].bookings++;
 	});
 	
 	const trends = Object.entries(monthlyData)
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([month, data]) => {
-			const daysInMonth = new Date(
-				parseInt(month.split('-')[0]),
-				parseInt(month.split('-')[1]),
-				0
-			).getDate();
-			
+			// Denominator clipped to the trailing window so the partial edge
+			// months (the earliest and the current month) aren't divided by
+			// their full calendar length.
+			const [y, m] = month.split('-').map(Number);
+			const daysInMonth = effectiveDaysInMonth(y, m - 1, periodFromStr, periodToStr);
 			return {
 				month,
 				...data,
-				occupancyRate: (data.nights / daysInMonth) * 100,
+				occupancyRate: daysInMonth > 0 ? (data.nights / daysInMonth) * 100 : 0,
 				averageBookingValue: data.bookings > 0 ? data.revenue / data.bookings : 0
 			};
 		});

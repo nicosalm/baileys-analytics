@@ -3,6 +3,7 @@ import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { prorateBooking, bucketBooking, enumerateBuckets, arrivalInPeriodMap, sumChargesForArrivalsInPeriod } from '../utils/prorate';
 
 async function fetchBookings(
 	supabase: SupabaseClient,
@@ -137,23 +138,30 @@ async function getCurrentPeriodMetrics(
 		canceledCount = count || 0;
 	}
 
-	const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+	// Revenue + host fees use service-period proration (booking's overlap ratio).
+	let totalRevenue = 0;
+	let platformFees = 0;
+	for (const b of bookings) {
+		const pr = prorateBooking(b, from, to);
+		totalRevenue += pr.revenue;
+		platformFees += pr.hostFee;
+	}
 	const totalBookings = bookings.length;
 	const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
-	const platformFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
 
-	// fetch taxes from booking_charges
+	// Taxes attribute to the arrival event (what the host actually remits), full amount.
+	const arrivalInPeriod = arrivalInPeriodMap(bookings, from, to);
 	const bookingIds = bookings.map(b => b.id);
 	let taxes = 0;
 	if (bookingIds.length > 0) {
 		const taxCharges = await fetchChunked(bookingIds, ids =>
 			supabase
 				.from('booking_charges')
-				.select('amount')
+				.select('booking_id, amount')
 				.in('booking_id', ids)
 				.eq('type', 'tax')
 		);
-		taxes = taxCharges.reduce((sum: number, c: any) => sum + (parseFloat(c.amount) || 0), 0);
+		taxes = sumChargesForArrivalsInPeriod(taxCharges, arrivalInPeriod);
 	}
 
 	// fetch operating expenses
@@ -261,12 +269,12 @@ function getChartsData(
 	const propertyRevenue = new Map();
 	bookings.forEach(b => {
 		const property = propertyById.get(b.property_id);
-		if (property) {
-			const current = propertyRevenue.get(property.name) || { name: property.name, code: property.internal_code || null, revenue: 0, bookings: 0 };
-			current.revenue += b.total_amount || 0;
-			current.bookings++;
-			propertyRevenue.set(property.name, current);
-		}
+		if (!property) return;
+		const pr = prorateBooking(b, from, to);
+		const current = propertyRevenue.get(property.name) || { name: property.name, code: property.internal_code || null, revenue: 0, bookings: 0 };
+		current.revenue += pr.revenue;
+		current.bookings++;
+		propertyRevenue.set(property.name, current);
 	});
 
 	const topProperties = Array.from(propertyRevenue.values())
@@ -276,9 +284,10 @@ function getChartsData(
 	const sourceMap = new Map<string, { count: number; revenue: number }>();
 	bookings.forEach(b => {
 		const source = normalizePlatform(b.platform);
+		const pr = prorateBooking(b, from, to);
 		const existing = sourceMap.get(source) || { count: 0, revenue: 0 };
 		existing.count++;
-		existing.revenue += b.total_amount || 0;
+		existing.revenue += pr.revenue;
 		sourceMap.set(source, existing);
 	});
 
@@ -303,59 +312,22 @@ function buildRevenueChartData(
 	useDaily: boolean,
 	useWeekly: boolean
 ) {
-	const revenueMap = new Map();
+	const granularity = useDaily ? 'day' : useWeekly ? 'week' : 'month';
+	const revenueMap = new Map<string, { day: string; date: string; revenue: number }>();
 
-	bookings.forEach(b => {
-		const date = new Date(b.arrival);
-		let key: string;
-		let label: string;
-
-		if (useDaily) {
-			key = date.toISOString().split('T')[0];
-			label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-		} else if (useWeekly) {
-			const weekStart = new Date(date);
-			weekStart.setDate(date.getDate() - date.getDay());
-			key = weekStart.toISOString().split('T')[0];
-			label = `Week of ${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-		} else {
-			key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-			label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-		}
-
-		const current = revenueMap.get(key) || { day: label, date: key, revenue: 0 };
-		current.revenue += b.total_amount || 0;
-		revenueMap.set(key, current);
-	});
-
-	const startDate = new Date(from);
-	const endDate = new Date(to);
-	const result = [];
-
-	if (useDaily) {
-		for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-			const key = d.toISOString().split('T')[0];
-			const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-			result.push(revenueMap.get(key) || { day: label, date: key, revenue: 0 });
-		}
-	} else if (useWeekly) {
-		const weekStart = new Date(startDate);
-		weekStart.setDate(startDate.getDate() - startDate.getDay());
-
-		for (let d = new Date(weekStart); d <= endDate; d.setDate(d.getDate() + 7)) {
-			const key = d.toISOString().split('T')[0];
-			const label = `Week of ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
-			result.push(revenueMap.get(key) || { day: label, date: key, revenue: 0 });
-		}
-	} else {
-		for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
-			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-			const label = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-			result.push(revenueMap.get(key) || { day: label, date: key, revenue: 0 });
+	// allocate every booking's revenue across every bucket it overlaps
+	for (const b of bookings) {
+		for (const bkt of bucketBooking(b, from, to, granularity)) {
+			const current = revenueMap.get(bkt.key) || { day: bkt.label, date: bkt.key, revenue: 0 };
+			current.revenue += bkt.revenue;
+			revenueMap.set(bkt.key, current);
 		}
 	}
 
-	return result;
+	// zero-fill empty buckets across the full period so the chart shows gaps correctly
+	return enumerateBuckets(from, to, granularity).map(b =>
+		revenueMap.get(b.key) || { day: b.label, date: b.key, revenue: 0 }
+	);
 }
 
 function buildOccupancyChartData(

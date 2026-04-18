@@ -181,7 +181,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             <div className="flex items-start">
               <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
               <div className="text-sm text-info-fg">
-                <strong>Property Overview:</strong> Metrics reflect the selected date range. Click any guest name for their booking history.
+                <strong>Property Overview:</strong> Revenue and nights cover only the portion of each stay that fell inside this date range. Taxes follow the guest's arrival date, so totals tie out to what you remit. Click any guest name for their booking history.
               </div>
             </div>
           </div>
@@ -239,6 +239,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             color="green"
             staggerIndex={0}
             className="border border-border"
+            tooltip="Nightly revenue earned during this range. Stays that extend past the boundary contribute only their in-range nights."
           />
           <MetricCard
             icon={Calendar}
@@ -250,6 +251,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             color="blue"
             staggerIndex={1}
             className="border border-border"
+            tooltip="Reservations with any stay night inside this range."
           />
           <MetricCard
             icon={Home}
@@ -261,6 +263,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             color="purple"
             staggerIndex={2}
             className="border border-border"
+            tooltip="Occupied nights ÷ nights in this range."
           />
           <MetricCard
             icon={TrendingUp}
@@ -272,6 +275,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             color="orange"
             staggerIndex={3}
             className="border border-border"
+            tooltip="Revenue ÷ occupied nights in this range."
           />
         </div>
 

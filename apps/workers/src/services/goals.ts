@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../utils/fetch-all';
+import { prorateBooking } from '../utils/prorate';
 
 type GoalPeriod = 'monthly' | 'quarterly' | 'yearly';
 
@@ -74,17 +75,16 @@ async function getGoalMetrics(
 		.eq('tenant_id', tenantId)
 		.eq('active', true);
 
-	const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+	// prorate revenue and overlap-nights to the goal period
+	let totalRevenue = 0;
+	let totalNights = 0;
+	for (const b of bookings) {
+		const pr = prorateBooking(b, from, to);
+		totalRevenue += pr.revenue;
+		totalNights += pr.overlapNights;
+	}
 	const totalBookings = bookings.length;
 	const avgBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
-
-	let totalNights = 0;
-	bookings.forEach(b => {
-		const nights = Math.ceil(
-			(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
-		);
-		totalNights += nights;
-	});
 	const avgStayLength = totalBookings > 0 ? totalNights / totalBookings : 0;
 
 	const startDate = new Date(from);

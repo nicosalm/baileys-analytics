@@ -187,7 +187,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           subValue={comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0
             ? <>{taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}</>
             : `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`}
-          tooltip="Total occupancy and lodging tax collected — click to view trend"
+          tooltip="Tax on bookings that arrived in this range. Matches what you remit — click for trend."
           trend={comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0 ? {
             value: taxData.comparison.taxGrowth,
             isPositive: taxData.comparison.taxGrowth > 0

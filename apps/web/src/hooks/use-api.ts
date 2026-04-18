@@ -563,14 +563,23 @@ export function useEarliestBookingDate() {
   }, { keepPreviousData: true })
 }
 
+export interface PacingBucket {
+  bookedNights: number
+  revenue: number
+  occupancy: number
+  adr: number
+  revpar: number
+}
+
 export interface PacingMonthSummary {
   month: string
   label: string
   daysInMonth: number
   totalAvailableNights: number
-  current: { bookedNights: number; revenue: number; occupancy: number }
-  priorAtThisPoint: { bookedNights: number; revenue: number; occupancy: number }
-  priorFinal: { bookedNights: number; revenue: number; occupancy: number }
+  priorAvailableNights: number
+  current: PacingBucket
+  priorAtThisPoint: PacingBucket
+  priorFinal: PacingBucket
   paceDelta: number
 }
 
@@ -602,10 +611,18 @@ export interface PacingMonthDetail {
   todayDaysOut: number
 }
 
+export interface PacingWindow {
+  mode: 'season' | 'rolling'
+  label: string
+  seasonName?: string
+  seasonYear?: number
+}
+
 export interface PacingData {
   months: PacingMonthSummary[]
   details: Record<string, PacingMonthDetail>
   propertyCount: number
+  window: PacingWindow
 }
 
 export function usePacing(tagIds?: string[], propertyIds?: string[]) {

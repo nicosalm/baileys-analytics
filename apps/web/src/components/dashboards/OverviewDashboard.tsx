@@ -221,11 +221,8 @@ function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: {
     iconColor = 'text-muted-foreground'
   }
 
-  // ADR context for the notable month
-  const notableAdr = notable.current.bookedNights > 0
-    ? notable.current.revenue / notable.current.bookedNights : 0
-  const notablePriorAdr = notable.priorAtThisPoint.bookedNights > 0
-    ? notable.priorAtThisPoint.revenue / notable.priorAtThisPoint.bookedNights : 0
+  const notableAdr = notable.current.adr
+  const notablePriorAdr = notable.priorAtThisPoint.adr
   const adrChange = notablePriorAdr > 0
     ? ((notableAdr - notablePriorAdr) / notablePriorAdr) * 100 : 0
 
@@ -707,7 +704,7 @@ export const OverviewDashboard = () => {
           label="Total Revenue"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
-          tooltip="Gross booking revenue, all properties"
+          tooltip="Nightly revenue for stays in this range. Stays that cross the boundary split by night."
           staggerIndex={0}
           subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
             ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -781,7 +778,7 @@ export const OverviewDashboard = () => {
           label="Occupancy Rate"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
-          tooltip="Booked nights as a share of available nights"
+          tooltip="Booked nights ÷ calendar nights × properties in this range. Owner blocks counted as available."
           staggerIndex={2}
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>

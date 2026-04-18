@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
+import { prorateBooking, isArrivalInPeriod } from '../utils/prorate';
 
 const properties = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -188,31 +189,27 @@ properties.get('/:propertyId/month/:year/:month', async (c) => {
 	
 	if (bookings) {
 		for (const booking of bookings) {
-			const arrivalDate = new Date(booking.arrival);
-			const departureDate = new Date(booking.departure);
-			const startDateObj = new Date(startDate);
-			const endDateObj = new Date(endDate);
-			
-			const effectiveStart = arrivalDate > startDateObj ? arrivalDate : startDateObj;
-			const effectiveEnd = departureDate < endDateObj ? departureDate : endDateObj;
-			const nights = Math.max(0, Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)));
-			
-			const taxAmount = booking.booking_charges
+			const pr = prorateBooking(booking, startDate, endDate);
+
+			// full booking tax, attributed only to the period containing the arrival
+			const taxRaw = booking.booking_charges
 				?.filter((c: any) => c.type === 'tax')
 				.reduce((sum: number, c: any) => sum + (c.amount || 0), 0) || 0;
-			
-			summary.revenue += booking.total_amount || 0;
+			const taxAmount = isArrivalInPeriod(booking, startDate, endDate) ? taxRaw : 0;
+
+			summary.revenue += pr.revenue;
 			summary.tax += taxAmount;
 			summary.bookings++;
-			summary.nights += nights;
-			
+			summary.nights += pr.overlapNights;
+
 			detailedBookings.push({
 				id: booking.id,
 				guestName: booking.guest_name,
 				arrival: booking.arrival,
 				departure: booking.departure,
-				nights,
-				totalAmount: booking.total_amount,
+				nights: pr.overlapNights,
+				totalAmount: pr.revenue,
+				fullBookingAmount: booking.total_amount,
 				taxAmount,
 				status: booking.status
 			});

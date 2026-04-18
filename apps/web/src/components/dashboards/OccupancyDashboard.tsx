@@ -232,8 +232,8 @@ export const OccupancyDashboard = () => {
         error={error}
         empty={!currentData && !isLoading && !error}
         loadingMessage="Loading occupancy data..."
-        emptyMessage="No occupancy data available"
-        emptySubMessage="Occupancy data will appear once bookings are synced"
+        emptyMessage="No occupancy data for this range"
+        emptySubMessage="Numbers appear once bookings sync from OwnerRez."
         onRetry={() => window.location.reload()}
         minHeight={400}
         className="py-12"
@@ -255,7 +255,13 @@ export const OccupancyDashboard = () => {
     }
   }
 
-  const lowestPeriod = minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) || { month: '', rate: 1, bookedNights: 0, availableNights: 0 }
+  // `lowestPeriod` is the day/week/month with the lowest occupancy *rate* —
+  // the period with the most room to fill relative to its available inventory.
+  // Null when there's no trend data at all; the card then hides.
+  const lowestPeriod = timeSeriesData.length > 0
+    ? minBy(timeSeriesData, (d: OccupancyTrendData) => d.rate) ?? null
+    : null
+  const periodWord = dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'
 
   return (
     <div className="space-y-6">
@@ -263,7 +269,7 @@ export const OccupancyDashboard = () => {
       <div className="bg-card rounded-xl border border-border p-4">
         <h2 className="text-lg font-semibold text-foreground">How Busy Are Your Properties?</h2>
         <p className="text-muted-foreground text-sm mt-1">
-          Track when your properties are booked and identify opportunities to fill empty nights
+          Where you&apos;re booked, where there&apos;s room, and how the runway is filling up.
         </p>
       </div>
 
@@ -272,7 +278,7 @@ export const OccupancyDashboard = () => {
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Tip:</strong> Use the What If calculator to estimate revenue from gaps, the timeline to spot open stretches, and the trend chart to track occupancy over time.
+              <strong>Tip:</strong> The heatmap flags slow stretches at a glance. What If projects revenue from the empty nights below. The trend chart tracks occupancy period over period.
             </div>
           </div>
         </div>
@@ -284,7 +290,7 @@ export const OccupancyDashboard = () => {
           label="Occupancy Rate"
           value={currentData.overall * 100}
           format="percent"
-          tooltip="Booked nights as a share of available nights"
+          tooltip="Booked nights ÷ sellable nights. Owner blocks are excluded from the denominator — Overview's rate counts them as available, so numbers may differ by a few points."
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
@@ -303,7 +309,7 @@ export const OccupancyDashboard = () => {
           label="Booked Nights"
           value={currentData.bookedNights}
           format="number"
-          tooltip="Total booked nights across all properties"
+          tooltip="Property-nights reserved in this range across every property."
           subValue={comparisonMode !== 'none' && previousData?.bookedNights !== undefined
             ? <>vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
             : "In selected period"
@@ -322,10 +328,10 @@ export const OccupancyDashboard = () => {
           label="Available Nights"
           value={currentData.availableNights}
           format="number"
-          tooltip="Calendar nights minus owner blocks, all properties"
+          tooltip="Sellable inventory in this range. Owner blocks — maintenance, personal stays — are excluded."
           subValue={comparisonMode !== 'none' && previousData?.availableNights !== undefined
             ? <>vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : "Across all properties"
+            : "Across every active property"
           }
           trend={comparisonMode !== 'none' && previousData?.availableNights !== undefined ? {
             value: previousData.availableNights > 0 
@@ -338,25 +344,27 @@ export const OccupancyDashboard = () => {
         />
         <MetricCard
           icon={TrendingDown}
-          label={`Lowest ${dataGranularity === 'Daily' ? 'Day' : dataGranularity === 'Weekly' ? 'Week' : 'Month'}`}
-          value={`${lowestPeriod.availableNights - lowestPeriod.bookedNights} open`}
+          label={`Softest ${periodWord}`}
+          value={lowestPeriod ? `${lowestPeriod.availableNights - lowestPeriod.bookedNights} open` : '—'}
           format="custom"
           subValue={
-            occupancyGoal !== null ? (() => {
-              const deviation = (lowestPeriod.rate * 100) - occupancyGoal
-              const isAbove = deviation >= 0
-              return (
-                <>
-                  {formatPeriodDisplay(lowestPeriod.month)} ·{' '}
-                  <span className={`inline-flex items-center gap-0.5 ${isAbove ? 'text-success' : 'text-danger'}`}>
-                    {isAbove ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                    {Math.abs(deviation).toFixed(1)}% {isAbove ? 'above' : 'below'} goal
-                  </span>
-                </>
-              )
-            })() : `${formatPeriodDisplay(lowestPeriod.month)} · ${formatPercentage(lowestPeriod.rate * 100, 1)} booked`
+            !lowestPeriod
+              ? 'No trend data in this range'
+              : occupancyGoal !== null ? (() => {
+                const deviation = (lowestPeriod.rate * 100) - occupancyGoal
+                const isAbove = deviation >= 0
+                return (
+                  <>
+                    {formatPeriodDisplay(lowestPeriod.month)} ·{' '}
+                    <span className={`inline-flex items-center gap-0.5 ${isAbove ? 'text-success' : 'text-danger'}`}>
+                      {isAbove ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                      {Math.abs(deviation).toFixed(1)}% {isAbove ? 'above' : 'below'} goal
+                    </span>
+                  </>
+                )
+              })() : `${formatPeriodDisplay(lowestPeriod.month)} · ${formatPercentage(lowestPeriod.rate * 100, 1)} booked`
           }
-          tooltip={`The ${dataGranularity === 'Daily' ? 'day' : dataGranularity === 'Weekly' ? 'week' : 'month'} with the most unbooked nights${occupancyGoal !== null ? ` (your goal is ${occupancyGoal}%)` : ''}`}
+          tooltip={`The ${periodWord.toLowerCase()} with the lowest occupancy rate. Focus fill efforts here.${occupancyGoal !== null ? ` Goal: ${occupancyGoal}%.` : ''}`}
           color="yellow"
           staggerIndex={3}
         />
@@ -373,8 +381,8 @@ export const OccupancyDashboard = () => {
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
               {calendarView === 'calendar'
-                ? 'Click any day to see booking details'
-                : 'Upcoming bookings and gaps to fill'}
+                ? 'Tap a day to see its bookings.'
+                : 'Stays arriving soon and the gaps between them.'}
             </p>
           </div>
           <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
@@ -420,7 +428,7 @@ export const OccupancyDashboard = () => {
           <ChartWrapper
             title={getChartTitle()}
             subtitle={comparisonMode !== 'none' && previousData
-              ? `Comparing current period vs ${comparisonLabel}`
+              ? `Current period vs ${comparisonLabel}`
               : undefined
             }
             icon={TrendingUp}

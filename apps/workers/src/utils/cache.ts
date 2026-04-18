@@ -28,7 +28,7 @@ const BOOKING_VIEWS = ['overview', 'financial', 'occupancy', 'guests', 'guests-c
 
 // views affected by each config type
 const CONFIG_VIEW_DEPS: Record<string, string[]> = {
-	seasons: ['overview', 'occupancy'],
+	seasons: ['overview', 'occupancy', 'pacing'],
 	goals: ['overview'],
 	operatingExpenses: ['financial', 'properties', 'overview'],
 	platformFees: ['financial', 'overview'],

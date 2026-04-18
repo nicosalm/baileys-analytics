@@ -340,7 +340,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Total Revenue"
           value={revenue.gross}
           format="currency"
-          tooltip="Gross revenue before fees, taxes, and expenses"
+          tooltip="Gross stay revenue earned in this range. Multi-night stays that cross the boundary split by night."
           color="blue"
           subValue={comparisonMode !== 'none' && comparison.previousRevenue > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
@@ -374,7 +374,7 @@ export const PLView: React.FC<PLViewProps> = ({
           label="Taxes"
           value={revenue.taxes}
           format="currency"
-          tooltip="Occupancy and lodging taxes collected"
+          tooltip="Occupancy and lodging tax on bookings that arrived in this range. Matches your remittance report."
           color="yellow"
           subValue={comparisonMode !== 'none' && comparison.previousTaxes > 0
             ? <>{comparison.periodLabel}: {formatCurrency(comparison.previousTaxes)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>

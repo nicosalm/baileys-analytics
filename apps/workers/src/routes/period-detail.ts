@@ -6,6 +6,7 @@ import { getExpensesWithTemplateFallback } from '../services/expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { prorateBooking, arrivalInPeriodMap, sumChargesForArrivalsInPeriod } from '../utils/prorate';
 
 const periodDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -67,28 +68,37 @@ periodDetail.get('/', async (c) => {
 
     const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-    // query booking_charges for tax amounts on these bookings
+    // prorate per-booking revenue, host fees, taxes to the selected [startDate, endDate]
+    const ratioByBookingId = new Map<string, number>();
+    let totalRevenue = 0;
+    let totalHostFees = 0;
+    for (const b of bookings) {
+      const pr = prorateBooking(b, startDate, endDate);
+      ratioByBookingId.set(b.id, pr.ratio);
+      totalRevenue += pr.revenue;
+      totalHostFees += pr.hostFee;
+    }
+
+    // tax liability follows the arrival (taxable event), not the service period
+    const arrivalInPeriod = arrivalInPeriodMap(bookings, startDate, endDate);
     let totalTaxes = 0;
     if (bookings.length > 0) {
       const bookingIds = bookings.map(b => b.id);
       const charges = await fetchChunked(bookingIds, ids =>
         supabase
           .from('booking_charges')
-          .select('amount')
+          .select('booking_id, amount')
           .in('booking_id', ids)
           .eq('type', 'tax')
       );
-      totalTaxes = charges.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+      totalTaxes = sumChargesForArrivalsInPeriod(charges, arrivalInPeriod);
     }
 
-    const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
     const combinedPlatformFees = totalHostFees;
-    
+
     const propertyMap = new Map<string, string>();
     properties.forEach(p => propertyMap.set(p.id, p.name));
 
-    // calculate metrics
-    const totalRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
     const totalBookings = bookings.length;
 
     const periodStart = new Date(startDate);
@@ -132,8 +142,9 @@ periodDetail.get('/', async (c) => {
     const propertyRevenue = new Map<string, { revenue: number; bookings: number }>();
     bookings.forEach(b => {
       const propId = b.property_id;
+      const ratio = ratioByBookingId.get(b.id) ?? 0;
       const current = propertyRevenue.get(propId) || { revenue: 0, bookings: 0 };
-      current.revenue += b.total_amount || 0;
+      current.revenue += (b.total_amount || 0) * ratio;
       current.bookings += 1;
       propertyRevenue.set(propId, current);
     });
@@ -151,9 +162,10 @@ periodDetail.get('/', async (c) => {
     const platformGroups = new Map<string, { count: number; revenue: number }>();
     bookings.forEach(b => {
       const platform = normalizePlatform(b.platform);
+      const ratio = ratioByBookingId.get(b.id) ?? 0;
       const current = platformGroups.get(platform) || { count: 0, revenue: 0 };
       current.count += 1;
-      current.revenue += b.total_amount || 0;
+      current.revenue += (b.total_amount || 0) * ratio;
       platformGroups.set(platform, current);
     });
 

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from 'recharts'
-import { TrendingUp, TrendingDown, Minus, Activity, Home, ChevronRight, ChevronDown, AlertCircle } from 'lucide-react'
-import { formatPercentage, formatCurrency, cn } from '@baileys/utils'
+import { TrendingUp, TrendingDown, Minus, Activity, Home, ChevronRight, ChevronDown, AlertCircle, Info } from 'lucide-react'
+import { formatPercentage, formatCurrency, formatCompactCurrency, cn } from '@baileys/utils'
 import { usePacing } from '@/hooks/use-api'
 import type { PacingMonthSummary, PacingProperty, PacingCurvePoint } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds } from '@/hooks/use-dashboard-utils'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/Pagination'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
+import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import type { TooltipContentProps } from 'recharts'
 
@@ -48,19 +49,15 @@ function MonthCard({
   isSelected: boolean
   onClick: () => void
 }) {
+  // MonthCard tells one story: occupancy pacing vs last year. Rate metrics
+  // (ADR, RevPAR, last-year-final revenue) live in the detail panel below
+  // so the card stays scannable at a glance.
   const occupancyPct = month.current.occupancy * 100
   const priorPct = month.priorFinal.occupancy * 100
-  const curAdr = month.current.bookedNights > 0
-    ? month.current.revenue / month.current.bookedNights : 0
-  const priorAdr = month.priorAtThisPoint.bookedNights > 0
-    ? month.priorAtThisPoint.revenue / month.priorAtThisPoint.bookedNights : 0
-
-  // absolute gap vs last year at this point (only meaningful when behind)
   const nightsGap = month.priorAtThisPoint.bookedNights - month.current.bookedNights
   const revenueGap = month.priorAtThisPoint.revenue - month.current.revenue
   const isBehind = month.paceDelta < -0.5 && (nightsGap > 0 || revenueGap > 0)
 
-  // color coding by pace delta
   const borderColor = month.paceDelta > 2
     ? 'border-success/50'
     : month.paceDelta < -5
@@ -104,13 +101,6 @@ function MonthCard({
         Last yr at this point: {formatPercentage(month.priorAtThisPoint.occupancy * 100, 0)}
       </div>
 
-      {curAdr > 0 && (
-        <div className="text-xs text-muted-foreground mt-1">
-          ADR: {formatCurrency(curAdr)}{priorAdr > 0 && ` vs ${formatCurrency(priorAdr)}`}
-        </div>
-      )}
-
-      {/* mini progress bar: current occupancy vs prior year final */}
       <div className="mt-3 relative">
         <div className="w-full bg-muted rounded-full h-1.5">
           <div
@@ -121,7 +111,6 @@ function MonthCard({
             style={{ width: `${Math.min(occupancyPct, 100)}%` }}
           />
         </div>
-        {/* prior year final marker */}
         {priorPct > 0 && (
           <div
             className="absolute top-0 w-0.5 h-1.5 bg-muted-foreground/50 rounded-full"
@@ -135,6 +124,15 @@ function MonthCard({
 }
 
 // --- booking curve tooltip ---
+
+// Series keys used both to key the chartData rows and to reference them from
+// <Line dataKey=.../> and the tooltip. A typo in any one place silently drops
+// a line, so keep these authoritative.
+const SERIES = {
+  current: 'This year',
+  priorAtPoint: 'Last yr at this point',
+  priorFinal: 'Last yr final',
+} as const
 
 type CurveMode = 'nights' | 'revenue' | 'adr'
 
@@ -169,8 +167,13 @@ function CurveTooltip({
   if (!active || !payload?.length) return null
 
   const curveMode = mode ?? 'nights'
-  const thisYear = payload.find(p => p.name === 'This year')?.value as number | null | undefined
-  const lastYear = payload.find(p => p.name === 'Last year')?.value as number | null | undefined
+  const thisYear = payload.find(p => p.name === SERIES.current)?.value as number | null | undefined
+  // Delta compares against "last year at this point" (the apples-to-apples
+  // reference), falling back to "last year final" if the truncated series
+  // isn't present for this x-value (we're past today's position).
+  const lastYearAtPoint = payload.find(p => p.name === SERIES.priorAtPoint)?.value as number | null | undefined
+  const lastYearFinal = payload.find(p => p.name === SERIES.priorFinal)?.value as number | null | undefined
+  const lastYear = lastYearAtPoint ?? lastYearFinal
 
   // label is the formatted daysOut from labelFormatter; find the raw value from payload
   const rawDaysOut = payload[0]?.payload?.daysOut as number | undefined
@@ -218,17 +221,18 @@ function CurveTooltip({
       </div>
       <div className="space-y-1 text-xs">
         {payload.map(entry => {
-          const isLast = entry.name === 'Last year'
+          // prior-year series get the "as of [last yr date]" qualifier
+          const isPrior = entry.name === SERIES.priorAtPoint || entry.name === SERIES.priorFinal
           return (
             <div key={entry.name} className="flex justify-between gap-4">
               <div className="flex items-center gap-1">
                 <div
                   className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: entry.color }}
+                  style={{ backgroundColor: entry.color, opacity: entry.name === SERIES.priorFinal ? 0.5 : 1 }}
                 />
                 <span className="text-muted-foreground">
                   {entry.name}
-                  {isLast && lastYearDate && (
+                  {isPrior && lastYearDate && (
                     <span className="text-muted-foreground/70"> · {lastYearDate}</span>
                   )}
                   :
@@ -284,34 +288,41 @@ function PacingDetail({
   }, [month.month])
 
   const chartData = useMemo(() => curve.map(pt => {
-    // ADR is null until nights > 0 so recharts skips those points
+    // Prior year renders as two series: the full "final" curve (reaches its
+    // end-of-period total) and a truncated "at this point" curve (cut off at
+    // 1-year-ago-today) so the user can compare current pace to how the prior
+    // year looked *at the same calendar position*. Both series share the same
+    // underlying cumulative values — the truncated one just nulls out points
+    // past todayDaysOut so Recharts stops drawing.
     let thisYear: number | null
-    let lastYear: number | null
+    let priorFinal: number | null
     if (curveMode === 'nights') {
       thisYear = pt.currentNights
-      lastYear = pt.priorNights
+      priorFinal = pt.priorNights
     } else if (curveMode === 'revenue') {
       thisYear = pt.currentRevenue
-      lastYear = pt.priorRevenue
+      priorFinal = pt.priorRevenue
     } else {
       thisYear = pt.currentNights > 0 ? pt.currentRevenue / pt.currentNights : null
-      lastYear = pt.priorNights > 0 ? pt.priorRevenue / pt.priorNights : null
+      priorFinal = pt.priorNights > 0 ? pt.priorRevenue / pt.priorNights : null
     }
+    const priorAtThisPoint = pt.daysOut <= todayDaysOut ? priorFinal : null
 
     return {
       daysOut: pt.daysOut,
-      'This year': thisYear,
-      'Last year': lastYear,
+      [SERIES.current]: thisYear,
+      [SERIES.priorAtPoint]: priorAtThisPoint,
+      [SERIES.priorFinal]: priorFinal,
     }
-  }), [curve, curveMode])
+  }), [curve, curveMode, todayDaysOut])
 
   const maxValue = useMemo(() => {
     let max = 0
     for (const pt of chartData) {
-      const cur = pt['This year']
-      const prev = pt['Last year']
-      if (cur != null && cur > max) max = cur
-      if (prev != null && prev > max) max = prev
+      for (const key of [SERIES.current, SERIES.priorAtPoint, SERIES.priorFinal] as const) {
+        const v = (pt as Record<string, number | null>)[key]
+        if (v != null && v > max) max = v
+      }
     }
     return max
   }, [chartData])
@@ -365,10 +376,7 @@ function PacingDetail({
               stroke={CHART_INFRA.axis}
               tick={{ fill: CHART_INFRA.axis }}
               domain={[0, Math.ceil(maxValue * 1.1) || 10]}
-              tickFormatter={curveMode === 'nights'
-                ? undefined
-                : (v: number) => `$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : Math.round(v)}`
-              }
+              tickFormatter={curveMode === 'nights' ? undefined : (v: number) => formatCompactCurrency(v)}
               label={{
                 value: curveMode === 'nights' ? 'Booked nights' : curveMode === 'revenue' ? 'Revenue' : 'ADR',
                 angle: -90,
@@ -399,7 +407,7 @@ function PacingDetail({
             />
             <Line
               type="monotone"
-              dataKey="This year"
+              dataKey={SERIES.current}
               stroke={METRIC_COLORS.occupancy}
               strokeWidth={3}
               dot={{ fill: METRIC_COLORS.occupancy, r: 2.5, strokeWidth: 0 }}
@@ -408,89 +416,33 @@ function PacingDetail({
             />
             <Line
               type="monotone"
-              dataKey="Last year"
+              dataKey={SERIES.priorAtPoint}
               stroke={CHART_INFRA.comparison}
               strokeWidth={2}
-              strokeDasharray="5 5"
+              strokeDasharray="4 4"
               dot={{ fill: CHART_INFRA.comparison, r: 2, strokeWidth: 0 }}
               activeDot={{ r: 4, fill: CHART_INFRA.comparison }}
+            />
+            <Line
+              type="monotone"
+              dataKey={SERIES.priorFinal}
+              stroke={CHART_INFRA.comparison}
+              strokeOpacity={0.5}
+              strokeWidth={2}
+              strokeDasharray="2 4"
+              dot={false}
+              activeDot={{ r: 4, fill: CHART_INFRA.comparison, opacity: 0.6 }}
               connectNulls
             />
           </LineChart>
         </ChartWrapper>
       )}
 
-      {/* summary rows */}
-      {(() => {
-        const curAdr = month.current.bookedNights > 0
-          ? month.current.revenue / month.current.bookedNights : 0
-        const priorPtAdr = month.priorAtThisPoint.bookedNights > 0
-          ? month.priorAtThisPoint.revenue / month.priorAtThisPoint.bookedNights : 0
-        const adrDelta = priorPtAdr > 0
-          ? ((curAdr - priorPtAdr) / priorPtAdr) * 100 : 0
+      <KpiGroupRow month={month} />
 
-        return (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <SummaryCard
-                label="Current pace"
-                value={formatPercentage(month.current.occupancy * 100, 1)}
-                sub={`${month.current.bookedNights} nights`}
-              />
-              <SummaryCard
-                label="Last year at this point"
-                value={formatPercentage(month.priorAtThisPoint.occupancy * 100, 1)}
-                sub={`${month.priorAtThisPoint.bookedNights} nights`}
-              />
-              <SummaryCard
-                label="Last year final"
-                value={formatPercentage(month.priorFinal.occupancy * 100, 1)}
-                sub={`${month.priorFinal.bookedNights} nights`}
-              />
-              <SummaryCard
-                label="Revenue pace"
-                value={formatCurrency(month.current.revenue)}
-                sub={`Last yr: ${formatCurrency(month.priorAtThisPoint.revenue)}`}
-              />
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <SummaryCard
-                label="ADR (current)"
-                value={formatCurrency(curAdr)}
-                sub={`Last yr: ${formatCurrency(priorPtAdr)}`}
-              />
-              <SummaryCard
-                label="ADR change"
-                value={`${adrDelta > 0 ? '+' : ''}${adrDelta.toFixed(1)}%`}
-                sub={priorPtAdr > 0
-                  ? adrDelta > 5 ? 'Higher rate may be slowing bookings'
-                    : adrDelta < -5 ? 'Lower rate, check if volume offsets'
-                    : 'Rates tracking close to last year'
-                  : 'No prior year data'
-                }
-              />
-              <SummaryCard
-                label="RevPAR"
-                value={formatCurrency(month.totalAvailableNights > 0
-                  ? month.current.revenue / month.totalAvailableNights : 0)}
-                sub={`Revenue per available night · ${month.totalAvailableNights} avail`}
-              />
-              <SummaryCard
-                label="Last year final rev"
-                value={formatCurrency(month.priorFinal.revenue)}
-                sub={month.priorFinal.bookedNights > 0
-                  ? `ADR: ${formatCurrency(month.priorFinal.revenue / month.priorFinal.bookedNights)}`
-                  : 'No bookings'
-                }
-              />
-            </div>
-          </div>
-        )
-      })()}
-
-      {/* per-property table */}
+      {/* per-property table — nested card, border-only to avoid double-shadowing */}
       {byProperty.length > 0 && (
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg border border-border">
           <div className="flex items-center gap-2 mb-4">
             <Home className="w-5 h-5 text-muted-foreground" />
             <h3 className="text-lg font-semibold">Property Pacing</h3>
@@ -572,12 +524,202 @@ function PacingDetail({
   )
 }
 
-function SummaryCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+// A KPI group is a single card with one primary metric and two comparison rows.
+// Three of these replace eight flat summary cards and produce a tighter visual
+// scan: "how am I doing", "how was I doing a year ago", "how did I finish a year ago".
+function KpiGroup({
+  label,
+  primary,
+  primaryCaption,
+  comparisons,
+  delta,
+  tooltip,
+}: {
+  label: string
+  primary: string
+  primaryCaption?: string
+  comparisons: Array<{ label: string; value: string }>
+  delta?: { value: number; format: 'pct' | 'abs'; unit?: string }
+  tooltip?: string
+}) {
+  const renderDelta = () => {
+    if (!delta) return null
+    const ahead = delta.value >= 0
+    if (Math.abs(delta.value) < 0.5) return (
+      <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+        <Minus className="w-3 h-3" /> even
+      </span>
+    )
+    const display = delta.format === 'pct'
+      ? `${ahead ? '+' : ''}${delta.value.toFixed(1)}%`
+      : `${ahead ? '+' : ''}${delta.unit ?? ''}${Math.abs(delta.value).toFixed(0)}`
+    return (
+      <span className={cn(
+        'inline-flex items-center gap-0.5 text-xs font-semibold',
+        ahead ? 'text-success' : 'text-danger'
+      )}>
+        {ahead ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+        {display}
+      </span>
+    )
+  }
+
   return (
-    <div className="bg-card p-4 rounded-lg shadow-sm border border-border">
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
-      <div className="text-xl font-bold">{value}</div>
-      <div className="text-xs text-muted-foreground mt-0.5">{sub}</div>
+    // Nested inside the PacingRunway card (which already has shadow-sm + border).
+    // Border-only treatment signals the nesting level without double-shadowing.
+    <div className="bg-card p-4 rounded-lg border border-border">
+      <div className="flex items-baseline justify-between mb-2">
+        <div className="flex items-center gap-1">
+          <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</div>
+          {tooltip && (
+            <TooltipProvider>
+              <UITooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                  {tooltip}
+                </TooltipContent>
+              </UITooltip>
+            </TooltipProvider>
+          )}
+        </div>
+        {renderDelta()}
+      </div>
+      <div className="text-2xl font-bold tabular-nums">{primary}</div>
+      {primaryCaption && (
+        <div className="text-xs text-muted-foreground mt-0.5">{primaryCaption}</div>
+      )}
+      <div className="mt-3 pt-3 border-t border-border space-y-1">
+        {comparisons.map(c => (
+          <div key={c.label} className="flex justify-between text-xs">
+            <span className="text-muted-foreground">{c.label}</span>
+            <span className="tabular-nums">{c.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Percent delta between `current` and `prior`, or null when prior is 0/missing
+// so the caller can hide the chip instead of showing "+∞%".
+function pctDelta(current: number, prior: number): number | null {
+  return prior > 0 ? ((current - prior) / prior) * 100 : null
+}
+
+// Detail panel for the selected month. Three grouped KPI cards —
+// Occupancy, Revenue, Rate — each showing primary + last-year-at-this-point + last-year-final.
+function KpiGroupRow({ month }: { month: PacingMonthSummary }) {
+  const curAdr = month.current.adr
+  const ptAdr = month.priorAtThisPoint.adr
+  const finAdr = month.priorFinal.adr
+  const adrDelta = pctDelta(curAdr, ptAdr)
+  const revDelta = pctDelta(month.current.revenue, month.priorAtThisPoint.revenue)
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <KpiGroup
+        label="Occupancy"
+        primary={formatPercentage(month.current.occupancy * 100, 1)}
+        primaryCaption={`${month.current.bookedNights} of ${month.totalAvailableNights} nights`}
+        delta={{ value: month.paceDelta, format: 'pct' }}
+        comparisons={[
+          { label: 'Last yr at this point', value: formatPercentage(month.priorAtThisPoint.occupancy * 100, 1) },
+          { label: 'Last yr final', value: formatPercentage(month.priorFinal.occupancy * 100, 1) },
+        ]}
+        tooltip="Booked nights ÷ sellable nights for this month (owner blocks excluded)."
+      />
+      <KpiGroup
+        label="Revenue"
+        primary={formatCurrency(month.current.revenue)}
+        primaryCaption={`RevPAR ${formatCurrency(month.current.revpar)}`}
+        delta={revDelta !== null ? { value: revDelta, format: 'pct' } : undefined}
+        comparisons={[
+          { label: 'Last yr at this point', value: formatCurrency(month.priorAtThisPoint.revenue) },
+          { label: 'Last yr final', value: formatCurrency(month.priorFinal.revenue) },
+        ]}
+        tooltip="Nightly revenue booked for this month so far."
+      />
+      <KpiGroup
+        label="Average rate"
+        primary={curAdr > 0 ? formatCurrency(curAdr) : '—'}
+        primaryCaption="Per booked night"
+        delta={adrDelta !== null ? { value: adrDelta, format: 'pct' } : undefined}
+        comparisons={[
+          { label: 'Last yr at this point', value: ptAdr > 0 ? formatCurrency(ptAdr) : '—' },
+          { label: 'Last yr final', value: finAdr > 0 ? formatCurrency(finAdr) : '—' },
+        ]}
+        tooltip="Revenue ÷ booked nights for this month."
+      />
+    </div>
+  )
+}
+
+// Three-KPI headline at the top of the runway, aggregated across every target month.
+// Same three groups as the detail panel so the visual pattern is consistent: users
+// learn the layout once and apply it twice.
+function PortfolioPacingHeadline({ months }: { months: PacingMonthSummary[] }) {
+  const totals = months.reduce(
+    (acc, m) => ({
+      curNights: acc.curNights + m.current.bookedNights,
+      curRevenue: acc.curRevenue + m.current.revenue,
+      curAvail: acc.curAvail + m.totalAvailableNights,
+      ptNights: acc.ptNights + m.priorAtThisPoint.bookedNights,
+      ptRevenue: acc.ptRevenue + m.priorAtThisPoint.revenue,
+      ptAvail: acc.ptAvail + m.priorAvailableNights,
+      finNights: acc.finNights + m.priorFinal.bookedNights,
+      finRevenue: acc.finRevenue + m.priorFinal.revenue,
+      finAvail: acc.finAvail + m.priorAvailableNights,
+    }),
+    { curNights: 0, curRevenue: 0, curAvail: 0, ptNights: 0, ptRevenue: 0, ptAvail: 0, finNights: 0, finRevenue: 0, finAvail: 0 }
+  )
+  const curOcc = totals.curAvail > 0 ? (totals.curNights / totals.curAvail) * 100 : 0
+  const ptOcc = totals.ptAvail > 0 ? (totals.ptNights / totals.ptAvail) * 100 : 0
+  const finOcc = totals.finAvail > 0 ? (totals.finNights / totals.finAvail) * 100 : 0
+  const curAdr = totals.curNights > 0 ? totals.curRevenue / totals.curNights : 0
+  const ptAdr = totals.ptNights > 0 ? totals.ptRevenue / totals.ptNights : 0
+  const finAdr = totals.finNights > 0 ? totals.finRevenue / totals.finNights : 0
+  const curRevpar = totals.curAvail > 0 ? totals.curRevenue / totals.curAvail : 0
+  const occDelta = curOcc - ptOcc
+  const revDelta = pctDelta(totals.curRevenue, totals.ptRevenue)
+  const adrDelta = pctDelta(curAdr, ptAdr)
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
+      <KpiGroup
+        label="Portfolio occupancy"
+        primary={formatPercentage(curOcc, 1)}
+        primaryCaption={`${totals.curNights} of ${totals.curAvail} nights`}
+        delta={totals.ptAvail > 0 ? { value: occDelta, format: 'pct' } : undefined}
+        comparisons={[
+          { label: 'Last yr at this point', value: formatPercentage(ptOcc, 1) },
+          { label: 'Last yr final', value: formatPercentage(finOcc, 1) },
+        ]}
+        tooltip="Booked nights ÷ sellable nights for this window. Owner blocks excluded — Overview's rate includes them, so numbers may differ by a few points."
+      />
+      <KpiGroup
+        label="Portfolio revenue"
+        primary={formatCurrency(totals.curRevenue)}
+        primaryCaption={`RevPAR ${formatCurrency(curRevpar)}`}
+        delta={revDelta !== null ? { value: revDelta, format: 'pct' } : undefined}
+        comparisons={[
+          { label: 'Last yr at this point', value: formatCurrency(totals.ptRevenue) },
+          { label: 'Last yr final', value: formatCurrency(totals.finRevenue) },
+        ]}
+        tooltip="Nightly revenue booked for this window so far. Grows as new reservations come in."
+      />
+      <KpiGroup
+        label="Portfolio ADR"
+        primary={curAdr > 0 ? formatCurrency(curAdr) : '—'}
+        primaryCaption="Per booked night"
+        delta={adrDelta !== null ? { value: adrDelta, format: 'pct' } : undefined}
+        comparisons={[
+          { label: 'Last yr at this point', value: ptAdr > 0 ? formatCurrency(ptAdr) : '—' },
+          { label: 'Last yr final', value: finAdr > 0 ? formatCurrency(finAdr) : '—' },
+        ]}
+        tooltip="Revenue ÷ booked nights across this window."
+      />
     </div>
   )
 }
@@ -627,7 +769,7 @@ export const PacingRunway = () => {
             }
             <Activity className="w-5 h-5 text-muted-foreground" />
             <span className="font-bold text-foreground">Booking Pace</span>
-            <span className="text-sm text-muted-foreground font-normal">year-over-year pacing</span>
+            <span className="text-sm text-muted-foreground font-normal">forward-looking, vs last year</span>
           </div>
           {!expanded && error && (
             <div className="flex items-center gap-1.5 text-xs text-danger">
@@ -673,7 +815,9 @@ export const PacingRunway = () => {
           }
           <Activity className="w-5 h-5 text-muted-foreground" />
           <span className="font-bold text-foreground">Booking Pace</span>
-          <span className="text-sm text-muted-foreground font-normal">year-over-year pacing</span>
+          <span className="text-sm text-muted-foreground font-normal">
+            {data.window.label} · year-over-year
+          </span>
         </div>
         {!expanded && data.months.length > 0 && (
           <div className="flex items-center gap-2.5">
@@ -701,8 +845,13 @@ export const PacingRunway = () => {
 
       {expanded && (
         <div className="px-6 pb-6 border-t border-border space-y-6">
-          {/* month card runway */}
-          <div className="flex gap-3 overflow-x-auto pb-2 pt-4 -mx-1 px-1">
+          {/* headline bar: 3 KPIs for the 6-month runway as a whole. deliberately
+              terse — the per-month breakdown below is where detail lives. */}
+          <PortfolioPacingHeadline months={data.months} />
+
+          {/* month card runway — padding here has to clear the selected-card ring+shadow
+              since overflow-x-auto clips both axes; -mx offsets keep the visual flush */}
+          <div className="flex gap-3 overflow-x-auto pt-2 pb-3 -mx-2 px-2">
             {data.months.map(month => (
               <MonthCard
                 key={month.month}

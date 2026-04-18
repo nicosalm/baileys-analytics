@@ -4,6 +4,25 @@ import { normalizePlatform, PLATFORM_REMITS_TAX } from '../utils/platform';
 import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { subtractOneYear } from '../utils/date-filters';
+import { prorateBooking, bucketBooking, bucketKeyForDate, enumerateBuckets, isArrivalInPeriod, type Granularity } from '../utils/prorate';
+
+// Compute per-booking proration ratios against [from, to] once per call.
+// Every revenue/fee sum multiplies by these ratios so a booking that spans
+// the period boundary contributes only the nights that fell inside.
+function buildRatioMap(bookings: Array<{ id: string; arrival: string; departure: string }>, from: string, to: string): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const b of bookings) m.set(b.id, prorateBooking(b, from, to).ratio);
+  return m;
+}
+
+// Boolean companion to buildRatioMap for tax attribution: taxes use the
+// arrival event, not the service period. Precomputed once so each tax loop
+// can do an O(1) lookup.
+function buildArrivalInPeriodMap(bookings: Array<{ id: string; arrival: string }>, from: string, to: string): Map<string, boolean> {
+  const m = new Map<string, boolean>();
+  for (const b of bookings) m.set(b.id, isArrivalInPeriod(b, from, to));
+  return m;
+}
 
 interface FinancialMetrics {
   revenue: {
@@ -259,15 +278,21 @@ export async function getPLData(
   const propertyIds = properties.map((p: any) => p.id);
   const operatingExpensesList = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds);
 
-  const grossRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  // prorate every revenue/fee number by the booking's overlap with [from, to]
+  const ratios = buildRatioMap(bookings, from, to);
+  const r = (id: string) => ratios.get(id) ?? 0;
+  // taxes follow the arrival event instead (jurisdictional)
+  const arrInPeriod = buildArrivalInPeriodMap(bookings, from, to);
+  const inPeriod = (id: string) => arrInPeriod.get(id) === true;
 
-  // host fees (actual, from ownerrez) and guest fees (estimated at sync time, ~13-15%)
-  const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0), 0);
-  const totalGuestFees = bookings.reduce((sum, b) => sum + (b.guest_listing_site_fee || 0), 0);
+  const grossRevenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0) * r(b.id), 0);
+  const totalHostFees = bookings.reduce((sum, b) => sum + (b.host_service_fee || 0) * r(b.id), 0);
+  const totalGuestFees = bookings.reduce((sum, b) => sum + (b.guest_listing_site_fee || 0) * r(b.id), 0);
 
   const totalPlatformFees = totalHostFees + totalGuestFees;
 
   const totalTaxes = bookings.reduce((sum, b) => {
+    if (!inPeriod(b.id)) return sum;
     const taxCharges = b.booking_charges?.filter((c: any) => c.type === 'tax') || [];
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
@@ -285,9 +310,10 @@ export async function getPLData(
   const operatingProfit = netRevenue - totalOperatingExpenses;
 
   const today = new Date();
+  // pending = in-period bookings whose stay starts in the future
   const pendingRevenue = bookings
     .filter(b => new Date(b.arrival) > today)
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+    .reduce((sum, b) => sum + (b.total_amount || 0) * r(b.id), 0);
   const collectedRevenue = grossRevenue - pendingRevenue;
 
   let next30Days = 0, next60Days = 0, next90Days = 0;
@@ -297,11 +323,9 @@ export async function getPLData(
     if (days <= 90) { next90Days += amt; if (days <= 60) { next60Days += amt; if (days <= 30) { next30Days += amt; } } }
   }
 
+  // booked nights in-period (overlap nights, not full stay length) for ADR
   const totalNights = bookings.reduce((sum, b) => {
-    const nights = Math.ceil(
-      (new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    return sum + nights;
+    return sum + prorateBooking(b, from, to).overlapNights;
   }, 0);
 
   const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -321,7 +345,7 @@ export async function getPLData(
       bookingCount: 0
     };
 
-    existing.grossRevenue += b.total_amount || 0;
+    existing.grossRevenue += (b.total_amount || 0) * r(b.id);
     existing.bookingCount++;
     platformBreakdown.set(platform, existing);
   });
@@ -351,15 +375,23 @@ export async function getPLData(
   const channelOta = emptyChannel();
 
   bookings.forEach(b => {
+    const ratio = r(b.id);
+    const bookingArrivalInPeriod = inPeriod(b.id);
     const isDirect = normalizePlatform(b.platform) === 'Direct';
     const ch = isDirect ? channelDirect : channelOta;
-    ch.grossRevenue += b.total_amount || 0;
-    ch.guestFees += b.guest_listing_site_fee || 0;
+    ch.grossRevenue += (b.total_amount || 0) * ratio;
+    ch.guestFees += (b.guest_listing_site_fee || 0) * ratio;
 
     const charges = b.booking_charges || [];
     charges.forEach((c: any) => {
       if (c.type === 'rent') return;
-      const amount = c.amount || 0;
+      // OwnerRez sometimes sends tax as type: 'surcharge' with a "Tax" description,
+      // so detect tax-like charges before picking the attribution rule.
+      const isEffectivelyTax = c.type === 'tax'
+        || (c.type !== 'fee' && c.type !== 'discount' && normalizeSurchargeCategory(c.description) === 'tax');
+      const amount = isEffectivelyTax
+        ? (bookingArrivalInPeriod ? (c.amount || 0) : 0)
+        : (c.amount || 0) * ratio;
       const desc = (c.description || '').toLowerCase();
 
       // security deposits are refunded — exclude entirely
@@ -454,7 +486,7 @@ export async function getPLData(
   };
 
   const monthlyData = buildTrendData(bookings, from, to, useDaily, useWeekly);
-  const weeklyData = buildWeeklyData(bookings);
+  const weeklyData = buildWeeklyData(bookings, from, to);
 
   return {
     metrics: {
@@ -532,15 +564,21 @@ export async function getRevenueData(
     });
   }
 
-  const gross = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  const rvRatios = buildRatioMap(bookings, from, to);
+  const rr = (id: string) => rvRatios.get(id) ?? 0;
+  const rvArrInPeriod = buildArrivalInPeriodMap(bookings, from, to);
 
+  const gross = bookings.reduce((sum, b) => sum + (b.total_amount || 0) * rr(b.id), 0);
+
+  // taxes attribute to arrival — don't prorate
   const taxes = bookings.reduce((sum, b) => {
+    if (!rvArrInPeriod.get(b.id)) return sum;
     const taxCharges = b.booking_charges?.filter((c: any) => c.type === 'tax') || [];
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
 
   const hostFees = bookings.reduce((sum, b) =>
-    sum + (b.host_service_fee || 0), 0
+    sum + (b.host_service_fee || 0) * rr(b.id), 0
   );
 
   const net = gross - taxes - hostFees;
@@ -548,7 +586,7 @@ export async function getRevenueData(
   const sourceMap = new Map<string, number>();
   bookings.forEach(b => {
     const source = normalizePlatform(b.platform);
-    sourceMap.set(source, (sourceMap.get(source) || 0) + (b.total_amount || 0));
+    sourceMap.set(source, (sourceMap.get(source) || 0) + (b.total_amount || 0) * rr(b.id));
   });
 
   const bySource = Array.from(sourceMap.entries())
@@ -572,7 +610,7 @@ export async function getRevenueData(
 
     lastYearBookings = await fetchAllRows(() => {
       let q = supabase.from('bookings')
-        .select('total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
+        .select('id, arrival, departure, total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
         .eq('tenant_id', tenantId).lte('arrival', lastYearTo).gte('departure', lastYearFrom)
         .neq('status', 'canceled').order('id');
       if (filterPropertyIds.length > 0) q = q.in('property_id', filterPropertyIds);
@@ -582,15 +620,23 @@ export async function getRevenueData(
     });
   }
 
-  const lastYearGross = lastYearBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  const lyFrom = subtractOneYear(from);
+  const lyTo = subtractOneYear(to);
+  const lyRatios = buildRatioMap(lastYearBookings, lyFrom, lyTo);
+  const lyr = (id: string) => lyRatios.get(id) ?? 0;
+  const lyArrInPeriod = buildArrivalInPeriodMap(lastYearBookings, lyFrom, lyTo);
 
+  const lastYearGross = lastYearBookings.reduce((sum, b) => sum + (b.total_amount || 0) * lyr(b.id), 0);
+
+  // taxes attribute to arrival
   const lastYearTaxes = lastYearBookings.reduce((sum, b) => {
+    if (!lyArrInPeriod.get(b.id)) return sum;
     const taxCharges = b.booking_charges?.filter((c: any) => c.type === 'tax') || [];
     return sum + taxCharges.reduce((chargeSum: number, c: any) => chargeSum + (c.amount || 0), 0);
   }, 0);
 
   const lastYearHostFees = lastYearBookings.reduce((sum, b) =>
-    sum + (b.host_service_fee || 0), 0
+    sum + (b.host_service_fee || 0) * lyr(b.id), 0
   );
 
   const lastYearNet = lastYearGross - lastYearTaxes - lastYearHostFees;
@@ -661,8 +707,10 @@ export async function getCashflowData(
   }
 
   const today = new Date();
+  const cfRatios = buildRatioMap(bookings, from, to);
+  const cfr = (id: string) => cfRatios.get(id) ?? 0;
   const collected = bookings.filter(b => new Date(b.arrival) <= today)
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+    .reduce((sum, b) => sum + (b.total_amount || 0) * cfr(b.id), 0);
 
   // pending = all confirmed future bookings (from the upcomingBookings query
   // which uses arrival >= today). the main bookings query is bounded by the
@@ -735,7 +783,13 @@ export async function getTaxData(
     b.booking_charges?.some((c: any) => c.is_taxable === true)
   );
 
-  // single pass: compute totals and per-property breakdown
+  // Revenue denominator prorates by service period; tax totals attribute to
+  // the booking's arrival (the taxable event) so "taxes collected" matches
+  // what the host remits to their city/state.
+  const taxRatios = buildRatioMap(bookings, from, to);
+  const tr = (id: string) => taxRatios.get(id) ?? 0;
+  const taxArrInPeriod = buildArrivalInPeriodMap(bookings, from, to);
+
   let totalRent = 0;
   let ownerTax = 0;
   let platformTax = 0;
@@ -743,16 +797,18 @@ export async function getTaxData(
 
   const propertyTaxMap = new Map();
   bookings.forEach(b => {
+    const ratio = tr(b.id);
+    const countTax = taxArrInPeriod.get(b.id) === true;
     const charges = b.booking_charges || [];
     let bookingTax = 0;
     let bookingTaxable = 0;
 
     for (const c of charges) {
-      if (c.type === 'tax') bookingTax += c.amount || 0;
-      if (hasTaxableData && c.is_taxable === true) bookingTaxable += c.amount || 0;
+      if (c.type === 'tax' && countTax) bookingTax += c.amount || 0;
+      if (hasTaxableData && c.is_taxable === true && countTax) bookingTaxable += c.amount || 0;
     }
 
-    totalRent += b.total_amount || 0;
+    totalRent += (b.total_amount || 0) * ratio;
     taxableBase += bookingTaxable;
 
     if (PLATFORM_REMITS_TAX.has(normalizePlatform(b.platform))) {
@@ -775,7 +831,7 @@ export async function getTaxData(
     };
 
     existing.totalTax += bookingTax;
-    existing.totalRent += hasTaxableData ? bookingTaxable : (b.total_amount || 0);
+    existing.totalRent += hasTaxableData ? bookingTaxable : (b.total_amount || 0) * ratio;
     existing.bookingCount++;
 
     propertyTaxMap.set(property.id, existing);
@@ -879,7 +935,7 @@ export async function getFinancialBatchData(
   const buildLastYearQuery = () => {
     let q = supabase
       .from('bookings')
-      .select('total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
+      .select('id, arrival, departure, total_amount, host_service_fee, guest_listing_site_fee, booking_charges(amount, type)')
       .eq('tenant_id', tenantId)
       .lte('arrival', lastYearTo)
       .gte('departure', lastYearFrom)
@@ -920,79 +976,69 @@ function buildTrendData(
   useDaily: boolean,
   useWeekly: boolean
 ): MonthlyTrend[] {
-  const trendMap = new Map();
-  
-  bookings.forEach(b => {
-    const date = new Date(b.arrival);
-    let key: string;
-    
-    if (useDaily) {
-      key = date.toISOString().split('T')[0];
-    } else if (useWeekly) {
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      key = weekStart.toISOString().split('T')[0];
-    } else {
-      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    }
-    
-    const existing = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
-    existing.revenue += b.total_amount || 0;
-    existing.hostFees += b.host_service_fee || 0;
-    existing.taxes += (b.booking_charges || [])
+  const granularity: Granularity = useDaily ? 'day' : useWeekly ? 'week' : 'month';
+  const trendMap = new Map<string, MonthlyTrend & { _arrivalBookings: number }>();
+
+  for (const b of bookings) {
+    const taxTotal = (b.booking_charges || [])
       .filter((c: { type: string }) => c.type === 'tax')
       .reduce((sum: number, c: { amount: number }) => sum + (c.amount || 0), 0);
-    existing.bookings++;
-    trendMap.set(key, existing);
-  });
+    const buckets = bucketBooking(b, from, to, granularity);
+    if (buckets.length === 0) continue;
 
-  const startDate = new Date(from);
-  const endDate = new Date(to);
-  const result = [];
+    // Revenue and host fees spread across every bucket the booking overlaps.
+    for (const bkt of buckets) {
+      const existing = trendMap.get(bkt.key) ||
+        { month: bkt.key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0, _arrivalBookings: 0 };
+      existing.revenue += bkt.revenue;
+      existing.hostFees += bkt.hostFee;
+      trendMap.set(bkt.key, existing);
+    }
 
-  if (useDaily) {
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().split('T')[0];
-      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
-      data.avgBookingValue = data.bookings > 0 ? data.revenue / data.bookings : 0;
-      result.push(data);
-    }
-  } else if (useWeekly) {
-    const weekStart = new Date(startDate);
-    weekStart.setDate(startDate.getDate() - startDate.getDay());
-    
-    for (let d = new Date(weekStart); d <= endDate; d.setDate(d.getDate() + 7)) {
-      const key = d.toISOString().split('T')[0];
-      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
-      data.avgBookingValue = data.bookings > 0 ? data.revenue / data.bookings : 0;
-      result.push(data);
-    }
-  } else {
-    for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const data = trendMap.get(key) || { month: key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0 };
-      data.avgBookingValue = data.bookings > 0 ? data.revenue / data.bookings : 0;
-      result.push(data);
+    // Taxes + booking counts attribute to the arrival date's bucket, and only
+    // if the arrival itself fell inside the visible period. A stay that arrived
+    // before `from` but spans into it contributes revenue here (service period)
+    // but its tax event already happened outside this window.
+    if (isArrivalInPeriod(b, from, to)) {
+      const arrivalKey = bucketKeyForDate(b.arrival, granularity);
+      const arr = trendMap.get(arrivalKey)
+        ?? { month: arrivalKey, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0, _arrivalBookings: 0 };
+      arr.taxes += taxTotal;
+      arr._arrivalBookings += 1;
+      arr.bookings += 1;
+      trendMap.set(arrivalKey, arr);
     }
   }
 
-  return result;
+  return enumerateBuckets(from, to, granularity).map(b => {
+    const data = trendMap.get(b.key) ||
+      { month: b.key, revenue: 0, bookings: 0, avgBookingValue: 0, hostFees: 0, taxes: 0, _arrivalBookings: 0 };
+    data.avgBookingValue = data.bookings > 0 ? data.revenue / data.bookings : 0;
+    const { _arrivalBookings, ...rest } = data;
+    return rest;
+  });
 }
 
-function buildWeeklyData(bookings: any[]): WeeklyRevenue[] {
-  const weekMap = new Map();
-  
-  bookings.forEach(b => {
-    const date = new Date(b.arrival);
-    const weekStart = new Date(date);
-    weekStart.setDate(date.getDate() - date.getDay());
-    const key = weekStart.toISOString().split('T')[0];
-    
-    const existing = weekMap.get(key) || { week: key, revenue: 0, bookings: 0 };
-    existing.revenue += b.total_amount || 0;
-    existing.bookings++;
-    weekMap.set(key, existing);
-  });
+function buildWeeklyData(bookings: any[], from: string, to: string): WeeklyRevenue[] {
+  const weekMap = new Map<string, WeeklyRevenue>();
+
+  for (const b of bookings) {
+    const buckets = bucketBooking(b, from, to, 'week');
+    if (buckets.length === 0) continue;
+    for (const bkt of buckets) {
+      const existing = weekMap.get(bkt.key) || { week: bkt.key, revenue: 0, bookings: 0 };
+      existing.revenue += bkt.revenue;
+      weekMap.set(bkt.key, existing);
+    }
+    // booking count attributed to the arrival week — only if the arrival
+    // itself falls inside the visible period
+    if (isArrivalInPeriod(b, from, to)) {
+      const arrivalKey = bucketKeyForDate(b.arrival, 'week');
+      const arr = weekMap.get(arrivalKey) || { week: arrivalKey, revenue: 0, bookings: 0 };
+      arr.bookings += 1;
+      weekMap.set(arrivalKey, arr);
+    }
+  }
 
   return Array.from(weekMap.values())
     .sort((a, b) => b.week.localeCompare(a.week))
@@ -1006,50 +1052,19 @@ function buildMonthlyRevenue(
   useDaily: boolean,
   useWeekly: boolean
 ): { month: string; amount: number }[] {
-  const revenueMap = new Map();
-  
-  bookings.forEach(b => {
-    const date = new Date(b.arrival);
-    let key: string;
-    
-    if (useDaily) {
-      key = date.toISOString().split('T')[0];
-    } else if (useWeekly) {
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      key = weekStart.toISOString().split('T')[0];
-    } else {
-      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-    }
-    
-    revenueMap.set(key, (revenueMap.get(key) || 0) + (b.total_amount || 0));
-  });
+  const granularity: Granularity = useDaily ? 'day' : useWeekly ? 'week' : 'month';
+  const revenueMap = new Map<string, number>();
 
-  const startDate = new Date(from);
-  const endDate = new Date(to);
-  const result = [];
-
-  if (useDaily) {
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().split('T')[0];
-      result.push({ month: key, amount: revenueMap.get(key) || 0 });
-    }
-  } else if (useWeekly) {
-    const weekStart = new Date(startDate);
-    weekStart.setDate(startDate.getDate() - startDate.getDay());
-    
-    for (let d = new Date(weekStart); d <= endDate; d.setDate(d.getDate() + 7)) {
-      const key = d.toISOString().split('T')[0];
-      result.push({ month: key, amount: revenueMap.get(key) || 0 });
-    }
-  } else {
-    for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      result.push({ month: key, amount: revenueMap.get(key) || 0 });
+  for (const b of bookings) {
+    for (const bkt of bucketBooking(b, from, to, granularity)) {
+      revenueMap.set(bkt.key, (revenueMap.get(bkt.key) || 0) + bkt.revenue);
     }
   }
 
-  return result;
+  return enumerateBuckets(from, to, granularity).map(b => ({
+    month: b.key,
+    amount: revenueMap.get(b.key) || 0,
+  }));
 }
 
 function buildMonthlyTaxData(
@@ -1060,31 +1075,25 @@ function buildMonthlyTaxData(
   useWeekly: boolean,
   hasTaxableData: boolean = false
 ): any[] {
-  const taxMap = new Map();
+  const granularity: Granularity = useDaily ? 'day' : useWeekly ? 'week' : 'month';
+  const taxMap = new Map<string, {
+    month: string; totalTax: number; totalRent: number; bookingCount: number;
+    ownerRemitted: number; platformRemitted: number; effectiveRate: number;
+  }>();
 
-  bookings.forEach(b => {
-    const date = new Date(b.arrival);
-    let key: string;
-
-    if (useDaily) {
-      key = date.toISOString().split('T')[0];
-    } else if (useWeekly) {
-      const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      key = weekStart.toISOString().split('T')[0];
-    } else {
-      key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  const ensureBucket = (key: string) => {
+    let existing = taxMap.get(key);
+    if (!existing) {
+      existing = {
+        month: key, totalTax: 0, totalRent: 0, bookingCount: 0,
+        ownerRemitted: 0, platformRemitted: 0, effectiveRate: 0,
+      };
+      taxMap.set(key, existing);
     }
+    return existing;
+  };
 
-    const existing = taxMap.get(key) || {
-      month: key,
-      totalTax: 0,
-      totalRent: 0,
-      bookingCount: 0,
-      ownerRemitted: 0,
-      platformRemitted: 0
-    };
-
+  for (const b of bookings) {
     const charges = b.booking_charges || [];
     let bookingTax = 0;
     let bookingTaxable = 0;
@@ -1093,72 +1102,33 @@ function buildMonthlyTaxData(
       if (hasTaxableData && c.is_taxable === true) bookingTaxable += c.amount || 0;
     }
 
-    existing.totalTax += bookingTax;
-    existing.totalRent += hasTaxableData ? bookingTaxable : (b.total_amount || 0);
-    existing.bookingCount++;
-
-    if (PLATFORM_REMITS_TAX.has(normalizePlatform(b.platform))) {
-      existing.platformRemitted += bookingTax;
-    } else {
-      existing.ownerRemitted += bookingTax;
+    // Revenue denominator (`totalRent`) follows service-period proration
+    // across every bucket the booking overlaps.
+    if (!hasTaxableData) {
+      for (const bkt of bucketBooking(b, from, to, granularity)) {
+        ensureBucket(bkt.key).totalRent += bkt.revenue;
+      }
     }
 
-    taxMap.set(key, existing);
-  });
-
-  const startDate = new Date(from);
-  const endDate = new Date(to);
-  const result = [];
-
-  if (useDaily) {
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().split('T')[0];
-      const data = taxMap.get(key) || {
-        month: key,
-        totalTax: 0,
-        totalRent: 0,
-        bookingCount: 0,
-        effectiveRate: 0,
-        ownerRemitted: 0,
-        platformRemitted: 0
-      };
-      data.effectiveRate = data.totalRent > 0 ? (data.totalTax / data.totalRent) * 100 : 0;
-      result.push(data);
-    }
-  } else if (useWeekly) {
-    const weekStart = new Date(startDate);
-    weekStart.setDate(startDate.getDate() - startDate.getDay());
-    
-    for (let d = new Date(weekStart); d <= endDate; d.setDate(d.getDate() + 7)) {
-      const key = d.toISOString().split('T')[0];
-      const data = taxMap.get(key) || {
-        month: key,
-        totalTax: 0,
-        totalRent: 0,
-        bookingCount: 0,
-        effectiveRate: 0,
-        ownerRemitted: 0,
-        platformRemitted: 0
-      };
-      data.effectiveRate = data.totalRent > 0 ? (data.totalTax / data.totalRent) * 100 : 0;
-      result.push(data);
-    }
-  } else {
-    for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      const data = taxMap.get(key) || {
-        month: key,
-        totalTax: 0,
-        totalRent: 0,
-        bookingCount: 0,
-        effectiveRate: 0,
-        ownerRemitted: 0,
-        platformRemitted: 0
-      };
-      data.effectiveRate = data.totalRent > 0 ? (data.totalTax / data.totalRent) * 100 : 0;
-      result.push(data);
+    // Tax liability, taxable base, booking count: all attributed in full to
+    // the arrival bucket when the arrival falls inside the visible period.
+    if (isArrivalInPeriod(b, from, to)) {
+      const arrivalKey = bucketKeyForDate(b.arrival, granularity);
+      const arr = ensureBucket(arrivalKey);
+      arr.totalTax += bookingTax;
+      if (hasTaxableData) arr.totalRent += bookingTaxable;
+      arr.bookingCount += 1;
+      if (PLATFORM_REMITS_TAX.has(normalizePlatform(b.platform))) {
+        arr.platformRemitted += bookingTax;
+      } else {
+        arr.ownerRemitted += bookingTax;
+      }
     }
   }
 
-  return result;
+  return enumerateBuckets(from, to, granularity).map(b => {
+    const data = ensureBucket(b.key);
+    data.effectiveRate = data.totalRent > 0 ? (data.totalTax / data.totalRent) * 100 : 0;
+    return data;
+  });
 }

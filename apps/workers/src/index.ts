@@ -20,7 +20,6 @@ import { guests } from './routes/guests';
 import { financial } from './routes/financial';
 import { occupancy } from './routes/occupancy';
 import { periodDetail } from './routes/period-detail';
-import { seasonalAnalysis } from './routes/seasonal-analysis';
 import { seasons } from './routes/seasons';
 import { goals } from './routes/goals';
 import { tags } from './routes/tags';
@@ -357,26 +356,37 @@ app.get('/api/pacing', authMiddleware, subscriptionMiddleware, async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const { buildDashboardCacheKey } = await import('./utils/cache');
-	const cacheKey = await buildDashboardCacheKey(user.id, 'pacing', '', '', {
-		tags, properties: filterPropertyIds
-	});
+	try {
+		const { buildDashboardCacheKey } = await import('./utils/cache');
+		const cacheKey = await buildDashboardCacheKey(user.id, 'pacing', '', '', {
+			tags, properties: filterPropertyIds
+		});
 
-	if (c.env.CACHE) {
-		const cached = await c.env.CACHE.get(cacheKey, 'json');
-		if (cached) return c.json({ ...(cached as Record<string, unknown>), _cached: true });
+		if (c.env.CACHE) {
+			const cached = await c.env.CACHE.get(cacheKey, 'json');
+			// Only serve cached payloads that match the current schema (post-window-field addition).
+			// Stale payloads without `window` would crash the frontend; drop them and recompute.
+			if (cached && typeof cached === 'object' && 'window' in (cached as object)) {
+				return c.json({ ...(cached as Record<string, unknown>), _cached: true });
+			}
+		}
+
+		const { getPacingData } = await import('./services/pacing');
+		const supabase = createSupabaseClient(c.env);
+		const data = await getPacingData(supabase, tenantId, tags, filterPropertyIds);
+
+		if (c.env.CACHE) {
+			// pacing changes daily at most; 1hr TTL is plenty
+			await c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: 3600 });
+		}
+
+		return c.json(data);
+	} catch (error) {
+		console.error('pacing route error:', error);
+		return c.json({
+			error: error instanceof Error ? error.message : 'Failed to load pacing data'
+		}, 500);
 	}
-
-	const { getPacingData } = await import('./services/pacing');
-	const supabase = createSupabaseClient(c.env);
-	const data = await getPacingData(supabase, tenantId, tags, filterPropertyIds);
-
-	if (c.env.CACHE) {
-		// pacing changes daily at most; 1hr TTL is plenty
-		await c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: 3600 });
-	}
-
-	return c.json(data);
 });
 
 // apply subscription middleware to dashboard routes
@@ -388,7 +398,6 @@ const dashboardPaths = [
 	'/api/financial',
 	'/api/occupancy',
 	'/api/period-detail',
-	'/api/seasonal-analysis',
 	'/api/platform-fees',
 	'/api/tax',
 	'/api/dashboard-batch',
@@ -444,7 +453,6 @@ app.route('/api/guests', guests);
 app.route('/api/financial', financial);
 app.route('/api/occupancy', occupancy);
 app.route('/api/period-detail', periodDetail);
-app.route('/api/seasonal-analysis', seasonalAnalysis);
 app.route('/api/seasons', seasons);
 app.route('/api/goals', goals);
 app.route('/api/tags', tags);
