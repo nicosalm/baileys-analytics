@@ -1,5 +1,7 @@
 // Constants for Baileys Analytics
 
+export const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 export const API_VERSION = 'v1';
 
 export const OWNERREZ_API = {
