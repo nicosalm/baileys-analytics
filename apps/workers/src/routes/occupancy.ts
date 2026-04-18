@@ -109,8 +109,9 @@ occupancy.get('/trends', cache({ ttl: 7200 }), async (c) => {
 	
 	const endDate = new Date();
 	const startDate = new Date();
-	startDate.setMonth(startDate.getMonth() - parseInt(months));
-	
+	// UTC month arithmetic so non-UTC runtimes don't shift the boundary by a day
+	startDate.setUTCMonth(startDate.getUTCMonth() - parseInt(months));
+
 	// overlap query so a booking starting in month N-1 that spans into month N
 	// contributes its in-period nights to both months' revenue/occupancy numbers.
 	const periodFromStr = startDate.toISOString().slice(0, 10);

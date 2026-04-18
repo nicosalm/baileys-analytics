@@ -4,6 +4,7 @@ import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking, bucketBooking, enumerateBuckets, arrivalInPeriodMap, sumChargesForArrivalsInPeriod } from '../utils/prorate';
+import { MS_PER_DAY } from '../constants';
 
 async function fetchBookings(
 	supabase: SupabaseClient,
@@ -186,20 +187,21 @@ async function getCurrentPeriodMetrics(
 
 	// occupancy = booked property-days / total property-days
 	// clip each booking to the period window and deduplicate per property-day
-	const MS_PER_DAY = 1000 * 60 * 60 * 24;
 	const periodStart = new Date(from);
 	const periodEnd = new Date(to);
+	// key by numeric epoch day (not ISO string) since the set is only counted by .size
 	const occupiedPropertyDays = new Set<string>();
-	// departure is exclusive (checkout day) but periodEnd is inclusive,
-	// so use periodEnd + 1 day as the exclusive upper bound
+	// departure is exclusive (checkout day) but periodEnd is inclusive
 	const periodEndExcl = new Date(periodEnd.getTime() + MS_PER_DAY);
 	for (const b of bookings) {
 		const arrival = new Date(b.arrival);
 		const departure = new Date(b.departure);
 		const clippedStart = arrival > periodStart ? arrival : periodStart;
 		const clippedEnd = departure < periodEndExcl ? departure : periodEndExcl;
-		for (let d = new Date(clippedStart); d < clippedEnd; d.setDate(d.getDate() + 1)) {
-			occupiedPropertyDays.add(`${b.property_id}_${d.toISOString().split('T')[0]}`);
+		const startEpoch = Math.floor(clippedStart.getTime() / MS_PER_DAY);
+		const endEpoch = Math.floor(clippedEnd.getTime() / MS_PER_DAY);
+		for (let epoch = startEpoch; epoch < endEpoch; epoch++) {
+			occupiedPropertyDays.add(`${b.property_id}_${epoch}`);
 		}
 	}
 	const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / MS_PER_DAY) + 1;
@@ -340,7 +342,6 @@ function buildOccupancyChartData(
 	const totalProperties = properties.length || 1;
 	const startDate = new Date(from);
 	const endDate = new Date(to);
-	const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 	if (useDaily) {
 		// single pass over bookings to build grid: epochDay -> Set<propertyId>
@@ -382,11 +383,13 @@ function buildOccupancyChartData(
 			const bStart = arrivalDate > startDate ? arrivalDate : startDate;
 			const bEnd = departureDate < endExcl ? departureDate : endExcl;
 
-			let cursor = new Date(bStart.getFullYear(), bStart.getMonth(), 1);
+			const cursor = new Date(Date.UTC(bStart.getUTCFullYear(), bStart.getUTCMonth(), 1));
 			while (cursor < bEnd) {
-				const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+				const y = cursor.getUTCFullYear();
+				const m = cursor.getUTCMonth();
+				const monthStart = new Date(Date.UTC(y, m, 1));
 				// first day of next month = exclusive end of this month
-				const monthEndExcl = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+				const monthEndExcl = new Date(Date.UTC(y, m + 1, 1));
 				const effectiveStart = monthStart > startDate ? monthStart : startDate;
 				const effectiveEndExcl = monthEndExcl < endExcl ? monthEndExcl : endExcl;
 
@@ -394,21 +397,24 @@ function buildOccupancyChartData(
 					const overlapStart = arrivalDate > effectiveStart ? arrivalDate : effectiveStart;
 					const overlapEnd = departureDate < effectiveEndExcl ? departureDate : effectiveEndExcl;
 					const nights = Math.round((overlapEnd.getTime() - overlapStart.getTime()) / MS_PER_DAY);
-					const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
+					const key = `${y}-${String(m + 1).padStart(2, '0')}`;
 					monthNights.set(key, (monthNights.get(key) || 0) + nights);
 				}
-				cursor.setMonth(cursor.getMonth() + 1);
+				cursor.setTime(Date.UTC(y, m + 1, 1));
 			}
 		}
 
 		// iterate months to build result
 		const result = [];
-		for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
-			const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-			const label = d.toLocaleDateString('en-US', { month: 'short' });
+		const d = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+		while (d <= endDate) {
+			const y = d.getUTCFullYear();
+			const m = d.getUTCMonth();
+			const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+			const label = d.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short' });
 
-			const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-			const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+			const monthStart = new Date(Date.UTC(y, m, 1));
+			const monthEnd = new Date(Date.UTC(y, m + 1, 0));
 			const effectiveStart = monthStart > startDate ? monthStart : startDate;
 			const effectiveEnd = monthEnd < endDate ? monthEnd : endDate;
 			const daysInMonth = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / MS_PER_DAY) + 1;
@@ -417,6 +423,8 @@ function buildOccupancyChartData(
 			const bookedNights = monthNights.get(key) || 0;
 			const rate = totalNights > 0 ? (bookedNights / totalNights) * 100 : 0;
 			result.push({ month: label, rate: Math.round(rate * 10) / 10 });
+
+			d.setTime(Date.UTC(y, m + 1, 1));
 		}
 		return result;
 	}
@@ -432,8 +440,10 @@ async function getAlerts(
 
 	const today = new Date();
 	const todayStr = today.toISOString().split('T')[0];
-	const sevenDaysFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-	const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+	const sevenDaysFromNow = new Date(today.getTime() + 7 * MS_PER_DAY);
+	const thirtyDaysFromNow = new Date(today.getTime() + 30 * MS_PER_DAY);
+	const sevenDaysFromNowStr = sevenDaysFromNow.toISOString().split('T')[0];
+	const thirtyDaysFromNowStr = thirtyDaysFromNow.toISOString().split('T')[0];
 
 	const [
 		{ count: upcomingCount },
@@ -447,15 +457,16 @@ async function getAlerts(
 			.select('*', { count: 'exact', head: true })
 			.eq('tenant_id', tenantId)
 			.gte('arrival', todayStr)
-			.lte('arrival', sevenDaysFromNow.toISOString().split('T')[0])
+			.lte('arrival', sevenDaysFromNowStr)
 			.neq('status', 'canceled'),
 		fetchAllRows(() =>
 			supabase
 				.from('bookings')
 				.select('arrival, departure')
 				.eq('tenant_id', tenantId)
-				.gte('arrival', todayStr)
-				.lte('arrival', thirtyDaysFromNow.toISOString().split('T')[0])
+				// overlap with [today, today+30d): starts in window OR active today
+				.lte('arrival', thirtyDaysFromNowStr)
+				.gt('departure', todayStr)
 				.neq('status', 'canceled')
 				.order('id')
 		),
@@ -491,12 +502,17 @@ async function getAlerts(
 
 	if (propertyCount) {
 		const totalPossibleNights = 30 * propertyCount;
+		// clip each booking to [today, today+30d) so long stays don't inflate the numerator
+		const windowStartMs = today.getTime();
+		const windowEndMs = thirtyDaysFromNow.getTime();
 		let bookedNights = 0;
 
 		upcomingBookings.forEach(b => {
-			const nights = Math.ceil(
-				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
-			);
+			const arrivalMs = new Date(b.arrival).getTime();
+			const departureMs = new Date(b.departure).getTime();
+			const clippedStart = Math.max(arrivalMs, windowStartMs);
+			const clippedEnd = Math.min(departureMs, windowEndMs);
+			const nights = Math.max(0, Math.floor((clippedEnd - clippedStart) / MS_PER_DAY));
 			bookedNights += nights;
 		});
 

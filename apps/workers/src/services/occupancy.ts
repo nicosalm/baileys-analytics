@@ -1,6 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
+import { enumerateBuckets, effectiveDaysInMonth } from '../utils/prorate';
+import { MS_PER_DAY } from '../constants';
 
 export interface OccupancyData {
   overall: number;
@@ -49,59 +51,35 @@ function determineGranularity(from: string, to: string): 'daily' | 'weekly' | 'm
   return 'monthly';
 }
 
-// compute available nights per period (date math only, no data needed)
+// available nights per period key. Keys match the postgres RPC
+// (get_periodic_occupancy) via shared enumerateBuckets, which is UTC-based.
 function computePeriodAvailableNights(
   propertyCount: number,
   from: string,
   to: string,
   granularity: 'daily' | 'weekly' | 'monthly'
 ): Map<string, number> {
+  const g = granularity === 'daily' ? 'day' : granularity === 'weekly' ? 'week' : 'month';
+  const fromMs = new Date(from).getTime();
+  const toMs = new Date(to).getTime();
   const periods = new Map<string, number>();
-  const startDate = new Date(from);
-  const endDate = new Date(to);
 
-  let currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    let periodKey: string;
-    let periodStart: Date;
-    let periodEnd: Date;
-
-    if (granularity === 'daily') {
-      periodKey = currentDate.toISOString().split('T')[0];
-      periodStart = new Date(currentDate);
-      periodEnd = new Date(currentDate);
-    } else if (granularity === 'weekly') {
-      const weekStart = new Date(currentDate);
-      weekStart.setDate(currentDate.getDate() - currentDate.getDay());
-      periodKey = weekStart.toISOString().split('T')[0];
-      periodStart = weekStart < startDate ? new Date(startDate) : new Date(weekStart);
-      periodEnd = new Date(weekStart);
-      periodEnd.setDate(weekStart.getDate() + 6);
+  for (const { key } of enumerateBuckets(from, to, g)) {
+    let nights: number;
+    if (g === 'day') {
+      nights = 1;
+    } else if (g === 'week') {
+      // key = Sunday of the week (YYYY-MM-DD); clip the 7-day span to [from, to]
+      const weekStartMs = new Date(key).getTime();
+      const weekEndMs = weekStartMs + 6 * MS_PER_DAY;
+      const clipStart = Math.max(weekStartMs, fromMs);
+      const clipEnd = Math.min(weekEndMs, toMs);
+      nights = clipStart <= clipEnd ? Math.round((clipEnd - clipStart) / MS_PER_DAY) + 1 : 0;
     } else {
-      periodKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-      periodStart = monthStart < startDate ? new Date(startDate) : monthStart;
-      periodEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      const [y, m] = key.split('-').map(Number);
+      nights = effectiveDaysInMonth(y, m - 1, from, to);
     }
-
-    const actualPeriodEnd = periodEnd > endDate ? endDate : periodEnd;
-
-    if (periodStart <= actualPeriodEnd) {
-      const periodNights = Math.ceil(
-        (actualPeriodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)
-      ) + 1;
-      periods.set(periodKey, periodNights * propertyCount);
-    } else {
-      periods.set(periodKey, 0);
-    }
-
-    if (granularity === 'daily') {
-      currentDate.setDate(currentDate.getDate() + 1);
-    } else if (granularity === 'weekly') {
-      currentDate.setDate(currentDate.getDate() + 7);
-    } else {
-      currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
-    }
+    periods.set(key, nights * propertyCount);
   }
 
   return periods;

@@ -115,17 +115,15 @@ periodDetail.get('/', async (c) => {
         const clampedStart = new Date(Math.max(arrival.getTime(), periodStart.getTime()));
         const clampedEnd = new Date(Math.min(departure.getTime(), periodEnd.getTime() + MS_PER_DAY));
 
-        let day = new Date(clampedStart);
-        while (day < clampedEnd) {
-          const dayStr = day.toISOString().split('T')[0];
+        // UTC ms advance, DST-safe
+        for (let t = clampedStart.getTime(); t < clampedEnd.getTime(); t += MS_PER_DAY) {
+          const dayStr = new Date(t).toISOString().split('T')[0];
           occupiedPropertyDays.add(`${b.property_id}_${dayStr}`);
 
           if (!propertyOccupiedDays.has(b.property_id)) {
             propertyOccupiedDays.set(b.property_id, new Set());
           }
           propertyOccupiedDays.get(b.property_id)!.add(dayStr);
-
-          day.setDate(day.getDate() + 1);
         }
       }
     });

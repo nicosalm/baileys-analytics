@@ -101,9 +101,9 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         const clampedStart = new Date(Math.max(arrival.getTime(), periodStart.getTime()));
         const clampedEnd = new Date(Math.min(departure.getTime(), periodEnd.getTime() + MS_PER_DAY));
 
-        let day = new Date(clampedStart);
-        while (day < clampedEnd) {
-          const dayStr = day.toISOString().split('T')[0];
+        // UTC ms advance, DST-safe
+        for (let t = clampedStart.getTime(); t < clampedEnd.getTime(); t += MS_PER_DAY) {
+          const dayStr = new Date(t).toISOString().split('T')[0];
           occupiedDays.add(dayStr);
 
           const dayMonth = dayStr.substring(0, 7);
@@ -111,8 +111,6 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
             monthOccupiedDays.set(dayMonth, new Set());
           }
           monthOccupiedDays.get(dayMonth)!.add(dayStr);
-
-          day.setDate(day.getDate() + 1);
         }
       }
     });

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
+import { MS_PER_DAY } from '@baileys/constants'
 import { LoadingState } from '@/components/LoadingState'
 import { resolveToken } from '@/lib/theme'
 import {
@@ -456,10 +457,11 @@ const ErrorsSection = memo(({ errors }: { errors: WebhookError[] }) => {
 
   const data = useMemo(() => {
     const buckets: Record<string, number> = {}
+    // match err.created_at (UTC) by keying buckets on UTC day, not local
+    const todayUtc = Math.floor(Date.now() / MS_PER_DAY)
     for (let i = 13; i >= 0; i--) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      buckets[d.toISOString().slice(0, 10)] = 0
+      const day = new Date((todayUtc - i) * MS_PER_DAY).toISOString().slice(0, 10)
+      buckets[day] = 0
     }
     for (const err of errors) {
       const day = err.created_at.slice(0, 10)
