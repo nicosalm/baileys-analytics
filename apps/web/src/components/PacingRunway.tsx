@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceDot, Legend } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, Activity, Home, ChevronRight, ChevronDown, AlertCircle, Info } from 'lucide-react'
 import { formatPercentage, formatCurrency, formatCompactCurrency, cn } from '@baileys/utils'
 import { usePacing } from '@/hooks/use-api'
@@ -11,7 +11,7 @@ import { Pagination } from '@/components/Pagination'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Tooltip as UITooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
-import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 import type { TooltipContentProps } from 'recharts'
 
 // --- month card ---
@@ -128,10 +128,13 @@ function MonthCard({
 // Series keys used both to key the chartData rows and to reference them from
 // <Line dataKey=.../> and the tooltip. A typo in any one place silently drops
 // a line, so keep these authoritative.
+//
+// We render one prior-year line (the full curve). The "1 yr ago today"
+// reference is read off that line at x = todayDaysOut, which is the same
+// vertical position the "Today" ReferenceLine marks for the current year.
 const SERIES = {
   current: 'This year',
-  priorAtPoint: 'Last yr at this point',
-  priorFinal: 'Last yr final',
+  prior: 'Last year',
 } as const
 
 type CurveMode = 'nights' | 'revenue' | 'adr'
@@ -168,12 +171,7 @@ function CurveTooltip({
 
   const curveMode = mode ?? 'nights'
   const thisYear = payload.find(p => p.name === SERIES.current)?.value as number | null | undefined
-  // Delta compares against "last year at this point" (the apples-to-apples
-  // reference), falling back to "last year final" if the truncated series
-  // isn't present for this x-value (we're past today's position).
-  const lastYearAtPoint = payload.find(p => p.name === SERIES.priorAtPoint)?.value as number | null | undefined
-  const lastYearFinal = payload.find(p => p.name === SERIES.priorFinal)?.value as number | null | undefined
-  const lastYear = lastYearAtPoint ?? lastYearFinal
+  const lastYear = payload.find(p => p.name === SERIES.prior)?.value as number | null | undefined
 
   // label is the formatted daysOut from labelFormatter; find the raw value from payload
   const rawDaysOut = payload[0]?.payload?.daysOut as number | undefined
@@ -221,14 +219,13 @@ function CurveTooltip({
       </div>
       <div className="space-y-1 text-xs">
         {payload.map(entry => {
-          // prior-year series get the "as of [last yr date]" qualifier
-          const isPrior = entry.name === SERIES.priorAtPoint || entry.name === SERIES.priorFinal
+          const isPrior = entry.name === SERIES.prior
           return (
             <div key={entry.name} className="flex justify-between gap-4">
               <div className="flex items-center gap-1">
                 <div
                   className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: entry.color, opacity: entry.name === SERIES.priorFinal ? 0.5 : 1 }}
+                  style={{ backgroundColor: entry.color }}
                 />
                 <span className="text-muted-foreground">
                   {entry.name}
@@ -288,44 +285,49 @@ function PacingDetail({
   }, [month.month])
 
   const chartData = useMemo(() => curve.map(pt => {
-    // Prior year renders as two series: the full "final" curve (reaches its
-    // end-of-period total) and a truncated "at this point" curve (cut off at
-    // 1-year-ago-today) so the user can compare current pace to how the prior
-    // year looked *at the same calendar position*. Both series share the same
-    // underlying cumulative values — the truncated one just nulls out points
-    // past todayDaysOut so Recharts stops drawing.
     let thisYear: number | null
-    let priorFinal: number | null
+    let prior: number | null
     if (curveMode === 'nights') {
       thisYear = pt.currentNights
-      priorFinal = pt.priorNights
+      prior = pt.priorNights
     } else if (curveMode === 'revenue') {
       thisYear = pt.currentRevenue
-      priorFinal = pt.priorRevenue
+      prior = pt.priorRevenue
     } else {
       thisYear = pt.currentNights > 0 ? pt.currentRevenue / pt.currentNights : null
-      priorFinal = pt.priorNights > 0 ? pt.priorRevenue / pt.priorNights : null
+      prior = pt.priorNights > 0 ? pt.priorRevenue / pt.priorNights : null
     }
-    const priorAtThisPoint = pt.daysOut <= todayDaysOut ? priorFinal : null
 
     return {
       daysOut: pt.daysOut,
       [SERIES.current]: thisYear,
-      [SERIES.priorAtPoint]: priorAtThisPoint,
-      [SERIES.priorFinal]: priorFinal,
+      [SERIES.prior]: prior,
     }
-  }), [curve, curveMode, todayDaysOut])
+  }), [curve, curveMode])
 
   const maxValue = useMemo(() => {
     let max = 0
     for (const pt of chartData) {
-      for (const key of [SERIES.current, SERIES.priorAtPoint, SERIES.priorFinal] as const) {
+      for (const key of [SERIES.current, SERIES.prior] as const) {
         const v = (pt as Record<string, number | null>)[key]
         if (v != null && v > max) max = v
       }
     }
     return max
   }, [chartData])
+
+  // Marks "last year at this point" visually on the prior curve. Sourced
+  // from the authoritative month summary so the coordinate matches the
+  // KpiGroup card exactly — no interpolation from sparse curve samples.
+  const priorAtPointMarker = useMemo(() => {
+    const pt = month.priorAtThisPoint
+    let y: number | null
+    if (curveMode === 'nights') y = pt.bookedNights || null
+    else if (curveMode === 'revenue') y = pt.revenue || null
+    else y = pt.adr > 0 ? pt.adr : null
+    if (y == null || y <= 0) return null
+    return { x: todayDaysOut, y }
+  }, [month.priorAtThisPoint, curveMode, todayDaysOut])
 
   return (
     <div className="space-y-6">
@@ -405,6 +407,19 @@ function PacingDetail({
                 fontWeight: 600,
               }}
             />
+            {priorAtPointMarker && (
+              // Anchors the "last year at this point" value visually on the
+              // prior curve. No inline text — the exact value lives in the
+              // KpiGroup card and on hover, so the dot stays quiet.
+              <ReferenceDot
+                x={priorAtPointMarker.x}
+                y={priorAtPointMarker.y}
+                r={5}
+                fill={CHART_INFRA.comparison}
+                stroke={resolveToken('--card')}
+                strokeWidth={2}
+              />
+            )}
             <Line
               type="monotone"
               dataKey={SERIES.current}
@@ -416,22 +431,12 @@ function PacingDetail({
             />
             <Line
               type="monotone"
-              dataKey={SERIES.priorAtPoint}
+              dataKey={SERIES.prior}
               stroke={CHART_INFRA.comparison}
               strokeWidth={2}
-              strokeDasharray="4 4"
+              strokeDasharray="5 5"
               dot={{ fill: CHART_INFRA.comparison, r: 2, strokeWidth: 0 }}
               activeDot={{ r: 4, fill: CHART_INFRA.comparison }}
-            />
-            <Line
-              type="monotone"
-              dataKey={SERIES.priorFinal}
-              stroke={CHART_INFRA.comparison}
-              strokeOpacity={0.5}
-              strokeWidth={2}
-              strokeDasharray="2 4"
-              dot={false}
-              activeDot={{ r: 4, fill: CHART_INFRA.comparison, opacity: 0.6 }}
               connectNulls
             />
           </LineChart>
