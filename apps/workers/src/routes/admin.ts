@@ -285,11 +285,20 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
             await stripe.subscriptions.cancel(sub.id);
           }
         } catch (stripeError) {
-          console.error('Failed to cancel stripe subscription during admin account deletion:', stripeError);
-          return c.json({
-            error: 'Could not cancel the tenant\'s Stripe subscription. The account was not deleted to prevent continued billing. Retry in a few minutes or cancel the subscription manually in Stripe first.',
-            code: 'STRIPE_CANCELLATION_FAILED'
-          }, 500);
+          // If the customer itself no longer exists in Stripe (test-mode wipe,
+          // env swap, manual deletion), there's nothing being billed — proceed
+          // with the deletion. Any other Stripe error still aborts so we never
+          // leave a live customer being charged for a wiped tenant.
+          const isMissingResource = stripeError instanceof Stripe.errors.StripeInvalidRequestError
+            && stripeError.code === 'resource_missing';
+          if (!isMissingResource) {
+            console.error('Failed to cancel stripe subscription during admin account deletion:', stripeError);
+            return c.json({
+              error: 'Could not cancel the tenant\'s Stripe subscription. The account was not deleted to prevent continued billing. Retry in a few minutes or cancel the subscription manually in Stripe first.',
+              code: 'STRIPE_CANCELLATION_FAILED'
+            }, 500);
+          }
+          console.warn(`Stripe customer ${customer.stripe_customer_id} not found; proceeding with deletion.`);
         }
       }
     }
