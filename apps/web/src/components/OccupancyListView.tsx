@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
 import { ChevronDown, ChevronRight, AlertTriangle, TrendingDown, Calendar, Info } from 'lucide-react'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
+import { MS_PER_DAY } from '@baileys/constants'
 import { useBookingsForRange, type BookingRow } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -34,7 +35,7 @@ function toDateString(d: Date) {
 }
 
 function daysBetween(a: string, b: string) {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24))
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / MS_PER_DAY)
 }
 
 function getGapSeverity(nights: number): 'critical' | 'warning' | 'info' {
@@ -48,7 +49,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
 
   const dateRange = useMemo(() => {
     const today = new Date()
-    const future = new Date(today.getTime() + lookAhead * 86400000)
+    const future = new Date(today.getTime() + lookAhead * MS_PER_DAY)
     return { from: toDateString(today), to: toDateString(future) }
   }, [lookAhead])
 

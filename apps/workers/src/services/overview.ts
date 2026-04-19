@@ -196,10 +196,10 @@ async function getCurrentPeriodMetrics(
 	for (const b of bookings) {
 		const arrival = new Date(b.arrival);
 		const departure = new Date(b.departure);
-		const clippedStart = arrival > periodStart ? arrival : periodStart;
-		const clippedEnd = departure < periodEndExcl ? departure : periodEndExcl;
-		const startEpoch = Math.floor(clippedStart.getTime() / MS_PER_DAY);
-		const endEpoch = Math.floor(clippedEnd.getTime() / MS_PER_DAY);
+		const clampedStart = arrival > periodStart ? arrival : periodStart;
+		const clampedEnd = departure < periodEndExcl ? departure : periodEndExcl;
+		const startEpoch = Math.floor(clampedStart.getTime() / MS_PER_DAY);
+		const endEpoch = Math.floor(clampedEnd.getTime() / MS_PER_DAY);
 		for (let epoch = startEpoch; epoch < endEpoch; epoch++) {
 			occupiedPropertyDays.add(`${b.property_id}_${epoch}`);
 		}
@@ -513,9 +513,9 @@ async function getAlerts(
 		upcomingBookings.forEach(b => {
 			const arrivalMs = new Date(b.arrival).getTime();
 			const departureMs = new Date(b.departure).getTime();
-			const clippedStart = Math.max(arrivalMs, windowStartMs);
-			const clippedEnd = Math.min(departureMs, windowEndMs);
-			const nights = Math.max(0, Math.floor((clippedEnd - clippedStart) / MS_PER_DAY));
+			const clampedStart = Math.max(arrivalMs, windowStartMs);
+			const clampedEnd = Math.min(departureMs, windowEndMs);
+			const nights = Math.max(0, Math.floor((clampedEnd - clampedStart) / MS_PER_DAY));
 			bookedNights += nights;
 		});
 

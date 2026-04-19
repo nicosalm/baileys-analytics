@@ -29,6 +29,7 @@ import { authMiddleware } from '../middleware/auth';
 import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
+import { mapToBlockRow } from '../utils/blocks';
 
 // resolve tag names to IDs (creating if needed), then batch-insert junction rows
 async function replaceEntityTags(
@@ -416,21 +417,9 @@ async function handleBookingUpdate(
 			return;
 		}
 
-		// blocks.property_id is a bigint holding the OwnerRez integer id, not our UUID.
-		// writing blockProperty.id (UUID) silently fails with "invalid input syntax for
-		// type bigint" — historically this meant every webhook-delivered block was lost.
 		const { error: blockUpsertError } = await supabase
 			.from('blocks')
-			.upsert({
-				ownerrez_block_id: booking.id,
-				tenant_id: tenantId,
-				property_id: booking.property_id,
-				arrival: booking.arrival,
-				departure: booking.departure,
-				type: booking.type || 'block',
-				reason: booking.reason,
-				updated_at: new Date().toISOString()
-			}, { onConflict: 'ownerrez_block_id,tenant_id' });
+			.upsert(mapToBlockRow(booking, tenantId), { onConflict: 'ownerrez_block_id,tenant_id' });
 		if (blockUpsertError) {
 			console.error('Failed to upsert block:', blockUpsertError);
 		}

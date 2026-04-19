@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { parseISO } from 'date-fns'
 import { ChevronDown, ChevronRight, Calculator, TrendingUp, ArrowRight, Calendar } from 'lucide-react'
 import { formatCurrency, formatPercentage, safeDivide } from '@baileys/utils'
+import { MS_PER_DAY } from '@baileys/constants'
 import { OccupancyByProperty } from '@/types/api'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
@@ -13,8 +14,6 @@ interface WhatIfCalculatorProps {
   byProperty: OccupancyByProperty[]
   dateRange: { from: string; to: string }
 }
-
-const MS_PER_DAY = 86400000
 
 // returns the actual (uncapped) start/end dates for a season in the relevant year window
 function getSeasonWindow(season: Season): { start: Date; end: Date } {

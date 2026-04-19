@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceDot, Legend } from 'recharts'
 import { TrendingUp, TrendingDown, Minus, Activity, Home, ChevronRight, ChevronDown, AlertCircle, Info } from 'lucide-react'
 import { formatPercentage, formatCurrency, formatCompactCurrency, cn } from '@baileys/utils'
+import { MS_PER_DAY } from '@baileys/constants'
 import { usePacing } from '@/hooks/use-api'
 import type { PacingMonthSummary, PacingProperty, PacingCurvePoint } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds } from '@/hooks/use-dashboard-utils'
@@ -180,8 +181,7 @@ function CurveTooltip({
   let thisYearDate: string | null = null
   let lastYearDate: string | null = null
   if (monthStart && rawDaysOut != null) {
-    const MS = 24 * 60 * 60 * 1000
-    const cur = new Date(monthStart.getTime() + rawDaysOut * MS)
+    const cur = new Date(monthStart.getTime() + rawDaysOut * MS_PER_DAY)
     const prior = new Date(cur.getFullYear() - 1, cur.getMonth(), cur.getDate())
     thisYearDate = formatCalendarDate(cur)
     lastYearDate = formatCalendarDate(prior)
@@ -318,7 +318,7 @@ function PacingDetail({
 
   // Marks "last year at this point" visually on the prior curve. Sourced
   // from the authoritative month summary so the coordinate matches the
-  // KpiGroup card exactly — no interpolation from sparse curve samples.
+  // KpiGroup card exactly, without interpolating from sparse curve samples.
   const priorAtPointMarker = useMemo(() => {
     const pt = month.priorAtThisPoint
     let y: number | null
@@ -409,7 +409,7 @@ function PacingDetail({
             />
             {priorAtPointMarker && (
               // Anchors the "last year at this point" value visually on the
-              // prior curve. No inline text — the exact value lives in the
+              // prior curve. No inline text: the exact value lives in the
               // KpiGroup card and on hover, so the dot stays quiet.
               <ReferenceDot
                 x={priorAtPointMarker.x}

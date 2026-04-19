@@ -31,7 +31,7 @@ export class MetricsService {
 
 		// resolve tag filter once for the whole tenant (it's tenant-scoped, not
 		// per-property), so we don't do N redundant lookups inside the map.
-		// null from getBookingIdsForTags means "no bookings match" — the filter
+		// null from getBookingIdsForTags means "no bookings match". the filter
 		// must narrow to empty, otherwise the .in() guard below silently widens
 		// every property back to unfiltered.
 		let matchedBookingIds: string[] | null = null;
@@ -87,7 +87,7 @@ export class MetricsService {
 				if (matchedBookingIds) {
 					bookingQuery = bookingQuery.in('id', matchedBookingIds);
 				} else if (tagFilterActive) {
-					// tag filter matched no bookings — force empty, don't silently widen
+					// tag filter matched no bookings; force empty rather than silently widen
 					bookingQuery = bookingQuery.in('id', []);
 				}
 

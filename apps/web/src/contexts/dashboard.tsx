@@ -2,6 +2,7 @@ import { createContext, useContext, useState, ReactNode, useCallback, useEffect,
 import { useSearchParams, useLocation } from 'react-router-dom'
 import { DashboardTab, FilterState, Tag, DateRange } from '@/types/dashboard'
 import { formatDateISO, getYear, getMonth } from '@baileys/utils'
+import { MS_PER_DAY } from '@baileys/constants'
 import { isValidDateString, filterValidUUIDs } from '@/utils/validation'
 import type { Season } from '@/types/season'
 
@@ -231,7 +232,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
     } else {
       const mainFrom = new Date(range.from)
       const compFrom = new Date(comparison.from)
-      const daysDiff = Math.abs((mainFrom.getTime() - compFrom.getTime()) / (1000 * 60 * 60 * 24))
+      const daysDiff = Math.abs((mainFrom.getTime() - compFrom.getTime()) / MS_PER_DAY)
 
       // detect year-based comparisons (1 year, 2 years, etc.)
       const nearestYearMultiple = Math.round(daysDiff / 365)

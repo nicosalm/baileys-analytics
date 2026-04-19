@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { MS_PER_DAY } from '@baileys/constants'
 import { useToast } from '@/contexts/toast'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from './use-api'
@@ -140,7 +141,7 @@ export function getTimePeriodGranularity(from?: string, to?: string): string {
   
   const startDate = new Date(from)
   const endDate = new Date(to)
-  const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+  const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / MS_PER_DAY)
   
   if (daysDiff <= 7) return ' (Daily)'
   if (daysDiff <= 35) return ' (Weekly)'

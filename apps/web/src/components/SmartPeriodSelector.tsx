@@ -11,6 +11,7 @@ import {
   subYears,
   getYear
 } from '@baileys/utils'
+import { MS_PER_DAY } from '@baileys/constants'
 import { useSeasons, useEarliestBookingDate } from '@/hooks/use-api'
 import { InlineDateRangePicker } from './InlineDateRangePicker'
 import { Modal } from './Modal'
@@ -263,12 +264,12 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
     const from = parseDate(value.from)
     const to = parseDate(value.to)
-    const dayCount = Math.floor((to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const dayCount = Math.floor((to.getTime() - from.getTime()) / MS_PER_DAY) + 1
 
     const matchedOption = periodOptions.find(opt => {
       const range = opt.getRange(activeSeasons)
-      const rangeDaysDiff = Math.abs(new Date(range.from).getTime() - new Date(value.from).getTime()) / (1000 * 60 * 60 * 24)
-      const toRangeDaysDiff = Math.abs(new Date(range.to).getTime() - new Date(value.to).getTime()) / (1000 * 60 * 60 * 24)
+      const rangeDaysDiff = Math.abs(new Date(range.from).getTime() - new Date(value.from).getTime()) / MS_PER_DAY
+      const toRangeDaysDiff = Math.abs(new Date(range.to).getTime() - new Date(value.to).getTime()) / MS_PER_DAY
       return rangeDaysDiff <= 1 && toRangeDaysDiff <= 1
     })
 

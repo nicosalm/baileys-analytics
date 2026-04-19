@@ -4,6 +4,7 @@ import { createSupabaseClient } from '../services/supabase';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
+import { mapToBlockRow } from '../utils/blocks';
 
 const sync = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -254,16 +255,7 @@ sync.post('/bookings', async (c) => {
           const orPropertyId = String(booking.property_id);
 
           if (booking.is_block || booking.type === 'block') {
-            blocks.push({
-              ownerrez_block_id: booking.id,
-              tenant_id: tenantId,
-              property_id: booking.property_id,
-              arrival: booking.arrival,
-              departure: booking.departure,
-              type: booking.type || 'block',
-              reason: booking.reason,
-              updated_at: now
-            });
+            blocks.push(mapToBlockRow(booking, tenantId, now));
           } else {
             const dbPropertyId = propertyUuidMap.get(orPropertyId);
             if (!dbPropertyId) continue;

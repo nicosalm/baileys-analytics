@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { cache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
-import { bucketBooking, effectiveDaysInMonth } from '../utils/prorate';
+import { bucketBooking, effectiveDaysInMonth, enumerateBuckets } from '../utils/prorate';
 
 const occupancy = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -153,21 +153,22 @@ occupancy.get('/trends', cache({ ttl: 7200 }), async (c) => {
 		monthlyData[arrivalMonth].bookings++;
 	});
 	
-	const trends = Object.entries(monthlyData)
-		.sort(([a], [b]) => a.localeCompare(b))
-		.map(([month, data]) => {
-			// Denominator clipped to the trailing window so the partial edge
-			// months (the earliest and the current month) aren't divided by
-			// their full calendar length.
-			const [y, m] = month.split('-').map(Number);
-			const daysInMonth = effectiveDaysInMonth(y, m - 1, periodFromStr, periodToStr);
-			return {
-				month,
-				...data,
-				occupancyRate: daysInMonth > 0 ? (data.nights / daysInMonth) * 100 : 0,
-				averageBookingValue: data.bookings > 0 ? data.revenue / data.bookings : 0
-			};
-		});
+	// enumerate every month in the trailing window so empty months render zeros
+	// rather than gaps on the chart (matches property-detail's treatment).
+	const trends = enumerateBuckets(periodFromStr, periodToStr, 'month').map(({ key: month }) => {
+		const data = monthlyData[month] || { bookings: 0, revenue: 0, nights: 0 };
+		// denominator clipped to the trailing window so the partial edge months
+		// (the earliest and the current month) aren't divided by their full
+		// calendar length.
+		const [y, m] = month.split('-').map(Number);
+		const daysInMonth = effectiveDaysInMonth(y, m - 1, periodFromStr, periodToStr);
+		return {
+			month,
+			...data,
+			occupancyRate: daysInMonth > 0 ? (data.nights / daysInMonth) * 100 : 0,
+			averageBookingValue: data.bookings > 0 ? data.revenue / data.bookings : 0
+		};
+	});
 	
 	return c.json({
 		period: { 

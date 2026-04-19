@@ -4,6 +4,7 @@ import Stripe from 'stripe';
 import { authMiddleware } from '../middleware/auth';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
+import { mapToBlockRow } from '../utils/blocks';
 
 const admin = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -288,9 +289,9 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
           }
         } catch (stripeError) {
           // If the customer itself no longer exists in Stripe (test-mode wipe,
-          // env swap, manual deletion), there's nothing being billed — proceed
-          // with the deletion. Any other Stripe error still aborts so we never
-          // leave a live customer being charged for a wiped tenant.
+          // env swap, manual deletion), there's nothing being billed, so we can
+          // proceed with the deletion. Any other Stripe error still aborts so
+          // we never leave a live customer being charged for a wiped tenant.
           const isMissingResource = stripeError instanceof Stripe.errors.StripeInvalidRequestError
             && stripeError.code === 'resource_missing';
           if (!isMissingResource) {
@@ -566,15 +567,10 @@ admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, asyn
 });
 
 // Refresh blocks for a single tenant by re-fetching from OwnerRez.
-// Recovery tool for any case where our blocks table drifts from OwnerRez:
-// dropped webhook deliveries, rate-limit retries that exceeded the 3-attempt
-// ceiling, interrupted initial syncs, or ad-hoc investigation of an occupancy
-// denominator that looks off. Narrower scope than /sync/bookings (blocks-only,
-// no guest/booking/charge refresh) so it runs in seconds for typical tenants.
-//
-// Default window: 1y back, 2y forward. Override with ?from=YYYY-MM-DD&to=YYYY-MM-DD
-// for large tenants where the default would exceed the cloudflare edge timeout.
-// Upserts are idempotent on (ownerrez_block_id, tenant_id) — safe to re-run.
+// Covers cases where the blocks table drifts from OwnerRez: dropped webhooks,
+// retry ceiling exceeded, interrupted initial sync. Default window is 1y back
+// to 2y forward; large tenants can narrow via ?from=YYYY-MM-DD&to=YYYY-MM-DD
+// to stay under the cloudflare edge timeout.
 admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
@@ -634,16 +630,7 @@ admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, a
   const nowIso = new Date().toISOString();
   const blocks = items
     .filter(b => (b.is_block || b.type === 'block') && knownIntIds.has(Number(b.property_id)))
-    .map(b => ({
-      ownerrez_block_id: b.id,
-      tenant_id: tenantId,
-      property_id: b.property_id,
-      arrival: b.arrival,
-      departure: b.departure,
-      type: b.type || 'block',
-      reason: b.reason,
-      updated_at: nowIso
-    }));
+    .map(b => mapToBlockRow(b, tenantId, nowIso));
 
   if (blocks.length === 0) {
     return c.json({

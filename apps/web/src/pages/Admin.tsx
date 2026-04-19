@@ -130,7 +130,7 @@ const TimeAgo = ({ date }: { date: string }) => {
   const diff = now - then
   const minutes = Math.floor(diff / 60000)
   const hours = Math.floor(diff / 3600000)
-  const days = Math.floor(diff / 86400000)
+  const days = Math.floor(diff / MS_PER_DAY)
 
   let text: string
   if (minutes < 1) text = 'just now'
@@ -588,7 +588,7 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
             {detail.subscription?.current_period_end
               ? (() => {
                   const end = new Date(detail.subscription.current_period_end)
-                  const days = Math.ceil((end.getTime() - Date.now()) / 86400000)
+                  const days = Math.ceil((end.getTime() - Date.now()) / MS_PER_DAY)
                   const label = days > 0
                     ? `in ${days}d`
                     : days === 0 ? 'today' : `${Math.abs(days)}d ago`
