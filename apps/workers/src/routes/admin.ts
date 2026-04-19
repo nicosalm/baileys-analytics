@@ -606,11 +606,18 @@ admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, a
     orPropertyIds.map(id => parseInt(id, 10)).filter(n => !Number.isNaN(n))
   );
 
+  // default window: 1y back, 2y forward. Overridable via ?from=YYYY-MM-DD&to=YYYY-MM-DD
+  // for large tenants that would otherwise exceed the cloudflare edge timeout.
   const now = new Date();
-  const from = new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), 1))
-    .toISOString().slice(0, 10);
-  const to = new Date(Date.UTC(now.getUTCFullYear() + 2, now.getUTCMonth(), 1))
-    .toISOString().slice(0, 10);
+  const qFrom = c.req.query('from');
+  const qTo = c.req.query('to');
+  const isValidDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+  const from = qFrom && isValidDate(qFrom)
+    ? qFrom
+    : new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+  const to = qTo && isValidDate(qTo)
+    ? qTo
+    : new Date(Date.UTC(now.getUTCFullYear() + 2, now.getUTCMonth(), 1)).toISOString().slice(0, 10);
 
   const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
 
