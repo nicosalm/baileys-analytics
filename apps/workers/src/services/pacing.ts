@@ -326,32 +326,39 @@ export async function getPacingData(
 		}
 	}
 
-	const buildBlocksQuery = () => supabase
+	// fetch blocks for the current AND prior year windows so YoY denominators
+	// are apples-to-apples. without the prior-year subtraction, current occupancy
+	// used a block-adjusted denominator while prior used raw calendar days,
+	// systematically flattering the current year.
+	const buildBlocksQueryForRange = (rangeFrom: string, rangeTo: string) => () => supabase
 		.from('blocks')
 		.select('property_id, arrival, departure')
 		.eq('tenant_id', tenantId)
-		.lte('arrival', currentTo)
-		.gte('departure', currentFrom)
+		.lte('arrival', rangeTo)
+		.gte('departure', rangeFrom)
 		.in('property_id', ownerrezIds)
 		.order('id');
 
-	const [currentBookings, priorBookings, blocksRaw] = await Promise.all([
+	// only run the blocks queries when there are OwnerRez IDs to query against;
+	// otherwise Supabase fails on an empty .in() with integer column type.
+	const hasOrIds = ownerrezIds.length > 0;
+	const [currentBookings, priorBookings, blocksRaw, priorBlocksRaw] = await Promise.all([
 		fetchAllRows(buildCurrentQuery),
 		fetchAllRows(buildPriorQuery),
-		// only run the blocks query when there are OwnerRez IDs to query against;
-		// otherwise Supabase fails on an empty .in() with integer column type.
-		ownerrezIds.length > 0 ? fetchAllRows(buildBlocksQuery) : Promise.resolve([]),
+		hasOrIds ? fetchAllRows(buildBlocksQueryForRange(currentFrom, currentTo)) : Promise.resolve([]),
+		hasOrIds ? fetchAllRows(buildBlocksQueryForRange(priorFrom, priorTo)) : Promise.resolve([]),
 	]);
 
-	// translate block.property_id (integer OwnerRez id) → internal UUID so
-	// downstream blockedByProp lookups line up with properties.id
-	const blocks = (blocksRaw as Array<{ property_id: number; arrival: string; departure: string }>)
-		.map(bl => ({
+	type RawBlock = { property_id: number; arrival: string; departure: string };
+	const translateBlocks = (raw: RawBlock[]) =>
+		raw.map(bl => ({
 			property_id: ownerrezIdToUuid.get(bl.property_id) ?? '',
 			arrival: bl.arrival,
 			departure: bl.departure,
-		}))
-		.filter(bl => bl.property_id !== '');
+		})).filter(bl => bl.property_id !== '');
+
+	const blocks = translateBlocks(blocksRaw as RawBlock[]);
+	const priorBlocks = translateBlocks(priorBlocksRaw as RawBlock[]);
 
 	// prior year "as of" date: today shifted back 1 year, clamped for leap days
 	const priorAsOf = new Date(Date.UTC(
@@ -389,21 +396,37 @@ export async function getPacingData(
 		const effPriorNextMonthStart = priorWindowEndExclusive < priorNextMonthStart ? priorWindowEndExclusive : priorNextMonthStart;
 		const effPriorDays = Math.max(0, Math.floor((effPriorNextMonthStart.getTime() - effPriorMonthStart.getTime()) / MS_PER_DAY));
 
-		// compute blocked nights per property for the effective window only
-		const blockedByProp = new Map<string, number>();
-		for (const bl of blocks) {
-			const arr = new Date(bl.arrival);
-			const dep = new Date(bl.departure);
-			if (arr < effNextMonthStart && dep > effMonthStart) {
-				const nights = computeOverlapNights(arr, dep, effMonthStart, effNextMonthStart);
-				blockedByProp.set(bl.property_id, (blockedByProp.get(bl.property_id) || 0) + nights);
+		// blocked nights per property, computed symmetrically for current and
+		// prior-year windows so YoY occupancy divides like against like.
+		const collectBlocked = (
+			bs: Array<{ property_id: string; arrival: string; departure: string }>,
+			windowStart: Date,
+			windowEnd: Date,
+		): Map<string, number> => {
+			const out = new Map<string, number>();
+			for (const bl of bs) {
+				const arr = new Date(bl.arrival);
+				const dep = new Date(bl.departure);
+				if (arr < windowEnd && dep > windowStart) {
+					const nights = computeOverlapNights(arr, dep, windowStart, windowEnd);
+					out.set(bl.property_id, (out.get(bl.property_id) || 0) + nights);
+				}
 			}
-		}
-		let totalBlocked = 0;
-		for (const n of blockedByProp.values()) totalBlocked += n;
+			return out;
+		};
+		const sumValues = (m: Map<string, number>) => {
+			let total = 0;
+			for (const n of m.values()) total += n;
+			return total;
+		};
+
+		const blockedByProp = collectBlocked(blocks, effMonthStart, effNextMonthStart);
+		const priorBlockedByProp = collectBlocked(priorBlocks, effPriorMonthStart, effPriorNextMonthStart);
+		const totalBlocked = sumValues(blockedByProp);
+		const priorTotalBlocked = sumValues(priorBlockedByProp);
 
 		const availableNights = Math.max(0, effDays * propertyCount - totalBlocked);
-		const priorAvailableNights = effPriorDays * propertyCount;
+		const priorAvailableNights = Math.max(0, effPriorDays * propertyCount - priorTotalBlocked);
 
 		// filter bookings overlapping each effective month window
 		const currentMonthBookings = currentBookings.filter(b => {
@@ -491,7 +514,7 @@ export async function getPacingData(
 			const priorPt = priorPtByProp.get(p.id) || emptyBucket;
 			const priorFin = priorFinByProp.get(p.id) || emptyBucket;
 			const propAvail = Math.max(0, effDays - (blockedByProp.get(p.id) || 0));
-			const priorPropAvail = effPriorDays; // no prior-year block data
+			const priorPropAvail = Math.max(0, effPriorDays - (priorBlockedByProp.get(p.id) || 0));
 			const curPropOcc = propAvail > 0 ? curr.nights / propAvail : 0;
 			const priorPtPropOcc = priorPropAvail > 0 ? priorPt.nights / priorPropAvail : 0;
 			return {
