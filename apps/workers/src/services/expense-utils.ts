@@ -12,12 +12,10 @@ export async function getExpensesWithTemplateFallback(
 ): Promise<{ property_id: string; category: string; amount: number }[]> {
   if (propertyIds.length === 0) return []
 
-  const fromDate = new Date(from)
-  const toDate = new Date(to)
-  const fromYear = fromDate.getFullYear()
-  const fromMonth = fromDate.getMonth() + 1
-  const toYear = toDate.getFullYear()
-  const toMonth = toDate.getMonth() + 1
+  // parse the YYYY-MM-DD string directly; new Date(from).getFullYear/Month
+  // uses local TZ and drifts into the prior year in non-UTC runtimes.
+  const [fromYear, fromMonth] = from.split('-').map(Number)
+  const [toYear, toMonth] = to.split('-').map(Number)
 
   const filteredIds = propertyFilter ? [propertyFilter] : propertyIds
 
