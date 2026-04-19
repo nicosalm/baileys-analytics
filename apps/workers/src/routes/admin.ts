@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
 import Stripe from 'stripe';
 import { authMiddleware } from '../middleware/auth';
+import { OwnerRezService } from '../services/ownerrez';
+import { getValidOwnerRezToken } from '../services/ownerrez-token';
 
 const admin = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -561,6 +563,110 @@ admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, asyn
     console.error('Failed to impersonate user:', error);
     return c.json({ error: 'Failed to impersonate' }, 500);
   }
+});
+
+// Refresh blocks for a single tenant by re-fetching from OwnerRez.
+// Backfills any block that webhook delivery dropped (see webhooks.ts history:
+// prior to the bigint property_id fix, every webhook-delivered block was
+// silently rejected by postgres).
+//
+// Fetches a wide window (1y back, 2y forward) to cover historical closures
+// and future planned blocks. Upserts are idempotent on (ownerrez_block_id, tenant_id)
+// so this is safe to re-run.
+admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, async (c) => {
+  const tenantId = c.req.param('tenantId');
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+
+  const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
+  if (tokenResult.error) {
+    return c.json({ error: tokenResult.error.message }, tokenResult.error.status);
+  }
+
+  const { data: properties, error: propError } = await supabase
+    .from('properties')
+    .select('ownerrez_id')
+    .eq('tenant_id', tenantId);
+
+  if (propError) {
+    console.error('Failed to load properties for block refresh:', propError);
+    return c.json({ error: 'Failed to load properties' }, 500);
+  }
+
+  const orPropertyIds = (properties || [])
+    .map(p => p.ownerrez_id)
+    .filter((id): id is string => !!id);
+
+  if (orPropertyIds.length === 0) {
+    return c.json({ error: 'Tenant has no OwnerRez-linked properties' }, 400);
+  }
+
+  // integer set so we can reject orphan blocks that reference properties
+  // we no longer have (deleted / deactivated since last property sync)
+  const knownIntIds = new Set(
+    orPropertyIds.map(id => parseInt(id, 10)).filter(n => !Number.isNaN(n))
+  );
+
+  const now = new Date();
+  const from = new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), 1))
+    .toISOString().slice(0, 10);
+  const to = new Date(Date.UTC(now.getUTCFullYear() + 2, now.getUTCMonth(), 1))
+    .toISOString().slice(0, 10);
+
+  const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
+
+  let items: any[];
+  try {
+    items = await ownerRez.fetchBookings(orPropertyIds, from, to);
+  } catch (err) {
+    console.error('OwnerRez fetch failed during block refresh:', err);
+    return c.json({ error: 'Failed to fetch from OwnerRez' }, 502);
+  }
+
+  const nowIso = new Date().toISOString();
+  const blocks = items
+    .filter(b => (b.is_block || b.type === 'block') && knownIntIds.has(Number(b.property_id)))
+    .map(b => ({
+      ownerrez_block_id: b.id,
+      tenant_id: tenantId,
+      property_id: b.property_id,
+      arrival: b.arrival,
+      departure: b.departure,
+      type: b.type || 'block',
+      reason: b.reason,
+      updated_at: nowIso
+    }));
+
+  if (blocks.length === 0) {
+    return c.json({
+      success: true,
+      fetched: items.length,
+      blocks: 0,
+      propertiesScanned: orPropertyIds.length,
+      range: { from, to }
+    });
+  }
+
+  const CHUNK_SIZE = 500;
+  let upserted = 0;
+  for (let i = 0; i < blocks.length; i += CHUNK_SIZE) {
+    const chunk = blocks.slice(i, i + CHUNK_SIZE);
+    const { error } = await supabase
+      .from('blocks')
+      .upsert(chunk, { onConflict: 'ownerrez_block_id,tenant_id' });
+    if (error) {
+      console.error('Block upsert failed during admin refresh:', error);
+      return c.json({ error: 'Upsert failed', upserted, fetched: items.length }, 500);
+    }
+    upserted += chunk.length;
+  }
+
+  return c.json({
+    success: true,
+    fetched: items.length,
+    blocks: upserted,
+    propertiesScanned: orPropertyIds.length,
+    range: { from, to }
+  });
 });
 
 export { admin };
