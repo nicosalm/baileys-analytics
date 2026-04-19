@@ -403,6 +403,7 @@ async function handleBookingUpdate(
 			return;
 		}
 
+		// existence check so we don't create orphan blocks for properties we haven't synced yet
 		const { data: blockProperty } = await supabase
 			.from('properties')
 			.select('id')
@@ -415,18 +416,24 @@ async function handleBookingUpdate(
 			return;
 		}
 
-		await supabase
+		// blocks.property_id is a bigint holding the OwnerRez integer id, not our UUID.
+		// writing blockProperty.id (UUID) silently fails with "invalid input syntax for
+		// type bigint" — historically this meant every webhook-delivered block was lost.
+		const { error: blockUpsertError } = await supabase
 			.from('blocks')
 			.upsert({
 				ownerrez_block_id: booking.id,
 				tenant_id: tenantId,
-				property_id: blockProperty.id,
+				property_id: booking.property_id,
 				arrival: booking.arrival,
 				departure: booking.departure,
 				type: booking.type || 'block',
 				reason: booking.reason,
 				updated_at: new Date().toISOString()
 			}, { onConflict: 'ownerrez_block_id,tenant_id' });
+		if (blockUpsertError) {
+			console.error('Failed to upsert block:', blockUpsertError);
+		}
 	} else {
 		const { data: property } = await supabase
 			.from('properties')
