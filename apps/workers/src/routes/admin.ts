@@ -618,47 +618,46 @@ admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, a
     : new Date(Date.UTC(now.getUTCFullYear() + 2, now.getUTCMonth(), 1)).toISOString().slice(0, 10);
 
   const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
-
-  let items: any[];
-  try {
-    items = await ownerRez.fetchBookings(orPropertyIds, from, to);
-  } catch (err) {
-    console.error('OwnerRez fetch failed during block refresh:', err);
-    return c.json({ error: 'Failed to fetch from OwnerRez' }, 502);
-  }
-
   const nowIso = new Date().toISOString();
-  const blocks = items
-    .filter(b => (b.is_block || b.type === 'block') && knownIntIds.has(Number(b.property_id)))
-    .map(b => mapToBlockRow(b, tenantId, nowIso));
 
-  if (blocks.length === 0) {
-    return c.json({
-      success: true,
-      fetched: items.length,
-      blocks: 0,
-      propertiesScanned: orPropertyIds.length,
-      range: { from, to }
-    });
-  }
-
-  const CHUNK_SIZE = 500;
+  // stream pages through: filter+upsert each 100-item page as it arrives so
+  // partial progress survives a worker crash or edge timeout (upsert is
+  // idempotent on the retry). memory stays bounded at one page regardless
+  // of tenant size.
   let upserted = 0;
-  for (let i = 0; i < blocks.length; i += CHUNK_SIZE) {
-    const chunk = blocks.slice(i, i + CHUNK_SIZE);
-    const { error } = await supabase
-      .from('blocks')
-      .upsert(chunk, { onConflict: 'ownerrez_block_id,tenant_id' });
-    if (error) {
-      console.error('Block upsert failed during admin refresh:', error);
-      return c.json({ error: 'Upsert failed', upserted, fetched: items.length }, 500);
+  let upsertErrorMessage: string | null = null;
+  let totalItems = 0;
+  try {
+    const result = await ownerRez.fetchBookingsChunked(
+      orPropertyIds, from, to, 0, 500,
+      async (pageItems) => {
+        const rows = pageItems
+          .filter(b => (b.is_block || b.type === 'block') && knownIntIds.has(Number(b.property_id)))
+          .map(b => mapToBlockRow(b, tenantId, nowIso));
+        if (rows.length === 0) return;
+        const { error } = await supabase
+          .from('blocks')
+          .upsert(rows, { onConflict: 'ownerrez_block_id,tenant_id' });
+        if (error) {
+          upsertErrorMessage = error.message;
+          throw new Error('upsert failed');
+        }
+        upserted += rows.length;
+      }
+    );
+    totalItems = result.totalItems;
+  } catch (err) {
+    if (upsertErrorMessage) {
+      console.error('Block upsert failed during admin refresh:', upsertErrorMessage);
+      return c.json({ error: 'Upsert failed', upserted }, 500);
     }
-    upserted += chunk.length;
+    console.error('OwnerRez fetch failed during block refresh:', err);
+    return c.json({ error: 'Failed to fetch from OwnerRez', upserted }, 502);
   }
 
   return c.json({
     success: true,
-    fetched: items.length,
+    fetched: totalItems,
     blocks: upserted,
     propertiesScanned: orPropertyIds.length,
     range: { from, to }
