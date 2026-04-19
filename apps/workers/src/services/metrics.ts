@@ -29,6 +29,17 @@ export class MetricsService {
 
 		if (!properties?.length) return [];
 
+		// resolve tag filter once for the whole tenant (it's tenant-scoped, not
+		// per-property), so we don't do N redundant lookups inside the map.
+		// null from getBookingIdsForTags means "no bookings match" — the filter
+		// must narrow to empty, otherwise the .in() guard below silently widens
+		// every property back to unfiltered.
+		let matchedBookingIds: string[] | null = null;
+		const tagFilterActive = !!tagIds?.length;
+		if (tagFilterActive) {
+			matchedBookingIds = await getBookingIdsForTags(this.supabase, tenantId, tagIds!);
+		}
+
 		const metrics = await Promise.all(
 			properties.map(async (property) => {
 				const { data: firstBooking } = await this.supabase
@@ -73,11 +84,11 @@ export class MetricsService {
 					.gte('departure', fromDate)
 					.neq('status', 'canceled');
 
-				if (tagIds?.length) {
-					const matchedBookingIds = await getBookingIdsForTags(this.supabase, tenantId, tagIds);
-					if (matchedBookingIds) {
-						bookingQuery = bookingQuery.in('id', matchedBookingIds);
-					}
+				if (matchedBookingIds) {
+					bookingQuery = bookingQuery.in('id', matchedBookingIds);
+				} else if (tagFilterActive) {
+					// tag filter matched no bookings — force empty, don't silently widen
+					bookingQuery = bookingQuery.in('id', []);
 				}
 
 				const { data: bookings } = await bookingQuery;
