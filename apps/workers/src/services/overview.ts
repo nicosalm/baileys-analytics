@@ -69,7 +69,7 @@ export async function getOverviewData(
 	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([
 		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties, tagIds),
 		getChartsData(currentBookings, sharedProperties, from, to),
-		getAlerts(supabase, tenantId, from, to),
+		getAlerts(supabase, tenantId, from, to, tagIds, filterPropertyIds),
 		getRecentActivity(supabase, tenantId, from, to),
 		getUpcomingBookings(supabase, tenantId)
 	]);
@@ -434,7 +434,9 @@ async function getAlerts(
 	supabase: SupabaseClient,
 	tenantId: string,
 	from: string,
-	to: string
+	to: string,
+	tagIds: string[] = [],
+	filterPropertyIds: string[] = [],
 ) {
 	const alerts = [];
 
@@ -445,6 +447,66 @@ async function getAlerts(
 	const sevenDaysFromNowStr = sevenDaysFromNow.toISOString().split('T')[0];
 	const thirtyDaysFromNowStr = thirtyDaysFromNow.toISOString().split('T')[0];
 
+	// alerts must respect the dashboard's property/tag filter so the banner
+	// numbers (cancellation rate, low occupancy) match the metric cards below.
+	const hasPropertyFilter = filterPropertyIds.length > 0;
+	let tagBookingIds: string[] | null = null;
+	if (tagIds.length > 0) {
+		tagBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
+		// tag filter matched nothing: every per-booking query should return 0.
+		// property count is still tenant-wide though, so the low-occupancy
+		// alert can still fire against its proper denominator.
+		if (tagBookingIds === null) tagBookingIds = [];
+	}
+
+	const buildUpcomingArrivalsQuery = () => {
+		let q = supabase
+			.from('bookings')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.gte('arrival', todayStr)
+			.lte('arrival', sevenDaysFromNowStr)
+			.neq('status', 'canceled');
+		if (hasPropertyFilter) q = q.in('property_id', filterPropertyIds);
+		if (tagBookingIds) q = q.in('id', tagBookingIds);
+		return q;
+	};
+	const buildUpcomingWindowQuery = () => {
+		let q = supabase
+			.from('bookings')
+			.select('arrival, departure')
+			.eq('tenant_id', tenantId)
+			// overlap with [today, today+30d): starts in window OR active today
+			.lte('arrival', thirtyDaysFromNowStr)
+			.gt('departure', todayStr)
+			.neq('status', 'canceled')
+			.order('id');
+		if (hasPropertyFilter) q = q.in('property_id', filterPropertyIds);
+		if (tagBookingIds) q = q.in('id', tagBookingIds);
+		return q;
+	};
+	const buildPropertyCountQuery = () => {
+		let q = supabase
+			.from('properties')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.eq('active', true);
+		if (hasPropertyFilter) q = q.in('id', filterPropertyIds);
+		return q;
+	};
+	const buildBookingCountQuery = (canceledOnly: boolean) => {
+		let q = supabase
+			.from('bookings')
+			.select('*', { count: 'exact', head: true })
+			.eq('tenant_id', tenantId)
+			.lte('arrival', to)
+			.gte('departure', from);
+		if (canceledOnly) q = q.eq('status', 'canceled');
+		if (hasPropertyFilter) q = q.in('property_id', filterPropertyIds);
+		if (tagBookingIds) q = q.in('id', tagBookingIds);
+		return q;
+	};
+
 	const [
 		{ count: upcomingCount },
 		upcomingBookings,
@@ -452,42 +514,11 @@ async function getAlerts(
 		{ count: totalBookings },
 		{ count: canceledBookings },
 	] = await Promise.all([
-		supabase
-			.from('bookings')
-			.select('*', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId)
-			.gte('arrival', todayStr)
-			.lte('arrival', sevenDaysFromNowStr)
-			.neq('status', 'canceled'),
-		fetchAllRows(() =>
-			supabase
-				.from('bookings')
-				.select('arrival, departure')
-				.eq('tenant_id', tenantId)
-				// overlap with [today, today+30d): starts in window OR active today
-				.lte('arrival', thirtyDaysFromNowStr)
-				.gt('departure', todayStr)
-				.neq('status', 'canceled')
-				.order('id')
-		),
-		supabase
-			.from('properties')
-			.select('*', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId)
-			.eq('active', true),
-		supabase
-			.from('bookings')
-			.select('*', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId)
-			.lte('arrival', to)
-			.gte('departure', from),
-		supabase
-			.from('bookings')
-			.select('*', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId)
-			.lte('arrival', to)
-			.gte('departure', from)
-			.eq('status', 'canceled'),
+		buildUpcomingArrivalsQuery(),
+		fetchAllRows(buildUpcomingWindowQuery),
+		buildPropertyCountQuery(),
+		buildBookingCountQuery(false),
+		buildBookingCountQuery(true),
 	]);
 
 	if (upcomingCount && upcomingCount > 0) {
