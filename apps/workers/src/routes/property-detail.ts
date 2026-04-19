@@ -6,7 +6,7 @@ import { getExpensesWithTemplateFallback } from '../services/expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
-import { prorateBooking, bucketBooking, arrivalInPeriodMap, sumChargesForArrivalsInPeriod, effectiveDaysInMonth } from '../utils/prorate';
+import { prorateBooking, bucketBooking, arrivalInPeriodMap, sumChargesForArrivalsInPeriod, effectiveDaysInMonth, enumerateBuckets } from '../utils/prorate';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -52,7 +52,9 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
           .lte('arrival', to)
           .gte('departure', from)
           .neq('status', 'canceled')
-          .order('arrival');
+          // desc so `.slice(0, 10)` downstream actually returns the 10 most recent
+          // bookings, matching the "Recent Bookings" label in the detail modal
+          .order('arrival', { ascending: false });
         if (matchedBookingIds) q = q.in('id', matchedBookingIds);
         else if (tags && tags.length > 0) q = q.in('id', []);
         return q;
@@ -144,23 +146,24 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     const occupancyRate = totalDays > 0 ? totalNights / totalDays : 0;
     const avgNightlyRate = totalNights > 0 ? totalRevenue / totalNights : 0;
 
-    const sortedMonths = Array.from(monthlyData.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, data]) => {
-        // Denominator clipped to the user's window so edge months (e.g. a range
-        // starting Feb 20 through Mar 10) don't dilute occupancy with days
-        // outside the selected range.
-        const [y, m] = month.split('-').map(Number);
-        const daysInMonth = effectiveDaysInMonth(y, m - 1, from, to);
-        const monthNights = monthOccupiedDays.get(month)?.size || 0;
+    // enumerate every month in the selected range, not just months that had
+    // bookings, so the chart shows explicit zeros for empty months instead of
+    // a visual gap that readers might misinterpret as missing data.
+    const sortedMonths = enumerateBuckets(from, to, 'month').map(({ key: month }) => {
+      const data = monthlyData.get(month) || { revenue: 0, bookings: 0, nights: 0 };
+      const [y, m] = month.split('-').map(Number);
+      // denominator clipped to the user's window so edge months (e.g. Feb 20
+      // through Mar 10) don't dilute occupancy with days outside the range.
+      const daysInMonth = effectiveDaysInMonth(y, m - 1, from, to);
+      const monthNights = monthOccupiedDays.get(month)?.size || 0;
 
-        return {
-          month,
-          revenue: data.revenue,
-          bookings: data.bookings,
-          occupancy: daysInMonth > 0 ? (monthNights / daysInMonth) * 100 : 0
-        };
-      });
+      return {
+        month,
+        revenue: data.revenue,
+        bookings: data.bookings,
+        occupancy: daysInMonth > 0 ? (monthNights / daysInMonth) * 100 : 0
+      };
+    });
     
     const revenueByPlatform = Array.from(platformRevenue.entries())
       .map(([platform, revenue]) => ({
