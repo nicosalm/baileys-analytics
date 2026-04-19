@@ -566,13 +566,15 @@ admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, asyn
 });
 
 // Refresh blocks for a single tenant by re-fetching from OwnerRez.
-// Backfills any block that webhook delivery dropped (see webhooks.ts history:
-// prior to the bigint property_id fix, every webhook-delivered block was
-// silently rejected by postgres).
+// Recovery tool for any case where our blocks table drifts from OwnerRez:
+// dropped webhook deliveries, rate-limit retries that exceeded the 3-attempt
+// ceiling, interrupted initial syncs, or ad-hoc investigation of an occupancy
+// denominator that looks off. Narrower scope than /sync/bookings (blocks-only,
+// no guest/booking/charge refresh) so it runs in seconds for typical tenants.
 //
-// Fetches a wide window (1y back, 2y forward) to cover historical closures
-// and future planned blocks. Upserts are idempotent on (ownerrez_block_id, tenant_id)
-// so this is safe to re-run.
+// Default window: 1y back, 2y forward. Override with ?from=YYYY-MM-DD&to=YYYY-MM-DD
+// for large tenants where the default would exceed the cloudflare edge timeout.
+// Upserts are idempotent on (ownerrez_block_id, tenant_id) — safe to re-run.
 admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
