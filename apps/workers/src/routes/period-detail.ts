@@ -7,6 +7,7 @@ import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking, arrivalInPeriodMap, sumChargesForArrivalsInPeriod } from '../utils/prorate';
+import { fetchBlocks, collectBlockedNights, sumBlockedNights } from '../utils/blocks';
 
 const periodDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -48,7 +49,7 @@ periodDetail.get('/', async (c) => {
       matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tags);
     }
 
-    const [bookings, expensesList] = await Promise.all([
+    const [bookings, expensesList, blocks] = await Promise.all([
       fetchAllRows(() => {
         let q = supabase
           .from('bookings')
@@ -63,8 +64,11 @@ periodDetail.get('/', async (c) => {
         else if (tags && tags.length > 0) q = q.in('id', []);
         return q;
       }),
-      getExpensesWithTemplateFallback(supabase, tenantId, startDate, endDate, propertyIds)
+      getExpensesWithTemplateFallback(supabase, tenantId, startDate, endDate, propertyIds),
+      fetchBlocks(supabase, tenantId, startDate, endDate, propertyIds)
     ]);
+    const blockedByProp = collectBlockedNights(blocks, startDate, endDate);
+    const totalBlockedNights = sumBlockedNights(blockedByProp);
 
     const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
 
@@ -134,7 +138,7 @@ periodDetail.get('/', async (c) => {
     const totalDays = Math.ceil(
       (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24)
     ) + 1;
-    const totalPossibleNights = properties.length * totalDays;
+    const totalPossibleNights = Math.max(0, properties.length * totalDays - totalBlockedNights);
     const occupancyRate = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) : 0;
 
     const propertyRevenue = new Map<string, { revenue: number; bookings: number }>();
@@ -148,13 +152,18 @@ periodDetail.get('/', async (c) => {
     });
 
     const byProperty = Array.from(propertyRevenue.entries())
-      .map(([propertyId, data]) => ({
-        propertyId,
-        propertyName: propertyMap.get(propertyId) || 'Unknown Property',
-        revenue: data.revenue,
-        bookings: data.bookings,
-        occupancyRate: totalDays > 0 ? (propertyOccupiedDays.get(propertyId)?.size || 0) / totalDays : 0
-      }))
+      .map(([propertyId, data]) => {
+        const propBlocked = blockedByProp.get(propertyId) || 0;
+        const propSellable = Math.max(0, totalDays - propBlocked);
+        const propOcc = propertyOccupiedDays.get(propertyId)?.size || 0;
+        return {
+          propertyId,
+          propertyName: propertyMap.get(propertyId) || 'Unknown Property',
+          revenue: data.revenue,
+          bookings: data.bookings,
+          occupancyRate: propSellable > 0 ? propOcc / propSellable : 0
+        };
+      })
       .sort((a, b) => b.revenue - a.revenue);
 
     const platformGroups = new Map<string, { count: number; revenue: number }>();
@@ -182,7 +191,9 @@ periodDetail.get('/', async (c) => {
         revenue: totalRevenue,
         bookings: totalBookings,
         occupancyRate,
-        avgNightlyRate
+        avgNightlyRate,
+        sellableNights: totalPossibleNights,
+        blockedNights: totalBlockedNights
       },
       costs: {
         platformFees: combinedPlatformFees,

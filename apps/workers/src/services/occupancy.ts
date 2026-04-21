@@ -2,6 +2,14 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { enumerateBuckets, effectiveDaysInMonth } from '../utils/prorate';
+import {
+	fetchBlocks,
+	collectBlockedNights,
+	collectBlockedNightsExclusive,
+	sumBlockedNights,
+	buildDailyBlockGrid,
+	TranslatedBlock,
+} from '../utils/blocks';
 import { MS_PER_DAY } from '../constants';
 
 export interface OccupancyData {
@@ -10,6 +18,7 @@ export interface OccupancyData {
   byMonth: MonthlyOccupancy[];
   bookedNights: number;
   availableNights: number;
+  blockedNights: number;
 }
 
 export interface PropertyOccupancy {
@@ -19,6 +28,7 @@ export interface PropertyOccupancy {
   rate: number;
   bookedNights: number;
   availableNights: number;
+  blockedNights: number;
   avgNightlyRate: number;
 }
 
@@ -27,6 +37,7 @@ export interface MonthlyOccupancy {
   rate: number;
   bookedNights: number;
   availableNights: number;
+  blockedNights: number;
 }
 
 export interface DailyOccupancy {
@@ -53,21 +64,27 @@ function determineGranularity(from: string, to: string): 'daily' | 'weekly' | 'm
 
 // available nights per period key. Keys match the postgres RPC
 // (get_periodic_occupancy) via shared enumerateBuckets, which is UTC-based.
+// Returned map is { key -> { sellable, blocked } } so callers can render both.
 function computePeriodAvailableNights(
   propertyCount: number,
   from: string,
   to: string,
-  granularity: 'daily' | 'weekly' | 'monthly'
-): Map<string, number> {
+  granularity: 'daily' | 'weekly' | 'monthly',
+  blocks: TranslatedBlock[]
+): Map<string, { sellable: number; blocked: number }> {
   const g = granularity === 'daily' ? 'day' : granularity === 'weekly' ? 'week' : 'month';
   const fromMs = new Date(from).getTime();
   const toMs = new Date(to).getTime();
-  const periods = new Map<string, number>();
+  const periods = new Map<string, { sellable: number; blocked: number }>();
 
   for (const { key } of enumerateBuckets(from, to, g)) {
     let nights: number;
+    let windowStart: Date;
+    let windowEndExcl: Date;
     if (g === 'day') {
       nights = 1;
+      windowStart = new Date(key);
+      windowEndExcl = new Date(windowStart.getTime() + MS_PER_DAY);
     } else if (g === 'week') {
       // key = Sunday of the week (YYYY-MM-DD); clip the 7-day span to [from, to]
       const weekStartMs = new Date(key).getTime();
@@ -75,11 +92,23 @@ function computePeriodAvailableNights(
       const clipStart = Math.max(weekStartMs, fromMs);
       const clipEnd = Math.min(weekEndMs, toMs);
       nights = clipStart <= clipEnd ? Math.round((clipEnd - clipStart) / MS_PER_DAY) + 1 : 0;
+      windowStart = new Date(clipStart);
+      windowEndExcl = new Date(clipEnd + MS_PER_DAY);
     } else {
       const [y, m] = key.split('-').map(Number);
       nights = effectiveDaysInMonth(y, m - 1, from, to);
+      // clip month edges to [from, to]
+      const monthStart = new Date(Date.UTC(y, m - 1, 1));
+      const nextMonthStart = new Date(Date.UTC(y, m, 1));
+      windowStart = monthStart.getTime() > fromMs ? monthStart : new Date(fromMs);
+      const toExcl = toMs + MS_PER_DAY;
+      windowEndExcl = nextMonthStart.getTime() < toExcl ? nextMonthStart : new Date(toExcl);
     }
-    periods.set(key, nights * propertyCount);
+    const calendarNights = nights * propertyCount;
+    const blocked = nights > 0
+      ? sumBlockedNights(collectBlockedNightsExclusive(blocks, windowStart, windowEndExcl))
+      : 0;
+    periods.set(key, { sellable: Math.max(0, calendarNights - blocked), blocked });
   }
 
   return periods;
@@ -106,11 +135,16 @@ export async function getOccupancyData(
   const { data: properties } = await propertiesQuery;
 
   if (!properties || properties.length === 0) {
-    return { overall: 0, byProperty: [], byMonth: [], bookedNights: 0, availableNights: 0 };
+    return { overall: 0, byProperty: [], byMonth: [], bookedNights: 0, availableNights: 0, blockedNights: 0 };
   }
 
   const propertyIds = properties.map(p => p.id);
   const hasTagFilter = tagIds.length > 0;
+
+  // blocks are inventory state, not booking state, so tag filters don't apply to them
+  const blocks = await fetchBlocks(supabase, tenantId, from, to, propertyIds);
+  const blockedByProp = collectBlockedNights(blocks, from, to);
+  const totalBlocked = sumBlockedNights(blockedByProp);
 
   let bookingIdFilter: string[] | null = null;
   if (hasTagFilter) {
@@ -122,22 +156,27 @@ export async function getOccupancyData(
       const totalDays = endDate >= startDate
         ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
         : 0;
-      const totalAvailableNights = totalDays * properties.length;
+      const totalAvailableNights = Math.max(0, totalDays * properties.length - totalBlocked);
 
       return {
         overall: 0,
-        byProperty: properties.map(p => ({
-          propertyId: p.id,
-          propertyName: p.name,
-          propertyCode: p.internal_code || null,
-          rate: 0,
-          bookedNights: 0,
-          availableNights: totalDays,
-          avgNightlyRate: 0
-        })),
+        byProperty: properties.map(p => {
+          const propBlocked = blockedByProp.get(p.id) || 0;
+          return {
+            propertyId: p.id,
+            propertyName: p.name,
+            propertyCode: p.internal_code || null,
+            rate: 0,
+            bookedNights: 0,
+            availableNights: Math.max(0, totalDays - propBlocked),
+            blockedNights: propBlocked,
+            avgNightlyRate: 0
+          };
+        }),
         byMonth: [],
         bookedNights: 0,
-        availableNights: totalAvailableNights
+        availableNights: totalAvailableNights,
+        blockedNights: totalBlocked
       };
     }
   }
@@ -159,10 +198,9 @@ export async function getOccupancyData(
     supabase.rpc('get_periodic_occupancy', { ...rpcParams, p_granularity: granularity }),
   ]);
 
-  // overall
   const overallRow = overallResult.data?.[0] ?? { booked_nights: 0, available_nights: 0 };
   const bookedNights = Number(overallRow.booked_nights);
-  const availableNights = Number(overallRow.available_nights);
+  const availableNights = Math.max(0, Number(overallRow.available_nights) - totalBlocked);
 
   // per-property: merge RPC results with property metadata
   const propertyOccMap = new Map<string, { booked_nights: number; revenue: number }>();
@@ -183,19 +221,22 @@ export async function getOccupancyData(
     const occ = propertyOccMap.get(p.id);
     const propBookedNights = occ?.booked_nights ?? 0;
     const propRevenue = occ?.revenue ?? 0;
+    const propBlocked = blockedByProp.get(p.id) ?? 0;
+    const propSellable = Math.max(0, totalDays - propBlocked);
     return {
       propertyId: p.id,
       propertyName: p.name,
       propertyCode: p.internal_code || null,
-      rate: calculateOccupancyRate(propBookedNights, totalDays),
+      rate: calculateOccupancyRate(propBookedNights, propSellable),
       bookedNights: propBookedNights,
-      availableNights: totalDays,
+      availableNights: propSellable,
+      blockedNights: propBlocked,
       avgNightlyRate: propBookedNights > 0 ? propRevenue / propBookedNights : 0,
     };
   }).sort((a, b) => b.rate - a.rate);
 
   // periodic: merge RPC booked_nights with JS-computed available nights
-  const periodAvailable = computePeriodAvailableNights(properties.length, from, to, granularity);
+  const periodAvailable = computePeriodAvailableNights(properties.length, from, to, granularity, blocks);
   const periodicMap = new Map<string, number>();
   for (const row of periodicResult.data ?? []) {
     periodicMap.set(row.period, Number(row.booked_nights));
@@ -206,9 +247,10 @@ export async function getOccupancyData(
     const booked = periodicMap.get(month) ?? 0;
     byMonth.push({
       month,
-      rate: calculateOccupancyRate(booked, avail),
+      rate: calculateOccupancyRate(booked, avail.sellable),
       bookedNights: booked,
-      availableNights: avail,
+      availableNights: avail.sellable,
+      blockedNights: avail.blocked,
     });
   }
 
@@ -217,7 +259,8 @@ export async function getOccupancyData(
     byProperty,
     byMonth,
     bookedNights,
-    availableNights
+    availableNights,
+    blockedNights: totalBlocked
   };
 }
 
@@ -248,23 +291,25 @@ async function fetchDailyOccupancy(
     matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
   }
 
-  const bookings = await fetchAllRows(() => {
-    let q = supabase
-      .from('bookings')
-      .select('property_id, arrival, departure')
-      .eq('tenant_id', tenantId)
-      .in('property_id', propertyIds)
-      .lte('arrival', to)
-      .gte('departure', from)
-      .neq('status', 'canceled')
-      .order('id');
-    if (hasTagFilter) {
-      q = matchedBookingIds ? q.in('id', matchedBookingIds) : q.in('id', []);
-    }
-    return q;
-  });
+  const [bookings, blocks] = await Promise.all([
+    fetchAllRows(() => {
+      let q = supabase
+        .from('bookings')
+        .select('property_id, arrival, departure')
+        .eq('tenant_id', tenantId)
+        .in('property_id', propertyIds)
+        .lte('arrival', to)
+        .gte('departure', from)
+        .neq('status', 'canceled')
+        .order('id');
+      if (hasTagFilter) {
+        q = matchedBookingIds ? q.in('id', matchedBookingIds) : q.in('id', []);
+      }
+      return q;
+    }),
+    fetchBlocks(supabase, tenantId, from, to, propertyIds),
+  ]);
 
-  const MS_PER_DAY = 1000 * 60 * 60 * 24;
   const startDate = new Date(from);
   const endDate = new Date(to);
   const startEpoch = Math.floor(startDate.getTime() / MS_PER_DAY);
@@ -283,16 +328,20 @@ async function fetchDailyOccupancy(
     }
   }
 
+  const blockGrid = buildDailyBlockGrid(blocks, startEpoch, endEpoch);
+
   const dailyOccupancy: DailyOccupancy[] = [];
   for (let epoch = startEpoch; epoch <= endEpoch; epoch++) {
     const d = new Date(epoch * MS_PER_DAY);
     const dateStr = d.toISOString().split('T')[0];
     const bookedCount = grid.get(epoch)?.size ?? 0;
+    const blockedCount = blockGrid.get(epoch)?.size ?? 0;
+    const sellable = Math.max(0, totalProperties - blockedCount);
     dailyOccupancy.push({
       date: dateStr,
-      occupancyRate: totalProperties > 0 ? bookedCount / totalProperties : 0,
+      occupancyRate: sellable > 0 ? bookedCount / sellable : 0,
       bookedProperties: bookedCount,
-      totalProperties
+      totalProperties: sellable
     });
   }
 

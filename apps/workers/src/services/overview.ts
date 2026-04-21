@@ -4,6 +4,14 @@ import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking, bucketBooking, enumerateBuckets, arrivalInPeriodMap, sumChargesForArrivalsInPeriod } from '../utils/prorate';
+import {
+	fetchBlocks,
+	collectBlockedNights,
+	collectBlockedNightsExclusive,
+	sumBlockedNights,
+	buildDailyBlockGrid,
+	TranslatedBlock,
+} from '../utils/blocks';
 import { MS_PER_DAY } from '../constants';
 
 async function fetchBookings(
@@ -59,16 +67,22 @@ export async function getOverviewData(
 
 	const sharedProperties = properties || [];
 
-	const [currentBookings, comparisonBookings] = await Promise.all([
+	const sharedPropertyIds = sharedProperties.map(p => p.id);
+
+	const [currentBookings, comparisonBookings, currentBlocks, comparisonBlocks] = await Promise.all([
 		fetchBookings(supabase, tenantId, from, to, tagIds, filterPropertyIds),
 		comparisonFrom && comparisonTo
 			? fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds, filterPropertyIds)
-			: null
+			: null,
+		fetchBlocks(supabase, tenantId, from, to, sharedPropertyIds.length > 0 ? sharedPropertyIds : undefined),
+		comparisonFrom && comparisonTo
+			? fetchBlocks(supabase, tenantId, comparisonFrom, comparisonTo, sharedPropertyIds.length > 0 ? sharedPropertyIds : undefined)
+			: null,
 	]);
 
 	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([
-		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties, tagIds),
-		getChartsData(currentBookings, sharedProperties, from, to),
+		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties, tagIds, currentBlocks),
+		getChartsData(currentBookings, sharedProperties, from, to, currentBlocks),
 		getAlerts(supabase, tenantId, from, to, tagIds, filterPropertyIds),
 		getRecentActivity(supabase, tenantId, from, to),
 		getUpcomingBookings(supabase, tenantId)
@@ -77,7 +91,7 @@ export async function getOverviewData(
 	let previousMetrics = null;
 	if (comparisonBookings) {
 		previousMetrics = await getCurrentPeriodMetrics(
-			supabase, tenantId, comparisonFrom!, comparisonTo!, comparisonBookings, sharedProperties, tagIds
+			supabase, tenantId, comparisonFrom!, comparisonTo!, comparisonBookings, sharedProperties, tagIds, comparisonBlocks || []
 		);
 	}
 
@@ -100,7 +114,8 @@ async function getCurrentPeriodMetrics(
 	to: string,
 	bookings: any[],
 	properties: any[],
-	tagIds: string[] = []
+	tagIds: string[] = [],
+	blocks: TranslatedBlock[] = []
 ) {
 	const propertyCount = properties.length;
 	const propertyIds = properties.map(p => p.id);
@@ -185,7 +200,7 @@ async function getCurrentPeriodMetrics(
 	});
 	const avgNights = totalBookings > 0 ? totalBookingNights / totalBookings : 0;
 
-	// occupancy = booked property-days / total property-days
+	// occupancy = booked property-days / sellable property-days
 	// clip each booking to the period window and deduplicate per property-day
 	const periodStart = new Date(from);
 	const periodEnd = new Date(to);
@@ -205,8 +220,9 @@ async function getCurrentPeriodMetrics(
 		}
 	}
 	const totalDays = Math.ceil((periodEnd.getTime() - periodStart.getTime()) / MS_PER_DAY) + 1;
-	const totalPossibleNights = totalDays * (propertyCount || 1);
-	const occupancyRate = totalPossibleNights > 0 ? (occupiedPropertyDays.size / totalPossibleNights) * 100 : 0;
+	const blockedNights = sumBlockedNights(collectBlockedNights(blocks, from, to));
+	const sellableNights = Math.max(0, totalDays * (propertyCount || 1) - blockedNights);
+	const occupancyRate = sellableNights > 0 ? (occupiedPropertyDays.size / sellableNights) * 100 : 0;
 
 	const uniqueGuests = new Set(bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
@@ -245,6 +261,8 @@ async function getCurrentPeriodMetrics(
 		upcomingBookings,
 		cancellationRate,
 		occupancyRate,
+		sellableNights,
+		blockedNights,
 		totalGuests,
 		newGuests,
 		repeatGuestRate,
@@ -259,7 +277,8 @@ function getChartsData(
 	bookings: any[],
 	properties: any[],
 	from: string,
-	to: string
+	to: string,
+	blocks: TranslatedBlock[] = []
 ) {
 	const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
 	const revenueUseDaily = daysDiff <= 30;
@@ -297,7 +316,7 @@ function getChartsData(
 		.map(([source, data]) => ({ source, count: data.count, revenue: data.revenue }))
 		.sort((a, b) => b.count - a.count);
 
-	const occupancyData = buildOccupancyChartData(bookings, properties, from, to, daysDiff <= 60);
+	const occupancyData = buildOccupancyChartData(bookings, properties, from, to, daysDiff <= 60, blocks);
 
 	return {
 		revenueLastWeek: revenueData,
@@ -337,7 +356,8 @@ function buildOccupancyChartData(
 	properties: any[],
 	from: string,
 	to: string,
-	useDaily: boolean
+	useDaily: boolean,
+	blocks: TranslatedBlock[] = []
 ) {
 	const totalProperties = properties.length || 1;
 	const startDate = new Date(from);
@@ -359,13 +379,17 @@ function buildOccupancyChartData(
 			}
 		}
 
+		const blockGrid = buildDailyBlockGrid(blocks, startEpoch, endEpoch);
+
 		// iterate days to read from grid: O(D)
 		const result = [];
 		for (let epoch = startEpoch; epoch <= endEpoch; epoch++) {
 			const d = new Date(epoch * MS_PER_DAY);
 			const label = `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${String(d.getUTCDate()).padStart(2, '0')}`;
 			const bookedCount = grid.get(epoch)?.size ?? 0;
-			const rate = (bookedCount / totalProperties) * 100;
+			const blockedCount = blockGrid.get(epoch)?.size ?? 0;
+			const sellable = Math.max(0, totalProperties - blockedCount);
+			const rate = sellable > 0 ? (bookedCount / sellable) * 100 : 0;
 			result.push({ month: label, rate: Math.round(rate * 10) / 10 });
 		}
 		return result;
@@ -417,11 +441,15 @@ function buildOccupancyChartData(
 			const monthEnd = new Date(Date.UTC(y, m + 1, 0));
 			const effectiveStart = monthStart > startDate ? monthStart : startDate;
 			const effectiveEnd = monthEnd < endDate ? monthEnd : endDate;
+			const effectiveEndExcl = new Date(effectiveEnd.getTime() + MS_PER_DAY);
 			const daysInMonth = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / MS_PER_DAY) + 1;
-			const totalNights = daysInMonth * totalProperties;
+			const monthBlocked = sumBlockedNights(
+				collectBlockedNightsExclusive(blocks, effectiveStart, effectiveEndExcl)
+			);
+			const sellable = Math.max(0, daysInMonth * totalProperties - monthBlocked);
 
 			const bookedNights = monthNights.get(key) || 0;
-			const rate = totalNights > 0 ? (bookedNights / totalNights) * 100 : 0;
+			const rate = sellable > 0 ? (bookedNights / sellable) * 100 : 0;
 			result.push({ month: label, rate: Math.round(rate * 10) / 10 });
 
 			d.setTime(Date.UTC(y, m + 1, 1));
@@ -513,12 +541,14 @@ async function getAlerts(
 		{ count: propertyCount },
 		{ count: totalBookings },
 		{ count: canceledBookings },
+		upcomingBlocks,
 	] = await Promise.all([
 		buildUpcomingArrivalsQuery(),
 		fetchAllRows(buildUpcomingWindowQuery),
 		buildPropertyCountQuery(),
 		buildBookingCountQuery(false),
 		buildBookingCountQuery(true),
+		fetchBlocks(supabase, tenantId, todayStr, thirtyDaysFromNowStr, hasPropertyFilter ? filterPropertyIds : undefined),
 	]);
 
 	if (upcomingCount && upcomingCount > 0) {
@@ -532,13 +562,18 @@ async function getAlerts(
 	}
 
 	if (propertyCount) {
-		const totalPossibleNights = 30 * propertyCount;
 		// align the window to UTC midnight to match the DATE-typed arrival/departure
 		// columns. using today.getTime() directly would clip by the current time-of-day
 		// and systematically undercount nights of stays arriving today or extending past
 		// the window end.
 		const windowStartMs = Math.floor(today.getTime() / MS_PER_DAY) * MS_PER_DAY;
 		const windowEndMs = windowStartMs + 30 * MS_PER_DAY;
+		const windowStartDate = new Date(windowStartMs);
+		const windowEndDate = new Date(windowEndMs);
+		const blockedNights = sumBlockedNights(
+			collectBlockedNightsExclusive(upcomingBlocks, windowStartDate, windowEndDate)
+		);
+		const sellableNights = Math.max(0, 30 * propertyCount - blockedNights);
 		let bookedNights = 0;
 
 		upcomingBookings.forEach(b => {
@@ -550,14 +585,14 @@ async function getAlerts(
 			bookedNights += nights;
 		});
 
-		const occupancyRate = (bookedNights / totalPossibleNights) * 100;
+		const occupancyRate = sellableNights > 0 ? (bookedNights / sellableNights) * 100 : 0;
 
 		if (occupancyRate < 50) {
 			alerts.push({
 				id: 'low-occupancy',
 				type: 'warning' as const,
 				title: `${Math.round(occupancyRate)}% Occupancy Next 30 Days`,
-				description: `${bookedNights} of ${totalPossibleNights} available nights booked across ${propertyCount} ${propertyCount === 1 ? 'property' : 'properties'}`,
+				description: `${bookedNights} of ${sellableNights} sellable nights booked across ${propertyCount} ${propertyCount === 1 ? 'property' : 'properties'}`,
 				timestamp: new Date().toISOString()
 			});
 		}
@@ -761,7 +796,9 @@ function formatOverviewMetrics(current: any, previous: any = null) {
 			growth: previous?.occupancyRate ? ((current.occupancyRate - previous.occupancyRate) / previous.occupancyRate) * 100 : 0,
 			trend: current.occupancyRate > (previous?.occupancyRate || 0) ? 'up' :
 			       current.occupancyRate < (previous?.occupancyRate || 0) ? 'down' : 'stable',
-			avgPropertyOccupancy: current.avgPropertyOccupancy
+			avgPropertyOccupancy: current.avgPropertyOccupancy,
+			blockedNights: current.blockedNights,
+			sellableNights: current.sellableNights
 		},
 		guests: {
 			total: current.totalGuests,

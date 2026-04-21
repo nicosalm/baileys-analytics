@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../utils/fetch-all';
 import { prorateBooking } from '../utils/prorate';
+import { fetchBlocks, collectBlockedNights, sumBlockedNights } from '../utils/blocks';
 
 type GoalPeriod = 'monthly' | 'quarterly' | 'yearly';
 
@@ -89,9 +90,13 @@ async function getGoalMetrics(
 
 	const startDate = new Date(from);
 	const endDate = new Date(to);
-	const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-	const totalPossibleNights = totalDays * (propertyCount || 1);
-	const occupancy = totalPossibleNights > 0 ? (totalNights / totalPossibleNights) * 100 : 0;
+	// inclusive day count (Feb 1 → Feb 7 = 7 days, not 6)
+	const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+	// blocks reduce sellable inventory so owner stays / maintenance don't drag occupancy down
+	const blocks = await fetchBlocks(supabase, tenantId, from, to);
+	const blockedNights = sumBlockedNights(collectBlockedNights(blocks, from, to));
+	const sellableNights = Math.max(0, totalDays * (propertyCount || 1) - blockedNights);
+	const occupancy = sellableNights > 0 ? (totalNights / sellableNights) * 100 : 0;
 
 	const uniqueGuests = new Set(
 		bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean)

@@ -4,6 +4,7 @@ import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking, isArrivalInPeriod } from '../utils/prorate';
+import { fetchBlocks, collectBlockedNights } from '../utils/blocks';
 
 export interface PropertyMetrics {
   propertyId: string;
@@ -15,6 +16,7 @@ export interface PropertyMetrics {
   avgNightlyRate: number;
   bookedNights: number;
   availableNights: number;
+  blockedNights: number;
 }
 
 export interface PropertyProfitability {
@@ -57,7 +59,8 @@ function computePropertyMetrics(
   bookings: BookingRow[],
   from: string,
   to: string,
-  firstBookingDates: Map<string, Date | null>
+  firstBookingDates: Map<string, Date | null>,
+  blockedByProperty: Map<string, number>
 ): PropertyMetrics[] {
   const bookingsByProperty = new Map<string, BookingRow[]>();
   for (const b of bookings) {
@@ -73,7 +76,9 @@ function computePropertyMetrics(
 
   for (const property of properties) {
     const firstBookingDate = firstBookingDates.get(property.id) || null;
-    const availableNights = calculateAvailableNights(from, to, firstBookingDate);
+    const calendarAvailable = calculateAvailableNights(from, to, firstBookingDate);
+    const blockedNights = blockedByProperty.get(property.id) || 0;
+    const availableNights = Math.max(0, calendarAvailable - blockedNights);
 
     const metrics: PropertyMetrics = {
       propertyId: property.id,
@@ -84,7 +89,8 @@ function computePropertyMetrics(
       occupancyRate: 0,
       avgNightlyRate: 0,
       bookedNights: 0,
-      availableNights
+      availableNights,
+      blockedNights
     };
 
     const propBookings = bookingsByProperty.get(property.id) || [];
@@ -267,24 +273,33 @@ export async function getPropertiesData(
   }
 
   const propertyIds = properties.map((p: PropertyInfo) => p.id);
-  const firstBookingDates = await fetchFirstBookingDates(supabase, tenantId, properties);
+  const [firstBookingDates, currentBlocks] = await Promise.all([
+    fetchFirstBookingDates(supabase, tenantId, properties),
+    fetchBlocks(supabase, tenantId, from, to, propertyIds),
+  ]);
+  const currentBlockedByProp = collectBlockedNights(currentBlocks, from, to);
 
   let tagBookingIds: string[] | null = null;
   if (tagIds.length > 0) {
     tagBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
 
     if (!tagBookingIds) {
-      const emptyMetrics: PropertyMetrics[] = properties.map((p: PropertyInfo) => ({
-        propertyId: p.id,
-        propertyName: p.name,
-        propertyCode: p.internal_code || null,
-        revenue: 0,
-        bookings: 0,
-        occupancyRate: 0,
-        avgNightlyRate: 0,
-        bookedNights: 0,
-        availableNights: calculateAvailableNights(from, to, firstBookingDates.get(p.id) ?? null)
-      }));
+      const emptyMetrics: PropertyMetrics[] = properties.map((p: PropertyInfo) => {
+        const calendar = calculateAvailableNights(from, to, firstBookingDates.get(p.id) ?? null);
+        const blocked = currentBlockedByProp.get(p.id) || 0;
+        return {
+          propertyId: p.id,
+          propertyName: p.name,
+          propertyCode: p.internal_code || null,
+          revenue: 0,
+          bookings: 0,
+          occupancyRate: 0,
+          avgNightlyRate: 0,
+          bookedNights: 0,
+          availableNights: Math.max(0, calendar - blocked),
+          blockedNights: blocked
+        };
+      });
       const emptyProfitability: PropertyProfitability[] = properties.map((p: PropertyInfo) => ({
         propertyId: p.id,
         propertyName: p.name,
@@ -314,16 +329,20 @@ export async function getPropertiesData(
 
   const [taxCharges, expenses] = await Promise.all([
     fetchTaxCharges(supabase, currentBookings),
-    getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds)
+    getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds),
   ]);
 
-  const currentMetrics = computePropertyMetrics(properties, currentBookings, from, to, firstBookingDates);
+  const currentMetrics = computePropertyMetrics(properties, currentBookings, from, to, firstBookingDates, currentBlockedByProp);
   const profitability = computePropertyProfitability(properties, currentBookings, taxCharges, expenses, from, to);
   const platformMix = computePropertyPlatformMix(properties, currentBookings, from, to);
 
   if (comparisonFrom && comparisonTo) {
-    const compBookings = await fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, propertyIds, tagBookingIds);
-    const previousMetrics = computePropertyMetrics(properties, compBookings, comparisonFrom, comparisonTo, firstBookingDates);
+    const [compBookings, compBlocks] = await Promise.all([
+      fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, propertyIds, tagBookingIds),
+      fetchBlocks(supabase, tenantId, comparisonFrom, comparisonTo, propertyIds),
+    ]);
+    const compBlockedByProp = collectBlockedNights(compBlocks, comparisonFrom, comparisonTo);
+    const previousMetrics = computePropertyMetrics(properties, compBookings, comparisonFrom, comparisonTo, firstBookingDates, compBlockedByProp);
 
     return {
       properties: currentMetrics,

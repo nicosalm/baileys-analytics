@@ -7,6 +7,7 @@ import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking, bucketBooking, arrivalInPeriodMap, sumChargesForArrivalsInPeriod, effectiveDaysInMonth, enumerateBuckets } from '../utils/prorate';
+import { fetchBlocks, collectBlockedNights, collectBlockedNightsExclusive, sumBlockedNights } from '../utils/blocks';
 
 const propertyDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -42,7 +43,7 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       matchedBookingIds = await getBookingIdsForTags(supabase, tenantId, tags);
     }
 
-    const [bookings, expensesList] = await Promise.all([
+    const [bookings, expensesList, blocks] = await Promise.all([
       fetchAllRows(() => {
         let q = supabase
           .from('bookings')
@@ -59,7 +60,8 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         else if (tags && tags.length > 0) q = q.in('id', []);
         return q;
       }),
-      getExpensesWithTemplateFallback(supabase, tenantId, from, to, [propertyId], propertyId)
+      getExpensesWithTemplateFallback(supabase, tenantId, from, to, [propertyId], propertyId),
+      fetchBlocks(supabase, tenantId, from, to, [propertyId])
     ]);
 
     const totalOperatingExpenses = expensesList.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -143,7 +145,9 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
     const totalDays = Math.ceil(
       (periodEnd.getTime() - periodStart.getTime()) / (1000 * 60 * 60 * 24) + 1
     );
-    const occupancyRate = totalDays > 0 ? totalNights / totalDays : 0;
+    const blockedNights = sumBlockedNights(collectBlockedNights(blocks, from, to));
+    const sellableDays = Math.max(0, totalDays - blockedNights);
+    const occupancyRate = sellableDays > 0 ? totalNights / sellableDays : 0;
     const avgNightlyRate = totalNights > 0 ? totalRevenue / totalNights : 0;
 
     // enumerate every month in the selected range, not just months that had
@@ -155,13 +159,21 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
       // denominator clipped to the user's window so edge months (e.g. Feb 20
       // through Mar 10) don't dilute occupancy with days outside the range.
       const daysInMonth = effectiveDaysInMonth(y, m - 1, from, to);
+      // month-scoped block subtraction
+      const monthStart = new Date(Date.UTC(y, m - 1, 1));
+      const monthEndExcl = new Date(Date.UTC(y, m, 1));
+      const fromExcl = new Date(new Date(to).getTime() + MS_PER_DAY);
+      const effMonthStart = monthStart.getTime() > new Date(from).getTime() ? monthStart : new Date(from);
+      const effMonthEndExcl = monthEndExcl.getTime() < fromExcl.getTime() ? monthEndExcl : fromExcl;
+      const monthBlocked = sumBlockedNights(collectBlockedNightsExclusive(blocks, effMonthStart, effMonthEndExcl));
+      const monthSellable = Math.max(0, daysInMonth - monthBlocked);
       const monthNights = monthOccupiedDays.get(month)?.size || 0;
 
       return {
         month,
         revenue: data.revenue,
         bookings: data.bookings,
-        occupancy: daysInMonth > 0 ? (monthNights / daysInMonth) * 100 : 0
+        occupancy: monthSellable > 0 ? (monthNights / monthSellable) * 100 : 0
       };
     });
     
@@ -236,6 +248,8 @@ propertyDetail.get('/:propertyId/detail', async (c) => {
         occupancyRate,
         totalNights,
         totalDays,
+        sellableDays,
+        blockedNights,
         avgStayLength: bookings && bookings.length > 0 ? totalNights / bookings.length : 0,
         platformFees: combinedPlatformFees,
         taxes: totalTaxes,

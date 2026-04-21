@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking } from '../utils/prorate';
+import { fetchBlocks, collectBlockedNights } from '../utils/blocks';
 
 export class MetricsService {
 	constructor(private supabase: SupabaseClient) {}
@@ -40,6 +41,11 @@ export class MetricsService {
 			matchedBookingIds = await getBookingIdsForTags(this.supabase, tenantId, tagIds!);
 		}
 
+		// one blocks fetch for the whole set, then per-property lookup inside the map
+		const allPropertyIds = properties.map(p => p.id);
+		const blocks = await fetchBlocks(this.supabase, tenantId, fromDate, toDate, allPropertyIds);
+		const blockedByProp = collectBlockedNights(blocks, fromDate, toDate);
+
 		const metrics = await Promise.all(
 			properties.map(async (property) => {
 				const { data: firstBooking } = await this.supabase
@@ -51,12 +57,12 @@ export class MetricsService {
 					.limit(1)
 					.single();
 
-				// Available nights = calendar window minus pre-onboarding days.
+				// Available nights = calendar window minus pre-onboarding days and owner blocks.
 				// No today-clamp: a future or forward-looking window should show
 				// sellable inventory, not zero. Matches the semantic used by
 				// services/properties.ts, services/occupancy.ts RPCs, and
 				// services/overview.ts.
-				let availableNights = 0;
+				let calendarAvailable = 0;
 				const startDate = new Date(fromDate);
 				const endDate = new Date(toDate);
 
@@ -64,15 +70,17 @@ export class MetricsService {
 					const firstBookingDate = new Date(firstBooking.arrival);
 					if (firstBookingDate <= endDate) {
 						const effectiveStart = firstBookingDate > startDate ? firstBookingDate : startDate;
-						availableNights = Math.ceil(
+						calendarAvailable = Math.ceil(
 							(endDate.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
 						) + 1;
 					}
 				} else {
-					availableNights = Math.ceil(
+					calendarAvailable = Math.ceil(
 						(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
 					) + 1;
 				}
+				const blockedNights = blockedByProp.get(property.id) || 0;
+				const availableNights = Math.max(0, calendarAvailable - blockedNights);
 
 				// overlap filter so a stay starting before the window and ending inside still counts
 				let bookingQuery = this.supabase
@@ -118,7 +126,8 @@ export class MetricsService {
 					avgNightlyRate,
 					avgStayLength,
 					bookedNights,
-					availableNights
+					availableNights,
+					blockedNights
 				};
 			})
 		);

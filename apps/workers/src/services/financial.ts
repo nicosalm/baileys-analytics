@@ -5,6 +5,7 @@ import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { subtractOneYear } from '../utils/date-filters';
 import { prorateBooking, bucketBooking, bucketKeyForDate, enumerateBuckets, isArrivalInPeriod, type Granularity } from '../utils/prorate';
+import { fetchBlocks, collectBlockedNights, sumBlockedNights } from '../utils/blocks';
 
 // Compute per-booking proration ratios against [from, to] once per call.
 // Every revenue/fee sum multiplies by these ratios so a booking that spans
@@ -330,7 +331,13 @@ export async function getPLData(
 
   const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24)) + 1;
   const propertyCount = properties.length || 1;
-  const revpar = grossRevenue / (propertyCount * daysDiff);
+  const financialPropertyIds = properties.map(p => p.id).filter(Boolean);
+  const financialBlocks = financialPropertyIds.length > 0
+    ? await fetchBlocks(supabase, tenantId, from, to, financialPropertyIds)
+    : [];
+  const financialBlockedNights = sumBlockedNights(collectBlockedNights(financialBlocks, from, to));
+  const revparDenominator = Math.max(1, propertyCount * daysDiff - financialBlockedNights);
+  const revpar = grossRevenue / revparDenominator;
   const adr = totalNights > 0 ? grossRevenue / totalNights : 0;
 
   const platformBreakdown = new Map<string, PlatformFinancials>();
