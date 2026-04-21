@@ -290,10 +290,10 @@ export const OccupancyDashboard = () => {
           label="Occupancy Rate"
           value={currentData.overall * 100}
           format="percent"
-          tooltip="Booked nights ÷ sellable nights. Owner blocks are excluded from the denominator — Overview's rate counts them as available, so numbers may differ by a few points."
+          tooltip="Booked nights ÷ sellable nights. Owner blocks (maintenance, personal stays) are excluded from the denominator."
           subValue={comparisonMode !== 'none' && previousData?.overall !== undefined
             ? <>vs {comparisonLabel}: {formatPercentage(previousData.overall * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${currentData.bookedNights.toLocaleString()} booked out of ${currentData.availableNights.toLocaleString()}`
+            : `${currentData.bookedNights.toLocaleString()} booked of ${currentData.availableNights.toLocaleString()} sellable${currentData.blockedNights ? ` | ${currentData.blockedNights.toLocaleString()} owner-blocked` : ''}`
           }
           trend={comparisonMode !== 'none' && previousData?.overall !== undefined ? {
             value: previousData.overall > 0 

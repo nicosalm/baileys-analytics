@@ -778,11 +778,11 @@ export const OverviewDashboard = () => {
           label="Occupancy Rate"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
-          tooltip="Booked nights ÷ calendar nights × properties in this range. Owner blocks counted as available."
+          tooltip="Booked nights ÷ sellable nights in this range. Owner blocks (maintenance, personal stays) are excluded from the denominator."
           staggerIndex={2}
           subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
-            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average`
+            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
+            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average${metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}`
           }
           trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
             value: metrics.occupancy.growth,

@@ -72,6 +72,8 @@ export interface PropertyDetailResponse {
     occupancyRate: number
     totalNights: number
     totalDays: number
+    sellableDays?: number
+    blockedNights?: number
     avgNightlyRate: number
     platformFees: number
     taxes: number

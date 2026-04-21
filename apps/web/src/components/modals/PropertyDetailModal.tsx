@@ -258,12 +258,16 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             label="Occupancy Rate"
             value={data.metrics.occupancyRate * 100}
             format="percent"
-            subValue={`${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`}
+            subValue={
+              data.metrics.blockedNights
+                ? `${data.metrics.totalNights || 0} of ${data.metrics.sellableDays ?? data.metrics.totalDays ?? 0} sellable | ${data.metrics.blockedNights} owner-blocked`
+                : `${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`
+            }
             size="sm"
             color="purple"
             staggerIndex={2}
             className="border border-border"
-            tooltip="Occupied nights ÷ nights in this range."
+            tooltip="Booked nights ÷ sellable nights in this range. Owner blocks (maintenance, personal stays) are excluded."
           />
           <MetricCard
             icon={TrendingUp}

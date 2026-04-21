@@ -701,7 +701,7 @@ function PortfolioPacingHeadline({ months }: { months: PacingMonthSummary[] }) {
           { label: 'Last yr at this point', value: formatPercentage(ptOcc, 1) },
           { label: 'Last yr final', value: formatPercentage(finOcc, 1) },
         ]}
-        tooltip="Booked nights ÷ sellable nights for this window. Owner blocks excluded — Overview's rate includes them, so numbers may differ by a few points."
+        tooltip="Booked nights ÷ sellable nights for this window. Owner blocks (maintenance, personal stays) are excluded from the denominator."
       />
       <KpiGroup
         label="Portfolio revenue"
