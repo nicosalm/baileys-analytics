@@ -48,6 +48,18 @@ export function mapToBlockRow(
 // Owner blocks (personal stays, maintenance, between-management gaps) aren't
 // sellable inventory. Every period-scoped occupancy metric subtracts them from
 // the denominator so operators aren't penalized for calendar decisions.
+//
+// Block types that count as unavailable inventory for occupancy denominators.
+// 'quote_hold' is intentionally excluded: those are tentative OwnerRez calendar
+// reservations attached to open quotes, not operator decisions to remove
+// inventory. Two further reasons to ignore them:
+//   - the quote-deletion webhook only cleans up the quotes table, never the
+//     corresponding block row, so stale quote_holds accumulate indefinitely
+//   - even active quote_holds are "soft" inventory that resolves within hours
+//     to days, not the kind of blocking the doc above describes
+// Real blocks have type='block' (mapToBlockRow defaults missing types to
+// 'block'); only that subset feeds into occupancy math.
+const OCCUPANCY_BLOCK_TYPE = 'block';
 
 export interface TranslatedBlock {
 	property_id: string; // internal UUID, translated from OwnerRez integer
@@ -91,6 +103,7 @@ export async function fetchBlocks(
 			.from('blocks')
 			.select('property_id, arrival, departure')
 			.eq('tenant_id', tenantId)
+			.eq('type', OCCUPANCY_BLOCK_TYPE)
 			.lte('arrival', to)
 			.gte('departure', from)
 			.in('property_id', orIds)
