@@ -43,13 +43,36 @@ describe('collectBlockedNights', () => {
 		expect(m.get('p1')).toBeUndefined();
 	});
 
-	it('sums blocks for the same property', () => {
+	it('counts non-overlapping blocks for the same property as the union', () => {
 		const blocks: TranslatedBlock[] = [
 			{ property_id: prop('p1'), arrival: '2026-02-05', departure: '2026-02-08' },
 			{ property_id: prop('p1'), arrival: '2026-02-20', departure: '2026-02-22' },
 		];
 		const m = collectBlockedNights(blocks, '2026-02-01', '2026-02-28');
+		// 3 nights (5,6,7) + 2 nights (20,21) = 5 unique nights
 		expect(m.get('p1')).toBe(5);
+	});
+
+	it('deduplicates overlapping blocks for the same property', () => {
+		// stacked blocks (e.g. quote_hold over a maintenance block) cover the
+		// same calendar nights; a single night cannot be doubly unavailable.
+		const blocks: TranslatedBlock[] = [
+			{ property_id: prop('p1'), arrival: '2026-02-05', departure: '2026-02-10' }, // 5,6,7,8,9
+			{ property_id: prop('p1'), arrival: '2026-02-08', departure: '2026-02-12' }, // 8,9,10,11
+		];
+		const m = collectBlockedNights(blocks, '2026-02-01', '2026-02-28');
+		// union = {5,6,7,8,9,10,11} = 7 nights, NOT 5+4 = 9
+		expect(m.get('p1')).toBe(7);
+	});
+
+	it('deduplicates a block fully contained inside another', () => {
+		const blocks: TranslatedBlock[] = [
+			{ property_id: prop('p1'), arrival: '2026-02-05', departure: '2026-02-15' }, // 10 nights
+			{ property_id: prop('p1'), arrival: '2026-02-08', departure: '2026-02-11' }, //  3 nights, fully inside
+		];
+		const m = collectBlockedNights(blocks, '2026-02-01', '2026-02-28');
+		// union is the outer range alone = 10 nights, not 13
+		expect(m.get('p1')).toBe(10);
 	});
 
 	it('keys separately per property', () => {

@@ -38,6 +38,7 @@ export interface PacingProperty {
 	priorNightsFinal: number;
 	priorRevenueFinal: number;
 	availableNights: number;
+	priorAvailableNights: number;
 	paceDelta: number;
 }
 
@@ -472,6 +473,7 @@ export async function getPacingData(
 				priorNightsFinal: priorFin.nights,
 				priorRevenueFinal: priorFin.revenue,
 				availableNights: propAvail,
+				priorAvailableNights: priorPropAvail,
 				paceDelta: (curPropOcc - priorPtPropOcc) * 100,
 			};
 		}).sort((a, b) => a.paceDelta - b.paceDelta); // worst-pacing first

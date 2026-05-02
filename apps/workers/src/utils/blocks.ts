@@ -1,6 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from './fetch-all';
-import { computeOverlapNights } from './prorate';
 import { MS_PER_DAY } from '../constants';
 
 // shape of an OwnerRez booking/block entity as it arrives from the API or
@@ -120,21 +119,30 @@ export function collectBlockedNights(
 	return collectBlockedNightsExclusive(blocks, ws, we);
 }
 
+// Count unique blocked nights per property within [windowStart, windowEndExclusive).
+// Two blocks for the same property that overlap on the calendar (e.g. a quote_hold
+// stacked on top of an existing block) only contribute the union of their nights,
+// not the sum. A single calendar night cannot be "more blocked" than once. The
+// naive sum used to inflate denominators and produce 0/1 cells on heavily-stacked
+// properties in the property pacing table.
 export function collectBlockedNightsExclusive(
 	blocks: TranslatedBlock[],
 	windowStart: Date,
 	windowEndExclusive: Date,
 ): Map<string, number> {
-	const out = new Map<string, number>();
+	const wsEpoch = Math.floor(windowStart.getTime() / MS_PER_DAY);
+	const weEpoch = Math.floor(windowEndExclusive.getTime() / MS_PER_DAY);
+	const daysByProp = new Map<string, Set<number>>();
 	for (const bl of blocks) {
-		const arr = new Date(bl.arrival);
-		const dep = new Date(bl.departure);
-		if (arr >= windowEndExclusive || dep <= windowStart) continue;
-		const nights = computeOverlapNights(arr, dep, windowStart, windowEndExclusive);
-		if (nights > 0) {
-			out.set(bl.property_id, (out.get(bl.property_id) || 0) + nights);
-		}
+		const bStart = Math.max(Math.floor(new Date(bl.arrival).getTime() / MS_PER_DAY), wsEpoch);
+		const bEnd = Math.min(Math.floor(new Date(bl.departure).getTime() / MS_PER_DAY), weEpoch);
+		if (bStart >= bEnd) continue;
+		let set = daysByProp.get(bl.property_id);
+		if (!set) { set = new Set<number>(); daysByProp.set(bl.property_id, set); }
+		for (let d = bStart; d < bEnd; d++) set.add(d);
 	}
+	const out = new Map<string, number>();
+	for (const [pid, set] of daysByProp) out.set(pid, set.size);
 	return out;
 }
 

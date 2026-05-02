@@ -469,6 +469,9 @@ function PacingDetail({
                   const curAdr = prop.currentNights > 0 ? prop.currentRevenue / prop.currentNights : 0
                   const priorAdr = prop.priorNightsAtThisPoint > 0 ? prop.priorRevenueAtThisPoint / prop.priorNightsAtThisPoint : 0
                   const adrChange = priorAdr > 0 ? ((curAdr - priorAdr) / priorAdr) * 100 : 0
+                  // priorAvailableNights was added to the response; fall back to current's
+                  // denom for cached responses served from before the deploy (1hr TTL).
+                  const priorAvail = prop.priorAvailableNights ?? prop.availableNights
                   return (
                   <tr
                     key={prop.propertyId}
@@ -491,7 +494,7 @@ function PacingDetail({
                       {prop.currentNights}/{prop.availableNights}
                     </td>
                     <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
-                      {prop.priorNightsAtThisPoint}/{prop.availableNights}
+                      {prop.priorNightsAtThisPoint}/{priorAvail}
                     </td>
                     <td className="py-2.5 px-4 text-right">
                       <PaceIndicator delta={prop.paceDelta} />
@@ -508,7 +511,7 @@ function PacingDetail({
                       )}
                     </td>
                     <td className="py-2.5 pl-4 text-right tabular-nums text-muted-foreground">
-                      {prop.priorNightsFinal}/{prop.availableNights}
+                      {prop.priorNightsFinal}/{priorAvail}
                     </td>
                   </tr>
                   )

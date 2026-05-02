@@ -596,6 +596,7 @@ export interface PacingProperty {
   priorNightsFinal: number
   priorRevenueFinal: number
   availableNights: number
+  priorAvailableNights: number
   paceDelta: number
 }
 
