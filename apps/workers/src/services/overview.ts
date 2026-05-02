@@ -718,8 +718,12 @@ async function getUpcomingBookings(
 	tenantId: string
 ) {
 	const today = new Date().toISOString().split('T')[0];
-	const thirtyDaysOut = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+	const thirtyDaysOut = new Date(Date.now() + 30 * MS_PER_DAY).toISOString().split('T')[0];
+	const sevenDaysOut = new Date(Date.now() + 7 * MS_PER_DAY).toISOString().split('T')[0];
 
+	// three OR clauses: upcoming arrivals, upcoming departures, and currently in-house
+	// guests whose departure is past the 30-day window (long stays). without the third
+	// clause an in-house guest staying 60+ days would disappear from the widget mid-stay.
 	const { data: bookings } = await supabase
 		.from('bookings')
 		.select(`
@@ -728,42 +732,54 @@ async function getUpcomingBookings(
 			arrival,
 			departure,
 			total_amount,
+			ownerrez_booking_id,
 			property_id,
 			properties!inner(name)
 		`)
 		.eq('tenant_id', tenantId)
 		.neq('status', 'canceled')
-		.or(`and(arrival.gte.${today},arrival.lte.${thirtyDaysOut}),and(departure.gte.${today},departure.lte.${thirtyDaysOut})`)
+		.or(`and(arrival.gte.${today},arrival.lte.${thirtyDaysOut}),and(departure.gte.${today},departure.lte.${thirtyDaysOut}),and(arrival.lt.${today},departure.gt.${today})`)
 		.order('arrival', { ascending: true })
-		.limit(50);
+		.limit(500);
 
 	if (!bookings || bookings.length === 0) return [];
 
-	const todayDate = new Date(today);
-	const endOfToday = new Date(today);
-	endOfToday.setDate(endOfToday.getDate() + 1);
-	const endOfWeek = new Date(today);
-	endOfWeek.setDate(endOfWeek.getDate() + 7);
-
 	return bookings.map((b: any) => {
-		const arrivalDate = new Date(b.arrival);
-		const departureDate = new Date(b.departure);
-		const isCheckIn = arrivalDate >= todayDate;
+		// string comparison on YYYY-MM-DD is lexicographically correct and avoids
+		// the timezone drift that new Date(iso-date) introduces in non-UTC envs.
+		let type: 'check-in' | 'check-out' | 'in-house';
+		if (b.arrival >= today) {
+			type = 'check-in';
+		} else if (b.departure <= today) {
+			type = 'check-out';
+		} else {
+			type = 'in-house';
+		}
+
+		const isToday =
+			type === 'check-in' ? b.arrival === today :
+			type === 'check-out' ? b.departure === today :
+			false;
+
+		// in-house guests are by definition staying this week, regardless of when
+		// they leave. cutoff is inclusive (<=) so a guest departing exactly seven
+		// days out still surfaces in the "this week" view.
+		const isThisWeek =
+			type === 'in-house' ? true :
+			type === 'check-in' ? b.arrival <= sevenDaysOut :
+			b.departure <= sevenDaysOut;
 
 		return {
 			id: b.id,
+			ownerrezBookingId: b.ownerrez_booking_id || null,
 			guestName: b.guest_name,
 			propertyName: b.properties?.name || 'Unknown',
 			arrival: b.arrival,
 			departure: b.departure,
 			amount: b.total_amount,
-			type: isCheckIn ? 'check-in' : 'check-out',
-			isToday: isCheckIn
-				? arrivalDate.toISOString().split('T')[0] === today
-				: departureDate.toISOString().split('T')[0] === today,
-			isThisWeek: isCheckIn
-				? arrivalDate < endOfWeek
-				: departureDate < endOfWeek,
+			type,
+			isToday,
+			isThisWeek,
 		};
 	});
 }

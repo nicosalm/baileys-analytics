@@ -8,7 +8,7 @@ import {
   TrendingUp, TrendingDown,
   DollarSign, Users, Calendar, Clock,
   BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink, Wallet,
-  LogIn, LogOut, Sparkles, Ban, Activity
+  LogIn, LogOut, BedDouble, Sparkles, Ban, Activity
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
@@ -77,9 +77,10 @@ interface RevenueChartLegendItem {
 
 interface UpcomingBooking {
   id: string
+  ownerrezBookingId: string | null
   guestName: string
   propertyName: string
-  type: 'check-in' | 'check-out'
+  type: 'check-in' | 'check-out' | 'in-house'
   arrival: string
   departure: string
   amount: number
@@ -1199,9 +1200,16 @@ export const OverviewDashboard = () => {
 
 const UPCOMING_PAGE_SIZE = 8
 
+const UPCOMING_TYPE_STYLES: Record<UpcomingBooking['type'], { bg: string; icon: LucideIcon; iconClass: string; label: string }> = {
+  'check-in':  { bg: 'bg-success-subtle', icon: LogIn,      iconClass: 'text-success',  label: 'Check-in' },
+  'in-house':  { bg: 'bg-info-subtle',    icon: BedDouble,  iconClass: 'text-info',     label: 'In-house through' },
+  'check-out': { bg: 'bg-orange-subtle',  icon: LogOut,     iconClass: 'text-orange-fg', label: 'Check-out' },
+}
+
 const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
   const [filter, setFilter] = useState<'all' | 'today' | 'week' | 'month'>('week')
   const [page, setPage] = useState(1)
+  const { openModal } = useModal()
 
   const filtered = useMemo(() => {
     switch (filter) {
@@ -1229,7 +1237,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Upcoming</h3>
+          <h3 className="text-lg font-semibold">Arrivals & Departures</h3>
           <span className="text-xs text-muted-foreground">({filtered.length})</span>
         </div>
         <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
@@ -1255,34 +1263,60 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
       </div>
       <div className="space-y-2">
         {paginated.length > 0 ? (
-          paginated.map((booking: UpcomingBooking) => (
-            <div key={booking.id} className="flex items-center justify-between py-2 border-b last:border-0">
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  booking.type === 'check-in' ? 'bg-success-subtle' : 'bg-orange-subtle'
-                }`}>
-                  {booking.type === 'check-in'
-                    ? <LogIn className="w-4 h-4 text-success" />
-                    : <LogOut className="w-4 h-4 text-orange-fg" />
-                  }
-                </div>
-                <div>
-                  <div className="text-sm font-medium">{booking.guestName}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {booking.propertyName} · {booking.type === 'check-in' ? 'Check-in' : 'Check-out'}{' '}
-                    {formatDateDisplay(booking.type === 'check-in' ? booking.arrival : booking.departure)}
+          paginated.map((booking: UpcomingBooking) => {
+            const style = UPCOMING_TYPE_STYLES[booking.type]
+            const Icon = style.icon
+            const dateLabel = booking.type === 'check-in' ? booking.arrival : booking.departure
+            const ownerrezUrl = booking.ownerrezBookingId
+              ? `https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`
+              : null
+            return (
+              <div
+                key={booking.id}
+                className="flex items-center justify-between py-2 px-2 -mx-2 border-b last:border-0 rounded hover:bg-muted/50 transition-colors cursor-pointer"
+                onClick={() => openModal({ type: 'booking', bookingId: booking.id, guestName: booking.guestName })}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${style.bg}`}>
+                    <Icon className={`w-4 h-4 ${style.iconClass}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{booking.guestName}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {booking.propertyName} · {style.label} {formatDateDisplay(dateLabel)}
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {booking.amount > 0 && (
+                    <span className="text-sm font-medium text-success">{formatCurrency(booking.amount)}</span>
+                  )}
+                  {ownerrezUrl && (
+                    <a
+                      href={ownerrezUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-muted-foreground/70 hover:text-info transition-colors"
+                      title="Open in OwnerRez"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
               </div>
-              {booking.amount > 0 && (
-                <span className="text-sm font-medium text-success">{formatCurrency(booking.amount)}</span>
-              )}
-            </div>
-          ))
+            )
+          })
         ) : (
           <div className="text-center py-6 text-muted-foreground">
             <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No upcoming check-ins or check-outs {filter === 'today' ? 'today' : filter === 'week' ? 'this week' : 'this month'}</p>
+            <p className="text-sm">
+              {filter === 'today'
+                ? 'No arrivals or departures today'
+                : filter === 'week'
+                  ? 'No guest activity this week'
+                  : 'No guest activity this month'}
+            </p>
           </div>
         )}
       </div>
