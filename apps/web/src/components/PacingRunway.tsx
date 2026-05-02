@@ -469,8 +469,7 @@ function PacingDetail({
                   const curAdr = prop.currentNights > 0 ? prop.currentRevenue / prop.currentNights : 0
                   const priorAdr = prop.priorNightsAtThisPoint > 0 ? prop.priorRevenueAtThisPoint / prop.priorNightsAtThisPoint : 0
                   const adrChange = priorAdr > 0 ? ((curAdr - priorAdr) / priorAdr) * 100 : 0
-                  // priorAvailableNights was added to the response; fall back to current's
-                  // denom for cached responses served from before the deploy (1hr TTL).
+                  // fallback for cached responses without priorAvailableNights.
                   const priorAvail = prop.priorAvailableNights ?? prop.availableNights
                   return (
                   <tr

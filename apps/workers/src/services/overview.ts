@@ -721,9 +721,8 @@ async function getUpcomingBookings(
 	const thirtyDaysOut = new Date(Date.now() + 30 * MS_PER_DAY).toISOString().split('T')[0];
 	const sevenDaysOut = new Date(Date.now() + 7 * MS_PER_DAY).toISOString().split('T')[0];
 
-	// three OR clauses: upcoming arrivals, upcoming departures, and currently in-house
-	// guests whose departure is past the 30-day window (long stays). without the third
-	// clause an in-house guest staying 60+ days would disappear from the widget mid-stay.
+	// the third OR clause covers in-house guests whose departure is past the
+	// 30-day window, so a 60-day stay doesn't disappear from the widget mid-stay.
 	const { data: bookings } = await supabase
 		.from('bookings')
 		.select(`
@@ -762,8 +761,7 @@ async function getUpcomingBookings(
 			false;
 
 		// in-house guests are by definition staying this week, regardless of when
-		// they leave. cutoff is inclusive (<=) so a guest departing exactly seven
-		// days out still surfaces in the "this week" view.
+		// they leave.
 		const isThisWeek =
 			type === 'in-house' ? true :
 			type === 'check-in' ? b.arrival <= sevenDaysOut :

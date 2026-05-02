@@ -48,17 +48,9 @@ export function mapToBlockRow(
 // Owner blocks (personal stays, maintenance, between-management gaps) aren't
 // sellable inventory. Every period-scoped occupancy metric subtracts them from
 // the denominator so operators aren't penalized for calendar decisions.
-//
-// Block types that count as unavailable inventory for occupancy denominators.
-// 'quote_hold' is intentionally excluded: those are tentative OwnerRez calendar
-// reservations attached to open quotes, not operator decisions to remove
-// inventory. Two further reasons to ignore them:
-//   - the quote-deletion webhook only cleans up the quotes table, never the
-//     corresponding block row, so stale quote_holds accumulate indefinitely
-//   - even active quote_holds are "soft" inventory that resolves within hours
-//     to days, not the kind of blocking the doc above describes
-// Real blocks have type='block' (mapToBlockRow defaults missing types to
-// 'block'); only that subset feeds into occupancy math.
+// quote_holds are intentionally excluded: tentative reservations attached to
+// open OwnerRez quotes, not operator decisions, and the quote-delete webhook
+// doesn't reach the blocks table so stale ones accumulate.
 const OCCUPANCY_BLOCK_TYPE = 'block';
 
 export interface TranslatedBlock {
@@ -133,11 +125,8 @@ export function collectBlockedNights(
 }
 
 // Count unique blocked nights per property within [windowStart, windowEndExclusive).
-// Two blocks for the same property that overlap on the calendar (e.g. a quote_hold
-// stacked on top of an existing block) only contribute the union of their nights,
-// not the sum. A single calendar night cannot be "more blocked" than once. The
-// naive sum used to inflate denominators and produce 0/1 cells on heavily-stacked
-// properties in the property pacing table.
+// Blocks for the same property may overlap on the calendar; a single night can
+// only be unavailable once, so the union of nights is what counts (not the sum).
 export function collectBlockedNightsExclusive(
 	blocks: TranslatedBlock[],
 	windowStart: Date,
