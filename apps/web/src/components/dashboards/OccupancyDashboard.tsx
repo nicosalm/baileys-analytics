@@ -561,7 +561,7 @@ export const OccupancyDashboard = () => {
                         <div
                           className="absolute top-0 w-0.5 h-1.5 bg-muted-foreground/50 rounded-full"
                           style={{ left: `${Math.min(prevOccupancy, 100)}%` }}
-                          title={`Previous: ${formatPercentage(prevOccupancy, 0)}`}
+                          title={`Previous: ${formatPercentage(prevOccupancy, 1)}`}
                         />
                       )}
                     </div>

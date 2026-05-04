@@ -82,7 +82,7 @@ function MonthCard({
     >
       <div className="text-xs font-medium text-muted-foreground mb-2">{month.label}</div>
 
-      <div className="text-2xl font-bold mb-1">{formatPercentage(occupancyPct, 0)}</div>
+      <div className="text-2xl font-bold mb-1">{formatPercentage(occupancyPct, 1)}</div>
       <div className="text-xs text-muted-foreground mb-3">
         {month.current.bookedNights}/{month.totalAvailableNights} nights
       </div>
@@ -99,7 +99,7 @@ function MonthCard({
       )}
 
       <div className="text-xs text-muted-foreground mt-1">
-        Last yr at this point: {formatPercentage(month.priorAtThisPoint.occupancy * 100, 0)}
+        Last yr at this point: {formatPercentage(month.priorAtThisPoint.occupancy * 100, 1)}
       </div>
 
       <div className="mt-3 relative">
@@ -116,7 +116,7 @@ function MonthCard({
           <div
             className="absolute top-0 w-0.5 h-1.5 bg-muted-foreground/50 rounded-full"
             style={{ left: `${Math.min(priorPct, 100)}%` }}
-            title={`Last year final: ${formatPercentage(priorPct, 0)}`}
+            title={`Last year final: ${formatPercentage(priorPct, 1)}`}
           />
         )}
       </div>
