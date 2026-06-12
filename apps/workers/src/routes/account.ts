@@ -97,7 +97,7 @@ account.delete('/delete', authMiddleware, async (c) => {
       supabase.from('tenants').select('email, company_name').eq('id', tenantId).single(),
       supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-      supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).single(),
+      supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).maybeSingle(),
     ]);
 
     if (tenant) {

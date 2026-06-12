@@ -157,7 +157,7 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
           .from('subscriptions')
           .select('billing_cycle, status, current_period_end')
           .eq('tenant_id', user.id)
-          .single();
+          .maybeSingle();
 
         return {
           ...user,
@@ -187,7 +187,7 @@ admin.get('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
       { data: syncStatus }
     ] = await Promise.all([
       supabase.from('tenants').select('*').eq('id', tenantId).single(),
-      supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).single(),
+      supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).maybeSingle(),
       supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
       supabase.from('sync_status').select('*').eq('tenant_id', tenantId)
@@ -312,7 +312,7 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
     const [{ count: propCount }, { count: bookCount }, { data: sub }] = await Promise.all([
       supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
       supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-      supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).single(),
+      supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).maybeSingle(),
     ]);
 
     await supabase.from('account_deletions').insert({
