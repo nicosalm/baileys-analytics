@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { createClient } from '@supabase/supabase-js';
 import { OWNERREZ_API } from '../constants';
 import { authMiddleware } from '../middleware/auth';
+import { getValidOwnerRezToken } from '../services/ownerrez-token';
 
 const validation = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -132,6 +133,7 @@ async function getDatabaseData(
   const { data: bookingsData, error: bookingsError } = await supabase
     .from('bookings')
     .select(`
+      id,
       ownerrez_booking_id,
       arrival,
       departure,
@@ -243,17 +245,12 @@ validation.get('/data', async (c) => {
   const to = c.req.query('to') || new Date().toISOString().split('T')[0];
 
   try {
-    const { data: tokenData } = await supabase
-      .from('oauth_tokens')
-      .select('access_token')
-      .eq('tenant_id', tenantId)
-      .single();
-
-    if (!tokenData?.access_token) {
-      return c.json({ error: 'No OwnerRez connection found' }, 403);
+    const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
+    if (tokenResult.error) {
+      return c.json({ error: tokenResult.error.message }, 403);
     }
-    
-    const token = tokenData.access_token;
+
+    const token = tokenResult.accessToken;
 
     const { data: properties } = await supabase
       .from('properties')
