@@ -4,6 +4,6 @@ import { defineConfig } from 'vitest/config';
 // Run: pnpm vitest run --config vitest.node.config.mts
 export default defineConfig({
 	test: {
-		include: ['src/utils/**/*.test.ts', 'src/services/**/*.spec.ts', 'src/middleware/**/*.spec.ts'],
+		include: ['src/utils/**/*.test.ts', 'src/services/**/*.spec.ts', 'src/middleware/**/*.spec.ts', 'src/routes/**/*.spec.ts'],
 	},
 });
