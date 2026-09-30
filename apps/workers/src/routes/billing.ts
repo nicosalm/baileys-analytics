@@ -24,7 +24,9 @@ billing.post('/webhook', async (c) => {
     return c.json(result);
   } catch (error) {
     console.error('Webhook error:', error);
-    return c.json({ error: 'Webhook processing failed' }, 400);
+    // bad signatures are permanent (400, no retry); anything else is ours, so 500 makes Stripe retry
+    const isSignatureError = error instanceof Error && error.message === 'Invalid signature';
+    return c.json({ error: 'Webhook processing failed' }, isSignatureError ? 400 : 500);
   }
 });
 
@@ -96,6 +98,16 @@ billing.post('/create-checkout-session', async (c) => {
 
     if (!tier || !PURCHASABLE_TIER_SLUGS.includes(tier as TierSlug)) {
       return c.json({ error: 'Invalid or non-purchasable tier' }, 400);
+    }
+
+    // plan changes go through the Stripe portal; a second checkout would double-bill
+    const { data: existing } = await supabase
+      .from('subscriptions')
+      .select('status')
+      .eq('tenant_id', tenantId)
+      .maybeSingle();
+    if (existing && ['active', 'trialing', 'past_due'].includes(existing.status)) {
+      return c.json({ error: 'You already have a subscription. Manage it from the billing portal.' }, 409);
     }
 
     const envVars = TIER_PRICE_ENV_VARS[tier as Exclude<TierSlug, 'enterprise'>];

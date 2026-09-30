@@ -38,6 +38,7 @@ export const AuthCallback = () => {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [message, setMessage] = useState('')
   const hasCompleted = useRef(false)
+  const hasStarted = useRef(false)
   const isOwnerRezFlow = useRef(false)
 
   const handleSuccess = useCallback((type: string | null) => {
@@ -72,6 +73,10 @@ export const AuthCallback = () => {
   }, [navigate])
 
   useEffect(() => {
+    // one-time codes must not be exchanged twice (StrictMode double-invokes effects)
+    if (hasStarted.current) return
+    hasStarted.current = true
+
     const searchParams = new URLSearchParams(window.location.search)
     const hashParams = new URLSearchParams(window.location.hash.substring(1))
 
@@ -82,6 +87,18 @@ export const AuthCallback = () => {
     const type = hashParams.get('type') || searchParams.get('type')
     const hashAccessToken = hashParams.get('access_token')
     const hashRefreshToken = hashParams.get('refresh_token')
+
+    const isOwnerRezState = !!state &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state)
+
+    // OwnerRez denial/error: the user is still signed in, so keep their session
+    if (error && isOwnerRezState) {
+      hasCompleted.current = true
+      setStatus('error')
+      setMessage(errorDescription || 'OwnerRez connection was not completed')
+      setTimeout(() => navigate('/settings', { replace: true }), 3000)
+      return
+    }
 
     // Handle URL errors
     if (error) {
@@ -99,10 +116,7 @@ export const AuthCallback = () => {
     }
 
     // OwnerRez OAuth (has both code and UUID state)
-    const isOwnerRezOAuth = code && state &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state)
-
-    if (isOwnerRezOAuth) {
+    if (code && state && isOwnerRezState) {
       isOwnerRezFlow.current = true
       handleOwnerRezOAuth(code, state)
       return

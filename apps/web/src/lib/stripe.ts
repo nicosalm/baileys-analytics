@@ -60,9 +60,11 @@ class BillingClient {
   // separate endpoints, which raced — when fired in parallel, the banner could
   // appear or disappear depending on which DB write landed first. The combined
   // endpoint is the deterministic version.
+  // throws on failure so callers can't mistake an outage for "no subscription"
   async getSubscription() {
     const result = await api.request<SubscriptionResponse>('/billing/subscription');
-    return result.success ? result.data : null;
+    if (!result.success) throw new Error(result.error);
+    return result.data;
   }
 
   async createCheckoutSession(tier: TierSlug, isYearly: boolean = false) {

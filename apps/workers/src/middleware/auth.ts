@@ -2,6 +2,11 @@ import { Context, Next } from 'hono';
 import { createSupabaseClient } from '../services/supabase';
 
 export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { user: any; tenantId: string } }>, next: Next) {
+	// already authenticated by an app-level middleware earlier in the chain
+	if (c.get('user')) {
+		return next();
+	}
+
 	const authorization = c.req.header('Authorization');
 	
 	if (!authorization || !authorization.startsWith('Bearer ')) {
