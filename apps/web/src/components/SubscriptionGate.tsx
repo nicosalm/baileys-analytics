@@ -17,11 +17,14 @@ interface SubscriptionGateProps {
 export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) => {
   const [subscriptionData, setSubscriptionData] = useState<{ subscription?: { status: string } | null; isExempt?: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { logout, state } = useAuth();
 
   const checkSubscription = async () => {
+    setLoading(true);
+    setLoadFailed(false);
     try {
       const data = await billingClient.getSubscription();
       setSubscriptionData(data);
@@ -31,8 +34,8 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
         console.warn('[SubscriptionGate] Backend unreachable — bypassing subscription check in dev mode');
         setSubscriptionData({ isExempt: true });
       } else {
-        // on error in production, assume no subscription to show pricing
-        setSubscriptionData(null);
+        // don't show pricing to a paying customer just because the check failed
+        setLoadFailed(true);
       }
     } finally {
       setLoading(false);
@@ -57,6 +60,15 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
 
   if (loading) {
     return <LoadingState fullScreen />;
+  }
+
+  if (loadFailed) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-foreground">We couldn't check your subscription right now.</p>
+        <Button onClick={checkSubscription}>Try again</Button>
+      </div>
+    );
   }
 
   // check if account is exempt or has active subscription
