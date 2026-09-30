@@ -39,7 +39,7 @@ oauth.get('/initiate', authMiddleware, async (c) => {
     client_id: c.env.OWNERREZ_CLIENT_ID,
     redirect_uri: `${c.env.FRONTEND_URL}/auth/callback`,
     response_type: 'code',
-    scope: 'properties bookings',
+    scope: 'read',
     state: stateToken
   });
 
