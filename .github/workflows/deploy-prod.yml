@@ -92,11 +92,20 @@ jobs:
           --project-name=baileys-dashboard --branch=main
           --commit-hash="${{ github.sha }}" --commit-message="deploy ${{ github.sha }}"
 
+      # an unauthenticated /api call must get the worker's JSON 401, not the SPA's HTML.
+      # retries give the new deployment time to reach every edge.
       - name: Check the /api proxy reaches the worker
         run: |
-          body=$(curl -fsS --retry 3 --retry-delay 5 https://baileysanalytics.com/api/health)
-          echo "$body"
-          echo "$body" | grep -q '"worker"' || { echo "::error::/api is serving the SPA instead of proxying to the worker; functions/ was not deployed"; exit 1; }
+          for attempt in 1 2 3 4 5 6; do
+            type=$(curl -sS -o /tmp/body -w '%{content_type}' https://baileysanalytics.com/api/auth/me || true)
+            case "$type" in
+              application/json*) echo "proxy ok: $(cat /tmp/body)"; exit 0 ;;
+            esac
+            echo "attempt $attempt: got '$type', retrying in 10s"
+            sleep 10
+          done
+          echo "::error::/api is serving the SPA instead of proxying to the worker; functions/ was not deployed"
+          exit 1
 
       - name: Smoke test
         run: |
