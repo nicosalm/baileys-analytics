@@ -1,0 +1,96 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy prod" to deploy the API and frontend to production'
+        required: true
+
+# never run two production deploys at once; a queued one waits for the first
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy API and frontend
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Confirm
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "deploy prod" ]; then
+            echo "::error::Confirmation text did not match. Type exactly: deploy prod"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build shared packages
+        run: pnpm --filter "./packages/**" build
+
+      - name: Test API
+        working-directory: apps/workers
+        run: pnpm exec vitest run --config vitest.node.config.mts
+
+      - name: Type-check API
+        working-directory: apps/workers
+        run: pnpm build
+
+      - name: Build frontend
+        working-directory: apps/web
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
+          VITE_UPDOWN_API_KEY: ${{ vars.VITE_UPDOWN_API_KEY }}
+        run: |
+          for v in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VITE_STRIPE_PUBLISHABLE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "::error::$v is not set. Add it under Settings > Environments > production > Variables."
+              exit 1
+            fi
+          done
+          pnpm build
+
+      # API first: the frontend changes expect the API's new behavior, and the API's
+      # changes are backward-compatible with the frontend that's live now.
+      - name: Deploy API
+        working-directory: apps/workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy --env production
+
+      - name: Deploy frontend
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: >-
+          pnpm --dir ../workers exec wrangler pages deploy "$PWD/dist"
+          --project-name=baileys-dashboard --branch=main
+          --commit-hash="${{ github.sha }}" --commit-message="deploy ${{ github.sha }}"
+
+      - name: Smoke test
+        run: |
+          curl -fsS --retry 3 --retry-delay 5 https://baileys-analytics-api-production.nicosalm.workers.dev/health
+          curl -fsS --retry 3 --retry-delay 5 -o /dev/null https://baileysanalytics.com
