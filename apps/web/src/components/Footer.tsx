@@ -121,6 +121,20 @@ export const Footer = () => {
 
           <p className="text-sm text-muted-foreground order-3 sm:order-2">
             &copy; {currentYear} {BRAND.name}
+            {__COMMIT_SHA__ && (
+              <>
+                {' · '}
+                <a
+                  href={`https://github.com/nicosalm/baileys-analytics/commit/${__COMMIT_SHA__}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Deployed commit"
+                  className="font-mono text-xs hover:text-foreground transition-colors"
+                >
+                  {__COMMIT_SHA__.slice(0, 7)}
+                </a>
+              </>
+            )}
           </p>
 
           <div className="flex items-center gap-5 order-2 sm:order-3">

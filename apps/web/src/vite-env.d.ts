@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly DEV: boolean
 }
 
+declare const __COMMIT_SHA__: string
+
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
