@@ -67,7 +67,13 @@ export class OwnerRezService {
 		}
 
 		const ttl = Math.max(60, Math.ceil((WINDOW_MS - (now - windowStart)) / 1000));
-		await this.cache.put(key, JSON.stringify({ tokens, windowStart }), { expirationTtl: ttl });
+		try {
+			await this.cache.put(key, JSON.stringify({ tokens, windowStart }), { expirationTtl: ttl });
+		} catch (error) {
+			// KV allows one write/sec per key; concurrent syncs trip it. The budget is
+			// advisory, so never fail the actual OwnerRez request over it.
+			console.warn('ownerrez rate budget write skipped:', error);
+		}
 	}
 
 	private async fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
@@ -78,10 +84,13 @@ export class OwnerRezService {
 			const response = await this.fetchWithTimeout(url, options);
 
 			if (response.status === 429 && attempt < maxRetries) {
-				const retryAfter = response.headers.get('Retry-After');
-				const delayMs = retryAfter
-					? parseInt(retryAfter, 10) * 1000
-					: Math.min(2000 * Math.pow(2, attempt), 30000);
+				// cap the wait well under the 30s request timeout; a longer Retry-After
+				// just surfaces as a 429 and the client retries the chunk later
+				const retryAfterSec = parseInt(response.headers.get('Retry-After') ?? '', 10);
+				const delayMs = Math.min(
+					Number.isFinite(retryAfterSec) ? retryAfterSec * 1000 : 2000 * Math.pow(2, attempt),
+					10000
+				);
 				await new Promise(r => setTimeout(r, delayMs));
 				continue;
 			}

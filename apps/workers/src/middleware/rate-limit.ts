@@ -13,13 +13,17 @@ export function rateLimit(options: RateLimitOptions = {}) {
 		keyGenerator = (c) => c.req.header('CF-Connecting-IP') || 'global'
 	} = options;
 	
+	// each limiter gets its own bucket; a shared per-IP key let sync traffic
+	// exhaust the checkout and account-delete limits
+	const bucket = `${windowMs}:${max}`;
+
 	return async function rateLimitMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
 		// skip rate limiting if kv is not available
 		if (!c.env.CACHE) {
 			return next();
 		}
-		
-		const key = `ratelimit:${keyGenerator(c)}`;
+
+		const key = `ratelimit:${bucket}:${c.req.routePath}:${keyGenerator(c)}`;
 		const now = Date.now();
 		
 		// get current count
