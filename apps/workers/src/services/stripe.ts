@@ -222,10 +222,18 @@ export class StripeService {
       const isDuplicate = insertError.code === '23505' ||
         insertError.message?.includes('duplicate') ||
         insertError.message?.includes('unique');
-      if (isDuplicate) {
+      if (!isDuplicate) {
+        throw insertError;
+      }
+      // a Stripe retry of an event whose first attempt failed must be processed again
+      const { data: existing } = await this.supabase
+        .from('stripe_webhook_events')
+        .select('processed')
+        .eq('stripe_event_id', event.id)
+        .maybeSingle();
+      if (existing?.processed !== false) {
         return { received: true };
       }
-      throw insertError;
     }
 
     try {
@@ -368,8 +376,8 @@ export class StripeService {
     // stripe SDK v19+ moved current_period fields from Subscription to SubscriptionItem
     const periodItem = subscription.items.data[0];
 
-    // upsert subscription
-    await this.supabase
+    // upsert subscription; throw on failure so the event stays unprocessed and Stripe retries
+    const { error: subscriptionError } = await this.supabase
       .from('subscriptions')
       .upsert({
         tenant_id: tenantId,
@@ -390,6 +398,9 @@ export class StripeService {
       }, {
         onConflict: 'tenant_id'
       });
+    if (subscriptionError) {
+      throw subscriptionError;
+    }
 
     // check if this is the tenant's first subscription
     const { data: tenant } = await this.supabase

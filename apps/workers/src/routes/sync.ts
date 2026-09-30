@@ -303,7 +303,7 @@ sync.post('/bookings', async (c) => {
           const { error } = await supabase
             .from('blocks')
             .upsert(chunk, { onConflict: 'ownerrez_block_id,tenant_id' });
-          if (error) console.error('Failed to upsert blocks:', error);
+          if (error) throw new Error(`Failed to upsert blocks: ${error.message}`);
         }
         totalBlocks += blocks.length;
 
@@ -335,7 +335,7 @@ sync.post('/bookings', async (c) => {
           const { error } = await supabase
             .from('bookings')
             .upsert(chunk, { onConflict: 'tenant_id,ownerrez_booking_id' });
-          if (error) console.error('Failed to upsert bookings:', error);
+          if (error) throw new Error(`Failed to upsert bookings: ${error.message}`);
         }
         totalBookings += bookingData.length;
 
@@ -372,7 +372,7 @@ sync.post('/bookings', async (c) => {
           for (let i = 0; i < allCharges.length; i += CHUNK_SIZE) {
             const chunk = allCharges.slice(i, i + CHUNK_SIZE);
             const { error } = await supabase.from('booking_charges').insert(chunk);
-            if (error) console.error('Failed to insert charges:', error);
+            if (error) throw new Error(`Failed to insert charges: ${error.message}`);
           }
         }
 
@@ -496,7 +496,7 @@ sync.post('/guests', async (c) => {
           const { error } = await supabase
             .from('guests')
             .upsert(chunk, { onConflict: 'tenant_id,ownerrez_guest_id' });
-          if (error) console.error('Failed to upsert guests:', error);
+          if (error) throw new Error(`Failed to upsert guests: ${error.message}`);
         }
         totalGuests += guestData.length;
 

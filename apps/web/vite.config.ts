@@ -1,9 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { execSync } from 'child_process'
 import { visualizer } from 'rollup-plugin-visualizer'
 
+// CI sets GITHUB_SHA; local builds read it from git
+const commitSha = (() => {
+  try {
+    return process.env.GITHUB_SHA || execSync('git rev-parse HEAD').toString().trim()
+  } catch {
+    return ''
+  }
+})()
+
 export default defineConfig({
+  define: {
+    __COMMIT_SHA__: JSON.stringify(commitSha),
+  },
   plugins: [
     react(),
     visualizer({

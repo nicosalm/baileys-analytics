@@ -409,10 +409,11 @@ const dashboardPaths = [
 	'/api/property-groups',
 ];
 
-// apply subscription check to dashboard routes
+// apply subscription check to dashboard routes. authMiddleware must run first so
+// tenantId is set; the sub-apps' own authMiddleware runs too late for this check.
 dashboardPaths.forEach(path => {
-	app.use(`${path}/*`, subscriptionMiddleware);
-	app.use(path, subscriptionMiddleware);
+	app.use(`${path}/*`, authMiddleware, subscriptionMiddleware);
+	app.use(path, authMiddleware, subscriptionMiddleware);
 });
 
 // block write operations for demo users

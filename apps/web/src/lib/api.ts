@@ -59,6 +59,18 @@ class ApiClient {
                 }
 
                 const error = await response.json().catch(() => ({ error: 'Request failed' }))
+
+                // subscription lapsed mid-session: send them to billing instead of
+                // leaving every dashboard panel in an error state
+                if (
+                    response.status === 403 &&
+                    typeof error.code === 'string' &&
+                    error.code.startsWith('SUBSCRIPTION_') &&
+                    !window.location.pathname.startsWith('/settings')
+                ) {
+                    window.location.assign(error.redirectTo || '/settings?tab=billing')
+                }
+
                 return {
                     success: false,
                     error: response.status === 401

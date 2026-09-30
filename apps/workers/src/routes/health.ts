@@ -22,19 +22,20 @@ health.get('/', async (c) => {
 	if (c.env.CACHE) {
 		try {
 			const testKey = 'health-check';
-			await c.env.CACHE.put(testKey, 'test', { expirationTtl: 10 });
+			// KV rejects TTLs under 60s
+			await c.env.CACHE.put(testKey, 'test', { expirationTtl: 60 });
 			const value = await c.env.CACHE.get(testKey);
 			checks.cache = value === 'test' ? 'healthy' : 'unhealthy';
-		} catch {
-			checks.cache = 'unhealthy';
+		} catch (error) {
+			// KV allows one write/sec per key; a 429 means overlapping checks, not an outage
+			checks.cache = String(error).includes('429') ? 'healthy' : 'unhealthy';
 		}
 	} else {
 		checks.cache = 'not configured';
 	}
 	
-	const allHealthy = Object.values(checks)
-		.filter(v => typeof v === 'string' && v !== 'timestamp')
-		.every(v => v === 'healthy');
+	const { timestamp: _, ...services } = checks;
+	const allHealthy = Object.values(services).every(v => v === 'healthy');
 	
 	return c.json(checks, allHealthy ? 200 : 503);
 });
