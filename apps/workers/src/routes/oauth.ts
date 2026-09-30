@@ -48,7 +48,7 @@ oauth.get('/initiate', authMiddleware, async (c) => {
   return c.json({ authUrl });
 });
 
-oauth.post('/callback', async (c) => {
+oauth.post('/callback', authMiddleware, async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
   const { code, state } = await c.req.json();
 
@@ -63,10 +63,12 @@ oauth.post('/callback', async (c) => {
     .eq('id', state)
     .single();
     
-  if (stateError || !oauthState) {
+  // the state must belong to the user completing the flow, otherwise an attacker could
+  // hand a victim their own authorize URL and capture the victim's OwnerRez token
+  if (stateError || !oauthState || oauthState.user_id !== c.get('user')?.id) {
     return c.json({ error: 'Invalid or expired state token' }, 400);
   }
-  
+
   // check expiration
   if (new Date(oauthState.expires_at) < new Date()) {
     // clean up expired token
@@ -178,9 +180,8 @@ oauth.post('/callback', async (c) => {
       }
     }
 
-    // calculate expiration time based on expires_in from token response
-    // OwnerRez tokens are long-lived and never expire unless revoked,
-    // so expires_in is typically absent. Default to 100 years.
+    // "Standard" policy tokens expire in 30 days and are refreshed by getValidOwnerRezToken;
+    // legacy permanent tokens omit expires_in, so default those to 100 years.
     const expiresAt = new Date();
     if (tokenData.expires_in) {
       expiresAt.setSeconds(expiresAt.getSeconds() + tokenData.expires_in);
@@ -258,7 +259,14 @@ oauth.post('/callback', async (c) => {
       }
     }
 
-    // Mark that initial sync is needed
+    // Mark that initial sync is needed; clear any completion left over from a previous
+    // connection, which /sync/status would otherwise honor and skip the resync
+    await supabase
+      .from('sync_status')
+      .delete()
+      .eq('tenant_id', tenantId)
+      .eq('sync_type', 'initial_sync_completed');
+
     await supabase
       .from('sync_status')
       .upsert({
