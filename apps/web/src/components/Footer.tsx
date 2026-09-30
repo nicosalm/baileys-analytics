@@ -74,11 +74,6 @@ export const Footer = () => {
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-2">{BRAND.tagline}</p>
             <p className="text-sm text-muted-foreground">Made with 🧀 in Wisconsin</p>
-            {__COMMIT_SHA__ && (
-              <p className="mt-3 font-mono text-xs text-muted-foreground opacity-60" title="Deployed version">
-                {__COMMIT_SHA__.slice(0, 7)}
-              </p>
-            )}
           </div>
 
           {/* product */}
@@ -122,7 +117,14 @@ export const Footer = () => {
 
         {/* bottom bar */}
         <div className="mt-10 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <StatusIndicator />
+          <div className="flex items-center gap-3">
+            {__COMMIT_SHA__ && (
+              <span className="font-mono text-xs text-muted-foreground opacity-60" title="Deployed version">
+                {__COMMIT_SHA__.slice(0, 7)}
+              </span>
+            )}
+            <StatusIndicator />
+          </div>
 
           <p className="text-sm text-muted-foreground order-3 sm:order-2">
             &copy; {currentYear} {BRAND.name}
