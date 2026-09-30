@@ -2,11 +2,13 @@ packages:
   - apps/*
   - packages/*
 
-ignoredBuiltDependencies:
-  - core-js
-
-onlyBuiltDependencies:
-  - azure-functions-core-tools
-  - esbuild
-  - sharp
-  - workerd
+# pnpm 11 replaced onlyBuiltDependencies/ignoredBuiltDependencies with allowBuilds;
+# unlisted packages with build scripts fail the install
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true
+  azure-functions-core-tools: true
+  supabase: true
+  core-js: false
+  msw: false
