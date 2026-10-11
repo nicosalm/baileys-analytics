@@ -1847,6 +1847,7 @@ export type Database = {
         Row: {
           company_name: string | null
           created_at: string | null
+          deletion_requested_at: string | null
           email: string
           first_subscription_at: string | null
           id: string
@@ -1863,6 +1864,7 @@ export type Database = {
         Insert: {
           company_name?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
           email: string
           first_subscription_at?: string | null
           id?: string
@@ -1879,6 +1881,7 @@ export type Database = {
         Update: {
           company_name?: string | null
           created_at?: string | null
+          deletion_requested_at?: string | null
           email?: string
           first_subscription_at?: string | null
           id?: string
@@ -2007,6 +2010,10 @@ export type Database = {
       cleanup_expired_oauth_states: { Args: never; Returns: undefined }
       current_tenant_id: { Args: never; Returns: string }
       delete_tenant_data: { Args: { p_tenant_id: string }; Returns: undefined }
+      purge_tenant_data: {
+        Args: { p_batch?: number; p_tenant_id: string }
+        Returns: boolean
+      }
       get_database_stats: {
         Args: never
         Returns: {

@@ -5,6 +5,7 @@ import { authMiddleware } from '../middleware/auth';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { mapToBlockRow } from '../utils/blocks';
+import { requestTenantDeletion, purgeTenant, StripeCancellationError } from '../services/account-deletion';
 
 const admin = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
 
@@ -135,6 +136,7 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
         ownerrez_connected,
         first_subscription_at
       `)
+      .is('deletion_requested_at', null)
       .order('created_at', { ascending: false })
       .range((page - 1) * limit, page * limit - 1);
 
@@ -245,115 +247,20 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
   const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
 
   try {
-    // get the user_id from tenant
-    const { data: tenant, error: tenantError } = await supabase
-      .from('tenants')
-      .select('user_id, email, company_name')
-      .eq('id', tenantId)
-      .single();
-
-    if (tenantError || !tenant) {
-      return c.json({ error: 'Tenant not found' }, 404);
-    }
-
-    const userId = tenant.user_id;
-
-    // 1. cancel stripe subscription FIRST — if this fails we must abort the
-    // deletion so the customer is not left being billed for a wiped account.
-    // runs before the audit log and before any destructive db work.
-    if (c.env.STRIPE_SECRET_KEY) {
-      const { data: customer } = await supabase
-        .from('stripe_customers')
-        .select('stripe_customer_id')
-        .eq('tenant_id', tenantId)
-        .single();
-
-      if (customer?.stripe_customer_id) {
-        try {
-          const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-            apiVersion: '2025-10-29.clover',
-            httpClient: Stripe.createFetchHttpClient()
-          });
-
-          const subscriptions = await stripe.subscriptions.list({
-            customer: customer.stripe_customer_id,
-          });
-
-          // cancel all non-terminal subscriptions
-          const cancelable = subscriptions.data.filter(s =>
-            ['active', 'trialing', 'past_due'].includes(s.status)
-          );
-
-          for (const sub of cancelable) {
-            await stripe.subscriptions.cancel(sub.id);
-          }
-        } catch (stripeError) {
-          // If the customer itself no longer exists in Stripe (test-mode wipe,
-          // env swap, manual deletion), there's nothing being billed, so we can
-          // proceed with the deletion. Any other Stripe error still aborts so
-          // we never leave a live customer being charged for a wiped tenant.
-          const isMissingResource = stripeError instanceof Stripe.errors.StripeInvalidRequestError
-            && stripeError.code === 'resource_missing';
-          if (!isMissingResource) {
-            console.error('Failed to cancel stripe subscription during admin account deletion:', stripeError);
-            return c.json({
-              error: 'Could not cancel the tenant\'s Stripe subscription. The account was not deleted to prevent continued billing. Retry in a few minutes or cancel the subscription manually in Stripe first.',
-              code: 'STRIPE_CANCELLATION_FAILED'
-            }, 500);
-          }
-          console.warn(`Stripe customer ${customer.stripe_customer_id} not found; proceeding with deletion.`);
-        }
-      }
-    }
-
-    // 2. audit log — snapshot before deletion (after stripe cancel so we only
-    // record deletions we are actually going to complete)
-    const adminEmail = c.get('user').email || 'unknown';
-    const [{ count: propCount }, { count: bookCount }, { data: sub }] = await Promise.all([
-      supabase.from('properties').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-      supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
-      supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).maybeSingle(),
-    ]);
-
-    await supabase.from('account_deletions').insert({
-      tenant_id: tenantId,
-      email: tenant.email,
-      company_name: tenant.company_name,
-      deleted_by: adminEmail,
-      property_count: propCount || 0,
-      booking_count: bookCount || 0,
-      had_active_subscription: sub?.status === 'active',
-    });
-
-    // 3. delete all tenant data atomically via RPC
-    const { error: deleteDataError } = await supabase.rpc('delete_tenant_data', {
-      p_tenant_id: tenantId
-    });
-
-    if (deleteDataError) {
-      console.error('Failed to delete tenant data:', deleteDataError);
-      return c.json({ error: 'Failed to delete tenant data' }, 500);
-    }
-
-    // 4. delete auth user
-    if (userId) {
-      const { error: deleteUserError } = await supabase.auth.admin.deleteUser(userId);
-      if (deleteUserError) {
-        console.error('Failed to delete auth user:', deleteUserError);
-      }
-    }
-
-    return c.json({
-      success: true,
-      message: `Account ${tenant.email} deleted successfully`
-    });
+    await requestTenantDeletion(c.env, supabase, tenantId, c.get('user').email || 'unknown');
   } catch (error) {
+    if (error instanceof StripeCancellationError) {
+      return c.json({
+        error: 'Could not cancel the tenant\'s Stripe subscription. The account was not deleted to prevent continued billing. Retry in a few minutes or cancel the subscription manually in Stripe first.',
+        code: 'STRIPE_CANCELLATION_FAILED'
+      }, 500);
+    }
     console.error('Failed to delete account:', error);
-    return c.json({
-      error: 'Failed to delete account',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, 500);
+    return c.json({ error: 'Failed to delete account' }, 500);
   }
+
+  c.executionCtx.waitUntil(purgeTenant(supabase, tenantId));
+  return c.json({ success: true, message: 'Account deleted successfully' });
 });
 
 // signup trend — daily signups for last N days

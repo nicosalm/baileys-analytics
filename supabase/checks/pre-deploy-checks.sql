@@ -37,6 +37,7 @@ expected_fns(sig) as (values
   ('get_periodic_occupancy(uuid, date, date, text, uuid[], uuid[])'),
   ('get_repeat_guest_count(uuid, date, date, uuid[], uuid[])'),
   ('delete_tenant_data(uuid)'),
+  ('purge_tenant_data(uuid, integer)'),
   ('increment_usage_metric(uuid, text, timestamptz, timestamptz, integer)'),
   ('replace_expense_templates(uuid, uuid, jsonb)'),
   ('replace_operating_expenses(uuid, uuid, integer, integer, jsonb)'),
