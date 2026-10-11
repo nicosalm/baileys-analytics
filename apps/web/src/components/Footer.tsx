@@ -116,7 +116,7 @@ export const Footer = () => {
         </div>
 
         {/* bottom bar */}
-        <div className="mt-10 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="mt-10 pt-6 border-t border-border flex flex-col sm:grid sm:grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="flex items-center gap-3">
             {__COMMIT_SHA__ && (
               <span className="font-mono text-xs text-muted-foreground opacity-60" title="Deployed version">
@@ -130,7 +130,7 @@ export const Footer = () => {
             &copy; {currentYear} {BRAND.name}
           </p>
 
-          <div className="flex items-center gap-5 order-2 sm:order-3">
+          <div className="flex items-center gap-5 order-2 sm:order-3 sm:justify-self-end">
             <SocialIcon href="https://x.com/baileysupdates" label="X (Twitter)">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
             </SocialIcon>
