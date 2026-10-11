@@ -112,7 +112,7 @@ results(section, item, status, detail) as (
               when pg_get_functiondef(to_regprocedure('public.delete_tenant_data(uuid)'))
                    ~* 'delete from booking_charges\s+where tenant_id' then 'BROKEN'
               else 'ok' end,
-         'BROKEN means every account delete fails; apply 20260611_fix_delete_tenant_data_junction_tables.sql'
+         'BROKEN means every account delete fails; apply 20261010_fix_delete_tenant_data_fk_order.sql'
 )
 select section, item, status, detail
 from results
