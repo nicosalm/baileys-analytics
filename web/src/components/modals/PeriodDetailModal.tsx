@@ -99,7 +99,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
     filters.selectedTags.map((t) => t.id),
   )
 
-  const subtitle = isLoading ? 'Loading details...' : error ? 'Unable to load details' : `Detailed breakdown for ${displayName}`
+  const subtitle = error ? 'Unable to load details' : undefined
 
   return (
     <Modal isOpen={true} onClose={closeModal} title={displayName} subtitle={subtitle} size="lg">
@@ -152,29 +152,29 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
           {/* Financial Summary */}
           {data?.costs && (data.costs.platformFees > 0 || data.costs.taxes > 0 || data.costs.operatingExpenses > 0) && (
             <div className="bg-card rounded-lg border p-4">
-              <h3 className="font-semibold mb-3">Financial Summary</h3>
+              <h3 className="font-semibold mb-3">Costs</h3>
               <div className="space-y-2">
                 {data.costs.platformFees > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Platform Fees (est.)</span>
-                    <span className="font-medium text-warning">-{formatCurrency(data.costs.platformFees)}</span>
+                    <span className="text-muted-foreground">Platform fees (est.)</span>
+                    <span className="font-medium tabular-nums">-{formatCurrency(data.costs.platformFees)}</span>
                   </div>
                 )}
                 {data.costs.taxes > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Taxes</span>
-                    <span className="font-medium text-info">-{formatCurrency(data.costs.taxes)}</span>
+                    <span className="font-medium tabular-nums">-{formatCurrency(data.costs.taxes)}</span>
                   </div>
                 )}
                 {data.costs.operatingExpenses > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Operating Expenses</span>
-                    <span className="font-medium text-danger">-{formatCurrency(data.costs.operatingExpenses)}</span>
+                    <span className="text-muted-foreground">Operating expenses</span>
+                    <span className="font-medium tabular-nums">-{formatCurrency(data.costs.operatingExpenses)}</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-2 border-t font-semibold">
-                  <span>Net Revenue</span>
-                  <span className={data.costs.netRevenue >= 0 ? 'text-success' : 'text-danger'}>
+                  <span>Net revenue</span>
+                  <span className={`tabular-nums ${data.costs.netRevenue < 0 ? 'text-danger' : ''}`}>
                     {formatCurrency(data.costs.netRevenue)}
                   </span>
                 </div>

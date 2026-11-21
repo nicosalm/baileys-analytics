@@ -2,7 +2,7 @@ import { useMemo, useCallback, useState } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency, formatDateDisplay } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
-import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, ExternalLink } from 'lucide-react'
+import { TrendingUp, Calendar, DollarSign, Home, ExternalLink } from 'lucide-react'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -17,6 +17,7 @@ import { Pagination } from '@/components/Pagination'
 const MODAL_PAGE_SIZE = 10
 import type { TooltipContentProps } from 'recharts'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 interface PropertyMonthlyEntry {
   month: string
@@ -124,11 +125,12 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
     filters.selectedTags.map((t) => t.id),
   )
 
-  const subtitle = isLoading
-    ? 'Loading property details...'
-    : error
-      ? 'Unable to load property details'
-      : `Performance metrics for ${propertyName}`
+  const subtitle = data
+    ? [data.property.address, `${data.property.bedrooms} bd`, `${data.property.bathrooms} ba`, `sleeps ${data.property.maxGuests}`]
+        .filter(Boolean)
+        .join(' · ')
+    : undefined
+  const [chartMeasure, setChartMeasure] = useState<'revenue' | 'occupancy'>('revenue')
 
   const monthlyChartData = useMemo(
     () =>
@@ -175,47 +177,17 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
       >
         {data && (
           <div className="space-y-6">
-            {/* Info Banner */}
-
-            {/* Property Info Card */}
-            <div className="bg-muted/50 rounded-lg p-6">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg font-bold">{data.property.name}</h3>
-                    {data.property.ownerrezId && (
-                      <a
-                        href={`https://app.ownerrez.com/properties/${data.property.ownerrezId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-muted-foreground/70 hover:text-primary transition-colors"
-                        title="Open in OwnerRez"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    )}
-                  </div>
-                  <div className="flex items-center text-sm text-muted-foreground mb-2">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {data.property.address}
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm">
-                    <span className="flex items-center">
-                      <Bed className="w-4 h-4 mr-1" />
-                      {data.property.bedrooms} Bedrooms
-                    </span>
-                    <span className="flex items-center">
-                      <Bath className="w-4 h-4 mr-1" />
-                      {data.property.bathrooms} Bathrooms
-                    </span>
-                    <span className="flex items-center">
-                      <Users className="w-4 h-4 mr-1" />
-                      Sleeps {data.property.maxGuests}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {data.property.ownerrezId && (
+              <a
+                href={`https://app.ownerrez.com/properties/${data.property.ownerrezId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden />
+                Open in OwnerRez
+              </a>
+            )}
 
             {/* Key Metrics */}
             <div className="grid md:grid-cols-4 gap-4">
@@ -270,29 +242,29 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             {/* Cost Metrics */}
             {(data.metrics.platformFees > 0 || data.metrics.taxes > 0 || data.metrics.operatingExpenses > 0) && (
               <div className="bg-card rounded-lg border border-border p-4">
-                <h3 className="text-sm font-medium text-foreground mb-3">Cost Summary</h3>
+                <h3 className="text-sm font-medium text-foreground mb-3">Costs</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {data.metrics.platformFees > 0 && (
                     <div>
-                      <div className="text-xs text-muted-foreground">Platform Fees (est.)</div>
-                      <div className="text-lg font-semibold text-warning">-{formatCurrency(data.metrics.platformFees)}</div>
+                      <div className="text-xs text-muted-foreground">Platform fees (est.)</div>
+                      <div className="text-lg font-semibold tabular-nums">-{formatCurrency(data.metrics.platformFees)}</div>
                     </div>
                   )}
                   {data.metrics.taxes > 0 && (
                     <div>
                       <div className="text-xs text-muted-foreground">Taxes</div>
-                      <div className="text-lg font-semibold text-info">-{formatCurrency(data.metrics.taxes)}</div>
+                      <div className="text-lg font-semibold tabular-nums">-{formatCurrency(data.metrics.taxes)}</div>
                     </div>
                   )}
                   {data.metrics.operatingExpenses > 0 && (
                     <div>
-                      <div className="text-xs text-muted-foreground">Operating Expenses</div>
-                      <div className="text-lg font-semibold text-danger">-{formatCurrency(data.metrics.operatingExpenses)}</div>
+                      <div className="text-xs text-muted-foreground">Operating expenses</div>
+                      <div className="text-lg font-semibold tabular-nums">-{formatCurrency(data.metrics.operatingExpenses)}</div>
                     </div>
                   )}
                   <div>
-                    <div className="text-xs text-muted-foreground">Net Revenue</div>
-                    <div className={`text-lg font-semibold ${data.metrics.netRevenue >= 0 ? 'text-success' : 'text-danger'}`}>
+                    <div className="text-xs text-muted-foreground">Net revenue</div>
+                    <div className={`text-lg font-semibold tabular-nums ${data.metrics.netRevenue < 0 ? 'text-danger' : ''}`}>
                       {formatCurrency(data.metrics.netRevenue)}
                     </div>
                   </div>
@@ -302,50 +274,49 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
 
             {/* Tabs */}
             <Tabs defaultValue="overview">
-              <TabsList variant="line">
-                <TabsTrigger value="overview">Performance Charts</TabsTrigger>
-                <TabsTrigger value="bookings">Recent Bookings</TabsTrigger>
-                <TabsTrigger value="revenue">Revenue Sources</TabsTrigger>
+              <TabsList>
+                <TabsTrigger value="overview">By month</TabsTrigger>
+                <TabsTrigger value="bookings">Recent bookings</TabsTrigger>
+                <TabsTrigger value="revenue">Booking sources</TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview">
                 <div className="space-y-6">
                   <div className="bg-card p-6 rounded-lg border border-border">
-                    <h3 className="text-lg font-bold mb-4">Monthly Performance</h3>
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                      <h3 className="text-base font-semibold">Monthly {chartMeasure === 'revenue' ? 'revenue' : 'occupancy'}</h3>
+                      <SegmentedControl
+                        label="Measure"
+                        value={chartMeasure}
+                        onChange={setChartMeasure}
+                        options={[
+                          { value: 'revenue', label: 'Revenue' },
+                          { value: 'occupancy', label: 'Occupancy' },
+                        ]}
+                      />
+                    </div>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={monthlyChartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-                          <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+                        <LineChart data={monthlyChartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+                          <CartesianGrid vertical={false} stroke={CHART_INFRA.grid} strokeOpacity={0.6} />
+                          <XAxis dataKey="month" tick={{ fill: CHART_INFRA.axis, fontSize: 12 }} axisLine={false} tickLine={false} />
                           <YAxis
-                            yAxisId="left"
-                            tickFormatter={(value) => formatCompactCurrency(value)}
-                            stroke={CHART_INFRA.axis}
-                            tick={{ fill: CHART_INFRA.axis }}
-                          />
-                          <YAxis
-                            yAxisId="right"
-                            orientation="right"
-                            tickFormatter={(value) => `${value}%`}
-                            stroke={CHART_INFRA.axis}
-                            tick={{ fill: CHART_INFRA.axis }}
+                            width={52}
+                            domain={chartMeasure === 'occupancy' ? [0, 100] : [0, 'auto']}
+                            tickFormatter={(value) => (chartMeasure === 'revenue' ? formatCompactCurrency(value) : `${value}%`)}
+                            tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+                            axisLine={false}
+                            tickLine={false}
                           />
                           <Tooltip content={<PropertyPerformanceTooltip />} isAnimationActive={false} />
                           <Line
-                            yAxisId="left"
                             type="monotone"
-                            dataKey="revenue"
-                            stroke={METRIC_COLORS.revenue}
-                            name="Revenue"
+                            dataKey={chartMeasure}
+                            stroke={chartMeasure === 'revenue' ? METRIC_COLORS.revenue : METRIC_COLORS.occupancy}
+                            name={chartMeasure === 'revenue' ? 'Revenue' : 'Occupancy'}
                             strokeWidth={2}
-                          />
-                          <Line
-                            yAxisId="right"
-                            type="monotone"
-                            dataKey="occupancy"
-                            stroke={METRIC_COLORS.occupancy}
-                            name="Occupancy"
-                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
                           />
                         </LineChart>
                       </ResponsiveContainer>

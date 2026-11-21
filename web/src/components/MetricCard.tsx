@@ -180,7 +180,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           >
             {trend.value === 0 ? (
               <Minus className="w-3.5 h-3.5" />
-            ) : trendDirection ? (
+            ) : trend.value > 0 ? (
               <ArrowUpRight className="w-3.5 h-3.5" />
             ) : (
               <ArrowDownRight className="w-3.5 h-3.5" />

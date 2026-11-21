@@ -7,9 +7,14 @@ import { ChartWrapper } from '@/components/ChartWrapper'
 import { CheckCircle, Clock, Calendar, TrendingUp } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
-import { CHART_INFRA, resolveToken } from '@/lib/theme'
+import { CHART_INFRA, METRIC_COLORS, resolveToken } from '@/lib/theme'
 import type { TooltipContentProps, MouseHandlerDataParam } from 'recharts'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
+import { ChartLegend } from '@/components/charts/ChartLegend'
+
+// 'YYYY-MM' becomes 'Apr'; other granularities pass through unchanged
+const formatMonthTick = (value: string) =>
+  /^\d{4}-\d{2}$/.test(value) ? new Date(`${value}-01T00:00:00`).toLocaleDateString('en-US', { month: 'short' }) : value
 
 const CashFlowChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
@@ -130,43 +135,52 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPer
       </div>
 
       <ChartWrapper
-        title={`${detectGranularity(monthlyData, 'month')} Revenue — Collected vs Pending`}
+        responsive={false}
+        title={`${detectGranularity(monthlyData, 'month')} revenue, collected and pending`}
         height={360}
         noData={monthlyData.length === 0}
         noDataMessage="No revenue data for this period"
       >
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={monthlyData}
-            onClick={(e: MouseHandlerDataParam) => {
-              if (e?.activeLabel && onPeriodClick) {
-                onPeriodClick(String(e.activeLabel))
-              }
-            }}
-            style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-            <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-            <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-            <Tooltip content={<CashFlowChartTooltip />} isAnimationActive={false} />
-            <Bar
-              dataKey="collected"
-              stackId="revenue"
-              name="Collected"
-              fill={resolveToken('--success')}
-              fillOpacity={0.85}
-              radius={[2, 2, 0, 0]}
-            />
-            <Bar
-              dataKey="pending"
-              stackId="revenue"
-              name="Pending"
-              fill={resolveToken('--info')}
-              fillOpacity={0.85}
-              radius={[2, 2, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="h-full flex flex-col">
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={monthlyData}
+                onClick={(e: MouseHandlerDataParam) => {
+                  if (e?.activeLabel && onPeriodClick) {
+                    onPeriodClick(String(e.activeLabel))
+                  }
+                }}
+                style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
+              >
+                <CartesianGrid vertical={false} stroke={CHART_INFRA.grid} strokeOpacity={0.6} />
+                <XAxis
+                  dataKey="month"
+                  tickFormatter={formatMonthTick}
+                  tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={chartFormatters.currency}
+                  tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CashFlowChartTooltip />} isAnimationActive={false} />
+                <Bar dataKey="collected" stackId="revenue" name="Collected" fill={METRIC_COLORS.revenue} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="pending" stackId="revenue" name="Pending" fill={CHART_INFRA.comparison} radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <ChartLegend
+            className="mt-2"
+            items={[
+              { label: 'Collected', color: METRIC_COLORS.revenue, shape: 'square' },
+              { label: 'Pending', color: CHART_INFRA.comparison, shape: 'square' },
+            ]}
+          />
+        </div>
       </ChartWrapper>
     </div>
   )

@@ -198,9 +198,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
                 {taxData.comparison.periodLabel}: {formatCurrency(taxData.comparison.previousOwnerRemitted)}
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : (
-              'Your responsibility'
-            )
+            ) : undefined
           }
           tooltip={METRIC_DEFINITIONS.taxOwnerRemitted}
           trend={
@@ -232,7 +230,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
 
       {/* Tax Trend Chart */}
       <div ref={trendRef}>
-        <TaxTrendChart data={taxData.byMonth} title={`${taxData.granularity} Tax Trend`} onPeriodClick={onPeriodClick} />
+        <TaxTrendChart data={taxData.byMonth} title={`${taxData.granularity} tax`} onPeriodClick={onPeriodClick} />
       </div>
 
       {/* Tax Remittance and Property Details Side by Side */}
@@ -262,24 +260,24 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           <div className="p-4">
             <DataTable
               data={taxData.byProperty.slice((taxPropertyPage - 1) * TAX_PAGE_SIZE, taxPropertyPage * TAX_PAGE_SIZE)}
+              onRowClick={onPropertyClick ? (row: TaxByPropertyRow) => onPropertyClick(row.propertyId) : undefined}
+              bare
               columns={[
                 {
                   key: 'propertyName',
                   header: 'Property',
-                  render: (row: TaxByPropertyRow) => (
-                    <Button variant="link" onClick={() => onPropertyClick?.(row.propertyId)} className="p-0 h-auto text-left">
-                      {row.propertyName}
-                    </Button>
-                  ),
+                  render: (row: TaxByPropertyRow) => <span className="font-medium">{row.propertyName}</span>,
                 },
                 {
                   key: 'totalTax',
-                  header: 'Total Tax',
+                  header: 'Tax',
+                  align: 'right',
                   render: (row: TaxByPropertyRow) => formatCurrency(row.totalTax),
                 },
                 {
                   key: 'taxRate',
-                  header: 'Tax Rate',
+                  header: 'Rate',
+                  align: 'right',
                   render: (row: TaxByPropertyRow) => formatPercentage(row.taxRate, 2),
                 },
               ]}

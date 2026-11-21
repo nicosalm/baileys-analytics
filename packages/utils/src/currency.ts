@@ -2,8 +2,9 @@
 const whole = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
 const cents = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// cents only matter below a thousand dollars; larger figures read cleaner rounded
-export const formatCurrency = (amount: number): string => (Math.abs(amount) >= 1000 ? whole : cents).format(amount)
+// cents only matter below a thousand dollars and only when there are any
+export const formatCurrency = (amount: number): string =>
+  (Math.abs(amount) >= 1000 || Number.isInteger(amount) ? whole : cents).format(amount)
 
 export const formatCompactCurrency = (amount: number): string => {
   const abs = Math.abs(amount)

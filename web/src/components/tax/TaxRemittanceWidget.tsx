@@ -1,6 +1,7 @@
-import { FileText, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react'
+import { FileText, AlertTriangle } from 'lucide-react'
 import { formatCurrency, formatPercentage, format, parseDate } from '@baileys/utils'
 import { StateWrapper } from '@/components/StateWrapper'
+import { TAX_COLORS } from '@/components/charts/TaxTrendChart'
 
 interface TaxSummary {
   totalRent?: number
@@ -65,60 +66,41 @@ export const TaxRemittanceWidget = ({ taxData, periodStart, periodEnd }: TaxRemi
           {/* Total Tax Breakdown */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Revenue</span>
+              <span className="text-sm text-muted-foreground">Revenue</span>
               <span className="font-medium">{formatCurrency(totals.revenue)}</span>
             </div>
 
             <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Total Tax Due</span>
+              <span className="text-sm text-muted-foreground">Tax due</span>
               <span className="font-semibold text-lg">{formatCurrency(totals.totalTax)}</span>
             </div>
 
             <div className="flex justify-between items-center text-xs text-muted-foreground">
-              <span>Effective Rate</span>
+              <span>Effective rate</span>
               <span>{formatPercentage(effectiveRate)}</span>
             </div>
           </div>
 
-          {/* Remittance Split */}
-          <div className="border-t pt-4">
-            <h4 className="text-sm font-medium text-foreground mb-3">Remittance Responsibility</h4>
-
-            <div className="space-y-2">
-              {/* Platform Remitted */}
-              <div className="p-3 bg-success-subtle rounded-sm border border-success/30">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    <CheckCircle className="w-4 h-4 text-success mr-2" />
-                    <div>
-                      <p className="text-sm font-medium text-success-fg">Platform Remitted</p>
-                      <p className="text-xs text-success-fg">Paid directly by platforms</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-foreground">{formatCurrency(totals.platformRemitted)}</p>
-                    <p className="text-xs text-success-fg">{formatPercentage(platformPercentage)} of total</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Owner Remitted */}
-              <div className="p-3 bg-info-subtle rounded-sm border border-info/30">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center">
-                    <TrendingUp className="w-4 h-4 text-info mr-2" />
-                    <div>
-                      <p className="text-sm font-medium text-info-fg">You Owe</p>
-                      <p className="text-xs text-info-fg">Your responsibility to remit</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-info-fg text-lg">{formatCurrency(totals.ownerRemitted)}</p>
-                    <p className="text-xs text-info-fg">{formatPercentage(100 - platformPercentage)} of total</p>
-                  </div>
-                </div>
-              </div>
+          <div className="border-t pt-4 space-y-3">
+            <div className="flex h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
+              <span style={{ width: `${100 - platformPercentage}%`, backgroundColor: TAX_COLORS.owner }} />
+              <span style={{ width: `${platformPercentage}%`, backgroundColor: TAX_COLORS.platform }} />
             </div>
+            {[
+              { label: 'You remit', amount: totals.ownerRemitted, share: 100 - platformPercentage, color: TAX_COLORS.owner },
+              { label: 'Platforms remit', amount: totals.platformRemitted, share: platformPercentage, color: TAX_COLORS.platform },
+            ].map(({ label, amount, share, color }) => (
+              <div key={label} className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} aria-hidden />
+                  {label}
+                </span>
+                <span className="tabular-nums">
+                  <span className="font-semibold">{formatCurrency(amount)}</span>
+                  <span className="ml-2 text-xs text-muted-foreground">{formatPercentage(share)}</span>
+                </span>
+              </div>
+            ))}
           </div>
 
           {/* Status Indicators */}

@@ -36,7 +36,8 @@ export const HeadlineMetric: React.FC<HeadlineMetricProps> = ({
   onClick,
   staggerIndex,
 }) => {
-  const TrendIcon = trend?.isPositive ? ArrowUpRight : ArrowDownRight
+  // arrow shows the direction of change; color shows whether that change is good
+  const TrendIcon = trend && trend.value < 0 ? ArrowDownRight : ArrowUpRight
   const clamp = (n: number) => Math.min(100, Math.max(0, n))
 
   return (
@@ -75,7 +76,7 @@ export const HeadlineMetric: React.FC<HeadlineMetricProps> = ({
             className={cn('inline-flex items-center text-xs font-medium tabular-nums', trend.isPositive ? 'text-success' : 'text-danger')}
           >
             <TrendIcon className="w-3.5 h-3.5" aria-hidden />
-            {Math.abs(trend.value).toFixed(1)}%<span className="sr-only">{trend.isPositive ? ' increase' : ' decrease'}</span>
+            {Math.abs(trend.value).toFixed(1)}%<span className="sr-only">{trend.value < 0 ? ' decrease' : ' increase'}</span>
           </span>
         )}
       </span>

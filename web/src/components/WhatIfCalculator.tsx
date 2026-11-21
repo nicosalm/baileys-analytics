@@ -115,7 +115,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
     }
   }, [dateRange, seasons, scope.openNights])
 
-  const inputRate = rateInput === '' ? 0 : parseFloat(rateInput) || 0
+  const inputRate = rateInput === '' ? scope.weightedAvgRate : parseFloat(rateInput) || 0
   const projectableNights = nightContext.projectableOpenNights
   const additionalRevenue = projectableNights * inputRate
   const newTotalRevenue = scope.estimatedRevenue + additionalRevenue

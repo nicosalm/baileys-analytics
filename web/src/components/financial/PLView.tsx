@@ -381,7 +381,7 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
             comparisonMode !== 'none' && comparison.taxesGrowth !== 0
               ? {
                   value: comparison.taxesGrowth,
-                  isPositive: comparison.taxesGrowth < 0,
+                  isPositive: comparison.taxesGrowth > 0,
                 }
               : undefined
           }

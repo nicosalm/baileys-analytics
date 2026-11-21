@@ -2,7 +2,7 @@ import { useMemo, useState, Fragment } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
-import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Award, ExternalLink, ChevronDown, Sparkles, Tags } from 'lucide-react'
+import { Calendar, DollarSign, TrendingUp, Home, Mail, ExternalLink, ChevronDown, Sparkles, Phone } from 'lucide-react'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -12,6 +12,7 @@ import { useModal } from '@/contexts/modal'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 import { Pagination } from '@/components/Pagination'
 import type { TooltipContentProps } from 'recharts'
+import { Badge } from '@/components/ui/badge'
 
 const MODAL_PAGE_SIZE = 10
 
@@ -426,7 +427,14 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
 
   const { data, isLoading, error } = useGuestDetail(guestId)
 
-  const subtitle = isLoading ? 'Loading guest information...' : error ? 'Unable to load guest details' : `Viewing guest profile`
+  const subtitle = undefined
+  const segmentLabel = performanceData?.isTopSpender
+    ? 'Top spender'
+    : performanceData?.isFrequent
+      ? 'Frequent guest'
+      : performanceData?.isNew
+        ? 'New guest'
+        : null
 
   const guest = data?.guest
   const bookingHistory = data?.bookings || []
@@ -498,76 +506,29 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
         minHeight={400}
       >
         <div className="space-y-6">
-          {/* Info Banner */}
-
-          {/* Guest Info Card */}
-          <div className="bg-muted/40 rounded-lg p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center mb-2">
-                  <User className="w-5 h-5 mr-2 text-muted-foreground" />
-                  <h3 className="text-lg font-bold">{guest?.name || guestName}</h3>
-                </div>
-                {guest?.email && (
-                  <div className="flex items-center text-sm text-muted-foreground mb-2">
-                    <Mail className="w-4 h-4 mr-1" />
-                    <a href={`mailto:${guest.email}`} className="text-primary hover:underline">
-                      {guest.email}
-                    </a>
-                  </div>
-                )}
-                {guest?.phone && (
-                  <div className="flex items-center text-sm text-muted-foreground mb-2">
-                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                      />
-                    </svg>
-                    {guest.phone}
-                  </div>
-                )}
-                {guest?.tags && guest.tags.length > 0 && (
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <Tags className="w-4 h-4 text-muted-foreground" />
-                    <CollapsibleTags tags={guest.tags} maxVisible={5} size="sm" />
-                  </div>
-                )}
-                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                  {guest?.firstVisit && <span>First visit: {formatDateDisplay(guest.firstVisit)}</span>}
-                  {guest?.lastVisit && <span>Last visit: {formatDateDisplay(guest.lastVisit)}</span>}
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                {/* Performance Badges */}
-                {performanceData?.isTopSpender && (
-                  <span className="inline-flex items-center px-3 py-1 bg-success-subtle text-success-fg text-sm rounded-full">
-                    <DollarSign className="w-4 h-4 mr-1" />
-                    Top Spender
-                  </span>
-                )}
-                {performanceData?.isFrequent && !performanceData?.isTopSpender && (
-                  <span className="inline-flex items-center px-3 py-1 bg-info-subtle text-info-fg text-sm rounded-full">
-                    <Star className="w-4 h-4 mr-1" />
-                    Frequent Guest
-                  </span>
-                )}
-                {performanceData?.isNew && !performanceData?.isTopSpender && !performanceData?.isFrequent && (
-                  <span className="inline-flex items-center px-3 py-1 bg-purple-subtle text-purple-fg text-sm rounded-full">
-                    <Award className="w-4 h-4 mr-1" />
-                    New Guest
-                  </span>
-                )}
-                {guest?.isRepeat && !performanceData?.isNew && (
-                  <span className="inline-flex items-center px-3 py-1 bg-muted text-muted-foreground text-sm rounded-full">
-                    <Star className="w-4 h-4 mr-1" />
-                    Returning Guest
-                  </span>
-                )}
-              </div>
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+              {guest?.email && (
+                <a href={`mailto:${guest.email}`} className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors">
+                  <Mail className="w-3.5 h-3.5" aria-hidden />
+                  {guest.email}
+                </a>
+              )}
+              {guest?.phone && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5" aria-hidden />
+                  {guest.phone}
+                </span>
+              )}
+              {guest?.firstVisit && <span>First stay {formatDateDisplay(guest.firstVisit)}</span>}
+              {guest?.lastVisit && <span>Last stay {formatDateDisplay(guest.lastVisit)}</span>}
             </div>
+            {(segmentLabel || (guest?.tags && guest.tags.length > 0)) && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {segmentLabel && <Badge variant="neutral">{segmentLabel}</Badge>}
+                {guest?.tags && guest.tags.length > 0 && <CollapsibleTags tags={guest.tags} maxVisible={5} size="sm" />}
+              </div>
+            )}
           </div>
 
           {/* Key Metrics */}
@@ -604,10 +565,10 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
 
           {/* Tabs */}
           <Tabs defaultValue="bookings">
-            <TabsList variant="line">
-              <TabsTrigger value="bookings">Booking History ({bookingHistory.length})</TabsTrigger>
-              <TabsTrigger value="overview">Spending Pattern</TabsTrigger>
-              <TabsTrigger value="fees">Fee Analysis</TabsTrigger>
+            <TabsList>
+              <TabsTrigger value="bookings">Stays ({bookingHistory.length})</TabsTrigger>
+              <TabsTrigger value="overview">Spending by month</TabsTrigger>
+              <TabsTrigger value="fees">Fees</TabsTrigger>
             </TabsList>
 
             <TabsContent value="bookings">

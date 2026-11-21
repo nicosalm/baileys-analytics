@@ -6,6 +6,8 @@ import { ChartWrapper } from '@/components/ChartWrapper'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
 import { formatCurrency } from '@/utils/formatters'
+import { ChartLegend } from './ChartLegend'
+import { getChargeColor, getChartColor } from '@/lib/theme'
 
 const TaxChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
@@ -66,7 +68,20 @@ interface TaxTrendChartProps {
   onPeriodClick?: (period: string) => void
 }
 
-export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({ data, title = 'Monthly Tax Trend', height = 320, onPeriodClick }) => {
+// shared with the remittance summary so the split reads the same in both places
+export const TAX_COLORS = {
+  get total() {
+    return getChargeColor('tax')
+  },
+  get owner() {
+    return getChartColor(0)
+  },
+  get platform() {
+    return getChartColor(4)
+  },
+}
+
+export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({ data, title = 'Monthly tax', height = 320, onPeriodClick }) => {
   if (!data || data.length === 0) {
     return (
       <ChartWrapper title={title} height={height} noData noDataMessage="No tax data available">
@@ -79,65 +94,82 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({ data, title = 'Mon
   const formattedData = formatChartData(data, 'month')
 
   return (
-    <ChartWrapper title={title} height={height}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={formattedData}
-          onClick={(e: MouseHandlerDataParam) => {
-            if (e?.activeLabel && onPeriodClick) {
-              const dataPoint = formattedData.find((d) => d.month === e.activeLabel)
-              if (dataPoint) {
-                // Look for the original date in the source data
-                const index = formattedData.indexOf(dataPoint)
-                const originalDate = data[index]?.month
-                if (originalDate) {
-                  onPeriodClick(originalDate)
-                } else {
-                  // Fallback to the formatted label
-                  onPeriodClick(String(e.activeLabel))
+    <ChartWrapper title={title} height={height} responsive={false}>
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={formattedData}
+              onClick={(e: MouseHandlerDataParam) => {
+                if (e?.activeLabel && onPeriodClick) {
+                  const dataPoint = formattedData.find((d) => d.month === e.activeLabel)
+                  if (dataPoint) {
+                    // Look for the original date in the source data
+                    const index = formattedData.indexOf(dataPoint)
+                    const originalDate = data[index]?.month
+                    if (originalDate) {
+                      onPeriodClick(originalDate)
+                    } else {
+                      // Fallback to the formatted label
+                      onPeriodClick(String(e.activeLabel))
+                    }
+                  }
                 }
-              }
-            }
-          }}
-          style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-          <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-          <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-          <Tooltip content={<TaxChartTooltip />} isAnimationActive={false} />
-          <Line
-            type="monotone"
-            dataKey="totalTax"
-            stroke={METRIC_COLORS.tax}
-            strokeWidth={2}
-            dot={{ fill: METRIC_COLORS.tax }}
-            cursor={onPeriodClick ? 'pointer' : undefined}
-            name="Total Tax"
-          />
-          {data[0]?.ownerRemitted !== undefined && (
-            <Line
-              type="monotone"
-              dataKey="ownerRemitted"
-              stroke={resolveToken('--warning')}
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ fill: resolveToken('--warning') }}
-              name="Owner Remitted"
-            />
-          )}
-          {data[0]?.platformRemitted !== undefined && (
-            <Line
-              type="monotone"
-              dataKey="platformRemitted"
-              stroke={resolveToken('--success')}
-              strokeWidth={2}
-              strokeDasharray="5 5"
-              dot={{ fill: resolveToken('--success') }}
-              name="Platform Remitted"
-            />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+              }}
+              style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
+            >
+              <CartesianGrid vertical={false} stroke={CHART_INFRA.grid} strokeOpacity={0.6} />
+              <XAxis dataKey="month" tick={{ fill: CHART_INFRA.axis, fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis
+                tickFormatter={chartFormatters.currency}
+                tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<TaxChartTooltip />} isAnimationActive={false} />
+              <Line
+                type="monotone"
+                dataKey="totalTax"
+                stroke={TAX_COLORS.total}
+                strokeWidth={2}
+                dot={false}
+                cursor={onPeriodClick ? 'pointer' : undefined}
+                name="Total tax"
+              />
+              {data[0]?.ownerRemitted !== undefined && (
+                <Line
+                  type="monotone"
+                  dataKey="ownerRemitted"
+                  stroke={TAX_COLORS.owner}
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  name="You remit"
+                />
+              )}
+              {data[0]?.platformRemitted !== undefined && (
+                <Line
+                  type="monotone"
+                  dataKey="platformRemitted"
+                  stroke={TAX_COLORS.platform}
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  dot={false}
+                  name="Platforms remit"
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <ChartLegend
+          className="mt-2"
+          items={[
+            { label: 'Total tax', color: TAX_COLORS.total },
+            ...(data[0]?.ownerRemitted !== undefined ? [{ label: 'You remit', color: TAX_COLORS.owner, dashed: true }] : []),
+            ...(data[0]?.platformRemitted !== undefined ? [{ label: 'Platforms remit', color: TAX_COLORS.platform, dashed: true }] : []),
+          ]}
+        />
+      </div>
     </ChartWrapper>
   )
 }
