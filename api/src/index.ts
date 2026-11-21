@@ -10,7 +10,7 @@ import { createSupabaseClient } from './services/supabase';
 import { getOverviewData } from './services/overview';
 import { getFinancialBatchData } from './services/financial';
 import { getPropertiesData } from './services/properties';
-import { getOccupancyData, detectBookingGaps } from './services/occupancy';
+import { getOccupancyData } from './services/occupancy';
 import { getGuestsData, getCancelledBookingsData } from './services/guests';
 import { getInquiriesData } from './services/inquiries';
 import { getPacingData } from './services/pacing';
@@ -250,12 +250,11 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 			break;
 
 		case 'occupancy': {
-			const [current, gaps, previous] = await Promise.all([
+			const [current, previous] = await Promise.all([
 				getOccupancyData(supabase, tenantId, from, to, tags, properties),
-				detectBookingGaps(supabase, tenantId, 60),
 				hasComparison ? getOccupancyData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties) : null,
 			]);
-			data = previous ? { current: { ...current, gaps }, previous, view: 'occupancy' } : { ...current, gaps };
+			data = previous ? { current, previous, view: 'occupancy' } : current;
 			break;
 		}
 
