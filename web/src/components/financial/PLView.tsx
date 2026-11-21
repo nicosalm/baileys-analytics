@@ -507,7 +507,7 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
                 Export
               </Button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3 mb-4">
               {(
                 [
                   ['tax', 'Taxes', data.chargeComposition.taxes],

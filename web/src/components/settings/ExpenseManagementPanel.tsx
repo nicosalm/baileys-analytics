@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/contexts/toast'
+import { Badge } from '@/components/ui/badge'
 
 function generateMonthOptions() {
   const options: { value: string; label: string }[] = []
@@ -127,14 +128,12 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
             </div>
           </div>
           {isDirty ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-warning-subtle text-warning-fg">
-              Unsaved
-            </span>
+            <Badge variant="warning">Unsaved</Badge>
           ) : hasTemplate ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-subtle text-success-fg">
-              <CheckCircle className="w-3 h-3 mr-1" />
+            <Badge variant="success">
+              <CheckCircle />
               Active
-            </span>
+            </Badge>
           ) : null}
         </div>
       </div>

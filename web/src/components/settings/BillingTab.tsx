@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { useToast } from '@/contexts/toast'
 import { formatDateDisplay, formatCurrency } from '@baileys/utils'
 import { getTierBySlug } from '@baileys/constants'
+import { Badge } from '@/components/ui/badge'
 
 // Resolve display name and per-month dollar amount for the current plan.
 // Legacy customers (pre-tier launch) are shown as "Early Supporter" with the
@@ -141,18 +142,7 @@ export const BillingTab = () => {
     )
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-success-subtle text-success-fg'
-      case 'past_due':
-        return 'bg-danger-subtle text-danger-fg'
-      case 'canceled':
-        return 'bg-muted text-muted-foreground'
-      default:
-        return 'bg-muted text-muted-foreground'
-    }
-  }
+  const statusVariant = (status: string) => (status === 'active' ? 'success' : status === 'past_due' ? 'danger' : 'neutral')
 
   const { planName, isLegacy, monthlyDollars, totalCharge, isYearly } = resolvePlanDisplay(subscription)
 
@@ -235,23 +225,16 @@ export const BillingTab = () => {
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Current Plan</h3>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-info-subtle text-info-fg">
-                {planName}
-              </span>
+              <Badge variant="info">{planName}</Badge>
               {isLegacy && (
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-900 border border-amber-300/60 dark:bg-amber-500/15 dark:text-amber-200 dark:border-amber-400/30"
-                  title="Thank you for being one of our first subscribers."
-                >
-                  <Sparkles className="w-3 h-3" strokeWidth={2.5} />
-                  Early Supporter
-                </span>
+                <Badge variant="neutral" title="Thank you for being one of our first subscribers.">
+                  <Sparkles />
+                  Early supporter
+                </Badge>
               )}
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subscription.status)}`}
-              >
-                {subscription.status.replace('_', ' ').toUpperCase()}
-              </span>
+              <Badge variant={statusVariant(subscription.status)} className="capitalize">
+                {subscription.status.replace('_', ' ')}
+              </Badge>
             </div>
           </div>
           <div className="text-right">

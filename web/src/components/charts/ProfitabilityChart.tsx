@@ -50,7 +50,7 @@ const ProfitabilityTooltip = ({ active, payload }: Partial<TooltipContentProps<n
         )}
         <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
           <span className="text-muted-foreground">Net Revenue:</span>
-          <span className={`font-semibold ${d.netRevenue >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(d.netRevenue)}</span>
+          <span className={`font-semibold ${d.netRevenue >= 0 ? 'text-foreground' : 'text-danger'}`}>{formatCurrency(d.netRevenue)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Margin:</span>

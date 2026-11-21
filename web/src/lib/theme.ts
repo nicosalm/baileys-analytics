@@ -9,29 +9,6 @@ const CHART_SERIES_VARS = [
   '--chart-series-8',
 ] as const
 
-export const STATUS_STYLES = {
-  confirmed: {
-    bg: 'bg-success-subtle',
-    text: 'text-success-fg',
-  },
-  cancelled: {
-    bg: 'bg-danger-subtle',
-    text: 'text-danger-fg',
-  },
-  canceled: {
-    bg: 'bg-danger-subtle',
-    text: 'text-danger-fg',
-  },
-  pending: {
-    bg: 'bg-warning-subtle',
-    text: 'text-warning-fg',
-  },
-  default: {
-    bg: 'bg-muted',
-    text: 'text-muted-foreground',
-  },
-} as const
-
 // reads a CSS custom property value at render time — safe to call inside components
 export const resolveToken = (varName: string): string => getComputedStyle(document.documentElement).getPropertyValue(varName).trim()
 

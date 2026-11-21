@@ -96,7 +96,7 @@ export const TaxRemittanceWidget = ({ taxData, periodStart, periodEnd }: TaxRemi
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-success-fg">{formatCurrency(totals.platformRemitted)}</p>
+                    <p className="font-semibold text-foreground">{formatCurrency(totals.platformRemitted)}</p>
                     <p className="text-xs text-success-fg">{formatPercentage(platformPercentage)} of total</p>
                   </div>
                 </div>

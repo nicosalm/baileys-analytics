@@ -33,6 +33,8 @@ interface DataTableProps<T> {
   rowClassName?: (item: T, index: number) => string
   showRowNumbers?: boolean
   loading?: boolean
+  // render without the card frame when the table already sits inside a card
+  bare?: boolean
 }
 
 const compare = (a: unknown, b: unknown) => {
@@ -62,6 +64,7 @@ export function DataTable<T extends Record<string, any>>({
   rowClassName,
   showRowNumbers = false,
   loading = false,
+  bare = false,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = React.useState('')
   const [page, setPage] = React.useState(1)
@@ -103,7 +106,7 @@ export function DataTable<T extends Record<string, any>>({
   if (loading && data.length === 0) return <LoadingState message="Loading" />
 
   return (
-    <div className={tableStyles.card}>
+    <div className={bare ? undefined : tableStyles.card}>
       {enableSearch && (
         <div className={tableStyles.toolbar}>
           <div className="relative w-full max-w-xs">

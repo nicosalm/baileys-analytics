@@ -6,6 +6,7 @@ import { formatCompactCurrency, formatCurrency } from '@baileys/utils'
 import type { PacingCurvePoint, PacingMonthSummary } from '@/hooks/use-api'
 import { CHART_INFRA, METRIC_COLORS, resolveToken } from '@/lib/theme'
 import { cn } from '@/lib/utils'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 type CurveMode = 'nights' | 'revenue' | 'adr'
 
@@ -128,23 +129,12 @@ export function PaceCurveChart({
             Last year
           </span>
         </div>
-        <div className="flex items-center gap-0.5 bg-muted p-0.5 rounded-md" role="radiogroup" aria-label="Curve measure">
-          {MODES.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              role="radio"
-              aria-checked={mode === key}
-              onClick={() => setMode(key)}
-              className={cn(
-                'px-2.5 py-1 text-xs font-medium rounded transition-colors cursor-pointer',
-                mode === key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Curve measure"
+          value={mode}
+          onChange={setMode}
+          options={MODES.map(({ key, label }) => ({ value: key, label }))}
+        />
       </div>
 
       <div className="flex-1 min-h-[240px]">

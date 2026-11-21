@@ -1,18 +1,16 @@
-import type React from 'react'
 import { Badge } from '@/components/ui/badge'
-import { STATUS_STYLES } from '@/lib/theme'
 
-interface StatusBadgeProps {
-  status: string
-  size?: 'sm' | 'md'
+const VARIANTS: Record<string, 'success' | 'danger' | 'warning' | 'neutral'> = {
+  confirmed: 'success',
+  active: 'success',
+  cancelled: 'danger',
+  canceled: 'danger',
+  pending: 'warning',
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'sm' }) => {
-  const styles = STATUS_STYLES[status as keyof typeof STATUS_STYLES] || STATUS_STYLES.default
-  const sizeClasses = size === 'sm' ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm'
-
+export function StatusBadge({ status }: { status: string; size?: 'sm' | 'md' }) {
   return (
-    <Badge variant="secondary" className={`${sizeClasses} ${styles.bg} ${styles.text}`}>
+    <Badge variant={VARIANTS[status] ?? 'neutral'} className="capitalize">
       {status}
     </Badge>
   )

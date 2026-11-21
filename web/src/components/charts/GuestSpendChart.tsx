@@ -3,9 +3,9 @@ import { useState, useCallback, useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { Button } from '@/components/ui/button'
 import { getChartColor, getChargeColor, type ChargeKind, resolveToken } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency } from '@baileys/utils'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 interface ChannelCharges {
   taxes: number
@@ -133,19 +133,12 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({ grossRevenue, 
   }, [])
 
   const channelToggle = byChannel && (
-    <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-      {CHANNEL_OPTIONS.map((opt) => (
-        <Button
-          key={opt.key}
-          variant="ghost"
-          size="sm"
-          onClick={() => setChannel(opt.key)}
-          className={`h-7 px-2.5 text-xs ${channel === opt.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-        >
-          {opt.label}
-        </Button>
-      ))}
-    </div>
+    <SegmentedControl
+      label="Booking channel"
+      value={channel}
+      onChange={setChannel}
+      options={CHANNEL_OPTIONS.map((opt) => ({ value: opt.key, label: opt.label }))}
+    />
   )
 
   if (chartData.length === 0) {
@@ -163,7 +156,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({ grossRevenue, 
   }
 
   return (
-    <ChartWrapper title="Guest Spend Breakdown" subtitle="Per guest dollar" height="auto" responsive={false} controls={channelToggle}>
+    <ChartWrapper title="Guest Spend Breakdown" height="auto" responsive={false} controls={channelToggle}>
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

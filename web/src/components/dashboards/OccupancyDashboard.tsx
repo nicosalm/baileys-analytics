@@ -2,7 +2,6 @@ import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { OccupancyListView } from '@/components/OccupancyListView'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
-import { Button } from '@/components/ui/button'
 import { Calendar, Home, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
@@ -19,6 +18,7 @@ import { useModal } from '@/contexts/modal'
 import type { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
 import type { TooltipContentProps } from 'recharts'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 const OccupancyChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
@@ -405,30 +405,15 @@ export const OccupancyDashboard = () => {
               {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
             </h3>
           </div>
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCalendarView('list')}
-              className={
-                calendarView === 'list' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }
-            >
-              <List className="w-4 h-4" />
-              Timeline
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCalendarView('calendar')}
-              className={
-                calendarView === 'calendar' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }
-            >
-              <Calendar className="w-4 h-4" />
-              Calendar
-            </Button>
-          </div>
+          <SegmentedControl
+            label="Booking view"
+            value={calendarView}
+            onChange={setCalendarView}
+            options={[
+              { value: 'list', label: 'Timeline', icon: List },
+              { value: 'calendar', label: 'Calendar', icon: Calendar },
+            ]}
+          />
         </div>
         {calendarView === 'calendar' ? (
           <OccupancyHeatmap dateRange={filters.dateRange} tagIds={filters.selectedTags.map((t) => t.id)} />

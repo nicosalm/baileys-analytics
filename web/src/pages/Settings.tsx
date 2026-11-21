@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 const SeasonManagementPanel = lazy(() =>
   import('@/components/settings/SeasonManagementPanel').then((m) => ({ default: m.SeasonManagementPanel })),
@@ -110,20 +111,13 @@ const PreferencesTab = () => {
         <h3 className="text-lg font-semibold text-foreground mb-4">Appearance</h3>
         <div className="flex justify-between items-center">
           <span className="text-sm font-medium text-foreground">Theme</span>
-          <div className="flex rounded-lg border border-border overflow-hidden">
-            {THEME_OPTIONS.map(({ value, label }) => (
-              <button
-                type="button"
-                key={value}
-                onClick={() => setTheme(value)}
-                className={`px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
-                  theme === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Theme"
+            size="default"
+            value={theme}
+            onChange={setTheme}
+            options={THEME_OPTIONS.map(({ value, label }) => ({ value, label }))}
+          />
         </div>
       </div>
     </div>

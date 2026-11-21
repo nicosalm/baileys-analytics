@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import type { Season, SeasonFormData } from '@/types/season'
+import { Badge } from '@/components/ui/badge'
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -175,9 +176,7 @@ const SeasonRow: React.FC<{
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-medium text-foreground">{season.name}</h4>
-              {season.isActive && (
-                <span className="px-2 py-0.5 bg-success-subtle text-success-fg text-xs font-medium rounded-full">Active</span>
-              )}
+              {season.isActive && <Badge variant="success">Active</Badge>}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               {formatSeasonDate(season.startMonth, season.startDay)} – {formatSeasonDate(season.endMonth, season.endDay)}

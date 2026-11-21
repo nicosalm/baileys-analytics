@@ -40,7 +40,7 @@ const ScatterTooltip = ({ active, payload }: Partial<TooltipContentProps<number,
         <div className="space-y-1 text-xs">
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Revenue:</span>
-            <span className="font-medium text-success">{formatCurrency(data.property.revenue)}</span>
+            <span className="font-medium text-foreground">{formatCurrency(data.property.revenue)}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Bookings:</span>

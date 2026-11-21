@@ -107,7 +107,7 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
         {discounts.map((c, i) => (
           <div key={i} className="flex justify-between text-sm">
             <span className="text-muted-foreground">{c.description || 'Discount'}</span>
-            <span className="font-medium text-success">-{formatCurrency(Math.abs(c.amount))}</span>
+            <span className="font-medium text-foreground">-{formatCurrency(Math.abs(c.amount))}</span>
           </div>
         ))}
         {taxes.map((c, i) => (
@@ -396,7 +396,7 @@ const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: FeeAnalysis; 
           <div className="flex items-start gap-2">
             <Sparkles className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-success-fg">Direct booking opportunity: {formatCurrency(directSavings)} in savings</p>
+              <p className="font-semibold text-foreground">Direct booking opportunity: {formatCurrency(directSavings)} in savings</p>
               <p className="text-sm text-success-fg/80 mt-1">
                 {guestName} paid {formatCurrency(platformFees + ccFees)} in avoidable fees across all stays —
                 {platformFees > 0 && ` ${formatCurrency(platformFees)} in platform fees`}

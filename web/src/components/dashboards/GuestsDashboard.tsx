@@ -20,6 +20,7 @@ import type { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/typ
 import type { TooltipContentProps } from 'recharts'
 import { PieChart, Pie, Cell, Label, Tooltip, ResponsiveContainer } from 'recharts'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 const CancelledGuestsTab = lazy(() => import('./CancelledGuestsTab').then((m) => ({ default: m.CancelledGuestsTab })))
 const InquiriesTab = lazy(() => import('./InquiriesTab').then((m) => ({ default: m.InquiriesTab })))
@@ -50,7 +51,7 @@ const GuestSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<num
           {data.revenue !== undefined && data.revenue > 0 && (
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Revenue:</span>
-              <span className="font-medium text-success">{formatCurrency(data.revenue)}</span>
+              <span className="font-medium text-foreground">{formatCurrency(data.revenue)}</span>
             </div>
           )}
           <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
@@ -212,7 +213,7 @@ export const GuestsDashboard = () => {
       { key: 'all' as const, label: 'All', handler: handleViewAll },
       { key: 'repeat' as const, label: 'Repeat', handler: handleViewRepeat },
       { key: 'new' as const, label: 'New', handler: handleViewNew },
-      { key: 'top' as const, label: 'Top Spenders', handler: handleViewTop },
+      { key: 'top' as const, label: 'Top 20%', handler: handleViewTop },
     ],
     [handleViewAll, handleViewRepeat, handleViewNew, handleViewTop],
   )
@@ -269,7 +270,7 @@ export const GuestsDashboard = () => {
         render: (guest: GuestListItem) => {
           return (
             <div className="min-w-0">
-              <span className="font-medium text-success text-sm whitespace-nowrap">{formatCurrency(guest.periodSpent || 0)}</span>
+              <span className="font-medium text-foreground text-sm whitespace-nowrap">{formatCurrency(guest.periodSpent || 0)}</span>
               <div className="text-xs text-muted-foreground">{formatCurrency(guest.totalSpent)} lifetime</div>
             </div>
           )
@@ -667,14 +668,21 @@ export const GuestsDashboard = () => {
       <RecurringDateSearch />
 
       <div className="bg-card rounded-lg shadow-sm border border-border">
-        <div className="p-4 border-b border-border space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">Guest List ({sortedGuests.length})</h3>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Guest list</h3>
+            <span className="text-sm text-muted-foreground tabular-nums">{sortedGuests.length}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <SegmentedControl
+              label="Guest segment"
+              value={viewMode}
+              onChange={(key) => viewModes.find((m) => m.key === key)?.handler()}
+              options={viewModes.map((m) => ({ value: m.key, label: m.label }))}
+            />
             <Select value={staysFilter} onValueChange={handleStaysFilter}>
-              <SelectTrigger className="w-[130px] h-8 text-sm">
+              <SelectTrigger className="w-[120px] h-8 text-xs" aria-label="Lifetime stays">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -685,35 +693,6 @@ export const GuestsDashboard = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-center gap-2 bg-muted p-1 rounded-lg max-w-full overflow-x-auto scrollbar-hide">
-            {viewModes.map((mode) => (
-              <Button
-                key={mode.key}
-                variant="ghost"
-                size="sm"
-                onClick={mode.handler}
-                className={`text-xs sm:text-sm ${
-                  viewMode === mode.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {mode.label}
-              </Button>
-            ))}
-          </div>
-          {
-            <div className="text-xs text-muted-foreground">
-              {viewMode === 'all' && 'Showing all guests'}
-              {viewMode === 'repeat' && 'Showing returning guests (2+ lifetime stays)'}
-              {viewMode === 'new' && 'Showing first-time guests in this period'}
-              {viewMode === 'top' && 'Showing top 20% by revenue this period'}
-              {staysFilter !== 'any' && (
-                <span>
-                  {viewMode !== 'all' ? ' ' : ''}
-                  with {staysFilter === '1' ? '1 lifetime stay' : `${staysFilter} lifetime stays`}
-                </span>
-              )}
-            </div>
-          }
         </div>
 
         <DataTable
@@ -729,6 +708,7 @@ export const GuestsDashboard = () => {
           enableSearch={true}
           searchKeys={['name', 'email']}
           showRowNumbers={true}
+          bare
           emptyMessage="No guests found for the selected criteria"
         />
       </div>
@@ -884,7 +864,7 @@ const RecurringDateSearch = () => {
                 <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
                   <span>{yearData.guestCount} guests</span>
                   <span>{yearData.bookings.length} bookings</span>
-                  <span className="text-success font-medium">{formatCurrency(yearData.totalRevenue)}</span>
+                  <span className="text-foreground font-medium">{formatCurrency(yearData.totalRevenue)}</span>
                 </div>
               </div>
               {yearData.bookings.length > 0 ? (
@@ -909,7 +889,7 @@ const RecurringDateSearch = () => {
                         <span className="text-muted-foreground text-xs">
                           {formatDateDisplay(b.arrival)} - {formatDateDisplay(b.departure)}
                         </span>
-                        <span className="font-medium text-success">{formatCurrency(b.amount)}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(b.amount)}</span>
                       </div>
                     </div>
                   ))}

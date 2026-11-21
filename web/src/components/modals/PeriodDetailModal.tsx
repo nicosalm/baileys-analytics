@@ -203,7 +203,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-success">{formatCurrency(property.revenue)}</div>
+                    <div className="font-semibold text-foreground">{formatCurrency(property.revenue)}</div>
                   </div>
                 </div>
               ))}

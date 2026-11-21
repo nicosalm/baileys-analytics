@@ -7,6 +7,7 @@ import { useModal } from '@/contexts/modal'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/Pagination'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 interface OccupancyListViewProps {
   properties: { propertyId: string; propertyName: string }[]
@@ -317,66 +318,34 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {/* Group toggle */}
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-pressed={groupBy === 'property'}
-              onClick={() => setGroupBy('property')}
-              className={groupBy === 'property' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-            >
-              By Property
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-pressed={groupBy === 'time'}
-              onClick={() => setGroupBy('time')}
-              className={groupBy === 'time' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-            >
-              By Time
-            </Button>
-          </div>
+          <SegmentedControl
+            label="Group bookings"
+            value={groupBy}
+            onChange={setGroupBy}
+            options={[
+              { value: 'property', label: 'By property' },
+              { value: 'time', label: 'By date' },
+            ]}
+          />
           {/* Look-ahead selector */}
-          <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-            {([30, 60, 90] as LookAhead[]).map((days) => (
-              <Button
-                key={days}
-                variant="ghost"
-                size="sm"
-                aria-pressed={lookAhead === days}
-                onClick={() => setLookAhead(days)}
-                className={lookAhead === days ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-              >
-                {days}d
-              </Button>
-            ))}
-          </div>
+          <SegmentedControl
+            label="Days ahead"
+            value={lookAhead}
+            onChange={setLookAhead}
+            options={([30, 60, 90] as LookAhead[]).map((days) => ({ value: days, label: `${days}d` }))}
+          />
         </div>
         {groupBy === 'property' && (
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-pressed={sortBy === 'name'}
-                onClick={() => setSortBy('name')}
-                className={sortBy === 'name' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-              >
-                Name
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-pressed={sortBy === 'occupancy'}
-                onClick={() => setSortBy('occupancy')}
-                className={
-                  sortBy === 'occupancy' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }
-              >
-                Occupancy
-              </Button>
-            </div>
+            <SegmentedControl
+              label="Sort properties"
+              value={sortBy}
+              onChange={setSortBy}
+              options={[
+                { value: 'name', label: 'Name' },
+                { value: 'occupancy', label: 'Occupancy' },
+              ]}
+            />
             <div className="w-px h-5 bg-border" aria-hidden />
             <Button
               variant="ghost"

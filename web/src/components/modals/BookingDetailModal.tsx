@@ -171,7 +171,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
               )}
               <div className="flex justify-between pt-2 border-t font-semibold">
                 <span>Total Amount</span>
-                <span className="text-success">{formatCurrency(booking?.total_amount ?? 0)}</span>
+                <span className="text-foreground">{formatCurrency(booking?.total_amount ?? 0)}</span>
               </div>
             </div>
           </div>

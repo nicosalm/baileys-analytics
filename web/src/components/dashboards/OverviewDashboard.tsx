@@ -64,6 +64,8 @@ import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/Pagination'
 import { useNavigate, Link } from 'react-router-dom'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { Badge } from '@/components/ui/badge'
 
 interface RecentActivity {
   id: string
@@ -183,7 +185,7 @@ const BookingSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<n
           {data.revenue !== undefined && (
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Revenue:</span>
-              <span className="font-medium text-success">{formatCurrency(data.revenue)}</span>
+              <span className="font-medium text-foreground">{formatCurrency(data.revenue)}</span>
             </div>
           )}
           <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
@@ -219,7 +221,7 @@ const RevenueChartTooltip = ({ active, payload, label }: Partial<TooltipContentP
           <div className="pt-1 mt-1 border-t border-border">
             <div className="flex justify-between gap-4 font-semibold">
               <span>Total:</span>
-              <span className="text-success">{formatCompactCurrency(total)}</span>
+              <span className="text-foreground">{formatCompactCurrency(total)}</span>
             </div>
           </div>
         </div>
@@ -1037,16 +1039,12 @@ export const OverviewDashboard = () => {
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium truncate">{activity.description}</p>
                         {isCancelled && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded flex-shrink-0">
-                            <Ban className="w-2.5 h-2.5" />
+                          <Badge variant="danger">
+                            <Ban />
                             Cancelled
-                          </span>
+                          </Badge>
                         )}
-                        {isInquiry && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-info bg-info/10 px-1.5 py-0.5 rounded flex-shrink-0">
-                            Inquiry
-                          </span>
-                        )}
+                        {isInquiry && <Badge variant="info">Inquiry</Badge>}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-muted-foreground">{formatDateDisplay(activity.timestamp)}</span>
@@ -1147,23 +1145,16 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
           <h3 className="text-lg font-semibold">Arrivals & Departures</h3>
           <span className="text-xs text-muted-foreground">({filtered.length})</span>
         </div>
-        <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-          {[
-            { key: 'today' as const, label: 'Today' },
-            { key: 'week' as const, label: 'This Week' },
-            { key: 'month' as const, label: 'This Month' },
-          ].map((btn) => (
-            <Button
-              key={btn.key}
-              variant="ghost"
-              size="sm"
-              onClick={() => handleFilterChange(btn.key)}
-              className={filter === btn.key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-            >
-              {btn.label}
-            </Button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Arrival window"
+          value={filter}
+          onChange={handleFilterChange}
+          options={[
+            { value: 'today', label: 'Today' },
+            { value: 'week', label: 'This week' },
+            { value: 'month', label: 'This month' },
+          ]}
+        />
       </div>
       <div className="space-y-2">
         {paginated.length > 0 ? (
@@ -1190,7 +1181,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {booking.amount > 0 && <span className="text-sm font-medium text-success">{formatCurrency(booking.amount)}</span>}
+                  {booking.amount > 0 && <span className="text-sm font-medium text-foreground">{formatCurrency(booking.amount)}</span>}
                   {ownerrezUrl && (
                     <a
                       href={ownerrezUrl}

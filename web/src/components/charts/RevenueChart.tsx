@@ -63,7 +63,7 @@ const RevenueChartTooltip = ({ active, payload, label, showProfit, showCompariso
                 <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: METRIC_COLORS.profit }} />
                 <span className="text-muted-foreground">Profit:</span>
               </div>
-              <span className={`font-medium ${data.profit >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(data.profit)}</span>
+              <span className={`font-medium ${data.profit >= 0 ? 'text-foreground' : 'text-danger'}`}>{formatCurrency(data.profit)}</span>
             </div>
             {data.revenue > 0 && (
               <div className="flex justify-between gap-4">

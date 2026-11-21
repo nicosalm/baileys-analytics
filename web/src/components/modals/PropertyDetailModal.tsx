@@ -96,7 +96,7 @@ const PlatformRevenueTooltip = ({ active, payload }: Partial<TooltipContentProps
         <div className="space-y-1 text-xs">
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Revenue:</span>
-            <span className="font-medium text-success">{formatCurrency(data.revenue)}</span>
+            <span className="font-medium text-foreground">{formatCurrency(data.revenue)}</span>
           </div>
           <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
             <span className="text-muted-foreground">Share:</span>
@@ -386,7 +386,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                               </td>
                               <td className="p-4 text-sm">{formatDateDisplay(booking.arrival)}</td>
                               <td className="p-4 text-sm">{formatDateDisplay(booking.departure)}</td>
-                              <td className="p-4 text-sm font-medium text-success">{formatCurrency(booking.totalAmount)}</td>
+                              <td className="p-4 text-sm font-medium text-foreground">{formatCurrency(booking.totalAmount)}</td>
                               <td className="p-4">
                                 <StatusBadge status={booking.status} />
                               </td>
