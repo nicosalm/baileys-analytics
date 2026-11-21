@@ -108,7 +108,7 @@ export const Footer = () => {
 
         <div className="flex flex-col-reverse gap-3 py-4 border-t border-border text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
           <p>
-            &copy; {currentYear} {BRAND.name}. Made in Wisconsin.
+            &copy; {currentYear} {BRAND.name}. Made with 🧀 in Wisconsin.
           </p>
           <div className="flex items-center gap-4">
             {__COMMIT_SHA__ && (
