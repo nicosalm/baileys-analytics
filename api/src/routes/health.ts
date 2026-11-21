@@ -1,5 +1,15 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { createSupabaseClient } from '../services/supabase';
+
+// set at deploy time with `wrangler deploy --var COMMIT_SHA:<sha>`; absent only in tests
+export const commitOf = (env: Env) => env.COMMIT_SHA || 'unknown';
+
+// liveness probe: answers without touching any dependency
+export const ping = (c: Context<{ Bindings: Env }>) => {
+	c.header('Cache-Control', 'no-store');
+	return c.json({ ping: 'pong', commit: commitOf(c.env) });
+};
 
 const health = new Hono<{ Bindings: Env }>();
 
@@ -8,7 +18,6 @@ health.get('/', async (c) => {
 		worker: 'healthy',
 		database: 'unknown',
 		cache: 'unknown',
-		timestamp: new Date().toISOString(),
 	};
 
 	try {
@@ -34,10 +43,18 @@ health.get('/', async (c) => {
 		checks.cache = 'not configured';
 	}
 
-	const { timestamp: _, ...services } = checks;
-	const allHealthy = Object.values(services).every((v) => v === 'healthy');
+	const allHealthy = Object.values(checks).every((v) => v === 'healthy');
 
-	return c.json(checks, allHealthy ? 200 : 503);
+	c.header('Cache-Control', 'no-store');
+	return c.json(
+		{
+			status: allHealthy ? 'ok' : 'degraded',
+			...checks,
+			commit: commitOf(c.env),
+			timestamp: new Date().toISOString(),
+		},
+		allHealthy ? 200 : 503,
+	);
 });
 
 // removed: unauthenticated metrics endpoint leaked aggregate business data

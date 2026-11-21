@@ -27,4 +27,7 @@ interface Env {
 
 	// comma-separated
 	ADMIN_EMAILS?: string;
+
+	// full git SHA of the deployed build, passed with `wrangler deploy --var`
+	COMMIT_SHA?: string;
 }

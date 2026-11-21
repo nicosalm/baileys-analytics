@@ -34,14 +34,15 @@ import { validation } from './routes/validation';
 import { oauth } from './routes/oauth';
 import { webhooks } from './routes/webhooks';
 import { sync } from './routes/sync';
-import { health } from './routes/health';
+import { health, ping } from './routes/health';
 import { scheduled } from './scheduled';
 import { billing } from './routes/billing';
 import { account } from './routes/account';
 import { admin } from './routes/admin';
 import type { AppEnv } from './types';
 
-const app = new Hono<AppEnv>();
+// strict: false lets /api/health/ and /api/health resolve to the same route
+const app = new Hono<AppEnv>({ strict: false });
 
 app.use(
 	'/*',
@@ -80,6 +81,10 @@ app.use('/api/*', async (c, next) => {
 	await next();
 });
 
+// public probes, reachable on the worker and through the site's /api proxy
+app.get('/api', ping);
+app.route('/api/health', health);
+// kept for the uptime monitor and deploy smoke test that already call it
 app.route('/health', health);
 
 app.get('/api/auth/me', authMiddleware, async (c) => {
@@ -411,6 +416,12 @@ app.route('/api/sync', sync);
 
 app.notFound((c) => {
 	return c.json({ error: 'Not Found' }, 404);
+});
+
+// unhandled errors return JSON like every other response; details stay in the logs
+app.onError((err, c) => {
+	console.error(`${c.req.method} ${c.req.path} failed:`, err);
+	return c.json({ error: 'Internal Server Error' }, 500);
 });
 
 export default {

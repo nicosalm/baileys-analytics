@@ -6,7 +6,8 @@ vi.mock('../services/supabase', () => ({
 	}),
 }));
 
-const { health } = await import('./health');
+const { health, ping } = await import('./health');
+const { Hono } = await import('hono');
 
 // mimics KV's documented limits: TTL >= 60s, one write per key per second
 function kv(opts: { rateLimited?: boolean } = {}) {
@@ -45,5 +46,44 @@ describe('GET /health', () => {
 		const res = await health.request('/', {}, { CACHE: broken as unknown as KVNamespace } as Env);
 		expect(res.status).toBe(503);
 		expect(((await res.json()) as any).cache).toBe('unhealthy');
+	});
+});
+
+const SHA = '0123456789abcdef0123456789abcdef01234567';
+
+// mirrors how index.ts mounts the probes
+function app() {
+	const a = new Hono<{ Bindings: Env }>({ strict: false });
+	a.get('/api', ping);
+	a.route('/api/health', health);
+	return a;
+}
+
+describe('GET /api', () => {
+	it('answers pong with the full deployed commit and is never cached', async () => {
+		const res = await app().request('/api', {}, { COMMIT_SHA: SHA } as Env);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe('no-store');
+		expect(await res.json()).toEqual({ ping: 'pong', commit: SHA });
+	});
+
+	it('reports unknown rather than failing when no commit was injected', async () => {
+		const res = await app().request('/api', {}, {} as Env);
+		expect(((await res.json()) as any).commit).toBe('unknown');
+	});
+});
+
+describe('GET /api/health', () => {
+	it('includes the commit and an overall status', async () => {
+		const res = await app().request('/api/health', {}, { CACHE: kv(), COMMIT_SHA: SHA } as Env);
+		const body = (await res.json()) as any;
+		expect(res.status).toBe(200);
+		expect(body.status).toBe('ok');
+		expect(body.commit).toBe(SHA);
+	});
+
+	it('accepts a trailing slash', async () => {
+		const res = await app().request('/api/health/', {}, { CACHE: kv() } as Env);
+		expect(res.status).toBe(200);
 	});
 });
