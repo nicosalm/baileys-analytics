@@ -36,6 +36,10 @@ const verifyAdmin = async () => {
   return result.success && result.data?.isAdmin === true
 }
 
+// shared with the command palette; SWR dedupes the request
+export const useIsAdmin = (enabled: boolean) =>
+  useSWR(enabled ? '/admin/verify' : null, verifyAdmin, { revalidateOnFocus: false, shouldRetryOnError: false }).data === true
+
 export const AccountMenu = () => {
   const { state, logout } = useAuth()
   const { theme, setTheme } = useTheme()
@@ -43,10 +47,7 @@ export const AccountMenu = () => {
 
   const user = state.status === 'authenticated' ? state.user : null
   const isDemo = user?.isDemo === true
-  const { data: isAdmin } = useSWR(user && !isDemo ? '/admin/verify' : null, verifyAdmin, {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  })
+  const isAdmin = useIsAdmin(!!user && !isDemo)
 
   if (!user) return null
 

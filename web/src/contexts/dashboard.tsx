@@ -25,6 +25,9 @@ type DashboardContextValue = {
 
 const DashboardContext = createContext<DashboardContextValue | null>(null)
 
+// for components such as the command palette that also render outside the dashboard
+export const useOptionalDashboard = () => useContext(DashboardContext)
+
 export const useDashboard = () => {
   const context = useContext(DashboardContext)
   if (!context) throw new Error('useDashboard must be used within DashboardProvider')

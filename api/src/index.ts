@@ -35,6 +35,7 @@ import { oauth } from './routes/oauth';
 import { webhooks } from './routes/webhooks';
 import { sync } from './routes/sync';
 import { health, ping } from './routes/health';
+import { search } from './routes/search';
 import { scheduled } from './scheduled';
 import { billing } from './routes/billing';
 import { account } from './routes/account';
@@ -413,6 +414,7 @@ app.route('/api/validation', validation);
 app.route('/api/oauth', oauth);
 app.route('/api/webhooks', webhooks);
 app.route('/api/sync', sync);
+app.route('/api/search', search);
 
 app.notFound((c) => {
 	return c.json({ error: 'Not Found' }, 404);

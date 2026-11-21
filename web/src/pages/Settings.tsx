@@ -94,6 +94,12 @@ export const Settings = () => {
     setSearchParams(newParams, { replace: true })
   }, [])
 
+  // follow ?tab= when it changes after load, such as from the command palette
+  const tabParam = searchParams.get('tab')
+  useEffect(() => {
+    if (tabParam && tabConfig.some(({ id }) => id === tabParam)) setActiveTab(tabParam as SettingsTab)
+  }, [tabParam])
+
   const handleTabChange = useCallback(
     (tab: SettingsTab) => {
       setActiveTab(tab)

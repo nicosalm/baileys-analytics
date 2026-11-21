@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/auth'
 import { BRAND } from '@/constants'
 import { LogoCube } from '@/components/LogoCube'
 import { AccountMenu } from '@/components/AccountMenu'
+import { CommandPalette } from '@/components/CommandPalette'
 import { cn } from '@/lib/utils'
 
 interface AppHeaderProps {
@@ -39,6 +40,7 @@ export const AppHeader = ({ children, nav, menu, title, subtitle }: AppHeaderPro
         </Link>
         {nav && <div className="hidden h-full min-w-0 flex-1 items-stretch md:flex md:ml-4 lg:ml-8">{nav}</div>}
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <CommandPalette />
           {children}
           <AccountMenu />
           {menu}

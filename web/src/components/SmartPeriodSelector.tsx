@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Calendar, ChevronDown, Check, GitCompare } from 'lucide-react'
-import { formatDateISO, parseDate, format, startOfMonth, startOfYear, subDays, subYears, getYear } from '@baileys/utils'
+import { formatDateISO, parseDate, format, getYear } from '@baileys/utils'
 import { cn } from '@/lib/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import { useSeasons, useEarliestBookingDate } from '@/hooks/use-api'
@@ -10,7 +10,7 @@ import { Modal } from './Modal'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { menuStyles } from '@/components/ui/menu-styles'
 import { Button } from '@/components/ui/button'
-import type { Season } from '@/types/season'
+import { buildPeriodOptions, type PeriodOption } from '@/utils/period-options'
 import { calculateComparisonRange, getComparisonLabel, type ComparisonType } from '@/utils/comparison'
 import { getCurrentSeasonDates, getPreviousSeasonDates, isCurrentlyInSeason, hasSeasonStartedThisYear } from '@/utils/season-dates'
 
@@ -24,13 +24,6 @@ interface SmartPeriodSelectorProps {
   onChange: (range: DateRange, comparison?: DateRange, label?: string) => void
   comparisonRange?: DateRange
   className?: string
-}
-
-type PeriodOption = {
-  id: string
-  label: string
-  getRange: (seasons?: Season[]) => DateRange
-  requiresSeasons?: boolean
 }
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -107,119 +100,12 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({ value,
     }
   }, [value, activeSeasons, comparisonType, comparisonYearOffset])
 
-  const uiMode = useMemo(() => {
-    if (activeSeasons.length === 0) return 'year-round'
-    return 'single-season'
-  }, [activeSeasons])
+  const periodOptions = useMemo(() => buildPeriodOptions(activeSeasons, earliestDate), [activeSeasons, earliestDate])
 
-  const periodOptions: PeriodOption[] = useMemo(() => {
-    const today = new Date()
-    const options: PeriodOption[] = []
-
-    if (uiMode === 'single-season') {
-      const season = activeSeasons[0]
-      const inSeason = isCurrentlyInSeason(season)
-      const seasonStarted = hasSeasonStartedThisYear(season)
-
-      if (!seasonStarted) {
-        options.push(
-          {
-            id: 'last-season',
-            label: `${season.name} ${getYear(today) - 1}`,
-            getRange: () => getPreviousSeasonDates(season),
-          },
-          {
-            id: 'upcoming-season',
-            label: `${season.name} ${getYear(today)} (upcoming)`,
-            getRange: () => {
-              const seasonStart = new Date(getYear(today), season.startMonth - 1, season.startDay)
-              const seasonEnd = new Date(getYear(today), season.endMonth - 1, season.endDay)
-              return {
-                from: formatDateISO(seasonStart),
-                to: formatDateISO(seasonEnd),
-              }
-            },
-          },
-        )
-      } else {
-        options.push(
-          {
-            id: 'current-season',
-            label: inSeason ? 'Season to date' : `${season.name} ${getYear(today)} (ended)`,
-            getRange: () => getCurrentSeasonDates(season),
-          },
-          {
-            id: 'last-season',
-            label: `${season.name} ${getYear(today) - 1}`,
-            getRange: () => getPreviousSeasonDates(season),
-          },
-        )
-      }
-    } else {
-      options.push(
-        {
-          id: 'ytd',
-          label: 'Year to date',
-          getRange: () => ({
-            from: formatDateISO(new Date(getYear(today), 0, 1)), // Jan 1st of current year
-            to: formatDateISO(today),
-          }),
-        },
-        {
-          id: 'last-year',
-          label: 'Last year',
-          getRange: () => {
-            const lastYear = subYears(today, 1)
-            return {
-              from: formatDateISO(startOfYear(lastYear)),
-              to: formatDateISO(new Date(getYear(lastYear), 11, 31)),
-            }
-          },
-        },
-      )
-    }
-
-    options.push(
-      {
-        id: 'last-30',
-        label: 'Last 30 days',
-        getRange: () => ({
-          from: formatDateISO(subDays(today, 30)),
-          to: formatDateISO(today),
-        }),
-      },
-      {
-        id: 'last-7',
-        label: 'Last 7 days',
-        getRange: () => ({
-          from: formatDateISO(subDays(today, 7)),
-          to: formatDateISO(today),
-        }),
-      },
-      {
-        id: 'month-to-date',
-        label: 'Month to date',
-        getRange: () => ({
-          from: formatDateISO(startOfMonth(today)),
-          to: formatDateISO(today),
-        }),
-      },
-      ...(earliestDate
-        ? [
-            {
-              id: 'all-time',
-              label: 'All time',
-              getRange: () => ({
-                from: earliestDate,
-                to: formatDateISO(today),
-              }),
-            },
-          ]
-        : []),
-    )
-
-    return options
-  }, [uiMode, activeSeasons, earliestDate])
+  // a period chosen elsewhere, such as the command palette, clears the comparison; follow it here
+  useEffect(() => {
+    if (!comparisonRange && comparisonType !== 'none') setComparisonType('none')
+  }, [comparisonRange, comparisonType])
 
   const handlePeriodSelect = (option: PeriodOption) => {
     const range = option.getRange(activeSeasons)

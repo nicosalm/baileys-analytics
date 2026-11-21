@@ -29,6 +29,9 @@ interface ModalContextType {
 
 const ModalContext = createContext<ModalContextType | null>(null)
 
+// for components rendered on pages that may not mount a ModalProvider
+export const useOptionalModal = () => useContext(ModalContext)
+
 export const useModal = () => {
   const context = useContext(ModalContext)
   if (!context) throw new Error('useModal must be used within ModalProvider')
