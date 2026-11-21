@@ -8,7 +8,7 @@ import { RevenueFlowSankey, RevenueFlowLegend } from '@/components/charts/Revenu
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { useGoalProgress } from '@/hooks/use-api'
 import { getMonthlyGoalValue } from '@/utils/goals'
-import { DollarSign, Wallet, Receipt, Landmark, Calendar, ArrowUp, ArrowDown, GitBranch, Download } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { authenticatedFetch } from '@/lib/api'
 import { getChargeColor, type ChargeKind } from '@/lib/theme'
@@ -308,7 +308,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
-          icon={DollarSign}
           label="Total Revenue"
           value={revenue.gross}
           format="currency"
@@ -334,7 +333,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
           staggerIndex={0}
         />
         <MetricCard
-          icon={Receipt}
           label={revenue.operatingExpenses.total > 0 ? 'Host Fees & Expenses' : 'Host Commission'}
           value={revenue.totalCosts}
           format="currency"
@@ -346,7 +344,7 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : revenue.operatingExpenses.total > 0 ? (
-              `Host fees: ${formatCurrency(revenue.hostFees)} | Expenses: ${formatCurrency(revenue.operatingExpenses.total)}`
+              `Host fees: ${formatCurrency(revenue.hostFees)} · Expenses: ${formatCurrency(revenue.operatingExpenses.total)}`
             ) : (
               `Guest platform fee (est.): ${formatCompactCurrency(revenue.guestFees)} (not deducted)`
             )
@@ -362,7 +360,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
           staggerIndex={1}
         />
         <MetricCard
-          icon={Landmark}
           label="Taxes"
           value={revenue.taxes}
           format="currency"
@@ -388,7 +385,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
           staggerIndex={2}
         />
         <MetricCard
-          icon={Wallet}
           label={revenue.operatingExpenses.total > 0 ? 'Operating Profit' : 'Net Revenue'}
           value={revenue.operatingProfit}
           format="currency"
@@ -433,7 +429,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
       {highlights.monthCount > 1 && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
           <MetricCard
-            icon={Calendar}
             label="Monthly Average"
             value={highlights.avgMonthlyRevenue}
             format="currency"
@@ -442,7 +437,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
             staggerIndex={4}
           />
           <MetricCard
-            icon={ArrowUp}
             label="Best Month"
             value={highlights.bestMonthValue}
             format="currency"
@@ -451,7 +445,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
             staggerIndex={5}
           />
           <MetricCard
-            icon={ArrowDown}
             label="Lowest Month"
             value={highlights.lowestMonthValue}
             format="currency"
@@ -464,8 +457,9 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
 
       {/* Revenue Flow Sankey */}
       {platforms.length > 0 && (
-        <ChartWrapper title="Revenue Flow" icon={GitBranch} height={Math.max(360, platforms.length * 50 + 100)} responsive={false}>
-          <div className="h-full flex flex-col">
+        <ChartWrapper title="Revenue Flow" height={Math.max(360, platforms.length * 50 + 100)} responsive={false}>
+          {/* a flow diagram can't compress below this width; the wrapper scrolls instead */}
+          <div className="h-full flex flex-col min-w-[640px]">
             <div className="flex-1">
               <RevenueFlowSankey
                 data={{

@@ -61,7 +61,7 @@ export const AccountMenu = () => {
         <button
           type="button"
           aria-label="Account menu"
-          className="group flex items-center gap-1.5 rounded-full p-0.5 pr-2.5 text-muted-foreground transition-colors cursor-pointer outline-none hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="group flex h-9 items-center gap-1.5 rounded-md pr-2 text-muted-foreground transition-colors cursor-pointer outline-none hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           {isDemo ? (
             <span className="inline-flex h-9 items-center gap-1.5 pl-3 text-sm font-medium">

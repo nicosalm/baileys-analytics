@@ -23,7 +23,6 @@ function formatFullValue(val: number | string, format: MetricCardProps['format']
 }
 
 export interface MetricCardProps {
-  icon: React.ComponentType<{ className?: string }>
   label: string
   value: number | string
   format?: 'currency' | 'percent' | 'number' | 'compact' | 'custom'
@@ -50,7 +49,6 @@ export interface MetricCardProps {
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
-  icon: Icon,
   label,
   value,
   format = 'custom',
@@ -70,21 +68,18 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   const sizeClasses = {
     sm: {
       padding: 'p-4',
-      icon: 'w-4 h-4',
       value: 'text-xl',
       label: 'text-xs',
       sub: 'text-xs',
     },
     md: {
       padding: 'p-6',
-      icon: 'w-5 h-5',
       value: 'text-3xl',
       label: 'text-sm',
       sub: 'text-sm',
     },
     lg: {
       padding: 'p-8',
-      icon: 'w-6 h-6',
       value: 'text-4xl',
       label: 'text-base',
       sub: 'text-sm',
@@ -156,10 +151,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     >
       <div className={cn('flex items-center justify-between gap-2 text-muted-foreground', currentSize.label)}>
         <span className="flex items-center gap-1.5 font-medium">
-          <Icon
-            className={cn('shrink-0', tone === 'negative' ? 'text-danger' : undefined, size === 'sm' ? 'w-3.5 h-3.5' : currentSize.icon)}
-            aria-hidden
-          />
           {label}
           {tooltip && (
             <TooltipProvider>

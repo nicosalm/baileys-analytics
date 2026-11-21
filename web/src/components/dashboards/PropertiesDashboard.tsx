@@ -2,7 +2,6 @@ import { useMemo, useCallback } from 'react'
 import { formatCurrency, formatPercentage, sumBy } from '@baileys/utils'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import type { PropertyMetrics } from '@/types/api'
-import { DollarSign, Percent, TrendingUp, ScatterChart, Wallet, BarChart3 } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -157,7 +156,6 @@ export const PropertiesDashboard = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
-          icon={DollarSign}
           label="Total Revenue"
           value={totalRevenue}
           format="currency"
@@ -169,7 +167,7 @@ export const PropertiesDashboard = () => {
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : (
-              `${totalBookings} bookings | All properties`
+              `${totalBookings} bookings · All properties`
             )
           }
           trend={
@@ -184,7 +182,6 @@ export const PropertiesDashboard = () => {
         />
         {profitability.length > 0 ? (
           <MetricCard
-            icon={Wallet}
             label="Operating Profit"
             value={totalNetRevenue}
             format="currency"
@@ -206,7 +203,6 @@ export const PropertiesDashboard = () => {
           />
         ) : (
           <MetricCard
-            icon={TrendingUp}
             label="Avg RevPAN"
             value={avgRevPAN}
             format="currency"
@@ -233,7 +229,6 @@ export const PropertiesDashboard = () => {
           />
         )}
         <MetricCard
-          icon={Percent}
           label="Occupancy Rate"
           value={avgOccupancy * 100}
           format="percent"
@@ -259,7 +254,6 @@ export const PropertiesDashboard = () => {
           staggerIndex={2}
         />
         <MetricCard
-          icon={TrendingUp}
           label={profitability.length > 0 ? 'Avg RevPAN' : 'Total Bookings'}
           value={profitability.length > 0 ? avgRevPAN : totalBookings}
           format={profitability.length > 0 ? 'currency' : 'number'}
@@ -314,7 +308,6 @@ export const PropertiesDashboard = () => {
           className="h-full"
           title="Net Profitability"
           subtitle="Revenue after fees, taxes, and expenses"
-          icon={Wallet}
           height={profitabilityCappedHeight}
           responsive={false}
           noData={profitability.length === 0}
@@ -335,7 +328,6 @@ export const PropertiesDashboard = () => {
           className="h-full"
           title="Performance Matrix"
           subtitle="Revenue vs. occupancy by property"
-          icon={ScatterChart}
           height={400}
           responsive={false}
           noData={validProperties.length === 0}
@@ -346,7 +338,7 @@ export const PropertiesDashboard = () => {
       </div>
 
       {platformMix.length > 0 && allPlatforms.length > 0 && (
-        <ChartWrapper title="Revenue by platform" icon={BarChart3} height="auto" responsive={false}>
+        <ChartWrapper title="Revenue by platform" height="auto" responsive={false}>
           <PlatformMixBars data={platformMix} onPropertyClick={handleChartPropertyClick} />
         </ChartWrapper>
       )}

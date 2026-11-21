@@ -5,7 +5,7 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { DataTable } from '@/components/tables/DataTable'
 import { TaxTrendChart } from '@/components/charts/TaxTrendChart'
 import { TaxRemittanceWidget } from '@/components/tax/TaxRemittanceWidget'
-import { FileText, DollarSign, CheckCircle, Home, Building, Download } from 'lucide-react'
+import { Building, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
@@ -160,7 +160,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
-          icon={FileText}
           label="Total Tax Due"
           value={taxData.totalTax}
           format="currency"
@@ -187,7 +186,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           onClick={scrollToTrend}
         />
         <MetricCard
-          icon={DollarSign}
           label="You Remit"
           value={taxData.ownerRemitted}
           format="currency"
@@ -211,7 +209,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           }
         />
         <MetricCard
-          icon={CheckCircle}
           label="Platform Remits"
           value={taxData.platformRemitted}
           format="currency"
@@ -219,7 +216,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           tooltip={METRIC_DEFINITIONS.taxPlatformRemitted}
         />
         <MetricCard
-          icon={Home}
           label="Properties"
           value={taxData.propertyCount}
           format="number"

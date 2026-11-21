@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Activity, ChevronDown } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { formatCurrency, formatPercentage } from '@baileys/utils'
 import type { PacingBucket, PacingMonthSummary } from '@/hooks/use-api'
 import { usePacing } from '@/hooks/use-api'
@@ -129,9 +129,8 @@ export const PacingRunway = () => {
         className="w-full flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-left cursor-pointer disabled:cursor-default"
       >
         <span className="flex items-center gap-2 mr-auto">
-          <Activity className="w-4 h-4 text-muted-foreground" aria-hidden />
           <span className="font-semibold">Booking pace</span>
-          {data?.window && <span className="text-sm text-muted-foreground">{data.window.label} vs. last year</span>}
+          {data?.window && <span className="hidden sm:inline text-sm text-muted-foreground">{data.window.label} vs. last year</span>}
         </span>
         {empty && <span className="text-sm text-muted-foreground">No bookings yet</span>}
         {ready && summary && !empty && (

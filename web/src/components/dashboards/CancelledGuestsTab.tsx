@@ -7,7 +7,6 @@ import { DataTable } from '@/components/tables/DataTable'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { getPlatformColor } from '@/lib/theme'
-import { Ban } from 'lucide-react'
 
 interface CancelledBooking {
   id: string
@@ -75,7 +74,6 @@ export const CancelledGuestsTab = () => {
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Ban className="w-5 h-5 text-muted-foreground" />
             <h3 className="text-lg font-semibold">Cancellations ({data.bookings?.length || 0})</h3>
           </div>
           <span className="text-xs text-muted-foreground">All-time · sorted by cancellation date</span>

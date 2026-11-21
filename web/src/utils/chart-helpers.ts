@@ -3,7 +3,8 @@ import { formatCompactCurrency, formatPercentage } from './formatters'
 import { differenceInDays, parseISO } from 'date-fns'
 
 export const chartFormatters = {
-  currency: (value: number) => formatCompactCurrency(value),
+  // axis ticks fall on round numbers, so $75.0k reads as $75k
+  currency: (value: number) => formatCompactCurrency(value).replace(/\.0(?=[kM]$)/, ''),
   percentage: (value: number) => formatPercentage(value, 1),
   number: (value: number) => value.toLocaleString(),
   compact: (value: number) => {

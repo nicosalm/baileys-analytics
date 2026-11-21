@@ -6,7 +6,7 @@ import { DataTable } from '@/components/tables/DataTable'
 import { useDashboard } from '@/contexts/dashboard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getPlatformColor } from '@/lib/theme'
-import { ExternalLink, MessageSquare } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 interface InquiryItem {
@@ -70,7 +70,6 @@ export const InquiriesTab = () => {
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="p-4 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-muted-foreground" />
             <h3 className="text-lg font-semibold">Inquiries ({inquiries.length})</h3>
           </div>
           <span className="text-xs text-muted-foreground">

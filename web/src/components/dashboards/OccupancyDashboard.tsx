@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { OccupancyListView } from '@/components/OccupancyListView'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
-import { Calendar, Home, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
+import { Calendar, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
@@ -279,7 +279,6 @@ export const OccupancyDashboard = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
-          icon={Percent}
           label="Occupancy Rate"
           value={currentData.overall * 100}
           format="percent"
@@ -310,7 +309,6 @@ export const OccupancyDashboard = () => {
           staggerIndex={0}
         />
         <MetricCard
-          icon={Calendar}
           label="Booked Nights"
           value={currentData.bookedNights}
           format="number"
@@ -341,7 +339,6 @@ export const OccupancyDashboard = () => {
           staggerIndex={1}
         />
         <MetricCard
-          icon={Home}
           label="Sellable Nights"
           value={currentData.availableNights}
           format="number"
@@ -374,7 +371,6 @@ export const OccupancyDashboard = () => {
           staggerIndex={2}
         />
         <MetricCard
-          icon={TrendingDown}
           label={`Softest ${periodWord}`}
           value={lowestPeriod ? `${lowestPeriod.availableNights - lowestPeriod.bookedNights} open` : '—'}
           format="custom"
@@ -395,7 +391,6 @@ export const OccupancyDashboard = () => {
       <section className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <h3 className="text-lg font-semibold flex items-center">
-            <Calendar className="w-5 h-5 mr-2 text-muted-foreground" />
             {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
           </h3>
           <SegmentedControl
@@ -428,7 +423,6 @@ export const OccupancyDashboard = () => {
         <div className="lg:col-span-2">
           <ChartWrapper
             title={getChartTitle()}
-            icon={TrendingUp}
             height={360}
             responsive={false}
             noData={chartData.length === 0}
@@ -518,10 +512,7 @@ export const OccupancyDashboard = () => {
         </div>
 
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border flex flex-col min-h-0">
-          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
-            <Home className="w-5 h-5 text-muted-foreground" />
-            Property Occupancy
-          </h3>
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">Property Occupancy</h3>
           {sortedProperties.length > 0 ? (
             <ul className="-mx-2 flex-1 overflow-y-auto lg:max-h-[372px]">
               {sortedProperties.map((property: OccupancyByProperty) => {

@@ -55,7 +55,7 @@ export function ProductTour() {
               tabIndex={i === active ? 0 : -1}
               onClick={() => setActive(i)}
               className={cn(
-                'relative px-4 py-2 text-sm font-medium rounded-full whitespace-nowrap transition-colors cursor-pointer',
+                'relative px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer',
                 i === active ? 'text-white bg-white/10' : 'text-white/50 hover:text-white/80',
               )}
             >

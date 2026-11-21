@@ -2,7 +2,7 @@ import { useMemo, useCallback, useState } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency, formatDateDisplay } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
-import { TrendingUp, Calendar, DollarSign, Home, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -192,7 +192,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
             {/* Key Metrics */}
             <div className="grid md:grid-cols-4 gap-4">
               <MetricCard
-                icon={DollarSign}
                 label="Total Revenue"
                 value={data.metrics.totalRevenue}
                 format="currency"
@@ -202,7 +201,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                 tooltip={METRIC_DEFINITIONS.revenue}
               />
               <MetricCard
-                icon={Calendar}
                 label="Total Bookings"
                 value={data.metrics.totalBookings}
                 format="number"
@@ -213,13 +211,12 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                 tooltip={METRIC_DEFINITIONS.bookings}
               />
               <MetricCard
-                icon={Home}
                 label="Occupancy Rate"
                 value={data.metrics.occupancyRate * 100}
                 format="percent"
                 subValue={
                   data.metrics.blockedNights
-                    ? `${data.metrics.totalNights || 0} of ${data.metrics.sellableDays ?? data.metrics.totalDays ?? 0} sellable | ${data.metrics.blockedNights} owner-blocked`
+                    ? `${data.metrics.totalNights || 0} of ${data.metrics.sellableDays ?? data.metrics.totalDays ?? 0} sellable · ${data.metrics.blockedNights} owner-blocked`
                     : `${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`
                 }
                 size="sm"
@@ -228,7 +225,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                 tooltip={METRIC_DEFINITIONS.occupancy}
               />
               <MetricCard
-                icon={TrendingUp}
                 label="Average Nightly Rate"
                 value={data.metrics.avgNightlyRate}
                 format="currency"

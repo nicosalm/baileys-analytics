@@ -35,7 +35,7 @@ export const CollapsibleTags: React.FC<CollapsibleTagsProps> = ({ tags, maxVisib
             <button
               type="button"
               onClick={(e) => e.stopPropagation()}
-              className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-full bg-muted text-muted-foreground hover:bg-muted/80 transition-colors border border-border cursor-pointer`}
+              className={`inline-flex items-center ${buttonSizeClasses} font-medium rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors border border-border cursor-pointer`}
             >
               +{hiddenCount} more
             </button>

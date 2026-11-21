@@ -16,24 +16,18 @@ interface TagProps {
 export const Tag: React.FC<TagProps> = ({ tag, size = 'sm', onClick, onRemove, selected = false }) => {
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'
 
-  const color = getTagColor(tag)
-  const styles = {
-    backgroundColor: `${color}20`,
-    color: color,
-    borderColor: color,
-  }
-
   const Component = onClick ? 'button' : 'span'
 
   return (
     <Component
       type={onClick ? 'button' : undefined}
-      className={`inline-flex items-center rounded-full border whitespace-nowrap max-w-[150px] ${sizeClasses} ${
-        onClick ? 'cursor-pointer hover:opacity-80' : ''
-      } ${selected ? 'ring-2 ring-offset-1 ring-info' : ''}`}
-      style={styles}
+      className={`inline-flex items-center gap-1.5 rounded-md bg-muted text-foreground whitespace-nowrap max-w-[150px] ${sizeClasses} ${
+        onClick ? 'cursor-pointer hover:bg-muted/70' : ''
+      } ${selected ? 'ring-2 ring-primary/40' : ''}`}
       onClick={onClick}
     >
+      {/* the dot carries the tag's identity color; the text stays in the text color */}
+      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: getTagColor(tag) }} aria-hidden />
       <span className="truncate">{tag.name}</span>
       {onRemove && (
         <button

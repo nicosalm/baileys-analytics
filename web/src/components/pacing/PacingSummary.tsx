@@ -14,6 +14,18 @@ export function PacingSummary({ tagIds, propertyIds, onOpen }: { tagIds?: string
   const now = sumBuckets(months, 'current')
   const then = sumBuckets(months, 'priorAtThisPoint')
 
+  // nothing booked this year or last year at this point, so there is nothing to compare or open
+  if (now.occupancy === 0 && then.occupancy === 0) {
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 bg-card px-5 py-4 rounded-lg border border-border shadow-sm">
+        <span className="text-sm font-semibold">Booking pace</span>
+        <span className="hidden sm:inline text-xs text-muted-foreground">{data?.window.label} vs. last year</span>
+        <span className="mr-auto" />
+        <span className="text-sm text-muted-foreground">No bookings yet</span>
+      </div>
+    )
+  }
+
   return (
     <button
       type="button"

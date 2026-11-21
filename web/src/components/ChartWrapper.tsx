@@ -1,6 +1,6 @@
 import type React from 'react'
 import { cn } from '@/lib/utils'
-import { Loader2, AlertCircle, BarChart3, Info } from 'lucide-react'
+import { Loader2, AlertCircle, Info } from 'lucide-react'
 import { ResponsiveContainer } from 'recharts'
 import { ChartErrorBoundary } from './ChartErrorBoundary'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
@@ -15,7 +15,6 @@ export interface ChartWrapperProps {
   noDataMessage?: string
   height?: number | string
   className?: string
-  icon?: React.ComponentType<{ className?: string }>
   actions?: React.ReactNode
   controls?: React.ReactNode
   tooltip?: string
@@ -34,7 +33,6 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   noDataMessage = 'No data available',
   height = 300,
   className,
-  icon: Icon = BarChart3,
   actions,
   controls,
   tooltip,
@@ -56,7 +54,6 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
       <div className={baseCard}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
             <h3 className="text-lg font-semibold">{title}</h3>
           </div>
         </div>
@@ -72,7 +69,6 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
       <div className={baseCard}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
             <h3 className="text-lg font-semibold">{title}</h3>
           </div>
         </div>
@@ -90,7 +86,6 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
       <div className={baseCard}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
             <h3 className="text-lg font-semibold">{title}</h3>
           </div>
           {actions}
@@ -108,7 +103,6 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
     <div className={baseCard} title={tooltip}>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
-          <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
           <div>
             <h3 className="text-lg font-semibold">{title}</h3>
             {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}

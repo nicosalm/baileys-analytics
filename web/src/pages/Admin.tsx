@@ -46,6 +46,7 @@ import {
 import { AppHeader } from '@/components/AppHeader'
 import { Footer } from '@/components/Footer'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label as FormLabel } from '@/components/ui/label'
 import {
@@ -143,10 +144,9 @@ function useResolvedTokens<T extends string>(varNames: readonly T[]): Record<T, 
 }
 
 const StatusBadge = ({ status, exempt }: { status?: string; exempt: boolean }) => {
-  if (exempt) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-subtle text-purple-fg">Exempt</span>
-  if (status === 'active')
-    return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-success-subtle text-success-fg">Active</span>
-  return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">Inactive</span>
+  if (exempt) return <Badge variant="neutral">Exempt</Badge>
+  if (status === 'active') return <Badge variant="success">Active</Badge>
+  return <Badge variant="neutral">Inactive</Badge>
 }
 
 const TimeAgo = ({ date }: { date: string }) => {

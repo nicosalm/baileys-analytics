@@ -34,7 +34,7 @@ export function PricingTable() {
       <div className="rounded-2xl border border-white/10 bg-[var(--landing-card)] overflow-hidden">
         <div className="flex items-center justify-between gap-4 px-5 py-4 border-b border-white/10">
           <span className="text-sm text-white/55">Billing</span>
-          <div className="flex rounded-full bg-white/5 p-0.5" role="radiogroup" aria-label="Billing cycle">
+          <div className="flex rounded-lg bg-white/5 p-0.5" role="radiogroup" aria-label="Billing cycle">
             {CYCLES.map(({ key, label }) => (
               <button
                 key={key}
@@ -43,7 +43,7 @@ export function PricingTable() {
                 aria-checked={cycle === key}
                 onClick={() => setCycle(key)}
                 className={cn(
-                  'px-3.5 py-1 text-sm rounded-full transition-colors cursor-pointer',
+                  'px-3.5 py-1 text-sm rounded-md transition-colors cursor-pointer',
                   cycle === key ? 'bg-white/15 text-white' : 'text-white/50 hover:text-white/80',
                 )}
               >
@@ -86,7 +86,7 @@ export function PricingTable() {
         <div className="p-5 border-t border-white/10">
           <Link
             to="/signup"
-            className="block h-11 leading-[2.75rem] text-center rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+            className="block h-11 leading-[2.75rem] text-center rounded-md bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
           >
             Get started
           </Link>

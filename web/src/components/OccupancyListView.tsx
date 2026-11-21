@@ -352,7 +352,15 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
             label="Days ahead"
             value={lookAhead}
             onChange={setLookAhead}
-            options={([30, 60, 90] as LookAhead[]).map((days) => ({ value: days, label: `Next ${days} days` }))}
+            options={([30, 60, 90] as LookAhead[]).map((days) => ({
+              value: days,
+              label: (
+                <>
+                  <span className="hidden sm:inline">Next </span>
+                  {days} days
+                </>
+              ),
+            }))}
           />
         </div>
       </div>

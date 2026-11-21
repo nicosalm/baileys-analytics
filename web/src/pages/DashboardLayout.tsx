@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/auth'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { Home, Calendar, Users, DollarSign, LayoutDashboard, ArrowLeft, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/sheet'
 
@@ -26,12 +26,12 @@ import { AppHeader } from '@/components/AppHeader'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useToast } from '@/contexts/toast'
 
-const tabConfig: Array<{ id: DashboardTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'financial', label: 'Financials', icon: DollarSign },
-  { id: 'properties', label: 'Properties', icon: Home },
-  { id: 'occupancy', label: 'Occupancy', icon: Calendar },
-  { id: 'guests', label: 'Guests', icon: Users },
+const tabConfig: Array<{ id: DashboardTab; label: string }> = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'financial', label: 'Financials' },
+  { id: 'properties', label: 'Properties' },
+  { id: 'occupancy', label: 'Occupancy' },
+  { id: 'guests', label: 'Guests' },
 ]
 
 const DashboardContent = () => {
@@ -178,11 +178,11 @@ export const DashboardLayout = () => {
         if (result.success) {
           window.location.href = result.data.authUrl
         } else {
-          addToast('error', 'Failed to connect to OwnerRez. Please try again.')
+          addToast('error', 'Failed to start the OwnerRez connection')
           setConnectLoading(false)
         }
       } catch {
-        addToast('error', 'Failed to connect to OwnerRez. Please try again.')
+        addToast('error', 'Failed to start the OwnerRez connection')
         setConnectLoading(false)
       }
     }
@@ -191,55 +191,22 @@ export const DashboardLayout = () => {
       <div className="min-h-screen bg-background flex flex-col">
         <AppHeader subtitle={null} />
 
-        {/* main content */}
-        <div className="flex-1 flex items-center justify-center py-12 px-4">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-8">
-              <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-6">
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Back to home
-              </Link>
-              <h2 className="text-2xl font-bold text-foreground mb-2">Connect Your OwnerRez Account</h2>
-              <p className="text-muted-foreground">Link your account to start syncing your property data.</p>
-            </div>
-
-            <div className="bg-card rounded-2xl border-2 border-primary p-8">
-              <img src="/logos/ownerrez-app-icon.png" alt="OwnerRez" className="w-16 h-16 rounded-xl mx-auto mb-6" />
-
-              <div className="space-y-3 mb-8">
-                <div className="flex items-center text-sm text-foreground">
-                  <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="w-2 h-2 bg-success rounded-full" />
-                  </span>
-                  Sync 4 years of booking history
-                </div>
-                <div className="flex items-center text-sm text-foreground">
-                  <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="w-2 h-2 bg-success rounded-full" />
-                  </span>
-                  Real-time property and guest updates
-                </div>
-                <div className="flex items-center text-sm text-foreground">
-                  <span className="w-5 h-5 bg-success-subtle rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                    <span className="w-2 h-2 bg-success rounded-full" />
-                  </span>
-                  Secure OAuth connection
-                </div>
-              </div>
-
-              <Button
-                onClick={handleConnect}
-                loading={connectLoading}
-                loadingText="Connecting..."
-                className="w-full py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
-              >
-                Connect OwnerRez
-              </Button>
-
-              <p className="text-center text-xs text-muted-foreground mt-4">We never see your OwnerRez password</p>
-            </div>
+        <main className="flex-1 flex items-center justify-center px-4 py-12">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8">
+            <picture>
+              <source srcSet="/logos/ownerrez-wide.avif" type="image/avif" />
+              <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-7 w-auto -ml-1 brightness-0 dark:invert" />
+            </picture>
+            <h2 className="mt-5 text-xl font-semibold text-foreground">Connect OwnerRez</h2>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              Baileys imports four years of properties, bookings and guests, then stays current through webhooks. You sign in on OwnerRez,
+              so Baileys never sees your password.
+            </p>
+            <Button onClick={handleConnect} loading={connectLoading} loadingText="Connecting..." className="mt-6 w-full">
+              Connect OwnerRez
+            </Button>
           </div>
-        </div>
+        </main>
 
         <Footer />
       </div>
@@ -274,7 +241,7 @@ export const DashboardLayout = () => {
                 <div className="px-5 py-3">
                   <p className="text-xs font-medium text-muted-foreground mb-1.5 px-2">Dashboards</p>
                   <nav className="flex flex-col gap-0.5" aria-label="Dashboard tabs">
-                    {tabConfig.map(({ id, label, icon: Icon }) => (
+                    {tabConfig.map(({ id, label }) => (
                       <button
                         type="button"
                         key={id}
@@ -284,7 +251,6 @@ export const DashboardLayout = () => {
                           activeTab === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                         )}
                       >
-                        <Icon className="w-4 h-4" />
                         {label}
                       </button>
                     ))}

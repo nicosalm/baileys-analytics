@@ -5,7 +5,7 @@ import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { Footer } from '@/components/Footer'
-import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft, BarChart3, Info } from 'lucide-react'
+import { ArrowLeft, BarChart3, Info } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { resolveToken } from '@/lib/theme'
 import {
@@ -392,7 +392,6 @@ export const Branding = () => {
           </button>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <MetricCard
-              icon={DollarSign}
               label="Revenue"
               value={darkPreview ? 48250 : 32100}
               format="currency"
@@ -400,15 +399,14 @@ export const Branding = () => {
               trend={{ value: darkPreview ? 12.3 : -4.2, period: 'vs prev' }}
             />
             <MetricCard
-              icon={TrendingUp}
               label="Occupancy"
               value={darkPreview ? 78.5 : 62.1}
               format="percent"
               staggerIndex={1}
               trend={{ value: darkPreview ? 5.1 : 8.7, period: 'vs prev' }}
             />
-            <MetricCard icon={Calendar} label="Bookings" value={darkPreview ? 47 : 31} format="number" staggerIndex={2} />
-            <MetricCard icon={Users} label="Guests" value={darkPreview ? 126 : 84} format="number" staggerIndex={3} />
+            <MetricCard label="Bookings" value={darkPreview ? 47 : 31} format="number" staggerIndex={2} />
+            <MetricCard label="Guests" value={darkPreview ? 126 : 84} format="number" staggerIndex={3} />
           </div>
         </Section>
 
@@ -622,13 +620,13 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Chart Wrapper States</h3>
               <div className="grid md:grid-cols-3 gap-4">
-                <ChartWrapper title="Loading State" icon={BarChart3} loading height={160}>
+                <ChartWrapper title="Loading State" loading height={160}>
                   <span />
                 </ChartWrapper>
-                <ChartWrapper title="Error State" icon={BarChart3} error="Connection timeout" height={160}>
+                <ChartWrapper title="Error State" error="Connection timeout" height={160}>
                   <span />
                 </ChartWrapper>
-                <ChartWrapper title="Empty State" icon={BarChart3} noData noDataMessage="No bookings in period" height={160}>
+                <ChartWrapper title="Empty State" noData noDataMessage="No bookings in period" height={160}>
                   <span />
                 </ChartWrapper>
               </div>
@@ -706,13 +704,13 @@ export const Branding = () => {
               <div className="flex flex-wrap gap-3 items-center">
                 <button
                   type="button"
-                  className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-sm"
+                  className="px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity text-sm"
                 >
                   Primary CTA
                 </button>
                 <button
                   type="button"
-                  className="px-6 py-3 border border-border text-foreground rounded-full font-medium hover:bg-muted transition-colors text-sm"
+                  className="px-6 py-3 border border-border text-foreground rounded-md font-medium hover:bg-muted transition-colors text-sm"
                 >
                   Outline
                 </button>

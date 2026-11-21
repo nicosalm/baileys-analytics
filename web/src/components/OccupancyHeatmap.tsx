@@ -92,7 +92,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
     if (rate < 0.5) return 'bg-occ-fair border border-occ-fair-border hover:bg-occ-good'
     if (rate < 0.75) return 'bg-occ-good border border-occ-good-border hover:bg-occ-great'
     if (rate < 0.9) return 'bg-occ-great border border-occ-great-border hover:bg-occ-excellent'
-    return 'bg-occ-excellent border border-occ-excellent-border hover:bg-success/40'
+    return 'bg-occ-excellent border border-occ-excellent-border hover:brightness-110'
   }
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

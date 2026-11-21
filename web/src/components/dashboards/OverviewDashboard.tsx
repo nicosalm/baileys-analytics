@@ -14,23 +14,17 @@ import {
 } from '@baileys/utils'
 import {
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Users,
   Calendar,
   Clock,
-  BarChart3,
   Percent,
-  Layers,
-  Target,
   Settings,
   AlertCircle,
   ExternalLink,
-  Wallet,
   LogIn,
   LogOut,
   BedDouble,
-  History,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
@@ -653,7 +647,6 @@ export const OverviewDashboard = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 cursor-pointer gap-3 md:gap-4">
         <HeadlineMetric
-          icon={DollarSign}
           label="Total Revenue"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
@@ -666,7 +659,7 @@ export const OverviewDashboard = () => {
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : metrics.revenue.operatingExpenses > 0 ? (
-              `Profit: ${formatCompactCurrency(metrics.revenue.operatingProfit)} | Host fees + Expenses: ${formatCompactCurrency(metrics.revenue.platformFees + metrics.revenue.operatingExpenses)}`
+              `Profit: ${formatCompactCurrency(metrics.revenue.operatingProfit)} · Host fees + Expenses: ${formatCompactCurrency(metrics.revenue.platformFees + metrics.revenue.operatingExpenses)}`
             ) : (
               `After host fees: ${formatCompactCurrency(metrics.revenue.net)}`
             )
@@ -682,7 +675,6 @@ export const OverviewDashboard = () => {
           onClick={() => handleMetricCardClick('financial')}
         />
         <HeadlineMetric
-          icon={Calendar}
           label="Total Bookings"
           value={metrics.bookings.current}
           format="number"
@@ -691,11 +683,11 @@ export const OverviewDashboard = () => {
           subValue={
             comparisonMode !== 'none' && metrics.bookings.previous !== undefined ? (
               <>
-                vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming
+                vs {comparisonLabel}: {metrics.bookings.previous} · {actualUpcoming} upcoming
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : (
-              `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
+              `${actualUpcoming} coming up · ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
             )
           }
           trend={
@@ -709,7 +701,6 @@ export const OverviewDashboard = () => {
           onClick={() => handleMetricCardClick('properties')}
         />
         <HeadlineMetric
-          icon={Percent}
           label="Occupancy Rate"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
@@ -719,12 +710,12 @@ export const OverviewDashboard = () => {
           subValue={
             comparisonMode !== 'none' && metrics.occupancy.previous !== undefined ? (
               <>
-                vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties
-                {metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}
+                vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} · {metrics.properties.total} properties
+                {metrics.occupancy.blockedNights ? ` · ${metrics.occupancy.blockedNights} owner-blocked` : ''}
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : (
-              `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average${metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}`
+              `${metrics.properties.total} properties · ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average${metrics.occupancy.blockedNights ? ` · ${metrics.occupancy.blockedNights} owner-blocked` : ''}`
             )
           }
           trend={
@@ -738,7 +729,6 @@ export const OverviewDashboard = () => {
           onClick={() => handleMetricCardClick('occupancy')}
         />
         <HeadlineMetric
-          icon={Users}
           label="Total Guests"
           value={metrics.guests.total}
           format="number"
@@ -747,11 +737,11 @@ export const OverviewDashboard = () => {
           subValue={
             comparisonMode !== 'none' && metrics.guests.previous !== undefined ? (
               <>
-                vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new
+                vs {comparisonLabel}: {metrics.guests.previous} · {metrics.guests.newThisMonth} new
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : (
-              `${metrics.guests.newThisMonth} ${metrics.guests.newThisMonth === 1 ? 'first-time guest' : 'first-time guests'} | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
+              `${metrics.guests.newThisMonth} ${metrics.guests.newThisMonth === 1 ? 'first-time guest' : 'first-time guests'} · ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
             )
           }
           trend={
@@ -769,7 +759,6 @@ export const OverviewDashboard = () => {
       <div className={`grid grid-cols-2 ${metrics.revenue.operatingExpenses > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4'} gap-3 md:gap-4`}>
         {metrics.revenue.operatingExpenses > 0 && (
           <MetricCard
-            icon={Wallet}
             label="Operating Profit"
             value={metrics.revenue.operatingProfit}
             format="currency"
@@ -796,7 +785,6 @@ export const OverviewDashboard = () => {
           />
         )}
         <MetricCard
-          icon={DollarSign}
           label="Average Booking Value"
           value={Number(metrics.revenue.avgBookingValue) || 0}
           format="currency"
@@ -805,7 +793,6 @@ export const OverviewDashboard = () => {
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 5 : 4}
         />
         <MetricCard
-          icon={Calendar}
           label="Average Stay Length"
           value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
           format="custom"
@@ -814,7 +801,6 @@ export const OverviewDashboard = () => {
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 6 : 5}
         />
         <MetricCard
-          icon={TrendingUp}
           label="Repeat Guests"
           value={Number(metrics.guests.repeatRate || 0) * 100}
           format="percent"
@@ -823,7 +809,6 @@ export const OverviewDashboard = () => {
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 7 : 6}
         />
         <MetricCard
-          icon={TrendingDown}
           label="Cancellation Rate"
           value={Number(metrics.bookings.cancellationRate || 0)}
           tooltip={METRIC_DEFINITIONS.cancellationRate}
@@ -838,7 +823,6 @@ export const OverviewDashboard = () => {
       <div className="grid lg:grid-cols-2 gap-6">
         <ChartWrapper
           title="Revenue Composition by Property"
-          icon={Layers}
           height={340}
           responsive={false}
           noData={revenueChartData.length === 0}
@@ -887,13 +871,7 @@ export const OverviewDashboard = () => {
           </div>
         </ChartWrapper>
 
-        <ChartWrapper
-          title="Booking Sources"
-          icon={BarChart3}
-          height={340}
-          noData={charts.bookingsBySource.length === 0}
-          responsive={false}
-        >
+        <ChartWrapper title="Booking Sources" height={340} noData={charts.bookingsBySource.length === 0} responsive={false}>
           <div style={{ height: 300 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -956,7 +934,6 @@ export const OverviewDashboard = () => {
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Target className="w-5 h-5 text-muted-foreground" />
               <h3 className="text-lg font-semibold">Goals</h3>
             </div>
             {enabledGoals.length > 0 && (
@@ -1004,7 +981,6 @@ export const OverviewDashboard = () => {
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <History className="w-5 h-5 text-muted-foreground" />
               <h3 className="text-lg font-semibold">Recent activity</h3>
             </div>
             <span className="text-xs text-muted-foreground">
@@ -1095,10 +1071,11 @@ export const OverviewDashboard = () => {
 
 const UPCOMING_PAGE_SIZE = 8
 
-const UPCOMING_TYPE_STYLES: Record<UpcomingBooking['type'], { bg: string; icon: LucideIcon; iconClass: string; label: string }> = {
-  'check-in': { bg: 'bg-success-subtle', icon: LogIn, iconClass: 'text-success', label: 'Check-in' },
-  'in-house': { bg: 'bg-info-subtle', icon: BedDouble, iconClass: 'text-info', label: 'In-house through' },
-  'check-out': { bg: 'bg-orange-subtle', icon: LogOut, iconClass: 'text-orange-fg', label: 'Check-out' },
+// the icon shape and label tell the three states apart, so they share one neutral treatment
+const UPCOMING_TYPE_STYLES: Record<UpcomingBooking['type'], { icon: LucideIcon; label: string }> = {
+  'check-in': { icon: LogIn, label: 'Check-in' },
+  'in-house': { icon: BedDouble, label: 'In-house through' },
+  'check-out': { icon: LogOut, label: 'Check-out' },
 }
 
 const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
@@ -1131,9 +1108,8 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
     <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-muted-foreground" />
           <h3 className="text-lg font-semibold">Arrivals & Departures</h3>
-          <span className="text-xs text-muted-foreground">({filtered.length})</span>
+          <span className="text-sm text-muted-foreground tabular-nums">{filtered.length}</span>
         </div>
         <SegmentedControl
           label="Arrival window"
@@ -1160,8 +1136,8 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
                 onClick={() => openModal({ type: 'booking', bookingId: booking.id, guestName: booking.guestName })}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${style.bg}`}>
-                    <Icon className={`w-4 h-4 ${style.iconClass}`} />
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-muted">
+                    <Icon className="w-4 h-4 text-muted-foreground" aria-hidden />
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{booking.guestName}</div>
@@ -1171,14 +1147,17 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {booking.amount > 0 && <span className="text-sm font-medium text-foreground">{formatCurrency(booking.amount)}</span>}
+                  {booking.amount > 0 && (
+                    <span className="text-sm font-medium tabular-nums text-foreground">{formatCurrency(booking.amount)}</span>
+                  )}
                   {ownerrezUrl && (
                     <a
                       href={ownerrezUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-muted-foreground/70 hover:text-info transition-colors"
+                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                       title="Open in OwnerRez"
+                      aria-label="Open in OwnerRez"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
@@ -1190,7 +1169,6 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
           })
         ) : (
           <div className="text-center py-6 text-muted-foreground">
-            <Calendar className="w-10 h-10 mx-auto mb-2 opacity-50" />
             <p className="text-sm">
               {filter === 'today'
                 ? 'No arrivals or departures today'

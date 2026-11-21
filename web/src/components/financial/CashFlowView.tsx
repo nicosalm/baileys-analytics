@@ -4,7 +4,6 @@ import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { CheckCircle, Clock, Calendar, TrendingUp } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
 import { CHART_INFRA, METRIC_COLORS, resolveToken, BAR_SPEC } from '@/lib/theme'
@@ -99,7 +98,6 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPer
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
-          icon={CheckCircle}
           label="Collected"
           value={data.collected}
           format="currency"
@@ -107,16 +105,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPer
           subValue={`${data.collectionRate.toFixed(1)}% of period revenue`}
           tooltip={METRIC_DEFINITIONS.collected}
         />
+        <MetricCard label="Pending" value={data.pending} format="currency" staggerIndex={1} tooltip={METRIC_DEFINITIONS.pending} />
         <MetricCard
-          icon={Clock}
-          label="Pending"
-          value={data.pending}
-          format="currency"
-          staggerIndex={1}
-          tooltip={METRIC_DEFINITIONS.pending}
-        />
-        <MetricCard
-          icon={Calendar}
           label="Next 30 Days"
           value={data.upcoming.next30Days}
           format="currency"
@@ -124,7 +114,6 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPer
           tooltip={METRIC_DEFINITIONS.pipeline30}
         />
         <MetricCard
-          icon={TrendingUp}
           label="Next 90 Days"
           value={data.upcoming.next90Days}
           format="currency"

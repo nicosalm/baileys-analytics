@@ -3,7 +3,10 @@ import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage, parseISO } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
-import { Users, UserCheck, Calendar, DollarSign, BarChart3, Search, X, Loader2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label as FormLabel } from '@/components/ui/label'
+import { cn } from '@/lib/utils'
+import { Loader2, ChevronDown } from 'lucide-react'
 import { api } from '@/lib/api'
 import { DataTable } from '@/components/tables/DataTable'
 import { MetricCard } from '@/components/MetricCard'
@@ -444,7 +447,6 @@ export const GuestsDashboard = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
-          icon={Users}
           label="Total Guests"
           value={data.metrics.totalGuests}
           format="number"
@@ -473,7 +475,6 @@ export const GuestsDashboard = () => {
           staggerIndex={0}
         />
         <MetricCard
-          icon={UserCheck}
           label="Repeat Rate"
           value={data.metrics.repeatRate * 100}
           format="percent"
@@ -481,7 +482,7 @@ export const GuestsDashboard = () => {
           subValue={
             comparisonMode !== 'none' && previousData?.metrics ? (
               <>
-                vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} | {data.metrics.repeatGuests} returning
+                vs {comparisonLabel}: {formatPercentage(previousData.metrics.repeatRate * 100, 1)} · {data.metrics.repeatGuests} returning
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : (
@@ -504,7 +505,6 @@ export const GuestsDashboard = () => {
           staggerIndex={1}
         />
         <MetricCard
-          icon={Calendar}
           label="Average Stay"
           value={`${data.metrics.avgStayLength.toFixed(1)} nights`}
           format="custom"
@@ -533,7 +533,6 @@ export const GuestsDashboard = () => {
           staggerIndex={2}
         />
         <MetricCard
-          icon={DollarSign}
           label="Average Guest Value"
           value={data.metrics.avgSpend}
           format="currency"
@@ -559,7 +558,7 @@ export const GuestsDashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <ChartWrapper title="Guest Sources" icon={BarChart3} height={320} noData={sourceChartData.length === 0} responsive={false}>
+        <ChartWrapper title="Guest Sources" height={320} noData={sourceChartData.length === 0} responsive={false}>
           <div style={{ height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -618,7 +617,6 @@ export const GuestsDashboard = () => {
 
         <ChartWrapper
           title="Guest Tags"
-          icon={BarChart3}
           height={320}
           noData={!tagChartData || tagChartData.length === 0}
           noDataMessage="No tag data available"
@@ -641,21 +639,17 @@ export const GuestsDashboard = () => {
                   title={isActive ? `Remove "${tag.name}" filter` : `Filter by "${tag.name}"`}
                 >
                   <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-foreground">{tag.name}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">{tag.value} guests</span>
-                        <span className="text-xs text-muted-foreground">({overallPercent}%)</span>
-                      </div>
+                    <div className="flex items-center justify-between gap-3 mb-1.5">
+                      <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+                        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: getTagColor(tag) }} aria-hidden />
+                        <span className="truncate">{tag.name}</span>
+                      </span>
+                      <span className="shrink-0 text-sm tabular-nums">
+                        {tag.value} guests<span className="ml-2 text-xs text-muted-foreground">{overallPercent}%</span>
+                      </span>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div
-                        className="h-2 rounded-full transition-all"
-                        style={{
-                          width: `${percentage}%`,
-                          backgroundColor: getTagColor(tag),
-                        }}
-                      />
+                    <div className="w-full bg-muted rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${percentage}%` }} />
                     </div>
                   </div>
                 </button>
@@ -670,7 +664,6 @@ export const GuestsDashboard = () => {
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-muted-foreground" />
             <h3 className="text-lg font-semibold">Guest list</h3>
             <span className="text-sm text-muted-foreground tabular-nums">{sortedGuests.length}</span>
           </div>
@@ -769,138 +762,130 @@ const RecurringDateSearch = () => {
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-  if (!isOpen) {
-    return (
-      <Button variant="outline" size="sm" onClick={() => setIsOpen(true)} className="flex items-center gap-2">
-        <Search className="w-4 h-4" />
-        Search Across Years
-      </Button>
-    )
-  }
+  const dateField = (id: string, month: string, setMonth: (v: string) => void, day: string, setDay: (v: string) => void) => (
+    <div className="flex gap-1.5">
+      <Select value={month} onValueChange={setMonth}>
+        <SelectTrigger id={id} className="h-8 w-20 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {months.map((m, i) => (
+            <SelectItem key={m} value={String(i + 1)}>
+              {m}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Input
+        type="number"
+        min="1"
+        max="31"
+        value={day}
+        onChange={(e) => setDay(e.target.value)}
+        aria-label="Day"
+        className="h-8 w-16 text-sm tabular-nums"
+      />
+    </div>
+  )
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Search className="w-5 h-5 text-primary" />
-          <h3 className="text-lg font-semibold">Search Across Years</h3>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setIsOpen(false)
-            setResults(null)
-          }}
-        >
-          <X className="w-4 h-4" />
-        </Button>
-      </div>
-      <p className="text-sm text-muted-foreground mb-4">
-        Find guests who stayed during the same date window across multiple years (e.g., 4th of July guests for past 4 years)
-      </p>
-      <div className="flex flex-wrap items-end gap-3 mb-4">
-        <div>
-          <label className="text-xs text-muted-foreground block mb-1">From</label>
-          <div className="flex gap-1">
-            <select value={startMonth} onChange={(e) => setStartMonth(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
-              {months.map((m, i) => (
-                <option key={i} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min="1"
-              max="31"
-              value={startDay}
-              onChange={(e) => setStartDay(e.target.value)}
-              className="border rounded px-2 py-1.5 text-sm w-16"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground block mb-1">To</label>
-          <div className="flex gap-1">
-            <select value={endMonth} onChange={(e) => setEndMonth(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
-              {months.map((m, i) => (
-                <option key={i} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              min="1"
-              max="31"
-              value={endDay}
-              onChange={(e) => setEndDay(e.target.value)}
-              className="border rounded px-2 py-1.5 text-sm w-16"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground block mb-1">Years back</label>
-          <select value={yearsBack} onChange={(e) => setYearsBack(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button onClick={handleSearch} disabled={loading} size="sm">
-          {loading ? 'Searching...' : 'Search'}
-        </Button>
-      </div>
+    <section className="bg-card rounded-lg shadow-sm border border-border">
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((v) => !v)
+          if (isOpen) setResults(null)
+        }}
+        aria-expanded={isOpen}
+        className="w-full flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-left cursor-pointer"
+      >
+        <span className="flex items-center gap-2 mr-auto">
+          <span className="font-semibold">Repeat stays</span>
+          <span className="hidden sm:inline text-sm text-muted-foreground">Guests who stayed in the same dates across years</span>
+        </span>
+        <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !isOpen && '-rotate-90')} aria-hidden />
+      </button>
 
-      {results && (
-        <div className="space-y-4">
-          {results.map((yearData: RecurringYearData) => (
-            <div key={yearData.year} className="border rounded-lg p-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2 mb-2">
-                <h4 className="font-semibold text-foreground">{yearData.year}</h4>
-                <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
-                  <span>{yearData.guestCount} guests</span>
-                  <span>{yearData.bookings.length} bookings</span>
-                  <span className="text-foreground font-medium">{formatCurrency(yearData.totalRevenue)}</span>
-                </div>
-              </div>
-              {yearData.bookings.length > 0 ? (
-                <div className="space-y-1.5">
-                  {yearData.bookings.map((b: RecurringBooking) => (
-                    <div
-                      key={b.id}
-                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm py-1.5 border-b last:border-0 border-border gap-0.5 sm:gap-3"
-                    >
-                      <div className="min-w-0">
+      {isOpen && (
+        <div className="border-t border-border px-5 py-5 space-y-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <FormLabel htmlFor="repeat-from" className="mb-1.5 text-xs text-muted-foreground">
+                From
+              </FormLabel>
+              {dateField('repeat-from', startMonth, setStartMonth, startDay, setStartDay)}
+            </div>
+            <div>
+              <FormLabel htmlFor="repeat-to" className="mb-1.5 text-xs text-muted-foreground">
+                To
+              </FormLabel>
+              {dateField('repeat-to', endMonth, setEndMonth, endDay, setEndDay)}
+            </div>
+            <div>
+              <FormLabel htmlFor="repeat-years" className="mb-1.5 text-xs text-muted-foreground">
+                Years back
+              </FormLabel>
+              <Select value={yearsBack} onValueChange={setYearsBack}>
+                <SelectTrigger id="repeat-years" className="h-8 w-20 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleSearch} loading={loading} loadingText="Searching..." size="sm">
+              Search
+            </Button>
+          </div>
+
+          {results && (
+            <div className="space-y-3">
+              {results.map((yearData: RecurringYearData) => (
+                <div key={yearData.year} className="rounded-lg border border-border">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border px-4 py-2.5">
+                    <h4 className="font-semibold text-foreground tabular-nums">{yearData.year}</h4>
+                    <span className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
+                      <span>{yearData.guestCount} guests</span>
+                      <span>{yearData.bookings.length} bookings</span>
+                      <span className="text-sm font-medium text-foreground">{formatCurrency(yearData.totalRevenue)}</span>
+                    </span>
+                  </div>
+                  {yearData.bookings.length > 0 ? (
+                    <div className="divide-y divide-border/60">
+                      {yearData.bookings.map((b: RecurringBooking) => (
                         <button
                           type="button"
+                          key={b.id}
                           onClick={() => openModal({ type: 'booking', bookingId: b.id, guestName: b.guestName })}
-                          className="font-medium text-foreground hover:text-primary hover:underline transition-colors truncate max-w-full"
+                          className="flex w-full flex-col gap-0.5 px-4 py-2 text-left text-sm cursor-pointer transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
                         >
-                          {b.guestName}
+                          <span className="min-w-0 truncate">
+                            <span className="font-medium text-foreground">{b.guestName}</span>
+                            <span className="text-muted-foreground"> at {b.propertyName}</span>
+                          </span>
+                          <span className="flex shrink-0 items-center gap-3">
+                            <span className="text-xs text-muted-foreground">
+                              {formatDateDisplay(b.arrival)} – {formatDateDisplay(b.departure)}
+                            </span>
+                            <span className="font-medium tabular-nums text-foreground">{formatCurrency(b.amount)}</span>
+                          </span>
                         </button>
-                        <span className="text-muted-foreground/60 mx-1 sm:mx-2">at</span>
-                        <span className="text-muted-foreground truncate">{b.propertyName}</span>
-                      </div>
-                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                        <span className="text-muted-foreground text-xs">
-                          {formatDateDisplay(b.arrival)} - {formatDateDisplay(b.departure)}
-                        </span>
-                        <span className="font-medium text-foreground">{formatCurrency(b.amount)}</span>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">No bookings in these dates</p>
+                  )}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground/70">No bookings in this period</p>
-              )}
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
-    </div>
+    </section>
   )
 }

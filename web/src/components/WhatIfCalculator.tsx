@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { parseISO } from 'date-fns'
-import { ChevronDown, Calculator, ArrowRight } from 'lucide-react'
+import { ChevronDown, ArrowRight } from 'lucide-react'
 import { formatCurrency, formatPercentage, safeDivide } from '@baileys/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import type { OccupancyByProperty } from '@/types/api'
@@ -149,9 +149,8 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
         className="w-full flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-left cursor-pointer"
       >
         <span className="flex items-center gap-2 mr-auto">
-          <Calculator className="w-4 h-4 text-muted-foreground" aria-hidden />
           <span className="font-semibold">Rate scenario</span>
-          <span className="text-sm text-muted-foreground">RevPAN if open nights book at a set rate</span>
+          <span className="hidden sm:inline text-sm text-muted-foreground">RevPAN if open nights book at a set rate</span>
         </span>
         <span className="flex items-baseline gap-2">
           <span className="text-xs text-muted-foreground">{nightsLabel}</span>

@@ -100,7 +100,7 @@ export const Landing = () => {
                     </button>
                     <Link
                       to="/dashboard/overview"
-                      className="whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm"
+                      className="whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity font-medium text-sm"
                     >
                       Dashboard
                     </Link>
@@ -115,7 +115,7 @@ export const Landing = () => {
                     </Link>
                     <Link
                       to="/signup"
-                      className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity"
+                      className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
                     >
                       Get started
                     </Link>
@@ -183,7 +183,7 @@ export const Landing = () => {
                           <Link
                             to="/signup"
                             onClick={() => setMobileMenuOpen(false)}
-                            className="mx-4 mt-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm text-center"
+                            className="mx-4 mt-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity font-medium text-sm text-center"
                           >
                             Get started
                           </Link>
@@ -231,7 +231,7 @@ export const Landing = () => {
             >
               <Link
                 to="/signup"
-                className="whitespace-nowrap px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center"
+                className="whitespace-nowrap px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity flex items-center"
               >
                 Get started
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -240,7 +240,7 @@ export const Landing = () => {
                 type="button"
                 onClick={handleTryDemo}
                 disabled={demoLoading}
-                className="whitespace-nowrap px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50 cursor-pointer"
+                className="whitespace-nowrap px-6 py-3 border border-white/20 text-white/80 rounded-md font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50 cursor-pointer"
               >
                 {demoLoading ? 'Opening demo' : 'Try the demo'}
               </button>
@@ -312,7 +312,7 @@ export const Landing = () => {
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link
                 to="/signup"
-                className="whitespace-nowrap inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity"
+                className="whitespace-nowrap inline-flex items-center px-6 py-3 bg-primary text-primary-foreground rounded-md font-medium hover:opacity-90 transition-opacity"
               >
                 Get started
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -321,7 +321,7 @@ export const Landing = () => {
                 type="button"
                 onClick={handleTryDemo}
                 disabled={demoLoading}
-                className="whitespace-nowrap px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all disabled:opacity-50 cursor-pointer"
+                className="whitespace-nowrap px-6 py-3 border border-white/20 text-white/80 rounded-md font-medium hover:bg-white/5 hover:border-white/30 transition-all disabled:opacity-50 cursor-pointer"
               >
                 {demoLoading ? 'Opening demo' : 'Try the demo'}
               </button>

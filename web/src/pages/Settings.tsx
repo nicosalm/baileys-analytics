@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState, useEffect, lazy, Suspense, type ComponentType, useCallback } from 'react'
+import { useState, useEffect, lazy, Suspense, useCallback } from 'react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
-import { Calendar, CreditCard, Link2, Lock, MessageSquare, ArrowLeft, Eye, EyeOff, Receipt, Target, Layers } from 'lucide-react'
+import { MessageSquare, ArrowLeft, Eye, EyeOff } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 import { AppHeader } from '@/components/AppHeader'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -36,41 +36,34 @@ const PropertyGroupManagementPanel = lazy(() =>
 
 type SettingsTab = 'account' | 'goals' | 'integrations' | 'billing' | 'seasons' | 'expenses' | 'property-groups'
 
-const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
+const tabConfig: { id: SettingsTab; label: string }[] = [
   {
     id: 'account',
     label: 'Account',
-    icon: Lock,
   },
   {
     id: 'goals',
     label: 'Goals',
-    icon: Target,
   },
   {
     id: 'expenses',
     label: 'Expenses',
-    icon: Receipt,
   },
   {
     id: 'property-groups',
     label: 'Property Groups',
-    icon: Layers,
   },
   {
     id: 'seasons',
     label: 'Seasons',
-    icon: Calendar,
   },
   {
     id: 'integrations',
     label: 'Integrations',
-    icon: Link2,
   },
   {
     id: 'billing',
     label: 'Billing',
-    icon: CreditCard,
   },
 ]
 
@@ -217,7 +210,7 @@ export const Settings = () => {
         {/* mobile tab bar */}
         <div className="md:hidden mb-6">
           <nav className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
-            {tabConfig.map(({ id, label, icon: Icon }) => (
+            {tabConfig.map(({ id, label }) => (
               <button
                 type="button"
                 key={id}
@@ -227,7 +220,6 @@ export const Settings = () => {
                   activeTab === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                <Icon className="w-4 h-4" />
                 {label}
               </button>
             ))}
@@ -238,7 +230,7 @@ export const Settings = () => {
           {/* desktop sidebar */}
           <div className="hidden md:block w-64 flex-shrink-0">
             <nav className="space-y-1 bg-card/50 backdrop-blur-sm rounded-lg p-2 border border-border">
-              {tabConfig.map(({ id, label, icon: Icon }) => (
+              {tabConfig.map(({ id, label }) => (
                 <button
                   type="button"
                   key={id}
@@ -248,7 +240,6 @@ export const Settings = () => {
                     activeTab === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
                   {label}
                 </button>
               ))}
