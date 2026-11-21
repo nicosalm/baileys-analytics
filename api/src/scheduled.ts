@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { createSupabaseClient } from './services/supabase';
 import { applyPendingTierUpgrades } from './services/tier-reconciliation';
 import { purgePendingDeletions } from './services/account-deletion';
+import { purgeStaleDemoUsers } from './services/demo-users';
 
 // Cloudflare Workers cron entrypoint. Wired in wrangler.toml under [triggers].
 // Currently runs every 6 hours and applies pending tier upgrades to Stripe
@@ -12,6 +13,12 @@ export async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionC
 	ctx.waitUntil(runPendingTierUpgrades(env, event.cron));
 	// finishes account deletions whose inline purge ran out of time or hit a lock
 	ctx.waitUntil(purgePendingDeletions(createSupabaseClient(env), 60_000));
+	ctx.waitUntil(runDemoUserCleanup(env, event.cron));
+}
+
+async function runDemoUserCleanup(env: Env, cronExpression: string): Promise<void> {
+	const deleted = await purgeStaleDemoUsers(createSupabaseClient(env), 60_000);
+	if (deleted > 0) console.log(`[cron ${cronExpression}] purgeStaleDemoUsers deleted=${deleted}`);
 }
 
 async function runPendingTierUpgrades(env: Env, cronExpression: string): Promise<void> {

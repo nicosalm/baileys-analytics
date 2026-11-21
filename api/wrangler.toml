@@ -36,4 +36,4 @@ id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
 FRONTEND_URL = "https://baileysanalytics.com"
-ADMIN_EMAILS = "admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
+ADMIN_EMAILS = "admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"

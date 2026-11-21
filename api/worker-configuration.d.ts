@@ -3,7 +3,7 @@
 // Runtime types generated with workerd@1.20261118.1 2026-11-01 nodejs_compat
 interface __BaseEnv_Env {
 	CACHE?: KVNamespace;
-	ADMIN_EMAILS: "admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com" | "nico@baileysanalytics.com,admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com";
+	ADMIN_EMAILS: "admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com" | "nico@baileysanalytics.com,admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com";
 	FRONTEND_URL: string;
 	SUPABASE_URL: string;
 	SUPABASE_ANON_KEY: string;
@@ -22,7 +22,7 @@ declare namespace Cloudflare {
 	}
 	interface ProductionEnv {
 		CACHE: KVNamespace;
-		ADMIN_EMAILS: "admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com";
+		ADMIN_EMAILS: "admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com";
 		FRONTEND_URL: string;
 		SUPABASE_URL: string;
 		SUPABASE_ANON_KEY: string;

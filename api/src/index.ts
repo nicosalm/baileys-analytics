@@ -397,15 +397,17 @@ app.route('/api/platform-fees', platformFeesRoute);
 app.route('/api/operating-expenses', operatingExpensesRoute);
 app.route('/api/expense-templates', expenseTemplatesRoute);
 
+// limits are per signed-in user, so auth runs first on every limited route
+
 // rate limit billing checkout to prevent abuse
-app.use('/api/billing/create-checkout-session', rateLimit({ max: 20, windowMs: 60000 }));
+app.use('/api/billing/create-checkout-session', authMiddleware, rateLimit({ max: 20, windowMs: 60000 }));
 
 // sync is a multi-step flow (reset + status + properties + bookings + guests + inquiries + complete)
 // limit must accommodate the full sequence
-app.use('/api/sync/*', rateLimit({ max: 50, windowMs: 300000 }));
+app.use('/api/sync/*', authMiddleware, rateLimit({ max: 50, windowMs: 300000 }));
 
 // rate limit destructive account operations
-app.use('/api/account/delete', rateLimit({ max: 3, windowMs: 300000 }));
+app.use('/api/account/delete', authMiddleware, rateLimit({ max: 3, windowMs: 300000 }));
 
 app.route('/api/billing', billing);
 app.route('/api/account', account);

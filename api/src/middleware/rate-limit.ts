@@ -1,23 +1,26 @@
 import type { Context, Next } from 'hono';
+import type { AppEnv } from '../types';
 
 interface RateLimitOptions {
 	windowMs?: number; // time window in milliseconds
 	max?: number; // max requests per window
-	keyGenerator?: (c: Context) => string;
+	keyGenerator?: (c: Context<AppEnv>) => string;
 }
 
 export function rateLimit(options: RateLimitOptions = {}) {
 	const {
 		windowMs = 60000, // 1 minute default
 		max = 100, // 100 requests per minute default
-		keyGenerator = (c) => c.req.header('CF-Connecting-IP') || 'global',
+		// signed-in user first: requests through the site's /api proxy can all arrive
+		// with the proxy's IP, which would put every visitor in one bucket
+		keyGenerator = (c) => c.get('user')?.id ?? c.req.header('CF-Connecting-IP') ?? 'global',
 	} = options;
 
 	// each limiter gets its own bucket; a shared per-IP key let sync traffic
 	// exhaust the checkout and account-delete limits
 	const bucket = `${windowMs}:${max}`;
 
-	return async function rateLimitMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+	return async function rateLimitMiddleware(c: Context<AppEnv>, next: Next) {
 		// skip rate limiting if kv is not available
 		if (!c.env.CACHE) {
 			return next();
