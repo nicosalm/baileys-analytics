@@ -14,7 +14,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { TIERS, getTierMonthlyDollars, getTierYearlyDollars } from '@baileys/constants'
-import { useInView } from '@/hooks'
+import { useInView } from '@/hooks/use-in-view'
 import { useCountUp } from '@/hooks/use-count-up'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { Switch } from '@/components/ui/switch'

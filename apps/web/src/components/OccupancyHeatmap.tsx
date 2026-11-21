@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useDailyOccupancy } from '@/hooks/use-api'
-import { cn, formatDateDisplay } from '@baileys/utils'
+import { formatDateDisplay } from '@baileys/utils'
+import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { Button } from '@/components/ui/button'

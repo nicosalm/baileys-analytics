@@ -1,7 +1,7 @@
 import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
-import { FileText, Shield, ArrowLeft, ChevronRight, HelpCircle, BookOpen, Code2 } from 'lucide-react'
+import { FileText, Shield, ArrowLeft, ChevronRight, HelpCircle, BookOpen } from 'lucide-react'
 import { BRAND } from '@/constants'
 import { LogoCube } from '@/components/LogoCube'
 
@@ -9,11 +9,9 @@ interface DocsLayoutProps {
   children: ReactNode
 }
 
-// moved to module scope to avoid recreation on every render
 const docPages = [
   { path: '/help', label: 'Help & FAQ', icon: HelpCircle },
   { path: '/docs/ownerrez-data', label: 'OwnerRez Data Guide', icon: BookOpen },
-  { path: '/docs/api', label: 'Data API', icon: Code2 },
 ]
 
 const legalPages = [

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useRef, useC
 import { supabase } from '@/lib/supabase'
 import { api } from '@/lib/api'
 import { Session } from '@supabase/supabase-js'
-import { AppUser } from '@/types/auth'
+import { AppUser, MeResponse } from '@/types/auth'
 
 type AuthState =
   | { status: 'loading' }
@@ -43,7 +43,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const stateRef = useRef<AuthState>(state)
   const refreshPromiseRef = useRef<Promise<void> | null>(null)
   const isInitializedRef = useRef(false)
-  const retryCountRef = useRef<Map<string, number>>(new Map())
 
   // keep ref in sync with state for use in callbacks
   useEffect(() => {
@@ -51,32 +50,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [state])
 
   // utility for retry with exponential backoff
-  const retryWithBackoff = async <T,>(
-    fn: () => Promise<T>,
-    operationName: string,
-    maxRetries = 3
-  ): Promise<T | null> => {
-    const currentRetries = retryCountRef.current.get(operationName) || 0
-
-    for (let i = currentRetries; i < maxRetries; i++) {
-      try {
-        retryCountRef.current.set(operationName, i)
-        const result = await fn()
-        retryCountRef.current.delete(operationName)
-        return result
-      } catch (error) {
-        if (i === maxRetries - 1) {
-          retryCountRef.current.delete(operationName)
-          throw error
-        }
-        // exponential backoff: 1s, 2s, 4s
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000))
-      }
-    }
-    return null
-  }
-
-  // check if session is expired
   const isSessionExpired = (session: Session | null): boolean => {
     if (!session) return true
     if (!session.expires_at) return false
@@ -85,77 +58,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const expiryTime = new Date(session.expires_at * 1000)
     const bufferTime = new Date(expiryTime.getTime() - 30000)
     return bufferTime < new Date()
-  }
-
-  const checkOwnerRezConnection = async (userId: string): Promise<boolean> => {
-    try {
-      const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .select('id')
-        .eq('user_id', userId)
-        .maybeSingle()
-
-      if (!tenantError && tenant) {
-        const { data: oauthToken } = await supabase
-          .from('oauth_tokens')
-          .select('id')
-          .eq('tenant_id', tenant.id)
-          .eq('provider', 'ownerrez')
-          .maybeSingle()
-
-        return !!oauthToken
-      }
-      return false
-    } catch {
-      return false
-    }
-  }
-
-  const ensureTenantExists = async (userId: string, email: string | undefined): Promise<{ id: string; companyName: string | null } | null> => {
-    if (!email) return null
-
-    try {
-      // check if tenant exists
-      const { data: existingTenant } = await supabase
-        .from('tenants')
-        .select('id, company_name')
-        .eq('user_id', userId)
-        .maybeSingle()
-
-      if (existingTenant) {
-        return { id: existingTenant.id, companyName: existingTenant.company_name }
-      }
-
-      // create tenant if it doesn't exist
-      const { data: newTenant, error: insertError } = await supabase
-        .from('tenants')
-        .insert({
-          user_id: userId,
-          email: email,
-          ownerrez_connected: false
-        })
-        .select('id')
-        .single()
-
-      if (insertError) {
-        // maybe it was created by another process, try to fetch again
-        const { data: retryTenant } = await supabase
-          .from('tenants')
-          .select('id, company_name')
-          .eq('user_id', userId)
-          .maybeSingle()
-
-        if (retryTenant) {
-          return { id: retryTenant.id, companyName: retryTenant.company_name }
-        }
-
-        return null
-      }
-
-      return newTenant ? { id: newTenant.id, companyName: null } : null
-    } catch (err) {
-      return null
-    }
   }
 
   const processSession = useCallback(async (session: Session | null): Promise<boolean> => {
@@ -196,41 +98,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return true
     }
 
-    // Helper: race a promise against a timeout, returning fallback on timeout
-    const withTimeout = <T,>(promise: Promise<T>, ms: number, fallback: T): Promise<T> =>
-      Promise.race([
-        promise,
-        new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms)),
-      ])
-
-    // ensure tenant exists with retry logic (10s timeout — use null if it hangs)
-    const tenantResult = await withTimeout(
-      retryWithBackoff(
-        () => ensureTenantExists(session.user.id, session.user.email),
-        'ensureTenantExists',
-        2
-      ),
-      10000,
-      null
-    )
-
-    let hasOwnerRezConnection = session.user.user_metadata?.has_ownerrez_connection || false
-
-    if (!hasOwnerRezConnection) {
-      // 10s timeout — default to false if it hangs
-      hasOwnerRezConnection = await withTimeout(
-        checkOwnerRezConnection(session.user.id),
-        10000,
-        false
-      )
-    }
+    const me = await Promise.race([
+      api.request<MeResponse>('/auth/me'),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), 10000)),
+    ])
+    const profile = me?.success ? me.data : null
 
     const appUser: AppUser = {
       ...session.user,
-      hasOwnerRezConnection,
-      tenantId: tenantResult?.id || session.user.user_metadata?.tenant_id,
+      hasOwnerRezConnection: profile?.hasOwnerRezConnection ?? false,
+      tenantId: profile?.tenantId ?? undefined,
       isOAuthUser: isOAuthUser(session.user.identities),
-      companyName: tenantResult?.companyName || null,
+      companyName: profile?.companyName ?? null,
       isDemo: false,
     }
 

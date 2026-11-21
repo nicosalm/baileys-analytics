@@ -8,8 +8,12 @@ export interface AppUser extends SupabaseUser {
   isDemo?: boolean
 }
 
-export interface AuthSession {
-  user: AppUser
-  access_token: string
-  refresh_token?: string
+
+export interface MeResponse {
+  id: string
+  email?: string
+  tenantId: string | null
+  companyName: string | null
+  hasOwnerRezConnection: boolean
+  createdAt: string
 }

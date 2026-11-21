@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { ArrowUpRight, ArrowDownRight, Minus, Info, Loader2, Check, Copy } from 'lucide-react'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
-import { cn } from '@baileys/utils'
+import { cn } from '@/lib/utils'
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip'
 import { useCountUp } from '@/hooks/use-count-up'
 
@@ -375,19 +375,3 @@ const AnimatedValue: React.FC<{
   const display = Number.isInteger(value) ? Math.round(animated) : animated
   return <>{formatValue(display)}</>
 }
-
-// Export a simplified version for backwards compatibility
-export const SimpleMetricCard: React.FC<{
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-  value: string | number
-  subtext?: string
-}> = ({ icon, label, value, subtext }) => (
-  <MetricCard
-    icon={icon}
-    label={label}
-    value={value}
-    subValue={subtext}
-    size="md"
-  />
-)

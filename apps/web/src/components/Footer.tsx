@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { BRAND } from '@/constants'
-import { useStatus } from '@/hooks'
+import { useStatus } from '@/hooks/use-status'
 import { useCallback } from 'react'
 import { LogoCube } from '@/components/LogoCube'
 
@@ -65,9 +65,9 @@ export const Footer = () => {
   return (
     <footer className="bg-background border-t border-border mt-auto">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-10 md:gap-10">
+        <div className="grid grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-10 md:gap-10">
           {/* brand */}
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-3 md:col-span-1">
             <Link to="/" onClick={() => handleSamePageClick('/')} className="flex items-center gap-2 mb-3">
               <LogoCube className="w-7 h-7" />
               <span className="font-semibold text-foreground">{BRAND.name}</span>
@@ -96,14 +96,6 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* developers */}
-          <div>
-            <h4 className="font-semibold text-foreground text-sm mb-3">Developers</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link to="/docs/api" onClick={() => handleSamePageClick('/docs/api')} className={linkClass}>API</Link></li>
-              <li><Link to="/branding" onClick={() => handleSamePageClick('/branding')} className={linkClass}>Brand</Link></li>
-            </ul>
-          </div>
 
           {/* legal */}
           <div>

@@ -36,7 +36,7 @@ export const ChartErrorBoundary: FC<ChartErrorBoundaryProps> = ({
       fallback={<ChartErrorFallback chartName={chartName} height={height} />}
       onError={(error) => {
         toast.error(chartName ? `Unable to load ${chartName}` : 'Unable to load chart')
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           console.error(`Chart error${chartName ? ` in ${chartName}` : ''}:`, error)
         }
       }}

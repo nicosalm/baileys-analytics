@@ -136,16 +136,3 @@ export const getPasswordStrength = (password: string): PasswordStrength => {
     meets
   }
 }
-
-// check if a password has been previously used (requires backend integration)
-export const checkPasswordHistory = async (_password: string, _userId: string): Promise<boolean> => {
-  // this would typically call an API to check password history
-  // for now, return true (not in history)
-  return true
-}
-
-// sanitize password for display (never log actual passwords)
-export const sanitizePasswordForLogging = (password: string): string => {
-  if (!password) return '[empty]'
-  return `[${password.length} chars]`
-}

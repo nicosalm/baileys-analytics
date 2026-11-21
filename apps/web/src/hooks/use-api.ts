@@ -2,7 +2,7 @@ import useSWR, { mutate as globalMutate } from 'swr'
 import { api } from '@/lib/api'
 import type { Season, SeasonFormData } from '@/types/season'
 import type { Goal, GoalFormData, GoalProgress } from '@/types/goal'
-import type { Tag, PropertyMetrics } from '@/types/dashboard'
+import type { Tag } from '@/types/dashboard'
 import type { Database } from '@/types/database.types'
 import { filterValidUUIDs, isValidDateString } from '@/utils/validation'
 
@@ -10,7 +10,6 @@ export type PropertyRow = Database['public']['Tables']['properties']['Row']
 export type BookingRow = Database['public']['Tables']['bookings']['Row']
 export type ExpenseTemplateRow = Database['public']['Tables']['expense_templates']['Row']
 export type OperatingExpenseRow = Database['public']['Tables']['operating_expenses']['Row']
-export type PropertyTaxConfigRow = Database['public']['Tables']['property_tax_configs']['Row']
 
 export interface SaveExpenseTemplatesData {
   propertyId: string
@@ -31,16 +30,6 @@ export interface SaveOperatingExpensesBulkData {
   year: number
   month: number
   expenses: Array<{ category: string; amount: number; description?: string }>
-}
-
-export interface SavePropertyTaxConfigData {
-  propertyId: string
-  configName: string
-  effectiveFrom: string
-  effectiveTo?: string
-  jurisdictions: Record<string, unknown>
-  platformSettings: Record<string, unknown>
-  ownerrezMappings?: Record<string, unknown>
 }
 
 export interface BookingDetailResponse {
@@ -254,38 +243,6 @@ export function useDashboardBatch(
   }
 }
 
-export function usePropertyMetrics(
-  from?: string,
-  to?: string,
-  tagIds?: string[],
-  comparisonFrom?: string,
-  comparisonTo?: string,
-  propertyIds?: string[]
-) {
-  const validFrom = from && isValidDateString(from) ? from : undefined
-  const validTo = to && isValidDateString(to) ? to : undefined
-  const validTagIds = tagIds ? filterValidUUIDs(tagIds) : undefined
-  const validCompFrom = comparisonFrom && isValidDateString(comparisonFrom) ? comparisonFrom : undefined
-  const validCompTo = comparisonTo && isValidDateString(comparisonTo) ? comparisonTo : undefined
-  const validPropertyIds = propertyIds ? filterValidUUIDs(propertyIds) : undefined
-
-  const key = validFrom || validTo || validTagIds ? ['/properties/metrics', validFrom ?? '', validTo ?? '', validTagIds?.join(',') ?? '', validCompFrom ?? '', validCompTo ?? '', validPropertyIds?.join(',') ?? ''] : null
-  return useSWR<PropertyMetrics[]>(key, async () => {
-    const params = new URLSearchParams()
-    if (validFrom) params.append('from', validFrom)
-    if (validTo) params.append('to', validTo)
-    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
-    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
-    if (validCompTo) params.append('comparisonTo', validCompTo)
-    if (validPropertyIds && validPropertyIds.length > 0) params.append('filterPropertyIds', validPropertyIds.join(','))
-
-    const endpoint = params.toString() ? `/properties/metrics?${params}` : '/properties/metrics'
-    const result = await api.request<PropertyMetrics[]>(endpoint)
-    if (!result.success) throw new Error(result.error)
-    return result.data
-  }, { keepPreviousData: true })
-}
-
 export function useProperties() {
   return useSWR<PropertyRow[]>('/properties', async () => {
     const result = await api.getProperties()
@@ -430,17 +387,6 @@ export function usePeriodDetail(from?: string, to?: string, tagIds?: string[]) {
   )
 }
 
-export function usePropertyMonthDetail(propertyId?: string, month?: string, year?: string) {
-  return useSWR<PropertyDetailResponse>(
-    propertyId && month && year ? `/property/${propertyId}/month/${year}/${month}` : null,
-    async () => {
-      const result = await api.request<PropertyDetailResponse>(`/property/${encodeURIComponent(propertyId!)}/month/${year}/${month}`)
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    }
-  )
-}
-
 export function useDailyOccupancy(from?: string, to?: string, tagIds?: string[]) {
   const params = new URLSearchParams()
   if (from) params.append('from', from)
@@ -528,25 +474,6 @@ export async function saveExpenseTemplates(data: SaveExpenseTemplatesData): Prom
   await globalMutate((key: unknown) =>
     typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch'))
   )
-}
-
-export function usePropertyTaxStatus() {
-  return useSWR('/tax/status', async () => {
-    const result = await api.getPropertyTaxStatus()
-    if (!result.success) throw new Error(result.error)
-    return result.data?.data || result.data || []
-  })
-}
-
-export function usePropertyTaxConfigs() {
-  return useSWR('/tax/configs', async () => {
-    const result = await api.getPropertyTaxConfigs()
-    if (!result.success) throw new Error(result.error)
-    if (result.data?.status === 'success' && result.data?.data) {
-      return result.data.data
-    }
-    return result.data || []
-  })
 }
 
 export function useSeasons() {
@@ -709,15 +636,6 @@ export async function saveGoals(goals: GoalFormData[]) {
   return result
 }
 
-export async function savePropertyTaxConfig(data: SavePropertyTaxConfigData): Promise<void> {
-  const result = await api.savePropertyTaxConfig(data)
-  if (!result.success) {
-    throw new Error(result.error)
-  }
-  await globalMutate('/tax/status')
-  await globalMutate('/tax/configs')
-}
-
 export function useBookingsForRange(from?: string, to?: string) {
   const key = from && to ? `bookings-range:${from}|${to}` : null
   return useSWR<BookingRow[]>(key, async () => {
@@ -725,15 +643,4 @@ export function useBookingsForRange(from?: string, to?: string) {
     if (!result.success) throw new Error(result.error)
     return result.data
   }, { refreshInterval: 120000, keepPreviousData: true })
-}
-
-export function useTaxJurisdictions(propertyId?: string) {
-  return useSWR(
-    propertyId ? `/tax/auto-detect?propertyId=${propertyId}` : null,
-    async () => {
-      const result = await api.request(`/tax/auto-detect?propertyId=${propertyId}`)
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    }
-  )
 }

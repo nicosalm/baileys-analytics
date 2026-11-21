@@ -34,9 +34,6 @@ export const Help = () => {
             <Link to="/docs/ownerrez-data" className="text-primary hover:text-primary/80 text-sm">
               → OwnerRez Data Guide
             </Link>
-            <Link to="/docs/api" className="text-primary hover:text-primary/80 text-sm">
-              → Data API
-            </Link>
             <a href="https://status.baileysanalytics.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 text-sm">
               → System status
             </a>
@@ -147,7 +144,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">How much does Baileys Analytics cost?</h3>
               <p className="text-muted-foreground text-sm">
-                Pricing is $20/month or $192/year (20% discount). All plans include unlimited properties and full Data API access.
+                Plans are priced by the number of properties you manage, billed monthly or yearly. See <Link to="/#pricing" className="text-primary hover:text-primary/80">pricing</Link> for current rates.
               </p>
             </div>
 
@@ -255,7 +252,7 @@ export const Help = () => {
             <div className="pb-4 border-b last:border-0 last:pb-0">
               <h3 className="text-sm font-semibold text-foreground mb-1">Can I export my data?</h3>
               <p className="text-muted-foreground text-sm">
-                Yes. Query your data programmatically through the <Link to="/docs/api" className="text-primary hover:text-primary/80">Data API</Link>. All properties, bookings, guests, and related records are accessible as JSON.
+                Yes. The guest, cancellation, and inquiry tables, the P&amp;L charge composition, and the Tax Center each download as CSV for the selected period.
               </p>
             </div>
 

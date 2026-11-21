@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/auth'
+import { cn } from '@/lib/utils'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
 import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft, Eye, Menu } from 'lucide-react'
@@ -14,7 +15,6 @@ const OccupancyDashboard = lazy(() => import('@/components/dashboards/OccupancyD
 const GuestsDashboard = lazy(() => import('@/components/dashboards/GuestsDashboard').then(m => ({ default: m.GuestsDashboard })))
 
 import { FilterBar, MobileFilterControls } from '@/components/FilterBar'
-import { cn } from '@baileys/utils'
 import { LoadingState } from '@/components/LoadingState'
 import { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
@@ -75,7 +75,7 @@ const DashboardContent = () => {
       resetKeys={[fadeKey]}
       onError={(error) => {
         addToast('error', `Failed to load ${fadeKey} dashboard. Try refreshing.`)
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           console.error(`Dashboard error in ${fadeKey} tab:`, error)
         }
       }}

@@ -5,39 +5,6 @@ const CHART_SERIES_VARS = [
   '--chart-series-10',
 ] as const
 
-export const TAG_TYPE_STYLES = {
-  payment: {
-    bg: 'bg-success-subtle',
-    text: 'text-success-fg',
-    border: 'border-success',
-    hover: 'hover:bg-success-subtle/80'
-  },
-  guest: {
-    bg: 'bg-purple-subtle',
-    text: 'text-purple-fg',
-    border: 'border-purple-fg',
-    hover: 'hover:bg-purple-subtle/80'
-  },
-  booking: {
-    bg: 'bg-info-subtle',
-    text: 'text-info-fg',
-    border: 'border-info',
-    hover: 'hover:bg-info-subtle/80'
-  },
-  property: {
-    bg: 'bg-orange-subtle',
-    text: 'text-orange-fg',
-    border: 'border-orange-fg',
-    hover: 'hover:bg-orange-subtle/80'
-  },
-  custom: {
-    bg: 'bg-muted',
-    text: 'text-muted-foreground',
-    border: 'border-border',
-    hover: 'hover:bg-muted/80'
-  }
-} as const
-
 export const STATUS_STYLES = {
   confirmed: {
     bg: 'bg-success-subtle',
@@ -121,10 +88,4 @@ export const getOccupancyColor = (rate: number): string => {
   if (rate >= 0.8) return 'text-success'
   if (rate >= 0.6) return 'text-warning'
   return 'text-danger'
-}
-
-export const getOccupancyBgColor = (rate: number): string => {
-  if (rate >= 0.8) return 'bg-success'
-  if (rate >= 0.6) return 'bg-warning'
-  return 'bg-danger'
 }

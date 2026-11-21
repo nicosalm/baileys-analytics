@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { 
-  cn, 
+import {
   formatDateISO, 
   parseDate,
   differenceInDays,
@@ -24,6 +23,7 @@ import {
   startOfYear,
   startOfQuarter
 } from '@baileys/utils'
+import { cn } from '@/lib/utils'
 import { useSeasons } from '@/hooks/use-api'
 import {
   getCurrentSeasonDates,

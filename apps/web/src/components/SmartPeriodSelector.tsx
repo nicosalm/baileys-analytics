@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Calendar, ChevronDown, Check, GitCompare } from 'lucide-react'
 import {
-  cn,
   formatDateISO,
   parseDate,
   format,
@@ -11,6 +10,7 @@ import {
   subYears,
   getYear
 } from '@baileys/utils'
+import { cn } from '@/lib/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import { useSeasons, useEarliestBookingDate } from '@/hooks/use-api'
 import { InlineDateRangePicker } from './InlineDateRangePicker'

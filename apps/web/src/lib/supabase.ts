@@ -20,25 +20,6 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-export type AuthError = {
-  message: string
-  status?: number
-}
-
-export const handleAuthError = (error: unknown): AuthError => {
-  if (error && typeof error === 'object' && 'message' in error) {
-    const err = error as { message: string; status?: number }
-    return {
-      message: err.message,
-      status: err.status
-    }
-  }
-  return {
-    message: 'An unexpected error occurred',
-    status: 500
-  }
-}
-
 // helper to clear stale auth data
 export const clearAuthStorage = () => {
   try {

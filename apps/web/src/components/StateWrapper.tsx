@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '@baileys/utils'
+import { cn } from '@/lib/utils'
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { LoadingState } from './LoadingState'
 import { Button } from '@/components/ui/button'
@@ -119,48 +119,4 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   }
 
   return <>{children}</>
-}
-
-// Card wrapper with state handling
-export const CardStateWrapper: React.FC<StateWrapperProps & {
-  title?: string
-  icon?: React.ComponentType<{ className?: string }>
-}> = ({
-  title,
-  icon: Icon,
-  ...props
-}) => {
-  return (
-    <div className="bg-card rounded-lg shadow-sm p-6">
-      {title && (
-        <div className="flex items-center mb-4">
-          {Icon && <Icon className="w-5 h-5 mr-2 text-muted-foreground" />}
-          <h3 className="text-lg font-bold">{title}</h3>
-        </div>
-      )}
-      <StateWrapper {...props} />
-    </div>
-  )
-}
-
-// Section wrapper with state handling
-export const SectionStateWrapper: React.FC<StateWrapperProps & {
-  title: string
-  description?: string
-}> = ({
-  title,
-  description,
-  ...props
-}) => {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-bold">{title}</h2>
-        {description && (
-          <p className="text-muted-foreground text-sm mt-1">{description}</p>
-        )}
-      </div>
-      <StateWrapper {...props} />
-    </div>
-  )
 }

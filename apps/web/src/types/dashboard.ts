@@ -164,8 +164,6 @@ export type FinancialData = {
   }
 }
 
-export type DashboardData =
-  | { type: 'loading' }
   | { type: 'error'; error: string }
   | { type: 'financial'; data: FinancialData }
   | { type: 'properties'; data: PropertyMetrics[] }

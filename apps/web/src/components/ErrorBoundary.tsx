@@ -19,7 +19,7 @@ interface State {
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  private resetTimeoutId: NodeJS.Timeout | null = null
+  private resetTimeoutId: ReturnType<typeof setTimeout> | null = null
   private previousResetKeys: Array<string | number> = []
 
   constructor(props: Props) {
@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { onError } = this.props
     
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.error('Error caught by ErrorBoundary:', error, errorInfo)
     }
     
@@ -124,7 +124,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <p className="text-muted-foreground mb-6">
                   We encountered an unexpected error. Please try refreshing the page or going back to the dashboard.
                 </p>
-                {process.env.NODE_ENV === 'development' && (
+                {import.meta.env.DEV && (
                   <details className="w-full mb-6 text-left">
                     <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
                       Error details

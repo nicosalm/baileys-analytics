@@ -6,12 +6,10 @@ import type {
   BookingRow,
   ExpenseTemplateRow,
   OperatingExpenseRow,
-  PropertyTaxConfigRow,
   PropertyGroup,
   SaveExpenseTemplatesData,
   SaveOperatingExpenseData,
   SaveOperatingExpensesBulkData,
-  SavePropertyTaxConfigData,
   SyncStatusResponse,
 } from '@/hooks/use-api'
 
@@ -165,38 +163,6 @@ class ApiClient {
         })
     }
 
-    async getPropertyTaxStatus(): Promise<ApiResult<{ data: Record<string, unknown>[] }>> {
-        return this.request('/tax/status')
-    }
-
-    async getPropertyTaxConfigs(): Promise<ApiResult<{ status: string; data: PropertyTaxConfigRow[] }>> {
-        return this.request('/tax/configs')
-    }
-
-    async getTaxJurisdictions(): Promise<ApiResult<Record<string, unknown>[]>> {
-        return this.request('/tax/jurisdictions')
-    }
-
-    async savePropertyTaxConfig(data: SavePropertyTaxConfigData): Promise<ApiResult<void>> {
-        return this.request('/tax/configs', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
-
-    async updatePropertyTaxConfig(id: string, data: SavePropertyTaxConfigData): Promise<ApiResult<void>> {
-        return this.request(`/tax/configs/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        })
-    }
-
-    async deletePropertyTaxConfig(configId: string): Promise<ApiResult<void>> {
-        return this.request(`/tax/configs/${configId}`, {
-            method: 'DELETE'
-        })
-    }
-
     async getSeasons(): Promise<ApiResult<Season[]>> {
         return this.request('/seasons')
     }
@@ -250,10 +216,6 @@ class ApiClient {
         return this.request(`/property-groups/${id}`, {
             method: 'DELETE'
         })
-    }
-
-    async getPropertyPlatforms(propertyId: string): Promise<ApiResult<string[]>> {
-        return this.request(`/tax/platforms?propertyId=${propertyId}`)
     }
 
     async getGoals(): Promise<ApiResult<Goal[]>> {

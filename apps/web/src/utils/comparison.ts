@@ -153,22 +153,3 @@ export function getComparisonLabel(
 
   return 'No Comparison'
 }
-
-export function isSeasonSelection(
-  dateRange: DateRange,
-  season?: Season
-): boolean {
-  if (!season) return false
-  
-  const startDate = parseDate(dateRange.from)
-  const endDate = parseDate(dateRange.to)
-  
-  const startMonth = getMonth(startDate) + 1
-  const endMonth = getMonth(endDate) + 1
-  
-  const monthMatches = 
-    Math.abs(startMonth - season.startMonth) <= 1 &&
-    Math.abs(endMonth - season.endMonth) <= 1
-  
-  return monthMatches
-}

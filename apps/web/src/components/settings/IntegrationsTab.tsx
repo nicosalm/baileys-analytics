@@ -3,15 +3,11 @@ import { useAuth } from '@/contexts/auth'
 import { useToast } from '@/contexts/toast'
 import { useSyncStatus, useWebhookHealth } from '@/hooks/use-api'
 import { api } from '@/lib/api'
-import { supabase } from '@/lib/supabase'
 import { LoadingState } from '@/components/LoadingState'
-import { Link, useNavigate } from 'react-router-dom'
-import {
-  RefreshCw, AlertCircle, Check, Link2, Link2Off, Copy, Eye, EyeOff, Code2
-} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { RefreshCw, AlertCircle, Check, Link2, Link2Off } from 'lucide-react'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { Button } from '@/components/ui/button'
-
 
 export const IntegrationsTab = () => {
   const { state, refreshUser } = useAuth()
@@ -239,104 +235,6 @@ export const IntegrationsTab = () => {
         isLoading={isDisconnecting}
       />
 
-      <ApiTokenCard />
-    </div>
-  )
-}
-
-const ApiTokenCard = () => {
-  const { addToast } = useToast()
-  const [token, setToken] = useState<string | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [showToken, setShowToken] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const generateToken = async () => {
-    setIsGenerating(true)
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.access_token) {
-        setToken(session.access_token)
-        setShowToken(true)
-      } else {
-        addToast('error', 'No active session. Please sign in again.')
-      }
-    } catch {
-      addToast('error', 'Failed to generate token')
-    } finally {
-      setIsGenerating(false)
-    }
-  }
-
-  const copyToken = () => {
-    if (!token) return
-    navigator.clipboard.writeText(token)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-start gap-4 mb-4">
-          <div className="w-12 h-12 rounded-lg bg-muted/60 flex items-center justify-center">
-            <Code2 className="w-6 h-6 text-muted-foreground" />
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Data API</h3>
-            <p className="text-muted-foreground text-sm">
-              Query your data directly over HTTPS. Generate an access token to authenticate API requests.
-              See the <Link to="/docs/api" className="text-primary hover:text-primary/80">API documentation</Link> for usage details.
-            </p>
-          </div>
-        </div>
-
-        {token ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 min-w-0 cursor-pointer" onClick={copyToken} onKeyDown={(e) => e.key === 'Enter' && copyToken()} role="button" tabIndex={0} title="Click to copy">
-                <pre className="bg-muted/40 border rounded-lg px-3 py-2 text-xs font-mono overflow-x-auto max-h-20 whitespace-pre-wrap break-all select-all hover:bg-muted/60 transition-colors">
-                  {showToken ? token : '\u2022'.repeat(40)}
-                </pre>
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowToken(!showToken)}
-                title={showToken ? 'Hide token' : 'Show token'}
-              >
-                {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={copyToken}
-                title="Copy token"
-              >
-                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                This token expires in 1 hour. Generate a new one when it expires.
-              </p>
-              <Button variant="ghost" size="sm" onClick={generateToken} disabled={isGenerating}>
-                <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <Button onClick={generateToken} disabled={isGenerating}>
-            {isGenerating ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Code2 className="w-4 h-4" />
-            )}
-            Generate API Token
-          </Button>
-        )}
-      </div>
     </div>
   )
 }

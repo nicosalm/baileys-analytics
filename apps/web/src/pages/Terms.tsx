@@ -180,7 +180,7 @@ export const Terms = () => {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">16. Data Export and Deletion</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              You can export your data at any time as JSON via the Data API. After account deletion, data is retained for
+              You can export your data at any time as CSV from the dashboard. After account deletion, data is retained for
               30 days to allow for export, then permanently deleted unless required by law.
             </p>
           </section>

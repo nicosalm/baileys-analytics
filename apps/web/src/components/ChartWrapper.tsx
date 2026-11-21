@@ -1,5 +1,5 @@
 import React from 'react'
-import { cn } from '@baileys/utils'
+import { cn } from '@/lib/utils'
 import { Loader2, AlertCircle, BarChart3, Info } from 'lucide-react'
 import { ResponsiveContainer } from 'recharts'
 import { ChartErrorBoundary } from './ChartErrorBoundary'
@@ -149,38 +149,5 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
         )}
       </ChartErrorBoundary>
     </div>
-  )
-}
-
-export const MiniChartWrapper: React.FC<{
-  children: React.ReactNode
-  height?: number
-  loading?: boolean
-  className?: string
-}> = ({
-  children,
-  height = 60,
-  loading = false,
-  className
-}) => {
-  if (loading) {
-    return (
-      <div
-        className={cn("flex items-center justify-center", className)}
-        style={{ height: `${height}px` }}
-      >
-        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground/70" />
-      </div>
-    )
-  }
-
-  return (
-    <ChartErrorBoundary height={height}>
-      <div style={{ height: `${height}px` }} className={className}>
-        <ResponsiveContainer width="100%" height="100%">
-          {children as React.ReactElement}
-        </ResponsiveContainer>
-      </div>
-    </ChartErrorBoundary>
   )
 }
