@@ -12,6 +12,7 @@ import { useDashboard } from '@/contexts/dashboard'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { authenticatedFetch } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
+import { downloadCsv } from '@/utils/csv'
 import { Pagination } from '@/components/Pagination'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
@@ -70,16 +71,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
         throw new Error('Failed to download report')
       }
 
-      const csvData = await response.text()
-      const blob = new Blob([csvData], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `tax-report-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
+      downloadCsv(`tax-report-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`, await response.text())
       addToast('success', 'Tax report downloaded')
     } catch {
       addToast('error', 'Failed to download tax report')

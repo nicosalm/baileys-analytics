@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label as FormLabel } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { Loader2, ChevronDown } from 'lucide-react'
+import { Loader2, ChevronDown, Download } from 'lucide-react'
 import { api } from '@/lib/api'
 import { DataTable } from '@/components/tables/DataTable'
 import { MetricCard } from '@/components/MetricCard'
@@ -24,6 +24,7 @@ import type { TooltipContentProps } from 'recharts'
 import { PieChart, Pie, Cell, Label, Tooltip, ResponsiveContainer } from 'recharts'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 import { SegmentedControl } from '@/components/ui/segmented-control'
+import { downloadCsv, toCsv } from '@/utils/csv'
 
 const CancelledGuestsTab = lazy(() => import('./CancelledGuestsTab').then((m) => ({ default: m.CancelledGuestsTab })))
 const InquiriesTab = lazy(() => import('./InquiriesTab').then((m) => ({ default: m.InquiriesTab })))
@@ -232,6 +233,39 @@ export const GuestsDashboard = () => {
     },
     [sortBy],
   )
+
+  // exports what the list shows: current period, segment and stays filter
+  const handleExport = useCallback(() => {
+    const csv = toCsv(
+      [
+        'Name',
+        'Email',
+        'Phone',
+        'Bookings in period',
+        'Lifetime bookings',
+        'Revenue in period',
+        'Lifetime revenue',
+        'First visit',
+        'Last visit',
+        'Properties',
+        'Tags',
+      ],
+      sortedGuests.map((g: GuestListItem) => [
+        g.name,
+        g.email,
+        g.phone,
+        g.periodBookings ?? 0,
+        g.bookingCount,
+        g.periodSpent ?? 0,
+        g.totalSpent,
+        g.firstVisit,
+        g.lastVisit,
+        g.properties.join('; '),
+        g.tags.map((t) => t.name).join('; '),
+      ]),
+    )
+    downloadCsv(`guests-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`, csv)
+  }, [sortedGuests, filters.dateRange.from, filters.dateRange.to])
 
   const columns = useMemo(
     () => [
@@ -685,6 +719,16 @@ export const GuestsDashboard = () => {
                 <SelectItem value="4+">4+ stays</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleExport}
+              disabled={sortedGuests.length === 0}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </Button>
           </div>
         </div>
 

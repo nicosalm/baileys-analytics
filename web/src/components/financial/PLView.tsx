@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { authenticatedFetch } from '@/lib/api'
 import { getChargeColor, type ChargeKind } from '@/lib/theme'
 import { useToast } from '@/contexts/toast'
+import { downloadCsv } from '@/utils/csv'
 import { formatPercentage, formatCurrency, formatCompactCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { useDashboard } from '@/contexts/dashboard'
@@ -120,16 +121,7 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
         throw new Error('Failed to download report')
       }
 
-      const csvData = await response.text()
-      const blob = new Blob([csvData], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `charge-composition-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
+      downloadCsv(`charge-composition-${filters.dateRange.from}-to-${filters.dateRange.to}.csv`, await response.text())
       addToast('success', 'Charge composition exported')
     } catch {
       addToast('error', 'Failed to download charge composition')
