@@ -11,6 +11,7 @@ import { ConfirmModal } from '@/components/ConfirmModal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SettingsSection, SettingsRow } from './SettingsSection'
+import { OwnerRezLogo } from '@/components/OwnerRezLogo'
 
 const formatAgo = (hours: number) => {
   if (hours < 1) return 'under an hour ago'
@@ -96,12 +97,7 @@ export const IntegrationsTab = () => {
   return (
     <div className="space-y-6">
       <SettingsSection
-        title={
-          <picture>
-            <source srcSet="/logos/ownerrez-wide.avif" type="image/avif" />
-            <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-7 w-auto -ml-1 brightness-0 dark:invert" />
-          </picture>
-        }
+        title={<OwnerRezLogo className="-ml-1" imgClassName="h-7 brightness-0 dark:invert group-hover:opacity-75" />}
         description="Properties, bookings, guests and inquiries sync from OwnerRez and stay current through webhooks."
         action={
           isConnected ? (

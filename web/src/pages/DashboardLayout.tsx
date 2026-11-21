@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { AppHeader } from '@/components/AppHeader'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useToast } from '@/contexts/toast'
+import { OwnerRezLogo } from '@/components/OwnerRezLogo'
 
 const tabConfig: Array<{ id: DashboardTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
@@ -193,10 +194,7 @@ export const DashboardLayout = () => {
 
         <main className="flex-1 flex items-center justify-center px-4 py-12">
           <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8">
-            <picture>
-              <source srcSet="/logos/ownerrez-wide.avif" type="image/avif" />
-              <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-7 w-auto -ml-1 brightness-0 dark:invert" />
-            </picture>
+            <OwnerRezLogo className="-ml-1" imgClassName="h-7 brightness-0 dark:invert group-hover:opacity-75" />
             <h2 className="mt-5 text-xl font-semibold text-foreground">Connect OwnerRez</h2>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               Baileys imports four years of properties, bookings and guests, then stays current through webhooks. You sign in on OwnerRez,

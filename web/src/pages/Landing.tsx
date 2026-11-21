@@ -11,6 +11,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { LogoCube } from '@/components/LogoCube'
+import { OwnerRezLogo } from '@/components/OwnerRezLogo'
 
 const STATS = [
   { value: '$17M+', label: 'booking revenue analyzed' },
@@ -203,10 +204,7 @@ export const Landing = () => {
         <div className="w-full max-w-6xl mx-auto px-4 md:px-6 pt-16 pb-20 md:pt-24 md:pb-24 text-center relative z-10">
           <div className="flex items-center justify-center gap-1.5 mb-6 hero-stagger" style={{ '--hero-index': 0 } as React.CSSProperties}>
             <span className="text-sm font-medium text-white/60">Built for</span>
-            <picture>
-              <source srcSet="/logos/ownerrez-wide.avif" type="image/avif" />
-              <img src="/logos/ownerrez-wide.png" alt="OwnerRez" className="h-5 brightness-0 invert opacity-70" />
-            </picture>
+            <OwnerRezLogo imgClassName="h-5 brightness-0 invert opacity-70 group-hover:opacity-100" />
             <span className="text-sm font-medium text-white/60">hosts</span>
           </div>
 
