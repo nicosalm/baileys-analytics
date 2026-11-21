@@ -425,13 +425,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                         {group.gapCount} {group.gapCount === 1 ? 'gap' : 'gaps'}
                       </span>
                     )}
-                    <span
-                      className={`font-semibold ${
-                        occupancyPct >= 70 ? 'text-success' : occupancyPct >= 50 ? 'text-warning' : 'text-danger'
-                      }`}
-                    >
-                      {occupancyPct}%
-                    </span>
+                    <span className={`font-semibold ${'text-foreground'}`}>{occupancyPct}%</span>
                     {group.avgNightlyRate > 0 && (
                       <span className="text-muted-foreground/70">~{formatCurrency(group.avgNightlyRate)}/night</span>
                     )}

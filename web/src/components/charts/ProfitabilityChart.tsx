@@ -54,9 +54,7 @@ const ProfitabilityTooltip = ({ active, payload }: Partial<TooltipContentProps<n
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Margin:</span>
-          <span className={`font-medium ${margin >= 50 ? 'text-success' : margin >= 30 ? 'text-warning' : 'text-danger'}`}>
-            {margin.toFixed(1)}%
-          </span>
+          <span className={`font-medium ${margin < 0 ? 'text-danger' : 'text-foreground'}`}>{margin.toFixed(1)}%</span>
         </div>
       </div>
     </div>

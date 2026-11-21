@@ -1,10 +1,13 @@
 -- seed-demo.sql
 -- demo/playground tenant: "Lakeshore Retreats" in Door County, WI
--- run via Supabase SQL editor — idempotent (deletes existing demo data first)
+-- run via the Supabase SQL editor; idempotent (deletes existing demo data first).
+-- dates are relative to current_date: three years of history and twelve months of
+-- forward bookings, each created at a realistic lead time, so pacing stays populated.
 
 BEGIN;
 
--- clean up any existing demo data (cascade through FKs)
+-- clear the time-dependent data; the tenant, properties, guests, tags, and any settings
+-- the demo has accumulated (expense templates, seasons, goals) are kept
 DO $$
 DECLARE
   v_tenant_id uuid;
@@ -12,16 +15,9 @@ BEGIN
   SELECT id INTO v_tenant_id FROM tenants WHERE email = 'demo@baileysanalytics.com';
   IF v_tenant_id IS NOT NULL THEN
     DELETE FROM booking_tags WHERE booking_id IN (SELECT id FROM bookings WHERE tenant_id = v_tenant_id);
-    DELETE FROM property_tags WHERE property_id IN (SELECT id FROM properties WHERE tenant_id = v_tenant_id);
     DELETE FROM booking_charges WHERE booking_id IN (SELECT id FROM bookings WHERE tenant_id = v_tenant_id);
-    DELETE FROM blocks WHERE tenant_id = v_tenant_id;
     DELETE FROM bookings WHERE tenant_id = v_tenant_id;
-    DELETE FROM guests WHERE tenant_id = v_tenant_id;
-    DELETE FROM properties WHERE tenant_id = v_tenant_id;
-    DELETE FROM tags WHERE tenant_id = v_tenant_id;
-    DELETE FROM season_configurations WHERE tenant_id = v_tenant_id;
-    DELETE FROM goals WHERE tenant_id = v_tenant_id;
-    DELETE FROM tenants WHERE id = v_tenant_id;
+    DELETE FROM blocks WHERE tenant_id = v_tenant_id;
   END IF;
 END $$;
 
@@ -55,6 +51,10 @@ DECLARE
   v_guest_idx int;
   v_prop_idx int;
   v_current_date date;
+  v_start date := (date_trunc('month', current_date) - interval '3 years')::date;
+  v_end date := (date_trunc('month', current_date) + interval '13 months')::date;
+  v_lead_days int;
+  v_year int;
   v_arrival date;
   v_departure date;
   v_stay_nights int;
@@ -112,20 +112,12 @@ DECLARE
   v_fn text;
   v_ln text;
 BEGIN
-  -- create tenant
-  INSERT INTO tenants (id, email, user_id, ownerrez_connected, subscription_exempt, company_name, subscription_status, created_at, updated_at)
-  VALUES (
-    gen_random_uuid(),
-    'demo@baileysanalytics.com',
-    '00000000-0000-0000-0000-000000000000',
-    true,
-    true,
-    'Lakeshore Retreats',
-    'active',
-    '2024-01-01'::timestamptz,
-    now()
-  )
-  RETURNING id INTO v_tenant_id;
+  SELECT id INTO v_tenant_id FROM tenants WHERE email = 'demo@baileysanalytics.com';
+  IF v_tenant_id IS NULL THEN
+    INSERT INTO tenants (id, email, user_id, ownerrez_connected, subscription_exempt, company_name, subscription_status, created_at, updated_at)
+    VALUES (gen_random_uuid(), 'demo@baileysanalytics.com', '00000000-0000-0000-0000-000000000000', true, true, 'Lakeshore Retreats', 'active', v_start::timestamptz, now())
+    RETURNING id INTO v_tenant_id;
+  END IF;
 
   -- create properties
   INSERT INTO properties (id, tenant_id, ownerrez_id, name, address, city, state, postal_code, bedrooms, bathrooms, max_guests, latitude, longitude, active, created_at, updated_at)
@@ -135,7 +127,8 @@ BEGIN
     (gen_random_uuid(), v_tenant_id, '482919', 'Sunset Ridge Cabin', '9801 German Rd', 'Ephraim', 'WI', '54211', 3, 2, 8, 45.1533, -87.1664, true, '2024-01-01', now()),
     (gen_random_uuid(), v_tenant_id, '482920', 'Eagle Bluff House', '3340 Shore Rd', 'Ephraim', 'WI', '54211', 5, 4, 14, 45.1602, -87.2190, true, '2024-01-01', now()),
     (gen_random_uuid(), v_tenant_id, '482921', 'Cherry Lane Bungalow', '215 N 3rd Ave', 'Sturgeon Bay', 'WI', '54235', 2, 1, 4, 44.8342, -87.3770, true, '2024-01-01', now()),
-    (gen_random_uuid(), v_tenant_id, '482922', 'Northwoods Retreat', '10542 Old Stage Rd', 'Sister Bay', 'WI', '54234', 3, 2, 8, 45.1889, -87.1205, true, '2024-01-01', now());
+    (gen_random_uuid(), v_tenant_id, '482922', 'Northwoods Retreat', '10542 Old Stage Rd', 'Sister Bay', 'WI', '54234', 3, 2, 8, 45.1889, -87.1205, true, '2024-01-01', now())
+  ON CONFLICT (ownerrez_id, tenant_id) DO NOTHING;
 
   -- fetch property ids in order
   SELECT array_agg(id ORDER BY name) INTO v_prop_ids FROM properties WHERE tenant_id = v_tenant_id;
@@ -181,7 +174,8 @@ BEGIN
     v_fn := split_part(v_guest_names[i], ' ', 1);
     v_ln := split_part(v_guest_names[i], ' ', 2);
     INSERT INTO guests (id, tenant_id, ownerrez_guest_id, first_name, last_name, full_name, email, phone, created_at, updated_at)
-    VALUES (v_guest_ids[i], v_tenant_id, v_guest_ownerrez_ids[i], v_fn, v_ln, v_guest_names[i], v_guest_emails[i], v_guest_phones[i], '2024-01-01', now());
+    VALUES (v_guest_ids[i], v_tenant_id, v_guest_ownerrez_ids[i], v_fn, v_ln, v_guest_names[i], v_guest_emails[i], v_guest_phones[i], '2024-01-01', now())
+    ON CONFLICT (ownerrez_guest_id, tenant_id) DO NOTHING;
   END LOOP;
 
   -- create tags
@@ -193,7 +187,8 @@ BEGIN
     (gen_random_uuid(), v_tenant_id, '10005', 'Long Stay', '#ec4899', now(), now()),
     (gen_random_uuid(), v_tenant_id, '10006', 'Early Bird', '#06b6d4', now(), now()),
     (gen_random_uuid(), v_tenant_id, '10007', 'Lakefront', '#14b8a6', now(), now()),
-    (gen_random_uuid(), v_tenant_id, '10008', 'Family', '#f97316', now(), now());
+    (gen_random_uuid(), v_tenant_id, '10008', 'Family', '#f97316', now(), now())
+  ON CONFLICT (name, tenant_id) DO NOTHING;
 
   SELECT id INTO v_tag_vip FROM tags WHERE tenant_id = v_tenant_id AND name = 'VIP';
   SELECT id INTO v_tag_pet FROM tags WHERE tenant_id = v_tenant_id AND name = 'Pet Friendly';
@@ -213,14 +208,15 @@ BEGIN
     (v_prop_harbor, v_tag_pet),
     (v_prop_northwoods, v_tag_pet),
     (v_prop_cherry, v_tag_pet),
-    (v_prop_sunset, v_tag_lakefront);
+    (v_prop_sunset, v_tag_lakefront)
+  ON CONFLICT DO NOTHING;
 
   -- generate bookings
   -- we iterate month by month, property by property, placing bookings
   FOR v_prop_idx IN 1..6 LOOP
-    v_current_date := '2024-01-01'::date;
+    v_current_date := v_start;
 
-    WHILE v_current_date < '2026-10-01'::date LOOP
+    WHILE v_current_date < v_end LOOP
       v_month := extract(month FROM v_current_date);
 
       -- seasonal occupancy probability (chance of placing a booking starting near this date)
@@ -254,8 +250,8 @@ BEGIN
         v_departure := v_arrival + v_stay_nights;
 
         -- don't go past our end date
-        IF v_departure > '2026-09-30'::date THEN
-          v_current_date := '2026-10-01'::date;
+        IF v_departure >= v_end THEN
+          v_current_date := v_end;
           CONTINUE;
         END IF;
 
@@ -322,8 +318,25 @@ BEGIN
           v_guest_idx := 1 + floor(random() * v_guest_count)::int;
         END IF;
 
-        -- booked_utc: 7-90 days before arrival
-        v_booked_utc := (v_arrival - (7 + floor(random() * 83))::int)::date::timestamptz + (floor(random() * 86400) || ' seconds')::interval;
+        -- lead time by season: summer books furthest out
+        IF v_month IN (6, 7, 8) THEN
+          v_lead_days := 21 + floor(random() * 220)::int;
+        ELSIF v_month IN (5, 9, 10) THEN
+          v_lead_days := 14 + floor(random() * 140)::int;
+        ELSE
+          v_lead_days := 7 + floor(random() * 60)::int;
+        END IF;
+        v_booked_utc := (v_arrival - v_lead_days)::timestamptz + (floor(random() * 86400) || ' seconds')::interval;
+
+        -- a stay whose booking date has not happened yet does not exist yet
+        IF v_booked_utc > now() THEN
+          v_current_date := v_departure + 1;
+          CONTINUE;
+        END IF;
+        IF v_canceled_utc IS NOT NULL AND v_canceled_utc > now() THEN
+          v_status := 'active';
+          v_canceled_utc := NULL;
+        END IF;
 
         v_ownerrez_booking_id := (1000000 + v_booking_count * 3 + floor(random() * 3))::text;
 
@@ -348,7 +361,7 @@ BEGIN
           v_guest_names[v_guest_idx], v_guest_emails[v_guest_idx], v_guest_phones[v_guest_idx],
           v_total, v_status, v_platform, v_platform_num,
           v_booked_utc, v_canceled_utc, v_host_fee, v_guest_ownerrez_ids[v_guest_idx]::text,
-          v_guest_fee, greatest(v_booked_utc, '2024-01-01'::timestamptz), now()
+          v_guest_fee, v_booked_utc, now()
         )
         RETURNING id INTO v_booking_id;
 
@@ -425,31 +438,25 @@ BEGIN
 
   RAISE NOTICE 'generated % bookings', v_booking_count;
 
-  -- blocks: owner blocks and winter closures
-  -- winter closures for 2 properties (Cherry Lane and Harbor Light — smaller properties)
-  INSERT INTO blocks (id, tenant_id, property_id, ownerrez_block_id, arrival, departure, type, reason, created_at, updated_at) VALUES
-    -- cherry lane winter closures
-    (gen_random_uuid(), v_tenant_id, 482921, 50001, '2024-12-01', '2025-03-15', 'block', 'Winter closure', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 482921, 50002, '2025-12-01', '2026-03-15', 'block', 'Winter closure', now(), now()),
-    -- harbor light winter closures
-    (gen_random_uuid(), v_tenant_id, 482918, 50003, '2024-12-15', '2025-03-01', 'block', 'Winter closure', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 482918, 50004, '2025-12-15', '2026-03-01', 'block', 'Winter closure', now(), now()),
-    -- owner personal use blocks
-    (gen_random_uuid(), v_tenant_id, 482917, 50010, '2024-07-01', '2024-07-07', 'block', 'Owner use — 4th of July week', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 482920, 50011, '2024-12-20', '2025-01-02', 'block', 'Owner use — holidays', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 482917, 50012, '2025-07-01', '2025-07-07', 'block', 'Owner use — 4th of July week', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 482920, 50013, '2025-12-20', '2026-01-02', 'block', 'Owner use — holidays', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 482922, 50014, '2025-08-15', '2025-08-22', 'block', 'Owner use — family vacation', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 482919, 50015, '2026-06-20', '2026-06-27', 'block', 'Owner use — anniversary trip', now(), now());
+  -- blocks for each year in the window: winter closures and owner stays
+  FOR v_year IN extract(year FROM v_start)::int .. extract(year FROM v_end)::int LOOP
+    INSERT INTO blocks (id, tenant_id, property_id, ownerrez_block_id, arrival, departure, type, reason, created_at, updated_at) VALUES
+      (gen_random_uuid(), v_tenant_id, 482921, 50000 + v_year * 10 + 1, make_date(v_year, 12, 1), make_date(v_year + 1, 3, 15), 'block', 'Winter closure', now(), now()),
+      (gen_random_uuid(), v_tenant_id, 482918, 50000 + v_year * 10 + 2, make_date(v_year, 12, 15), make_date(v_year + 1, 3, 1), 'block', 'Winter closure', now(), now()),
+      (gen_random_uuid(), v_tenant_id, 482917, 50000 + v_year * 10 + 3, make_date(v_year, 7, 1), make_date(v_year, 7, 7), 'block', 'Owner stay', now(), now()),
+      (gen_random_uuid(), v_tenant_id, 482920, 50000 + v_year * 10 + 4, make_date(v_year, 12, 20), make_date(v_year + 1, 1, 2), 'block', 'Owner stay', now(), now());
+  END LOOP;
 
   -- season configuration
   INSERT INTO season_configurations (id, tenant_id, name, start_month, start_day, end_month, end_day, is_active, created_at, updated_at)
-  VALUES (gen_random_uuid(), v_tenant_id, 'Peak Season', 4, 25, 11, 3, true, now(), now());
+  SELECT gen_random_uuid(), v_tenant_id, 'Peak Season', 4, 25, 11, 3, true, now(), now()
+  WHERE NOT EXISTS (SELECT 1 FROM season_configurations WHERE tenant_id = v_tenant_id);
 
   -- goals
   INSERT INTO goals (id, tenant_id, metric_key, target_value, is_enabled, period, created_at, updated_at) VALUES
     (gen_random_uuid(), v_tenant_id, 'revenue', 75000, true, 'monthly', now(), now()),
-    (gen_random_uuid(), v_tenant_id, 'occupancy', 65, true, 'yearly', now(), now());
+    (gen_random_uuid(), v_tenant_id, 'occupancy', 65, true, 'yearly', now(), now())
+  ON CONFLICT (metric_key, tenant_id) DO NOTHING;
 
 END $$;
 

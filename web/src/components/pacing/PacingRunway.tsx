@@ -9,19 +9,9 @@ import { cn } from '@/lib/utils'
 import { PaceCurveChart } from './PaceCurveChart'
 import { PaceDelta, pctChange } from './PaceDelta'
 import { PropertyPacingTable } from './PropertyPacingTable'
+import { hasPriorYear, sumBuckets } from './summary'
 
 const pct = (n: number) => formatPercentage(n, 1)
-
-function sumBuckets(months: PacingMonthSummary[], key: 'current' | 'priorAtThisPoint' | 'priorFinal') {
-  const nights = months.reduce((s, m) => s + m[key].bookedNights, 0)
-  const revenue = months.reduce((s, m) => s + m[key].revenue, 0)
-  const available = months.reduce((s, m) => s + (key === 'current' ? m.totalAvailableNights : m.priorAvailableNights), 0)
-  return {
-    occupancy: available > 0 ? (nights / available) * 100 : 0,
-    revenue,
-    adr: nights > 0 ? revenue / nights : 0,
-  }
-}
 
 function SummaryStat({ label, value, delta }: { label: string; value: string; delta: React.ReactNode }) {
   return (
@@ -109,7 +99,6 @@ export const PacingRunway = () => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
 
   const months = data?.months ?? []
-  const hasPriorYear = months.some((m) => m.priorFinal.bookedNights > 0 || m.priorAtThisPoint.bookedNights > 0)
 
   // opens on the month that is furthest behind last year
   const selected = useMemo(() => {
@@ -125,7 +114,7 @@ export const PacingRunway = () => {
   }, [months])
 
   const detail = selected ? data?.details?.[selected.month] : undefined
-  const ready = !isLoading && !error && months.length > 0 && hasPriorYear
+  const ready = !isLoading && !error && months.length > 0 && hasPriorYear(months)
 
   return (
     <section className="bg-card rounded-lg shadow-sm border border-border">

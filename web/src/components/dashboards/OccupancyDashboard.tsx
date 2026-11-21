@@ -404,9 +404,6 @@ export const OccupancyDashboard = () => {
               <Calendar className="w-5 h-5 mr-2 text-muted-foreground" />
               {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {calendarView === 'calendar' ? 'Tap a day to see its bookings.' : 'Stays arriving soon and the gaps between them.'}
-            </p>
           </div>
           <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
             <Button
@@ -457,7 +454,12 @@ export const OccupancyDashboard = () => {
             noData={chartData.length === 0}
             noDataMessage="No occupancy data for this period"
           >
-            <LineChart data={chartData} onClick={handlePeriodClick} style={{ cursor: 'pointer' }}>
+            <LineChart
+              data={chartData}
+              onClick={handlePeriodClick}
+              margin={{ top: 8, right: 24, bottom: 0, left: 0 }}
+              style={{ cursor: 'pointer' }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
               <XAxis
                 dataKey="month"
@@ -554,13 +556,7 @@ export const OccupancyDashboard = () => {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={`text-sm font-semibold ${
-                            occupancyPercent >= 70 ? 'text-success' : occupancyPercent >= 50 ? 'text-warning' : 'text-danger'
-                          }`}
-                        >
-                          {formatPercentage(occupancyPercent, 1)}
-                        </span>
+                        <span className={`text-sm font-semibold ${'text-foreground'}`}>{formatPercentage(occupancyPercent, 1)}</span>
                         {comparisonMode !== 'none' && prevOccupancy !== null && (
                           <span
                             className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-success' : occupancyPercent < prevOccupancy ? 'text-danger' : 'text-muted-foreground'}`}
@@ -578,9 +574,7 @@ export const OccupancyDashboard = () => {
                     <div className="mt-2 relative">
                       <div className="w-full bg-muted rounded-full h-1.5">
                         <div
-                          className={`h-1.5 rounded-full transition-all ${
-                            occupancyPercent >= 70 ? 'bg-success' : occupancyPercent >= 50 ? 'bg-warning' : 'bg-danger'
-                          }`}
+                          className={`h-1.5 rounded-full transition-all ${'bg-primary'}`}
                           style={{ width: `${Math.min(occupancyPercent, 100)}%` }}
                         />
                       </div>

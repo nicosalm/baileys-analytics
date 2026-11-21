@@ -1,6 +1,5 @@
 import { useMemo, useCallback, useState } from 'react'
-import { useDashboardBatch, useGoalProgress, useSeasons, usePacing } from '@/hooks/use-api'
-import type { PacingMonthSummary } from '@/hooks/use-api'
+import { useDashboardBatch, useGoalProgress, useSeasons } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import {
   formatCurrency,
@@ -33,11 +32,11 @@ import {
   BedDouble,
   History,
   Ban,
-  Activity,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { HeadlineMetric } from '@/components/HeadlineMetric'
+import { PacingSummary } from '@/components/pacing/PacingSummary'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import {
@@ -228,93 +227,6 @@ const RevenueChartTooltip = ({ active, payload, label }: Partial<TooltipContentP
     )
   }
   return null
-}
-
-function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: { tagIds?: string[]; propertyIds?: string[]; onNavigate: () => void }) {
-  const { data } = usePacing(tagIds, propertyIds)
-
-  if (!data?.months?.length) return null
-
-  // hide the summary card entirely if there's no prior-year baseline to compare against
-  const hasPriorYearData = data.months.some((m) => m.priorFinal.bookedNights > 0 || m.priorAtThisPoint.bookedNights > 0)
-  if (!hasPriorYearData) return null
-
-  const aheadCount = data.months.filter((m) => m.paceDelta > 1).length
-  const behindCount = data.months.filter((m) => m.paceDelta < -1).length
-
-  // pick the most notable month to headline
-  const notable =
-    behindCount > 0
-      ? data.months.reduce((a: PacingMonthSummary, b: PacingMonthSummary) => (a.paceDelta < b.paceDelta ? a : b))
-      : data.months.reduce((a: PacingMonthSummary, b: PacingMonthSummary) => (a.paceDelta > b.paceDelta ? a : b))
-
-  const absDelta = Math.abs(notable.paceDelta)
-  let headline: string
-  let iconColor: string
-  if (notable.paceDelta > 1) {
-    headline = `${notable.label} is pacing ${absDelta.toFixed(0)} pts ahead of last year`
-    iconColor = 'text-success'
-  } else if (notable.paceDelta < -1) {
-    headline = `${notable.label} is pacing ${absDelta.toFixed(0)} pts behind last year`
-    iconColor = 'text-danger'
-  } else {
-    headline = 'All months are tracking even with last year'
-    iconColor = 'text-muted-foreground'
-  }
-
-  const notableAdr = notable.current.adr
-  const notablePriorAdr = notable.priorAtThisPoint.adr
-  const adrChange = notablePriorAdr > 0 ? ((notableAdr - notablePriorAdr) / notablePriorAdr) * 100 : 0
-
-  const parts: string[] = []
-  if (aheadCount > 0) parts.push(`${aheadCount} ahead`)
-  if (behindCount > 0) parts.push(`${behindCount} behind`)
-  const evenCount = data.months.length - aheadCount - behindCount
-  if (evenCount > 0) parts.push(`${evenCount} even`)
-  if (Math.abs(adrChange) > 3 && notablePriorAdr > 0) {
-    parts.push(`ADR ${adrChange > 0 ? 'up' : 'down'} ${Math.abs(adrChange).toFixed(0)}%`)
-  }
-  const subtitle = parts.join(' · ')
-
-  return (
-    <button
-      type="button"
-      onClick={onNavigate}
-      className="w-full bg-card p-4 rounded-lg shadow-sm border border-border hover:shadow-md hover:bg-muted/30 transition-all duration-200 cursor-pointer text-left"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Activity className={`w-5 h-5 ${iconColor}`} />
-          <div>
-            <div className="text-sm font-semibold text-foreground">{headline}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">{subtitle}</div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {data.months.map((m) => (
-            <div
-              key={m.month}
-              className="flex flex-col items-center gap-0.5"
-              title={`${m.label}: ${m.paceDelta > 0 ? '+' : ''}${m.paceDelta.toFixed(1)} pts`}
-            >
-              <div
-                className={`w-2.5 h-2.5 rounded-full ${
-                  m.paceDelta > 2
-                    ? 'bg-success'
-                    : m.paceDelta < -5
-                      ? 'bg-danger'
-                      : m.paceDelta < -1
-                        ? 'bg-warning'
-                        : 'bg-muted-foreground/40'
-                }`}
-              />
-              <span className="text-[9px] leading-none text-muted-foreground">{m.label.slice(0, 3)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </button>
-  )
 }
 
 export const OverviewDashboard = () => {
@@ -922,7 +834,7 @@ export const OverviewDashboard = () => {
         />
       </div>
 
-      <PacingSummaryCard tagIds={tagIds} propertyIds={propertyIds} onNavigate={() => handleMetricCardClick('occupancy')} />
+      <PacingSummary tagIds={tagIds} propertyIds={propertyIds} onOpen={() => handleMetricCardClick('occupancy')} />
 
       <div className="grid lg:grid-cols-2 gap-6">
         <ChartWrapper

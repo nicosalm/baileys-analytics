@@ -232,9 +232,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                       const margin = prof && prof.grossRevenue > 0 ? (prof.netRevenue / prof.grossRevenue) * 100 : 0
                       return (
                         <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
-                          <div
-                            className={`text-sm font-medium ${margin >= 50 ? 'text-success' : margin >= 30 ? 'text-warning' : 'text-danger'}`}
-                          >
+                          <div className={`text-sm font-medium ${margin < 0 ? 'text-danger' : 'text-foreground'}`}>
                             {formatPercentage(margin, 1)}
                           </div>
                           {prof && <div className="text-xs text-muted-foreground">{formatCompactCurrency(prof.netRevenue)} net</div>}
@@ -260,18 +258,9 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                   <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                     <div className="flex items-center gap-2">
                       <div className="w-16 bg-muted rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            property.occupancyRate >= 0.7 ? 'bg-success' : property.occupancyRate >= 0.5 ? 'bg-warning' : 'bg-danger'
-                          }`}
-                          style={{ width: `${property.occupancyRate * 100}%` }}
-                        />
+                        <div className={`h-2 rounded-full ${'bg-primary'}`} style={{ width: `${property.occupancyRate * 100}%` }} />
                       </div>
-                      <span
-                        className={`text-sm font-medium ${
-                          property.occupancyRate >= 0.7 ? 'text-success' : property.occupancyRate >= 0.5 ? 'text-warning' : 'text-danger'
-                        }`}
-                      >
+                      <span className={`text-sm font-medium ${'text-foreground'}`}>
                         {formatPercentage(property.occupancyRate * 100, 1)}
                       </span>
                     </div>

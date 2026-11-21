@@ -125,9 +125,3 @@ export const getTagColor = (tag: { color?: string; id?: string; name?: string })
   }
   return getChartColor(Math.abs(hash) % CHART_SERIES_VARS.length)
 }
-
-export const getOccupancyColor = (rate: number): string => {
-  if (rate >= 0.8) return 'text-success'
-  if (rate >= 0.6) return 'text-warning'
-  return 'text-danger'
-}

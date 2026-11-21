@@ -212,10 +212,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div
-              className={cn(
-                'h-2 rounded-full transition-all',
-                targetProgress >= 100 ? 'bg-success' : targetProgress >= 75 ? 'bg-info' : targetProgress >= 50 ? 'bg-warning' : 'bg-danger',
-              )}
+              className={cn('h-2 rounded-full transition-all', targetProgress >= 100 ? 'bg-success' : 'bg-primary')}
               style={{ width: `${targetProgress}%` }}
             />
           </div>

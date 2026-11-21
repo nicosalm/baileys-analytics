@@ -318,20 +318,20 @@ export const DashboardLayout = () => {
               <div className="flex items-center gap-2 sm:gap-3">
                 {isDemo ? (
                   <div className="flex items-center gap-1.5 sm:gap-2">
-                    <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2.5 py-1.5 rounded-md whitespace-nowrap">
+                    <span className="hidden sm:inline-flex h-8 items-center gap-1.5 px-3 rounded-md bg-muted text-sm text-muted-foreground whitespace-nowrap">
                       <Eye className="w-3.5 h-3.5 shrink-0" />
                       Demo
                     </span>
                     <Link
                       to="/signup"
-                      className="hidden sm:inline-flex whitespace-nowrap px-4 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                      className="hidden sm:inline-flex h-8 items-center px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium whitespace-nowrap hover:opacity-90 transition-opacity"
                     >
                       Sign Up
                     </Link>
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="hidden sm:block p-1.5 text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors cursor-pointer"
+                      className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                       title="Exit demo"
                       aria-label="Exit demo"
                     >
