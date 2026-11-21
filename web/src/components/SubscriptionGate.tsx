@@ -17,11 +17,15 @@ interface SubscriptionGateProps {
 
 export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) => {
   const [subscriptionData, setSubscriptionData] = useState<{ subscription?: { status: string } | null; isExempt?: boolean } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadFailed, setLoadFailed] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
   const { logout, state } = useAuth()
+  const isDemo = state.status === 'authenticated' && state.user.isDemo === true
+  // sign-in already answered this through /auth/me; only ask billing when it couldn't
+  const knownPlan = state.status === 'authenticated' ? state.user.hasActivePlan : undefined
+  const needsCheck = !isDemo && knownPlan === undefined
+  const [loading, setLoading] = useState(needsCheck)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const checkSubscription = async () => {
     setLoading(true)
@@ -44,11 +48,11 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
   }
 
   useEffect(() => {
-    checkSubscription()
-  }, [])
+    if (needsCheck) checkSubscription()
+  }, [needsCheck])
 
   // demo users bypass subscription gate entirely
-  if (state.status === 'authenticated' && state.user.isDemo) {
+  if (isDemo) {
     return <>{children}</>
   }
 
@@ -72,13 +76,10 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
     )
   }
 
-  // check if account is exempt or has active subscription
-  const isExempt = subscriptionData?.isExempt === true
-  const subscription = subscriptionData?.subscription
-  const hasActiveSubscription = subscription && subscription.status === 'active'
-
   // allow access if exempt or has active subscription
-  if (!isExempt && !hasActiveSubscription) {
+  const hasActivePlan = knownPlan ?? (subscriptionData?.isExempt === true || subscriptionData?.subscription?.status === 'active')
+
+  if (!hasActivePlan) {
     const handleLogout = async () => {
       await logout()
       navigate('/')

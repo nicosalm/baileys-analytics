@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Calendar, ChevronDown, Check, GitCompare } from 'lucide-react'
-import { formatDateISO, parseDate, format, getYear } from '@baileys/utils'
+import { parseDate, format, getYear } from '@baileys/utils'
 import { cn } from '@/lib/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import { useSeasons, useEarliestBookingDate } from '@/hooks/use-api'
@@ -12,7 +12,7 @@ import { menuStyles } from '@/components/ui/menu-styles'
 import { Button } from '@/components/ui/button'
 import { buildPeriodOptions, type PeriodOption } from '@/utils/period-options'
 import { calculateComparisonRange, getComparisonLabel, type ComparisonType } from '@/utils/comparison'
-import { getCurrentSeasonDates, getPreviousSeasonDates, isCurrentlyInSeason, hasSeasonStartedThisYear } from '@/utils/season-dates'
+import { isCurrentlyInSeason, hasSeasonStartedThisYear } from '@/utils/season-dates'
 
 interface DateRange {
   from: string
@@ -42,7 +42,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({ value,
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
 
-  const { data: seasons = [], isLoading: seasonsLoading } = useSeasons()
+  const { data: seasons = [] } = useSeasons()
   const { data: earliestDate } = useEarliestBookingDate()
   const activeSeasons = useMemo(() => seasons.filter((s) => s.isActive), [seasons])
 
@@ -56,35 +56,6 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({ value,
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [dateOpen, compOpen])
-
-  const hasSetInitialSeason = useRef(false)
-  useEffect(() => {
-    if (!seasonsLoading && activeSeasons.length > 0 && !hasSetInitialSeason.current) {
-      const today = new Date()
-      const ytdFrom = formatDateISO(new Date(getYear(today), 0, 1))
-
-      if (value.from === ytdFrom && activeSeasons.length === 1) {
-        hasSetInitialSeason.current = true
-        const season = activeSeasons[0]
-
-        if (!hasSeasonStartedThisYear(season)) {
-          const lastSeasonDates = getPreviousSeasonDates(season)
-          const activeSeason = activeSeasons[0]
-          const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
-          const comparisonResult = calculateComparisonRange(lastSeasonDates, comparisonType, activeSeason, offset)
-          const label = buildComparisonLabel(comparisonType, comparisonYearOffset, lastSeasonDates.from)
-          onChangeRef.current(lastSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined, label)
-        } else {
-          const currentSeasonDates = getCurrentSeasonDates(season)
-          const activeSeason = activeSeasons[0]
-          const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
-          const comparisonResult = calculateComparisonRange(currentSeasonDates, comparisonType, activeSeason, offset)
-          const label = buildComparisonLabel(comparisonType, comparisonYearOffset, currentSeasonDates.from)
-          onChangeRef.current(currentSeasonDates, comparisonResult.isValid ? comparisonResult.range : undefined, label)
-        }
-      }
-    }
-  }, [seasonsLoading, activeSeasons, value.from, comparisonType])
 
   // Check if current comparison is still valid when date range changes
   useEffect(() => {

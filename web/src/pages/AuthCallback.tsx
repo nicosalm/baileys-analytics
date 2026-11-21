@@ -1,8 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/database.types'
-import { supabase, clearAuthStorage } from '@/lib/supabase'
+import { supabaseAuth, createSupabaseAuth, clearAuthStorage } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
 import { AlertCircle, CheckCircle } from 'lucide-react'
@@ -14,16 +12,8 @@ type AuthStatus = 'loading' | 'success' | 'error'
 // Create a fresh Supabase client for code exchange.
 // The main client's internal state can get corrupted, but a fresh instance
 // can still read the PKCE verifier from shared localStorage.
-const createCallbackClient = () =>
-  createClient<Database>(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
-    auth: {
-      autoRefreshToken: false, // Don't need this for one-time exchange
-      persistSession: true,
-      detectSessionInUrl: false,
-      flowType: 'pkce',
-      storageKey: 'baileys-auth', // Same key as main client for shared PKCE verifier
-    },
-  })
+// Same storage key as the main client, so it shares the PKCE verifier; no refresh for a one-time exchange.
+const createCallbackClient = () => createSupabaseAuth({ autoRefreshToken: false })
 
 /**
  * Auth callback handler for OAuth (Google, Microsoft) and email confirmations.
@@ -129,7 +119,7 @@ export const AuthCallback = () => {
 
     async function handleImplicitFlow(accessToken: string, refreshToken: string, type: string | null) {
       try {
-        const { error: sessionError } = await supabase.auth.setSession({
+        const { error: sessionError } = await supabaseAuth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         })
@@ -176,7 +166,7 @@ export const AuthCallback = () => {
 
       // No code - check for existing session with timeout
       try {
-        const sessionPromise = supabase.auth.getSession()
+        const sessionPromise = supabaseAuth.getSession()
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 5000))
         const {
           data: { session: existingSession },
@@ -197,7 +187,7 @@ export const AuthCallback = () => {
       try {
         // Use fresh client - it reads PKCE verifier from shared localStorage but has clean internal state
         const callbackClient = createCallbackClient()
-        const { data, error: exchangeError } = await callbackClient.auth.exchangeCodeForSession(code)
+        const { data, error: exchangeError } = await callbackClient.exchangeCodeForSession(code)
 
         if (exchangeError) {
           const msg = exchangeError.message?.toLowerCase() || ''
@@ -225,12 +215,12 @@ export const AuthCallback = () => {
         // getSession may return null right after a page reload because the
         // Supabase client hasn't finished initializing from localStorage yet.
         // Retry with progressive delays to handle this race condition.
-        let session = (await supabase.auth.getSession()).data.session
+        let session = (await supabaseAuth.getSession()).data.session
         if (!session) {
           const delays = [500, 1000, 1500, 2000]
           for (const delay of delays) {
             await new Promise((resolve) => setTimeout(resolve, delay))
-            session = (await supabase.auth.getSession()).data.session
+            session = (await supabaseAuth.getSession()).data.session
             if (session) break
           }
         }

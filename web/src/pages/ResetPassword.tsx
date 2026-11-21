@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '@/lib/supabase'
+import { supabaseAuth } from '@/lib/supabase'
 import { Lock, ArrowLeft, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,7 +30,7 @@ export const ResetPassword = () => {
         const {
           data: { user },
           error: userError,
-        } = await supabase.auth.getUser()
+        } = await supabaseAuth.getUser()
 
         // check if we're in password recovery mode
         // only trust recovery_sent_at - don't accept any authenticated session
@@ -84,7 +84,7 @@ export const ResetPassword = () => {
     setLoading(true)
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
+      const { error: updateError } = await supabaseAuth.updateUser({
         password: password,
       })
 
@@ -102,7 +102,7 @@ export const ResetPassword = () => {
       setSuccess(true)
 
       // sign out to ensure clean state
-      await supabase.auth.signOut()
+      await supabaseAuth.signOut()
 
       setTimeout(() => navigate('/login'), 2000)
     } catch (err) {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode, useRef, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabaseAuth } from '@/lib/supabase'
 import { api } from '@/lib/api'
-import type { Session } from '@supabase/supabase-js'
+import type { Session } from '@supabase/auth-js'
 import type { AppUser, MeResponse } from '@/types/auth'
 
 type AuthState = { status: 'loading' } | { status: 'unauthenticated' } | { status: 'authenticated'; user: AppUser; session: Session }
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // trigger a refresh instead of processing stale session
       const {
         data: { session: refreshedSession },
-      } = await supabase.auth.refreshSession()
+      } = await supabaseAuth.refreshSession()
       if (!refreshedSession) {
         api.setAccessToken(null)
         setState({ status: 'unauthenticated' })
@@ -108,6 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       tenantId: profile?.tenantId ?? undefined,
       isOAuthUser: isOAuthUser(session.user.identities),
       companyName: profile?.companyName ?? null,
+      hasActivePlan: profile?.hasActivePlan,
       isDemo: false,
     }
 
@@ -122,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabaseAuth.signInWithPassword({
         email,
         password,
       })
@@ -143,7 +144,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabaseAuth.signUp({
         email,
         password,
         options: {
@@ -177,7 +178,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async (): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabaseAuth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -191,7 +192,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithMicrosoft = async (): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabaseAuth.signInWithOAuth({
         provider: 'azure',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
@@ -205,7 +206,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInAsDemo = async (): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.auth.signInAnonymously()
+      const { data, error } = await supabaseAuth.signInAnonymously()
       if (error || !data.session) return false
       return await processSession(data.session)
     } catch {
@@ -215,7 +216,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut()
+      await supabaseAuth.signOut()
     } catch (error) {
       // Silent error handling
     } finally {
@@ -226,7 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const resetPassword = async (email: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabaseAuth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
       })
       return !error
@@ -242,7 +243,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const {
         data: { user },
         error: userError,
-      } = await supabase.auth.getUser()
+      } = await supabaseAuth.getUser()
       if (userError || !user) {
         return false
       }
@@ -250,7 +251,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Add timeout to prevent indefinite hanging
       const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Password update timeout')), 15000))
 
-      const updatePromise = supabase.auth.updateUser({
+      const updatePromise = supabaseAuth.updateUser({
         password: newPassword,
       })
 
@@ -272,7 +273,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const {
         data: { user },
         error: userError,
-      } = await supabase.auth.getUser()
+      } = await supabaseAuth.getUser()
       if (userError || !user) {
         return false
       }
@@ -285,7 +286,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return timeoutId
       })
 
-      const updatePromise = supabase.auth.updateUser({ email: newEmail }, { emailRedirectTo: `${window.location.origin}/auth/callback` })
+      const updatePromise = supabaseAuth.updateUser({ email: newEmail }, { emailRedirectTo: `${window.location.origin}/auth/callback` })
 
       const result = await Promise.race([updatePromise, timeoutPromise])
 
@@ -343,7 +344,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const {
           data: { user },
           error: userError,
-        } = await supabase.auth.getUser()
+        } = await supabaseAuth.getUser()
 
         if (userError || !user) {
           api.setAccessToken(null)
@@ -355,7 +356,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const {
           data: { session: refreshedSession },
           error: refreshError,
-        } = await supabase.auth.refreshSession()
+        } = await supabaseAuth.refreshSession()
 
         if (!refreshError && refreshedSession) {
           await processSession(refreshedSession)
@@ -385,7 +386,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // set up auth state change listener first
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabaseAuth.onAuthStateChange((event, session) => {
       // handle different auth events — avoid async work directly in this callback
       // per Supabase docs (risk of deadlocks). Use setTimeout to defer instead.
       switch (event) {

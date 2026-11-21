@@ -226,8 +226,8 @@ importers:
       '@baileys/utils':
         specifier: workspace:*
         version: link:../packages/utils
-      '@supabase/supabase-js':
-        specifier: ^2.119.2
+      '@supabase/auth-js':
+        specifier: 2.119.2
         version: 2.119.2
       class-variance-authority:
         specifier: ^0.7.1

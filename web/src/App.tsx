@@ -12,12 +12,15 @@ import { ProtectedRoute, NoDemoRoute } from '@/components/ProtectedRoute'
 import { SubscriptionGate } from '@/components/SubscriptionGate'
 import { LoadingState } from '@/components/LoadingState'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { loadDashboardLayout, prefetchDashboard } from '@/pages/dashboard-preload'
+
+prefetchDashboard(window.location.pathname)
 
 // Lazy load pages
 const Landing = lazy(() => import('@/pages/Landing').then((m) => ({ default: m.Landing })))
 const Login = lazy(() => import('@/pages/Login').then((m) => ({ default: m.Login })))
 const Signup = lazy(() => import('@/pages/Signup').then((m) => ({ default: m.Signup })))
-const DashboardLayout = lazy(() => import('@/pages/DashboardLayout').then((m) => ({ default: m.DashboardLayout })))
+const DashboardLayout = lazy(() => loadDashboardLayout().then((m) => ({ default: m.DashboardLayout })))
 const Settings = lazy(() => import('@/pages/Settings').then((m) => ({ default: m.Settings })))
 const Terms = lazy(() => import('@/pages/Terms').then((m) => ({ default: m.Terms })))
 const Privacy = lazy(() => import('@/pages/Privacy').then((m) => ({ default: m.Privacy })))

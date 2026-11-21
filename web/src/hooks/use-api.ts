@@ -1,4 +1,4 @@
-import useSWR, { mutate as globalMutate } from 'swr'
+import useSWR, { mutate as globalMutate, preload } from 'swr'
 import { api } from '@/lib/api'
 import type { Season, SeasonFormData } from '@/types/season'
 import type { Goal, GoalFormData, GoalProgress } from '@/types/goal'
@@ -195,8 +195,11 @@ export interface SyncStatusResponse {
   }>
 }
 
-export function useDashboardBatch(
-  view: 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests' | 'guests-cancelled' | 'guests-inquiries',
+type DashboardView = 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests' | 'guests-cancelled' | 'guests-inquiries'
+
+// the cache key and fetcher for one dashboard view, shared by the hook and the early preload
+function dashboardBatchRequest(
+  view: DashboardView,
   from?: string,
   to?: string,
   tagIds?: string[],
@@ -217,24 +220,34 @@ export function useDashboardBatch(
       : null
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- response shape varies by view param
-  const result = useSWR<Record<string, any>>(
-    key,
-    async () => {
-      const params = new URLSearchParams()
-      params.append('view', view)
-      if (validFrom) params.append('from', validFrom)
-      if (validTo) params.append('to', validTo)
-      if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
-      if (validPropertyIds && validPropertyIds.length > 0) params.append('properties', validPropertyIds.join(','))
-      if (validCompFrom) params.append('comparisonFrom', validCompFrom)
-      if (validCompTo) params.append('comparisonTo', validCompTo)
+  const fetcher = async (): Promise<Record<string, any>> => {
+    const params = new URLSearchParams()
+    params.append('view', view)
+    if (validFrom) params.append('from', validFrom)
+    if (validTo) params.append('to', validTo)
+    if (validTagIds && validTagIds.length > 0) params.append('tags', validTagIds.join(','))
+    if (validPropertyIds && validPropertyIds.length > 0) params.append('properties', validPropertyIds.join(','))
+    if (validCompFrom) params.append('comparisonFrom', validCompFrom)
+    if (validCompTo) params.append('comparisonTo', validCompTo)
 
-      const result = await api.request<Record<string, any>>(`/dashboard-batch?${params}`)
-      if (!result.success) throw new Error(result.error)
-      return result.data
-    },
-    { refreshInterval: 120000, keepPreviousData: true },
-  )
+    const result = await api.request<Record<string, any>>(`/dashboard-batch?${params}`)
+    if (!result.success) throw new Error(result.error)
+    return result.data
+  }
+
+  return { key, fetcher }
+}
+
+// starts a view's request before its tab has mounted; the tab's hook then picks up the same promise
+export function preloadDashboardBatch(...args: Parameters<typeof dashboardBatchRequest>) {
+  const { key, fetcher } = dashboardBatchRequest(...args)
+  if (key) preload(key, fetcher)
+}
+
+export function useDashboardBatch(...args: Parameters<typeof dashboardBatchRequest>) {
+  const { key, fetcher } = dashboardBatchRequest(...args)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- response shape varies by view param
+  const result = useSWR<Record<string, any>>(key, fetcher, { refreshInterval: 120000, keepPreviousData: true })
 
   // first load with no error: show loading. retries exhausted: show error.
   // has data + revalidating: show stale data with opacity indicator.
@@ -477,16 +490,14 @@ export async function saveExpenseTemplates(data: SaveExpenseTemplatesData): Prom
   await globalMutate((key: unknown) => typeof key === 'string' && (key.includes('financial') || key.includes('dashboard-batch')))
 }
 
+export const seasonsFetcher = async (): Promise<Season[]> => {
+  const result = await api.getSeasons()
+  if (!result.success) throw new Error(result.error)
+  return result.data || []
+}
+
 export function useSeasons() {
-  return useSWR<Season[]>(
-    '/seasons',
-    async () => {
-      const result = await api.getSeasons()
-      if (!result.success) throw new Error(result.error)
-      return result.data || []
-    },
-    { keepPreviousData: true },
-  )
+  return useSWR<Season[]>('/seasons', seasonsFetcher, { keepPreviousData: true })
 }
 
 export function useEarliestBookingDate() {

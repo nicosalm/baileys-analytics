@@ -5,6 +5,8 @@ import { formatDateISO, getYear, getMonth } from '@baileys/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import { isValidDateString, filterValidUUIDs } from '@/utils/validation'
 import type { Season } from '@/types/season'
+import { useSeasons } from '@/hooks/use-api'
+import { getCurrentSeasonDates, getPreviousSeasonDates, hasSeasonStartedThisYear } from '@/utils/season-dates'
 
 type DashboardContextValue = {
   activeTab: DashboardTab
@@ -21,6 +23,8 @@ type DashboardContextValue = {
   applyGroupSelection: (propertyIds: string[], action: 'add' | 'remove') => void
   clearFilters: () => void
   getShareableUrl: () => string
+  // false until the opening period is known; tabs wait for it so their first request is the right one
+  periodSettled: boolean
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null)
@@ -91,6 +95,13 @@ const getDefaultDateRange = (activeSeasons?: Season[]): DateRange => {
     from: formatDateISO(new Date(currentYear, 0, 1)),
     to: formatDateISO(today),
   }
+}
+
+// a tenant with exactly one active season opens on that season instead of year to date
+const seasonOpeningRange = (seasons: Season[] | undefined): DateRange | null => {
+  const active = (seasons ?? []).filter((s) => s.isActive)
+  if (active.length !== 1) return null
+  return hasSeasonStartedThisYear(active[0]) ? getCurrentSeasonDates(active[0]) : getPreviousSeasonDates(active[0])
 }
 
 const initialFilters: FilterState = {
@@ -202,6 +213,16 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const [filters, setFilters] = useState<FilterState>(getInitialFilters)
+
+  // decided during render rather than in an effect, so no tab ever fetches the
+  // year-to-date range that a season is about to replace
+  const { data: seasons, isLoading: seasonsLoading } = useSeasons()
+  const [periodSettled, setPeriodSettled] = useState(() => filters.dateRange.from !== initialFilters.dateRange.from)
+  if (!periodSettled && !seasonsLoading) {
+    setPeriodSettled(true)
+    const seasonRange = seasonOpeningRange(seasons)
+    if (seasonRange) setFilters((prev) => ({ ...prev, dateRange: seasonRange }))
+  }
 
   useEffect(() => {
     const newTab = getActiveTabFromPath()
@@ -324,6 +345,7 @@ export const DashboardProvider = ({ children }: { children: ReactNode }) => {
         applyGroupSelection,
         clearFilters,
         getShareableUrl,
+        periodSettled,
       }}
     >
       {children}

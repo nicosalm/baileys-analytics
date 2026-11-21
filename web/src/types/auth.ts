@@ -1,4 +1,4 @@
-import type { User as SupabaseUser } from '@supabase/supabase-js'
+import type { User as SupabaseUser } from '@supabase/auth-js'
 
 export interface AppUser extends SupabaseUser {
   hasOwnerRezConnection?: boolean
@@ -6,6 +6,8 @@ export interface AppUser extends SupabaseUser {
   isOAuthUser?: boolean
   companyName?: string | null
   isDemo?: boolean
+  // undefined when /auth/me didn't answer; the subscription gate then asks billing itself
+  hasActivePlan?: boolean
 }
 
 export interface MeResponse {
@@ -14,5 +16,6 @@ export interface MeResponse {
   tenantId: string | null
   companyName: string | null
   hasOwnerRezConnection: boolean
+  hasActivePlan: boolean
   createdAt: string
 }

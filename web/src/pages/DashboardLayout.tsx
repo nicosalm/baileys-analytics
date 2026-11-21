@@ -5,14 +5,15 @@ import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-do
 import { Menu } from 'lucide-react'
 import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { loadTab } from '@/pages/dashboard-preload'
+import { preloadDashboardBatch } from '@/hooks/use-api'
+import { useTagIds, usePropertyIds } from '@/hooks/use-dashboard-utils'
 
-const OverviewDashboard = lazy(() => import('@/components/dashboards/OverviewDashboard').then((m) => ({ default: m.OverviewDashboard })))
-const FinancialDashboard = lazy(() => import('@/components/dashboards/FinancialDashboard').then((m) => ({ default: m.FinancialDashboard })))
-const PropertiesDashboard = lazy(() =>
-  import('@/components/dashboards/PropertiesDashboard').then((m) => ({ default: m.PropertiesDashboard })),
-)
-const OccupancyDashboard = lazy(() => import('@/components/dashboards/OccupancyDashboard').then((m) => ({ default: m.OccupancyDashboard })))
-const GuestsDashboard = lazy(() => import('@/components/dashboards/GuestsDashboard').then((m) => ({ default: m.GuestsDashboard })))
+const OverviewDashboard = lazy(() => loadTab.overview().then((m) => ({ default: m.OverviewDashboard })))
+const FinancialDashboard = lazy(() => loadTab.financial().then((m) => ({ default: m.FinancialDashboard })))
+const PropertiesDashboard = lazy(() => loadTab.properties().then((m) => ({ default: m.PropertiesDashboard })))
+const OccupancyDashboard = lazy(() => loadTab.occupancy().then((m) => ({ default: m.OccupancyDashboard })))
+const GuestsDashboard = lazy(() => loadTab.guests().then((m) => ({ default: m.GuestsDashboard })))
 
 import { FilterBar, MobileFilterControls } from '@/components/FilterBar'
 import { LoadingState } from '@/components/LoadingState'
@@ -36,7 +37,25 @@ const tabConfig: Array<{ id: DashboardTab; label: string }> = [
 ]
 
 const DashboardContent = () => {
-  const { activeTab } = useDashboard()
+  const { activeTab, periodSettled, filters, comparisonRange } = useDashboard()
+  const tagIds = useTagIds()
+  const propertyIds = usePropertyIds()
+
+  // the first request starts as soon as the period is known, not after the tab and its chart library load
+  const preloaded = useRef(false)
+  useEffect(() => {
+    if (!periodSettled || preloaded.current) return
+    preloaded.current = true
+    preloadDashboardBatch(
+      activeTab,
+      filters.dateRange.from,
+      filters.dateRange.to,
+      tagIds,
+      comparisonRange?.from,
+      comparisonRange?.to,
+      propertyIds,
+    )
+  }, [periodSettled, activeTab, filters.dateRange, tagIds, comparisonRange, propertyIds])
   const { addToast } = useToast()
   const [fadeKey, setFadeKey] = useState(activeTab)
   const [visible, setVisible] = useState(true)
@@ -81,7 +100,7 @@ const DashboardContent = () => {
       }}
     >
       <div className={`transition-opacity duration-150 ${visible ? 'opacity-100' : 'opacity-0'}`}>
-        <Suspense fallback={<LoadingState />}>{renderContent()}</Suspense>
+        <Suspense fallback={<LoadingState />}>{periodSettled ? renderContent() : <LoadingState />}</Suspense>
       </div>
     </ErrorBoundary>
   )

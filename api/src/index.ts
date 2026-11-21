@@ -11,6 +11,7 @@ import { getOverviewData } from './services/overview';
 import { getFinancialBatchData } from './services/financial';
 import { getPropertiesData } from './services/properties';
 import { getOccupancyData } from './services/occupancy';
+import { markPendingTierIfNeeded } from './services/tier-reconciliation';
 import { getGuestsData, getCancelledBookingsData } from './services/guests';
 import { getInquiriesData } from './services/inquiries';
 import { getPacingData } from './services/pacing';
@@ -93,12 +94,25 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 	const tenantId = c.get('tenantId') || null;
 	const supabase = createSupabaseClient(c.env);
 
-	const [tenant, ownerrezToken] = tenantId
+	const [tenant, ownerrezToken, subscription] = tenantId
 		? await Promise.all([
-				supabase.from('tenants').select('company_name').eq('id', tenantId).maybeSingle(),
+				supabase.from('tenants').select('company_name, subscription_exempt').eq('id', tenantId).maybeSingle(),
 				supabase.from('oauth_tokens').select('id').eq('tenant_id', tenantId).eq('provider', 'ownerrez').maybeSingle(),
+				supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).maybeSingle(),
 			])
-		: [null, null];
+		: [null, null, null];
+	const isExempt = tenant?.data?.subscription_exempt === true;
+
+	// records a pending tier upgrade when the owner has outgrown their plan, which the cron
+	// applies at renewal. this used to ride on the subscription request the dashboard made on
+	// every load; it runs after the response now so sign-in doesn't wait on it
+	if (tenantId && !isExempt && !user.is_anonymous) {
+		c.executionCtx.waitUntil(
+			markPendingTierIfNeeded(c.env, supabase, tenantId).catch((err) =>
+				console.error('markPendingTierIfNeeded failed during /auth/me:', err),
+			),
+		);
+	}
 
 	return c.json({
 		id: user.id,
@@ -106,6 +120,8 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 		tenantId,
 		companyName: tenant?.data?.company_name ?? null,
 		hasOwnerRezConnection: !!ownerrezToken?.data,
+		// same rule the dashboard's subscription gate applies
+		hasActivePlan: isExempt || subscription?.data?.status === 'active',
 		createdAt: user.created_at || new Date().toISOString(),
 	});
 });

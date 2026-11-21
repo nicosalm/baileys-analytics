@@ -12,7 +12,7 @@
   "dependencies": {
     "@baileys/constants": "workspace:*",
     "@baileys/utils": "workspace:*",
-    "@supabase/supabase-js": "^2.119.2",
+    "@supabase/auth-js": "2.119.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.1.1",
