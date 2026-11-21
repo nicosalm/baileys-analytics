@@ -1,5 +1,6 @@
 import { Context, Next } from 'hono';
 import { createSupabaseClient } from '../services/supabase';
+import type { AppEnv } from '../types';
 
 // subscription statuses that allow access
 const ACTIVE_STATUSES = ['active'];
@@ -19,7 +20,7 @@ function isPublicRoute(path: string): boolean {
   return PUBLIC_ROUTES.some(route => path.startsWith(route));
 }
 
-export const subscriptionMiddleware = async (c: Context<{ Bindings: Env; Variables: { user: any; tenantId: string } }>, next: Next) => {
+export const subscriptionMiddleware = async (c: Context<AppEnv>, next: Next) => {
   // skip subscription check for public routes
   const path = c.req.path;
   if (isPublicRoute(path)) {

@@ -1,76 +1,30 @@
 import { Context, Next } from 'hono';
+import { responseCachePrefix, sha256Hex } from '../utils/cache';
+import type { AppEnv } from '../types';
 
-interface CacheOptions {
-	ttl?: number;
-	key?: (c: Context) => string;
-	condition?: (c: Context) => boolean;
-}
-
-// the default cache key MUST include the tenant id to prevent cross-tenant
-// response leakage. if the tenant id is not set (e.g. public route, or auth
-// middleware has not run yet), skip caching entirely rather than risk a leak.
-export function cache(options: CacheOptions = {}) {
-	const { ttl = 300, key, condition } = options;
-
-	return async function cacheMiddleware(c: Context<{ Bindings: Env; Variables: { user: any; tenantId: string } }>, next: Next) {
-		if (condition && !condition(c)) {
+// caches successful GET responses per tenant. entries are cleared with the tenant's
+// booking views (sync, webhooks) so they never outlive the data they were built from.
+export function cache({ ttl = 300 }: { ttl?: number } = {}) {
+	return async function cacheMiddleware(c: Context<AppEnv>, next: Next) {
+		const tenantId = c.get('tenantId');
+		const kv = c.env.CACHE;
+		if (c.req.method !== 'GET' || !tenantId || !kv) {
 			return next();
 		}
 
-		let cacheKey: string | null;
-		if (key) {
-			cacheKey = key(c);
-		} else {
-			const tenantId = c.get('tenantId');
-			cacheKey = tenantId ? `${c.req.method}:${tenantId}:${c.req.url}` : null;
-		}
+		const url = new URL(c.req.url);
+		const cacheKey = responseCachePrefix(tenantId) + await sha256Hex(url.pathname + url.search);
 
-		if (!cacheKey) {
-			return next();
-		}
-
-		// KV keys are limited to 512 bytes; hash long keys
-		if (new TextEncoder().encode(cacheKey).length > 480) {
-			const hash = await crypto.subtle.digest(
-				'SHA-256',
-				new TextEncoder().encode(cacheKey)
-			);
-			const hex = [...new Uint8Array(hash)]
-				.map(b => b.toString(16).padStart(2, '0'))
-				.join('');
-			cacheKey = cacheKey.slice(0, 64) + ':h_' + hex.slice(0, 32);
-		}
-
-		if (c.req.method === 'GET' && c.env.CACHE) {
-			const cached = await c.env.CACHE.get(cacheKey);
-			if (cached) {
-				const data = JSON.parse(cached);
-				return c.json(data.body, data.status);
-			}
+		const cached = await kv.get(cacheKey, 'json');
+		if (cached !== null) {
+			return c.json(cached);
 		}
 
 		await next();
 
-		if (c.req.method === 'GET' && c.res.status === 200 && c.env.CACHE) {
-			const response = c.res.clone();
-			const body = await response.json();
-
-			await c.env.CACHE.put(
-				cacheKey,
-				JSON.stringify({ body, status: response.status }),
-				{ expirationTtl: ttl }
-			);
-		}
-	};
-}
-
-export function clearCache(pattern: string) {
-	return async function clearCacheMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
-		await next();
-		
-		if (c.res.status >= 200 && c.res.status < 300 && c.env.CACHE) {
-			const keys = await c.env.CACHE.list({ prefix: pattern });
-			await Promise.all(keys.keys.map(key => c.env.CACHE!.delete(key.name)));
+		if (c.res.status === 200) {
+			const body = await c.res.clone().json();
+			c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(body), { expirationTtl: ttl }));
 		}
 	};
 }

@@ -1,14 +1,15 @@
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../services/supabase';
 import { authMiddleware } from '../middleware/auth';
 import { requestTenantDeletion, purgeTenant, StripeCancellationError } from '../services/account-deletion';
+import type { AppEnv } from '../types';
 
-const account = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const account = new Hono<AppEnv>();
 
 // get company name
 account.get('/company-name', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   const { data, error } = await supabase
     .from('tenants')
@@ -35,7 +36,7 @@ account.patch('/company-name', authMiddleware, async (c) => {
     return c.json({ error: 'Company name must be 100 characters or fewer' }, 400);
   }
 
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   const { error } = await supabase
     .from('tenants')
@@ -49,7 +50,7 @@ account.patch('/company-name', authMiddleware, async (c) => {
 // delete account permanently
 account.delete('/delete', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     await requestTenantDeletion(c.env, supabase, tenantId, 'self');

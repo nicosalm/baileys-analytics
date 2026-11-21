@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
+import type { AppEnv } from '../types';
 
 // Fake Supabase: one user per bearer token, one tenant per user, subscription status per tenant.
 const USERS: Record<string, { id: string }> = { tok_a: { id: 'user_a' }, tok_b: { id: 'user_b' } };
@@ -53,12 +54,12 @@ const { oauth } = await import('../routes/oauth');
 
 // Mirrors index.ts: app-level auth + subscription check, sub-app with its own auth.
 function buildApp() {
-  const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+  const app = new Hono<AppEnv>();
   app.use('/api/bookings/*', authMiddleware, subscriptionMiddleware);
   app.use('/api/bookings', authMiddleware, subscriptionMiddleware);
   app.use('/api/oauth/*', authMiddleware);
 
-  const bookings = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+  const bookings = new Hono<AppEnv>();
   bookings.use('/*', authMiddleware);
   bookings.get('/', (c) => c.json({ tenantId: c.get('tenantId') }));
   app.route('/api/bookings', bookings);

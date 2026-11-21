@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { authMiddleware } from '../middleware/auth'
 import { createSupabaseClient } from '../services/supabase'
+import type { AppEnv } from '../types';
 
-const operatingExpenses = new Hono<{ Bindings: Env; Variables: { user: any } }>()
+const operatingExpenses = new Hono<AppEnv>()
 
 operatingExpenses.use('/*', authMiddleware)
 
@@ -38,15 +39,9 @@ const bulkExpenseSchema = z.object({
 
 operatingExpenses.get('/', async (c) => {
 	const supabase = createSupabaseClient(c.env)
-	const user = c.get('user')
+	const tenantId = c.get('tenantId')
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single()
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404)
 	}
 
@@ -58,7 +53,7 @@ operatingExpenses.get('/', async (c) => {
 	let query = supabase
 		.from('operating_expenses')
 		.select('*')
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 
 	if (monthParam?.includes('-')) {
 		const [year, month] = monthParam.split('-')
@@ -89,15 +84,9 @@ operatingExpenses.get('/', async (c) => {
 
 operatingExpenses.post('/', async (c) => {
 	const supabase = createSupabaseClient(c.env)
-	const user = c.get('user')
+	const tenantId = c.get('tenantId')
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single()
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404)
 	}
 
@@ -118,7 +107,7 @@ operatingExpenses.post('/', async (c) => {
 		.from('properties')
 		.select('id')
 		.eq('id', propertyId)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.single()
 
 	if (!property) {
@@ -128,7 +117,7 @@ operatingExpenses.post('/', async (c) => {
 	const { data, error } = await supabase
 		.from('operating_expenses')
 		.insert({
-			tenant_id: tenant.id,
+			tenant_id: tenantId,
 			property_id: propertyId,
 			category,
 			amount,
@@ -146,22 +135,16 @@ operatingExpenses.post('/', async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache')
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'operatingExpenses')
 
 	return c.json({ success: true, data })
 })
 
 operatingExpenses.post('/bulk', async (c) => {
 	const supabase = createSupabaseClient(c.env)
-	const user = c.get('user')
+	const tenantId = c.get('tenantId')
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single()
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404)
 	}
 
@@ -181,7 +164,7 @@ operatingExpenses.post('/bulk', async (c) => {
 		.from('properties')
 		.select('id')
 		.eq('id', propertyId)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.single()
 
 	if (!property) {
@@ -195,7 +178,7 @@ operatingExpenses.post('/bulk', async (c) => {
 	}))
 
 	const { error: rpcError } = await supabase.rpc('replace_operating_expenses', {
-		p_tenant_id: tenant.id,
+		p_tenant_id: tenantId,
 		p_property_id: propertyId,
 		p_year: year,
 		p_month: month,
@@ -211,29 +194,23 @@ operatingExpenses.post('/bulk', async (c) => {
 	const { data } = await supabase
 		.from('operating_expenses')
 		.select('*')
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.eq('property_id', propertyId)
 		.eq('year', year)
 		.eq('month', month)
 		.order('created_at', { ascending: false })
 
 	const { invalidateConfigViews } = await import('../utils/cache')
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'operatingExpenses')
 
 	return c.json({ success: true, data })
 })
 
 operatingExpenses.put('/:id', async (c) => {
 	const supabase = createSupabaseClient(c.env)
-	const user = c.get('user')
+	const tenantId = c.get('tenantId')
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single()
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404)
 	}
 
@@ -263,7 +240,7 @@ operatingExpenses.put('/:id', async (c) => {
 			updated_at: new Date().toISOString()
 		})
 		.eq('id', id)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.select()
 		.single()
 
@@ -273,22 +250,16 @@ operatingExpenses.put('/:id', async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache')
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'operatingExpenses')
 
 	return c.json({ success: true, data })
 })
 
 operatingExpenses.delete('/:id', async (c) => {
 	const supabase = createSupabaseClient(c.env)
-	const user = c.get('user')
+	const tenantId = c.get('tenantId')
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single()
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404)
 	}
 
@@ -298,7 +269,7 @@ operatingExpenses.delete('/:id', async (c) => {
 		.from('operating_expenses')
 		.delete()
 		.eq('id', id)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 
 	if (error) {
 		console.error('Failed to delete operating expense:', error)
@@ -306,7 +277,7 @@ operatingExpenses.delete('/:id', async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache')
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'operatingExpenses')
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'operatingExpenses')
 
 	return c.json({ success: true })
 })

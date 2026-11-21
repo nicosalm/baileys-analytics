@@ -2,8 +2,9 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
+import type { AppEnv } from '../types';
 
-const platformFees = new Hono<{ Bindings: Env; Variables: { user: any } }>();
+const platformFees = new Hono<AppEnv>();
 
 platformFees.use('/*', authMiddleware);
 
@@ -27,15 +28,9 @@ const bookingFeeSchema = z.object({
 
 platformFees.post('/bulk', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
@@ -56,7 +51,7 @@ platformFees.post('/bulk', async (c) => {
 		.from('properties')
 		.select('id')
 		.eq('id', propertyId)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.single();
 
 	if (!property) {
@@ -70,7 +65,7 @@ platformFees.post('/bulk', async (c) => {
 	}));
 
 	const { error: rpcError } = await supabase.rpc('replace_platform_fees', {
-		p_tenant_id: tenant.id,
+		p_tenant_id: tenantId,
 		p_property_id: propertyId,
 		p_year: year,
 		p_month: month,
@@ -86,14 +81,14 @@ platformFees.post('/bulk', async (c) => {
 	const { data } = await supabase
 		.from('platform_guest_fees')
 		.select('*')
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.eq('property_id', propertyId)
 		.eq('year', year)
 		.eq('month', month)
 		.is('booking_id', null);
 
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'platformFees');
 
 	return c.json({ success: true, data });
 });
@@ -109,15 +104,9 @@ const singleFeeSchema = z.object({
 
 platformFees.post('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
@@ -131,13 +120,13 @@ platformFees.post('/', async (c) => {
 		}, 400);
 	}
 
-	const { platform, month, feeAmount, platformTaxRemitted, notes } = validation.data;
+	const { platform, month, feeAmount, notes } = validation.data;
 	const [year, monthNum] = month.split('-');
 
 	const { error: deleteError } = await supabase
 		.from('platform_guest_fees')
 		.delete()
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.eq('platform', platform)
 		.eq('year', parseInt(year))
 		.eq('month', parseInt(monthNum))
@@ -151,7 +140,7 @@ platformFees.post('/', async (c) => {
 	const { data, error } = await supabase
 		.from('platform_guest_fees')
 		.insert({
-			tenant_id: tenant.id,
+			tenant_id: tenantId,
 			platform,
 			amount: feeAmount,
 			year: parseInt(year),
@@ -168,22 +157,16 @@ platformFees.post('/', async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'platformFees');
 
 	return c.json({ success: true, data });
 });
 
 platformFees.post('/booking', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
@@ -203,7 +186,7 @@ platformFees.post('/booking', async (c) => {
 		.from('bookings')
 		.select('id')
 		.eq('id', booking_id)
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.single();
 
 	if (!booking) {
@@ -223,7 +206,7 @@ platformFees.post('/booking', async (c) => {
 	const { data, error } = await supabase
 		.from('platform_guest_fees')
 		.insert({
-			tenant_id: tenant.id,
+			tenant_id: tenantId,
 			booking_id,
 			platform,
 			amount,
@@ -240,22 +223,16 @@ platformFees.post('/booking', async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'platformFees');
 
 	return c.json({ success: true, data });
 });
 
 platformFees.get('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
@@ -267,7 +244,7 @@ platformFees.get('/', async (c) => {
 	let query = supabase
 		.from('platform_guest_fees')
 		.select('*')
-		.eq('tenant_id', tenant.id);
+		.eq('tenant_id', tenantId);
 
 	if (bookingId) {
 		query = query.eq('booking_id', bookingId);
@@ -303,15 +280,9 @@ platformFees.get('/', async (c) => {
 
 platformFees.delete('/:id', async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
@@ -321,7 +292,7 @@ platformFees.delete('/:id', async (c) => {
 		.from('platform_guest_fees')
 		.delete()
 		.eq('id', id)
-		.eq('tenant_id', tenant.id);
+		.eq('tenant_id', tenantId);
 
 	if (error) {
 		console.error('Failed to delete platform fee:', error);
@@ -329,7 +300,7 @@ platformFees.delete('/:id', async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'platformFees');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'platformFees');
 
 	return c.json({ success: true });
 });

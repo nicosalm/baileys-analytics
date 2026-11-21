@@ -1,11 +1,10 @@
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
-import { z } from 'zod';
-import { createTagSchema, updateTagSchema } from '@baileys/schemas';
+import { createSupabaseClient } from '../services/supabase';
 
 import { authMiddleware } from '../middleware/auth';
+import type { AppEnv } from '../types';
 
-const tags = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const tags = new Hono<AppEnv>();
 
 tags.use('*', authMiddleware);
 
@@ -17,7 +16,7 @@ interface Tag {
 }
 
 tags.get('/', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
   try {
@@ -110,124 +109,4 @@ tags.get('/', async (c) => {
     }, 500);
   }
 });
-
-tags.post('/', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-  const tenantId = c.get('tenantId');
-  const body = await c.req.json();
-  
-  const validation = createTagSchema.safeParse(body);
-  if (!validation.success) {
-    return c.json({ 
-      error: validation.error.issues.map((e: any) => e.message).join(', ')
-    }, 400);
-  }
-
-  const { name, color } = validation.data;
-
-  try {
-    const { data, error } = await supabase
-      .from('tags')
-      .insert({
-        tenant_id: tenantId,
-        name,
-        color
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    const { invalidateConfigViews } = await import('../utils/cache');
-    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'tags');
-
-    return c.json({
-      id: data.id,
-      name: data.name,
-      color: data.color || undefined,
-      usageCount: 0
-    }, 201);
-  } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to create tag' 
-    }, 500);
-  }
-});
-
-tags.put('/:id', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-  const tenantId = c.get('tenantId');
-  const tagId = c.req.param('id');
-  const body = await c.req.json();
-  
-  const validation = updateTagSchema.safeParse(body);
-  if (!validation.success) {
-    return c.json({ 
-      error: validation.error.issues.map((e: any) => e.message).join(', ')
-    }, 400);
-  }
-
-  const { name, color } = validation.data;
-
-  try {
-    const { data, error } = await supabase
-      .from('tags')
-      .update({ name, color })
-      .eq('id', tagId)
-      .eq('tenant_id', tenantId)
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    if (!data) {
-      return c.json({ error: 'Tag not found' }, 404);
-    }
-
-    const { invalidateConfigViews } = await import('../utils/cache');
-    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'tags');
-
-    return c.json({
-      id: data.id,
-      name: data.name,
-      color: data.color || undefined
-    });
-  } catch (error) {
-    return c.json({ 
-      error: error instanceof Error ? error.message : 'Failed to update tag' 
-    }, 500);
-  }
-});
-
-tags.delete('/:id', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-  const tenantId = c.get('tenantId');
-  const tagId = c.req.param('id');
-
-  try {
-    const { error } = await supabase
-      .from('tags')
-      .delete()
-      .eq('id', tagId)
-      .eq('tenant_id', tenantId);
-
-    if (error) {
-      throw error;
-    }
-
-    const { invalidateConfigViews } = await import('../utils/cache');
-    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'tags');
-
-    return c.json({ success: true });
-  } catch (error) {
-    return c.json({
-      error: error instanceof Error ? error.message : 'Failed to delete tag'
-    }, 500);
-  }
-});
-
 export { tags };

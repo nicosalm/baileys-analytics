@@ -1,13 +1,14 @@
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../services/supabase';
 import Stripe from 'stripe';
 import { authMiddleware } from '../middleware/auth';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { mapToBlockRow } from '../utils/blocks';
 import { requestTenantDeletion, purgeTenant, StripeCancellationError } from '../services/account-deletion';
+import type { AppEnv } from '../types';
 
-const admin = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const admin = new Hono<AppEnv>();
 
 // admin middleware - check if user is admin
 const adminMiddleware = async (c: any, next: any) => {
@@ -35,7 +36,7 @@ admin.get('/verify', authMiddleware, async (c) => {
 
 // get system metrics
 admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     // db counts + exempt tenants
@@ -118,7 +119,7 @@ admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
 
 // list all users
 admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const page = parseInt(c.req.query('page') || '1');
   const limit = parseInt(c.req.query('limit') || '50');
   const search = c.req.query('search') || '';
@@ -178,7 +179,7 @@ admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
 // get single user details
 admin.get('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     const [
@@ -221,7 +222,7 @@ admin.post('/users/:tenantId/exempt', authMiddleware, adminMiddleware, async (c)
     return c.json({ error: 'Invalid request: exempt must be a boolean' }, 400);
   }
 
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     const { error } = await supabase
@@ -244,7 +245,7 @@ admin.post('/users/:tenantId/exempt', authMiddleware, adminMiddleware, async (c)
 // delete user account (admin only)
 admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     await requestTenantDeletion(c.env, supabase, tenantId, c.get('user').email || 'unknown');
@@ -265,7 +266,7 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
 
 // signup trend — daily signups for last N days
 admin.get('/signup-trend', authMiddleware, adminMiddleware, async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const days = Math.min(parseInt(c.req.query('days') || '30'), 90);
 
   try {
@@ -301,7 +302,7 @@ admin.get('/signup-trend', authMiddleware, adminMiddleware, async (c) => {
 
 // sync health — aggregate sync status across all tenants
 admin.get('/sync-health', authMiddleware, adminMiddleware, async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     const { data: syncRows } = await supabase
@@ -365,7 +366,7 @@ admin.get('/sync-health', authMiddleware, adminMiddleware, async (c) => {
 
 // get recent errors (from logs or webhook events)
 admin.get('/errors', authMiddleware, adminMiddleware, async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     // get failed webhook events as proxy for errors
@@ -388,7 +389,7 @@ admin.get('/errors', authMiddleware, adminMiddleware, async (c) => {
 // initial_sync_needed is marked pending.
 admin.post('/users/:tenantId/reset-sync', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     const { data: tenant } = await supabase
@@ -440,7 +441,7 @@ admin.post('/users/:tenantId/reset-sync', authMiddleware, adminMiddleware, async
 // impersonate user — generate a magic link to log in as them
 admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     const { data: tenant } = await supabase
@@ -480,7 +481,7 @@ admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, asyn
 // to stay under the cloudflare edge timeout.
 admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, async (c) => {
   const tenantId = c.req.param('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
   if (tokenResult.error) {

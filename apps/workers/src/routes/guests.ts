@@ -3,63 +3,11 @@ import { authMiddleware } from '../middleware/auth';
 import { cache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
 import { normalizePlatform } from '../utils/platform';
+import type { AppEnv } from '../types';
 
-const guests = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const guests = new Hono<AppEnv>();
 
 guests.use('/*', authMiddleware);
-
-guests.get('/', cache({ ttl: 3600 }), async (c) => {
-	const { from, to, tags, comparisonFrom, comparisonTo } = c.req.query();
-	const supabase = createSupabaseClient(c.env);
-	const tenantId = c.get('tenantId');
-
-	if (!tenantId) {
-		return c.json({
-			guests: [],
-			metrics: {
-				totalGuests: 0,
-				repeatGuests: 0,
-				repeatRate: 0,
-				avgStayLength: 0,
-				avgSpend: 0,
-				topSpenders: [],
-				guestsBySource: [],
-				tagDistribution: []
-			}
-		});
-	}
-	
-	const startDate = from || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
-	const endDate = to || new Date().toISOString().split('T')[0];
-	const tagIds = tags ? tags.split(',').filter(Boolean) : [];
-	
-	const { getGuestsData } = await import('../services/guests');
-	
-	const currentData = await getGuestsData(
-		supabase,
-		tenantId,
-		startDate,
-		endDate,
-		tagIds
-	);
-	
-	if (comparisonFrom && comparisonTo) {
-		const previousData = await getGuestsData(
-			supabase,
-			tenantId,
-			comparisonFrom,
-			comparisonTo,
-			tagIds
-		);
-		
-		return c.json({
-			current: currentData,
-			previous: previousData
-		});
-	}
-	
-	return c.json(currentData);
-});
 
 guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 	const { startMonth, startDay, endMonth, endDay, yearsBack = '4' } = c.req.query();

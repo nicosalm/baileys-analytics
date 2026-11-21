@@ -30,6 +30,8 @@ import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constant
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { mapToBlockRow } from '../utils/blocks';
+import { invalidateBookingViews } from '../utils/cache';
+import type { AppEnv } from '../types';
 
 // resolve tag names to IDs (creating if needed), then batch-insert junction rows
 async function replaceEntityTags(
@@ -123,7 +125,10 @@ async function constantTimeStringEqual(a: string, b: string): Promise<boolean> {
 	return crypto.subtle.timingSafeEqual(new Uint8Array(aHash), new Uint8Array(bHash));
 }
 
-const webhooks = new Hono<{ Bindings: Env; Variables: { user: any } }>();
+// entity types whose changes show up on a dashboard
+const DASHBOARD_ENTITIES = new Set(['booking', 'property', 'guest', 'inquiry']);
+
+const webhooks = new Hono<AppEnv>();
 
 // public health check (no auth) — used by updown.io monitoring
 webhooks.get('/status', async (c) => {
@@ -164,9 +169,16 @@ webhooks.post('/ownerrez', async (c) => {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
-	const base64Credentials = authHeader.substring(6);
-	const credentials = atob(base64Credentials);
-	const [username, password] = credentials.split(':');
+	let credentials: string;
+	try {
+		credentials = atob(authHeader.substring(6));
+	} catch {
+		return c.json({ error: 'Unauthorized' }, 401);
+	}
+	// split on the first colon only; the password itself may contain colons
+	const separator = credentials.indexOf(':');
+	const username = separator === -1 ? credentials : credentials.slice(0, separator);
+	const password = separator === -1 ? '' : credentials.slice(separator + 1);
 
 	const expectedUser = c.env.OWNERREZ_WEBHOOK_USER;
 	const expectedPassword = c.env.OWNERREZ_WEBHOOK_PASSWORD;
@@ -178,8 +190,8 @@ webhooks.post('/ownerrez', async (c) => {
 	// constant-time compare so an attacker with the webhook endpoint cannot
 	// learn credential prefixes from response timing
 	const [userMatches, passMatches] = await Promise.all([
-		constantTimeStringEqual(username ?? '', expectedUser),
-		constantTimeStringEqual(password ?? '', expectedPassword),
+		constantTimeStringEqual(username, expectedUser),
+		constantTimeStringEqual(password, expectedPassword),
 	]);
 	if (!userMatches || !passMatches) {
 		return c.json({ error: 'Invalid credentials' }, 401);
@@ -247,17 +259,15 @@ webhooks.post('/ownerrez', async (c) => {
 				case 'entity_create':
 				case 'entity_update':
 					await handleEntityChange(supabase, tenant.id, payload, c.env);
-					if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
-						const { invalidateTenantCache } = await import('../utils/cache');
-						await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
+					if (payload.entity_type && DASHBOARD_ENTITIES.has(payload.entity_type)) {
+						await invalidateBookingViews(c.env.CACHE, tenant.id);
 					}
 					break;
 
 				case 'entity_delete':
 					await handleEntityDelete(supabase, tenant.id, payload);
-					if (c.env.CACHE && (payload.entity_type === 'booking' || payload.entity_type === 'property')) {
-						const { invalidateTenantCache } = await import('../utils/cache');
-						await invalidateTenantCache(c.env.CACHE, supabase, tenant.id);
+					if (payload.entity_type && DASHBOARD_ENTITIES.has(payload.entity_type)) {
+						await invalidateBookingViews(c.env.CACHE, tenant.id);
 					}
 					break;
 
@@ -300,7 +310,7 @@ async function handleEntityChange(
 				break;
 
 			case 'booking':
-				await handleBookingUpdate(supabase, tenantId, payload.entity, payload.categories, env);
+				await handleBookingUpdate(supabase, tenantId, payload.entity, env);
 				break;
 
 			case 'guest':
@@ -381,7 +391,6 @@ async function handleBookingUpdate(
 	supabase: any,
 	tenantId: string,
 	booking: any,
-	categories?: string[],
 	env?: Env
 ) {
 	const normalizedStatus = normalizeBookingStatus(booking.status);
@@ -722,15 +731,9 @@ async function handleAuthRevoked(supabase: any, tenantId: string) {
 // webhook health — called by useWebhookHealth hook (IntegrationsTab)
 webhooks.get('/health', authMiddleware, async (c) => {
 	const supabase = createSupabaseClient(c.env);
-	const user = c.get('user');
+	const tenantId = c.get('tenantId');
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('user_id', user.id)
-		.single();
-
-	if (!tenant) {
+	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
@@ -740,7 +743,7 @@ webhooks.get('/health', authMiddleware, async (c) => {
 	const { data: recentWebhooks, count } = await supabase
 		.from('webhook_events')
 		.select('*', { count: 'exact' })
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.gte('created_at', oneDayAgo.toISOString())
 		.order('created_at', { ascending: false })
 		.limit(10);
@@ -748,7 +751,7 @@ webhooks.get('/health', authMiddleware, async (c) => {
 	const { data: lastWebhook } = await supabase
 		.from('webhook_events')
 		.select('*')
-		.eq('tenant_id', tenant.id)
+		.eq('tenant_id', tenantId)
 		.order('created_at', { ascending: false })
 		.limit(1)
 		.single();

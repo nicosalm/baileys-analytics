@@ -2,11 +2,11 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import { authMiddleware } from '../middleware/auth';
-import { clearCache } from '../middleware/cache';
 import { createSupabaseClient } from '../services/supabase';
 import { prorateBooking } from '../utils/prorate';
+import type { AppEnv } from '../types';
 
-const seasons = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const seasons = new Hono<AppEnv>();
 
 seasons.use('/*', authMiddleware);
 
@@ -66,7 +66,7 @@ seasons.get('/', async (c) => {
 	return c.json(formattedSeasons);
 });
 
-seasons.post('/', clearCache('GET:'), async (c) => {
+seasons.post('/', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
 	const body = await c.req.json();
@@ -126,12 +126,12 @@ seasons.post('/', clearCache('GET:'), async (c) => {
 	} : null;
 	
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'seasons');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'seasons');
 
 	return c.json(formattedSeason, 201);
 });
 
-seasons.put('/:id', clearCache('GET:'), async (c) => {
+seasons.put('/:id', async (c) => {
 	const seasonId = c.req.param('id');
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
@@ -173,7 +173,7 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 	}
 	
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'seasons');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'seasons');
 
 	const formattedSeason = season ? {
 		id: season.id,
@@ -191,7 +191,7 @@ seasons.put('/:id', clearCache('GET:'), async (c) => {
 	return c.json(formattedSeason);
 });
 
-seasons.patch('/:id', clearCache('GET:'), async (c) => {
+seasons.patch('/:id', async (c) => {
 	const seasonId = c.req.param('id');
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
@@ -230,7 +230,7 @@ seasons.patch('/:id', clearCache('GET:'), async (c) => {
 	}
 	
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'seasons');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'seasons');
 
 	const formattedSeason = season ? {
 		id: season.id,
@@ -248,7 +248,7 @@ seasons.patch('/:id', clearCache('GET:'), async (c) => {
 	return c.json(formattedSeason);
 });
 
-seasons.delete('/:id', clearCache('GET:'), async (c) => {
+seasons.delete('/:id', async (c) => {
 	const seasonId = c.req.param('id');
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
@@ -268,7 +268,7 @@ seasons.delete('/:id', clearCache('GET:'), async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'seasons');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'seasons');
 
 	return c.json({ success: true });
 });

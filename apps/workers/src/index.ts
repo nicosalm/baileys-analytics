@@ -10,9 +10,11 @@ import { createSupabaseClient } from './services/supabase';
 import { getOverviewData } from './services/overview';
 import { getFinancialBatchData } from './services/financial';
 import { getPropertiesData } from './services/properties';
-import { getOccupancyData } from './services/occupancy';
+import { getOccupancyData, detectBookingGaps } from './services/occupancy';
 import { getGuestsData, getCancelledBookingsData } from './services/guests';
 import { getInquiriesData } from './services/inquiries';
+import { getPacingData } from './services/pacing';
+import { buildDashboardCacheKey, DASHBOARD_TTL_SECONDS, PACING_TTL_SECONDS } from './utils/cache';
 import { properties } from './routes/properties';
 import { propertyDetail } from './routes/property-detail';
 import { bookings } from './routes/bookings';
@@ -28,7 +30,6 @@ import { tax } from './routes/tax';
 import { platformFees as platformFeesRoute } from './routes/platform-fees';
 import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses'
 import { expenseTemplates as expenseTemplatesRoute } from './routes/expense-templates';
-import { scheduler } from './routes/scheduler';
 import { validation } from './routes/validation';
 import { oauth } from './routes/oauth';
 import { webhooks } from './routes/webhooks';
@@ -38,8 +39,9 @@ import { scheduled } from './scheduled';
 import { billing } from './routes/billing';
 import { account } from './routes/account';
 import { admin } from './routes/admin';
+import type { AppEnv } from './types';
 
-const app = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const app = new Hono<AppEnv>();
 
 app.use('/*', cors({
 	origin: (origin, c) => {
@@ -77,31 +79,24 @@ app.use('/api/*', async (c, next) => {
 
 app.route('/health', health);
 
-// auth endpoints - only /me is used (login/signup/refresh handled by Supabase client directly)
 app.get('/api/auth/me', authMiddleware, async (c) => {
 	const user = c.get('user');
+	const tenantId = c.get('tenantId') || null;
 	const supabase = createSupabaseClient(c.env);
 
-	const { data: tenantData } = await supabase
-		.from('tenants')
-		.select(`
-			id,
-			created_at
-		`)
-		.eq('user_id', user.id)
-		.single();
-
-	const { data: ownerrezToken } = tenantData ? await supabase
-		.from('oauth_tokens')
-		.select('id')
-		.eq('tenant_id', tenantData.id)
-		.single() : { data: null };
+	const [tenant, ownerrezToken] = tenantId
+		? await Promise.all([
+			supabase.from('tenants').select('company_name').eq('id', tenantId).maybeSingle(),
+			supabase.from('oauth_tokens').select('id').eq('tenant_id', tenantId).eq('provider', 'ownerrez').maybeSingle(),
+		])
+		: [null, null];
 
 	return c.json({
 		id: user.id,
 		email: user.email,
-		tenantId: tenantData?.id || null,
-		hasOwnerRezConnection: !!ownerrezToken,
+		tenantId,
+		companyName: tenant?.data?.company_name ?? null,
+		hasOwnerRezConnection: !!ownerrezToken?.data,
 		createdAt: user.created_at || new Date().toISOString()
 	});
 });
@@ -120,17 +115,15 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 	}
 
 	const supabase = createSupabaseClient(c.env);
+	const count = (table: string) => supabase
+		.from(table)
+		.select('id', { count: 'exact', head: true })
+		.eq('tenant_id', tenantId);
 
-	// get counts
-	const [properties, bookings, syncStatuses] = await Promise.all([
-		supabase
-			.from('properties')
-			.select('id', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId),
-		supabase
-			.from('bookings')
-			.select('id', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId),
+	const [properties, bookings, guests, syncStatuses] = await Promise.all([
+		count('properties'),
+		count('bookings'),
+		count('guests'),
 		supabase
 			.from('sync_status')
 			.select('*')
@@ -139,31 +132,58 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 			.limit(10)
 	]);
 
-	// count guests with records
-	const { count: guestCount } = await supabase
-		.from('guests')
-		.select('id', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId);
-
 	const lastPropertySync = syncStatuses.data?.find(s => s.sync_type === 'properties')?.last_sync || null;
 	const lastBookingSync = syncStatuses.data?.find(s => ['recent', 'historical', 'bookings'].includes(s.sync_type))?.last_sync || null;
 
 	return c.json({
 		propertyCount: properties.count || 0,
 		bookingCount: bookings.count || 0,
-		guestCount: guestCount || 0,
+		guestCount: guests.count || 0,
 		lastPropertySync,
 		lastBookingSync,
 		syncHistory: syncStatuses.data || []
 	});
 });
 
-// subscriptionMiddleware is applied inline (not via the dashboardPaths.forEach
-// loop below) because Hono executes registered handlers in registration order —
-// the forEach is registered after this route, so middleware attached there would
-// never run for /api/dashboard-batch. Adding it inline guarantees the check fires.
+type FinancialBatch = Awaited<ReturnType<typeof getFinancialBatchData>>;
+
+function previousFinancialPeriod(prev: FinancialBatch) {
+	const { pl, revenue, cashflow, tax } = prev;
+	return {
+		pl: pl ? {
+			revenue: pl.metrics.revenue,
+			performance: pl.metrics.performance,
+			operatingExpenses: pl.metrics.operatingExpenses,
+			operatingProfit: pl.metrics.operatingProfit,
+			monthlyTrend: pl.monthlyTrend,
+			weeklyRevenue: pl.weeklyRevenue
+		} : null,
+		revenue: revenue ? {
+			...revenue,
+			revenue: { gross: revenue.gross, net: revenue.net },
+			monthlyTrend: revenue.byMonth
+		} : null,
+		cashflow: cashflow ? {
+			...cashflow,
+			revenue: {
+				gross: pl?.metrics?.revenue?.gross || 0,
+				net: pl?.metrics?.revenue?.net || 0
+			},
+			monthlyTrend: pl?.monthlyTrend || []
+		} : null,
+		tax: tax ? {
+			...tax,
+			revenue: {
+				gross: pl?.metrics?.revenue?.gross || 0,
+				taxes: pl?.metrics?.revenue?.taxes || 0
+			}
+		} : null,
+	};
+}
+
+// subscriptionMiddleware is attached inline: hono runs handlers in registration order,
+// and the dashboardPaths loop below registers after this route
 app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c) => {
-	const user = c.get('user');
 	const tenantId = c.get('tenantId');
 	const view = c.req.query('view') || 'overview';
 	const from = c.req.query('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
@@ -172,17 +192,16 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 	const properties = c.req.query('properties')?.split(',').filter(Boolean);
 	const comparisonFrom = c.req.query('comparisonFrom');
 	const comparisonTo = c.req.query('comparisonTo');
+	const hasComparison = !!(comparisonFrom && comparisonTo);
 
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const { buildDashboardCacheKey } = await import('./utils/cache');
-	const cacheKey = await buildDashboardCacheKey(user.id, view, from, to, {
-		tags, properties, comparisonFrom: comparisonFrom || undefined, comparisonTo: comparisonTo || undefined
+	const cacheKey = await buildDashboardCacheKey(tenantId, view, from, to, {
+		tags, properties, comparisonFrom, comparisonTo
 	});
 
-	// try to get from cache if available
 	if (c.env.CACHE) {
 		const cached = await c.env.CACHE.get(cacheKey, 'json');
 		if (cached) {
@@ -191,163 +210,77 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 	}
 
 	const supabase = createSupabaseClient(c.env);
-	let data: any = {};
+	let data: unknown;
 
-	switch(view) {
-		case 'overview': {
-			data = await getOverviewData(
-				supabase,
-				tenantId,
-				from,
-				to,
-				tags,
-				comparisonFrom,
-				comparisonTo,
-				properties
-			);
+	switch (view) {
+		case 'overview':
+			data = await getOverviewData(supabase, tenantId, from, to, tags, comparisonFrom, comparisonTo, properties);
 			break;
-		}
 
 		case 'financial': {
-			const { pl: plData, revenue: revenueData, cashflow: cashflowData, tax: taxData } =
-				await getFinancialBatchData(supabase, tenantId, from, to, tags, properties);
-
-			let previousPL = null;
-			let previousRevenue = null;
-			let previousCashflow = null;
-			let previousTax = null;
-
-			if (comparisonFrom && comparisonTo) {
-				const { pl: prevPL, revenue: prevRevenue, cashflow: prevCashflow, tax: prevTax } =
-					await getFinancialBatchData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties);
-
-				previousPL = prevPL ? {
-					revenue: prevPL.metrics.revenue,
-					performance: prevPL.metrics.performance,
-					operatingExpenses: prevPL.metrics.operatingExpenses,
-					operatingProfit: prevPL.metrics.operatingProfit,
-					monthlyTrend: prevPL.monthlyTrend,
-					weeklyRevenue: prevPL.weeklyRevenue
-				} : null;
-
-				previousRevenue = prevRevenue ? {
-					...prevRevenue,
-					revenue: {
-						gross: prevRevenue.gross,
-						net: prevRevenue.net
-					},
-					monthlyTrend: prevRevenue.byMonth
-				} : null;
-
-				previousCashflow = prevCashflow ? {
-					...prevCashflow,
-					revenue: {
-						gross: prevPL?.metrics?.revenue?.gross || 0,
-						net: prevPL?.metrics?.revenue?.net || 0
-					},
-					monthlyTrend: prevPL?.monthlyTrend || []
-				} : null;
-
-				previousTax = prevTax ? {
-					...prevTax,
-					revenue: {
-						gross: prevPL?.metrics?.revenue?.gross || 0,
-						taxes: prevPL?.metrics?.revenue?.taxes || 0
-					}
-				} : null;
-			}
-
+			const [current, previous] = await Promise.all([
+				getFinancialBatchData(supabase, tenantId, from, to, tags, properties),
+				hasComparison ? getFinancialBatchData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties) : null,
+			]);
+			const prev = previous ? previousFinancialPeriod(previous) : null;
 			data = {
-				pl: { ...plData, previousPeriod: previousPL },
-				revenue: { ...revenueData, previousPeriod: previousRevenue },
-				cashflow: { ...cashflowData, previousPeriod: previousCashflow },
-				tax: { ...taxData, previousPeriod: previousTax },
+				pl: { ...current.pl, previousPeriod: prev?.pl ?? null },
+				revenue: { ...current.revenue, previousPeriod: prev?.revenue ?? null },
+				cashflow: { ...current.cashflow, previousPeriod: prev?.cashflow ?? null },
+				tax: { ...current.tax, previousPeriod: prev?.tax ?? null },
 				view: 'financial'
 			};
 			break;
 		}
 
-		case 'properties': {
-			data = await getPropertiesData(
-				supabase,
-				tenantId,
-				from,
-				to,
-				tags,
-				comparisonFrom,
-				comparisonTo,
-				properties
-			);
+		case 'properties':
+			data = await getPropertiesData(supabase, tenantId, from, to, tags, comparisonFrom, comparisonTo, properties);
 			break;
-		}
 
 		case 'occupancy': {
-			const { detectBookingGaps } = await import('./services/occupancy');
-			const currentData = await getOccupancyData(supabase, tenantId, from, to, tags, properties);
-			// detect booking gaps for the next 60 days
-			const bookingGaps = await detectBookingGaps(supabase, tenantId, 60);
-
-			if (comparisonFrom && comparisonTo) {
-				const previousData = await getOccupancyData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties);
-				data = {
-					current: { ...currentData, gaps: bookingGaps },
-					previous: previousData,
-					view: 'occupancy'
-				};
-			} else {
-				data = { ...currentData, gaps: bookingGaps };
-			}
+			const [current, gaps, previous] = await Promise.all([
+				getOccupancyData(supabase, tenantId, from, to, tags, properties),
+				detectBookingGaps(supabase, tenantId, 60),
+				hasComparison ? getOccupancyData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties) : null,
+			]);
+			data = previous
+				? { current: { ...current, gaps }, previous, view: 'occupancy' }
+				: { ...current, gaps };
 			break;
 		}
 
 		case 'guests': {
-			const currentData = await getGuestsData(supabase, tenantId, from, to, tags, properties);
-
-			if (comparisonFrom && comparisonTo) {
-				const previousData = await getGuestsData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties);
-				data = {
-					current: currentData,
-					previous: previousData,
-					view: 'guests'
-				};
-			} else {
-				data = currentData;
-			}
+			const [current, previous] = await Promise.all([
+				getGuestsData(supabase, tenantId, from, to, tags, properties),
+				hasComparison ? getGuestsData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties) : null,
+			]);
+			data = previous ? { current, previous, view: 'guests' } : current;
 			break;
 		}
 
-		case 'guests-cancelled': {
-			// no date filter — cancelled guests should always be discoverable regardless of the
-			// selected period (e.g. a future booking cancelled this week won't have an arrival
-			// inside the current season). sorted by canceled_utc desc, limit 200.
+		// not date-filtered: a future booking cancelled this week must still be discoverable
+		case 'guests-cancelled':
 			data = await getCancelledBookingsData(supabase, tenantId, undefined, undefined, properties);
 			break;
-		}
 
-		case 'guests-inquiries': {
+		case 'guests-inquiries':
 			data = await getInquiriesData(supabase, tenantId, from, to);
 			break;
-		}
 
 		default:
-			// return 400 immediately and skip the cache write — otherwise a
-			// typo in the view query param would poison the kv cache with an
-			// error payload for the whole ttl
 			return c.json({ error: 'Invalid view', view }, 400);
 	}
 
 	if (c.env.CACHE) {
-		const { getDashboardTtl } = await import('./utils/cache');
-		await c.env.CACHE.put(cacheKey, JSON.stringify(data), {
-			expirationTtl: getDashboardTtl(view)
-		});
+		c.executionCtx.waitUntil(
+			c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: DASHBOARD_TTL_SECONDS })
+		);
 	}
 
-	return c.json(data);
+	return c.json(data as Record<string, unknown>);
 });
 
 app.get('/api/pacing', authMiddleware, subscriptionMiddleware, async (c) => {
-	const user = c.get('user');
 	const tenantId = c.get('tenantId');
 	const tags = c.req.query('tags')?.split(',').filter(Boolean) || [];
 	const filterPropertyIds = c.req.query('properties')?.split(',').filter(Boolean) || [];
@@ -357,27 +290,23 @@ app.get('/api/pacing', authMiddleware, subscriptionMiddleware, async (c) => {
 	}
 
 	try {
-		const { buildDashboardCacheKey } = await import('./utils/cache');
-		const cacheKey = await buildDashboardCacheKey(user.id, 'pacing', '', '', {
+		const cacheKey = await buildDashboardCacheKey(tenantId, 'pacing', '', '', {
 			tags, properties: filterPropertyIds
 		});
 
 		if (c.env.CACHE) {
-			const cached = await c.env.CACHE.get(cacheKey, 'json');
-			// Only serve cached payloads that match the current schema (post-window-field addition).
-			// Stale payloads without `window` would crash the frontend; drop them and recompute.
-			if (cached && typeof cached === 'object' && 'window' in (cached as object)) {
-				return c.json({ ...(cached as Record<string, unknown>), _cached: true });
+			const cached = await c.env.CACHE.get<Record<string, unknown>>(cacheKey, 'json');
+			if (cached) {
+				return c.json({ ...cached, _cached: true });
 			}
 		}
 
-		const { getPacingData } = await import('./services/pacing');
-		const supabase = createSupabaseClient(c.env);
-		const data = await getPacingData(supabase, tenantId, tags, filterPropertyIds);
+		const data = await getPacingData(createSupabaseClient(c.env), tenantId, tags, filterPropertyIds);
 
 		if (c.env.CACHE) {
-			// pacing changes daily at most; 1hr TTL is plenty
-			await c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: 3600 });
+			c.executionCtx.waitUntil(
+				c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: PACING_TTL_SECONDS })
+			);
 		}
 
 		return c.json(data);
@@ -421,7 +350,6 @@ const demoBlockedPaths = [
 	'/api/sync',
 	'/api/oauth',
 	'/api/account',
-	'/api/scheduler',
 ];
 demoBlockedPaths.forEach(path => {
 	app.use(path, authMiddleware, demoGuard);
@@ -476,7 +404,6 @@ app.use('/api/account/delete', rateLimit({ max: 3, windowMs: 300000 }));
 app.route('/api/billing', billing);
 app.route('/api/account', account);
 app.route('/api/admin', admin);
-app.route('/api/scheduler', scheduler);
 app.route('/api/validation', validation);
 app.route('/api/oauth', oauth);
 app.route('/api/webhooks', webhooks);

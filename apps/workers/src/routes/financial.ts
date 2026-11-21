@@ -3,8 +3,9 @@ import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { normalizePlatform } from '../utils/platform';
 import { csvEscape } from '../utils/csv';
+import type { AppEnv } from '../types';
 
-const financial = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const financial = new Hono<AppEnv>();
 
 financial.use('/*', authMiddleware);
 

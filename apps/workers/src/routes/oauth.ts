@@ -1,24 +1,17 @@
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../services/supabase';
 import { authMiddleware } from '../middleware/auth';
 import { EmailService } from '../services/email';
+import type { AppEnv } from '../types';
 
-const oauth = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const oauth = new Hono<AppEnv>();
 
 oauth.get('/initiate', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
   const user = c.get('user');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
-  
-  // create a secure state token with expiration
-  const stateData = {
-    tenantId,
-    userId: user.id,
-    timestamp: Date.now(),
-    nonce: crypto.randomUUID()
-  };
-  
-  // store state in database for validation
+  const supabase = createSupabaseClient(c.env);
+
+  // single-use state token, validated and deleted in the callback
   const stateToken = crypto.randomUUID();
   const { error: stateError } = await supabase
     .from('oauth_states')
@@ -49,7 +42,7 @@ oauth.get('/initiate', authMiddleware, async (c) => {
 });
 
 oauth.post('/callback', authMiddleware, async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const { code, state } = await c.req.json();
 
   if (!state || !code) {
@@ -306,7 +299,7 @@ oauth.post('/callback', authMiddleware, async (c) => {
 
 oauth.post('/disconnect', authMiddleware, async (c) => {
   const tenantId = c.get('tenantId');
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
 
   try {
     // delete OAuth token

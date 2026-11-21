@@ -1,8 +1,9 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
+import type { AppEnv } from '../types';
 
-const bookings = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const bookings = new Hono<AppEnv>();
 
 bookings.use('/*', authMiddleware);
 

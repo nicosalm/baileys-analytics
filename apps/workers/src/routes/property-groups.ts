@@ -1,10 +1,24 @@
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
-import { createPropertyGroupSchema, updatePropertyGroupSchema } from '@baileys/schemas';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 
 import { authMiddleware } from '../middleware/auth';
+import { createSupabaseClient } from '../services/supabase';
+import type { AppEnv } from '../types';
 
-const propertyGroups = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const propertyIdsSchema = z.array(z.guid());
+
+const createPropertyGroupSchema = z.object({
+  name: z.string().min(1, 'Group name is required').max(50),
+  description: z.string().max(200).optional(),
+  propertyIds: propertyIdsSchema.default([]),
+});
+
+const updatePropertyGroupSchema = createPropertyGroupSchema.partial().extend({
+  propertyIds: propertyIdsSchema.optional(),
+});
+
+const propertyGroups = new Hono<AppEnv>();
 
 propertyGroups.use('*', authMiddleware);
 
@@ -16,8 +30,19 @@ interface PropertyGroupResponse {
   memberCount: number;
 }
 
+async function allPropertiesOwned(supabase: SupabaseClient, tenantId: string, propertyIds: string[]): Promise<boolean> {
+  if (propertyIds.length === 0) return true;
+  const unique = [...new Set(propertyIds)];
+  const { count } = await supabase
+    .from('properties')
+    .select('id', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .in('id', unique);
+  return count === unique.length;
+}
+
 propertyGroups.get('/', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
 
   try {
@@ -65,18 +90,22 @@ propertyGroups.get('/', async (c) => {
 });
 
 propertyGroups.post('/', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
   const body = await c.req.json();
 
   const validation = createPropertyGroupSchema.safeParse(body);
   if (!validation.success) {
     return c.json({
-      error: validation.error.issues.map((e: any) => e.message).join(', ')
+      error: validation.error.issues.map((e) => e.message).join(', ')
     }, 400);
   }
 
   const { name, description, propertyIds } = validation.data;
+
+  if (!await allPropertiesOwned(supabase, tenantId, propertyIds)) {
+    return c.json({ error: 'Unknown property id' }, 400);
+  }
 
   try {
     const { data: group, error } = await supabase
@@ -102,7 +131,7 @@ propertyGroups.post('/', async (c) => {
     }
 
     const { invalidateConfigViews } = await import('../utils/cache');
-    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'propertyGroups');
+    await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'propertyGroups');
 
     return c.json({
       id: group.id,
@@ -119,7 +148,7 @@ propertyGroups.post('/', async (c) => {
 });
 
 propertyGroups.put('/:id', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
   const groupId = c.req.param('id');
   const body = await c.req.json();
@@ -127,11 +156,26 @@ propertyGroups.put('/:id', async (c) => {
   const validation = updatePropertyGroupSchema.safeParse(body);
   if (!validation.success) {
     return c.json({
-      error: validation.error.issues.map((e: any) => e.message).join(', ')
+      error: validation.error.issues.map((e) => e.message).join(', ')
     }, 400);
   }
 
   const { name, description, propertyIds } = validation.data;
+
+  const { data: owned } = await supabase
+    .from('property_groups')
+    .select('id')
+    .eq('id', groupId)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  if (!owned) {
+    return c.json({ error: 'Property group not found' }, 404);
+  }
+
+  if (propertyIds && !await allPropertiesOwned(supabase, tenantId, propertyIds)) {
+    return c.json({ error: 'Unknown property id' }, 400);
+  }
 
   try {
     const updates: Record<string, unknown> = {};
@@ -186,12 +230,13 @@ propertyGroups.put('/:id', async (c) => {
     const { data: members } = await supabase
       .from('property_group_members')
       .select('property_id')
+      .eq('tenant_id', tenantId)
       .eq('property_group_id', groupId);
 
     const finalPropertyIds = (members || []).map(m => m.property_id);
 
     const { invalidateConfigViews } = await import('../utils/cache');
-    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'propertyGroups');
+    await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'propertyGroups');
 
     return c.json({
       id: updated.id,
@@ -208,7 +253,7 @@ propertyGroups.put('/:id', async (c) => {
 });
 
 propertyGroups.delete('/:id', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
   const groupId = c.req.param('id');
 
@@ -222,7 +267,7 @@ propertyGroups.delete('/:id', async (c) => {
     if (error) throw error;
 
     const { invalidateConfigViews } = await import('../utils/cache');
-    await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'propertyGroups');
+    await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'propertyGroups');
 
     return c.json({ success: true });
   } catch (error) {

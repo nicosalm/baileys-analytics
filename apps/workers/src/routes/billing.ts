@@ -4,8 +4,9 @@ import { createSupabaseClient } from '../services/supabase';
 import { StripeService } from '../services/stripe';
 import { markPendingTierIfNeeded, TIER_PRICE_ENV_VARS } from '../services/tier-reconciliation';
 import { PURCHASABLE_TIER_SLUGS, type TierSlug } from '@baileys/constants';
+import type { AppEnv } from '../types';
 
-const billing = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const billing = new Hono<AppEnv>();
 
 // stripe webhook handler (no auth required - uses signature verification)
 billing.post('/webhook', async (c) => {
@@ -116,6 +117,10 @@ billing.post('/create-checkout-session', async (c) => {
     if (typeof stripePriceId !== 'string' || !stripePriceId) {
       console.error(`Missing Stripe price env var for tier=${tier} yearly=${isYearly}`);
       return c.json({ error: 'Tier not yet configured' }, 500);
+    }
+
+    if (!user.email) {
+      return c.json({ error: 'An account with an email address is required to subscribe' }, 400);
     }
 
     const successUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=success`;

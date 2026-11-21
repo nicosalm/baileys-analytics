@@ -16,12 +16,6 @@ export const SUPABASE_MAX_ROWS = 10000;
 /** Milliseconds in one day — used to convert inclusive date boundaries to exclusive ones. */
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export const BOOKING_STATUS = {
-  CONFIRMED: 'confirmed',
-  CANCELED: 'canceled',
-  PENDING: 'pending',
-} as const;
-
 /**
  * Normalize booking status from OwnerRez API.
  * OwnerRez may send 'cancelled' (British) which must be normalized

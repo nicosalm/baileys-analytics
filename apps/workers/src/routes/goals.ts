@@ -4,8 +4,9 @@ import { z } from 'zod';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { getGoalProgress } from '../services/goals';
+import type { AppEnv } from '../types';
 
-const goals = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const goals = new Hono<AppEnv>();
 
 goals.use('/*', authMiddleware);
 
@@ -94,7 +95,7 @@ goals.put('/', async (c) => {
 	}
 
 	const { invalidateConfigViews } = await import('../utils/cache');
-	await invalidateConfigViews(c.env.CACHE, c.get('user').id, 'goals');
+	await invalidateConfigViews(c.env.CACHE, c.get('tenantId'), 'goals');
 
 	const formatted = (upserted || []).map(g => ({
 		id: g.id,

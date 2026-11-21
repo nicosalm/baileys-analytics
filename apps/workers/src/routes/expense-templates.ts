@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { authMiddleware } from '../middleware/auth'
 import { createSupabaseClient } from '../services/supabase'
+import type { AppEnv } from '../types';
 
-const expenseTemplates = new Hono<{ Bindings: Env; Variables: { user: any } }>()
+const expenseTemplates = new Hono<AppEnv>()
 
 expenseTemplates.use('/*', authMiddleware)
 
@@ -27,15 +28,9 @@ const bulkTemplateSchema = z.object({
 
 expenseTemplates.get('/', async (c) => {
   const supabase = createSupabaseClient(c.env)
-  const user = c.get('user')
+  const tenantId = c.get('tenantId')
 
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!tenant) {
+  if (!tenantId) {
     return c.json({ error: 'Tenant not found' }, 404)
   }
 
@@ -44,7 +39,7 @@ expenseTemplates.get('/', async (c) => {
   let query = supabase
     .from('expense_templates')
     .select('*')
-    .eq('tenant_id', tenant.id)
+    .eq('tenant_id', tenantId)
 
   if (propertyId) {
     query = query.eq('property_id', propertyId)
@@ -62,15 +57,9 @@ expenseTemplates.get('/', async (c) => {
 
 expenseTemplates.post('/bulk', async (c) => {
   const supabase = createSupabaseClient(c.env)
-  const user = c.get('user')
+  const tenantId = c.get('tenantId')
 
-  const { data: tenant } = await supabase
-    .from('tenants')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (!tenant) {
+  if (!tenantId) {
     return c.json({ error: 'Tenant not found' }, 404)
   }
 
@@ -87,7 +76,7 @@ expenseTemplates.post('/bulk', async (c) => {
     .from('properties')
     .select('id')
     .eq('id', propertyId)
-    .eq('tenant_id', tenant.id)
+    .eq('tenant_id', tenantId)
     .single()
 
   if (!property) {
@@ -101,7 +90,7 @@ expenseTemplates.post('/bulk', async (c) => {
   }))
 
   const { error: rpcError } = await supabase.rpc('replace_expense_templates', {
-    p_tenant_id: tenant.id,
+    p_tenant_id: tenantId,
     p_property_id: propertyId,
     p_rows: rows
   })
@@ -115,7 +104,7 @@ expenseTemplates.post('/bulk', async (c) => {
   const { data } = await supabase
     .from('expense_templates')
     .select('*')
-    .eq('tenant_id', tenant.id)
+    .eq('tenant_id', tenantId)
     .eq('property_id', propertyId)
     .order('category')
 

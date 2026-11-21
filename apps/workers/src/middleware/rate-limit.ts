@@ -60,11 +60,3 @@ export function rateLimit(options: RateLimitOptions = {}) {
 		return next();
 	};
 }
-
-// strict rate limit for expensive operations
-export function strictRateLimit() {
-	return rateLimit({
-		windowMs: 300000,  // 5 minutes
-		max: 10            // 10 requests per 5 minutes
-	});
-}

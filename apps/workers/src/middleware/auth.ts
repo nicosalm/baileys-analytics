@@ -1,7 +1,8 @@
 import { Context, Next } from 'hono';
 import { createSupabaseClient } from '../services/supabase';
+import type { AppEnv } from '../types';
 
-export async function authMiddleware(c: Context<{ Bindings: Env; Variables: { user: any; tenantId: string } }>, next: Next) {
+export async function authMiddleware(c: Context<AppEnv>, next: Next) {
 	// already authenticated by an app-level middleware earlier in the chain
 	if (c.get('user')) {
 		return next();

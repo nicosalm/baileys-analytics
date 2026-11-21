@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
-import { createClient } from '@supabase/supabase-js';
+import { createSupabaseClient } from '../services/supabase';
 import { OWNERREZ_API } from '../constants';
 import { authMiddleware } from '../middleware/auth';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
+import type { AppEnv } from '../types';
 
-const validation = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const validation = new Hono<AppEnv>();
 
 interface ValidationResult {
   source: string;
@@ -238,7 +239,7 @@ function compareResults(
 validation.use('*', authMiddleware);
 
 validation.get('/data', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
   
   const from = c.req.query('from') || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
@@ -287,7 +288,7 @@ validation.get('/data', async (c) => {
 });
 
 validation.get('/calculations', async (c) => {
-  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_SERVICE_KEY);
+  const supabase = createSupabaseClient(c.env);
   const tenantId = c.get('tenantId');
   const bookingId = c.req.query('bookingId');
 

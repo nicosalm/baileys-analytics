@@ -8,8 +8,9 @@ import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking, arrivalInPeriodMap, sumChargesForArrivalsInPeriod } from '../utils/prorate';
 import { fetchBlocks, collectBlockedNights, sumBlockedNights } from '../utils/blocks';
+import type { AppEnv } from '../types';
 
-const periodDetail = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const periodDetail = new Hono<AppEnv>();
 
 periodDetail.use('*', authMiddleware);
 

@@ -5,8 +5,10 @@ import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 import { mapToBlockRow } from '../utils/blocks';
+import { invalidateBookingViews } from '../utils/cache';
+import type { AppEnv } from '../types';
 
-const sync = new Hono<{ Bindings: Env; Variables: { user: any; tenantId: string } }>();
+const sync = new Hono<AppEnv>();
 
 sync.use('/*', authMiddleware);
 
@@ -650,6 +652,8 @@ sync.post('/complete', async (c) => {
     }, {
       onConflict: 'tenant_id,sync_type'
     });
+
+  await invalidateBookingViews(c.env.CACHE, tenantId);
 
   return c.json({ success: true });
 });
