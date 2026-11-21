@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { Link, useNavigate } from 'react-router-dom'
 import { ChevronDown, Eye, LogOut, MessageSquare, Monitor, Moon, Settings, Shield, Sun, UserPlus } from 'lucide-react'
@@ -29,6 +30,47 @@ const getInitials = (companyName: string | null | undefined, email: string | nul
       .join('')
       .toUpperCase()
   return (email?.[0] ?? '?').toUpperCase()
+}
+
+const sha256Hex = async (text: string) => {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+// sign-in provider photo first, then gravatar (d=404 makes a missing one fail to load),
+// then initials
+const AccountAvatar = ({ photoUrl, email, initials }: { photoUrl?: string; email?: string; initials: string }) => {
+  const [gravatarUrl, setGravatarUrl] = useState<string>()
+  const [failed, setFailed] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!email) return
+    let cancelled = false
+    sha256Hex(email.trim().toLowerCase()).then((hash) => {
+      if (!cancelled) setGravatarUrl(`https://gravatar.com/avatar/${hash}?s=72&d=404`)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [email])
+
+  const src = [photoUrl, gravatarUrl].find((url): url is string => !!url && !failed.includes(url))
+
+  return (
+    <span className="grid size-9 place-items-center overflow-hidden rounded-full bg-primary/15 text-sm font-semibold text-primary">
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="size-full object-cover"
+          onError={() => setFailed((prev) => [...prev, src])}
+        />
+      ) : (
+        initials
+      )}
+    </span>
+  )
 }
 
 const verifyAdmin = async () => {
@@ -70,9 +112,11 @@ export const AccountMenu = () => {
               Demo
             </span>
           ) : (
-            <span className="grid size-9 place-items-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
-              {getInitials(user.companyName, user.email)}
-            </span>
+            <AccountAvatar
+              photoUrl={user.user_metadata?.avatar_url}
+              email={user.email}
+              initials={getInitials(user.companyName, user.email)}
+            />
           )}
           <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
         </button>
