@@ -148,8 +148,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       {/* security */}
       {(onChangeEmail || onChangePassword) && (
         <div className="bg-card rounded-lg shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-foreground mb-1">Security</h3>
-          <p className="text-sm text-muted-foreground mb-4">Update your email or password</p>
+          <h3 className="text-lg font-semibold text-foreground mb-4">Security</h3>
           <div className="space-y-3">
             {onChangeEmail && (
               <Button variant="outline" onClick={onChangeEmail} className="w-full justify-between">
@@ -179,7 +178,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           <h3 className="text-lg font-semibold text-danger-fg">Danger Zone</h3>
           <AlertTriangle className="w-5 h-5 text-danger" />
         </div>
-        <p className="text-sm text-muted-foreground mb-4">Deletion is permanent — your data cannot be recovered</p>
+        <p className="text-sm text-muted-foreground mb-4">Deletion is permanent. Your data cannot be recovered.</p>
 
         <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4 mb-4">
           <p className="text-sm text-danger-fg mb-2">

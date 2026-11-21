@@ -4,13 +4,13 @@ Multi-tenant analytics for OwnerRez hosts: revenue, P&L, occupancy, booking pace
 
 ## Layout
 
-| Path | What it is |
-| --- | --- |
-| `web/` | React 19 SPA (Vite, Tailwind 4, shadcn/ui, Recharts, SWR). Deployed to Cloudflare Pages; `web/functions/api` proxies `/api/*` to the worker. |
-| `api/` | Cloudflare Worker (Hono). Every database read and write goes through it with the Supabase service role, scoped by tenant. |
-| `packages/constants` | Shared constants, including subscription tiers. |
-| `packages/utils` | Shared formatting and date helpers for the web app. |
-| `supabase/` | SQL migrations, the demo seed, and pre-deploy checks. |
+| Path                 | What it is                                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/`               | React 19 SPA (Vite, Tailwind 4, shadcn/ui, Recharts, SWR). Deployed to Cloudflare Pages; `web/functions/api` proxies `/api/*` to the worker. |
+| `api/`               | Cloudflare Worker (Hono). Every database read and write goes through it with the Supabase service role, scoped by tenant.                    |
+| `packages/constants` | Shared constants, including subscription tiers.                                                                                              |
+| `packages/utils`     | Shared formatting and date helpers for the web app.                                                                                          |
+| `supabase/`          | SQL migrations, the demo seed, and pre-deploy checks.                                                                                        |
 
 The browser talks to Supabase for authentication only. Tenant isolation lives in the worker: every query filters by the tenant resolved in `api/src/middleware/auth.ts`.
 
@@ -27,14 +27,14 @@ pnpm dev                                 # web on :5173, api on :8787
 
 Set `API_URL` to point the Vite proxy at an API on another port.
 
-| Command | Does |
-| --- | --- |
-| `pnpm lint` | Biome lint and format check |
-| `pnpm format` | Apply Biome fixes and formatting |
-| `pnpm typecheck` | Type-check every package |
-| `pnpm test` | API unit tests (Vitest) |
-| `pnpm build` | Production build of the web app |
-| `pnpm db:types` | Regenerate `web/src/types/database.types.ts` from Supabase |
+| Command          | Does                                                       |
+| ---------------- | ---------------------------------------------------------- |
+| `pnpm lint`      | Biome lint and format check                                |
+| `pnpm format`    | Apply Biome fixes and formatting                           |
+| `pnpm typecheck` | Type-check every package                                   |
+| `pnpm test`      | API unit tests (Vitest)                                    |
+| `pnpm build`     | Production build of the web app                            |
+| `pnpm db:types`  | Regenerate `web/src/types/database.types.ts` from Supabase |
 
 A pre-commit hook runs Biome on staged files.
 

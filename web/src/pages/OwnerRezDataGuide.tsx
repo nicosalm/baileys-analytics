@@ -12,9 +12,9 @@ export const OwnerRezDataGuide = () => {
   usePageTitle('Data Guide')
   return (
     <DocsLayout>
-      <div className="prose prose-gray max-w-none">
+      <article>
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-1">OwnerRez Data Guide</h1>
+          <h1 className="landing-serif text-3xl md:text-4xl font-semibold tracking-tight text-foreground mb-2">OwnerRez Data Guide</h1>
           <p className="text-muted-foreground text-sm">What is synced, how updates work, and what requires manual configuration.</p>
         </div>
 
@@ -33,7 +33,7 @@ export const OwnerRezDataGuide = () => {
 
         {/* what we sync */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Synced Data</h2>
+          <h2 className="text-base font-semibold text-foreground mb-2">Synced Data</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
             The following data is imported from your OwnerRez account and kept current via webhooks.
@@ -82,7 +82,7 @@ export const OwnerRezDataGuide = () => {
 
         {/* initial sync */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Initial Sync</h2>
+          <h2 className="text-base font-semibold text-foreground mb-2">Initial Sync</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
             On first connection, the system imports 4 years of historical bookings and 1 year of future bookings. This typically takes 2 to
@@ -94,7 +94,7 @@ export const OwnerRezDataGuide = () => {
 
         {/* real-time webhooks */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Real-Time Updates</h2>
+          <h2 className="text-base font-semibold text-foreground mb-2">Real-Time Updates</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
             OwnerRez webhooks push changes to Baileys Analytics as they happen. No action is required on your part.
@@ -112,7 +112,7 @@ export const OwnerRezDataGuide = () => {
 
         {/* tagging */}
         <section id="tagging" className="mb-8 scroll-mt-20">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Tagging</h2>
+          <h2 className="text-base font-semibold text-foreground mb-2">Tagging</h2>
 
           <p className="text-muted-foreground text-sm mb-4">
             Tags are imported from OwnerRez. You create and apply them inside OwnerRez, and Baileys Analytics syncs them automatically. The
@@ -158,7 +158,7 @@ export const OwnerRezDataGuide = () => {
 
         {/* what we don't sync */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Manual Configuration</h2>
+          <h2 className="text-base font-semibold text-foreground mb-2">Manual Configuration</h2>
           <p className="text-muted-foreground text-sm mb-4">
             The following data is not available through the OwnerRez API and must be entered manually:
           </p>
@@ -176,7 +176,7 @@ export const OwnerRezDataGuide = () => {
 
         {/* troubleshooting */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Troubleshooting</h2>
+          <h2 className="text-base font-semibold text-foreground mb-2">Troubleshooting</h2>
 
           <div className="space-y-4">
             <div>
@@ -217,7 +217,7 @@ export const OwnerRezDataGuide = () => {
 
         {/* security */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Security & Privacy</h2>
+          <h2 className="text-base font-semibold text-foreground mb-2">Security & Privacy</h2>
 
           <ul className="text-muted-foreground space-y-1 list-disc ml-6 text-sm">
             <li>Connection uses OAuth. Your OwnerRez password is never stored.</li>
@@ -246,7 +246,7 @@ export const OwnerRezDataGuide = () => {
             </p>
           </div>
         </section>
-      </div>
+      </article>
     </DocsLayout>
   )
 }

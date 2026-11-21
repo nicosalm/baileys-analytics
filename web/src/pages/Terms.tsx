@@ -5,15 +5,15 @@ export const Terms = () => {
   usePageTitle('Terms of Service')
   return (
     <DocsLayout>
-      <div className="prose prose-gray max-w-none">
+      <article>
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-1">Terms of Service</h1>
+          <h1 className="landing-serif text-3xl md:text-4xl font-semibold tracking-tight text-foreground mb-2">Terms of Service</h1>
           <p className="text-muted-foreground text-sm">Effective January 1, 2025</p>
         </div>
 
         <div className="space-y-8">
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">1. Agreement to Terms</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">1. Agreement to Terms</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               By accessing or using Baileys Analytics ("Service"), you agree to these Terms of Service ("Terms"). If you do not agree, you
               may not use the Service.
@@ -21,7 +21,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">2. Description of Service</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">2. Description of Service</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Baileys Analytics provides vacation rental analytics and reporting by connecting to your OwnerRez account. The Service
               includes dashboards, financial reporting, guest analytics, data visualization, and a REST API for programmatic data access.
@@ -29,7 +29,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">3. Account Registration</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">3. Account Registration</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               You must create an account and provide accurate, complete information. You are responsible for maintaining the confidentiality
               of your credentials and for all activity under your account.
@@ -37,7 +37,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">4. OwnerRez Connection</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">4. OwnerRez Connection</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               The Service requires an OwnerRez connection via OAuth. By connecting, you authorize Baileys Analytics to access and store your
               property, booking, and guest data for the purpose of providing analytics. This access can be revoked at any time in Settings.
@@ -45,7 +45,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">5. Data Usage and Storage</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">5. Data Usage and Storage</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
               The following data is stored and processed to provide analytics:
             </p>
@@ -61,7 +61,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">6. Subscription and Payment</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">6. Subscription and Payment</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">The Service is offered on a subscription basis:</p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm mb-3">
               <li>$20/month or $192/year (20% discount)</li>
@@ -74,7 +74,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">7. Cancellation Policy</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">7. Cancellation Policy</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
               You may cancel your subscription at any time through Settings or by contacting support.
             </p>
@@ -86,7 +86,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">8. No Refunds</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">8. No Refunds</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">All payments are final and non-refundable.</p>
             <p className="text-muted-foreground text-sm leading-relaxed">
               For billing errors or unauthorized charges, contact us within 60 days. We will investigate and respond within 5 business days.
@@ -96,7 +96,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">9. Acceptable Use</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">9. Acceptable Use</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">You agree not to:</p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm">
               <li>Use the Service for any unlawful purpose</li>
@@ -108,7 +108,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">10. Intellectual Property</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">10. Intellectual Property</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               The Service, its content, features, and functionality are owned by Baileys Analytics and are protected by copyright,
               trademark, and other intellectual property laws. Your data remains your property.
@@ -116,7 +116,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">11. Data Accuracy Disclaimer</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">11. Data Accuracy Disclaimer</h2>
             <div className="bg-warning-subtle border-l-4 border-warning p-4 rounded">
               <p className="text-sm leading-relaxed font-medium text-warning-fg">
                 Baileys Analytics is an analytics and reporting tool. Financial reports are provided for informational purposes only.
@@ -127,7 +127,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">12. Limitation of Liability</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">12. Limitation of Liability</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               TO THE MAXIMUM EXTENT PERMITTED BY LAW, BAILEYS ANALYTICS SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
               CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, USE, OR GOODWILL, ARISING OUT OF OR
@@ -139,7 +139,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">13. Service Availability</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">13. Service Availability</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Baileys Analytics strives for high availability but does not guarantee uninterrupted access. The Service may be temporarily
               unavailable due to maintenance, updates, or factors beyond our control.
@@ -147,7 +147,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">14. Termination</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">14. Termination</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               You may terminate your account at any time. Baileys Analytics may suspend or terminate accounts that violate these Terms. Upon
               termination, your right to use the Service ceases immediately.
@@ -155,7 +155,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">15. Responsible Disclosure</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">15. Responsible Disclosure</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
               Baileys Analytics welcomes good-faith security research. If you discover a vulnerability, please report it to{' '}
               <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">
@@ -176,7 +176,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">16. Data Export and Deletion</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">16. Data Export and Deletion</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               You can export your data at any time as CSV from the dashboard. After account deletion, data is retained for 30 days to allow
               for export, then permanently deleted unless required by law.
@@ -184,7 +184,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">17. Changes to Terms</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">17. Changes to Terms</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Baileys Analytics reserves the right to modify these Terms at any time. Significant changes will be communicated via email or
               through the Service. Continued use after changes constitutes acceptance.
@@ -192,7 +192,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">18. Governing Law</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">18. Governing Law</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               These Terms are governed by the laws of the United States and the State of Wisconsin, without regard to conflict of law
               provisions.
@@ -200,7 +200,7 @@ export const Terms = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">19. Contact</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">19. Contact</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               For questions about these Terms, email{' '}
               <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">
@@ -210,7 +210,7 @@ export const Terms = () => {
             </p>
           </section>
         </div>
-      </div>
+      </article>
     </DocsLayout>
   )
 }

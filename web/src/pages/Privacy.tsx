@@ -5,9 +5,9 @@ export const Privacy = () => {
   usePageTitle('Privacy Policy')
   return (
     <DocsLayout>
-      <div className="prose prose-gray max-w-none">
+      <article>
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground mb-1">Privacy Policy</h1>
+          <h1 className="landing-serif text-3xl md:text-4xl font-semibold tracking-tight text-foreground mb-2">Privacy Policy</h1>
           <p className="text-muted-foreground text-sm">Effective January 1, 2025</p>
         </div>
 
@@ -20,7 +20,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">1. Information We Collect</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">1. Information We Collect</h2>
 
             <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">Account Information</h3>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">When you create an account, we collect:</p>
@@ -51,7 +51,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">2. How We Use Your Information</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">2. How We Use Your Information</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">Your information is used to:</p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm">
               <li>Provide and maintain the analytics service</li>
@@ -65,7 +65,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">3. Data Storage and Security</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">3. Data Storage and Security</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
               Data is stored on Supabase infrastructure in the United States. Security measures include:
             </p>
@@ -82,7 +82,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">4. Information Sharing</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">4. Information Sharing</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
               Baileys Analytics does not sell, trade, or rent your personal information. Information may be shared only in these cases:
             </p>
@@ -98,7 +98,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">5. Your Rights</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">5. Your Rights</h2>
 
             <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">Access and Export</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
@@ -124,7 +124,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">6. Cookies</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">6. Cookies</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">Cookies are used to:</p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm">
               <li>Maintain authentication sessions</li>
@@ -137,7 +137,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">7. Third-Party Services</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">7. Third-Party Services</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">The Service integrates with:</p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm">
               <li>OwnerRez for property and booking data (under your authorization)</li>
@@ -148,7 +148,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">8. Data Retention</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">8. Data Retention</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
               Data is retained for the duration of an active account. After account deletion:
             </p>
@@ -161,7 +161,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">9. California Privacy Rights</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">9. California Privacy Rights</h2>
             <p className="text-muted-foreground text-sm leading-relaxed mb-3">
               California residents have additional rights under the CCPA:
             </p>
@@ -174,7 +174,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">10. Children's Privacy</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">10. Children's Privacy</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               The Service is not intended for users under 13. Baileys Analytics does not knowingly collect information from children under
               13. If such information is discovered, it will be deleted promptly.
@@ -182,7 +182,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">11. Changes to This Policy</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">11. Changes to This Policy</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               This Privacy Policy may be updated from time to time. Material changes will be communicated via email or through the Service.
               Continued use after changes constitutes acceptance.
@@ -190,7 +190,7 @@ export const Privacy = () => {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-3">12. Contact</h2>
+            <h2 className="text-base font-semibold text-foreground mb-2">12. Contact</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               For questions about this Privacy Policy, email{' '}
               <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">
@@ -200,7 +200,7 @@ export const Privacy = () => {
             </p>
           </section>
         </div>
-      </div>
+      </article>
     </DocsLayout>
   )
 }

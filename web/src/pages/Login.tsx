@@ -116,8 +116,7 @@ export const Login = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left side - Login Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+      <div className="w-full flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
         <div className="max-w-md w-full mx-auto">
           {/* Back to home link */}
           <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-all mb-8">
@@ -134,7 +133,6 @@ export const Login = () => {
           {/* Welcome text */}
           <div className="mb-8">
             <h2 className="landing-serif text-3xl font-semibold text-foreground mb-2">Welcome back</h2>
-            <p className="text-muted-foreground">Sign in to your dashboard</p>
           </div>
 
           {/* Login form */}
@@ -258,35 +256,6 @@ export const Login = () => {
               Sign up
             </Link>
           </p>
-        </div>
-      </div>
-
-      {/* Right side - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden landing-noise-bg">
-        {/* Floating shapes */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
-
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h3 className="landing-serif text-4xl font-semibold mb-6">Know your real numbers.</h3>
-          <p className="text-lg text-white/80 mb-8">P&L, pacing, and occupancy across every property. Updated in real time.</p>
-
-          {/* Feature highlights */}
-          <div className="space-y-4">
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="text-white/80">See where your money actually goes</p>
-            </div>
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="text-white/80">Spot gaps before they cost you</p>
-            </div>
-            <div className="flex items-start">
-              <div className="w-2 h-2 bg-white rounded-full mt-2 mr-3 flex-shrink-0" />
-              <p className="text-white/80">Compare every property side by side</p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

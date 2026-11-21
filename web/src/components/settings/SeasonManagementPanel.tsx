@@ -297,8 +297,8 @@ export const SeasonManagementPanel: React.FC = () => {
       <div className="bg-card rounded-lg shadow-sm border p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Season Management</h3>
-            <p className="text-muted-foreground text-sm">Create seasons to slice your analytics by time of year</p>
+            <h3 className="text-lg font-semibold text-foreground mb-1">Seasons</h3>
+            <p className="text-muted-foreground text-sm">Named date ranges that appear in the period selector.</p>
           </div>
           {!isAddingNew && !editingSeasonId && (
             <Button size="sm" onClick={() => setIsAddingNew(true)}>

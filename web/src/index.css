@@ -221,13 +221,6 @@
 }
 
 /* paper noise — baked into section backgrounds, not overlaid on content */
-.landing-noise-bg {
-  background-image: url("/noise.png");
-  background-repeat: repeat;
-  background-size: 64px;
-  background-blend-mode: soft-light;
-}
-
 /* serif headings on the landing page */
 .landing-serif {
   font-family: "Newsreader", "Georgia", serif;

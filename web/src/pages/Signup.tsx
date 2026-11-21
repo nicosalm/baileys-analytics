@@ -87,7 +87,7 @@ export const Signup = () => {
   if (signupSuccess) {
     return (
       <div className="min-h-screen bg-background flex">
-        <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+        <div className="w-full flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
           <div className="max-w-md w-full mx-auto">
             <div className="bg-card rounded-xl shadow-sm border border-border p-8">
               <div className="text-center">
@@ -112,18 +112,6 @@ export const Signup = () => {
             </div>
           </div>
         </div>
-
-        {/* Right side - Decorative */}
-        <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden landing-noise-bg">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
-          <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
-          <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
-
-          <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-            <h3 className="landing-serif text-4xl font-semibold mb-6">Check your email</h3>
-            <p className="text-lg text-white/80">Open the confirmation link we sent to finish creating your account.</p>
-          </div>
-        </div>
       </div>
     )
   }
@@ -131,7 +119,7 @@ export const Signup = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left side - Signup Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
+      <div className="w-full flex flex-col justify-center px-8 py-8 lg:px-16 xl:px-24">
         <div className="max-w-md w-full mx-auto">
           {/* Back to home link */}
           <Link to="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-all mb-8">
@@ -148,7 +136,6 @@ export const Signup = () => {
           {/* Welcome text */}
           <div className="mb-8">
             <h2 className="landing-serif text-3xl font-semibold text-foreground mb-2">Create your account</h2>
-            <p className="text-muted-foreground">Get started with Baileys Analytics.</p>
           </div>
 
           {/* Signup form */}
@@ -295,50 +282,6 @@ export const Signup = () => {
               Sign in
             </Link>
           </p>
-        </div>
-      </div>
-
-      {/* Right side - Decorative */}
-      <div className="hidden lg:flex lg:w-1/2 bg-[oklch(0.25_0.06_265)] relative overflow-hidden landing-noise-bg">
-        {/* Floating shapes */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-[oklch(0.35_0.10_275/0.3)] rounded-full filter blur-xl animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-[oklch(0.30_0.08_260/0.25)] rounded-full filter blur-xl animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
-
-        <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-          <h3 className="landing-serif text-4xl font-semibold mb-6">What Happens After You Sign Up</h3>
-          <p className="text-lg text-white/80 mb-8">You'll be up and running in under 5 minutes.</p>
-
-          {/* Feature list */}
-          <div className="space-y-6">
-            <div className="flex items-start">
-              <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">1</div>
-              <div>
-                <h4 className="font-semibold mb-1">Connect OwnerRez (30 seconds)</h4>
-                <p className="text-white/80 text-sm">Secure OAuth connection - we never see your password</p>
-              </div>
-            </div>
-            <div className="flex items-start">
-              <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">2</div>
-              <div>
-                <h4 className="font-semibold mb-1">Automatic sync (~2 minutes)</h4>
-                <p className="text-white/80 text-sm">We pull 4 years of bookings, properties, and guest data</p>
-              </div>
-            </div>
-            <div className="flex items-start">
-              <div className="w-8 h-8 bg-white/15 rounded-full flex items-center justify-center mr-3 flex-shrink-0 font-bold">3</div>
-              <div>
-                <h4 className="font-semibold mb-1">See your insights instantly</h4>
-                <p className="text-white/80 text-sm">P&L, pacing, occupancy, and guest data. Ready to explore.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Trust badge */}
-          <div className="mt-12 pt-8 border-t border-white/15">
-            <p className="text-sm text-white/80 mb-2">Cancel anytime from settings - No hassle</p>
-            <p className="text-sm text-white/60">Made with 🧀 in Wisconsin</p>
-          </div>
         </div>
       </div>
     </div>
