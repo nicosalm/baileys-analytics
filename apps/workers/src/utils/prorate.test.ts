@@ -11,11 +11,7 @@ import {
 
 describe('prorateBooking', () => {
 	it('Bill Masella Sanctuary II case: 88-night booking, Week of Feb 1 → $929.95, 7 nights', () => {
-		const r = prorateBooking(
-			{ arrival: '2025-12-01', departure: '2026-02-27', total_amount: 11690.84 },
-			'2026-02-01',
-			'2026-02-07',
-		);
+		const r = prorateBooking({ arrival: '2025-12-01', departure: '2026-02-27', total_amount: 11690.84 }, '2026-02-01', '2026-02-07');
 		expect(r.totalNights).toBe(88);
 		expect(r.overlapNights).toBe(7);
 		expect(r.revenue).toBeCloseTo(929.95, 2);
@@ -23,64 +19,40 @@ describe('prorateBooking', () => {
 	});
 
 	it('booking fully inside period → ratio 1', () => {
-		const r = prorateBooking(
-			{ arrival: '2026-02-10', departure: '2026-02-13', total_amount: 900 },
-			'2026-02-01',
-			'2026-02-28',
-		);
+		const r = prorateBooking({ arrival: '2026-02-10', departure: '2026-02-13', total_amount: 900 }, '2026-02-01', '2026-02-28');
 		expect(r.ratio).toBe(1);
 		expect(r.overlapNights).toBe(3);
 		expect(r.revenue).toBe(900);
 	});
 
 	it('booking fully spans period → overlap = period length', () => {
-		const r = prorateBooking(
-			{ arrival: '2026-01-01', departure: '2026-12-31', total_amount: 36500 },
-			'2026-02-01',
-			'2026-02-28',
-		);
+		const r = prorateBooking({ arrival: '2026-01-01', departure: '2026-12-31', total_amount: 36500 }, '2026-02-01', '2026-02-28');
 		expect(r.overlapNights).toBe(28);
 		expect(r.totalNights).toBe(364);
 		expect(r.revenue).toBeCloseTo((36500 * 28) / 364, 4);
 	});
 
 	it('arrival == period end → zero overlap', () => {
-		const r = prorateBooking(
-			{ arrival: '2026-02-28', departure: '2026-03-02', total_amount: 200 },
-			'2026-02-01',
-			'2026-02-27',
-		);
+		const r = prorateBooking({ arrival: '2026-02-28', departure: '2026-03-02', total_amount: 200 }, '2026-02-01', '2026-02-27');
 		expect(r.overlapNights).toBe(0);
 		expect(r.revenue).toBe(0);
 	});
 
 	it('departure == period start → zero overlap', () => {
-		const r = prorateBooking(
-			{ arrival: '2026-01-28', departure: '2026-02-01', total_amount: 400 },
-			'2026-02-01',
-			'2026-02-28',
-		);
+		const r = prorateBooking({ arrival: '2026-01-28', departure: '2026-02-01', total_amount: 400 }, '2026-02-01', '2026-02-28');
 		expect(r.overlapNights).toBe(0);
 		expect(r.revenue).toBe(0);
 	});
 
 	it('partial overlap at start', () => {
-		const r = prorateBooking(
-			{ arrival: '2026-01-29', departure: '2026-02-05', total_amount: 700 },
-			'2026-02-01',
-			'2026-02-28',
-		);
+		const r = prorateBooking({ arrival: '2026-01-29', departure: '2026-02-05', total_amount: 700 }, '2026-02-01', '2026-02-28');
 		expect(r.totalNights).toBe(7);
 		expect(r.overlapNights).toBe(4);
 		expect(r.revenue).toBeCloseTo(400, 4);
 	});
 
 	it('partial overlap at end', () => {
-		const r = prorateBooking(
-			{ arrival: '2026-02-27', departure: '2026-03-05', total_amount: 700 },
-			'2026-02-01',
-			'2026-02-28',
-		);
+		const r = prorateBooking({ arrival: '2026-02-27', departure: '2026-03-05', total_amount: 700 }, '2026-02-01', '2026-02-28');
 		expect(r.totalNights).toBe(6);
 		expect(r.overlapNights).toBe(2);
 		expect(r.revenue).toBeCloseTo((700 * 2) / 6, 4);
@@ -103,11 +75,7 @@ describe('prorateBooking', () => {
 	});
 
 	it('single-night booking inside single-day period', () => {
-		const r = prorateBooking(
-			{ arrival: '2026-02-14', departure: '2026-02-15', total_amount: 300 },
-			'2026-02-14',
-			'2026-02-14',
-		);
+		const r = prorateBooking({ arrival: '2026-02-14', departure: '2026-02-15', total_amount: 300 }, '2026-02-14', '2026-02-14');
 		expect(r.ratio).toBe(1);
 		expect(r.overlapNights).toBe(1);
 		expect(r.revenue).toBe(300);
@@ -140,14 +108,9 @@ describe('bucketBooking', () => {
 	});
 
 	it('emits one bucket per day for day granularity', () => {
-		const buckets = bucketBooking(
-			{ arrival: '2026-02-10', departure: '2026-02-13', total_amount: 300 },
-			'2026-02-01',
-			'2026-02-28',
-			'day',
-		);
+		const buckets = bucketBooking({ arrival: '2026-02-10', departure: '2026-02-13', total_amount: 300 }, '2026-02-01', '2026-02-28', 'day');
 		expect(buckets.length).toBe(3);
-		expect(buckets.every(b => b.revenue === 100)).toBe(true);
+		expect(buckets.every((b) => b.revenue === 100)).toBe(true);
 	});
 
 	it('month granularity: booking spanning Jan-Feb splits correctly', () => {
@@ -158,8 +121,8 @@ describe('bucketBooking', () => {
 			'month',
 		);
 		expect(buckets.length).toBe(2);
-		const jan = buckets.find(b => b.key === '2026-01')!;
-		const feb = buckets.find(b => b.key === '2026-02')!;
+		const jan = buckets.find((b) => b.key === '2026-01')!;
+		const feb = buckets.find((b) => b.key === '2026-02')!;
 		// Jan 28, 29, 30, 31 = 4 nights; Feb 1, 2, 3, 4 = 4 nights (departure Feb 5 exclusive)
 		expect(jan.nights).toBe(4);
 		expect(feb.nights).toBe(4);
@@ -179,14 +142,14 @@ describe('bucketBooking', () => {
 
 describe('enumerateBuckets', () => {
 	it('produces zero-filled week list for a 2-month period', () => {
-		const keys = enumerateBuckets('2026-01-01', '2026-02-28', 'week').map(b => b.key);
+		const keys = enumerateBuckets('2026-01-01', '2026-02-28', 'week').map((b) => b.key);
 		// weeks starting on Sundays within that range
 		expect(keys.length).toBeGreaterThanOrEqual(8);
 		expect(new Set(keys).size).toBe(keys.length); // unique
 	});
 
 	it('month granularity: one entry per month', () => {
-		const keys = enumerateBuckets('2026-01-01', '2026-03-31', 'month').map(b => b.key);
+		const keys = enumerateBuckets('2026-01-01', '2026-03-31', 'month').map((b) => b.key);
 		expect(keys).toEqual(['2026-01', '2026-02', '2026-03']);
 	});
 
@@ -223,7 +186,11 @@ describe('isArrivalInPeriod (tax attribution)', () => {
 
 describe('sumChargesForArrivalsInPeriod', () => {
 	it('counts full amount for in-period arrivals, skips others', () => {
-		const arrivalMap = new Map([['b1', true], ['b2', false], ['b3', true]]);
+		const arrivalMap = new Map([
+			['b1', true],
+			['b2', false],
+			['b3', true],
+		]);
 		const total = sumChargesForArrivalsInPeriod(
 			[
 				{ booking_id: 'b1', amount: 100 },
@@ -264,7 +231,10 @@ describe('effectiveDaysInMonth', () => {
 
 describe('prorateCharges', () => {
 	it('applies per-booking ratio to each charge amount', () => {
-		const ratios = new Map([['b1', 0.5], ['b2', 1.0]]);
+		const ratios = new Map([
+			['b1', 0.5],
+			['b2', 1.0],
+		]);
 		const total = prorateCharges(
 			[
 				{ booking_id: 'b1', amount: 100 },

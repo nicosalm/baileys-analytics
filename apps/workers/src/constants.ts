@@ -1,10 +1,10 @@
 export const OWNERREZ_API = {
-  BASE_URL: 'https://api.ownerrez.com/v2',
-  ENDPOINTS: {
-    PROPERTIES: '/properties',
-    BOOKINGS: '/bookings',
-    GUESTS: '/guests',
-  },
+	BASE_URL: 'https://api.ownerrez.com/v2',
+	ENDPOINTS: {
+		PROPERTIES: '/properties',
+		BOOKINGS: '/bookings',
+		GUESTS: '/guests',
+	},
 } as const;
 
 /**
@@ -22,10 +22,10 @@ export const MS_PER_DAY = 24 * 60 * 60 * 1000;
  * to 'canceled' (American) to match our database convention.
  */
 export function normalizeBookingStatus(status: string | undefined | null): string {
-  if (!status) return 'pending';
-  const lower = status.toLowerCase().trim();
-  if (lower === 'cancelled') return 'canceled';
-  return lower;
+	if (!status) return 'pending';
+	const lower = status.toLowerCase().trim();
+	if (lower === 'cancelled') return 'canceled';
+	return lower;
 }
 
 // guest-facing OTA service fee estimates (what the OTA charges the guest on top of listing price)
@@ -53,24 +53,20 @@ const VRBO_GUEST_FEE_RATE = 0.08;
  * Vrbo: ~8% traveler service fee
  * Booking.com: 0% (no guest fee)
  */
-export function estimateGuestListingSiteFee(
-  platform: string | null | undefined,
-  totalAmount: number,
-  bookedDate?: string | null
-): number {
-  if (!platform || !totalAmount) return 0;
-  const key = platform.toLowerCase().replace(/[^a-z]/g, '');
+export function estimateGuestListingSiteFee(platform: string | null | undefined, totalAmount: number, bookedDate?: string | null): number {
+	if (!platform || !totalAmount) return 0;
+	const key = platform.toLowerCase().replace(/[^a-z]/g, '');
 
-  if (key.includes('airbnb')) {
-    // post oct 27 2025: host-only model, guest pays no separate fee
-    if (bookedDate && bookedDate >= AIRBNB_SPLIT_FEE_CUTOFF) return 0;
-    return totalAmount * AIRBNB_GUEST_FEE_RATE;
-  }
+	if (key.includes('airbnb')) {
+		// post oct 27 2025: host-only model, guest pays no separate fee
+		if (bookedDate && bookedDate >= AIRBNB_SPLIT_FEE_CUTOFF) return 0;
+		return totalAmount * AIRBNB_GUEST_FEE_RATE;
+	}
 
-  if (key.includes('vrbo')) {
-    return totalAmount * VRBO_GUEST_FEE_RATE;
-  }
+	if (key.includes('vrbo')) {
+		return totalAmount * VRBO_GUEST_FEE_RATE;
+	}
 
-  // booking.com, direct, etc. — no guest fee
-  return 0;
+	// booking.com, direct, etc. — no guest fee
+	return 0;
 }

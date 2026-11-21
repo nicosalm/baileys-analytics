@@ -3,12 +3,7 @@ import { MS_PER_DAY } from '../constants';
 // Count the nights a booking occupies within an exclusive [start, end) window.
 // Used by time-bucketed aggregations where each bucket has an exclusive end
 // (e.g. `nextMonthStart`) rather than an inclusive date.
-export function computeOverlapNights(
-	arrival: Date,
-	departure: Date,
-	windowStart: Date,
-	windowEndExclusive: Date,
-): number {
+export function computeOverlapNights(arrival: Date, departure: Date, windowStart: Date, windowEndExclusive: Date): number {
 	const start = arrival > windowStart ? arrival : windowStart;
 	const end = departure < windowEndExclusive ? departure : windowEndExclusive;
 	return Math.max(0, Math.floor((end.getTime() - start.getTime()) / MS_PER_DAY));
@@ -51,11 +46,7 @@ function startOfDayUtc(d: Date): Date {
 	return x;
 }
 
-export function prorateBooking(
-	b: BookingForProration,
-	periodStart: Date | string,
-	periodEndInclusive: Date | string,
-): ProratedBooking {
+export function prorateBooking(b: BookingForProration, periodStart: Date | string, periodEndInclusive: Date | string): ProratedBooking {
 	const arr = toUtcDate(b.arrival);
 	const dep = toUtcDate(b.departure);
 	const ps = startOfDayUtc(typeof periodStart === 'string' ? toUtcDate(periodStart) : periodStart);
@@ -96,11 +87,7 @@ export function prorateCharges<T extends { booking_id: string; amount: number | 
 // US/CA jurisdictions, not the service period. Use this for anything that
 // represents tax collected/remitted so reports match what hosts owe their
 // city/state. Revenue, ADR, and occupancy still prorate by service period.
-export function isArrivalInPeriod(
-	b: { arrival: string },
-	periodStart: Date | string,
-	periodEndInclusive: Date | string,
-): boolean {
+export function isArrivalInPeriod(b: { arrival: string }, periodStart: Date | string, periodEndInclusive: Date | string): boolean {
 	const arr = toUtcDate(b.arrival).getTime();
 	const ps = startOfDayUtc(typeof periodStart === 'string' ? toUtcDate(periodStart) : periodStart).getTime();
 	const pe = startOfDayUtc(typeof periodEndInclusive === 'string' ? toUtcDate(periodEndInclusive) : periodEndInclusive).getTime();
@@ -183,7 +170,9 @@ export function effectiveDaysInMonth(
 	const monthStart = new Date(Date.UTC(year, month, 1));
 	const nextMonthStart = new Date(Date.UTC(year, month + 1, 1));
 	const ps = startOfDayUtc(typeof periodStart === 'string' ? toUtcDate(periodStart) : periodStart);
-	const peExclusive = new Date(startOfDayUtc(typeof periodEndInclusive === 'string' ? toUtcDate(periodEndInclusive) : periodEndInclusive).getTime() + MS_PER_DAY);
+	const peExclusive = new Date(
+		startOfDayUtc(typeof periodEndInclusive === 'string' ? toUtcDate(periodEndInclusive) : periodEndInclusive).getTime() + MS_PER_DAY,
+	);
 	const effStart = Math.max(monthStart.getTime(), ps.getTime());
 	const effEnd = Math.min(nextMonthStart.getTime(), peExclusive.getTime());
 	return Math.max(0, Math.floor((effEnd - effStart) / MS_PER_DAY));

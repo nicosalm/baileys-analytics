@@ -3,7 +3,7 @@ import { parseISO } from 'date-fns'
 import { ChevronDown, ChevronRight, Calculator, TrendingUp, ArrowRight, Calendar } from 'lucide-react'
 import { formatCurrency, formatPercentage, safeDivide } from '@baileys/utils'
 import { MS_PER_DAY } from '@baileys/constants'
-import { OccupancyByProperty } from '@/types/api'
+import type { OccupancyByProperty } from '@/types/api'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,9 +52,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
   const { data: seasons = [] } = useSeasons()
 
   const scope = useMemo(() => {
-    const properties = selectedPropertyId === '__portfolio__'
-      ? byProperty
-      : byProperty.filter(p => p.propertyId === selectedPropertyId)
+    const properties = selectedPropertyId === '__portfolio__' ? byProperty : byProperty.filter((p) => p.propertyId === selectedPropertyId)
 
     const availableNights = properties.reduce((sum, p) => sum + p.availableNights, 0)
     const bookedNights = properties.reduce((sum, p) => sum + p.bookedNights, 0)
@@ -78,11 +76,12 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
     const rangeIsAllPast = rangeEnd < today
 
     // Find an active season whose window overlaps with the selected range
-    const activeSeason = seasons.find(s => {
-      if (!s.isActive) return false
-      const { start, end } = getSeasonWindow(s)
-      return start <= rangeEnd && end >= rangeStart
-    }) ?? null
+    const activeSeason =
+      seasons.find((s) => {
+        if (!s.isActive) return false
+        const { start, end } = getSeasonWindow(s)
+        return start <= rangeEnd && end >= rangeStart
+      }) ?? null
 
     if (rangeIsAllPast) {
       // Historical view — all open nights are already missed; show as-is with a note
@@ -140,15 +139,17 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
   return (
     <div className="bg-card rounded-lg shadow-sm border border-border">
       <button
-        onClick={() => setExpanded(prev => !prev)}
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
         className="w-full flex items-center justify-between px-6 py-4 cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          {expanded
-            ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            : <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          }
+          {expanded ? (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          )}
           <Calculator className="w-5 h-5 text-muted-foreground" />
           <span className="font-bold text-foreground">What If?</span>
           <span className="text-sm text-muted-foreground font-normal">RevPAN scenario calculator</span>
@@ -168,7 +169,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__portfolio__">All Properties (Portfolio)</SelectItem>
-                    {byProperty.map(p => (
+                    {byProperty.map((p) => (
                       <SelectItem key={p.propertyId} value={p.propertyId}>
                         {p.propertyName}
                       </SelectItem>
@@ -202,7 +203,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
                     type="text"
                     inputMode="decimal"
                     value={rateInput}
-                    onChange={e => handleRateChange(e.target.value)}
+                    onChange={(e) => handleRateChange(e.target.value)}
                     placeholder={scope.weightedAvgRate > 0 ? scope.weightedAvgRate.toFixed(0) : '0'}
                     className="pl-7 pr-14 text-sm"
                   />
@@ -238,10 +239,13 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
                     <div className="text-xs text-muted-foreground">projected</div>
                   </div>
                   {inputRate > 0 && (
-                    <span className={`mb-4 text-xs font-semibold px-1.5 py-0.5 rounded ${
-                      revPANChangePct >= 0 ? 'bg-success-subtle text-success-fg' : 'bg-danger-subtle text-danger-fg'
-                    }`}>
-                      {revPANChangePct >= 0 ? '+' : ''}{formatPercentage(revPANChangePct)}
+                    <span
+                      className={`mb-4 text-xs font-semibold px-1.5 py-0.5 rounded ${
+                        revPANChangePct >= 0 ? 'bg-success-subtle text-success-fg' : 'bg-danger-subtle text-danger-fg'
+                      }`}
+                    >
+                      {revPANChangePct >= 0 ? '+' : ''}
+                      {formatPercentage(revPANChangePct)}
                     </span>
                   )}
                 </div>
@@ -258,7 +262,8 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
                     + {projectableNights} night{projectableNights !== 1 ? 's' : ''} × {formatCurrency(inputRate)}
                   </span>
                   <span className={`font-medium ${additionalRevenue > 0 ? 'text-success' : ''}`}>
-                    {additionalRevenue > 0 ? '+' : ''}{formatCurrency(additionalRevenue)}
+                    {additionalRevenue > 0 ? '+' : ''}
+                    {formatCurrency(additionalRevenue)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center pt-1.5 border-t border-border">
@@ -268,9 +273,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
               </div>
 
               {nightContext.historical && (
-                <p className="text-xs text-warning">
-                  Date range is in the past · showing historical opportunity
-                </p>
+                <p className="text-xs text-warning">Date range is in the past · showing historical opportunity</p>
               )}
             </div>
           </div>

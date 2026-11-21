@@ -7,6 +7,7 @@ single-tier pricing: $20/month or $192/year
 ### frontend (apps/web)
 
 add to `.env`:
+
 ```bash
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your-publishable-key-here
 ```
@@ -32,6 +33,7 @@ wrangler secret put STRIPE_PRICE_YEARLY
 ```
 
 for production deployment:
+
 ```bash
 wrangler secret put STRIPE_SECRET_KEY --env production
 # repeat for all secrets with --env production flag
@@ -44,6 +46,7 @@ wrangler secret put STRIPE_SECRET_KEY --env production
 create single product:
 
 #### baileys analytics
+
 - **name**: baileys analytics
 - **description**: complete vacation rental analytics
 - **monthly price**: $20.00
@@ -88,6 +91,7 @@ create single product:
 ## database setup
 
 subscription data is tracked in supabase tables:
+
 - `stripe_customers` - links tenants to stripe customers
 - `subscriptions` - subscription status, billing cycle, periods
 - `billing_history` - payment records
@@ -128,6 +132,7 @@ use these test cards in stripe's test mode:
 ### test scenarios
 
 1. **new user signup with $1 first month**:
+
    ```
    1. sign up for new account
    2. select billing cycle (monthly or yearly)
@@ -137,6 +142,7 @@ use these test cards in stripe's test mode:
    ```
 
 2. **billing cycle switch**:
+
    ```
    1. go to settings → billing
    2. click "manage subscription"
@@ -145,6 +151,7 @@ use these test cards in stripe's test mode:
    ```
 
 3. **subscription cancellation**:
+
    ```
    1. go to settings → billing
    2. click "manage subscription"
@@ -153,6 +160,7 @@ use these test cards in stripe's test mode:
    ```
 
 4. **failed payment**:
+
    ```
    1. use declining test card
    2. verify error handling
@@ -182,6 +190,7 @@ use these test cards in stripe's test mode:
 ### webhook monitoring
 
 monitor webhook events in stripe dashboard:
+
 - check for failed webhooks
 - review event logs
 - set up alerts for failures
@@ -230,6 +239,7 @@ monitor webhook events in stripe dashboard:
 ## support
 
 for issues or questions:
+
 - check stripe logs in dashboard
 - review cloudflare workers logs
 - contact support with tenant id and timestamp

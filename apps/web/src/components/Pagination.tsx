@@ -17,15 +17,11 @@ export function Pagination({ currentPage, totalPages, totalItems, pageSize, onPa
 
   return (
     <div className="flex items-center justify-between text-sm text-muted-foreground pt-3">
-      <span>Showing {start}-{end} of {totalItems}</span>
+      <span>
+        Showing {start}-{end} of {totalItems}
+      </span>
       <div className="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>
           <ChevronLeft className="w-4 h-4" />
         </Button>
         {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {

@@ -1,1 +1,9 @@
-<?xml version="1.0" encoding="UTF-8"?><svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000"><g id="Layer_1-2"><rect width="500" height="500" fill="#dbeafe" stroke-width="0"/><rect x="500" width="500" height="500" fill="#60a5fa" stroke-width="0"/><rect y="500" width="500" height="500" fill="#3b82f6" stroke-width="0"/><rect x="500" y="500" width="500" height="500" fill="#1e3a8a" stroke-width="0"/></g></svg>
+<?xml version="1.0" encoding="UTF-8" ?>
+<svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+  <g id="Layer_1-2">
+    <rect width="500" height="500" fill="#dbeafe" stroke-width="0" />
+    <rect x="500" width="500" height="500" fill="#60a5fa" stroke-width="0" />
+    <rect y="500" width="500" height="500" fill="#3b82f6" stroke-width="0" />
+    <rect x="500" y="500" width="500" height="500" fill="#1e3a8a" stroke-width="0" />
+  </g>
+</svg>

@@ -27,7 +27,10 @@ export const ResetPassword = () => {
       try {
         // validate user via server-side check (getUser validates the JWT
         // against the Auth server, unlike getSession which only reads local storage)
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
 
         // check if we're in password recovery mode
         // only trust recovery_sent_at - don't accept any authenticated session
@@ -82,7 +85,7 @@ export const ResetPassword = () => {
 
     try {
       const { error: updateError } = await supabase.auth.updateUser({
-        password: password
+        password: password,
       })
 
       if (updateError) {
@@ -118,9 +121,7 @@ export const ResetPassword = () => {
 
       <div className="relative z-10 flex flex-col justify-center px-16 text-white">
         <h3 className="text-4xl font-bold mb-6">Secure Your Account</h3>
-        <p className="text-lg text-white/80 mb-8">
-          Choose a strong password to keep your data safe.
-        </p>
+        <p className="text-lg text-white/80 mb-8">Choose a strong password to keep your data safe.</p>
 
         <div className="space-y-4">
           <div className="flex items-start">
@@ -194,9 +195,7 @@ export const ResetPassword = () => {
                 <h2 className="text-2xl font-bold text-foreground mb-2">Invalid Reset Link</h2>
                 <p className="text-muted-foreground mb-6">{error}</p>
                 <Button asChild>
-                  <Link to="/forgot-password">
-                    Request New Link
-                  </Link>
+                  <Link to="/forgot-password">Request New Link</Link>
                 </Button>
               </div>
             </div>
@@ -237,7 +236,7 @@ export const ResetPassword = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-12 h-11"
@@ -268,7 +267,7 @@ export const ResetPassword = () => {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10 pr-12 h-11"
@@ -289,11 +288,7 @@ export const ResetPassword = () => {
               </div>
             </div>
 
-            {error && (
-              <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             <Button
               type="submit"

@@ -35,7 +35,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
   const withRetry = async <T,>(
     fn: () => Promise<{ success: true; data: T } | { success: false; error: string; status?: number }>,
     retries = 2,
-    delay = 3000
+    delay = 3000,
   ) => {
     let lastResult: Awaited<ReturnType<typeof fn>> | null = null
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -47,7 +47,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       if (!retryable) return lastResult
       if (attempt < retries) {
         // exponential backoff: 3s, 6s, 12s
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)))
+        await new Promise((resolve) => setTimeout(resolve, delay * 2 ** attempt))
       }
     }
     return lastResult!
@@ -57,9 +57,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
     try {
       // Step 1: Check if sync is needed
       setProgress({ step: 'checking' })
-      const statusResult = await withRetry(() =>
-        api.request<{ needed: boolean; completed: boolean }>('/sync/status')
-      )
+      const statusResult = await withRetry(() => api.request<{ needed: boolean; completed: boolean }>('/sync/status'))
 
       if (!statusResult.success) {
         throw new Error('Failed to check sync status')
@@ -81,10 +79,10 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
       const propertiesResult = await withRetry(() =>
         api.request<{
-          success: boolean;
-          propertiesCount: number;
+          success: boolean
+          propertiesCount: number
           properties: Array<{ id: string; name: string }>
-        }>('/sync/properties', { method: 'POST' })
+        }>('/sync/properties', { method: 'POST' }),
       )
 
       if (!propertiesResult.success) {
@@ -102,7 +100,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         propertiesLoaded: totalProperties,
         bookingsLoaded: 0,
         blocksLoaded: 0,
-        guestsLoaded: 0
+        guestsLoaded: 0,
       })
 
       let totalBookings = 0
@@ -110,16 +108,17 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       let bookingsOffset: number | null = 0
 
       while (bookingsOffset !== null) {
-        const bookingsResult = await withRetry(() =>
-          api.request<{
-            success: boolean;
-            bookingsCount: number;
-            blocksCount: number;
-            done: boolean;
-            nextOffset: number | null;
-          }>(`/sync/bookings?offset=${bookingsOffset}`, { method: 'POST' }),
+        const bookingsResult = await withRetry(
+          () =>
+            api.request<{
+              success: boolean
+              bookingsCount: number
+              blocksCount: number
+              done: boolean
+              nextOffset: number | null
+            }>(`/sync/bookings?offset=${bookingsOffset}`, { method: 'POST' }),
           2,
-          5000
+          5000,
         )
 
         if (!bookingsResult.success) {
@@ -130,18 +129,18 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         totalBlocks += bookingsResult.data.blocksCount
         bookingsOffset = bookingsResult.data.nextOffset
 
-        setProgress(prev => ({
+        setProgress((prev) => ({
           ...prev,
           bookingsLoaded: totalBookings,
-          blocksLoaded: totalBlocks
+          blocksLoaded: totalBlocks,
         }))
       }
 
-      setProgress(prev => ({
+      setProgress((prev) => ({
         ...prev,
         currentProperty: totalProperties,
         bookingsLoaded: totalBookings,
-        blocksLoaded: totalBlocks
+        blocksLoaded: totalBlocks,
       }))
 
       // Step 4: Sync guests in chunks (non-blocking - don't fail the whole sync if this times out)
@@ -152,7 +151,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         propertiesLoaded: totalProperties,
         bookingsLoaded: totalBookings,
         blocksLoaded: totalBlocks,
-        guestsLoaded: 0
+        guestsLoaded: 0,
       })
 
       let totalGuests = 0
@@ -161,19 +160,19 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         while (guestsOffset !== null) {
           const guestsResult = await withRetry(() =>
             api.request<{
-              success: boolean;
-              guestsCount: number;
-              done: boolean;
-              nextOffset: number | null;
-            }>(`/sync/guests?offset=${guestsOffset}`, { method: 'POST' })
+              success: boolean
+              guestsCount: number
+              done: boolean
+              nextOffset: number | null
+            }>(`/sync/guests?offset=${guestsOffset}`, { method: 'POST' }),
           )
           if (!guestsResult.success) break
           totalGuests += guestsResult.data.guestsCount
           guestsOffset = guestsResult.data.nextOffset
 
-          setProgress(prev => ({
+          setProgress((prev) => ({
             ...prev,
-            guestsLoaded: totalGuests
+            guestsLoaded: totalGuests,
           }))
         }
       } catch {
@@ -182,9 +181,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
       // Step 5: Sync inquiries (non-blocking)
       try {
-        await withRetry(() =>
-          api.request('/sync/inquiries', { method: 'POST' })
-        )
+        await withRetry(() => api.request('/sync/inquiries', { method: 'POST' }))
       } catch {
         // inquiry sync is supplementary
       }
@@ -197,9 +194,9 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
             totalProperties,
             totalBookings,
             totalBlocks,
-            totalGuests
-          })
-        })
+            totalGuests,
+          }),
+        }),
       )
 
       setProgress({
@@ -207,7 +204,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         propertiesLoaded: totalProperties,
         bookingsLoaded: totalBookings,
         blocksLoaded: totalBlocks,
-        guestsLoaded: totalGuests
+        guestsLoaded: totalGuests,
       })
 
       // Redirect to dashboard after a moment
@@ -217,7 +214,6 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         }
         navigate('/dashboard/overview')
       }, 2000)
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sync data')
     }
@@ -265,11 +261,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
             >
               Try Again
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/settings')}
-              className="flex-1"
-            >
+            <Button variant="outline" onClick={() => navigate('/settings')} className="flex-1">
               Go to Settings
             </Button>
           </div>
@@ -284,38 +276,31 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
         <div className="text-center">
           <div className="flex flex-col items-center mb-6">
             <LogoCube className="w-12 h-12 mb-3" />
-            {progress.step === 'complete' ? (
-              <CheckCircle className="w-6 h-6 text-success" />
-            ) : (
-              <LoadingState size="sm" />
-            )}
+            {progress.step === 'complete' ? <CheckCircle className="w-6 h-6 text-success" /> : <LoadingState size="sm" />}
           </div>
-          
+
           <h2 className="text-2xl font-bold text-foreground mb-2">
             {progress.step === 'complete' ? 'Welcome to Baileys!' : 'Setting Up Your Dashboard'}
           </h2>
-          
+
           <p className="text-muted-foreground mb-6">
-            {progress.step === 'complete' 
+            {progress.step === 'complete'
               ? 'Your data has been synced successfully.'
-              : 'We\'re importing your historical data from OwnerRez. This may take a few minutes for large accounts.'}
+              : "We're importing your historical data from OwnerRez. This may take a few minutes for large accounts."}
           </p>
-          
+
           {/* Progress Bar */}
           <div className="mb-6">
             <div className="bg-muted rounded-full h-2 overflow-hidden">
-              <div 
-                className="h-full bg-primary transition-all duration-500"
-                style={{ width: `${getProgressPercentage()}%` }}
-              />
+              <div className="h-full bg-primary transition-all duration-500" style={{ width: `${getProgressPercentage()}%` }} />
             </div>
             <p className="text-sm text-muted-foreground mt-2">{getStatusMessage()}</p>
           </div>
-          
+
           {/* Stats */}
-          {(progress.propertiesLoaded !== undefined || 
-            progress.bookingsLoaded !== undefined || 
-            progress.blocksLoaded !== undefined || 
+          {(progress.propertiesLoaded !== undefined ||
+            progress.bookingsLoaded !== undefined ||
+            progress.blocksLoaded !== undefined ||
             progress.guestsLoaded !== undefined) && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t">
               {progress.propertiesLoaded !== undefined && (
@@ -323,45 +308,37 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
                   <div className="flex justify-center mb-2">
                     <Home className="w-5 h-5 text-info" />
                   </div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {progress.propertiesLoaded}
-                  </div>
+                  <div className="text-2xl font-bold text-foreground">{progress.propertiesLoaded}</div>
                   <div className="text-xs text-muted-foreground">Properties</div>
                 </div>
               )}
-              
+
               {progress.bookingsLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
                     <Calendar className="w-5 h-5 text-success" />
                   </div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {progress.bookingsLoaded}
-                  </div>
+                  <div className="text-2xl font-bold text-foreground">{progress.bookingsLoaded}</div>
                   <div className="text-xs text-muted-foreground">Bookings</div>
                 </div>
               )}
-              
+
               {progress.blocksLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
                     <Calendar className="w-5 h-5 text-purple-fg" />
                   </div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {progress.blocksLoaded}
-                  </div>
+                  <div className="text-2xl font-bold text-foreground">{progress.blocksLoaded}</div>
                   <div className="text-xs text-muted-foreground">Blocks</div>
                 </div>
               )}
-              
+
               {progress.guestsLoaded !== undefined && (
                 <div className="text-center">
                   <div className="flex justify-center mb-2">
                     <Users className="w-5 h-5 text-orange-fg" />
                   </div>
-                  <div className="text-2xl font-bold text-foreground">
-                    {progress.guestsLoaded}
-                  </div>
+                  <div className="text-2xl font-bold text-foreground">{progress.guestsLoaded}</div>
                   <div className="text-xs text-muted-foreground">Guests</div>
                 </div>
               )}

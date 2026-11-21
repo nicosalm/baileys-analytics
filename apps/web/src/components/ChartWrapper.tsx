@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import { cn } from '@/lib/utils'
 import { Loader2, AlertCircle, BarChart3, Info } from 'lucide-react'
 import { ResponsiveContainer } from 'recharts'
@@ -40,12 +40,12 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
   tooltip,
   info,
   responsive = true,
-  padding = 'md'
+  padding = 'md',
 }) => {
   const paddingClasses = {
     sm: 'p-4',
     md: 'p-6',
-    lg: 'p-8'
+    lg: 'p-8',
   }
 
   const heightValue = typeof height === 'number' ? `${height}px` : height
@@ -76,10 +76,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
             <h3 className="text-lg font-semibold">{title}</h3>
           </div>
         </div>
-        <div
-          className="flex flex-col items-center justify-center text-danger"
-          style={{ height: heightValue }}
-        >
+        <div className="flex flex-col items-center justify-center text-danger" style={{ height: heightValue }}>
           <AlertCircle className="w-8 h-8 mb-2" />
           <p className="text-sm font-medium">Error loading chart</p>
           <p className="text-xs mt-1">{error}</p>
@@ -99,10 +96,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
           {actions}
         </div>
         {controls && <div className="mb-4">{controls}</div>}
-        <div
-          className="flex flex-col items-center justify-center text-muted-foreground"
-          style={{ height: heightValue }}
-        >
+        <div className="flex flex-col items-center justify-center text-muted-foreground" style={{ height: heightValue }}>
           <EmptyQuadrants className="w-12 h-12 mb-2" />
           <p className="text-sm font-medium">{noDataMessage}</p>
         </div>
@@ -117,9 +111,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
           <Icon className="w-5 h-5 mr-2 text-muted-foreground" />
           <div>
             <h3 className="text-lg font-semibold">{title}</h3>
-            {subtitle && (
-              <p className="text-sm text-muted-foreground">{subtitle}</p>
-            )}
+            {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
           </div>
         </div>
         {actions}

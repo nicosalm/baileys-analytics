@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import type React from 'react'
+import { useState } from 'react'
 import { useSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonActive } from '@/hooks/use-api'
 import { Plus, Edit2, Calendar, Check, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
@@ -11,10 +12,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Separator } from '@/components/ui/separator'
 import type { Season, SeasonFormData } from '@/types/season'
 
-const months = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-]
+const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 function getDaysInMonth(month: number): number {
   return new Date(2001, month, 0).getDate() // non-leap year; seasons are yearly-recurring
@@ -32,8 +30,8 @@ const SeasonForm: React.FC<{
       startMonth: 1,
       startDay: 1,
       endMonth: 12,
-      endDay: 31
-    }
+      endDay: 31,
+    },
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -70,7 +68,7 @@ const SeasonForm: React.FC<{
               <Select
                 value={String(formData.startMonth)}
                 onValueChange={(v) => {
-                  const newMonth = parseInt(v)
+                  const newMonth = parseInt(v, 10)
                   const maxDay = getDaysInMonth(newMonth)
                   setFormData({ ...formData, startMonth: newMonth, startDay: Math.min(formData.startDay, maxDay) })
                 }}
@@ -80,20 +78,21 @@ const SeasonForm: React.FC<{
                 </SelectTrigger>
                 <SelectContent>
                   {months.map((month, index) => (
-                    <SelectItem key={index} value={String(index + 1)}>{month}</SelectItem>
+                    <SelectItem key={index} value={String(index + 1)}>
+                      {month}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={String(formData.startDay)}
-                onValueChange={(v) => setFormData({ ...formData, startDay: parseInt(v) })}
-              >
+              <Select value={String(formData.startDay)} onValueChange={(v) => setFormData({ ...formData, startDay: parseInt(v, 10) })}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: getDaysInMonth(formData.startMonth) }, (_, i) => i + 1).map(d => (
-                    <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                  {Array.from({ length: getDaysInMonth(formData.startMonth) }, (_, i) => i + 1).map((d) => (
+                    <SelectItem key={d} value={String(d)}>
+                      {d}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -106,7 +105,7 @@ const SeasonForm: React.FC<{
               <Select
                 value={String(formData.endMonth)}
                 onValueChange={(v) => {
-                  const newMonth = parseInt(v)
+                  const newMonth = parseInt(v, 10)
                   const maxDay = getDaysInMonth(newMonth)
                   setFormData({ ...formData, endMonth: newMonth, endDay: Math.min(formData.endDay, maxDay) })
                 }}
@@ -116,20 +115,21 @@ const SeasonForm: React.FC<{
                 </SelectTrigger>
                 <SelectContent>
                   {months.map((month, index) => (
-                    <SelectItem key={index} value={String(index + 1)}>{month}</SelectItem>
+                    <SelectItem key={index} value={String(index + 1)}>
+                      {month}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={String(formData.endDay)}
-                onValueChange={(v) => setFormData({ ...formData, endDay: parseInt(v) })}
-              >
+              <Select value={String(formData.endDay)} onValueChange={(v) => setFormData({ ...formData, endDay: parseInt(v, 10) })}>
                 <SelectTrigger className="w-20">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from({ length: getDaysInMonth(formData.endMonth) }, (_, i) => i + 1).map(d => (
-                    <SelectItem key={d} value={String(d)}>{d}</SelectItem>
+                  {Array.from({ length: getDaysInMonth(formData.endMonth) }, (_, i) => i + 1).map((d) => (
+                    <SelectItem key={d} value={String(d)}>
+                      {d}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -162,23 +162,21 @@ const SeasonRow: React.FC<{
   }
 
   return (
-    <div className={`bg-card rounded-lg shadow-sm border p-4 transition-colors ${
-      season.isActive ? 'border-success/30 bg-success-subtle/30' : 'border-border'
-    }`}>
+    <div
+      className={`bg-card rounded-lg shadow-sm border p-4 transition-colors ${
+        season.isActive ? 'border-success/30 bg-success-subtle/30' : 'border-border'
+      }`}
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-            season.isActive ? 'bg-success-subtle' : 'bg-muted'
-          }`}>
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${season.isActive ? 'bg-success-subtle' : 'bg-muted'}`}>
             <Calendar className={`w-5 h-5 ${season.isActive ? 'text-success' : 'text-muted-foreground'}`} />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h4 className="font-medium text-foreground">{season.name}</h4>
               {season.isActive && (
-                <span className="px-2 py-0.5 bg-success-subtle text-success-fg text-xs font-medium rounded-full">
-                  Active
-                </span>
+                <span className="px-2 py-0.5 bg-success-subtle text-success-fg text-xs font-medium rounded-full">Active</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
@@ -200,7 +198,13 @@ const SeasonRow: React.FC<{
           <Button variant="ghost" size="icon-sm" onClick={() => onEdit(season)} title="Edit">
             <Edit2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={() => onDelete(season)} title="Delete" className="text-muted-foreground hover:text-destructive">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => onDelete(season)}
+            title="Delete"
+            className="text-muted-foreground hover:text-destructive"
+          >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -216,7 +220,7 @@ export const SeasonManagementPanel: React.FC = () => {
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; season: Season | null }>({ show: false, season: null })
 
-  const activeSeason = seasons.find(s => s.isActive)
+  const activeSeason = seasons.find((s) => s.isActive)
 
   const handleCreateSeason = async (data: SeasonFormData) => {
     const result = await createSeason(data)
@@ -246,7 +250,7 @@ export const SeasonManagementPanel: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!deleteConfirm.season) return
-    
+
     const result = await deleteSeason(deleteConfirm.season.id)
     if (result.success) {
       addToast('success', 'Season deleted successfully')
@@ -254,25 +258,22 @@ export const SeasonManagementPanel: React.FC = () => {
     } else {
       addToast('error', result.error || 'Failed to delete season')
     }
-    
+
     setDeleteConfirm({ show: false, season: null })
   }
 
   const handleToggleActive = async (season: Season) => {
     if (!season.isActive) {
-      const activeSeasons = seasons.filter(s => s.isActive && s.id !== season.id)
+      const activeSeasons = seasons.filter((s) => s.isActive && s.id !== season.id)
       if (activeSeasons.length > 0) {
         addToast('error', 'Only one season can be active. Please deactivate the current season first.')
         return
       }
     }
-    
+
     const result = await toggleSeasonActive(season.id, !season.isActive)
     if (result.success) {
-      addToast(
-        'success',
-        `Season ${!season.isActive ? 'activated' : 'deactivated'} successfully`
-      )
+      addToast('success', `Season ${!season.isActive ? 'activated' : 'deactivated'} successfully`)
       mutate()
     } else {
       addToast('error', result.error || 'Failed to update season')
@@ -297,9 +298,7 @@ export const SeasonManagementPanel: React.FC = () => {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-1">Season Management</h3>
-            <p className="text-muted-foreground text-sm">
-              Create seasons to slice your analytics by time of year
-            </p>
+            <p className="text-muted-foreground text-sm">Create seasons to slice your analytics by time of year</p>
           </div>
           {!isAddingNew && !editingSeasonId && (
             <Button size="sm" onClick={() => setIsAddingNew(true)}>
@@ -331,17 +330,12 @@ export const SeasonManagementPanel: React.FC = () => {
         )}
       </div>
 
-      {isAddingNew && (
-        <SeasonForm
-          onSubmit={handleCreateSeason}
-          onCancel={() => setIsAddingNew(false)}
-        />
-      )}
+      {isAddingNew && <SeasonForm onSubmit={handleCreateSeason} onCancel={() => setIsAddingNew(false)} />}
 
       {seasons.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground">Your Seasons</h3>
-          {seasons.map((season: Season) => (
+          {seasons.map((season: Season) =>
             editingSeasonId === season.id ? (
               <SeasonForm
                 key={season.id}
@@ -350,7 +344,7 @@ export const SeasonManagementPanel: React.FC = () => {
                   startMonth: season.startMonth,
                   startDay: season.startDay,
                   endMonth: season.endMonth,
-                  endDay: season.endDay
+                  endDay: season.endDay,
                 }}
                 onSubmit={(data) => handleUpdateSeason(season.id, data)}
                 onCancel={() => setEditingSeasonId(null)}
@@ -364,8 +358,8 @@ export const SeasonManagementPanel: React.FC = () => {
                 onDelete={handleDeleteSeason}
                 onToggleActive={handleToggleActive}
               />
-            )
-          ))}
+            ),
+          )}
         </div>
       )}
 

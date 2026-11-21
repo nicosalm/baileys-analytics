@@ -40,19 +40,15 @@ async function replaceEntityTags(
 	junctionTable: string,
 	entityColumn: string,
 	entityId: string,
-	tags: any[]
+	tags: any[],
 ) {
-	const tagNames = tags.map((t: any) => typeof t === 'string' ? t : (t.name || t));
+	const tagNames = tags.map((t: any) => (typeof t === 'string' ? t : t.name || t));
 	if (tagNames.length === 0) return;
 
 	await supabase.from(junctionTable).delete().eq(entityColumn, entityId);
 
 	// batch lookup all existing tags in one query
-	const { data: existingTags } = await supabase
-		.from('tags')
-		.select('id, name')
-		.eq('tenant_id', tenantId)
-		.in('name', tagNames);
+	const { data: existingTags } = await supabase.from('tags').select('id, name').eq('tenant_id', tenantId).in('name', tagNames);
 
 	const tagIdMap = new Map((existingTags || []).map((t: any) => [t.name, t.id]));
 
@@ -60,17 +56,14 @@ async function replaceEntityTags(
 	const missingTags = tagNames.filter((n: string) => !tagIdMap.has(n));
 	if (missingTags.length > 0) {
 		const tagInserts = missingTags.map((name: string) => {
-			const original = tags.find((t: any) => (typeof t === 'string' ? t : (t.name || t)) === name);
+			const original = tags.find((t: any) => (typeof t === 'string' ? t : t.name || t) === name);
 			return {
 				tenant_id: tenantId,
 				name,
-				color: typeof original === 'object' ? (original.color || null) : null
+				color: typeof original === 'object' ? original.color || null : null,
 			};
 		});
-		const { data: newTags } = await supabase
-			.from('tags')
-			.upsert(tagInserts, { onConflict: 'tenant_id,name' })
-			.select('id, name');
+		const { data: newTags } = await supabase.from('tags').upsert(tagInserts, { onConflict: 'tenant_id,name' }).select('id, name');
 
 		if (newTags) {
 			for (const t of newTags) tagIdMap.set(t.name, t.id);
@@ -80,34 +73,18 @@ async function replaceEntityTags(
 	// batch insert junction rows
 	const tagIds = tagNames.map((n: string) => tagIdMap.get(n)).filter((id): id is string => !!id);
 	if (tagIds.length > 0) {
-		await supabase.from(junctionTable).insert(
-			tagIds.map(tagId => ({ [entityColumn]: entityId, tag_id: tagId }))
-		);
+		await supabase.from(junctionTable).insert(tagIds.map((tagId) => ({ [entityColumn]: entityId, tag_id: tagId })));
 	}
 }
 
 const webhookPayloadSchema = z.object({
 	id: z.union([z.string(), z.number()]),
 	user_id: z.number(),
-	action: z.enum([
-		'entity_create',
-		'entity_update',
-		'entity_delete',
-		'application_authorization_revoked',
-		'webhook_test'
-	]),
-	entity_type: z.enum([
-		'api_application',
-		'booking',
-		'guest',
-		'inquiry',
-		'property',
-		'quote',
-		'thread_message'
-	]).optional(),
+	action: z.enum(['entity_create', 'entity_update', 'entity_delete', 'application_authorization_revoked', 'webhook_test']),
+	entity_type: z.enum(['api_application', 'booking', 'guest', 'inquiry', 'property', 'quote', 'thread_message']).optional(),
 	entity_id: z.number().optional(),
 	categories: z.array(z.string()).optional(),
-	entity: z.record(z.string(), z.any()).optional()
+	entity: z.record(z.string(), z.any()).optional(),
 });
 
 type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
@@ -158,14 +135,14 @@ webhooks.get('/status/detail', authMiddleware, async (c) => {
 		status: 'active',
 		endpoint: '/api/webhooks/ownerrez',
 		recentEvents: recentEvents || [],
-		error: error?.message
+		error: error?.message,
 	});
 });
 
 webhooks.post('/ownerrez', async (c) => {
 	const authHeader = c.req.header('Authorization');
 
-	if (!authHeader || !authHeader.startsWith('Basic ')) {
+	if (!authHeader?.startsWith('Basic ')) {
 		return c.json({ error: 'Unauthorized' }, 401);
 	}
 
@@ -207,11 +184,7 @@ webhooks.post('/ownerrez', async (c) => {
 
 	const supabase = createSupabaseClient(c.env);
 
-	const { data: tenant } = await supabase
-		.from('tenants')
-		.select('id')
-		.eq('ownerrez_user_id', payload.user_id)
-		.single();
+	const { data: tenant } = await supabase.from('tenants').select('id').eq('ownerrez_user_id', payload.user_id).single();
 
 	if (!tenant) {
 		console.warn(`[Webhook] No tenant found for OwnerRez user ID: ${payload.user_id} — returning 200 to prevent subscription deactivation`);
@@ -222,24 +195,21 @@ webhooks.post('/ownerrez', async (c) => {
 	// already exists, treat this as a replay and return success without
 	// re-processing. this protects against duplicate delivery from ownerrez
 	// and from an attacker replaying captured webhook payloads.
-	const { error: insertError } = await supabase
-		.from('webhook_events')
-		.insert({
-			tenant_id: tenant.id,
-			event_id: String(payload.id),
-			action: payload.action,
-			entity_type: payload.entity_type,
-			entity_id: payload.entity_id ? String(payload.entity_id) : null,
-			categories: payload.categories,
-			payload: payload.entity,
-			processed: false,
-			created_at: new Date().toISOString()
-		});
+	const { error: insertError } = await supabase.from('webhook_events').insert({
+		tenant_id: tenant.id,
+		event_id: String(payload.id),
+		action: payload.action,
+		entity_type: payload.entity_type,
+		entity_id: payload.entity_id ? String(payload.entity_id) : null,
+		categories: payload.categories,
+		payload: payload.entity,
+		processed: false,
+		created_at: new Date().toISOString(),
+	});
 
 	if (insertError) {
-		const isDuplicate = insertError.code === '23505'
-			|| insertError.message?.includes('duplicate')
-			|| insertError.message?.includes('unique');
+		const isDuplicate =
+			insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique');
 		if (isDuplicate) {
 			return c.json({ status: 'success', message: 'Duplicate event ignored' });
 		}
@@ -281,7 +251,7 @@ webhooks.post('/ownerrez', async (c) => {
 				.from('webhook_events')
 				.update({
 					processing_error: err instanceof Error ? err.message : 'Unknown error',
-					processed_at: new Date().toISOString()
+					processed_at: new Date().toISOString(),
 				})
 				.eq('tenant_id', tenant.id)
 				.eq('event_id', String(payload.id));
@@ -292,12 +262,7 @@ webhooks.post('/ownerrez', async (c) => {
 	return c.json({ status: 'success' });
 });
 
-async function handleEntityChange(
-	supabase: any,
-	tenantId: string,
-	payload: WebhookPayload,
-	env: Env
-) {
+async function handleEntityChange(supabase: any, tenantId: string, payload: WebhookPayload, env: Env) {
 	if (!payload.entity_type || !payload.entity_id || !payload.entity) {
 		return;
 	}
@@ -335,7 +300,7 @@ async function handleEntityChange(
 		.update({
 			processed: success,
 			processed_at: new Date().toISOString(),
-			...(!success ? { processing_error: 'Handler failed, will retry on next webhook' } : {})
+			...(!success ? { processing_error: 'Handler failed, will retry on next webhook' } : {}),
 		})
 		.eq('tenant_id', tenantId)
 		.eq('event_id', String(payload.id));
@@ -344,29 +309,32 @@ async function handleEntityChange(
 async function handlePropertyUpdate(supabase: any, tenantId: string, property: any) {
 	const { data: upsertedProperty, error } = await supabase
 		.from('properties')
-		.upsert({
-			tenant_id: tenantId,
-			ownerrez_id: property.id,
-			name: property.name,
-			internal_code: property.internal_code || null,
-			address: property.address?.street1 || property.address,
-			city: property.address?.city,
-			state: property.address?.state,
-			postal_code: property.address?.postal_code,
-			bedrooms: property.bedrooms || 0,
-			bathrooms: property.bathrooms || 0,
-			max_guests: property.max_guests || 0,
-			active: property.active !== false,
-			latitude: property.latitude,
-			longitude: property.longitude,
-			updated_at: new Date().toISOString()
-		}, {
-			onConflict: 'tenant_id,ownerrez_id',
-			ignoreDuplicates: false
-		})
+		.upsert(
+			{
+				tenant_id: tenantId,
+				ownerrez_id: property.id,
+				name: property.name,
+				internal_code: property.internal_code || null,
+				address: property.address?.street1 || property.address,
+				city: property.address?.city,
+				state: property.address?.state,
+				postal_code: property.address?.postal_code,
+				bedrooms: property.bedrooms || 0,
+				bathrooms: property.bathrooms || 0,
+				max_guests: property.max_guests || 0,
+				active: property.active !== false,
+				latitude: property.latitude,
+				longitude: property.longitude,
+				updated_at: new Date().toISOString(),
+			},
+			{
+				onConflict: 'tenant_id,ownerrez_id',
+				ignoreDuplicates: false,
+			},
+		)
 		.select()
 		.single();
-	
+
 	if (error) {
 		console.error('Failed to update property via webhook:', error);
 		return;
@@ -376,23 +344,19 @@ async function handlePropertyUpdate(supabase: any, tenantId: string, property: a
 		await replaceEntityTags(supabase, tenantId, 'property_tags', 'property_id', upsertedProperty.id, property.tags);
 	}
 
-	await supabase
-		.from('sync_status')
-		.upsert({
+	await supabase.from('sync_status').upsert(
+		{
 			tenant_id: tenantId,
 			sync_type: 'properties_webhook',
 			last_sync: new Date().toISOString(),
 			status: 'success',
-			records_synced: 1
-		}, { onConflict: 'tenant_id,sync_type' });
+			records_synced: 1,
+		},
+		{ onConflict: 'tenant_id,sync_type' },
+	);
 }
 
-async function handleBookingUpdate(
-	supabase: any,
-	tenantId: string,
-	booking: any,
-	env?: Env
-) {
+async function handleBookingUpdate(supabase: any, tenantId: string, booking: any, env?: Env) {
 	const normalizedStatus = normalizeBookingStatus(booking.status);
 
 	if (booking.is_block || booking.type === 'block') {
@@ -405,10 +369,7 @@ async function handleBookingUpdate(
 
 		if (normalizedStatus === 'canceled' || booking.canceled_utc) {
 			if (existingBlock) {
-				await supabase
-					.from('blocks')
-					.delete()
-					.eq('id', existingBlock.id);
+				await supabase.from('blocks').delete().eq('id', existingBlock.id);
 			}
 			return;
 		}
@@ -452,16 +413,15 @@ async function handleBookingUpdate(
 		// guest contact info lives in the guests table — no need to denormalize
 		// if the webhook includes guest data, upsert the guest record
 		if (booking.guest?.id) {
-			const guestEmail = booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
+			const guestEmail =
+				booking.guest?.email_addresses?.find((e: any) => e.is_default)?.address ||
 				booking.guest?.email_addresses?.[0]?.address ||
 				booking.guest?.email;
-			const guestPhone = booking.guest?.phones?.find((p: any) => p.is_default)?.number ||
-				booking.guest?.phones?.[0]?.number ||
-				booking.guest?.phone;
+			const guestPhone =
+				booking.guest?.phones?.find((p: any) => p.is_default)?.number || booking.guest?.phones?.[0]?.number || booking.guest?.phone;
 
-			await supabase
-				.from('guests')
-				.upsert({
+			await supabase.from('guests').upsert(
+				{
 					ownerrez_guest_id: booking.guest.id.toString(),
 					tenant_id: tenantId,
 					first_name: booking.guest.first_name,
@@ -469,8 +429,10 @@ async function handleBookingUpdate(
 					full_name: guestName,
 					email: guestEmail || undefined,
 					phone: guestPhone || undefined,
-					updated_at: new Date().toISOString()
-				}, { onConflict: 'tenant_id,ownerrez_guest_id' });
+					updated_at: new Date().toISOString(),
+				},
+				{ onConflict: 'tenant_id,ownerrez_guest_id' },
+			);
 		}
 
 		const platform = booking.source || booking.listing_site || 'Unassigned';
@@ -494,7 +456,7 @@ async function handleBookingUpdate(
 			pets: booking.pets || 0,
 			booked_utc: booking.booked_utc || booking.created_utc,
 			canceled_utc: booking.canceled_utc || null,
-			updated_at: new Date().toISOString()
+			updated_at: new Date().toISOString(),
 		};
 
 		if (normalizedStatus === 'canceled' || booking.canceled_utc) {
@@ -505,11 +467,11 @@ async function handleBookingUpdate(
 			.from('bookings')
 			.upsert(bookingData, {
 				onConflict: 'tenant_id,ownerrez_booking_id',
-				ignoreDuplicates: false
+				ignoreDuplicates: false,
 			})
 			.select()
 			.single();
-		
+
 		if (error) {
 			console.error('Failed to update booking via webhook:', error);
 			return;
@@ -542,57 +504,56 @@ async function handleBookingUpdate(
 				amount: charge.amount,
 				description: charge.description,
 				is_taxable: charge.is_taxable ?? false,
-				position: index
+				position: index,
 			}));
 
 			if (charges.length > 0) {
 				await supabase.from('booking_charges').upsert(charges, {
 					onConflict: 'booking_id,position',
-					ignoreDuplicates: false
+					ignoreDuplicates: false,
 				});
 			}
 			// remove any stale charges beyond the current count
-			await supabase.from('booking_charges')
-				.delete()
-				.eq('booking_id', upsertedBooking.id)
-				.gte('position', booking.charges.length);
+			await supabase.from('booking_charges').delete().eq('booking_id', upsertedBooking.id).gte('position', booking.charges.length);
 		}
 	}
 
-	await supabase
-		.from('sync_status')
-		.upsert({
+	await supabase.from('sync_status').upsert(
+		{
 			tenant_id: tenantId,
 			sync_type: 'bookings_webhook',
 			last_sync: new Date().toISOString(),
 			status: 'success',
-			records_synced: 1
-		}, { onConflict: 'tenant_id,sync_type' });
+			records_synced: 1,
+		},
+		{ onConflict: 'tenant_id,sync_type' },
+	);
 }
 
 async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 	const fullName = `${guest.first_name || ''} ${guest.last_name || ''}`.trim();
 
-	const email = guest.email_addresses?.find((e: any) => e.is_default)?.address ||
-				 guest.email_addresses?.[0]?.address;
+	const email = guest.email_addresses?.find((e: any) => e.is_default)?.address || guest.email_addresses?.[0]?.address;
 
-	const phone = guest.phones?.find((p: any) => p.is_default)?.number ||
-				 guest.phones?.[0]?.number;
+	const phone = guest.phones?.find((p: any) => p.is_default)?.number || guest.phones?.[0]?.number;
 
 	// guest contact info lives only in the guests table — no booking back-fill needed
 	const { data: upsertedGuest } = await supabase
 		.from('guests')
-		.upsert({
-			ownerrez_guest_id: guest.id?.toString(),
-			tenant_id: tenantId,
-			first_name: guest.first_name,
-			last_name: guest.last_name,
-			full_name: fullName,
-			email: email,
-			phone: phone,
-			data: guest,
-			updated_at: new Date().toISOString()
-		}, { onConflict: 'tenant_id,ownerrez_guest_id' })
+		.upsert(
+			{
+				ownerrez_guest_id: guest.id?.toString(),
+				tenant_id: tenantId,
+				first_name: guest.first_name,
+				last_name: guest.last_name,
+				full_name: fullName,
+				email: email,
+				phone: phone,
+				data: guest,
+				updated_at: new Date().toISOString(),
+			},
+			{ onConflict: 'tenant_id,ownerrez_guest_id' },
+		)
 		.select()
 		.single();
 
@@ -603,19 +564,14 @@ async function handleGuestUpdate(supabase: any, tenantId: string, guest: any) {
 
 async function handleInquiryUpdate(supabase: any, tenantId: string, inquiry: any) {
 	const guest = inquiry.guest;
-	const guestName = guest
-		? [guest.first_name, guest.last_name].filter(Boolean).join(' ') || null
-		: null;
+	const guestName = guest ? [guest.first_name, guest.last_name].filter(Boolean).join(' ') || null : null;
 	// extract guest email from email_addresses[] the same way handleGuestUpdate
 	// does — preferring the default address, falling back to the first entry
-	const guestEmail = guest?.email_addresses?.find((e: any) => e.is_default)?.address
-		?? guest?.email_addresses?.[0]?.address
-		?? guest?.email
-		?? null;
+	const guestEmail =
+		guest?.email_addresses?.find((e: any) => e.is_default)?.address ?? guest?.email_addresses?.[0]?.address ?? guest?.email ?? null;
 
-	await supabase
-		.from('inquiries')
-		.upsert({
+	await supabase.from('inquiries').upsert(
+		{
 			ownerrez_inquiry_id: inquiry.id,
 			tenant_id: tenantId,
 			property_id: inquiry.property_id ?? null,
@@ -626,14 +582,15 @@ async function handleInquiryUpdate(supabase: any, tenantId: string, inquiry: any
 			status: inquiry.type ?? null,
 			data: inquiry,
 			created_at: inquiry.created_utc ?? inquiry.received_utc ?? new Date().toISOString(),
-			updated_at: new Date().toISOString()
-		}, { onConflict: 'ownerrez_inquiry_id,tenant_id' });
+			updated_at: new Date().toISOString(),
+		},
+		{ onConflict: 'ownerrez_inquiry_id,tenant_id' },
+	);
 }
 
 async function handleQuoteUpdate(supabase: any, tenantId: string, quote: any) {
-	await supabase
-		.from('quotes')
-		.upsert({
+	await supabase.from('quotes').upsert(
+		{
 			ownerrez_quote_id: quote.id,
 			tenant_id: tenantId,
 			property_id: quote.property_id,
@@ -644,32 +601,22 @@ async function handleQuoteUpdate(supabase: any, tenantId: string, quote: any) {
 			total_amount: quote.total_amount,
 			status: quote.status,
 			data: quote,
-			updated_at: new Date().toISOString()
-		}, { onConflict: 'ownerrez_quote_id,tenant_id' });
+			updated_at: new Date().toISOString(),
+		},
+		{ onConflict: 'ownerrez_quote_id,tenant_id' },
+	);
 }
 
-async function handleEntityDelete(
-	supabase: any,
-	tenantId: string,
-	payload: WebhookPayload
-) {
+async function handleEntityDelete(supabase: any, tenantId: string, payload: WebhookPayload) {
 	if (!payload.entity_type || !payload.entity_id) {
 		return;
 	}
 
 	switch (payload.entity_type) {
 		case 'booking':
-			await supabase
-				.from('bookings')
-				.delete()
-				.eq('ownerrez_booking_id', payload.entity_id)
-				.eq('tenant_id', tenantId);
-			
-			await supabase
-				.from('blocks')
-				.delete()
-				.eq('ownerrez_block_id', payload.entity_id)
-				.eq('tenant_id', tenantId);
+			await supabase.from('bookings').delete().eq('ownerrez_booking_id', payload.entity_id).eq('tenant_id', tenantId);
+
+			await supabase.from('blocks').delete().eq('ownerrez_block_id', payload.entity_id).eq('tenant_id', tenantId);
 			break;
 
 		case 'property':
@@ -681,27 +628,15 @@ async function handleEntityDelete(
 			break;
 
 		case 'guest':
-			await supabase
-				.from('guests')
-				.delete()
-				.eq('ownerrez_guest_id', payload.entity_id?.toString())
-				.eq('tenant_id', tenantId);
+			await supabase.from('guests').delete().eq('ownerrez_guest_id', payload.entity_id?.toString()).eq('tenant_id', tenantId);
 			break;
 
 		case 'inquiry':
-			await supabase
-				.from('inquiries')
-				.delete()
-				.eq('ownerrez_inquiry_id', payload.entity_id)
-				.eq('tenant_id', tenantId);
+			await supabase.from('inquiries').delete().eq('ownerrez_inquiry_id', payload.entity_id).eq('tenant_id', tenantId);
 			break;
 
 		case 'quote':
-			await supabase
-				.from('quotes')
-				.delete()
-				.eq('ownerrez_quote_id', payload.entity_id)
-				.eq('tenant_id', tenantId);
+			await supabase.from('quotes').delete().eq('ownerrez_quote_id', payload.entity_id).eq('tenant_id', tenantId);
 			break;
 	}
 
@@ -713,17 +648,13 @@ async function handleEntityDelete(
 }
 
 async function handleAuthRevoked(supabase: any, tenantId: string) {
-	await supabase
-		.from('oauth_tokens')
-		.delete()
-		.eq('tenant_id', tenantId)
-		.eq('provider', 'ownerrez');
+	await supabase.from('oauth_tokens').delete().eq('tenant_id', tenantId).eq('provider', 'ownerrez');
 
 	await supabase
 		.from('tenants')
 		.update({
 			ownerrez_connected: false,
-			ownerrez_disconnected_at: new Date().toISOString()
+			ownerrez_disconnected_at: new Date().toISOString(),
 		})
 		.eq('id', tenantId);
 }
@@ -756,16 +687,14 @@ webhooks.get('/health', authMiddleware, async (c) => {
 		.limit(1)
 		.single();
 
-	const hoursSinceLastWebhook = lastWebhook
-		? (Date.now() - new Date(lastWebhook.created_at).getTime()) / (1000 * 60 * 60)
-		: 999;
+	const hoursSinceLastWebhook = lastWebhook ? (Date.now() - new Date(lastWebhook.created_at).getTime()) / (1000 * 60 * 60) : 999;
 
 	return c.json({
 		healthy: hoursSinceLastWebhook < 24,
 		lastWebhookHoursAgo: hoursSinceLastWebhook,
 		webhooksLast24Hours: count || 0,
 		lastWebhookEvent: lastWebhook,
-		recentEvents: recentWebhooks || []
+		recentEvents: recentWebhooks || [],
 	});
 });
 

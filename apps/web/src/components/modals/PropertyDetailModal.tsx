@@ -88,7 +88,7 @@ const PropertyPerformanceTooltip = ({ active, payload, label }: Partial<TooltipC
 }
 
 const PlatformRevenueTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     const data = payload[0].payload as PlatformRevenueEntry
     return (
       <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
@@ -122,48 +122,49 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
     propertyId,
     effectiveFrom,
     effectiveTo,
-    filters.selectedTags.map(t => t.id)
+    filters.selectedTags.map((t) => t.id),
   )
 
-  const subtitle = isLoading ? "Loading property details..." :
-                   error ? "Unable to load property details" :
-                   `Performance metrics for ${propertyName}`
+  const subtitle = isLoading
+    ? 'Loading property details...'
+    : error
+      ? 'Unable to load property details'
+      : `Performance metrics for ${propertyName}`
 
-  const monthlyChartData = useMemo(() =>
-    data?.monthlyData?.map((m: PropertyMonthlyEntry) => ({
-      month: new Date(m.month).toLocaleDateString('en-US', { month: 'short' }),
-      revenue: m.revenue,
-      bookings: m.bookings,
-      occupancy: Math.round(m.occupancy * 10) / 10
-    })) || []
-  , [data?.monthlyData])
+  const monthlyChartData = useMemo(
+    () =>
+      data?.monthlyData?.map((m: PropertyMonthlyEntry) => ({
+        month: new Date(m.month).toLocaleDateString('en-US', { month: 'short' }),
+        revenue: m.revenue,
+        bookings: m.bookings,
+        occupancy: Math.round(m.occupancy * 10) / 10,
+      })) || [],
+    [data?.monthlyData],
+  )
 
-  const platformData = useMemo(() =>
-    data?.revenueByPlatform?.map((p: PlatformRevenueEntry, index: number) => ({
-      ...p,
-      color: getChartColor(index)
-    })) || []
-  , [data?.revenueByPlatform])
+  const platformData = useMemo(
+    () =>
+      data?.revenueByPlatform?.map((p: PlatformRevenueEntry, index: number) => ({
+        ...p,
+        color: getChartColor(index),
+      })) || [],
+    [data?.revenueByPlatform],
+  )
 
   const [platformActiveIndex, setPlatformActiveIndex] = useState<number | null>(null)
 
-  const platformTotal = useMemo(() =>
-    platformData.reduce((sum, p) => sum + p.revenue, 0)
-  , [platformData])
+  const platformTotal = useMemo(() => platformData.reduce((sum, p) => sum + p.revenue, 0), [platformData])
 
   // memoized guest click handler
-  const handleGuestClick = useCallback((guestId: string, guestName: string) => {
-    openModal({ type: 'guest', guestId, guestName })
-  }, [openModal])
+  const handleGuestClick = useCallback(
+    (guestId: string, guestName: string) => {
+      openModal({ type: 'guest', guestId, guestName })
+    },
+    [openModal],
+  )
 
   return (
-    <Modal
-      isOpen={true}
-      onClose={closeModal}
-      title={propertyName}
-      subtitle={subtitle}
-      size="xl"
-    >
+    <Modal isOpen={true} onClose={closeModal} title={propertyName} subtitle={subtitle} size="xl">
       <StateWrapper
         loading={isLoading}
         error={error}
@@ -174,335 +175,354 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
         minHeight={400}
       >
         {data && (
-        <div className="space-y-6">
-        {/* Info Banner */}
-        {showTips && (
-          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-            <div className="flex items-start">
-              <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-              <div className="text-sm text-info-fg">
-                <strong>Property Overview:</strong> Revenue and nights cover only the portion of each stay that fell inside this date range. Taxes follow the guest's arrival date, so totals tie out to what you remit. Click any guest name for their booking history.
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Property Info Card */}
-        <div className="bg-muted/50 rounded-lg p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="text-lg font-bold">{data.property.name}</h3>
-                {data.property.ownerrezId && (
-                  <a
-                    href={`https://app.ownerrez.com/properties/${data.property.ownerrezId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-muted-foreground/70 hover:text-primary transition-colors"
-                    title="Open in OwnerRez"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                )}
-              </div>
-              <div className="flex items-center text-sm text-muted-foreground mb-2">
-                <MapPin className="w-4 h-4 mr-1" />
-                {data.property.address}
-              </div>
-              <div className="flex items-center space-x-4 text-sm">
-                <span className="flex items-center">
-                  <Bed className="w-4 h-4 mr-1" />
-                  {data.property.bedrooms} Bedrooms
-                </span>
-                <span className="flex items-center">
-                  <Bath className="w-4 h-4 mr-1" />
-                  {data.property.bathrooms} Bathrooms
-                </span>
-                <span className="flex items-center">
-                  <Users className="w-4 h-4 mr-1" />
-                  Sleeps {data.property.maxGuests}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Key Metrics */}
-        <div className="grid md:grid-cols-4 gap-4">
-          <MetricCard
-            icon={DollarSign}
-            label="Total Revenue"
-            value={data.metrics.totalRevenue}
-            format="currency"
-            subValue="This period"
-            size="sm"
-            color="green"
-            staggerIndex={0}
-            className="border border-border"
-            tooltip="Nightly revenue earned during this range. Stays that extend past the boundary contribute only their in-range nights."
-          />
-          <MetricCard
-            icon={Calendar}
-            label="Total Bookings"
-            value={data.metrics.totalBookings}
-            format="number"
-            subValue={`${(data.metrics.avgStayLength || 0).toFixed(1)} nights avg`}
-            size="sm"
-            color="blue"
-            staggerIndex={1}
-            className="border border-border"
-            tooltip="Reservations with any stay night inside this range."
-          />
-          <MetricCard
-            icon={Home}
-            label="Occupancy Rate"
-            value={data.metrics.occupancyRate * 100}
-            format="percent"
-            subValue={
-              data.metrics.blockedNights
-                ? `${data.metrics.totalNights || 0} of ${data.metrics.sellableDays ?? data.metrics.totalDays ?? 0} sellable | ${data.metrics.blockedNights} owner-blocked`
-                : `${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`
-            }
-            size="sm"
-            color="purple"
-            staggerIndex={2}
-            className="border border-border"
-            tooltip="Booked nights ÷ sellable nights in this range. Owner blocks (maintenance, personal stays) are excluded."
-          />
-          <MetricCard
-            icon={TrendingUp}
-            label="Average Nightly Rate"
-            value={data.metrics.avgNightlyRate}
-            format="currency"
-            subValue="Average"
-            size="sm"
-            color="orange"
-            staggerIndex={3}
-            className="border border-border"
-            tooltip="Revenue ÷ occupied nights in this range."
-          />
-        </div>
-
-        {/* Cost Metrics */}
-        {(data.metrics.platformFees > 0 || data.metrics.taxes > 0 || data.metrics.operatingExpenses > 0) && (
-          <div className="bg-card rounded-lg border border-border p-4">
-            <h3 className="text-sm font-medium text-foreground mb-3">Cost Summary</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {data.metrics.platformFees > 0 && (
-                <div>
-                  <div className="text-xs text-muted-foreground">Platform Fees (est.)</div>
-                  <div className="text-lg font-semibold text-warning">-{formatCurrency(data.metrics.platformFees)}</div>
-                </div>
-              )}
-              {data.metrics.taxes > 0 && (
-                <div>
-                  <div className="text-xs text-muted-foreground">Taxes</div>
-                  <div className="text-lg font-semibold text-info">-{formatCurrency(data.metrics.taxes)}</div>
-                </div>
-              )}
-              {data.metrics.operatingExpenses > 0 && (
-                <div>
-                  <div className="text-xs text-muted-foreground">Operating Expenses</div>
-                  <div className="text-lg font-semibold text-danger">-{formatCurrency(data.metrics.operatingExpenses)}</div>
-                </div>
-              )}
-              <div>
-                <div className="text-xs text-muted-foreground">Net Revenue</div>
-                <div className={`text-lg font-semibold ${data.metrics.netRevenue >= 0 ? 'text-success' : 'text-danger'}`}>
-                  {formatCurrency(data.metrics.netRevenue)}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tabs */}
-        <Tabs defaultValue="overview">
-          <TabsList variant="line">
-            <TabsTrigger value="overview">Performance Charts</TabsTrigger>
-            <TabsTrigger value="bookings">Recent Bookings</TabsTrigger>
-            <TabsTrigger value="revenue">Revenue Sources</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview">
-            <div className="space-y-6">
-              <div className="bg-card p-6 rounded-lg border border-border">
-                <h3 className="text-lg font-bold mb-4">Monthly Performance</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-                      <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-                      <YAxis yAxisId="left" tickFormatter={(value) => formatCompactCurrency(value)} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-                      <YAxis yAxisId="right" orientation="right" tickFormatter={(value) => `${value}%`} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-                      <Tooltip content={<PropertyPerformanceTooltip />} isAnimationActive={false} />
-                      <Line yAxisId="left" type="monotone" dataKey="revenue" stroke={METRIC_COLORS.revenue} name="Revenue" strokeWidth={2} />
-                      <Line yAxisId="right" type="monotone" dataKey="occupancy" stroke={METRIC_COLORS.occupancy} name="Occupancy" strokeWidth={2} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="bookings">
-            <div className="bg-card rounded-lg border border-border overflow-hidden">
-              <div className="p-4 border-b border-border">
-                <h3 className="font-semibold">Recent Bookings</h3>
-              </div>
-              <div>
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-4 text-sm font-medium text-foreground">Guest</th>
-                      <th className="text-left p-4 text-sm font-medium text-foreground">Check In</th>
-                      <th className="text-left p-4 text-sm font-medium text-foreground">Check Out</th>
-                      <th className="text-left p-4 text-sm font-medium text-foreground">Amount</th>
-                      <th className="text-left p-4 text-sm font-medium text-foreground">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentBookings
-                      ?.slice((bookingsPage - 1) * MODAL_PAGE_SIZE, bookingsPage * MODAL_PAGE_SIZE)
-                      .map((booking: PropertyBooking) => (
-                      <tr
-                        key={booking.id}
-                        className="border-t border-border hover:bg-muted/50 cursor-pointer"
-                        onClick={() => booking.guestId && handleGuestClick(booking.guestId, booking.guestName)}
-                      >
-                        <td className="p-4">
-                          <div>
-                            <div className="font-medium text-primary hover:underline">{booking.guestName}</div>
-                          </div>
-                        </td>
-                        <td className="p-4 text-sm">
-                          {formatDateDisplay(booking.arrival)}
-                        </td>
-                        <td className="p-4 text-sm">
-                          {formatDateDisplay(booking.departure)}
-                        </td>
-                        <td className="p-4 text-sm font-medium text-success">
-                          {formatCurrency(booking.totalAmount)}
-                        </td>
-                        <td className="p-4">
-                          <StatusBadge status={booking.status} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {data.recentBookings && (
-                  <div className="px-4 pb-3">
-                    <Pagination
-                      currentPage={bookingsPage}
-                      totalPages={Math.ceil(data.recentBookings.length / MODAL_PAGE_SIZE)}
-                      totalItems={data.recentBookings.length}
-                      pageSize={MODAL_PAGE_SIZE}
-                      onPageChange={setBookingsPage}
-                    />
+          <div className="space-y-6">
+            {/* Info Banner */}
+            {showTips && (
+              <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
+                <div className="flex items-start">
+                  <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
+                  <div className="text-sm text-info-fg">
+                    <strong>Property Overview:</strong> Revenue and nights cover only the portion of each stay that fell inside this date
+                    range. Taxes follow the guest's arrival date, so totals tie out to what you remit. Click any guest name for their
+                    booking history.
                   </div>
-                )}
+                </div>
+              </div>
+            )}
+
+            {/* Property Info Card */}
+            <div className="bg-muted/50 rounded-lg p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-lg font-bold">{data.property.name}</h3>
+                    {data.property.ownerrezId && (
+                      <a
+                        href={`https://app.ownerrez.com/properties/${data.property.ownerrezId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground/70 hover:text-primary transition-colors"
+                        title="Open in OwnerRez"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center text-sm text-muted-foreground mb-2">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    {data.property.address}
+                  </div>
+                  <div className="flex items-center space-x-4 text-sm">
+                    <span className="flex items-center">
+                      <Bed className="w-4 h-4 mr-1" />
+                      {data.property.bedrooms} Bedrooms
+                    </span>
+                    <span className="flex items-center">
+                      <Bath className="w-4 h-4 mr-1" />
+                      {data.property.bathrooms} Bathrooms
+                    </span>
+                    <span className="flex items-center">
+                      <Users className="w-4 h-4 mr-1" />
+                      Sleeps {data.property.maxGuests}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="revenue">
-            <div className="space-y-6">
-              <div className="bg-card p-6 rounded-lg border border-border">
-                <h3 className="text-lg font-bold mb-4">Where Bookings Come From</h3>
-                {platformData.length > 0 ? (
-                  <>
-                    <div className="h-56">
+            {/* Key Metrics */}
+            <div className="grid md:grid-cols-4 gap-4">
+              <MetricCard
+                icon={DollarSign}
+                label="Total Revenue"
+                value={data.metrics.totalRevenue}
+                format="currency"
+                subValue="This period"
+                size="sm"
+                color="green"
+                staggerIndex={0}
+                className="border border-border"
+                tooltip="Nightly revenue earned during this range. Stays that extend past the boundary contribute only their in-range nights."
+              />
+              <MetricCard
+                icon={Calendar}
+                label="Total Bookings"
+                value={data.metrics.totalBookings}
+                format="number"
+                subValue={`${(data.metrics.avgStayLength || 0).toFixed(1)} nights avg`}
+                size="sm"
+                color="blue"
+                staggerIndex={1}
+                className="border border-border"
+                tooltip="Reservations with any stay night inside this range."
+              />
+              <MetricCard
+                icon={Home}
+                label="Occupancy Rate"
+                value={data.metrics.occupancyRate * 100}
+                format="percent"
+                subValue={
+                  data.metrics.blockedNights
+                    ? `${data.metrics.totalNights || 0} of ${data.metrics.sellableDays ?? data.metrics.totalDays ?? 0} sellable | ${data.metrics.blockedNights} owner-blocked`
+                    : `${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`
+                }
+                size="sm"
+                color="purple"
+                staggerIndex={2}
+                className="border border-border"
+                tooltip="Booked nights ÷ sellable nights in this range. Owner blocks (maintenance, personal stays) are excluded."
+              />
+              <MetricCard
+                icon={TrendingUp}
+                label="Average Nightly Rate"
+                value={data.metrics.avgNightlyRate}
+                format="currency"
+                subValue="Average"
+                size="sm"
+                color="orange"
+                staggerIndex={3}
+                className="border border-border"
+                tooltip="Revenue ÷ occupied nights in this range."
+              />
+            </div>
+
+            {/* Cost Metrics */}
+            {(data.metrics.platformFees > 0 || data.metrics.taxes > 0 || data.metrics.operatingExpenses > 0) && (
+              <div className="bg-card rounded-lg border border-border p-4">
+                <h3 className="text-sm font-medium text-foreground mb-3">Cost Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {data.metrics.platformFees > 0 && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Platform Fees (est.)</div>
+                      <div className="text-lg font-semibold text-warning">-{formatCurrency(data.metrics.platformFees)}</div>
+                    </div>
+                  )}
+                  {data.metrics.taxes > 0 && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Taxes</div>
+                      <div className="text-lg font-semibold text-info">-{formatCurrency(data.metrics.taxes)}</div>
+                    </div>
+                  )}
+                  {data.metrics.operatingExpenses > 0 && (
+                    <div>
+                      <div className="text-xs text-muted-foreground">Operating Expenses</div>
+                      <div className="text-lg font-semibold text-danger">-{formatCurrency(data.metrics.operatingExpenses)}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs text-muted-foreground">Net Revenue</div>
+                    <div className={`text-lg font-semibold ${data.metrics.netRevenue >= 0 ? 'text-success' : 'text-danger'}`}>
+                      {formatCurrency(data.metrics.netRevenue)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tabs */}
+            <Tabs defaultValue="overview">
+              <TabsList variant="line">
+                <TabsTrigger value="overview">Performance Charts</TabsTrigger>
+                <TabsTrigger value="bookings">Recent Bookings</TabsTrigger>
+                <TabsTrigger value="revenue">Revenue Sources</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview">
+                <div className="space-y-6">
+                  <div className="bg-card p-6 rounded-lg border border-border">
+                    <h3 className="text-lg font-bold mb-4">Monthly Performance</h3>
+                    <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={platformData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius="55%"
-                            outerRadius="80%"
+                        <LineChart data={monthlyChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+                          <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
+                          <YAxis
+                            yAxisId="left"
+                            tickFormatter={(value) => formatCompactCurrency(value)}
+                            stroke={CHART_INFRA.axis}
+                            tick={{ fill: CHART_INFRA.axis }}
+                          />
+                          <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            tickFormatter={(value) => `${value}%`}
+                            stroke={CHART_INFRA.axis}
+                            tick={{ fill: CHART_INFRA.axis }}
+                          />
+                          <Tooltip content={<PropertyPerformanceTooltip />} isAnimationActive={false} />
+                          <Line
+                            yAxisId="left"
+                            type="monotone"
                             dataKey="revenue"
-                            stroke={resolveToken('--card')}
+                            stroke={METRIC_COLORS.revenue}
+                            name="Revenue"
                             strokeWidth={2}
-                            animationBegin={0}
-                            animationDuration={500}
-                            animationEasing="ease-out"
-                            onMouseEnter={(_: unknown, index: number) => setPlatformActiveIndex(index)}
-                            onMouseLeave={() => setPlatformActiveIndex(null)}
-                          >
-                            {platformData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.color}
-                                opacity={platformActiveIndex === null || platformActiveIndex === index ? 1 : 0.3}
-                                style={{ transition: 'opacity 0.2s ease' }}
-                              />
-                            ))}
-                            <Label
-                              content={({ viewBox }) => {
-                                const { cx, cy } = viewBox as { cx: number; cy: number }
-                                return (
-                                  <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
-                                    <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
-                                      {formatCompactCurrency(platformTotal)}
-                                    </tspan>
-                                    <tspan x={cx} y={cy + 12} className="fill-muted-foreground text-xs">
-                                      Revenue
-                                    </tspan>
-                                  </text>
-                                )
-                              }}
-                            />
-                          </Pie>
-                          <Tooltip content={<PlatformRevenueTooltip />} isAnimationActive={false} />
-                        </PieChart>
+                          />
+                          <Line
+                            yAxisId="right"
+                            type="monotone"
+                            dataKey="occupancy"
+                            stroke={METRIC_COLORS.occupancy}
+                            name="Occupancy"
+                            strokeWidth={2}
+                          />
+                        </LineChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
-                      {platformData.map((entry) => (
-                        <div key={entry.platform} className="flex items-center gap-1.5">
-                          <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
-                          <span className="text-muted-foreground">{entry.platform}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8">
-                    <EmptyQuadrants className="w-12 h-12 mx-auto mb-2" />
-                    <p className="text-muted-foreground">No platform data available</p>
                   </div>
-                )}
-              </div>
+                </div>
+              </TabsContent>
 
-              <div className="bg-card p-6 rounded-lg border border-border">
-                <h3 className="text-lg font-bold mb-4">Guest Insights</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Total Guests</div>
-                    <div className="text-2xl font-bold">{data.guestStats?.totalGuests || 0}</div>
+              <TabsContent value="bookings">
+                <div className="bg-card rounded-lg border border-border overflow-hidden">
+                  <div className="p-4 border-b border-border">
+                    <h3 className="font-semibold">Recent Bookings</h3>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">Returning Guests</div>
-                    <div className="text-2xl font-bold">{data.guestStats?.repeatGuests || 0}</div>
+                    <table className="w-full">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="text-left p-4 text-sm font-medium text-foreground">Guest</th>
+                          <th className="text-left p-4 text-sm font-medium text-foreground">Check In</th>
+                          <th className="text-left p-4 text-sm font-medium text-foreground">Check Out</th>
+                          <th className="text-left p-4 text-sm font-medium text-foreground">Amount</th>
+                          <th className="text-left p-4 text-sm font-medium text-foreground">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.recentBookings
+                          ?.slice((bookingsPage - 1) * MODAL_PAGE_SIZE, bookingsPage * MODAL_PAGE_SIZE)
+                          .map((booking: PropertyBooking) => (
+                            <tr
+                              key={booking.id}
+                              className="border-t border-border hover:bg-muted/50 cursor-pointer"
+                              onClick={() => booking.guestId && handleGuestClick(booking.guestId, booking.guestName)}
+                            >
+                              <td className="p-4">
+                                <div>
+                                  <div className="font-medium text-primary hover:underline">{booking.guestName}</div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-sm">{formatDateDisplay(booking.arrival)}</td>
+                              <td className="p-4 text-sm">{formatDateDisplay(booking.departure)}</td>
+                              <td className="p-4 text-sm font-medium text-success">{formatCurrency(booking.totalAmount)}</td>
+                              <td className="p-4">
+                                <StatusBadge status={booking.status} />
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                    {data.recentBookings && (
+                      <div className="px-4 pb-3">
+                        <Pagination
+                          currentPage={bookingsPage}
+                          totalPages={Math.ceil(data.recentBookings.length / MODAL_PAGE_SIZE)}
+                          totalItems={data.recentBookings.length}
+                          pageSize={MODAL_PAGE_SIZE}
+                          onPageChange={setBookingsPage}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <div className="text-sm text-muted-foreground">Return Rate</div>
-                    <div className="text-2xl font-bold">
-                      {formatPercentage(
-                        data.guestStats?.totalGuests
-                          ? (data.guestStats.repeatGuests / data.guestStats.totalGuests) * 100
-                          : 0,
-                        1
-                      )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="revenue">
+                <div className="space-y-6">
+                  <div className="bg-card p-6 rounded-lg border border-border">
+                    <h3 className="text-lg font-bold mb-4">Where Bookings Come From</h3>
+                    {platformData.length > 0 ? (
+                      <>
+                        <div className="h-56">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={platformData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius="55%"
+                                outerRadius="80%"
+                                dataKey="revenue"
+                                stroke={resolveToken('--card')}
+                                strokeWidth={2}
+                                animationBegin={0}
+                                animationDuration={500}
+                                animationEasing="ease-out"
+                                onMouseEnter={(_: unknown, index: number) => setPlatformActiveIndex(index)}
+                                onMouseLeave={() => setPlatformActiveIndex(null)}
+                              >
+                                {platformData.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.color}
+                                    opacity={platformActiveIndex === null || platformActiveIndex === index ? 1 : 0.3}
+                                    style={{ transition: 'opacity 0.2s ease' }}
+                                  />
+                                ))}
+                                <Label
+                                  content={({ viewBox }) => {
+                                    const { cx, cy } = viewBox as { cx: number; cy: number }
+                                    return (
+                                      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
+                                        <tspan x={cx} y={cy - 8} className="fill-foreground text-lg font-bold">
+                                          {formatCompactCurrency(platformTotal)}
+                                        </tspan>
+                                        <tspan x={cx} y={cy + 12} className="fill-muted-foreground text-xs">
+                                          Revenue
+                                        </tspan>
+                                      </text>
+                                    )
+                                  }}
+                                />
+                              </Pie>
+                              <Tooltip content={<PlatformRevenueTooltip />} isAnimationActive={false} />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="flex flex-wrap gap-3 justify-center text-xs px-4">
+                          {platformData.map((entry) => (
+                            <div key={entry.platform} className="flex items-center gap-1.5">
+                              <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: entry.color }} />
+                              <span className="text-muted-foreground">{entry.platform}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-8">
+                        <EmptyQuadrants className="w-12 h-12 mx-auto mb-2" />
+                        <p className="text-muted-foreground">No platform data available</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-card p-6 rounded-lg border border-border">
+                    <h3 className="text-lg font-bold mb-4">Guest Insights</h3>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-sm text-muted-foreground">Total Guests</div>
+                        <div className="text-2xl font-bold">{data.guestStats?.totalGuests || 0}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Returning Guests</div>
+                        <div className="text-2xl font-bold">{data.guestStats?.repeatGuests || 0}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Return Rate</div>
+                        <div className="text-2xl font-bold">
+                          {formatPercentage(
+                            data.guestStats?.totalGuests ? (data.guestStats.repeatGuests / data.guestStats.totalGuests) * 100 : 0,
+                            1,
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-        </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
       </StateWrapper>
     </Modal>

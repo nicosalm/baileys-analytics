@@ -2,7 +2,12 @@ import { useRef, useCallback, useEffect } from 'react'
 import { BRAND } from '@/constants'
 
 const FILLS = ['#dbeafe', '#60a5fa', '#3b82f6', '#1e3a8a']
-const POSITIONS: [number, number][] = [[0, 0], [500, 0], [0, 500], [500, 500]]
+const POSITIONS: [number, number][] = [
+  [0, 0],
+  [500, 0],
+  [0, 500],
+  [500, 500],
+]
 
 const TRANSFORMS = [
   ['translate(0,0)', 'translate(100%,0)', 'translate(100%,100%)', 'translate(0,100%)'],
@@ -33,13 +38,15 @@ export const LogoCube = ({ className = 'w-9 h-9' }: { className?: string }) => {
       clearInterval(intervalRef.current)
       intervalRef.current = null
     }
-    rectsRef.current.forEach(rect => {
+    rectsRef.current.forEach((rect) => {
       if (rect) rect.style.transform = 'translate(0,0)'
     })
   }, [])
 
   useEffect(() => {
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
   }, [])
 
   return (
@@ -53,7 +60,9 @@ export const LogoCube = ({ className = 'w-9 h-9' }: { className?: string }) => {
       {FILLS.map((fill, i) => (
         <rect
           key={i}
-          ref={el => { rectsRef.current[i] = el }}
+          ref={(el) => {
+            rectsRef.current[i] = el
+          }}
           x={POSITIONS[i][0]}
           y={POSITIONS[i][1]}
           width="500"

@@ -42,24 +42,24 @@ export function SimpleTable<T extends Record<string, any>>({
   searchKeys = [],
   rowClassName,
   showRowNumbers = false,
-  loading = false
+  loading = false,
 }: SimpleTableProps<T>) {
   const [searchTerm, setSearchTerm] = React.useState('')
 
   const filteredData = React.useMemo(() => {
     if (!enableSearch || !searchTerm) return data
 
-    return data.filter(item => {
+    return data.filter((item) => {
       const searchLower = searchTerm.toLowerCase()
 
       if (searchKeys.length > 0) {
-        return searchKeys.some(key => {
+        return searchKeys.some((key) => {
           const value = item[key]
-          return value && value.toString().toLowerCase().includes(searchLower)
+          return value?.toString().toLowerCase().includes(searchLower)
         })
       }
 
-      return Object.values(item).some(value => {
+      return Object.values(item).some((value) => {
         if (value && (typeof value === 'string' || typeof value === 'number')) {
           return value.toString().toLowerCase().includes(searchLower)
         }
@@ -69,7 +69,7 @@ export function SimpleTable<T extends Record<string, any>>({
   }, [data, searchTerm, enableSearch, searchKeys])
 
   const handleSort = (column: string) => {
-    if (onSort && columns.find(c => c.key === column)?.sortable) {
+    if (onSort && columns.find((c) => c.key === column)?.sortable) {
       onSort(column)
     }
   }
@@ -93,9 +93,7 @@ export function SimpleTable<T extends Record<string, any>>({
       <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
         <EmptyQuadrants className="w-12 h-12 mb-2" />
         <p className="text-sm font-medium text-muted-foreground">{emptyMessage}</p>
-        {enableSearch && searchTerm && (
-          <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>
-        )}
+        {enableSearch && searchTerm && <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>}
       </div>
     )
   }
@@ -123,9 +121,7 @@ export function SimpleTable<T extends Record<string, any>>({
             <thead className="bg-muted/50">
               <tr>
                 {showRowNumbers && (
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">
-                    #
-                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">#</th>
                 )}
                 {columns.map((column) => (
                   <th
@@ -140,11 +136,7 @@ export function SimpleTable<T extends Record<string, any>>({
                       <span>{column.header}</span>
                       {column.sortable && sortBy === column.key && (
                         <span className="ml-2">
-                          {sortOrder === 'asc' ? (
-                            <ChevronUp className="w-4 h-4" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4" />
-                          )}
+                          {sortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </span>
                       )}
                     </div>
@@ -160,16 +152,10 @@ export function SimpleTable<T extends Record<string, any>>({
                 return (
                   <tr
                     key={rowId}
-                    className={`hover:bg-muted/50 transition-all ${
-                      onRowClick ? 'cursor-pointer' : ''
-                    } ${customClassName}`}
+                    className={`hover:bg-muted/50 transition-all ${onRowClick ? 'cursor-pointer' : ''} ${customClassName}`}
                     onClick={() => onRowClick?.(item, index)}
                   >
-                    {showRowNumbers && (
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
-                        {index + 1}
-                      </td>
-                    )}
+                    {showRowNumbers && <td className="px-4 py-3 text-sm text-muted-foreground">{index + 1}</td>}
                     {columns.map((column) => (
                       <td
                         key={`${rowId}-${String(column.key)}`}

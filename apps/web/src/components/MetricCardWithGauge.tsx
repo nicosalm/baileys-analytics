@@ -1,5 +1,5 @@
-import React from 'react'
-import { LucideIcon } from 'lucide-react'
+import type React from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { SimpleGaugeChart } from './charts/SimpleGaugeChart'
 import { formatCurrency, formatPercentage, formatNumber, formatCompactCurrency } from '@/utils/formatters'
 
@@ -38,7 +38,7 @@ const colorClasses = {
   yellow: 'text-warning bg-warning-subtle',
   purple: 'text-purple-fg bg-purple-subtle',
   gray: 'text-muted-foreground bg-muted',
-  orange: 'text-orange-fg bg-orange-subtle'
+  orange: 'text-orange-fg bg-orange-subtle',
 }
 
 const gaugeColorMap: Record<string, string> = {
@@ -48,7 +48,7 @@ const gaugeColorMap: Record<string, string> = {
   yellow: 'var(--warning)',
   purple: 'var(--purple-fg)',
   gray: 'var(--muted-foreground)',
-  orange: 'var(--orange-fg)'
+  orange: 'var(--orange-fg)',
 }
 
 export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
@@ -62,11 +62,11 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
   trend,
   gauge,
   onClick,
-  staggerIndex
+  staggerIndex,
 }) => {
   const numericValue = typeof value === 'number' ? value : parseFloat(value.toString().replace(/[^0-9.-]/g, ''))
   const gaugeColor = gaugeColorMap[color] || 'var(--primary)'
-  
+
   const formatValue = (val: number | string, compact: boolean = false) => {
     if (typeof val === 'string') return val
     switch (format) {
@@ -84,7 +84,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
   return (
     <div
       className={`bg-card p-4 rounded-lg shadow-sm border border-border transition-[background-color,box-shadow] duration-200 ${onClick ? 'cursor-pointer hover:shadow-md hover:bg-muted/30' : ''} ${staggerIndex !== undefined ? 'stagger-fade-in' : ''}`}
-      style={staggerIndex !== undefined ? { '--stagger-index': staggerIndex } as React.CSSProperties : undefined}
+      style={staggerIndex !== undefined ? ({ '--stagger-index': staggerIndex } as React.CSSProperties) : undefined}
       title={tooltip}
       onClick={onClick}
     >
@@ -94,7 +94,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
         </div>
         <div className="text-xs font-medium text-muted-foreground">{label}</div>
       </div>
-      
+
       {gauge?.enabled && !isNaN(numericValue) ? (
         <div className="flex flex-col items-center">
           <SimpleGaugeChart
@@ -115,9 +115,7 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
         </div>
       ) : (
         <div>
-          <div className="text-xl font-bold text-foreground">
-            {formatValue(value, true)}
-          </div>
+          <div className="text-xl font-bold text-foreground">{formatValue(value, true)}</div>
           {trend && (
             <div className={`text-xs mt-1 ${trend.isPositive ? 'text-success' : 'text-danger'}`}>
               {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value).toFixed(1)}%
@@ -125,10 +123,8 @@ export const MetricCardWithGauge: React.FC<MetricCardWithGaugeProps> = ({
           )}
         </div>
       )}
-      
-      {subValue && (
-        <div className="text-xs text-muted-foreground mt-2">{subValue}</div>
-      )}
+
+      {subValue && <div className="text-xs text-muted-foreground mt-2">{subValue}</div>}
     </div>
   )
-} 
+}

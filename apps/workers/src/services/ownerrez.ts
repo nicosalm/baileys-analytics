@@ -30,10 +30,10 @@ export class OwnerRezService {
 
 	private getHeaders(): Record<string, string> {
 		return {
-			'Authorization': `Bearer ${this.accessToken}`,
+			Authorization: `Bearer ${this.accessToken}`,
 			'Content-Type': 'application/json',
-			'Accept': 'application/json',
-			'User-Agent': 'Baileys-Analytics/1.0'
+			Accept: 'application/json',
+			'User-Agent': 'Baileys-Analytics/1.0',
 		};
 	}
 
@@ -87,11 +87,8 @@ export class OwnerRezService {
 				// cap the wait well under the 30s request timeout; a longer Retry-After
 				// just surfaces as a 429 and the client retries the chunk later
 				const retryAfterSec = parseInt(response.headers.get('Retry-After') ?? '', 10);
-				const delayMs = Math.min(
-					Number.isFinite(retryAfterSec) ? retryAfterSec * 1000 : 2000 * Math.pow(2, attempt),
-					10000
-				);
-				await new Promise(r => setTimeout(r, delayMs));
+				const delayMs = Math.min(Number.isFinite(retryAfterSec) ? retryAfterSec * 1000 : 2000 * 2 ** attempt, 10000);
+				await new Promise((r) => setTimeout(r, delayMs));
 				continue;
 			}
 
@@ -110,9 +107,7 @@ export class OwnerRezService {
 		const originalParams = new URL(url).searchParams;
 
 		while (currentUrl && page < this.maxPages) {
-			const requestOptions: RequestInit = isFirstPage
-				? { ...options, headers: this.getHeaders() }
-				: { headers: this.getHeaders() };
+			const requestOptions: RequestInit = isFirstPage ? { ...options, headers: this.getHeaders() } : { headers: this.getHeaders() };
 
 			const response = await this.fetchWithRetry(currentUrl, requestOptions);
 
@@ -120,7 +115,7 @@ export class OwnerRezService {
 				throw new Error(`API request failed: ${response.statusText} (${response.status})`);
 			}
 
-			const data = await response.json() as any;
+			const data = (await response.json()) as any;
 
 			if (Array.isArray(data)) {
 				allItems.push(...data);
@@ -133,9 +128,7 @@ export class OwnerRezService {
 
 			const nextPage = data.next_page_url || null;
 			if (nextPage) {
-				const nextUrl = nextPage.startsWith('/')
-					? new URL(`https://api.ownerrez.com${nextPage}`)
-					: new URL(nextPage);
+				const nextUrl = nextPage.startsWith('/') ? new URL(`https://api.ownerrez.com${nextPage}`) : new URL(nextPage);
 				for (const [k, v] of originalParams) {
 					if (!nextUrl.searchParams.has(k)) nextUrl.searchParams.set(k, v);
 				}
@@ -155,7 +148,7 @@ export class OwnerRezService {
 		const params = new URLSearchParams({
 			include_tags: 'true',
 			include_fields: 'true',
-			limit: '100'
+			limit: '100',
 		});
 		return this.fetchAllPages(`${this.baseUrl}/properties?${params}`);
 	}
@@ -191,7 +184,7 @@ export class OwnerRezService {
 		endDate: string,
 		offset: number,
 		maxPages: number,
-		onPage: (items: any[]) => Promise<void>
+		onPage: (items: any[]) => Promise<void>,
 	): Promise<{ totalItems: number; nextOffset: number | null }> {
 		const params = new URLSearchParams();
 		params.set('property_ids', propertyIds.join(','));
@@ -211,12 +204,12 @@ export class OwnerRezService {
 		offset: number,
 		maxPages: number,
 		onPage: (items: any[]) => Promise<void>,
-		createdSinceUtc?: string
+		createdSinceUtc?: string,
 	): Promise<{ totalItems: number; nextOffset: number | null }> {
 		const params = new URLSearchParams({
 			include_tags: 'true',
 			include_fields: 'true',
-			limit: '100'
+			limit: '100',
 		});
 		params.set('offset', String(offset));
 
@@ -236,7 +229,7 @@ export class OwnerRezService {
 	private async fetchPagesChunked(
 		url: string,
 		maxPages: number,
-		onPage: (items: any[]) => Promise<void>
+		onPage: (items: any[]) => Promise<void>,
 	): Promise<{ totalItems: number; nextOffset: number | null }> {
 		let currentUrl: string | null = url;
 		let page = 0;
@@ -251,7 +244,7 @@ export class OwnerRezService {
 				throw new Error(`API request failed: ${response.statusText} (${response.status})`);
 			}
 
-			const data = await response.json() as any;
+			const data = (await response.json()) as any;
 
 			if (Array.isArray(data)) {
 				if (data.length > 0) {
@@ -268,9 +261,7 @@ export class OwnerRezService {
 
 			const nextPage = data.next_page_url || null;
 			if (nextPage) {
-				const nextUrl = nextPage.startsWith('/')
-					? new URL(`https://api.ownerrez.com${nextPage}`)
-					: new URL(nextPage);
+				const nextUrl = nextPage.startsWith('/') ? new URL(`https://api.ownerrez.com${nextPage}`) : new URL(nextPage);
 				for (const [k, v] of originalParams) {
 					if (!nextUrl.searchParams.has(k)) nextUrl.searchParams.set(k, v);
 				}
@@ -284,7 +275,7 @@ export class OwnerRezService {
 
 		// if we hit maxPages and there are more pages, return the next offset
 		if (currentUrl) {
-			const initialOffset = parseInt(originalParams.get('offset') || '0');
+			const initialOffset = parseInt(originalParams.get('offset') || '0', 10);
 			return { totalItems, nextOffset: initialOffset + totalItems };
 		}
 
@@ -293,10 +284,7 @@ export class OwnerRezService {
 
 	async fetchBookingDetail(bookingId: string): Promise<any> {
 		const params = new URLSearchParams({ include_tags: 'true', include_charges: 'true' });
-		const response = await this.fetchWithRetry(
-			`${this.baseUrl}/bookings/${bookingId}?${params}`,
-			{ headers: this.getHeaders() }
-		);
+		const response = await this.fetchWithRetry(`${this.baseUrl}/bookings/${bookingId}?${params}`, { headers: this.getHeaders() });
 		if (!response.ok) throw new Error(`Failed to fetch booking detail: ${response.statusText}`);
 		return response.json();
 	}
@@ -307,7 +295,7 @@ export class OwnerRezService {
 		const params = new URLSearchParams({
 			include_tags: 'true',
 			include_fields: 'true',
-			limit: '100'
+			limit: '100',
 		});
 
 		if (createdSinceUtc) {
@@ -334,5 +322,4 @@ export class OwnerRezService {
 
 		return this.fetchAllPages(`${this.baseUrl}/inquiries?${params}`);
 	}
-
 }

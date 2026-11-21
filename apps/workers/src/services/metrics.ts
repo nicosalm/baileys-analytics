@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getBookingIdsForTags } from '../utils/tag-filter';
 import { prorateBooking } from '../utils/prorate';
 import { fetchBlocks, collectBlockedNights } from '../utils/blocks';
@@ -12,20 +12,16 @@ export class MetricsService {
 		toDate: string,
 		propertyId?: string,
 		tagIds?: string[],
-		propertyIds?: string[]
+		propertyIds?: string[],
 	) {
-		let propertiesQuery = this.supabase
-			.from('properties')
-			.select('id, name, internal_code')
-			.eq('tenant_id', tenantId)
-			.eq('active', true);
+		let propertiesQuery = this.supabase.from('properties').select('id, name, internal_code').eq('tenant_id', tenantId).eq('active', true);
 
 		if (propertyId) {
 			propertiesQuery = propertiesQuery.eq('id', propertyId);
 		} else if (propertyIds?.length) {
 			propertiesQuery = propertiesQuery.in('id', propertyIds);
 		}
-		
+
 		const { data: properties } = await propertiesQuery;
 
 		if (!properties?.length) return [];
@@ -42,7 +38,7 @@ export class MetricsService {
 		}
 
 		// one blocks fetch for the whole set, then per-property lookup inside the map
-		const allPropertyIds = properties.map(p => p.id);
+		const allPropertyIds = properties.map((p) => p.id);
 		const blocks = await fetchBlocks(this.supabase, tenantId, fromDate, toDate, allPropertyIds);
 		const blockedByProp = collectBlockedNights(blocks, fromDate, toDate);
 
@@ -70,14 +66,10 @@ export class MetricsService {
 					const firstBookingDate = new Date(firstBooking.arrival);
 					if (firstBookingDate <= endDate) {
 						const effectiveStart = firstBookingDate > startDate ? firstBookingDate : startDate;
-						calendarAvailable = Math.ceil(
-							(endDate.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
-						) + 1;
+						calendarAvailable = Math.ceil((endDate.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 					}
 				} else {
-					calendarAvailable = Math.ceil(
-						(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-					) + 1;
+					calendarAvailable = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 				}
 				const blockedNights = blockedByProp.get(property.id) || 0;
 				const availableNights = Math.max(0, calendarAvailable - blockedNights);
@@ -105,7 +97,7 @@ export class MetricsService {
 				// so numerator and denominator use the same domain.
 				let totalRevenue = 0;
 				let bookedNights = 0;
-				bookings?.forEach(b => {
+				bookings?.forEach((b) => {
 					const pr = prorateBooking(b, fromDate, toDate);
 					totalRevenue += pr.revenue;
 					bookedNights += pr.overlapNights;
@@ -127,9 +119,9 @@ export class MetricsService {
 					avgStayLength,
 					bookedNights,
 					availableNights,
-					blockedNights
+					blockedNights,
 				};
-			})
+			}),
 		);
 
 		return metrics.sort((a, b) => b.revenue - a.revenue);
@@ -140,20 +132,18 @@ export class MetricsService {
 		currentFrom: string,
 		currentTo: string,
 		comparisonFrom: string,
-		comparisonTo: string
+		comparisonTo: string,
 	) {
 		const [currentMetrics, comparisonMetrics] = await Promise.all([
 			this.calculatePropertyMetrics(tenantId, currentFrom, currentTo),
-			this.calculatePropertyMetrics(tenantId, comparisonFrom, comparisonTo)
+			this.calculatePropertyMetrics(tenantId, comparisonFrom, comparisonTo),
 		]);
 
-		const comparisonMap = new Map(
-			comparisonMetrics.map(m => [m.propertyId, m])
-		);
+		const comparisonMap = new Map(comparisonMetrics.map((m) => [m.propertyId, m]));
 
-		return currentMetrics.map(current => {
+		return currentMetrics.map((current) => {
 			const previous = comparisonMap.get(current.propertyId);
-			
+
 			if (!previous) {
 				return { ...current, comparison: null };
 			}
@@ -161,20 +151,15 @@ export class MetricsService {
 			return {
 				...current,
 				comparison: {
-					revenueChange: previous.revenue > 0 
-						? ((current.revenue - previous.revenue) / previous.revenue) * 100 
-						: 0,
-					bookingsChange: previous.bookings > 0
-						? ((current.bookings - previous.bookings) / previous.bookings) * 100
-						: 0,
+					revenueChange: previous.revenue > 0 ? ((current.revenue - previous.revenue) / previous.revenue) * 100 : 0,
+					bookingsChange: previous.bookings > 0 ? ((current.bookings - previous.bookings) / previous.bookings) * 100 : 0,
 					occupancyChange: current.occupancyRate - previous.occupancyRate,
-					avgNightlyRateChange: previous.avgNightlyRate > 0
-						? ((current.avgNightlyRate - previous.avgNightlyRate) / previous.avgNightlyRate) * 100
-						: 0,
+					avgNightlyRateChange:
+						previous.avgNightlyRate > 0 ? ((current.avgNightlyRate - previous.avgNightlyRate) / previous.avgNightlyRate) * 100 : 0,
 					previousRevenue: previous.revenue,
 					previousBookings: previous.bookings,
-					previousOccupancy: previous.occupancyRate
-				}
+					previousOccupancy: previous.occupancyRate,
+				},
 			};
 		});
 	}

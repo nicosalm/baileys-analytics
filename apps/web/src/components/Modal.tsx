@@ -1,11 +1,5 @@
-import { ReactNode } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
+import type { ReactNode } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 interface ModalProps {
@@ -25,26 +19,20 @@ const sizeClasses = {
   full: 'sm:max-w-[95vw]',
 }
 
-export const Modal = ({
-  isOpen,
-  onClose,
-  title,
-  subtitle,
-  children,
-  size = 'lg',
-}: ModalProps) => {
+export const Modal = ({ isOpen, onClose, title, subtitle, children, size = 'lg' }: ModalProps) => {
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <DialogContent className={cn('max-h-[90vh] flex flex-col', sizeClasses[size])}>
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">{title}</DialogTitle>
-          {subtitle && (
-            <DialogDescription>{subtitle}</DialogDescription>
-          )}
+          {subtitle && <DialogDescription>{subtitle}</DialogDescription>}
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto pr-2">
-          {children}
-        </div>
+        <div className="flex-1 overflow-y-auto pr-2">{children}</div>
       </DialogContent>
     </Dialog>
   )

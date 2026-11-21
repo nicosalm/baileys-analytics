@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react';
-import {
-  ExternalLink,
-  AlertCircle, CheckCircle, Sparkles, TrendingUp
-} from 'lucide-react';
-import { LoadingState } from '@/components/LoadingState';
-import { billingClient, type SubscriptionInfo, type TierStatus, type PendingTier } from '@/lib/stripe';
-import { PricingPlans } from '@/components/PricingPlans';
-import { Button } from '@/components/ui/button';
-import { useToast } from '@/contexts/toast';
-import { formatDateDisplay, formatCurrency } from '@baileys/utils';
-import { getTierBySlug } from '@baileys/constants';
+import { useState, useEffect } from 'react'
+import { ExternalLink, AlertCircle, CheckCircle, Sparkles, TrendingUp } from 'lucide-react'
+import { LoadingState } from '@/components/LoadingState'
+import { billingClient, type SubscriptionInfo, type TierStatus, type PendingTier } from '@/lib/stripe'
+import { PricingPlans } from '@/components/PricingPlans'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/contexts/toast'
+import { formatDateDisplay, formatCurrency } from '@baileys/utils'
+import { getTierBySlug } from '@baileys/constants'
 
 // Resolve display name and per-month dollar amount for the current plan.
 // Legacy customers (pre-tier launch) are shown as "Early Supporter" with the
@@ -20,22 +17,18 @@ import { getTierBySlug } from '@baileys/constants';
 // writes the tier column, and silently survives Stripe-side mode mismatches
 // in local dev.
 const resolvePlanDisplay = (subscription: SubscriptionInfo) => {
-  const isYearly = subscription.billing_cycle === 'yearly';
-  const tierSlug = subscription.tier;
-  const tier = tierSlug ? getTierBySlug(tierSlug) : undefined;
+  const isYearly = subscription.billing_cycle === 'yearly'
+  const tierSlug = subscription.tier
+  const tier = tierSlug ? getTierBySlug(tierSlug) : undefined
 
-  const planName = tier?.name ?? 'Baileys Analytics';
-  const isLegacy = !tier;
+  const planName = tier?.name ?? 'Baileys Analytics'
+  const isLegacy = !tier
 
-  const monthlyDollars = subscription.unit_amount != null
-    ? Math.round(subscription.unit_amount / 100 / (isYearly ? 12 : 1))
-    : null;
-  const totalCharge = subscription.unit_amount != null
-    ? Math.round(subscription.unit_amount / 100)
-    : null;
+  const monthlyDollars = subscription.unit_amount != null ? Math.round(subscription.unit_amount / 100 / (isYearly ? 12 : 1)) : null
+  const totalCharge = subscription.unit_amount != null ? Math.round(subscription.unit_amount / 100) : null
 
-  return { planName, isLegacy, monthlyDollars, totalCharge, isYearly };
-};
+  return { planName, isLegacy, monthlyDollars, totalCharge, isYearly }
+}
 
 interface BillingHistoryEntry {
   id: string
@@ -45,54 +38,51 @@ interface BillingHistoryEntry {
 }
 
 export const BillingTab = () => {
-  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
-  const [billingHistory, setBillingHistory] = useState<BillingHistoryEntry[]>([]);
-  const [tierStatus, setTierStatus] = useState<TierStatus | null>(null);
-  const [isExempt, setIsExempt] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [portalLoading, setPortalLoading] = useState(false);
-  const { addToast } = useToast();
+  const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null)
+  const [billingHistory, setBillingHistory] = useState<BillingHistoryEntry[]>([])
+  const [tierStatus, setTierStatus] = useState<TierStatus | null>(null)
+  const [isExempt, setIsExempt] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [portalLoading, setPortalLoading] = useState(false)
+  const { addToast } = useToast()
 
   useEffect(() => {
-    loadBillingData();
-  }, []);
+    loadBillingData()
+  }, [])
 
   const loadBillingData = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       // Single combined endpoint for sub + tier status — eliminates the race
       // where the previous parallel calls could land in either order and the
       // overage banner blinked depending on timing. History stays parallel
       // because it doesn't share state with the others.
-      const [subData, history] = await Promise.all([
-        billingClient.getSubscription(),
-        billingClient.getBillingHistory(),
-      ]);
+      const [subData, history] = await Promise.all([billingClient.getSubscription(), billingClient.getBillingHistory()])
 
-      setSubscription(subData?.subscription || null);
-      setIsExempt(subData?.isExempt || false);
-      setTierStatus(subData?.tierStatus || null);
-      setBillingHistory(history);
+      setSubscription(subData?.subscription || null)
+      setIsExempt(subData?.isExempt || false)
+      setTierStatus(subData?.tierStatus || null)
+      setBillingHistory(history)
     } catch (error) {
-      addToast('error', 'Failed to load billing information');
+      addToast('error', 'Failed to load billing information')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleManageSubscription = async () => {
-    setPortalLoading(true);
+    setPortalLoading(true)
     try {
-      await billingClient.createPortalSession();
+      await billingClient.createPortalSession()
     } catch (error) {
-      addToast('error', error instanceof Error ? error.message : 'Failed to open billing portal');
+      addToast('error', error instanceof Error ? error.message : 'Failed to open billing portal')
     } finally {
-      setPortalLoading(false);
+      setPortalLoading(false)
     }
-  };
+  }
 
   if (loading) {
-    return <LoadingState />;
+    return <LoadingState />
   }
 
   // show free account status for exempt accounts
@@ -129,7 +119,7 @@ export const BillingTab = () => {
           </ul>
         </div>
       </div>
-    );
+    )
   }
 
   // show pricing plans if no subscription
@@ -141,32 +131,30 @@ export const BillingTab = () => {
             <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
             <div>
               <h3 className="font-semibold text-warning-fg">No Active Subscription</h3>
-              <p className="text-sm text-warning-fg mt-1">
-                Choose a plan below to unlock all features and continue using the platform.
-              </p>
+              <p className="text-sm text-warning-fg mt-1">Choose a plan below to unlock all features and continue using the platform.</p>
             </div>
           </div>
         </div>
 
         <PricingPlans />
       </div>
-    );
+    )
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-success-subtle text-success-fg';
+        return 'bg-success-subtle text-success-fg'
       case 'past_due':
-        return 'bg-danger-subtle text-danger-fg';
+        return 'bg-danger-subtle text-danger-fg'
       case 'canceled':
-        return 'bg-muted text-muted-foreground';
+        return 'bg-muted text-muted-foreground'
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-muted text-muted-foreground'
     }
-  };
+  }
 
-  const { planName, isLegacy, monthlyDollars, totalCharge, isYearly } = resolvePlanDisplay(subscription);
+  const { planName, isLegacy, monthlyDollars, totalCharge, isYearly } = resolvePlanDisplay(subscription)
 
   // overage banner: shows for non-legacy customers whose property count has
   // outgrown their tier. legacy customers stay invisible to the tier system
@@ -174,8 +162,8 @@ export const BillingTab = () => {
   // it's the deterministic record of "the change has been queued, here's
   // what's coming." Falling back to the live status fields covers the brief
   // window before the first /subscription read writes the pending row.
-  const showOverage = tierStatus?.isOverage === true;
-  const pending: PendingTier | null = tierStatus?.pending ?? null;
+  const showOverage = tierStatus?.isOverage === true
+  const pending: PendingTier | null = tierStatus?.pending ?? null
 
   // properties row: real count vs. tier limit when we know both. Falls back to
   // "Unlimited" for legacy/exempt/contact-sales paths where we don't have a
@@ -184,12 +172,12 @@ export const BillingTab = () => {
     ? tierStatus.currentTierMaxProperties != null
       ? `${tierStatus.propertyCount} / ${tierStatus.currentTierMaxProperties}`
       : `${tierStatus.propertyCount}`
-    : 'Unlimited';
+    : 'Unlimited'
 
-  const targetTierName = pending?.tierName ?? tierStatus?.resolvedTierName;
-  const targetYearlyDollars = pending?.yearlyDollars ?? tierStatus?.resolvedYearlyDollars;
-  const targetMonthlyDollars = pending?.monthlyDollars ?? tierStatus?.resolvedMonthlyDollars;
-  const effectiveAt = pending?.effectiveAt ?? tierStatus?.upgradeAt;
+  const targetTierName = pending?.tierName ?? tierStatus?.resolvedTierName
+  const targetYearlyDollars = pending?.yearlyDollars ?? tierStatus?.resolvedYearlyDollars
+  const targetMonthlyDollars = pending?.monthlyDollars ?? tierStatus?.resolvedMonthlyDollars
+  const effectiveAt = pending?.effectiveAt ?? tierStatus?.upgradeAt
 
   return (
     <div className="space-y-6">
@@ -198,13 +186,11 @@ export const BillingTab = () => {
           <div className="flex items-start gap-3">
             <TrendingUp className="w-5 h-5 text-info mt-0.5 flex-shrink-0" />
             <div className="flex-1">
-              <h3 className="font-semibold text-info-fg">
-                You've outgrown {tierStatus.currentTierName}
-              </h3>
+              <h3 className="font-semibold text-info-fg">You've outgrown {tierStatus.currentTierName}</h3>
               {tierStatus.needsContactSales ? (
                 <p className="text-sm text-info-fg mt-1">
-                  You now have {tierStatus.propertyCount} properties, which is above the {tierStatus.currentTierName} limit.
-                  Get in touch to set up an Enterprise plan tailored to your portfolio.
+                  You now have {tierStatus.propertyCount} properties, which is above the {tierStatus.currentTierName} limit. Get in touch to
+                  set up an Enterprise plan tailored to your portfolio.
                 </p>
               ) : (
                 <>
@@ -212,7 +198,10 @@ export const BillingTab = () => {
                     You now have {tierStatus.propertyCount} properties. Your plan will move to{' '}
                     <span className="font-semibold">{targetTierName}</span>
                     {tierStatus.billingCycle === 'yearly' && targetYearlyDollars != null ? (
-                      <> (${targetYearlyDollars}/year{targetMonthlyDollars != null ? `, about $${targetMonthlyDollars}/mo` : ''})</>
+                      <>
+                        {' '}
+                        (${targetYearlyDollars}/year{targetMonthlyDollars != null ? `, about $${targetMonthlyDollars}/mo` : ''})
+                      </>
                     ) : targetMonthlyDollars != null ? (
                       <> (${targetMonthlyDollars}/mo)</>
                     ) : null}{' '}
@@ -258,7 +247,9 @@ export const BillingTab = () => {
                   Early Supporter
                 </span>
               )}
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subscription.status)}`}>
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(subscription.status)}`}
+              >
                 {subscription.status.replace('_', ' ').toUpperCase()}
               </span>
             </div>
@@ -267,9 +258,7 @@ export const BillingTab = () => {
             {isYearly && totalCharge != null ? (
               <>
                 <p className="text-2xl font-bold text-foreground">${totalCharge}</p>
-                <p className="text-muted-foreground text-xs">
-                  /year{monthlyDollars != null && <> (${monthlyDollars}/mo)</>}
-                </p>
+                <p className="text-muted-foreground text-xs">/year{monthlyDollars != null && <> (${monthlyDollars}/mo)</>}</p>
               </>
             ) : monthlyDollars != null ? (
               <>
@@ -286,9 +275,7 @@ export const BillingTab = () => {
           {subscription.current_period_end && (
             <div>
               <span className="text-muted-foreground">Renews</span>
-              <p className="font-medium text-foreground">
-                {formatDateDisplay(subscription.current_period_end)}
-              </p>
+              <p className="font-medium text-foreground">{formatDateDisplay(subscription.current_period_end)}</p>
             </div>
           )}
           <div>
@@ -315,23 +302,16 @@ export const BillingTab = () => {
         {billingHistory.length > 0 ? (
           <div className="space-y-2">
             {billingHistory.slice(0, 5).map((payment) => (
-              <div
-                key={payment.id}
-                className="flex justify-between items-center py-2 border-b border-border/60 last:border-0"
-              >
+              <div key={payment.id} className="flex justify-between items-center py-2 border-b border-border/60 last:border-0">
                 <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {formatCurrency(payment.amount / 100)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDateDisplay(payment.created_at)}
-                  </p>
+                  <p className="text-sm font-medium text-foreground">{formatCurrency(payment.amount / 100)}</p>
+                  <p className="text-xs text-muted-foreground">{formatDateDisplay(payment.created_at)}</p>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  payment.status === 'paid'
-                    ? 'bg-success-subtle text-success-fg'
-                    : 'bg-danger-subtle text-danger-fg'
-                }`}>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    payment.status === 'paid' ? 'bg-success-subtle text-success-fg' : 'bg-danger-subtle text-danger-fg'
+                  }`}
+                >
                   {payment.status}
                 </span>
               </div>
@@ -344,5 +324,5 @@ export const BillingTab = () => {
         )}
       </div>
     </div>
-  );
-};
+  )
+}

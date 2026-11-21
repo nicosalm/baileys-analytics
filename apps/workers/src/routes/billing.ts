@@ -10,25 +10,25 @@ const billing = new Hono<AppEnv>();
 
 // stripe webhook handler (no auth required - uses signature verification)
 billing.post('/webhook', async (c) => {
-  try {
-    const signature = c.req.header('stripe-signature');
-    if (!signature) {
-      return c.json({ error: 'No signature header' }, 400);
-    }
+	try {
+		const signature = c.req.header('stripe-signature');
+		if (!signature) {
+			return c.json({ error: 'No signature header' }, 400);
+		}
 
-    const payload = await c.req.text();
-    const supabase = createSupabaseClient(c.env);
-    const stripeService = new StripeService(c.env, supabase);
+		const payload = await c.req.text();
+		const supabase = createSupabaseClient(c.env);
+		const stripeService = new StripeService(c.env, supabase);
 
-    const result = await stripeService.handleWebhook(signature, payload);
+		const result = await stripeService.handleWebhook(signature, payload);
 
-    return c.json(result);
-  } catch (error) {
-    console.error('Webhook error:', error);
-    // bad signatures are permanent (400, no retry); anything else is ours, so 500 makes Stripe retry
-    const isSignatureError = error instanceof Error && error.message === 'Invalid signature';
-    return c.json({ error: 'Webhook processing failed' }, isSignatureError ? 400 : 500);
-  }
+		return c.json(result);
+	} catch (error) {
+		console.error('Webhook error:', error);
+		// bad signatures are permanent (400, no retry); anything else is ours, so 500 makes Stripe retry
+		const isSignatureError = error instanceof Error && error.message === 'Invalid signature';
+		return c.json({ error: 'Webhook processing failed' }, isSignatureError ? 400 : 500);
+	}
 });
 
 // all other billing routes require authentication
@@ -40,161 +40,147 @@ billing.use('/*', authMiddleware);
 // frontend fired both in parallel and the banner appearance was
 // non-deterministic. Sequencing fixes the symptom; combining fixes the cause.
 billing.get('/subscription', async (c) => {
-  try {
-    const supabase = createSupabaseClient(c.env);
-    const tenantId = c.get('tenantId');
+	try {
+		const supabase = createSupabaseClient(c.env);
+		const tenantId = c.get('tenantId');
 
-    // exempt tenants short-circuit before any Stripe calls
-    const { data: tenant } = await supabase
-      .from('tenants')
-      .select('subscription_exempt')
-      .eq('id', tenantId)
-      .single();
+		// exempt tenants short-circuit before any Stripe calls
+		const { data: tenant } = await supabase.from('tenants').select('subscription_exempt').eq('id', tenantId).single();
 
-    if (tenant?.subscription_exempt === true) {
-      return c.json({
-        subscription: null,
-        tierStatus: null,
-        isExempt: true,
-      });
-    }
+		if (tenant?.subscription_exempt === true) {
+			return c.json({
+				subscription: null,
+				tierStatus: null,
+				isExempt: true,
+			});
+		}
 
-    const stripeService = new StripeService(c.env, supabase);
+		const stripeService = new StripeService(c.env, supabase);
 
-    // Lazy DB-only reconciliation. Records pending_* if the customer has
-    // outgrown their tier and returns the resulting TierStatus in one shot.
-    // NEVER touches Stripe — that's the cron's job. This means the displayed
-    // subscription stays consistent until the renewal actually happens,
-    // eliminating the "wait, am I being charged Portfolio already?" confusion.
-    // Wrapped in try/catch so a DB hiccup can't break the billing page.
-    let tierStatus = null;
-    try {
-      tierStatus = await markPendingTierIfNeeded(c.env, supabase, tenantId);
-    } catch (err) {
-      console.error('markPendingTierIfNeeded failed during /subscription read:', err);
-    }
+		// Lazy DB-only reconciliation. Records pending_* if the customer has
+		// outgrown their tier and returns the resulting TierStatus in one shot.
+		// NEVER touches Stripe — that's the cron's job. This means the displayed
+		// subscription stays consistent until the renewal actually happens,
+		// eliminating the "wait, am I being charged Portfolio already?" confusion.
+		// Wrapped in try/catch so a DB hiccup can't break the billing page.
+		let tierStatus = null;
+		try {
+			tierStatus = await markPendingTierIfNeeded(c.env, supabase, tenantId);
+		} catch (err) {
+			console.error('markPendingTierIfNeeded failed during /subscription read:', err);
+		}
 
-    const subscription = await stripeService.getSubscription(tenantId);
+		const subscription = await stripeService.getSubscription(tenantId);
 
-    return c.json({
-      subscription,
-      tierStatus,
-      isExempt: false,
-    });
-  } catch (error) {
-    console.error('Error fetching subscription:', error);
-    return c.json({ error: 'Failed to fetch subscription' }, 500);
-  }
+		return c.json({
+			subscription,
+			tierStatus,
+			isExempt: false,
+		});
+	} catch (error) {
+		console.error('Error fetching subscription:', error);
+		return c.json({ error: 'Failed to fetch subscription' }, 500);
+	}
 });
 
 // create checkout session for new subscription
 billing.post('/create-checkout-session', async (c) => {
-  try {
-    const supabase = createSupabaseClient(c.env);
-    const stripeService = new StripeService(c.env, supabase);
-    const tenantId = c.get('tenantId');
-    const user = c.get('user');
+	try {
+		const supabase = createSupabaseClient(c.env);
+		const stripeService = new StripeService(c.env, supabase);
+		const tenantId = c.get('tenantId');
+		const user = c.get('user');
 
-    const { tier, isYearly } = await c.req.json<{ tier?: string; isYearly?: boolean }>();
+		const { tier, isYearly } = await c.req.json<{ tier?: string; isYearly?: boolean }>();
 
-    if (!tier || !PURCHASABLE_TIER_SLUGS.includes(tier as TierSlug)) {
-      return c.json({ error: 'Invalid or non-purchasable tier' }, 400);
-    }
+		if (!tier || !PURCHASABLE_TIER_SLUGS.includes(tier as TierSlug)) {
+			return c.json({ error: 'Invalid or non-purchasable tier' }, 400);
+		}
 
-    // plan changes go through the Stripe portal; a second checkout would double-bill
-    const { data: existing } = await supabase
-      .from('subscriptions')
-      .select('status')
-      .eq('tenant_id', tenantId)
-      .maybeSingle();
-    if (existing && ['active', 'trialing', 'past_due'].includes(existing.status)) {
-      return c.json({ error: 'You already have a subscription. Manage it from the billing portal.' }, 409);
-    }
+		// plan changes go through the Stripe portal; a second checkout would double-bill
+		const { data: existing } = await supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).maybeSingle();
+		if (existing && ['active', 'trialing', 'past_due'].includes(existing.status)) {
+			return c.json({ error: 'You already have a subscription. Manage it from the billing portal.' }, 409);
+		}
 
-    const envVars = TIER_PRICE_ENV_VARS[tier as Exclude<TierSlug, 'enterprise'>];
-    const stripePriceId = c.env[isYearly ? envVars.yearly : envVars.monthly];
+		const envVars = TIER_PRICE_ENV_VARS[tier as Exclude<TierSlug, 'enterprise'>];
+		const stripePriceId = c.env[isYearly ? envVars.yearly : envVars.monthly];
 
-    if (typeof stripePriceId !== 'string' || !stripePriceId) {
-      console.error(`Missing Stripe price env var for tier=${tier} yearly=${isYearly}`);
-      return c.json({ error: 'Tier not yet configured' }, 500);
-    }
+		if (typeof stripePriceId !== 'string' || !stripePriceId) {
+			console.error(`Missing Stripe price env var for tier=${tier} yearly=${isYearly}`);
+			return c.json({ error: 'Tier not yet configured' }, 500);
+		}
 
-    if (!user.email) {
-      return c.json({ error: 'An account with an email address is required to subscribe' }, 400);
-    }
+		if (!user.email) {
+			return c.json({ error: 'An account with an email address is required to subscribe' }, 400);
+		}
 
-    const successUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=success`;
-    const cancelUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=cancel`;
+		const successUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=success`;
+		const cancelUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=cancel`;
 
-    const session = await stripeService.createCheckoutSession(
-      tenantId,
-      user.email,
-      stripePriceId,
-      successUrl,
-      cancelUrl,
-    );
+		const session = await stripeService.createCheckoutSession(tenantId, user.email, stripePriceId, successUrl, cancelUrl);
 
-    return c.json(session);
-  } catch (error) {
-    console.error('Error creating checkout session:', error);
-    return c.json({ error: 'Failed to create checkout session' }, 500);
-  }
+		return c.json(session);
+	} catch (error) {
+		console.error('Error creating checkout session:', error);
+		return c.json({ error: 'Failed to create checkout session' }, 500);
+	}
 });
 
 // create customer portal session for managing subscription
 billing.post('/create-portal-session', async (c) => {
-  try {
-    const supabase = createSupabaseClient(c.env);
-    const stripeService = new StripeService(c.env, supabase);
-    const tenantId = c.get('tenantId');
+	try {
+		const supabase = createSupabaseClient(c.env);
+		const stripeService = new StripeService(c.env, supabase);
+		const tenantId = c.get('tenantId');
 
-    const returnUrl = `${c.env.FRONTEND_URL}/settings?tab=billing`;
+		const returnUrl = `${c.env.FRONTEND_URL}/settings?tab=billing`;
 
-    const session = await stripeService.createPortalSession(tenantId, returnUrl);
+		const session = await stripeService.createPortalSession(tenantId, returnUrl);
 
-    return c.json(session);
-  } catch (error) {
-    console.error('Error creating portal session:', error);
-    return c.json({ error: 'Failed to create portal session' }, 500);
-  }
+		return c.json(session);
+	} catch (error) {
+		console.error('Error creating portal session:', error);
+		return c.json({ error: 'Failed to create portal session' }, 500);
+	}
 });
 
 // get billing history
 billing.get('/history', async (c) => {
-  try {
-    const supabase = createSupabaseClient(c.env);
-    const tenantId = c.get('tenantId');
+	try {
+		const supabase = createSupabaseClient(c.env);
+		const tenantId = c.get('tenantId');
 
-    const { data: history, error } = await supabase
-      .from('billing_history')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false })
-      .limit(50);
+		const { data: history, error } = await supabase
+			.from('billing_history')
+			.select('*')
+			.eq('tenant_id', tenantId)
+			.order('created_at', { ascending: false })
+			.limit(50);
 
-    if (error) throw error;
+		if (error) throw error;
 
-    return c.json({ history: history || [] });
-  } catch (error) {
-    console.error('Error fetching billing history:', error);
-    return c.json({ error: 'Failed to fetch billing history' }, 500);
-  }
+		return c.json({ history: history || [] });
+	} catch (error) {
+		console.error('Error fetching billing history:', error);
+		return c.json({ error: 'Failed to fetch billing history' }, 500);
+	}
 });
 
 // get usage metrics
 billing.get('/usage', async (c) => {
-  try {
-    const supabase = createSupabaseClient(c.env);
-    const stripeService = new StripeService(c.env, supabase);
-    const tenantId = c.get('tenantId');
+	try {
+		const supabase = createSupabaseClient(c.env);
+		const stripeService = new StripeService(c.env, supabase);
+		const tenantId = c.get('tenantId');
 
-    const metrics = await stripeService.getUsageMetrics(tenantId);
+		const metrics = await stripeService.getUsageMetrics(tenantId);
 
-    return c.json({ metrics });
-  } catch (error) {
-    console.error('Error fetching usage metrics:', error);
-    return c.json({ error: 'Failed to fetch usage metrics' }, 500);
-  }
+		return c.json({ metrics });
+	} catch (error) {
+		console.error('Error fetching usage metrics:', error);
+		return c.json({ error: 'Failed to fetch usage metrics' }, 500);
+	}
 });
 
 export { billing };

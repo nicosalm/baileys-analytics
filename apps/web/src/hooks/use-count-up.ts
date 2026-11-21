@@ -17,7 +17,7 @@ export function useCountUp(target: number, duration = 600, delay = 0) {
       const start = performance.now()
       const step = (now: number) => {
         const t = Math.min((now - start) / duration, 1)
-        const eased = 1 - Math.pow(1 - t, 3)
+        const eased = 1 - (1 - t) ** 3
         setValue(from + (to - from) * eased)
         if (t < 1) raf.current = requestAnimationFrame(step)
       }

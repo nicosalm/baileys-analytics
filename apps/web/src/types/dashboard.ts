@@ -17,12 +17,7 @@ export type FilterState = {
   selectedProperties: string[]
 }
 
-export type DashboardTab =
-  | 'overview'
-  | 'financial'
-  | 'properties'
-  | 'occupancy'
-  | 'guests'
+export type DashboardTab = 'overview' | 'financial' | 'properties' | 'occupancy' | 'guests'
 
 export type PropertyMetrics = {
   propertyId: string
@@ -90,80 +85,80 @@ export type TaxReportData = {
 }
 
 // New unified financial data type
-export type FinancialData = {
-  pl: {
-    metrics: {
-      revenue: {
-        gross: number
-        net: number
-        pending: number
+export type FinancialData =
+  | {
+      pl: {
+        metrics: {
+          revenue: {
+            gross: number
+            net: number
+            pending: number
+            collected: number
+            platformFees: number
+            taxes: number
+          }
+          performance: {
+            netRevenueRate: number
+            avgBookingValue: number
+            totalBookings: number
+          }
+          upcoming: {
+            next30Days: number
+            next60Days: number
+            next90Days: number
+          }
+          kpis: {
+            revpar: number
+            adr: number
+            collectionRate: number
+          }
+        }
+        platforms: Array<{
+          platform: string
+          grossRevenue: number
+          fees: number
+          netRevenue: number
+          feeRate: number
+          bookingCount: number
+        }>
+        monthlyTrend: Array<{
+          month: string
+          revenue: number
+          bookings: number
+          avgBookingValue: number
+        }>
+        weeklyRevenue: Array<{
+          week: string
+          revenue: number
+          bookings: number
+        }>
+        previousPeriod?: {
+          revenue: { gross: number; net: number }
+          performance: { netRevenueRate: number }
+        }
+      }
+      revenue: RevenueMetrics & {
+        lastYearData?: {
+          gross: number
+          net: number
+        }
+      }
+      cashflow: {
         collected: number
-        platformFees: number
-        taxes: number
-      }
-      performance: {
-        netRevenueRate: number
-        avgBookingValue: number
-        totalBookings: number
-      }
-      upcoming: {
-        next30Days: number
-        next60Days: number
-        next90Days: number
-      }
-      kpis: {
-        revpar: number
-        adr: number
+        pending: number
         collectionRate: number
+        upcoming: {
+          next30Days: number
+          next60Days: number
+          next90Days: number
+        }
+      }
+      tax: TaxReportData
+      metadata: {
+        dateRange: { from: string; to: string }
+        generatedAt: string
       }
     }
-    platforms: Array<{
-      platform: string
-      grossRevenue: number
-      fees: number
-      netRevenue: number
-      feeRate: number
-      bookingCount: number
-    }>
-    monthlyTrend: Array<{
-      month: string
-      revenue: number
-      bookings: number
-      avgBookingValue: number
-    }>
-    weeklyRevenue: Array<{
-      week: string
-      revenue: number
-      bookings: number
-    }>
-    previousPeriod?: {
-      revenue: { gross: number; net: number }
-      performance: { netRevenueRate: number }
-    }
-  }
-  revenue: RevenueMetrics & {
-    lastYearData?: {
-      gross: number
-      net: number
-    }
-  }
-  cashflow: {
-    collected: number
-    pending: number
-    collectionRate: number
-    upcoming: {
-      next30Days: number
-      next60Days: number
-      next90Days: number
-    }
-  }
-  tax: TaxReportData
-  metadata: {
-    dateRange: { from: string; to: string }
-    generatedAt: string
-  }
-}
-
   | { type: 'error'; error: string }
   | { type: 'financial'; data: FinancialData }
   | { type: 'properties'; data: PropertyMetrics[] }

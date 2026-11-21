@@ -1,12 +1,7 @@
-import React, { useState } from 'react'
+import type React from 'react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import {
-  usePropertyGroups,
-  useProperties,
-  createPropertyGroup,
-  updatePropertyGroup,
-  deletePropertyGroup
-} from '@/hooks/use-api'
+import { usePropertyGroups, useProperties, createPropertyGroup, updatePropertyGroup, deletePropertyGroup } from '@/hooks/use-api'
 import type { PropertyGroup } from '@/hooks/use-api'
 import { Plus, Edit2, Layers, Trash2, Home } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
@@ -29,18 +24,16 @@ const GroupForm: React.FC<{
   onCancel: () => void
   isEditing?: boolean
 }> = ({ initialData, onSubmit, onCancel, isEditing = false }) => {
-  const [formData, setFormData] = useState<GroupFormData>(
-    initialData || { name: '', description: '', propertyIds: [] }
-  )
+  const [formData, setFormData] = useState<GroupFormData>(initialData || { name: '', description: '', propertyIds: [] })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { data: availableProperties = [] } = useProperties()
 
   const toggleProperty = (propertyId: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       propertyIds: prev.propertyIds.includes(propertyId)
-        ? prev.propertyIds.filter(id => id !== propertyId)
-        : [...prev.propertyIds, propertyId]
+        ? prev.propertyIds.filter((id) => id !== propertyId)
+        : [...prev.propertyIds, propertyId],
     }))
   }
 
@@ -86,24 +79,22 @@ const GroupForm: React.FC<{
             <p className="text-sm text-muted-foreground">No properties available</p>
           ) : (
             <div className="space-y-1 max-h-[240px] overflow-y-auto rounded-md border p-2">
-              {availableProperties.map(property => (
+              {availableProperties.map((property) => (
                 <button
                   key={property.id}
                   type="button"
                   onClick={() => toggleProperty(property.id)}
                   className={cn(
-                    "w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left cursor-pointer",
+                    'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left cursor-pointer',
                     formData.propertyIds.includes(property.id)
-                      ? "bg-primary/10 text-primary font-medium"
-                      : "text-foreground hover:bg-muted/50"
+                      ? 'bg-primary/10 text-primary font-medium'
+                      : 'text-foreground hover:bg-muted/50',
                   )}
                 >
                   <div
                     className={cn(
-                      "w-3.5 h-3.5 rounded-sm flex-shrink-0 border transition-colors",
-                      formData.propertyIds.includes(property.id)
-                        ? "bg-primary border-primary"
-                        : "border-border"
+                      'w-3.5 h-3.5 rounded-sm flex-shrink-0 border transition-colors',
+                      formData.propertyIds.includes(property.id) ? 'bg-primary border-primary' : 'border-border',
                     )}
                   />
                   <Home className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
@@ -153,9 +144,7 @@ const GroupRow: React.FC<{
           </p>
           {group.propertyIds.length > 0 && (
             <p className="text-xs text-muted-foreground/70 mt-1 truncate max-w-md">
-              {group.propertyIds
-                .map(id => propertyNames.get(id) || 'Unknown')
-                .join(', ')}
+              {group.propertyIds.map((id) => propertyNames.get(id) || 'Unknown').join(', ')}
             </p>
           )}
         </div>
@@ -165,7 +154,13 @@ const GroupRow: React.FC<{
         <Button variant="ghost" size="icon-sm" onClick={() => onEdit(group)} title="Edit">
           <Edit2 className="w-4 h-4" />
         </Button>
-        <Button variant="ghost" size="icon-sm" onClick={() => onDelete(group)} title="Delete" className="text-muted-foreground hover:text-destructive">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={() => onDelete(group)}
+          title="Delete"
+          className="text-muted-foreground hover:text-destructive"
+        >
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
@@ -181,13 +176,13 @@ export const PropertyGroupManagementPanel: React.FC = () => {
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; group: PropertyGroup | null }>({ show: false, group: null })
 
-  const propertyNames = new Map(properties.map(p => [p.id, p.name]))
+  const propertyNames = new Map(properties.map((p) => [p.id, p.name]))
 
   const handleCreate = async (data: GroupFormData) => {
     const result = await createPropertyGroup({
       name: data.name,
       description: data.description || undefined,
-      propertyIds: data.propertyIds
+      propertyIds: data.propertyIds,
     })
     if (result.success) {
       addToast('success', 'Property group created')
@@ -202,7 +197,7 @@ export const PropertyGroupManagementPanel: React.FC = () => {
     const result = await updatePropertyGroup(id, {
       name: data.name,
       description: data.description || undefined,
-      propertyIds: data.propertyIds
+      propertyIds: data.propertyIds,
     })
     if (result.success) {
       addToast('success', 'Property group updated')
@@ -245,9 +240,7 @@ export const PropertyGroupManagementPanel: React.FC = () => {
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-1">Property Groups</h3>
-            <p className="text-muted-foreground text-sm">
-              Group properties for quick selection in the filter bar
-            </p>
+            <p className="text-muted-foreground text-sm">Group properties for quick selection in the filter bar</p>
           </div>
           {!isAddingNew && !editingGroupId && (
             <Button size="sm" onClick={() => setIsAddingNew(true)}>
@@ -267,24 +260,19 @@ export const PropertyGroupManagementPanel: React.FC = () => {
         ) : null}
       </div>
 
-      {isAddingNew && (
-        <GroupForm
-          onSubmit={handleCreate}
-          onCancel={() => setIsAddingNew(false)}
-        />
-      )}
+      {isAddingNew && <GroupForm onSubmit={handleCreate} onCancel={() => setIsAddingNew(false)} />}
 
       {groups.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground">Your Groups</h3>
-          {groups.map((group: PropertyGroup) => (
+          {groups.map((group: PropertyGroup) =>
             editingGroupId === group.id ? (
               <GroupForm
                 key={group.id}
                 initialData={{
                   name: group.name,
                   description: group.description || '',
-                  propertyIds: group.propertyIds
+                  propertyIds: group.propertyIds,
                 }}
                 onSubmit={(data) => handleUpdate(group.id, data)}
                 onCancel={() => setEditingGroupId(null)}
@@ -298,8 +286,8 @@ export const PropertyGroupManagementPanel: React.FC = () => {
                 onEdit={(g) => setEditingGroupId(g.id)}
                 onDelete={(g) => setDeleteConfirm({ show: true, group: g })}
               />
-            )
-          ))}
+            ),
+          )}
         </div>
       )}
 

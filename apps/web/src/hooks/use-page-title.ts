@@ -17,6 +17,8 @@ export function usePageTitle(title?: string) {
     }
     link.href = `https://baileysanalytics.com${pathname}`
 
-    return () => { document.title = BASE }
+    return () => {
+      document.title = BASE
+    }
   }, [title, pathname])
 }

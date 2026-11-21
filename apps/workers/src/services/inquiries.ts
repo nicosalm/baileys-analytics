@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizePlatform } from '../utils/platform';
 
 export interface InquiryItem {
@@ -23,18 +23,10 @@ export interface InquiriesData {
 	totalCount: number;
 }
 
-export async function getInquiriesData(
-	supabase: SupabaseClient,
-	tenantId: string,
-	from?: string,
-	to?: string
-): Promise<InquiriesData> {
+export async function getInquiriesData(supabase: SupabaseClient, tenantId: string, from?: string, to?: string): Promise<InquiriesData> {
 	// inquiries.property_id is an ownerrez numeric id, not a uuid fk
 	// we need to join through properties.ownerrez_id to get the property name
-	const { data: properties } = await supabase
-		.from('properties')
-		.select('id, name, ownerrez_id')
-		.eq('tenant_id', tenantId);
+	const { data: properties } = await supabase.from('properties').select('id, name, ownerrez_id').eq('tenant_id', tenantId);
 
 	const propertyByOrId = new Map<string, { id: string; name: string }>();
 	if (properties) {
@@ -63,14 +55,12 @@ export async function getInquiriesData(
 	}
 
 	return {
-		inquiries: inquiries.map(inq => {
+		inquiries: inquiries.map((inq) => {
 			const prop = inq.property_id ? propertyByOrId.get(String(inq.property_id)) : null;
 			const data = inq.data as Record<string, unknown> | null;
 			// prefer the actual OwnerRez timestamp over the DB column
 			// (created_at may have been set to the sync date if the OR fields were missing)
-			const receivedAt = (data?.created_utc as string)
-				?? (data?.received_utc as string)
-				?? inq.created_at;
+			const receivedAt = (data?.created_utc as string) ?? (data?.received_utc as string) ?? inq.created_at;
 			return {
 				id: inq.id,
 				ownerrezInquiryId: inq.ownerrez_inquiry_id,

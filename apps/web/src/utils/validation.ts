@@ -23,15 +23,15 @@ export function filterValidUUIDs(values: string[]): string[] {
 export function isValidDateString(date: string): boolean {
   // Length check (YYYY-MM-DD is exactly 10 chars)
   if (date.length !== 10) return false
-  
+
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return false
   }
-  
+
   const parsed = new Date(date)
   // Additional validation: ensure date is reasonable (not too far in past/future)
   const year = parsed.getFullYear()
   if (year < 1900 || year > 2100) return false
-  
+
   return !isNaN(parsed.getTime()) && parsed.toISOString().startsWith(date)
 }

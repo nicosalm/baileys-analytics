@@ -19,10 +19,7 @@ type QueryBuilder<T> = {
 	range: (from: number, to: number) => PromiseLike<PageResult<T>>;
 };
 
-export async function fetchAllRows<T>(
-	buildQuery: () => QueryBuilder<T>,
-	pageSize = SUPABASE_MAX_ROWS
-): Promise<T[]> {
+export async function fetchAllRows<T>(buildQuery: () => QueryBuilder<T>, pageSize = SUPABASE_MAX_ROWS): Promise<T[]> {
 	const allRows: T[] = [];
 	let offset = 0;
 	for (;;) {
@@ -47,10 +44,7 @@ export async function fetchAllRows<T>(
 
 const IN_CHUNK_SIZE = 300;
 
-export async function fetchChunked<T>(
-	ids: string[],
-	buildQuery: (chunkIds: string[]) => PromiseLike<PageResult<T>>,
-): Promise<T[]> {
+export async function fetchChunked<T>(ids: string[], buildQuery: (chunkIds: string[]) => PromiseLike<PageResult<T>>): Promise<T[]> {
 	if (ids.length === 0) return [];
 	if (ids.length <= IN_CHUNK_SIZE) {
 		const { data, error } = await buildQuery(ids);
@@ -62,11 +56,11 @@ export async function fetchChunked<T>(
 		chunks.push(ids.slice(i, i + IN_CHUNK_SIZE));
 	}
 	const results = await Promise.all(
-		chunks.map(async chunk => {
+		chunks.map(async (chunk) => {
 			const { data, error } = await buildQuery(chunk);
 			if (error) throw new Error(`fetchChunked: ${error.message}`);
 			return data || [];
-		})
+		}),
 	);
 	return results.flat();
 }

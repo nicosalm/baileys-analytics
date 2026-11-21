@@ -6,7 +6,15 @@ import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from '@/components/ui/alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 
 interface AccountTabProps {
   onChangeEmail?: () => void
@@ -42,7 +50,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       setCompanyNameSaving(true)
       const result = await api.request<{ company_name: string | null }>('/account/company-name', {
         method: 'PATCH',
-        body: JSON.stringify({ company_name: trimmed || null })
+        body: JSON.stringify({ company_name: trimmed || null }),
       })
 
       if (result.success) {
@@ -102,9 +110,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           </div>
           <div className="flex justify-between items-center py-2 border-b border-border/60">
             <span className="text-sm text-muted-foreground">Account Created</span>
-            <span className="text-sm font-medium text-foreground">
-              {new Date(user.created_at).toLocaleDateString()}
-            </span>
+            <span className="text-sm font-medium text-foreground">{new Date(user.created_at).toLocaleDateString()}</span>
           </div>
         </div>
       </div>
@@ -112,13 +118,13 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       {/* company name */}
       <div className="bg-card rounded-lg shadow-sm border p-6">
         <h3 className="text-lg font-semibold text-foreground mb-1">Company Name</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Appears in the dashboard header next to Baileys Analytics
-        </p>
+        <p className="text-sm text-muted-foreground mb-4">Appears in the dashboard header next to Baileys Analytics</p>
 
         <div className="flex gap-3">
           <div className="flex-1">
-            <Label htmlFor="company-name" className="sr-only">Company Name</Label>
+            <Label htmlFor="company-name" className="sr-only">
+              Company Name
+            </Label>
             <Input
               id="company-name"
               value={companyNameInput}
@@ -147,11 +153,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           <p className="text-sm text-muted-foreground mb-4">Update your email or password</p>
           <div className="space-y-3">
             {onChangeEmail && (
-              <Button
-                variant="outline"
-                onClick={onChangeEmail}
-                className="w-full justify-between"
-              >
+              <Button variant="outline" onClick={onChangeEmail} className="w-full justify-between">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
                   <span>Change Email</span>
@@ -160,11 +162,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
               </Button>
             )}
             {onChangePassword && (
-              <Button
-                variant="outline"
-                onClick={onChangePassword}
-                className="w-full justify-between"
-              >
+              <Button variant="outline" onClick={onChangePassword} className="w-full justify-between">
                 <div className="flex items-center gap-2">
                   <Lock className="w-4 h-4" />
                   <span>Change Password</span>
@@ -182,9 +180,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
           <h3 className="text-lg font-semibold text-danger-fg">Danger Zone</h3>
           <AlertTriangle className="w-5 h-5 text-danger" />
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Deletion is permanent — your data cannot be recovered
-        </p>
+        <p className="text-sm text-muted-foreground mb-4">Deletion is permanent — your data cannot be recovered</p>
 
         <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4 mb-4">
           <p className="text-sm text-danger-fg mb-2">
@@ -206,12 +202,15 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
       </div>
 
       {/* delete confirmation modal */}
-      <AlertDialog open={deleteModalOpen} onOpenChange={(open) => {
-        if (!open) {
-          setDeleteModalOpen(false)
-          setDeleteConfirmText('')
-        }
-      }}>
+      <AlertDialog
+        open={deleteModalOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteModalOpen(false)
+            setDeleteConfirmText('')
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Account Permanently</AlertDialogTitle>
@@ -246,12 +245,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteAccount}
-              loading={deleteLoading}
-              disabled={deleteConfirmText !== 'DELETE'}
-            >
+            <Button variant="destructive" onClick={handleDeleteAccount} loading={deleteLoading} disabled={deleteConfirmText !== 'DELETE'}>
               Delete Forever
             </Button>
           </AlertDialogFooter>

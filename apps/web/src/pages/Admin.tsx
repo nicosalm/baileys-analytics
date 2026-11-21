@@ -7,16 +7,43 @@ import { MS_PER_DAY } from '@baileys/constants'
 import { LoadingState } from '@/components/LoadingState'
 import { resolveToken } from '@/lib/theme'
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, Label,
-  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Label,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
 } from 'recharts'
 import {
-  Users, DollarSign, TrendingUp, Search, Trash2, AlertTriangle,
-  Settings, LogOut, LayoutDashboard, RefreshCw, ChevronDown,
-  Shield, Link2, Link2Off, AlertCircle, UserPlus,
-  ExternalLink, ArrowUpDown,
-  ChevronLeft, ChevronRight, ChevronUp, Activity
+  Users,
+  DollarSign,
+  TrendingUp,
+  Search,
+  Trash2,
+  AlertTriangle,
+  Settings,
+  LogOut,
+  LayoutDashboard,
+  RefreshCw,
+  ChevronDown,
+  Shield,
+  Link2,
+  Link2Off,
+  AlertCircle,
+  UserPlus,
+  ExternalLink,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Activity,
 } from 'lucide-react'
 import { LogoCube } from '@/components/LogoCube'
 import { Footer } from '@/components/Footer'
@@ -24,8 +51,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label as FormLabel } from '@/components/ui/label'
 import {
-  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
 
 // --- types ---
@@ -113,15 +145,10 @@ function useResolvedTokens<T extends string>(varNames: readonly T[]): Record<T, 
 }
 
 const StatusBadge = ({ status, exempt }: { status?: string; exempt: boolean }) => {
-  if (exempt) return (
-    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-subtle text-purple-fg">Exempt</span>
-  )
-  if (status === 'active') return (
-    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-success-subtle text-success-fg">Active</span>
-  )
-  return (
-    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">Inactive</span>
-  )
+  if (exempt) return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-subtle text-purple-fg">Exempt</span>
+  if (status === 'active')
+    return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-success-subtle text-success-fg">Active</span>
+  return <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">Inactive</span>
 }
 
 const TimeAgo = ({ date }: { date: string }) => {
@@ -194,16 +221,12 @@ const SignupTrendChart = memo(({ data }: { data: SignupTrendEntry[] }) => {
               stroke={t['--muted-foreground']}
               tick={{ fontSize: 10, fill: t['--muted-foreground'] }}
               tickFormatter={(v: string) => {
-                const d = new Date(v + 'T00:00:00')
+                const d = new Date(`${v}T00:00:00`)
                 return `${d.getMonth() + 1}/${d.getDate()}`
               }}
               interval={Math.floor(data.length / 6)}
             />
-            <YAxis
-              stroke={t['--muted-foreground']}
-              tick={{ fontSize: 10, fill: t['--muted-foreground'] }}
-              allowDecimals={false}
-            />
+            <YAxis stroke={t['--muted-foreground']} tick={{ fontSize: 10, fill: t['--muted-foreground'] }} allowDecimals={false} />
             <RechartsTooltip
               isAnimationActive={false}
               content={({ active, payload }) => {
@@ -211,8 +234,12 @@ const SignupTrendChart = memo(({ data }: { data: SignupTrendEntry[] }) => {
                 const d = payload[0].payload as SignupTrendEntry
                 return (
                   <div className="bg-card p-2.5 rounded-lg shadow-lg border text-xs">
-                    <p className="font-medium mb-1">{new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                    <p className="text-muted-foreground">{d.count} signup{d.count !== 1 ? 's' : ''}</p>
+                    <p className="font-medium mb-1">
+                      {new Date(`${d.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {d.count} signup{d.count !== 1 ? 's' : ''}
+                    </p>
                   </div>
                 )
               }}
@@ -235,7 +262,14 @@ const SignupTrendChart = memo(({ data }: { data: SignupTrendEntry[] }) => {
 })
 SignupTrendChart.displayName = 'SignupTrendChart'
 
-const DONUT_TOKENS = ['--card', '--chart-series-1', '--chart-series-2', '--chart-series-3', '--chart-series-4', '--muted-foreground'] as const
+const DONUT_TOKENS = [
+  '--card',
+  '--chart-series-1',
+  '--chart-series-2',
+  '--chart-series-3',
+  '--chart-series-4',
+  '--muted-foreground',
+] as const
 
 const TIER_LABELS: Record<string, string> = {
   legacy: 'Legacy',
@@ -246,7 +280,7 @@ const TIER_LABELS: Record<string, string> = {
   inactive: 'Inactive',
 }
 
-const TIER_COLOR_KEYS: Record<string, typeof DONUT_TOKENS[number] | null> = {
+const TIER_COLOR_KEYS: Record<string, (typeof DONUT_TOKENS)[number] | null> = {
   legacy: '--chart-series-4',
   starter: '--chart-series-1',
   growth: '--chart-series-2',
@@ -263,13 +297,13 @@ const SubscriptionDonut = memo(({ mix }: { mix: SubscriptionMixEntry[] }) => {
 
   const { data, dataColors, total } = useMemo(() => {
     const entries = mix
-      .filter(s => s.count > 0)
-      .map(s => ({
+      .filter((s) => s.count > 0)
+      .map((s) => ({
         name: TIER_LABELS[s.tier] || s.tier,
         value: s.count,
         tier: s.tier,
       }))
-    const colors = entries.map(d => {
+    const colors = entries.map((d) => {
       const key = TIER_COLOR_KEYS[d.tier]
       if (key === null) return EXEMPT_COLOR
       return key ? t[key] : t['--muted-foreground']
@@ -332,7 +366,9 @@ const SubscriptionDonut = memo(({ mix }: { mix: SubscriptionMixEntry[] }) => {
                 const d = payload[0].payload as { name: string; value: number }
                 return (
                   <div className="bg-card p-2.5 rounded-lg shadow-lg border text-xs">
-                    <p className="font-medium">{d.name}: {d.value}</p>
+                    <p className="font-medium">
+                      {d.name}: {d.value}
+                    </p>
                   </div>
                 )
               }}
@@ -356,11 +392,14 @@ SubscriptionDonut.displayName = 'SubscriptionDonut'
 // --- compact user funnel (CSS bars, no recharts) ---
 
 const UserFunnel = memo(({ users }: { users: AdminUser[] }) => {
-  const { total, connected, subscribed } = useMemo(() => ({
-    total: users.length,
-    connected: users.filter(u => u.ownerrez_connected).length,
-    subscribed: users.filter(u => u.subscription?.status === 'active' || u.subscription_exempt).length,
-  }), [users])
+  const { total, connected, subscribed } = useMemo(
+    () => ({
+      total: users.length,
+      connected: users.filter((u) => u.ownerrez_connected).length,
+      subscribed: users.filter((u) => u.subscription?.status === 'active' || u.subscription_exempt).length,
+    }),
+    [users],
+  )
 
   if (total === 0) return null
 
@@ -377,7 +416,7 @@ const UserFunnel = memo(({ users }: { users: AdminUser[] }) => {
         <h3 className="text-sm font-semibold text-foreground">User Funnel</h3>
       </div>
       <div className="space-y-3">
-        {steps.map(step => (
+        {steps.map((step) => (
           <div key={step.label}>
             <div className="flex items-baseline justify-between mb-1">
               <span className="text-xs text-muted-foreground">{step.label}</span>
@@ -386,10 +425,7 @@ const UserFunnel = memo(({ users }: { users: AdminUser[] }) => {
               </span>
             </div>
             <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${step.pct}%` }}
-              />
+              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${step.pct}%` }} />
             </div>
           </div>
         ))}
@@ -410,7 +446,7 @@ const SyncHealthSummary = memo(({ health, totalConnected }: { health: SyncHealth
     { label: 'Failing', value: health.failing, color: 'bg-danger' },
     { label: 'Stale (>48h)', value: health.stale, color: 'bg-orange-400' },
     { label: 'No Sync', value: health.noSync, color: 'bg-muted-foreground/40' },
-  ].filter(s => s.value > 0)
+  ].filter((s) => s.value > 0)
 
   const total = segments.reduce((s, seg) => s + seg.value, 0)
 
@@ -423,7 +459,7 @@ const SyncHealthSummary = memo(({ health, totalConnected }: { health: SyncHealth
       </div>
 
       <div className="h-3 rounded-full overflow-hidden flex bg-muted mb-3">
-        {segments.map(seg => (
+        {segments.map((seg) => (
           <div
             key={seg.label}
             className={`${seg.color} transition-all duration-500`}
@@ -434,7 +470,7 @@ const SyncHealthSummary = memo(({ health, totalConnected }: { health: SyncHealth
       </div>
 
       <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-        {segments.map(seg => (
+        {segments.map((seg) => (
           <div key={seg.label} className="flex items-center gap-2 text-xs">
             <span className={`w-2.5 h-2.5 rounded-full ${seg.color}`} />
             <span className="text-muted-foreground">{seg.label}</span>
@@ -470,7 +506,7 @@ const ErrorsSection = memo(({ errors }: { errors: WebhookError[] }) => {
     return Object.entries(buckets).map(([date, count]) => ({ date, count }))
   }, [errors])
 
-  const hasRecentErrors = data.some(d => d.count > 0)
+  const hasRecentErrors = data.some((d) => d.count > 0)
 
   if (!hasRecentErrors && errors.length === 0) return null
 
@@ -493,7 +529,7 @@ const ErrorsSection = memo(({ errors }: { errors: WebhookError[] }) => {
                 stroke={t['--muted-foreground']}
                 tick={{ fontSize: 10, fill: t['--muted-foreground'] }}
                 tickFormatter={(v: string) => {
-                  const d = new Date(v + 'T00:00:00')
+                  const d = new Date(`${v}T00:00:00`)
                   return `${d.getMonth() + 1}/${d.getDate()}`
                 }}
                 interval={2}
@@ -507,8 +543,12 @@ const ErrorsSection = memo(({ errors }: { errors: WebhookError[] }) => {
                   const d = payload[0].payload as { date: string; count: number }
                   return (
                     <div className="bg-card p-2.5 rounded-lg shadow-lg border text-xs">
-                      <p className="font-medium mb-1">{new Date(d.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                      <p className="text-danger-fg">{d.count} error{d.count !== 1 ? 's' : ''}</p>
+                      <p className="font-medium mb-1">
+                        {new Date(`${d.date}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </p>
+                      <p className="text-danger-fg">
+                        {d.count} error{d.count !== 1 ? 's' : ''}
+                      </p>
                     </div>
                   )
                 }}
@@ -529,6 +569,7 @@ const ErrorsSection = memo(({ errors }: { errors: WebhookError[] }) => {
       {errors.length > 0 && (
         <>
           <button
+            type="button"
             onClick={() => setShowLog(!showLog)}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer flex items-center gap-1"
           >
@@ -538,11 +579,13 @@ const ErrorsSection = memo(({ errors }: { errors: WebhookError[] }) => {
 
           {showLog && (
             <div className="divide-y mt-3 max-h-48 overflow-y-auto -mx-5 px-5 border-t pt-3">
-              {errors.slice(0, 20).map(err => (
+              {errors.slice(0, 20).map((err) => (
                 <div key={err.id} className="py-2.5 text-sm first:pt-0">
                   <div className="flex items-center justify-between mb-0.5">
                     <span className="font-medium text-foreground text-xs">{err.event_type}</span>
-                    <span className="text-xs text-muted-foreground"><TimeAgo date={err.created_at} /></span>
+                    <span className="text-xs text-muted-foreground">
+                      <TimeAgo date={err.created_at} />
+                    </span>
                   </div>
                   <p className="text-xs text-danger-fg font-mono truncate">{err.processing_error}</p>
                 </div>
@@ -563,8 +606,11 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api.request<UserDetail>(`/admin/users/${userId}`, { method: 'GET' })
-      .then(res => { if (res.success && res.data) setDetail(res.data) })
+    api
+      .request<UserDetail>(`/admin/users/${userId}`, { method: 'GET' })
+      .then((res) => {
+        if (res.success && res.data) setDetail(res.data)
+      })
       .finally(() => setLoading(false))
   }, [userId])
 
@@ -589,9 +635,7 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
               ? (() => {
                   const end = new Date(detail.subscription.current_period_end)
                   const days = Math.ceil((end.getTime() - Date.now()) / MS_PER_DAY)
-                  const label = days > 0
-                    ? `in ${days}d`
-                    : days === 0 ? 'today' : `${Math.abs(days)}d ago`
+                  const label = days > 0 ? `in ${days}d` : days === 0 ? 'today' : `${Math.abs(days)}d ago`
                   return <span title={end.toLocaleString()}>{label}</span>
                 })()
               : '-'}
@@ -603,12 +647,16 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-2">Sync status</p>
           <div className="flex flex-wrap gap-3">
-            {detail.syncStatus.map(s => (
+            {detail.syncStatus.map((s) => (
               <div key={s.sync_type} className="flex items-center gap-2 text-xs bg-card rounded-md px-3 py-1.5 border">
-                <span className={`w-1.5 h-1.5 rounded-full ${s.status === 'success' ? 'bg-success' : s.status === 'partial' ? 'bg-warning' : 'bg-danger'}`} />
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${s.status === 'success' ? 'bg-success' : s.status === 'partial' ? 'bg-warning' : 'bg-danger'}`}
+                />
                 <span className="text-foreground font-medium">{s.sync_type}</span>
                 <span className="text-muted-foreground">{s.records_synced} records</span>
-                <span className="text-muted-foreground"><TimeAgo date={s.last_sync} /></span>
+                <span className="text-muted-foreground">
+                  <TimeAgo date={s.last_sync} />
+                </span>
               </div>
             ))}
           </div>
@@ -626,7 +674,14 @@ const UserDetailPanel = ({ userId, onClose }: { userId: string; onClose: () => v
 
 // --- sortable header ---
 
-const SortHeader = ({ label, field, current, dir, onSort, className }: {
+const SortHeader = ({
+  label,
+  field,
+  current,
+  dir,
+  onSort,
+  className,
+}: {
   label: string
   field: SortField
   current: SortField
@@ -641,7 +696,11 @@ const SortHeader = ({ label, field, current, dir, onSort, className }: {
     <div className="flex items-center gap-1">
       {label}
       {current === field ? (
-        dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+        dir === 'asc' ? (
+          <ChevronUp className="w-3 h-3" />
+        ) : (
+          <ChevronDown className="w-3 h-3" />
+        )
       ) : (
         <ArrowUpDown className="w-3 h-3 opacity-30" />
       )}
@@ -734,7 +793,9 @@ export const Admin = () => {
   useEffect(() => {
     if (!isVerified) return
     autoRefreshRef.current = setInterval(loadData, 120_000)
-    return () => { if (autoRefreshRef.current) clearInterval(autoRefreshRef.current) }
+    return () => {
+      if (autoRefreshRef.current) clearInterval(autoRefreshRef.current)
+    }
   }, [isVerified, loadData])
 
   const handleRefresh = async () => {
@@ -750,7 +811,7 @@ export const Admin = () => {
       setExempting(true)
       const result = await api.request(`/admin/users/${user.id}/exempt`, {
         method: 'POST',
-        body: JSON.stringify({ exempt: !user.subscription_exempt })
+        body: JSON.stringify({ exempt: !user.subscription_exempt }),
       })
       if (result.success) {
         const usersResult = await api.request<{ users: AdminUser[] }>('/admin/users', { method: 'GET' })
@@ -819,7 +880,7 @@ export const Admin = () => {
   // sorting
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     } else {
       setSortField(field)
       setSortDir('asc')
@@ -829,10 +890,7 @@ export const Admin = () => {
 
   const sortedFilteredUsers = useMemo(() => {
     const term = searchTerm.toLowerCase()
-    const filtered = users.filter(user =>
-      user.email?.toLowerCase().includes(term) ||
-      user.company_name?.toLowerCase().includes(term)
-    )
+    const filtered = users.filter((user) => user.email?.toLowerCase().includes(term) || user.company_name?.toLowerCase().includes(term))
 
     filtered.sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1
@@ -842,7 +900,7 @@ export const Admin = () => {
         case 'company_name':
           return dir * (a.company_name || '').localeCompare(b.company_name || '')
         case 'status': {
-          const statusOrder = (u: AdminUser) => u.subscription_exempt ? 2 : u.subscription?.status === 'active' ? 1 : 0
+          const statusOrder = (u: AdminUser) => (u.subscription_exempt ? 2 : u.subscription?.status === 'active' ? 1 : 0)
           return dir * (statusOrder(a) - statusOrder(b))
         }
         case 'created_at':
@@ -908,7 +966,6 @@ export const Admin = () => {
       </header>
 
       <div className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full space-y-6">
-
         {/* heading + refresh */}
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Overview</h2>
@@ -933,14 +990,14 @@ export const Admin = () => {
           <div className="md:col-span-3 [&>*]:h-full">
             <SignupTrendChart data={signupTrend} />
           </div>
-          <div className="md:col-span-2 [&>*]:h-full">
-            {metrics && <SubscriptionDonut mix={metrics.subscriptionMix} />}
-          </div>
+          <div className="md:col-span-2 [&>*]:h-full">{metrics && <SubscriptionDonut mix={metrics.subscriptionMix} />}</div>
         </div>
 
         {/* operations: funnel + sync health side-by-side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-fade-in" style={{ '--stagger-index': 8 } as React.CSSProperties}>
-          <div className="[&>*]:h-full"><UserFunnel users={users} /></div>
+          <div className="[&>*]:h-full">
+            <UserFunnel users={users} />
+          </div>
           <div className="[&>*]:h-full">{syncHealth && <SyncHealthSummary health={syncHealth} totalConnected={syncTotalConnected} />}</div>
         </div>
 
@@ -952,7 +1009,9 @@ export const Admin = () => {
           <div className="p-4 md:p-6 border-b">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-foreground">Users</h2>
-              <div className="text-sm text-muted-foreground">{sortedFilteredUsers.length} of {users.length}</div>
+              <div className="text-sm text-muted-foreground">
+                {sortedFilteredUsers.length} of {users.length}
+              </div>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -960,7 +1019,10 @@ export const Admin = () => {
                 type="text"
                 placeholder="Search by email or company..."
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setPage(1) }}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setPage(1)
+                }}
                 className="pl-10"
               />
             </div>
@@ -971,12 +1033,32 @@ export const Admin = () => {
               <thead className="bg-muted/40 border-b">
                 <tr>
                   <SortHeader label="User" field="email" current={sortField} dir={sortDir} onSort={handleSort} className="w-[25%]" />
-                  <SortHeader label="Company" field="company_name" current={sortField} dir={sortDir} onSort={handleSort} className="w-[15%] hidden lg:table-cell" />
+                  <SortHeader
+                    label="Company"
+                    field="company_name"
+                    current={sortField}
+                    dir={sortDir}
+                    onSort={handleSort}
+                    className="w-[15%] hidden lg:table-cell"
+                  />
                   <SortHeader label="Status" field="status" current={sortField} dir={sortDir} onSort={handleSort} className="w-[10%]" />
-                  <th className="w-[8%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Plan</th>
-                  <th className="w-[8%] px-5 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">OwnerRez</th>
-                  <SortHeader label="Joined" field="created_at" current={sortField} dir={sortDir} onSort={handleSort} className="w-[12%] hidden lg:table-cell" />
-                  <th className="w-[22%] px-5 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                  <th className="w-[8%] px-5 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                    Plan
+                  </th>
+                  <th className="w-[8%] px-5 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">
+                    OwnerRez
+                  </th>
+                  <SortHeader
+                    label="Joined"
+                    field="created_at"
+                    current={sortField}
+                    dir={sortDir}
+                    onSort={handleSort}
+                    className="w-[12%] hidden lg:table-cell"
+                  />
+                  <th className="w-[22%] px-5 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -988,10 +1070,13 @@ export const Admin = () => {
                           <tr className="hover:bg-muted/30 transition-colors">
                             <td className="w-[25%] px-5 py-3">
                               <button
+                                type="button"
                                 onClick={() => setExpandedUser(expandedUser === user.id ? null : user.id)}
                                 className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary transition-colors cursor-pointer truncate max-w-full"
                               >
-                                <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${expandedUser === user.id ? 'rotate-180' : ''}`} />
+                                <ChevronDown
+                                  className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${expandedUser === user.id ? 'rotate-180' : ''}`}
+                                />
                                 <span className="truncate">{user.email}</span>
                               </button>
                             </td>
@@ -1002,14 +1087,21 @@ export const Admin = () => {
                               <StatusBadge status={user.subscription?.status} exempt={user.subscription_exempt} />
                             </td>
                             <td className="w-[8%] px-5 py-3 hidden md:table-cell text-sm text-muted-foreground">
-                              {user.subscription?.billing_cycle === 'yearly' ? 'Yearly' :
-                               user.subscription?.billing_cycle === 'monthly' ? 'Monthly' : '-'}
+                              {user.subscription?.billing_cycle === 'yearly'
+                                ? 'Yearly'
+                                : user.subscription?.billing_cycle === 'monthly'
+                                  ? 'Monthly'
+                                  : '-'}
                             </td>
                             <td className="w-[8%] px-5 py-3 hidden md:table-cell text-center">
                               {user.ownerrez_connected ? (
-                                <span title="Connected"><Link2 className="w-4 h-4 text-success inline-block" /></span>
+                                <span title="Connected">
+                                  <Link2 className="w-4 h-4 text-success inline-block" />
+                                </span>
                               ) : (
-                                <span title="Not connected"><Link2Off className="w-4 h-4 text-muted-foreground inline-block" /></span>
+                                <span title="Not connected">
+                                  <Link2Off className="w-4 h-4 text-muted-foreground inline-block" />
+                                </span>
                               )}
                             </td>
                             <td className="w-[12%] px-5 py-3 hidden lg:table-cell text-sm text-muted-foreground tabular-nums">
@@ -1020,7 +1112,10 @@ export const Admin = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon-xs"
-                                  onClick={(e) => { e.stopPropagation(); handleImpersonate(user.id) }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleImpersonate(user.id)
+                                  }}
                                   title="Login as user"
                                   className="text-muted-foreground hover:text-info"
                                 >
@@ -1029,7 +1124,10 @@ export const Admin = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon-xs"
-                                  onClick={(e) => { e.stopPropagation(); setResetSyncModal({ open: true, user }) }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setResetSyncModal({ open: true, user })
+                                  }}
                                   title="Reset initial sync and impersonate"
                                   className="text-muted-foreground hover:text-info"
                                   disabled={!user.ownerrez_connected}
@@ -1037,9 +1135,12 @@ export const Admin = () => {
                                   <RefreshCw className="w-3.5 h-3.5" />
                                 </Button>
                                 <Button
-                                  variant={user.subscription_exempt ? "destructive" : "outline"}
+                                  variant={user.subscription_exempt ? 'destructive' : 'outline'}
                                   size="xs"
-                                  onClick={(e) => { e.stopPropagation(); setExemptModal({ open: true, user }) }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setExemptModal({ open: true, user })
+                                  }}
                                   title={user.subscription_exempt ? 'Revoke exemption' : 'Grant exemption'}
                                 >
                                   <Shield className="w-3.5 h-3.5 md:mr-1" />
@@ -1048,7 +1149,10 @@ export const Admin = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon-xs"
-                                  onClick={(e) => { e.stopPropagation(); setDeleteModal({ open: true, user }) }}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setDeleteModal({ open: true, user })
+                                  }}
                                   title="Delete account"
                                   className="text-muted-foreground hover:text-destructive"
                                 >
@@ -1084,28 +1188,31 @@ export const Admin = () => {
           {totalPages > 1 && (
             <div className="p-4 border-t flex items-center justify-between">
               <p className="text-xs text-muted-foreground">
-                Showing {((page - 1) * USERS_PER_PAGE) + 1}–{Math.min(page * USERS_PER_PAGE, sortedFilteredUsers.length)} of {sortedFilteredUsers.length}
+                Showing {(page - 1) * USERS_PER_PAGE + 1}–{Math.min(page * USERS_PER_PAGE, sortedFilteredUsers.length)} of{' '}
+                {sortedFilteredUsers.length}
               </p>
               <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
                   size="icon-xs"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </Button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
                   .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
-                    if (i > 0 && p - (arr[i - 1]) > 1) acc.push('ellipsis')
+                    if (i > 0 && p - arr[i - 1] > 1) acc.push('ellipsis')
                     acc.push(p)
                     return acc
                   }, [])
                   .map((item, i) =>
                     item === 'ellipsis' ? (
-                      <span key={`e${i}`} className="px-1.5 text-xs text-muted-foreground">...</span>
+                      <span key={`e${i}`} className="px-1.5 text-xs text-muted-foreground">
+                        ...
+                      </span>
                     ) : (
                       <Button
                         key={item}
@@ -1116,12 +1223,12 @@ export const Admin = () => {
                       >
                         {item}
                       </Button>
-                    )
+                    ),
                   )}
                 <Button
                   variant="outline"
                   size="icon-xs"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                   aria-label="Next page"
                 >
@@ -1131,17 +1238,19 @@ export const Admin = () => {
             </div>
           )}
         </div>
-
       </div>
 
       {/* delete confirmation modal */}
-      <AlertDialog open={deleteModal.open} onOpenChange={(open) => {
-        if (!open) {
-          setDeleteModal({ open: false, user: null })
-          setDeleteConfirmText('')
-          setDeleteError(null)
-        }
-      }}>
+      <AlertDialog
+        open={deleteModal.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteModal({ open: false, user: null })
+            setDeleteConfirmText('')
+            setDeleteError(null)
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
@@ -1158,9 +1267,7 @@ export const Admin = () => {
           </AlertDialogHeader>
 
           <div className="p-3 bg-danger-subtle rounded-lg border border-danger/30">
-            <p className="text-sm text-danger-fg">
-              This action cannot be undone. All data will be permanently deleted including:
-            </p>
+            <p className="text-sm text-danger-fg">This action cannot be undone. All data will be permanently deleted including:</p>
             <ul className="text-sm text-danger-fg mt-2 list-disc list-inside">
               <li>All properties, bookings, and guests</li>
               <li>Subscription and billing history</li>
@@ -1209,9 +1316,12 @@ export const Admin = () => {
       </AlertDialog>
 
       {/* reset sync confirmation modal */}
-      <AlertDialog open={resetSyncModal.open} onOpenChange={(open) => {
-        if (!open) setResetSyncModal({ open: false, user: null })
-      }}>
+      <AlertDialog
+        open={resetSyncModal.open}
+        onOpenChange={(open) => {
+          if (!open) setResetSyncModal({ open: false, user: null })
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
@@ -1235,11 +1345,7 @@ export const Admin = () => {
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button
-              onClick={handleResetSync}
-              loading={resettingSync}
-              loadingText="Resetting..."
-            >
+            <Button onClick={handleResetSync} loading={resettingSync} loadingText="Resetting...">
               <RefreshCw className="w-4 h-4" />
               Reset Sync
             </Button>
@@ -1248,26 +1354,35 @@ export const Admin = () => {
       </AlertDialog>
 
       {/* exemption confirmation modal */}
-      <AlertDialog open={exemptModal.open} onOpenChange={(open) => {
-        if (!open) setExemptModal({ open: false, user: null })
-      }}>
+      <AlertDialog
+        open={exemptModal.open}
+        onOpenChange={(open) => {
+          if (!open) setExemptModal({ open: false, user: null })
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                exemptModal.user?.subscription_exempt ? 'bg-danger-subtle' : 'bg-purple-subtle'
-              }`}>
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  exemptModal.user?.subscription_exempt ? 'bg-danger-subtle' : 'bg-purple-subtle'
+                }`}
+              >
                 <Shield className={`w-5 h-5 ${exemptModal.user?.subscription_exempt ? 'text-danger' : 'text-purple-fg'}`} />
               </div>
               <div>
-                <AlertDialogTitle>
-                  {exemptModal.user?.subscription_exempt ? 'Revoke Exemption' : 'Grant Exemption'}
-                </AlertDialogTitle>
+                <AlertDialogTitle>{exemptModal.user?.subscription_exempt ? 'Revoke Exemption' : 'Grant Exemption'}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {exemptModal.user?.subscription_exempt
-                    ? <>Remove free access for <strong>{exemptModal.user?.email}</strong>? They will need an active subscription to continue using the platform.</>
-                    : <>Grant free unlimited access to <strong>{exemptModal.user?.email}</strong>? This bypasses all subscription checks.</>
-                  }
+                  {exemptModal.user?.subscription_exempt ? (
+                    <>
+                      Remove free access for <strong>{exemptModal.user?.email}</strong>? They will need an active subscription to continue
+                      using the platform.
+                    </>
+                  ) : (
+                    <>
+                      Grant free unlimited access to <strong>{exemptModal.user?.email}</strong>? This bypasses all subscription checks.
+                    </>
+                  )}
                 </AlertDialogDescription>
               </div>
             </div>

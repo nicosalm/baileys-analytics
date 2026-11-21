@@ -1,4 +1,4 @@
-import { Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 
 interface TimeoutOptions {
 	ms?: number;
@@ -6,15 +6,15 @@ interface TimeoutOptions {
 }
 
 export function timeout(options: TimeoutOptions = {}) {
-	const { 
-		ms = 30000,  // 30 seconds default
-		message = 'Request timeout' 
+	const {
+		ms = 30000, // 30 seconds default
+		message = 'Request timeout',
 	} = options;
-	
+
 	return async function timeoutMiddleware(c: Context, next: Next) {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), ms);
-		
+
 		try {
 			await Promise.race([
 				next(),
@@ -22,7 +22,7 @@ export function timeout(options: TimeoutOptions = {}) {
 					controller.signal.addEventListener('abort', () => {
 						reject(new Error(message));
 					});
-				})
+				}),
 			]);
 		} catch (error) {
 			if (error instanceof Error && error.message === message) {
@@ -34,4 +34,3 @@ export function timeout(options: TimeoutOptions = {}) {
 		}
 	};
 }
-

@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react'
+import type React from 'react'
+import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
-  formatDateISO, 
+  formatDateISO,
   parseDate,
   differenceInDays,
   addMonths,
@@ -21,16 +22,11 @@ import {
   subDays,
   subYears,
   startOfYear,
-  startOfQuarter
+  startOfQuarter,
 } from '@baileys/utils'
 import { cn } from '@/lib/utils'
 import { useSeasons } from '@/hooks/use-api'
-import {
-  getCurrentSeasonDates,
-  getPreviousSeasonDates,
-  isCurrentlyInSeason,
-  hasSeasonStartedThisYear
-} from '@/utils/season-dates'
+import { getCurrentSeasonDates, getPreviousSeasonDates, isCurrentlyInSeason, hasSeasonStartedThisYear } from '@/utils/season-dates'
 
 interface DateRange {
   from: string
@@ -52,21 +48,21 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
   maxDays = 1825,
   minDate,
   maxDate = new Date(),
-  className
+  className,
 }) => {
   const [localRange, setLocalRange] = useState<DateRange>(value)
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  
+
   const { data: seasons = [] } = useSeasons()
-  const activeSeasons = useMemo(() => seasons.filter(s => s.isActive), [seasons])
-  
+  const activeSeasons = useMemo(() => seasons.filter((s) => s.isActive), [seasons])
+
   const isDateInSeason = (date: Date): boolean => {
     if (activeSeasons.length === 0) return true
 
     const month = getMonth(date) + 1
     const day = getDate(date)
 
-    return activeSeasons.some(season => {
+    return activeSeasons.some((season) => {
       if (season.startMonth <= season.endMonth) {
         return (
           (month > season.startMonth || (month === season.startMonth && day >= season.startDay)) &&
@@ -74,8 +70,10 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
         )
       } else {
         return (
-          (month > season.startMonth || (month === season.startMonth && day >= season.startDay)) ||
-          (month < season.endMonth || (month === season.endMonth && day <= season.endDay))
+          month > season.startMonth ||
+          (month === season.startMonth && day >= season.startDay) ||
+          month < season.endMonth ||
+          (month === season.endMonth && day <= season.endDay)
         )
       }
     })
@@ -105,17 +103,17 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
     if (isDateDisabled(date)) return
 
     const clickedDate = formatDateISO(date)
-    
+
     if (!localRange.from || (localRange.from && localRange.to)) {
       const newRange = { from: clickedDate, to: '' }
       setLocalRange(newRange)
       onChange(newRange)
     } else if (localRange.from && !localRange.to) {
       const fromDate = parseDate(localRange.from)
-      
+
       if (isAfter(date, fromDate) || isSameDay(date, fromDate)) {
         const daysDiff = differenceInDays(date, fromDate)
-        
+
         if (maxDays && daysDiff > maxDays) {
           const limitedTo = formatDateISO(addDays(fromDate, maxDays - 1))
           const newRange = { from: localRange.from, to: limitedTo }
@@ -139,7 +137,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
     try {
       return isWithinInterval(date, {
         start: parseDate(localRange.from),
-        end: parseDate(localRange.to)
+        end: parseDate(localRange.to),
       })
     } catch {
       return false
@@ -158,29 +156,27 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
     const end = endOfMonth(currentMonth)
     const days: Date[] = []
     const startDay = start.getDay()
-    
+
     for (let i = 0; i < startDay; i++) {
       days.push(addDays(start, i - startDay))
     }
-    
+
     let day = start
     while (day <= end) {
       days.push(day)
       day = addDays(day, 1)
     }
-    
+
     while (days.length < 42) {
       days.push(day)
       day = addDays(day, 1)
     }
-    
+
     return days
   }
 
   const days = renderMonth()
-  const dayCount = localRange.from && localRange.to
-    ? differenceInDays(parseDate(localRange.to), parseDate(localRange.from)) + 1
-    : 0
+  const dayCount = localRange.from && localRange.to ? differenceInDays(parseDate(localRange.to), parseDate(localRange.from)) + 1 : 0
 
   const handleQuickSelect = (from: string, to: string) => {
     const newRange = { from, to }
@@ -200,18 +196,18 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
     ]
 
     if (activeSeasons.length === 0) return periods
-    return periods.filter(p => doesRangeOverlapSeason(p.from, p.to))
+    return periods.filter((p) => doesRangeOverlapSeason(p.from, p.to))
   }, [activeSeasons])
 
   return (
-    <div className={cn("bg-card rounded-lg", className)}>
+    <div className={cn('bg-card rounded-lg', className)}>
       {/* Season Notice */}
       {activeSeasons.length > 0 && (
         <div className="mb-4 p-3 bg-success-subtle border border-success/30 rounded-lg flex items-start gap-2">
           <AlertCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
           <div className="text-sm text-success-fg">
             <p className="font-medium mb-1">Season Filter Active</p>
-            <p className="text-xs">Only dates within {activeSeasons.map(s => s.name).join(', ')} can be selected.</p>
+            <p className="text-xs">Only dates within {activeSeasons.map((s) => s.name).join(', ')} can be selected.</p>
           </div>
         </div>
       )}
@@ -227,9 +223,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="font-semibold text-lg">
-              {format(currentMonth, 'MMMM yyyy')}
-            </span>
+            <span className="font-semibold text-lg">{format(currentMonth, 'MMMM yyyy')}</span>
             <button
               type="button"
               className="p-2 hover:bg-muted rounded-lg cursor-pointer"
@@ -242,7 +236,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
 
           {/* Day headers */}
           <div className="grid grid-cols-7 gap-1 mb-2">
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
               <div key={day} className="text-sm text-center text-muted-foreground font-medium py-2">
                 {day}
               </div>
@@ -265,15 +259,15 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                   type="button"
                   onClick={() => handleDateClick(date)}
                   disabled={!isCurrentMonth || isDisabled}
-                  title={isOutOfSeason ? "Outside active seasons" : undefined}
+                  title={isOutOfSeason ? 'Outside active seasons' : undefined}
                   className={cn(
-                    "p-3 text-sm rounded-lg transition-colors relative",
-                    !isCurrentMonth && "text-muted-foreground/50",
-                    isCurrentMonth && !isDisabled && "hover:bg-muted cursor-pointer",
-                    isDisabled && !isOutOfSeason && "text-muted-foreground/50 cursor-not-allowed",
-                    isOutOfSeason && "text-muted-foreground cursor-not-allowed bg-muted/40",
-                    isInRange && !isOutOfSeason && "bg-primary/15 cursor-pointer",
-                    (isStart || isEnd) && "bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+                    'p-3 text-sm rounded-lg transition-colors relative',
+                    !isCurrentMonth && 'text-muted-foreground/50',
+                    isCurrentMonth && !isDisabled && 'hover:bg-muted cursor-pointer',
+                    isDisabled && !isOutOfSeason && 'text-muted-foreground/50 cursor-not-allowed',
+                    isOutOfSeason && 'text-muted-foreground cursor-not-allowed bg-muted/40',
+                    isInRange && !isOutOfSeason && 'bg-primary/15 cursor-pointer',
+                    (isStart || isEnd) && 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer',
                   )}
                 >
                   {date.getDate()}
@@ -295,7 +289,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                 <div>
                   <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Common Periods</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {commonPeriods.map(period => (
+                    {commonPeriods.map((period) => (
                       <Button
                         key={period.label}
                         type="button"
@@ -311,46 +305,48 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                 </div>
               )}
 
-              {activeSeasons.length > 0 ? (() => {
-                const season = activeSeasons[0]
-                const inSeason = isCurrentlyInSeason(season)
-                const seasonStarted = hasSeasonStartedThisYear(season)
-                const currentYear = getYear(new Date())
+              {activeSeasons.length > 0 ? (
+                (() => {
+                  const season = activeSeasons[0]
+                  const inSeason = isCurrentlyInSeason(season)
+                  const seasonStarted = hasSeasonStartedThisYear(season)
+                  const currentYear = getYear(new Date())
 
-                return (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Season Periods</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {seasonStarted && (
+                  return (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Season Periods</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {seasonStarted && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="justify-start"
+                            onClick={() => {
+                              const range = getCurrentSeasonDates(season)
+                              handleQuickSelect(range.from, range.to)
+                            }}
+                          >
+                            {inSeason ? 'Season to Date' : `${season.name} ${currentYear}`}
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           variant="secondary"
                           size="sm"
                           className="justify-start"
                           onClick={() => {
-                            const range = getCurrentSeasonDates(season)
+                            const range = getPreviousSeasonDates(season)
                             handleQuickSelect(range.from, range.to)
                           }}
                         >
-                          {inSeason ? 'Season to Date' : `${season.name} ${currentYear}`}
+                          Last Season
                         </Button>
-                      )}
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="justify-start"
-                        onClick={() => {
-                          const range = getPreviousSeasonDates(season)
-                          handleQuickSelect(range.from, range.to)
-                        }}
-                      >
-                        Last Season
-                      </Button>
+                      </div>
                     </div>
-                  </div>
-                )
-              })() : (
+                  )
+                })()
+              ) : (
                 <div>
                   <p className="text-xs text-muted-foreground mb-2 font-medium uppercase">Year Periods</p>
                   <div className="grid grid-cols-2 gap-2">
@@ -374,10 +370,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                       onClick={() => {
                         const today = new Date()
                         const lastYear = subYears(today, 1)
-                        handleQuickSelect(
-                          formatDateISO(startOfYear(lastYear)),
-                          formatDateISO(new Date(getYear(lastYear), 11, 31))
-                        )
+                        handleQuickSelect(formatDateISO(startOfYear(lastYear)), formatDateISO(new Date(getYear(lastYear), 11, 31)))
                       }}
                     >
                       Last Year
@@ -391,9 +384,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                         const today = new Date()
                         const currentMonth = getMonth(today)
                         const currentYear = getYear(today)
-                        const fiscalYearStart = currentMonth >= 9
-                          ? new Date(currentYear, 9, 1)
-                          : new Date(currentYear - 1, 9, 1)
+                        const fiscalYearStart = currentMonth >= 9 ? new Date(currentYear, 9, 1) : new Date(currentYear - 1, 9, 1)
                         handleQuickSelect(formatDateISO(fiscalYearStart), formatDateISO(today))
                       }}
                       title="Fiscal Year to Date (Oct 1 - Sep 30)"
@@ -409,12 +400,8 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                         const today = new Date()
                         const currentMonth = getMonth(today)
                         const currentYear = getYear(today)
-                        const lastFiscalYearStart = currentMonth >= 9
-                          ? new Date(currentYear - 1, 9, 1)
-                          : new Date(currentYear - 2, 9, 1)
-                        const lastFiscalYearEnd = currentMonth >= 9
-                          ? new Date(currentYear, 8, 30)
-                          : new Date(currentYear - 1, 8, 30)
+                        const lastFiscalYearStart = currentMonth >= 9 ? new Date(currentYear - 1, 9, 1) : new Date(currentYear - 2, 9, 1)
+                        const lastFiscalYearEnd = currentMonth >= 9 ? new Date(currentYear, 8, 30) : new Date(currentYear - 1, 8, 30)
                         handleQuickSelect(formatDateISO(lastFiscalYearStart), formatDateISO(lastFiscalYearEnd))
                       }}
                       title="Previous Fiscal Year (Oct 1 - Sep 30)"
@@ -434,7 +421,9 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
               <div className="text-sm text-foreground">
                 {localRange.to ? (
                   <>
-                    <div>{formatDateDisplay(localRange.from)} - {formatDateDisplay(localRange.to)}</div>
+                    <div>
+                      {formatDateDisplay(localRange.from)} - {formatDateDisplay(localRange.to)}
+                    </div>
                     <div className="text-muted-foreground mt-1">{dayCount} days</div>
                   </>
                 ) : (
@@ -450,9 +439,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
           {!localRange.from && (
             <div className="p-4 bg-muted/50 rounded-lg">
               <h3 className="text-sm font-medium text-foreground mb-2">How to select</h3>
-              <p className="text-sm text-muted-foreground">
-                Click a date to start your range, then click another date to complete it.
-              </p>
+              <p className="text-sm text-muted-foreground">Click a date to start your range, then click another date to complete it.</p>
             </div>
           )}
         </div>

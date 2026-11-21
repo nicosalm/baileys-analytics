@@ -1,24 +1,30 @@
 {
-  "name": "baileys-analytics",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Multi-tenant vacation rental analytics for OwnerRez hosts",
-  "packageManager": "pnpm@12.8.1",
-  "engines": {
-    "node": ">=22"
-  },
-  "scripts": {
-    "dev": "pnpm --parallel --filter ./apps/* dev",
-    "build": "pnpm --filter @baileys/web build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter workers test",
-    "db:types": "supabase gen types typescript --project-id ojpmtekljijcurgzrses > apps/web/src/types/database.types.ts"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.6.5",
-    "husky": "9.1.7",
-    "lint-staged": "17.6.0",
-    "supabase": "^2.76.15",
-    "typescript": "^5.9.3"
-  }
+	"name": "baileys-analytics",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Multi-tenant vacation rental analytics for OwnerRez hosts",
+	"packageManager": "pnpm@12.8.1",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"dev": "pnpm --parallel --filter ./apps/* dev",
+		"build": "pnpm --filter @baileys/web build",
+		"lint": "biome check .",
+		"format": "biome check --write .",
+		"typecheck": "pnpm -r typecheck",
+		"test": "pnpm --filter workers test",
+		"db:types": "supabase gen types typescript --project-id ojpmtekljijcurgzrses > apps/web/src/types/database.types.ts",
+		"prepare": "husky"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.5",
+		"husky": "9.1.7",
+		"lint-staged": "17.6.0",
+		"supabase": "^2.76.15",
+		"typescript": "^5.9.3"
+	},
+	"lint-staged": {
+		"*.{ts,tsx,js,mjs,mts,json,css}": "biome check --write --no-errors-on-unmatched"
+	}
 }

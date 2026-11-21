@@ -23,13 +23,7 @@ occupancy.get('/daily', cache({ ttl: 3600 }), async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const { getDailyOccupancyData } = await import('../services/occupancy');
 
-	const dailyData = await getDailyOccupancyData(
-		supabase,
-		tenantId,
-		startDate,
-		endDate,
-		tagIds
-	);
+	const dailyData = await getDailyOccupancyData(supabase, tenantId, startDate, endDate, tagIds);
 
 	return c.json(dailyData);
 });

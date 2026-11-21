@@ -14,8 +14,8 @@ export const Privacy = () => {
         <div className="space-y-8">
           <section>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              This Privacy Policy describes how Baileys Analytics collects, uses, shares, and protects
-              your information when you use the Service.
+              This Privacy Policy describes how Baileys Analytics collects, uses, shares, and protects your information when you use the
+              Service.
             </p>
           </section>
 
@@ -30,7 +30,9 @@ export const Privacy = () => {
             </ul>
 
             <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">OwnerRez Data</h3>
-            <p className="text-muted-foreground text-sm leading-relaxed mb-3">When you connect your OwnerRez account, we access and store:</p>
+            <p className="text-muted-foreground text-sm leading-relaxed mb-3">
+              When you connect your OwnerRez account, we access and store:
+            </p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm">
               <li>Property details (names, addresses, configurations)</li>
               <li>Booking information (dates, amounts, platforms)</li>
@@ -74,7 +76,8 @@ export const Privacy = () => {
               <li>Regular automated backups</li>
             </ul>
             <p className="text-muted-foreground text-sm leading-relaxed mt-3">
-              No method of transmission over the Internet is completely secure. Baileys Analytics takes reasonable measures to protect your data but cannot guarantee absolute security.
+              No method of transmission over the Internet is completely secure. Baileys Analytics takes reasonable measures to protect your
+              data but cannot guarantee absolute security.
             </p>
           </section>
 
@@ -109,22 +112,20 @@ export const Privacy = () => {
 
             <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">Deletion</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              You can delete your account and all associated data from Settings → Account. Data is removed
-              within 30 days unless retention is required by law.
+              You can delete your account and all associated data from Settings → Account. Data is removed within 30 days unless retention
+              is required by law.
             </p>
 
             <h3 className="text-sm font-semibold text-foreground mt-4 mb-2">Communications</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              Promotional emails can be opted out of via the unsubscribe link. Service-related
-              communications (billing, security) cannot be opted out of while an account is active.
+              Promotional emails can be opted out of via the unsubscribe link. Service-related communications (billing, security) cannot be
+              opted out of while an account is active.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">6. Cookies</h2>
-            <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-              Cookies are used to:
-            </p>
+            <p className="text-muted-foreground text-sm leading-relaxed mb-3">Cookies are used to:</p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm">
               <li>Maintain authentication sessions</li>
               <li>Store user preferences</li>
@@ -137,17 +138,13 @@ export const Privacy = () => {
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">7. Third-Party Services</h2>
-            <p className="text-muted-foreground text-sm leading-relaxed mb-3">
-              The Service integrates with:
-            </p>
+            <p className="text-muted-foreground text-sm leading-relaxed mb-3">The Service integrates with:</p>
             <ul className="list-disc ml-6 space-y-1 text-muted-foreground text-sm">
               <li>OwnerRez for property and booking data (under your authorization)</li>
               <li>Stripe for payment processing</li>
               <li>Supabase for database hosting and authentication</li>
             </ul>
-            <p className="text-muted-foreground text-sm leading-relaxed mt-3">
-              Each provider operates under its own privacy policy.
-            </p>
+            <p className="text-muted-foreground text-sm leading-relaxed mt-3">Each provider operates under its own privacy policy.</p>
           </section>
 
           <section>
@@ -179,23 +176,27 @@ export const Privacy = () => {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">10. Children's Privacy</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              The Service is not intended for users under 13. Baileys Analytics does not knowingly collect information from
-              children under 13. If such information is discovered, it will be deleted promptly.
+              The Service is not intended for users under 13. Baileys Analytics does not knowingly collect information from children under
+              13. If such information is discovered, it will be deleted promptly.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">11. Changes to This Policy</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              This Privacy Policy may be updated from time to time. Material changes will be communicated via
-              email or through the Service. Continued use after changes constitutes acceptance.
+              This Privacy Policy may be updated from time to time. Material changes will be communicated via email or through the Service.
+              Continued use after changes constitutes acceptance.
             </p>
           </section>
 
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">12. Contact</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
-              For questions about this Privacy Policy, email <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">support@baileysanalytics.com</a>.
+              For questions about this Privacy Policy, email{' '}
+              <a href="mailto:support@baileysanalytics.com" className="text-primary hover:text-primary/80">
+                support@baileysanalytics.com
+              </a>
+              .
             </p>
           </section>
         </div>

@@ -1,4 +1,4 @@
-import { Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 import type { AppEnv } from '../types';
 
 // blocks write operations for anonymous/demo users

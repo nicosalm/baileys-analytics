@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useCallback, memo } from 'react'
+import type React from 'react'
+import { useMemo, useState, useCallback, memo } from 'react'
 import { Sankey, Tooltip, ResponsiveContainer } from 'recharts'
 import type { SankeyNodeProps as NodeProps, SankeyLinkProps as LinkProps, SankeyData } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
@@ -67,17 +68,17 @@ function buildSankeyData(data: PropertyPlatformMix[]): {
 
   // column 2: properties sorted by total revenue
   const propertiesSorted = [...data]
-    .map(p => ({
+    .map((p) => ({
       ...p,
-      totalRevenue: (p.platforms || []).reduce((sum, e) => sum + e.revenue, 0)
+      totalRevenue: (p.platforms || []).reduce((sum, e) => sum + e.revenue, 0),
     }))
-    .filter(p => p.totalRevenue > 0)
+    .filter((p) => p.totalRevenue > 0)
     .sort((a, b) => b.totalRevenue - a.totalRevenue)
 
   const propertyIndices = new Map<string, number>()
   propertiesSorted.forEach((prop, i) => {
     const idx = nodes.length
-    const label = prop.propertyCode || (prop.propertyName.length > 20 ? prop.propertyName.slice(0, 18) + '\u2026' : prop.propertyName)
+    const label = prop.propertyCode || (prop.propertyName.length > 20 ? `${prop.propertyName.slice(0, 18)}\u2026` : prop.propertyName)
     nodes.push({ name: label })
     nodeColors.push(getChartColor(i))
     propertyIndices.set(prop.propertyId, idx)
@@ -111,13 +112,13 @@ function buildSankeyData(data: PropertyPlatformMix[]): {
   return { sankeyData: { nodes, links }, nodeColors, nodeMap, linkMeta }
 }
 
-const SankeyNodeRenderer = memo<NodeProps & {
-  nodeColors: string[]
-  nodeMap: Map<number, { type: 'platform' | 'property'; id?: string; name: string }>
-  onPropertyClick?: (propertyId: string, propertyName: string) => void
-}>(({
-  x, y, width, height, index, payload, nodeColors, nodeMap, onPropertyClick
-}) => {
+const SankeyNodeRenderer = memo<
+  NodeProps & {
+    nodeColors: string[]
+    nodeMap: Map<number, { type: 'platform' | 'property'; id?: string; name: string }>
+    onPropertyClick?: (propertyId: string, propertyName: string) => void
+  }
+>(({ x, y, width, height, index, payload, nodeColors, nodeMap, onPropertyClick }) => {
   const color = nodeColors[index] || '#6b7280'
   const info = nodeMap.get(index)
   const isProperty = info?.type === 'property'
@@ -131,16 +132,7 @@ const SankeyNodeRenderer = memo<NodeProps & {
 
   return (
     <g style={{ cursor: isClickable ? 'pointer' : 'default' }} onClick={handleClick}>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={color}
-        rx={3}
-        ry={3}
-        opacity={0.9}
-      />
+      <rect x={x} y={y} width={width} height={height} fill={color} rx={3} ry={3} opacity={0.9} />
       <text
         x={isProperty ? x + width + 8 : x - 8}
         y={y + height / 2}
@@ -158,25 +150,23 @@ const SankeyNodeRenderer = memo<NodeProps & {
 
 const LINK_TRANSITION = { transition: 'stroke-opacity 0.2s ease' } as const
 
-const SankeyLinkRenderer = memo<LinkProps & { activeIndex: number | null; linkIndex: number }>(({
-  sourceX, targetX, sourceY, targetY,
-  sourceControlX, targetControlX,
-  linkWidth, payload, activeIndex, linkIndex
-}) => {
-  const sourceColor = (payload?.source as unknown as { color?: string })?.color || '#6b7280'
-  const isActive = activeIndex === null || activeIndex === linkIndex
+const SankeyLinkRenderer = memo<LinkProps & { activeIndex: number | null; linkIndex: number }>(
+  ({ sourceX, targetX, sourceY, targetY, sourceControlX, targetControlX, linkWidth, payload, activeIndex, linkIndex }) => {
+    const sourceColor = (payload?.source as unknown as { color?: string })?.color || '#6b7280'
+    const isActive = activeIndex === null || activeIndex === linkIndex
 
-  return (
-    <path
-      d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
-      fill="none"
-      stroke={sourceColor}
-      strokeWidth={linkWidth}
-      strokeOpacity={isActive ? 0.4 : 0.08}
-      style={LINK_TRANSITION}
-    />
-  )
-})
+    return (
+      <path
+        d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
+        fill="none"
+        stroke={sourceColor}
+        strokeWidth={linkWidth}
+        strokeOpacity={isActive ? 0.4 : 0.08}
+        style={LINK_TRANSITION}
+      />
+    )
+  },
+)
 
 const FlowTooltip = memo<{
   activeLinkIndex: number | null
@@ -217,15 +207,9 @@ export const PlatformPropertySankey: React.FC<PlatformPropertySankeyProps> = ({ 
 
   const { sankeyData, nodeColors, nodeMap, linkMeta } = useMemo(() => buildSankeyData(data), [data])
 
-  const coloredNodes = useMemo(
-    () => sankeyData.nodes.map((n, i) => ({ ...n, color: nodeColors[i] })),
-    [sankeyData.nodes, nodeColors]
-  )
+  const coloredNodes = useMemo(() => sankeyData.nodes.map((n, i) => ({ ...n, color: nodeColors[i] })), [sankeyData.nodes, nodeColors])
 
-  const sankeyInput = useMemo(
-    () => ({ nodes: coloredNodes, links: sankeyData.links }),
-    [coloredNodes, sankeyData.links]
-  )
+  const sankeyInput = useMemo(() => ({ nodes: coloredNodes, links: sankeyData.links }), [coloredNodes, sankeyData.links])
 
   const handleMouseEnter = useCallback((_item: NodeProps | LinkProps, type: string, _e: React.MouseEvent) => {
     if (type === 'link') {
@@ -236,20 +220,13 @@ export const PlatformPropertySankey: React.FC<PlatformPropertySankeyProps> = ({ 
   const handleMouseLeave = useCallback(() => setActiveLink(null), [])
 
   const renderNode = useCallback(
-    (props: NodeProps) => (
-      <SankeyNodeRenderer
-        {...props}
-        nodeColors={nodeColors}
-        nodeMap={nodeMap}
-        onPropertyClick={onPropertyClick}
-      />
-    ),
-    [nodeColors, nodeMap, onPropertyClick]
+    (props: NodeProps) => <SankeyNodeRenderer {...props} nodeColors={nodeColors} nodeMap={nodeMap} onPropertyClick={onPropertyClick} />,
+    [nodeColors, nodeMap, onPropertyClick],
   )
 
   const renderLink = useCallback(
     (props: LinkProps) => <SankeyLinkRenderer {...props} activeIndex={activeLink} linkIndex={props.index} />,
-    [activeLink]
+    [activeLink],
   )
 
   if (sankeyData.nodes.length === 0) {
@@ -276,10 +253,7 @@ export const PlatformPropertySankey: React.FC<PlatformPropertySankeyProps> = ({ 
         onMouseEnter={handleMouseEnter as never}
         onMouseLeave={handleMouseLeave as never}
       >
-        <Tooltip
-          content={<FlowTooltip activeLinkIndex={activeLink} linkMeta={linkMeta} />}
-          isAnimationActive={false}
-        />
+        <Tooltip content={<FlowTooltip activeLinkIndex={activeLink} linkMeta={linkMeta} />} isAnimationActive={false} />
       </Sankey>
     </ResponsiveContainer>
   )

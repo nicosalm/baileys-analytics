@@ -46,7 +46,12 @@ export const ConfirmModal = ({
   }
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">

@@ -12,7 +12,7 @@ export const useTips = () => {
     localStorage.setItem(TIPS_STORAGE_KEY, showTips.toString())
   }, [showTips])
 
-  const toggleTips = () => setShowTips(prev => !prev)
+  const toggleTips = () => setShowTips((prev) => !prev)
 
   return { showTips, setShowTips, toggleTips }
 }

@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { MS_PER_DAY } from '../constants';
 import { fetchAllRows } from '../utils/fetch-all';
 import { getBookingIdsForTags } from '../utils/tag-filter';
@@ -11,20 +11,20 @@ export interface PacingBucket {
 	bookedNights: number;
 	revenue: number;
 	occupancy: number;
-	adr: number;             // revenue / bookedNights (0 if no nights)
-	revpar: number;          // revenue / availableNights (0 if no availability)
+	adr: number; // revenue / bookedNights (0 if no nights)
+	revpar: number; // revenue / availableNights (0 if no availability)
 }
 
 export interface PacingMonthSummary {
-	month: string;           // YYYY-MM
-	label: string;           // "May 2026"
+	month: string; // YYYY-MM
+	label: string; // "May 2026"
 	daysInMonth: number;
 	totalAvailableNights: number;
 	priorAvailableNights: number;
 	current: PacingBucket;
 	priorAtThisPoint: PacingBucket;
 	priorFinal: PacingBucket;
-	paceDelta: number;       // percentage points (current - prior at this point)
+	paceDelta: number; // percentage points (current - prior at this point)
 }
 
 export interface PacingProperty {
@@ -43,11 +43,11 @@ export interface PacingProperty {
 }
 
 export interface PacingCurvePoint {
-	daysOut: number;         // days relative to target month start (negative = before)
-	currentNights: number;   // cumulative booked nights, current year
-	priorNights: number;     // cumulative booked nights, prior year
-	currentRevenue: number;  // cumulative revenue, current year
-	priorRevenue: number;    // cumulative revenue, prior year
+	daysOut: number; // days relative to target month start (negative = before)
+	currentNights: number; // cumulative booked nights, current year
+	priorNights: number; // cumulative booked nights, prior year
+	currentRevenue: number; // cumulative revenue, current year
+	priorRevenue: number; // cumulative revenue, prior year
 }
 
 export interface PacingMonthDetail {
@@ -62,9 +62,9 @@ export interface PacingData {
 	propertyCount: number;
 	window: {
 		mode: 'season' | 'rolling';
-		label: string;          // "Summer Season 2026" or "Next 6 months"
-		seasonName?: string;    // when mode = 'season'
-		seasonYear?: number;    // year the season occurrence starts
+		label: string; // "Summer Season 2026" or "Next 6 months"
+		seasonName?: string; // when mode = 'season'
+		seasonYear?: number; // year the season occurrence starts
 	};
 }
 
@@ -86,7 +86,7 @@ interface SeasonConfig {
 	name: string;
 	start_month: number; // 1-12
 	start_day: number;
-	end_month: number;   // 1-12
+	end_month: number; // 1-12
 	end_day: number;
 }
 
@@ -121,8 +121,13 @@ function resolveSeasonOccurrence(s: SeasonConfig, today: Date): { start: Date; e
 }
 
 type TargetMonth = {
-	year: number; month: number; key: string; label: string; days: number;
-	priorYear: number; priorDays: number;
+	year: number;
+	month: number;
+	key: string;
+	label: string;
+	days: number;
+	priorYear: number;
+	priorDays: number;
 };
 
 function buildTargetMonths(from: Date, to: Date): TargetMonth[] {
@@ -134,14 +139,20 @@ function buildTargetMonths(from: Date, to: Date): TargetMonth[] {
 	while (y < endY || (y === endY && m <= endM)) {
 		const py = y - 1;
 		out.push({
-			year: y, month: m,
+			year: y,
+			month: m,
 			key: formatMonthKey(y, m),
 			label: formatMonthLabel(y, m),
 			days: getDaysInMonth(y, m),
 			priorYear: py,
 			priorDays: getDaysInMonth(py, m),
 		});
-		if (m === 11) { y += 1; m = 0; } else { m += 1; }
+		if (m === 11) {
+			y += 1;
+			m = 0;
+		} else {
+			m += 1;
+		}
 	}
 	return out;
 }
@@ -164,7 +175,7 @@ export async function getPacingData(
 	supabase: SupabaseClient,
 	tenantId: string,
 	tagIds: string[] = [],
-	filterPropertyIds: string[] = []
+	filterPropertyIds: string[] = [],
 ): Promise<PacingData> {
 	// Anchor "today" at UTC midnight so every downstream date is timezone-agnostic.
 	// Booking.arrival / departure are DATE columns serialized as "YYYY-MM-DD",
@@ -223,9 +234,7 @@ export async function getPacingData(
 		const endYear = occ.end.getUTCFullYear();
 		windowInfo = {
 			mode: 'season',
-			label: endYear !== occ.year
-				? `${activeSeason.name} ${occ.year}–${endYear}`
-				: `${activeSeason.name} ${occ.year}`,
+			label: endYear !== occ.year ? `${activeSeason.name} ${occ.year}–${endYear}` : `${activeSeason.name} ${occ.year}`,
 			seasonName: activeSeason.name,
 			seasonYear: occ.year,
 		};
@@ -236,7 +245,8 @@ export async function getPacingData(
 			const y = currentYear + Math.floor((currentMonth + i) / 12);
 			const py = y - 1;
 			targetMonths.push({
-				year: y, month: m,
+				year: y,
+				month: m,
 				key: formatMonthKey(y, m),
 				label: formatMonthLabel(y, m),
 				days: getDaysInMonth(y, m),
@@ -246,10 +256,7 @@ export async function getPacingData(
 		}
 		windowStart = new Date(Date.UTC(currentYear, currentMonth, 1));
 		const lastTm = targetMonths[targetMonths.length - 1];
-		windowEndExclusive = new Date(Date.UTC(
-			lastTm.month === 11 ? lastTm.year + 1 : lastTm.year,
-			(lastTm.month + 1) % 12, 1
-		));
+		windowEndExclusive = new Date(Date.UTC(lastTm.month === 11 ? lastTm.year + 1 : lastTm.year, (lastTm.month + 1) % 12, 1));
 		windowInfo = { mode: 'rolling', label: 'Next 6 months' };
 	}
 
@@ -262,7 +269,7 @@ export async function getPacingData(
 	}
 
 	const propertyCount = properties.length;
-	const propertyIds = properties.map(p => p.id);
+	const propertyIds = properties.map((p) => p.id);
 
 	// tag filtering
 	let bookingIdFilter: string[] | null = null;
@@ -271,12 +278,16 @@ export async function getPacingData(
 		if (!bookingIdFilter) {
 			const emptyBucket: PacingBucket = { bookedNights: 0, revenue: 0, occupancy: 0, adr: 0, revpar: 0 };
 			return {
-				months: targetMonths.map(tm => ({
-					month: tm.key, label: tm.label, daysInMonth: tm.days,
+				months: targetMonths.map((tm) => ({
+					month: tm.key,
+					label: tm.label,
+					daysInMonth: tm.days,
 					totalAvailableNights: tm.days * propertyCount,
 					priorAvailableNights: tm.priorDays * propertyCount,
-					current: { ...emptyBucket }, priorAtThisPoint: { ...emptyBucket },
-					priorFinal: { ...emptyBucket }, paceDelta: 0,
+					current: { ...emptyBucket },
+					priorAtThisPoint: { ...emptyBucket },
+					priorFinal: { ...emptyBucket },
+					paceDelta: 0,
 				})),
 				details: {},
 				propertyCount,
@@ -297,21 +308,29 @@ export async function getPacingData(
 
 	// two queries: current year target months + prior year equivalent months
 	const buildCurrentQuery = () => {
-		let q = supabase.from('bookings')
+		let q = supabase
+			.from('bookings')
 			.select('id, arrival, departure, total_amount, property_id, booked_utc')
-			.eq('tenant_id', tenantId).neq('status', 'canceled')
-			.lte('arrival', currentTo).gte('departure', currentFrom)
-			.in('property_id', propertyIds).order('id');
+			.eq('tenant_id', tenantId)
+			.neq('status', 'canceled')
+			.lte('arrival', currentTo)
+			.gte('departure', currentFrom)
+			.in('property_id', propertyIds)
+			.order('id');
 		if (bookingIdFilter) q = q.in('id', bookingIdFilter);
 		return q;
 	};
 
 	const buildPriorQuery = () => {
-		let q = supabase.from('bookings')
+		let q = supabase
+			.from('bookings')
 			.select('id, arrival, departure, total_amount, property_id, booked_utc')
-			.eq('tenant_id', tenantId).neq('status', 'canceled')
-			.lte('arrival', priorTo).gte('departure', priorFrom)
-			.in('property_id', propertyIds).order('id');
+			.eq('tenant_id', tenantId)
+			.neq('status', 'canceled')
+			.lte('arrival', priorTo)
+			.gte('departure', priorFrom)
+			.in('property_id', propertyIds)
+			.order('id');
 		if (bookingIdFilter) q = q.in('id', bookingIdFilter);
 		return q;
 	};
@@ -328,12 +347,17 @@ export async function getPacingData(
 	]);
 
 	// prior year "as of" date: today shifted back 1 year, clamped for leap days
-	const priorAsOf = new Date(Date.UTC(
-		today.getUTCFullYear() - 1,
-		today.getUTCMonth(),
-		Math.min(today.getUTCDate(), getDaysInMonth(today.getUTCFullYear() - 1, today.getUTCMonth())),
-		23, 59, 59, 999
-	));
+	const priorAsOf = new Date(
+		Date.UTC(
+			today.getUTCFullYear() - 1,
+			today.getUTCMonth(),
+			Math.min(today.getUTCDate(), getDaysInMonth(today.getUTCFullYear() - 1, today.getUTCMonth())),
+			23,
+			59,
+			59,
+			999,
+		),
+	);
 
 	// process each target month
 	const months: PacingMonthSummary[] = [];
@@ -343,10 +367,7 @@ export async function getPacingData(
 		const monthStart = new Date(Date.UTC(tm.year, tm.month, 1));
 		const nextMonthStart = new Date(Date.UTC(tm.month === 11 ? tm.year + 1 : tm.year, (tm.month + 1) % 12, 1));
 		const priorMonthStart = new Date(Date.UTC(tm.priorYear, tm.month, 1));
-		const priorNextMonthStart = new Date(Date.UTC(
-			tm.month === 11 ? tm.priorYear + 1 : tm.priorYear,
-			(tm.month + 1) % 12, 1
-		));
+		const priorNextMonthStart = new Date(Date.UTC(tm.month === 11 ? tm.priorYear + 1 : tm.priorYear, (tm.month + 1) % 12, 1));
 
 		// Clamp each month's working window to the overall pacing window.
 		// For a season Apr 25 – Nov 3, Apr's effective window is Apr 25 – May 1
@@ -374,20 +395,21 @@ export async function getPacingData(
 		const priorAvailableNights = Math.max(0, effPriorDays * propertyCount - priorTotalBlocked);
 
 		// filter bookings overlapping each effective month window
-		const currentMonthBookings = currentBookings.filter(b => {
+		const currentMonthBookings = currentBookings.filter((b) => {
 			const arr = new Date(b.arrival);
 			const dep = new Date(b.departure);
 			return arr < effNextMonthStart && dep > effMonthStart;
 		});
 
-		const priorMonthBookings = priorBookings.filter(b => {
+		const priorMonthBookings = priorBookings.filter((b) => {
 			const arr = new Date(b.arrival);
 			const dep = new Date(b.departure);
 			return arr < effPriorNextMonthStart && dep > effPriorMonthStart;
 		});
 
 		// accumulate current year
-		let curNights = 0, curRevenue = 0;
+		let curNights = 0,
+			curRevenue = 0;
 		const curByProp = new Map<string, { nights: number; revenue: number }>();
 
 		for (const b of currentMonthBookings) {
@@ -403,8 +425,10 @@ export async function getPacingData(
 		}
 
 		// accumulate prior year (split into "at this point" vs "final")
-		let priorPtNights = 0, priorPtRevenue = 0;
-		let priorFinNights = 0, priorFinRevenue = 0;
+		let priorPtNights = 0,
+			priorPtRevenue = 0;
+		let priorFinNights = 0,
+			priorFinRevenue = 0;
 		const priorPtByProp = new Map<string, { nights: number; revenue: number }>();
 		const priorFinByProp = new Map<string, { nights: number; revenue: number }>();
 
@@ -454,29 +478,31 @@ export async function getPacingData(
 
 		// per-property detail (also uses effective-window day counts)
 		const emptyBucket = { nights: 0, revenue: 0 };
-		const byProperty: PacingProperty[] = properties.map(p => {
-			const curr = curByProp.get(p.id) || emptyBucket;
-			const priorPt = priorPtByProp.get(p.id) || emptyBucket;
-			const priorFin = priorFinByProp.get(p.id) || emptyBucket;
-			const propAvail = Math.max(0, effDays - (blockedByProp.get(p.id) || 0));
-			const priorPropAvail = Math.max(0, effPriorDays - (priorBlockedByProp.get(p.id) || 0));
-			const curPropOcc = propAvail > 0 ? curr.nights / propAvail : 0;
-			const priorPtPropOcc = priorPropAvail > 0 ? priorPt.nights / priorPropAvail : 0;
-			return {
-				propertyId: p.id,
-				propertyName: p.name,
-				propertyCode: p.internal_code || null,
-				currentNights: curr.nights,
-				currentRevenue: curr.revenue,
-				priorNightsAtThisPoint: priorPt.nights,
-				priorRevenueAtThisPoint: priorPt.revenue,
-				priorNightsFinal: priorFin.nights,
-				priorRevenueFinal: priorFin.revenue,
-				availableNights: propAvail,
-				priorAvailableNights: priorPropAvail,
-				paceDelta: (curPropOcc - priorPtPropOcc) * 100,
-			};
-		}).sort((a, b) => a.paceDelta - b.paceDelta); // worst-pacing first
+		const byProperty: PacingProperty[] = properties
+			.map((p) => {
+				const curr = curByProp.get(p.id) || emptyBucket;
+				const priorPt = priorPtByProp.get(p.id) || emptyBucket;
+				const priorFin = priorFinByProp.get(p.id) || emptyBucket;
+				const propAvail = Math.max(0, effDays - (blockedByProp.get(p.id) || 0));
+				const priorPropAvail = Math.max(0, effPriorDays - (priorBlockedByProp.get(p.id) || 0));
+				const curPropOcc = propAvail > 0 ? curr.nights / propAvail : 0;
+				const priorPtPropOcc = priorPropAvail > 0 ? priorPt.nights / priorPropAvail : 0;
+				return {
+					propertyId: p.id,
+					propertyName: p.name,
+					propertyCode: p.internal_code || null,
+					currentNights: curr.nights,
+					currentRevenue: curr.revenue,
+					priorNightsAtThisPoint: priorPt.nights,
+					priorRevenueAtThisPoint: priorPt.revenue,
+					priorNightsFinal: priorFin.nights,
+					priorRevenueFinal: priorFin.revenue,
+					availableNights: propAvail,
+					priorAvailableNights: priorPropAvail,
+					paceDelta: (curPropOcc - priorPtPropOcc) * 100,
+				};
+			})
+			.sort((a, b) => a.paceDelta - b.paceDelta); // worst-pacing first
 
 		// booking curve: cumulative nights over time, aligned by daysOut from
 		// the effective month start (so a partial-month season edge anchors
@@ -521,7 +547,7 @@ export async function getPacingData(
 		curvePriorRaw.sort((a, b) => a.daysOut - b.daysOut);
 
 		// merge into a single weekly-sampled curve
-		const allDaysOut = [...curveCurrentRaw.map(p => p.daysOut), ...curvePriorRaw.map(p => p.daysOut)];
+		const allDaysOut = [...curveCurrentRaw.map((p) => p.daysOut), ...curvePriorRaw.map((p) => p.daysOut)];
 		if (allDaysOut.length === 0) {
 			details[tm.key] = { byProperty, curve: [], todayDaysOut };
 			continue;
@@ -531,15 +557,19 @@ export async function getPacingData(
 		// extend curve to cover: today (current year) and full prior year arc
 		// prior year bookings made during the month itself have daysOut > 0,
 		// so we need maxD to reach those points for a smooth curve
-		const maxPriorD = curvePriorRaw.length > 0
-			? curvePriorRaw[curvePriorRaw.length - 1].daysOut  // already sorted
-			: 0;
+		const maxPriorD =
+			curvePriorRaw.length > 0
+				? curvePriorRaw[curvePriorRaw.length - 1].daysOut // already sorted
+				: 0;
 		const maxD = Math.max(todayDaysOut, 0, maxPriorD);
 
 		const curve: PacingCurvePoint[] = [];
-		let cumCN = 0, cumPN = 0;
-		let cumCR = 0, cumPR = 0;
-		let ci = 0, pi = 0;
+		let cumCN = 0,
+			cumPN = 0;
+		let cumCR = 0,
+			cumPR = 0;
+		let ci = 0,
+			pi = 0;
 
 		// skip points before our window
 		while (ci < curveCurrentRaw.length && curveCurrentRaw[ci].daysOut < minD) {

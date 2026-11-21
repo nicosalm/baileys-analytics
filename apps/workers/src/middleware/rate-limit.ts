@@ -1,18 +1,18 @@
-import { Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 
 interface RateLimitOptions {
-	windowMs?: number;  // time window in milliseconds
-	max?: number;       // max requests per window
+	windowMs?: number; // time window in milliseconds
+	max?: number; // max requests per window
 	keyGenerator?: (c: Context) => string;
 }
 
 export function rateLimit(options: RateLimitOptions = {}) {
-	const { 
-		windowMs = 60000,  // 1 minute default
-		max = 100,         // 100 requests per minute default
-		keyGenerator = (c) => c.req.header('CF-Connecting-IP') || 'global'
+	const {
+		windowMs = 60000, // 1 minute default
+		max = 100, // 100 requests per minute default
+		keyGenerator = (c) => c.req.header('CF-Connecting-IP') || 'global',
 	} = options;
-	
+
 	// each limiter gets its own bucket; a shared per-IP key let sync traffic
 	// exhaust the checkout and account-delete limits
 	const bucket = `${windowMs}:${max}`;
@@ -25,38 +25,49 @@ export function rateLimit(options: RateLimitOptions = {}) {
 
 		const key = `ratelimit:${bucket}:${c.req.routePath}:${keyGenerator(c)}`;
 		const now = Date.now();
-		
+
 		// get current count
-		const data = await c.env.CACHE.get(key, 'json') as { count: number; resetAt: number } | null;
-		
+		const data = (await c.env.CACHE.get(key, 'json')) as { count: number; resetAt: number } | null;
+
 		if (!data || data.resetAt < now) {
 			// new window
-			await c.env.CACHE.put(key, JSON.stringify({ 
-				count: 1, 
-				resetAt: now + windowMs 
-			}), { 
-				expirationTtl: Math.ceil(windowMs / 1000) 
-			});
+			await c.env.CACHE.put(
+				key,
+				JSON.stringify({
+					count: 1,
+					resetAt: now + windowMs,
+				}),
+				{
+					expirationTtl: Math.ceil(windowMs / 1000),
+				},
+			);
 			return next();
 		}
-		
+
 		if (data.count >= max) {
-			return c.json({ 
-				error: 'Too many requests', 
-				retryAfter: Math.ceil((data.resetAt - now) / 1000) 
-			}, 429);
+			return c.json(
+				{
+					error: 'Too many requests',
+					retryAfter: Math.ceil((data.resetAt - now) / 1000),
+				},
+				429,
+			);
 		}
-		
+
 		// increment count
 		// KV requires minimum TTL of 60 seconds
 		const ttl = Math.max(60, Math.ceil((data.resetAt - now) / 1000));
-		await c.env.CACHE.put(key, JSON.stringify({
-			count: data.count + 1,
-			resetAt: data.resetAt
-		}), {
-			expirationTtl: ttl
-		});
-		
+		await c.env.CACHE.put(
+			key,
+			JSON.stringify({
+				count: data.count + 1,
+				resetAt: data.resetAt,
+			}),
+			{
+				expirationTtl: ttl,
+			},
+		);
+
 		return next();
 	};
 }

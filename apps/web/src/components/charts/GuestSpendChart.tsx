@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react'
+import type React from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
@@ -40,14 +41,14 @@ type ChannelFilter = 'all' | 'direct' | 'ota'
 
 const SEGMENT_COLORS: Record<string, string> = {
   'Base Rent': '#3B82F6',
-  'Taxes': '#F59E0B',
+  Taxes: '#F59E0B',
   'Cleaning & Linens': '#8B5CF6',
   'Pet Fees': '#D97706',
   'CC Fees': '#EA580C',
   'Host Fees': '#EC4899',
   'Guest Fees': '#6366F1',
-  'Other': '#9CA3AF',
-  'Discounts': '#6B7280',
+  Other: '#9CA3AF',
+  Discounts: '#6B7280',
 }
 
 const CHANNEL_OPTIONS: { key: ChannelFilter; label: string }[] = [
@@ -57,7 +58,7 @@ const CHANNEL_OPTIONS: { key: ChannelFilter; label: string }[] = [
 ]
 
 const SpendTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     const data = payload[0].payload
     return (
       <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
@@ -78,12 +79,7 @@ const SpendTooltip = ({ active, payload }: Partial<TooltipContentProps<number, s
   return null
 }
 
-export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
-  grossRevenue,
-  guestFees,
-  chargeComposition,
-  byChannel,
-}) => {
+export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({ grossRevenue, guestFees, chargeComposition, byChannel }) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
   const [channel, setChannel] = useState<ChannelFilter>('all')
 
@@ -103,11 +99,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
       guest = ch.guestFees
     }
 
-    const {
-      taxes, fees, discounts,
-      cleaningAndLinens, petFees,
-      creditCardFees, otherSurcharges
-    } = comp
+    const { taxes, fees, discounts, cleaningAndLinens, petFees, creditCardFees, otherSurcharges } = comp
 
     const baseRent = gross - taxes - cleaningAndLinens - petFees - creditCardFees - otherSurcharges - fees + discounts
     const total = gross + guest
@@ -123,9 +115,9 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
       { name: 'Other', value: otherSurcharges },
       { name: 'Discounts', value: discounts },
     ]
-      .filter(s => s.value > 0)
+      .filter((s) => s.value > 0)
       .sort((a, b) => b.value - a.value)
-      .map(s => ({ ...s, percentage: total > 0 ? (s.value / total) * 100 : 0 }))
+      .map((s) => ({ ...s, percentage: total > 0 ? (s.value / total) * 100 : 0 }))
 
     return { chartData: segments, totalSpend: total }
   }, [grossRevenue, guestFees, chargeComposition, byChannel, channel])
@@ -140,7 +132,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
 
   const channelToggle = byChannel && (
     <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-      {CHANNEL_OPTIONS.map(opt => (
+      {CHANNEL_OPTIONS.map((opt) => (
         <Button
           key={opt.key}
           variant="ghost"
@@ -156,20 +148,21 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
 
   if (chartData.length === 0) {
     return (
-      <ChartWrapper title="Guest Spend Breakdown" subtitle="Per guest dollar" height={260} controls={channelToggle} noData noDataMessage="No charge data for this channel">
+      <ChartWrapper
+        title="Guest Spend Breakdown"
+        subtitle="Per guest dollar"
+        height={260}
+        controls={channelToggle}
+        noData
+        noDataMessage="No charge data for this channel"
+      >
         <div />
       </ChartWrapper>
     )
   }
 
   return (
-    <ChartWrapper
-      title="Guest Spend Breakdown"
-      subtitle="Per guest dollar"
-      height="auto"
-      responsive={false}
-      controls={channelToggle}
-    >
+    <ChartWrapper title="Guest Spend Breakdown" subtitle="Per guest dollar" height="auto" responsive={false} controls={channelToggle}>
       <div style={{ height: 260 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -219,7 +212,10 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({
       <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center text-xs px-4 pt-2 pb-1">
         {chartData.map((entry, index) => (
           <div key={entry.name} className="flex items-center gap-1.5">
-            <div className="w-3 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: SEGMENT_COLORS[entry.name] || getChartColor(index) }} />
+            <div
+              className="w-3 h-2.5 rounded-sm flex-shrink-0"
+              style={{ backgroundColor: SEGMENT_COLORS[entry.name] || getChartColor(index) }}
+            />
             <span className="text-muted-foreground whitespace-nowrap">{entry.name}</span>
           </div>
         ))}

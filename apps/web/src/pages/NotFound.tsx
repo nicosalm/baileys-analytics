@@ -21,15 +21,24 @@ export const NotFound = () => {
             </Link>
             <div className="flex items-center gap-2 sm:gap-3">
               {isAuthenticated ? (
-                <Link to="/dashboard/overview" className="whitespace-nowrap px-3 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm">
+                <Link
+                  to="/dashboard/overview"
+                  className="whitespace-nowrap px-3 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm"
+                >
                   Dashboard
                 </Link>
               ) : (
                 <>
-                  <Link to="/login" className="hidden sm:inline-flex whitespace-nowrap px-5 py-2.5 text-foreground/80 hover:text-foreground font-medium transition-colors hover:bg-muted/70 rounded-lg">
+                  <Link
+                    to="/login"
+                    className="hidden sm:inline-flex whitespace-nowrap px-5 py-2.5 text-foreground/80 hover:text-foreground font-medium transition-colors hover:bg-muted/70 rounded-lg"
+                  >
                     Login
                   </Link>
-                  <Link to="/signup" className="whitespace-nowrap px-3 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm">
+                  <Link
+                    to="/signup"
+                    className="whitespace-nowrap px-3 sm:px-5 py-2 sm:py-2.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium text-sm"
+                  >
                     Get Started
                   </Link>
                 </>
@@ -44,10 +53,8 @@ export const NotFound = () => {
           {/* Error Message */}
           <h2 className="text-6xl font-light text-muted-foreground/40 mb-4">404</h2>
           <h3 className="text-xl font-semibold text-foreground mb-2">Page Not Found</h3>
-          <p className="text-muted-foreground mb-8 text-sm">
-            The page you're looking for doesn't exist or has been moved.
-          </p>
-          
+          <p className="text-muted-foreground mb-8 text-sm">The page you're looking for doesn't exist or has been moved.</p>
+
           {/* Action Buttons */}
           <div className="flex items-center justify-center gap-3">
             <Link
@@ -75,7 +82,7 @@ export const NotFound = () => {
           </div>
         </div>
       </main>
-      
+
       <Footer />
     </div>
   )

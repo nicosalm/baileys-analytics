@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
-import { useState, useEffect, lazy, Suspense, ComponentType, useCallback } from 'react'
+import { useState, useEffect, lazy, Suspense, type ComponentType, useCallback } from 'react'
 import { useToast } from '@/contexts/toast'
 import { useTips } from '@/hooks/use-tips'
 import { useTheme } from '@/contexts/theme'
@@ -9,52 +9,47 @@ import { LoadingState } from '@/components/LoadingState'
 import {
   Calendar,
   LogOut,
-  Palette, CreditCard, Link2,
-  Lock, MessageSquare, ArrowLeft,
-  Eye, EyeOff, Receipt, Target, Layers
+  Palette,
+  CreditCard,
+  Link2,
+  Lock,
+  MessageSquare,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Receipt,
+  Target,
+  Layers,
 } from 'lucide-react'
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
 import { LogoCube } from '@/components/LogoCube'
 import { Switch } from '@/components/ui/switch'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-const SeasonManagementPanel = lazy(() => 
-  import('@/components/settings/SeasonManagementPanel').then(m => ({ default: m.SeasonManagementPanel }))
+const SeasonManagementPanel = lazy(() =>
+  import('@/components/settings/SeasonManagementPanel').then((m) => ({ default: m.SeasonManagementPanel })),
 )
 
-const IntegrationsTab = lazy(() => 
-  import('@/components/settings/IntegrationsTab').then(m => ({ default: m.IntegrationsTab }))
-)
+const IntegrationsTab = lazy(() => import('@/components/settings/IntegrationsTab').then((m) => ({ default: m.IntegrationsTab })))
 
-const BillingTab = lazy(() =>
-  import('@/components/settings/BillingTab').then(m => ({ default: m.BillingTab }))
-)
+const BillingTab = lazy(() => import('@/components/settings/BillingTab').then((m) => ({ default: m.BillingTab })))
 
-const AccountTab = lazy(() =>
-  import('@/components/settings/AccountTab').then(m => ({ default: m.AccountTab }))
-)
+const AccountTab = lazy(() => import('@/components/settings/AccountTab').then((m) => ({ default: m.AccountTab })))
 
 const ExpenseManagementPanel = lazy(() =>
-  import('@/components/settings/ExpenseManagementPanel').then(m => ({ default: m.ExpenseManagementPanel }))
+  import('@/components/settings/ExpenseManagementPanel').then((m) => ({ default: m.ExpenseManagementPanel })),
 )
 
 const GoalManagementPanel = lazy(() =>
-  import('@/components/settings/GoalManagementPanel').then(m => ({ default: m.GoalManagementPanel }))
+  import('@/components/settings/GoalManagementPanel').then((m) => ({ default: m.GoalManagementPanel })),
 )
 
 const PropertyGroupManagementPanel = lazy(() =>
-  import('@/components/settings/PropertyGroupManagementPanel').then(m => ({ default: m.PropertyGroupManagementPanel }))
+  import('@/components/settings/PropertyGroupManagementPanel').then((m) => ({ default: m.PropertyGroupManagementPanel })),
 )
 
 type SettingsTab = 'account' | 'preferences' | 'goals' | 'integrations' | 'billing' | 'seasons' | 'expenses' | 'property-groups'
@@ -63,43 +58,43 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
   {
     id: 'account',
     label: 'Account',
-    icon: Lock
+    icon: Lock,
   },
   {
     id: 'preferences',
     label: 'Preferences',
-    icon: Palette
+    icon: Palette,
   },
   {
     id: 'goals',
     label: 'Goals',
-    icon: Target
+    icon: Target,
   },
   {
     id: 'expenses',
     label: 'Expenses',
-    icon: Receipt
+    icon: Receipt,
   },
   {
     id: 'property-groups',
     label: 'Property Groups',
-    icon: Layers
+    icon: Layers,
   },
   {
     id: 'seasons',
     label: 'Seasons',
-    icon: Calendar
+    icon: Calendar,
   },
   {
     id: 'integrations',
     label: 'Integrations',
-    icon: Link2
+    icon: Link2,
   },
   {
     id: 'billing',
     label: 'Billing',
-    icon: CreditCard
-  }
+    icon: CreditCard,
+  },
 ]
 
 const THEME_OPTIONS = [
@@ -131,12 +126,11 @@ const PreferencesTab = () => {
           <div className="flex rounded-lg border border-border overflow-hidden">
             {THEME_OPTIONS.map(({ value, label }) => (
               <button
+                type="button"
                 key={value}
                 onClick={() => setTheme(value)}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer ${
-                  theme === value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  theme === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
                 {label}
@@ -159,7 +153,6 @@ const PreferencesTab = () => {
           </div>
         </div>
       </div>
-
     </div>
   )
 }
@@ -200,20 +193,13 @@ export const Settings = () => {
     }
   }, [])
 
-  if (state.status === 'loading') {
-    return <LoadingState />
-  }
-
-  if (state.status !== 'authenticated') {
-    return null
-  }
-
-  const { user } = state
-
-  const handleTabChange = useCallback((tab: SettingsTab) => {
-    setActiveTab(tab)
-    setSearchParams({ tab })
-  }, [setSearchParams])
+  const handleTabChange = useCallback(
+    (tab: SettingsTab) => {
+      setActiveTab(tab)
+      setSearchParams({ tab })
+    },
+    [setSearchParams],
+  )
 
   const handleChangePassword = useCallback(() => {
     setChangePasswordModalOpen(true)
@@ -276,7 +262,7 @@ export const Settings = () => {
       return
     }
 
-    if (trimmedEmail.toLowerCase() === user.email?.toLowerCase()) {
+    if (state.status === 'authenticated' && trimmedEmail.toLowerCase() === state.user.email?.toLowerCase()) {
       addToast('error', 'New email must be different from current email')
       return
     }
@@ -306,7 +292,17 @@ export const Settings = () => {
     await logout()
     window.location.href = '/'
   }, [logout])
-  
+
+  if (state.status === 'loading') {
+    return <LoadingState />
+  }
+
+  if (state.status !== 'authenticated') {
+    return null
+  }
+
+  const { user } = state
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
@@ -317,9 +313,7 @@ export const Settings = () => {
                 <LogoCube />
                 <div className="ml-3">
                   <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
-                  {user.companyName && (
-                    <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>
-                  )}
+                  {user.companyName && <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>}
                 </div>
               </Link>
             </div>
@@ -354,6 +348,7 @@ export const Settings = () => {
           <nav className="flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
             {tabConfig.map(({ id, label, icon: Icon }) => (
               <button
+                type="button"
                 key={id}
                 onClick={() => handleTabChange(id)}
                 className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer ${
@@ -367,6 +362,7 @@ export const Settings = () => {
               </button>
             ))}
             <button
+              type="button"
               onClick={handleSendFeedback}
               className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent transition-all cursor-pointer"
             >
@@ -382,12 +378,11 @@ export const Settings = () => {
             <nav className="space-y-1 bg-card/50 backdrop-blur-sm rounded-lg p-2 border border-border">
               {tabConfig.map(({ id, label, icon: Icon }) => (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => handleTabChange(id)}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
-                    activeTab === id
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    activeTab === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -398,6 +393,7 @@ export const Settings = () => {
 
             <div className="mt-6 pt-6 border-t border-border">
               <button
+                type="button"
                 onClick={handleSendFeedback}
                 className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all cursor-pointer"
               >
@@ -442,12 +438,7 @@ export const Settings = () => {
               <Label htmlFor="current-email" className="mb-2">
                 Current Email
               </Label>
-              <Input
-                id="current-email"
-                type="email"
-                value={user.email}
-                disabled
-              />
+              <Input id="current-email" type="email" value={user.email} disabled />
             </div>
             <div>
               <Label htmlFor="new-email" className="mb-2">
@@ -466,12 +457,7 @@ export const Settings = () => {
             </div>
           </div>
           <DialogFooter className="flex gap-3 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => setChangeEmailModalOpen(false)}
-              disabled={isChangingEmail}
-              className="flex-1"
-            >
+            <Button variant="outline" onClick={() => setChangeEmailModalOpen(false)} disabled={isChangingEmail} className="flex-1">
               Cancel
             </Button>
             <Button
@@ -503,7 +489,7 @@ export const Settings = () => {
               <div className="relative">
                 <Input
                   id="new-password"
-                  type={showNewPassword ? "text" : "password"}
+                  type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
@@ -532,7 +518,7 @@ export const Settings = () => {
               <div className="relative">
                 <Input
                   id="confirm-password"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && !isChangingPassword && handleConfirmChangePassword()}
@@ -555,12 +541,7 @@ export const Settings = () => {
             </div>
           </div>
           <DialogFooter className="flex gap-3 sm:flex-row">
-            <Button
-              variant="outline"
-              onClick={() => setChangePasswordModalOpen(false)}
-              disabled={isChangingPassword}
-              className="flex-1"
-            >
+            <Button variant="outline" onClick={() => setChangePasswordModalOpen(false)} disabled={isChangingPassword} className="flex-1">
               Cancel
             </Button>
             <Button

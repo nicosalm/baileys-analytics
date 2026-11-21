@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import type React from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { ArrowUpRight, ArrowDownRight, Minus, Info, Loader2, Check, Copy } from 'lucide-react'
 import { formatCurrency, formatCompactCurrency, formatPercentage } from '@baileys/utils'
 import { cn } from '@/lib/utils'
@@ -63,16 +64,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   error,
   onClick,
   className,
-  staggerIndex
+  staggerIndex,
 }) => {
   const colorClasses = {
-    blue:   'bg-info-subtle text-info-fg',
-    green:  'bg-success-subtle text-success-fg',
+    blue: 'bg-info-subtle text-info-fg',
+    green: 'bg-success-subtle text-success-fg',
     purple: 'bg-purple-subtle text-purple-fg',
     orange: 'bg-orange-subtle text-orange-fg',
-    red:    'bg-danger-subtle text-danger-fg',
+    red: 'bg-danger-subtle text-danger-fg',
     yellow: 'bg-warning-subtle text-warning-fg',
-    gray:   'bg-muted text-muted-foreground'
+    gray: 'bg-muted text-muted-foreground',
   }
 
   const sizeClasses = {
@@ -82,7 +83,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       iconWrapper: 'p-1.5',
       value: 'text-xl',
       label: 'text-xs',
-      sub: 'text-xs'
+      sub: 'text-xs',
     },
     md: {
       padding: 'p-6',
@@ -90,7 +91,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       iconWrapper: 'p-2',
       value: 'text-3xl',
       label: 'text-sm',
-      sub: 'text-sm'
+      sub: 'text-sm',
     },
     lg: {
       padding: 'p-8',
@@ -98,8 +99,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       iconWrapper: 'p-3',
       value: 'text-4xl',
       label: 'text-base',
-      sub: 'text-sm'
-    }
+      sub: 'text-sm',
+    },
   }
 
   const currentSize = sizeClasses[size]
@@ -110,9 +111,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     if (val === undefined || val === null) {
       return format === 'currency' ? '$0' : '0'
     }
-    
+
     if (typeof val === 'string') return val
-    
+
     switch (format) {
       case 'currency':
         return val >= 10000 ? formatCompactCurrency(val) : formatCurrency(val)
@@ -128,24 +129,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   }
 
   // Calculate trend comparison
-  const trendDirection = trend ? (
-    trend.isPositive !== undefined 
-      ? trend.isPositive 
-      : trend.value > 0
-  ) : null
+  const trendDirection = trend ? (trend.isPositive !== undefined ? trend.isPositive : trend.value > 0) : null
 
   // Calculate progress to target
-  const targetProgress = target && typeof value === 'number' 
-    ? Math.min((value / target.value) * 100, 100)
-    : null
+  const targetProgress = target && typeof value === 'number' ? Math.min((value / target.value) * 100, 100) : null
 
   if (loading) {
     return (
-      <div className={cn(
-        "bg-card rounded-lg shadow-sm border border-border flex items-center justify-center",
-        currentSize.padding,
-        className
-      )}>
+      <div
+        className={cn('bg-card rounded-lg shadow-sm border border-border flex items-center justify-center', currentSize.padding, className)}
+      >
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -153,11 +146,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   if (error) {
     return (
-      <div className={cn(
-        "bg-card rounded-lg shadow-sm border border-border",
-        currentSize.padding,
-        className
-      )}>
+      <div className={cn('bg-card rounded-lg shadow-sm border border-border', currentSize.padding, className)}>
         <div className="text-danger text-sm">{error}</div>
       </div>
     )
@@ -166,32 +155,29 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div
       className={cn(
-        "bg-card rounded-lg shadow-sm border border-border transition-all duration-200",
-        onClick && "cursor-pointer hover:shadow-md hover:scale-[1.01] hover:bg-muted/30",
-        staggerIndex !== undefined && "stagger-fade-in",
+        'bg-card rounded-lg shadow-sm border border-border transition-all duration-200',
+        onClick && 'cursor-pointer hover:shadow-md hover:scale-[1.01] hover:bg-muted/30',
+        staggerIndex !== undefined && 'stagger-fade-in',
         currentSize.padding,
-        className
+        className,
       )}
-      style={staggerIndex !== undefined ? { '--stagger-index': staggerIndex } as React.CSSProperties : undefined}
+      style={staggerIndex !== undefined ? ({ '--stagger-index': staggerIndex } as React.CSSProperties) : undefined}
       onClick={onClick}
     >
       {/* Header with icon and trend */}
       <div className="flex items-center justify-between mb-4">
-        <div className={cn(
-          "rounded-lg",
-          currentSize.iconWrapper,
-          colorClasses[color]
-        )}>
+        <div className={cn('rounded-lg', currentSize.iconWrapper, colorClasses[color])}>
           <Icon className={currentSize.icon} />
         </div>
-        
+
         {trend && (
-          <div className={cn(
-            "flex items-center font-medium",
-            currentSize.sub,
-            trend.value === 0 ? 'text-muted-foreground' :
-            trendDirection ? 'text-success' : 'text-danger'
-          )}>
+          <div
+            className={cn(
+              'flex items-center font-medium',
+              currentSize.sub,
+              trend.value === 0 ? 'text-muted-foreground' : trendDirection ? 'text-success' : 'text-danger',
+            )}
+          >
             {trend.value === 0 ? (
               <Minus className="w-4 h-4" />
             ) : trendDirection ? (
@@ -200,11 +186,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
               <ArrowDownRight className="w-4 h-4" />
             )}
             <span>{Math.abs(trend.value).toFixed(1)}%</span>
-            {trend.period && (
-              <span className="text-muted-foreground ml-1 font-normal">
-                {trend.period}
-              </span>
-            )}
+            {trend.period && <span className="text-muted-foreground ml-1 font-normal">{trend.period}</span>}
           </div>
         )}
       </div>
@@ -220,7 +202,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       />
 
       {/* Label with tooltip */}
-      <div className={cn("text-muted-foreground mt-1 flex items-center gap-1", currentSize.label)}>
+      <div className={cn('text-muted-foreground mt-1 flex items-center gap-1', currentSize.label)}>
         {label}
         {tooltip && (
           <TooltipProvider>
@@ -228,20 +210,14 @@ export const MetricCard: React.FC<MetricCardProps> = ({
               <TooltipTrigger asChild>
                 <Info className="w-3 h-3 text-muted-foreground cursor-help" />
               </TooltipTrigger>
-              <TooltipContent side="top">
-                {tooltip}
-              </TooltipContent>
+              <TooltipContent side="top">{tooltip}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}
       </div>
 
       {/* Subtitle or subValue */}
-      {(subtitle || subValue) && (
-        <div className={cn("text-muted-foreground mt-1", currentSize.sub)}>
-          {subtitle || subValue}
-        </div>
-      )}
+      {(subtitle || subValue) && <div className={cn('text-muted-foreground mt-1', currentSize.sub)}>{subtitle || subValue}</div>}
 
       {/* Target progress bar */}
       {target && targetProgress !== null && (
@@ -253,18 +229,13 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <div className="w-full bg-muted rounded-full h-2">
             <div
               className={cn(
-                "h-2 rounded-full transition-all",
-                targetProgress >= 100 ? 'bg-success' :
-                targetProgress >= 75  ? 'bg-info' :
-                targetProgress >= 50  ? 'bg-warning' :
-                'bg-danger'
+                'h-2 rounded-full transition-all',
+                targetProgress >= 100 ? 'bg-success' : targetProgress >= 75 ? 'bg-info' : targetProgress >= 50 ? 'bg-warning' : 'bg-danger',
               )}
               style={{ width: `${targetProgress}%` }}
             />
           </div>
-          <div className="text-xs text-muted-foreground mt-1 text-right">
-            {targetProgress.toFixed(0)}% of target
-          </div>
+          <div className="text-xs text-muted-foreground mt-1 text-right">{targetProgress.toFixed(0)}% of target</div>
         </div>
       )}
     </div>
@@ -315,17 +286,20 @@ const CopyableValue: React.FC<{
     }
   }, [truncated])
 
-  const handleCopy = useCallback((e: React.MouseEvent | React.KeyboardEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(formatFullValue(value, format))
-    if (copyIconRef.current) copyIconRef.current.style.display = 'none'
-    if (checkIconRef.current) checkIconRef.current.style.display = 'block'
-    clearTimeout(copyTimeoutRef.current)
-    copyTimeoutRef.current = setTimeout(() => {
-      if (copyIconRef.current) copyIconRef.current.style.display = 'block'
-      if (checkIconRef.current) checkIconRef.current.style.display = 'none'
-    }, 1500)
-  }, [value, format])
+  const handleCopy = useCallback(
+    (e: React.MouseEvent | React.KeyboardEvent) => {
+      e.stopPropagation()
+      navigator.clipboard.writeText(formatFullValue(value, format))
+      if (copyIconRef.current) copyIconRef.current.style.display = 'none'
+      if (checkIconRef.current) checkIconRef.current.style.display = 'block'
+      clearTimeout(copyTimeoutRef.current)
+      copyTimeoutRef.current = setTimeout(() => {
+        if (copyIconRef.current) copyIconRef.current.style.display = 'block'
+        if (checkIconRef.current) checkIconRef.current.style.display = 'none'
+      }, 1500)
+    },
+    [value, format],
+  )
 
   useEffect(() => {
     return () => clearTimeout(copyTimeoutRef.current)
@@ -333,30 +307,32 @@ const CopyableValue: React.FC<{
 
   return (
     <div
-      className={cn("font-bold inline-flex items-center gap-1.5 cursor-pointer relative", sizeClass)}
+      className={cn('font-bold inline-flex items-center gap-1.5 cursor-pointer relative', sizeClass)}
       onMouseEnter={handleEnter}
       onMouseLeave={handleLeave}
       onClick={handleCopy}
       role="button"
       tabIndex={hasCardClick ? -1 : 0}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleCopy(e) } }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          handleCopy(e)
+        }
+      }}
     >
       <span ref={shortRef}>
-        {typeof value === 'number'
-          ? <AnimatedValue value={value} format={format} formatValue={formatValue} staggerIndex={staggerIndex} />
-          : formatValue(value)
-        }
+        {typeof value === 'number' ? (
+          <AnimatedValue value={value} format={format} formatValue={formatValue} staggerIndex={staggerIndex} />
+        ) : (
+          formatValue(value)
+        )}
       </span>
       {truncated && fullText && (
         <span ref={fullRef} style={{ display: 'none', whiteSpace: 'nowrap' }}>
           {fullText}
         </span>
       )}
-      <span
-        ref={iconRef}
-        className="flex-shrink-0"
-        style={{ display: 'none' }}
-      >
+      <span ref={iconRef} className="flex-shrink-0" style={{ display: 'none' }}>
         <Copy ref={copyIconRef} className="w-3.5 h-3.5 text-muted-foreground" />
         <Check ref={checkIconRef} className="w-4 h-4 text-success" style={{ display: 'none' }} />
       </span>

@@ -36,40 +36,32 @@ financial.get('/charges-export', async (c) => {
 		.neq('status', 'canceled')
 		.order('arrival');
 
-	const headers = [
-		'Guest Name',
-		'Property',
-		'Platform',
-		'Arrival',
-		'Departure',
-		'Charge Type',
-		'Description',
-		'Amount',
-		'Is Taxable'
-	];
+	const headers = ['Guest Name', 'Property', 'Platform', 'Arrival', 'Departure', 'Charge Type', 'Description', 'Amount', 'Is Taxable'];
 
 	const rows = (bookings || []).flatMap((booking: any) => {
 		const charges = booking.booking_charges || [];
 		if (charges.length === 0) return [];
 
-		return charges.map((charge: any) => [
-			csvEscape(booking.guest_name || 'Unknown'),
-			csvEscape(booking.properties.name),
-			csvEscape(normalizePlatform(booking.platform)),
-			csvEscape(booking.arrival),
-			csvEscape(booking.departure),
-			csvEscape(charge.type || ''),
-			csvEscape(charge.description || ''),
-			csvEscape(charge.amount ?? 0),
-			csvEscape(charge.is_taxable ? 'Yes' : 'No')
-		].join(','));
+		return charges.map((charge: any) =>
+			[
+				csvEscape(booking.guest_name || 'Unknown'),
+				csvEscape(booking.properties.name),
+				csvEscape(normalizePlatform(booking.platform)),
+				csvEscape(booking.arrival),
+				csvEscape(booking.departure),
+				csvEscape(charge.type || ''),
+				csvEscape(charge.description || ''),
+				csvEscape(charge.amount ?? 0),
+				csvEscape(charge.is_taxable ? 'Yes' : 'No'),
+			].join(','),
+		);
 	});
 
 	const csv = [headers.join(','), ...rows].join('\n');
 
 	return c.text(csv, 200, {
 		'Content-Type': 'text/csv',
-		'Content-Disposition': `attachment; filename="charge-composition-${from}-to-${to}.csv"`
+		'Content-Disposition': `attachment; filename="charge-composition-${from}-to-${to}.csv"`,
 	});
 });
 

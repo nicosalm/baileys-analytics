@@ -1,15 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react'
+import type React from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Calendar, ChevronDown, Check, GitCompare } from 'lucide-react'
-import {
-  formatDateISO,
-  parseDate,
-  format,
-  startOfMonth,
-  startOfYear,
-  subDays,
-  subYears,
-  getYear
-} from '@baileys/utils'
+import { formatDateISO, parseDate, format, startOfMonth, startOfYear, subDays, subYears, getYear } from '@baileys/utils'
 import { cn } from '@/lib/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import { useSeasons, useEarliestBookingDate } from '@/hooks/use-api'
@@ -18,17 +10,8 @@ import { Modal } from './Modal'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import type { Season } from '@/types/season'
-import {
-  calculateComparisonRange,
-  getComparisonLabel,
-  type ComparisonType
-} from '@/utils/comparison'
-import {
-  getCurrentSeasonDates,
-  getPreviousSeasonDates,
-  isCurrentlyInSeason,
-  hasSeasonStartedThisYear
-} from '@/utils/season-dates'
+import { calculateComparisonRange, getComparisonLabel, type ComparisonType } from '@/utils/comparison'
+import { getCurrentSeasonDates, getPreviousSeasonDates, isCurrentlyInSeason, hasSeasonStartedThisYear } from '@/utils/season-dates'
 
 interface DateRange {
   from: string
@@ -49,15 +32,9 @@ type PeriodOption = {
   requiresSeasons?: boolean
 }
 
-
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
-  value,
-  onChange,
-  comparisonRange,
-  className
-}) => {
+export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({ value, onChange, comparisonRange, className }) => {
   const [dateOpen, setDateOpen] = useState(false)
   const [comparisonType, setComparisonType] = useState<ComparisonType>('none')
   const [comparisonYearOffset, setComparisonYearOffset] = useState(1)
@@ -73,7 +50,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
   const { data: seasons = [], isLoading: seasonsLoading } = useSeasons()
   const { data: earliestDate } = useEarliestBookingDate()
-  const activeSeasons = useMemo(() => seasons.filter(s => s.isActive), [seasons])
+  const activeSeasons = useMemo(() => seasons.filter((s) => s.isActive), [seasons])
 
   // close popovers on scroll to prevent overlap with sticky header
   useEffect(() => {
@@ -148,7 +125,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           {
             id: 'last-season',
             label: `${season.name} ${getYear(today) - 1}`,
-            getRange: () => getPreviousSeasonDates(season)
+            getRange: () => getPreviousSeasonDates(season),
           },
           {
             id: 'upcoming-season',
@@ -158,23 +135,23 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
               const seasonEnd = new Date(getYear(today), season.endMonth - 1, season.endDay)
               return {
                 from: formatDateISO(seasonStart),
-                to: formatDateISO(seasonEnd)
+                to: formatDateISO(seasonEnd),
               }
-            }
-          }
+            },
+          },
         )
       } else {
         options.push(
           {
             id: 'current-season',
             label: inSeason ? 'Season to Date' : `${season.name} ${getYear(today)} (Ended)`,
-            getRange: () => getCurrentSeasonDates(season)
+            getRange: () => getCurrentSeasonDates(season),
           },
           {
             id: 'last-season',
             label: `${season.name} ${getYear(today) - 1}`,
-            getRange: () => getPreviousSeasonDates(season)
-          }
+            getRange: () => getPreviousSeasonDates(season),
+          },
         )
       }
     } else {
@@ -184,8 +161,8 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
           label: 'Year to Date',
           getRange: () => ({
             from: formatDateISO(new Date(getYear(today), 0, 1)), // Jan 1st of current year
-            to: formatDateISO(today)
-          })
+            to: formatDateISO(today),
+          }),
         },
         {
           id: 'last-year',
@@ -194,10 +171,10 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             const lastYear = subYears(today, 1)
             return {
               from: formatDateISO(startOfYear(lastYear)),
-              to: formatDateISO(new Date(getYear(lastYear), 11, 31))
+              to: formatDateISO(new Date(getYear(lastYear), 11, 31)),
             }
-          }
-        }
+          },
+        },
       )
     }
 
@@ -207,33 +184,37 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
         label: 'Last 30 Days',
         getRange: () => ({
           from: formatDateISO(subDays(today, 30)),
-          to: formatDateISO(today)
-        })
+          to: formatDateISO(today),
+        }),
       },
       {
         id: 'last-7',
         label: 'Last 7 Days',
         getRange: () => ({
           from: formatDateISO(subDays(today, 7)),
-          to: formatDateISO(today)
-        })
+          to: formatDateISO(today),
+        }),
       },
       {
         id: 'month-to-date',
         label: 'Month to Date',
         getRange: () => ({
           from: formatDateISO(startOfMonth(today)),
-          to: formatDateISO(today)
-        })
+          to: formatDateISO(today),
+        }),
       },
-      ...(earliestDate ? [{
-        id: 'all-time',
-        label: 'All Time',
-        getRange: () => ({
-          from: earliestDate,
-          to: formatDateISO(today)
-        })
-      }] : [])
+      ...(earliestDate
+        ? [
+            {
+              id: 'all-time',
+              label: 'All Time',
+              getRange: () => ({
+                from: earliestDate,
+                to: formatDateISO(today),
+              }),
+            },
+          ]
+        : []),
     )
 
     return options
@@ -266,7 +247,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
     const to = parseDate(value.to)
     const dayCount = Math.floor((to.getTime() - from.getTime()) / MS_PER_DAY) + 1
 
-    const matchedOption = periodOptions.find(opt => {
+    const matchedOption = periodOptions.find((opt) => {
       const range = opt.getRange(activeSeasons)
       const rangeDaysDiff = Math.abs(new Date(range.from).getTime() - new Date(value.from).getTime()) / MS_PER_DAY
       const toRangeDaysDiff = Math.abs(new Date(range.to).getTime() - new Date(value.to).getTime()) / MS_PER_DAY
@@ -299,9 +280,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
     }
     const baseYear = rangeFrom ? getYear(parseDate(rangeFrom)) : getYear(new Date())
     const targetYear = baseYear - offset
-    return activeSeasons.length > 0 && activeSeasons[0]
-      ? `${activeSeasons[0].name} ${targetYear}`
-      : `${targetYear}`
+    return activeSeasons.length > 0 && activeSeasons[0] ? `${activeSeasons[0].name} ${targetYear}` : `${targetYear}`
   }
 
   const seasonStatus = useMemo(() => {
@@ -316,61 +295,67 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
   }, [activeSeasons])
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn('relative', className)}>
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0">
         {/* Main date range selector */}
-        <Popover open={dateOpen} onOpenChange={(open) => {
-          setDateOpen(open)
-          if (open) setCompOpen(false)
-        }}>
+        <Popover
+          open={dateOpen}
+          onOpenChange={(open) => {
+            setDateOpen(open)
+            if (open) setCompOpen(false)
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               className={cn(
-                "flex items-center gap-2 px-3 md:px-4 py-2 min-w-0 cursor-pointer",
-                "hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80",
-                dateOpen && "ring-2 ring-primary border-primary",
-                seasonStatus === 'in-season' && "border-success bg-primary/5",
-                seasonStatus === 'pre-season' && "border-primary bg-primary/5",
-                seasonStatus === 'post-season' && "border-border bg-muted/50"
+                'flex items-center gap-2 px-3 md:px-4 py-2 min-w-0 cursor-pointer',
+                'hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80',
+                dateOpen && 'ring-2 ring-primary border-primary',
+                seasonStatus === 'in-season' && 'border-success bg-primary/5',
+                seasonStatus === 'pre-season' && 'border-primary bg-primary/5',
+                seasonStatus === 'post-season' && 'border-border bg-muted/50',
               )}
             >
-              <Calendar className={cn(
-                "w-4 h-4 flex-shrink-0",
-                seasonStatus === 'in-season' && "text-success",
-                seasonStatus === 'pre-season' && "text-primary",
-                seasonStatus === 'post-season' && "text-muted-foreground",
-                !seasonStatus && "text-muted-foreground"
-              )} />
-              <span className="truncate">
-                {formatRangeDisplay()}
-              </span>
-              <ChevronDown className={cn(
-                "w-4 h-4 text-muted-foreground transition-transform flex-shrink-0",
-                dateOpen && "rotate-180"
-              )} />
+              <Calendar
+                className={cn(
+                  'w-4 h-4 flex-shrink-0',
+                  seasonStatus === 'in-season' && 'text-success',
+                  seasonStatus === 'pre-season' && 'text-primary',
+                  seasonStatus === 'post-season' && 'text-muted-foreground',
+                  !seasonStatus && 'text-muted-foreground',
+                )}
+              />
+              <span className="truncate">{formatRangeDisplay()}</span>
+              <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform flex-shrink-0', dateOpen && 'rotate-180')} />
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="min-w-[280px] p-0">
             {/* Season status indicator */}
             {seasonStatus && activeSeasons.length > 0 && (
-              <div className={cn(
-                "px-3 py-2 border-b",
-                seasonStatus === 'pre-season' && "bg-primary/10",
-                seasonStatus === 'in-season' && "bg-success-subtle",
-                seasonStatus === 'post-season' && "bg-muted/50"
-              )}>
+              <div
+                className={cn(
+                  'px-3 py-2 border-b',
+                  seasonStatus === 'pre-season' && 'bg-primary/10',
+                  seasonStatus === 'in-season' && 'bg-success-subtle',
+                  seasonStatus === 'post-season' && 'bg-muted/50',
+                )}
+              >
                 <div className="flex items-center gap-2">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full",
-                    seasonStatus === 'pre-season' && "bg-primary",
-                    seasonStatus === 'in-season' && "bg-success",
-                    seasonStatus === 'post-season' && "bg-muted-foreground/70"
-                  )} />
+                  <div
+                    className={cn(
+                      'w-2 h-2 rounded-full',
+                      seasonStatus === 'pre-season' && 'bg-primary',
+                      seasonStatus === 'in-season' && 'bg-success',
+                      seasonStatus === 'post-season' && 'bg-muted-foreground/70',
+                    )}
+                  />
                   <span className="text-xs font-medium text-foreground/80">
-                    {seasonStatus === 'pre-season' && `${activeSeasons[0].name} starts ${months[activeSeasons[0].startMonth - 1]} ${activeSeasons[0].startDay}`}
+                    {seasonStatus === 'pre-season' &&
+                      `${activeSeasons[0].name} starts ${months[activeSeasons[0].startMonth - 1]} ${activeSeasons[0].startDay}`}
                     {seasonStatus === 'in-season' && `Currently in ${activeSeasons[0].name}`}
-                    {seasonStatus === 'post-season' && `${activeSeasons[0].name} ended ${months[activeSeasons[0].endMonth - 1]} ${activeSeasons[0].endDay}`}
+                    {seasonStatus === 'post-season' &&
+                      `${activeSeasons[0].name} ended ${months[activeSeasons[0].endMonth - 1]} ${activeSeasons[0].endDay}`}
                   </span>
                 </div>
               </div>
@@ -378,22 +363,19 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
             {/* Period options */}
             <div className="p-2">
-              <div className="text-xs font-medium text-muted-foreground px-2 py-1 uppercase">
-                Quick Periods
-              </div>
-              {periodOptions.map(option => {
+              <div className="text-xs font-medium text-muted-foreground px-2 py-1 uppercase">Quick Periods</div>
+              {periodOptions.map((option) => {
                 const range = option.getRange(activeSeasons)
                 const isSelected = range.from === value.from && range.to === value.to
 
                 return (
                   <button
+                    type="button"
                     key={option.id}
                     onClick={() => handlePeriodSelect(option)}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
-                      isSelected
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-muted text-foreground/80"
+                      'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer',
+                      isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground/80',
                     )}
                   >
                     <span>{option.label}</span>
@@ -404,6 +386,7 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
               <div className="border-t mt-2 pt-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setTempCustomRange(value)
                     setCustomRangeOpen(true)
@@ -419,42 +402,38 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
         </Popover>
 
         {/* Comparison selector */}
-        <Popover open={compOpen} onOpenChange={(open) => {
-          setCompOpen(open)
-          if (open) setDateOpen(false)
-        }}>
+        <Popover
+          open={compOpen}
+          onOpenChange={(open) => {
+            setCompOpen(open)
+            if (open) setDateOpen(false)
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               className={cn(
-                "flex items-center gap-2 px-3 md:px-4 py-2 min-w-0 w-full sm:w-auto cursor-pointer",
-                "hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80",
-                compOpen && "ring-2 ring-primary border-primary",
-                comparisonType !== 'none' && "border-primary bg-primary/5"
+                'flex items-center gap-2 px-3 md:px-4 py-2 min-w-0 w-full sm:w-auto cursor-pointer',
+                'hover:bg-muted/50 transition-all text-sm font-medium text-foreground/80',
+                compOpen && 'ring-2 ring-primary border-primary',
+                comparisonType !== 'none' && 'border-primary bg-primary/5',
               )}
             >
-              <GitCompare className={cn(
-                "w-4 h-4 flex-shrink-0",
-                comparisonType !== 'none' ? "text-primary" : "text-muted-foreground"
-              )} />
+              <GitCompare className={cn('w-4 h-4 flex-shrink-0', comparisonType !== 'none' ? 'text-primary' : 'text-muted-foreground')} />
               <span className="truncate">
                 {getComparisonLabel(comparisonType, activeSeasons.length > 0, {
                   yearOffset: comparisonYearOffset,
                   seasonName: activeSeasons.length > 0 ? activeSeasons[0].name : undefined,
-                  baseYear: value.from ? getYear(parseDate(value.from)) : undefined
+                  baseYear: value.from ? getYear(parseDate(value.from)) : undefined,
                 })}
-                {comparisonRangeLabel && (
-                  <span className="text-muted-foreground/70 font-normal"> ({comparisonRangeLabel})</span>
-                )}
+                {comparisonRangeLabel && <span className="text-muted-foreground/70 font-normal"> ({comparisonRangeLabel})</span>}
               </span>
-              <ChevronDown className={cn(
-                "w-4 h-4 text-muted-foreground transition-transform flex-shrink-0",
-                compOpen && "rotate-180"
-              )} />
+              <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform flex-shrink-0', compOpen && 'rotate-180')} />
             </Button>
           </PopoverTrigger>
           <PopoverContent align="start" className="min-w-[200px] p-1">
             <button
+              type="button"
               onClick={() => {
                 setComparisonType('none')
                 setCompOpen(false)
@@ -463,10 +442,8 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                 }
               }}
               className={cn(
-                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
-                comparisonType === 'none'
-                  ? "bg-primary/10 text-primary"
-                  : "hover:bg-muted text-foreground/80"
+                'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer',
+                comparisonType === 'none' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground/80',
               )}
             >
               <span>No Comparison</span>
@@ -475,13 +452,13 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
             {(() => {
               const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-              const lastPeriodResult = value.from && value.to
-                ? calculateComparisonRange(value, 'lastPeriod', activeSeason)
-                : { isValid: true }
+              const lastPeriodResult =
+                value.from && value.to ? calculateComparisonRange(value, 'lastPeriod', activeSeason) : { isValid: true }
               const isDisabled = !lastPeriodResult.isValid
 
               return (
                 <button
+                  type="button"
                   onClick={() => {
                     if (!isDisabled) {
                       setComparisonType('lastPeriod')
@@ -493,14 +470,14 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   }}
                   disabled={isDisabled}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                    'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between',
                     isDisabled
-                      ? "opacity-50 cursor-not-allowed text-muted-foreground/70"
+                      ? 'opacity-50 cursor-not-allowed text-muted-foreground/70'
                       : comparisonType === 'lastPeriod'
-                        ? "bg-primary/10 text-primary cursor-pointer"
-                        : "hover:bg-muted text-foreground/80 cursor-pointer"
+                        ? 'bg-primary/10 text-primary cursor-pointer'
+                        : 'hover:bg-muted text-foreground/80 cursor-pointer',
                   )}
-                  title={isDisabled ? "No data available in previous period for selected season" : undefined}
+                  title={isDisabled ? 'No data available in previous period for selected season' : undefined}
                 >
                   <span>{activeSeasons.length > 0 ? 'vs Previous Period' : 'vs Last Period'}</span>
                   {comparisonType === 'lastPeriod' && !isDisabled && <Check className="w-4 h-4" />}
@@ -509,21 +486,18 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             })()}
 
             <div className="border-t my-1" />
-            {Array.from({ length: 3 }, (_, i) => i + 1).map(offset => {
+            {Array.from({ length: 3 }, (_, i) => i + 1).map((offset) => {
               const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
-              const result = value.from && value.to
-                ? calculateComparisonRange(value, 'lastYear', activeSeason, offset)
-                : { isValid: true }
+              const result = value.from && value.to ? calculateComparisonRange(value, 'lastYear', activeSeason, offset) : { isValid: true }
               const isDisabled = !result.isValid
               const baseYear = value.from ? getYear(parseDate(value.from)) : getYear(new Date())
               const targetYear = baseYear - offset
-              const label = activeSeason
-                ? `vs ${activeSeason.name} ${targetYear}`
-                : `vs ${targetYear}`
+              const label = activeSeason ? `vs ${activeSeason.name} ${targetYear}` : `vs ${targetYear}`
               const isSelected = comparisonType === 'lastYear' && comparisonYearOffset === offset
 
               return (
                 <button
+                  type="button"
                   key={offset}
                   onClick={() => {
                     if (!isDisabled) {
@@ -537,12 +511,12 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                   }}
                   disabled={isDisabled}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between",
+                    'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between',
                     isDisabled
-                      ? "opacity-50 cursor-not-allowed text-muted-foreground/70"
+                      ? 'opacity-50 cursor-not-allowed text-muted-foreground/70'
                       : isSelected
-                        ? "bg-primary/10 text-primary cursor-pointer"
-                        : "hover:bg-muted text-foreground/80 cursor-pointer"
+                        ? 'bg-primary/10 text-primary cursor-pointer'
+                        : 'hover:bg-muted text-foreground/80 cursor-pointer',
                   )}
                 >
                   <span>{label}</span>
@@ -552,16 +526,15 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
             })}
             <div className="border-t my-1" />
             <button
+              type="button"
               onClick={() => {
                 setTempCustomCompRange(value)
                 setCustomCompRangeOpen(true)
                 setCompOpen(false)
               }}
               className={cn(
-                "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer",
-                comparisonType === 'custom'
-                  ? "bg-primary/10 text-primary"
-                  : "hover:bg-muted text-foreground/80"
+                'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between cursor-pointer',
+                comparisonType === 'custom' ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground/80',
               )}
             >
               <span>Custom Comparison...</span>
@@ -573,22 +546,14 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
       {/* Custom Comparison Range Modal */}
       {customCompRangeOpen && (
-        <Modal
-          isOpen={customCompRangeOpen}
-          onClose={() => setCustomCompRangeOpen(false)}
-          title="Select Comparison Date Range"
-          size="xl"
-        >
+        <Modal isOpen={customCompRangeOpen} onClose={() => setCustomCompRangeOpen(false)} title="Select Comparison Date Range" size="xl">
           <div>
             <p className="text-sm text-muted-foreground mb-4">Choose a date range to compare against your current selection.</p>
-            <InlineDateRangePicker
-              value={tempCustomCompRange}
-              onChange={setTempCustomCompRange}
-              maxDays={1825}
-              className="w-full"
-            />
+            <InlineDateRangePicker value={tempCustomCompRange} onChange={setTempCustomCompRange} maxDays={1825} className="w-full" />
             <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-              <Button variant="ghost" onClick={() => setCustomCompRangeOpen(false)}>Cancel</Button>
+              <Button variant="ghost" onClick={() => setCustomCompRangeOpen(false)}>
+                Cancel
+              </Button>
               <Button
                 onClick={() => {
                   if (tempCustomCompRange.from && tempCustomCompRange.to) {
@@ -611,25 +576,12 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
 
       {/* Custom Range Modal */}
       {customRangeOpen && (
-        <Modal
-          isOpen={customRangeOpen}
-          onClose={() => setCustomRangeOpen(false)}
-          title="Select Custom Date Range"
-          size="xl"
-        >
+        <Modal isOpen={customRangeOpen} onClose={() => setCustomRangeOpen(false)} title="Select Custom Date Range" size="xl">
           <div>
-            <InlineDateRangePicker
-              value={tempCustomRange}
-              onChange={setTempCustomRange}
-              maxDays={1825}
-              className="w-full"
-            />
+            <InlineDateRangePicker value={tempCustomRange} onChange={setTempCustomRange} maxDays={1825} className="w-full" />
 
             <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-              <Button
-                variant="ghost"
-                onClick={() => setCustomRangeOpen(false)}
-              >
+              <Button variant="ghost" onClick={() => setCustomRangeOpen(false)}>
                 Cancel
               </Button>
               <Button
@@ -638,7 +590,9 @@ export const SmartPeriodSelector: React.FC<SmartPeriodSelectorProps> = ({
                     const activeSeason = activeSeasons.length > 0 ? activeSeasons[0] : undefined
                     const offset = comparisonType === 'lastYear' ? comparisonYearOffset : undefined
                     const comparisonResult = calculateComparisonRange(tempCustomRange, comparisonType, activeSeason, offset)
-                    const label = comparisonResult.isValid ? buildComparisonLabel(comparisonType, comparisonYearOffset, tempCustomRange.from) : ''
+                    const label = comparisonResult.isValid
+                      ? buildComparisonLabel(comparisonType, comparisonYearOffset, tempCustomRange.from)
+                      : ''
                     onChange(tempCustomRange, comparisonResult.isValid ? comparisonResult.range : undefined, label)
                     if (!comparisonResult.isValid) {
                       setComparisonType('none')

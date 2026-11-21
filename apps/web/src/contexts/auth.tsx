@@ -1,13 +1,10 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { api } from '@/lib/api'
-import { Session } from '@supabase/supabase-js'
-import { AppUser, MeResponse } from '@/types/auth'
+import type { Session } from '@supabase/supabase-js'
+import type { AppUser, MeResponse } from '@/types/auth'
 
-type AuthState =
-  | { status: 'loading' }
-  | { status: 'unauthenticated' }
-  | { status: 'authenticated'; user: AppUser; session: Session }
+type AuthState = { status: 'loading' } | { status: 'unauthenticated' } | { status: 'authenticated'; user: AppUser; session: Session }
 
 type AuthContextValue = {
   state: AuthState
@@ -28,7 +25,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 const isOAuthUser = (identities?: { provider: string }[]): boolean => {
-  return identities?.some(id => ['google', 'azure'].includes(id.provider)) ?? false
+  return identities?.some((id) => ['google', 'azure'].includes(id.provider)) ?? false
 }
 
 export const useAuth = () => {
@@ -36,7 +33,6 @@ export const useAuth = () => {
   if (!context) throw new Error('useAuth must be used within AuthProvider')
   return context
 }
-
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
@@ -70,7 +66,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // check if session is about to expire or already expired
     if (isSessionExpired(session)) {
       // trigger a refresh instead of processing stale session
-      const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
+      const {
+        data: { session: refreshedSession },
+      } = await supabase.auth.refreshSession()
       if (!refreshedSession) {
         api.setAccessToken(null)
         setState({ status: 'unauthenticated' })
@@ -100,7 +98,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const me = await Promise.race([
       api.request<MeResponse>('/auth/me'),
-      new Promise<null>(resolve => setTimeout(() => resolve(null), 10000)),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
     ])
     const profile = me?.success ? me.data : null
 
@@ -116,7 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setState({
       status: 'authenticated',
       user: appUser,
-      session
+      session,
     })
 
     return true
@@ -150,7 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?type=signup`,
-        }
+        },
       })
 
       if (error) {
@@ -241,18 +239,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Verify user is authenticated via server-side check (getUser validates the JWT
       // against the Auth server, unlike getSession which only reads local storage)
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
       if (userError || !user) {
         return false
       }
 
       // Add timeout to prevent indefinite hanging
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Password update timeout')), 15000)
-      )
+      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Password update timeout')), 15000))
 
       const updatePromise = supabase.auth.updateUser({
-        password: newPassword
+        password: newPassword,
       })
 
       const { error } = await Promise.race([updatePromise, timeoutPromise])
@@ -270,7 +269,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const updateEmail = async (newEmail: string): Promise<boolean> => {
     try {
       // Verify user is authenticated via server-side check
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
       if (userError || !user) {
         return false
       }
@@ -283,10 +285,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return timeoutId
       })
 
-      const updatePromise = supabase.auth.updateUser(
-        { email: newEmail },
-        { emailRedirectTo: `${window.location.origin}/auth/callback` }
-      )
+      const updatePromise = supabase.auth.updateUser({ email: newEmail }, { emailRedirectTo: `${window.location.origin}/auth/callback` })
 
       const result = await Promise.race([updatePromise, timeoutPromise])
 
@@ -301,14 +300,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   const setCompanyName = useCallback((name: string | null) => {
-    setState(prevState => {
+    setState((prevState) => {
       if (prevState.status === 'authenticated') {
         return {
           ...prevState,
           user: {
             ...prevState.user,
-            companyName: name
-          }
+            companyName: name,
+          },
         }
       }
       return prevState
@@ -318,14 +317,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // directly update hasOwnerRezConnection state after oauth success
   // this avoids race conditions from polling the database
   const setOwnerRezConnected = useCallback(() => {
-    setState(prevState => {
+    setState((prevState) => {
       if (prevState.status === 'authenticated') {
         return {
           ...prevState,
           user: {
             ...prevState.user,
-            hasOwnerRezConnection: true
-          }
+            hasOwnerRezConnection: true,
+          },
         }
       }
       return prevState
@@ -341,7 +340,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     refreshPromiseRef.current = (async () => {
       try {
         // verify the user is actually authenticated via server-side check
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser()
 
         if (userError || !user) {
           api.setAccessToken(null)
@@ -350,7 +352,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
 
         // user is valid — refresh the session to get fresh tokens
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        const {
+          data: { session: refreshedSession },
+          error: refreshError,
+        } = await supabase.auth.refreshSession()
 
         if (!refreshError && refreshedSession) {
           await processSession(refreshedSession)
@@ -378,7 +383,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isInitializedRef.current = true
 
     // set up auth state change listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       // handle different auth events — avoid async work directly in this callback
       // per Supabase docs (risk of deadlocks). Use setTimeout to defer instead.
       switch (event) {
@@ -402,11 +409,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (session) {
             // update token without full reprocessing
             api.setAccessToken(session.access_token)
-            setState(prevState => {
+            setState((prevState) => {
               if (prevState.status === 'authenticated') {
                 return {
                   ...prevState,
-                  session
+                  session,
                 }
               }
               return prevState
@@ -441,7 +448,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []) // removed processSession from deps to prevent re-runs
 
   return (
-    <AuthContext.Provider value={{ state, login, signup, signInWithGoogle, signInWithMicrosoft, signInAsDemo, logout, resetPassword, updatePassword, updateEmail, refreshUser, setOwnerRezConnected, setCompanyName }}>
+    <AuthContext.Provider
+      value={{
+        state,
+        login,
+        signup,
+        signInWithGoogle,
+        signInWithMicrosoft,
+        signInAsDemo,
+        logout,
+        resetPassword,
+        updatePassword,
+        updateEmail,
+        refreshUser,
+        setOwnerRezConnected,
+        setCompanyName,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

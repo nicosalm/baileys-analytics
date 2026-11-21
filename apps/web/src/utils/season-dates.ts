@@ -30,7 +30,7 @@ export const getCurrentSeasonDates = (season: Season, year: number = getYear(new
 
   return {
     from: formatDateISO(startDate),
-    to: formatDateISO(cappedEndDate)
+    to: formatDateISO(cappedEndDate),
   }
 }
 
@@ -51,8 +51,10 @@ export const isCurrentlyInSeason = (season: Season): boolean => {
     )
   } else {
     return (
-      (currentMonth > season.startMonth || (currentMonth === season.startMonth && currentDay >= season.startDay)) ||
-      (currentMonth < season.endMonth || (currentMonth === season.endMonth && currentDay <= season.endDay))
+      currentMonth > season.startMonth ||
+      (currentMonth === season.startMonth && currentDay >= season.startDay) ||
+      currentMonth < season.endMonth ||
+      (currentMonth === season.endMonth && currentDay <= season.endDay)
     )
   }
 }

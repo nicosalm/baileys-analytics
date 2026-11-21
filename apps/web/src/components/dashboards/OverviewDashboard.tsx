@@ -3,19 +3,59 @@ import { useDashboardBatch, useGoalProgress, useSeasons, usePacing } from '@/hoo
 import type { PacingMonthSummary } from '@/hooks/use-api'
 import { useTips } from '@/hooks/use-tips'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
-import { formatCurrency, formatCompactCurrency, formatPercentage, formatDateDisplay, formatDateISO, subDays, startOfYear, endOfYear, subYears } from '@baileys/utils'
 import {
-  TrendingUp, TrendingDown,
-  DollarSign, Users, Calendar, Clock,
-  BarChart3, Info, Percent, Layers, Target, Settings, AlertCircle, ExternalLink, Wallet,
-  LogIn, LogOut, BedDouble, Sparkles, Ban, Activity
+  formatCurrency,
+  formatCompactCurrency,
+  formatPercentage,
+  formatDateDisplay,
+  formatDateISO,
+  subDays,
+  startOfYear,
+  endOfYear,
+  subYears,
+} from '@baileys/utils'
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Users,
+  Calendar,
+  Clock,
+  BarChart3,
+  Info,
+  Percent,
+  Layers,
+  Target,
+  Settings,
+  AlertCircle,
+  ExternalLink,
+  Wallet,
+  LogIn,
+  LogOut,
+  BedDouble,
+  Sparkles,
+  Ban,
+  Activity,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
 import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { PieChart, Pie, Cell, Label, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, ReferenceLine, ResponsiveContainer } from 'recharts'
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Label,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  AreaChart,
+  Area,
+  ReferenceLine,
+  ResponsiveContainer,
+} from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import { useDashboard } from '@/contexts/dashboard'
 import { useModal } from '@/contexts/modal'
@@ -105,10 +145,14 @@ const GOAL_METRIC_CONFIG: Record<string, { label: string; icon: LucideIcon; form
 
 const formatGoalValue = (value: number, format: string) => {
   switch (format) {
-    case 'currency': return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-    case 'percent': return `${value.toFixed(1)}%`
-    case 'nights': return `${value.toFixed(1)}`
-    default: return String(Math.round(value))
+    case 'currency':
+      return `$${value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    case 'percent':
+      return `${value.toFixed(1)}%`
+    case 'nights':
+      return `${value.toFixed(1)}`
+    default:
+      return String(Math.round(value))
   }
 }
 
@@ -126,7 +170,7 @@ const getProgressBgColor = (pct: number) => {
 
 // extracted tooltip component to module scope
 const BookingSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     const data = payload[0].payload
     const total = payload[0].payload?.totalBookings || 0
     const percent = total > 0 ? ((data.count / total) * 100).toFixed(1) : '0.0'
@@ -156,21 +200,24 @@ const BookingSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<n
 }
 
 const RevenueChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     const total = payload.reduce((sum, entry) => sum + (entry.value || 0), 0)
     return (
       <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{label}</p>
         <div className="space-y-1 text-xs">
-          {payload.slice().reverse().map((entry, index) => (
-            <div key={index} className="flex justify-between gap-4">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
-                <span className="text-muted-foreground">{entry.name}:</span>
+          {payload
+            .slice()
+            .reverse()
+            .map((entry, index) => (
+              <div key={index} className="flex justify-between gap-4">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
+                  <span className="text-muted-foreground">{entry.name}:</span>
+                </div>
+                <span className="font-medium">{formatCompactCurrency(entry.value || 0)}</span>
               </div>
-              <span className="font-medium">{formatCompactCurrency(entry.value || 0)}</span>
-            </div>
-          ))}
+            ))}
           <div className="pt-1 mt-1 border-t border-border">
             <div className="flex justify-between gap-4 font-semibold">
               <span>Total:</span>
@@ -184,29 +231,23 @@ const RevenueChartTooltip = ({ active, payload, label }: Partial<TooltipContentP
   return null
 }
 
-
-function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: {
-  tagIds?: string[]
-  propertyIds?: string[]
-  onNavigate: () => void
-}) {
+function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: { tagIds?: string[]; propertyIds?: string[]; onNavigate: () => void }) {
   const { data } = usePacing(tagIds, propertyIds)
 
   if (!data?.months?.length) return null
 
   // hide the summary card entirely if there's no prior-year baseline to compare against
-  const hasPriorYearData = data.months.some(
-    m => m.priorFinal.bookedNights > 0 || m.priorAtThisPoint.bookedNights > 0
-  )
+  const hasPriorYearData = data.months.some((m) => m.priorFinal.bookedNights > 0 || m.priorAtThisPoint.bookedNights > 0)
   if (!hasPriorYearData) return null
 
-  const aheadCount = data.months.filter(m => m.paceDelta > 1).length
-  const behindCount = data.months.filter(m => m.paceDelta < -1).length
+  const aheadCount = data.months.filter((m) => m.paceDelta > 1).length
+  const behindCount = data.months.filter((m) => m.paceDelta < -1).length
 
   // pick the most notable month to headline
-  const notable = behindCount > 0
-    ? data.months.reduce((a: PacingMonthSummary, b: PacingMonthSummary) => a.paceDelta < b.paceDelta ? a : b)
-    : data.months.reduce((a: PacingMonthSummary, b: PacingMonthSummary) => a.paceDelta > b.paceDelta ? a : b)
+  const notable =
+    behindCount > 0
+      ? data.months.reduce((a: PacingMonthSummary, b: PacingMonthSummary) => (a.paceDelta < b.paceDelta ? a : b))
+      : data.months.reduce((a: PacingMonthSummary, b: PacingMonthSummary) => (a.paceDelta > b.paceDelta ? a : b))
 
   const absDelta = Math.abs(notable.paceDelta)
   let headline: string
@@ -224,8 +265,7 @@ function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: {
 
   const notableAdr = notable.current.adr
   const notablePriorAdr = notable.priorAtThisPoint.adr
-  const adrChange = notablePriorAdr > 0
-    ? ((notableAdr - notablePriorAdr) / notablePriorAdr) * 100 : 0
+  const adrChange = notablePriorAdr > 0 ? ((notableAdr - notablePriorAdr) / notablePriorAdr) * 100 : 0
 
   const parts: string[] = []
   if (aheadCount > 0) parts.push(`${aheadCount} ahead`)
@@ -239,6 +279,7 @@ function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: {
 
   return (
     <button
+      type="button"
       onClick={onNavigate}
       className="w-full bg-card p-4 rounded-lg shadow-sm border border-border hover:shadow-md hover:bg-muted/30 transition-all duration-200 cursor-pointer text-left"
     >
@@ -251,19 +292,24 @@ function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: {
           </div>
         </div>
         <div className="flex items-center gap-2.5">
-          {data.months.map(m => (
-            <div key={m.month} className="flex flex-col items-center gap-0.5"
+          {data.months.map((m) => (
+            <div
+              key={m.month}
+              className="flex flex-col items-center gap-0.5"
               title={`${m.label}: ${m.paceDelta > 0 ? '+' : ''}${m.paceDelta.toFixed(1)} pts`}
             >
-              <div className={`w-2.5 h-2.5 rounded-full ${
-                m.paceDelta > 2 ? 'bg-success'
-                  : m.paceDelta < -5 ? 'bg-danger'
-                  : m.paceDelta < -1 ? 'bg-warning'
-                  : 'bg-muted-foreground/40'
-              }`} />
-              <span className="text-[9px] leading-none text-muted-foreground">
-                {m.label.slice(0, 3)}
-              </span>
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${
+                  m.paceDelta > 2
+                    ? 'bg-success'
+                    : m.paceDelta < -5
+                      ? 'bg-danger'
+                      : m.paceDelta < -1
+                        ? 'bg-warning'
+                        : 'bg-muted-foreground/40'
+                }`}
+              />
+              <span className="text-[9px] leading-none text-muted-foreground">{m.label.slice(0, 3)}</span>
             </div>
           ))}
         </div>
@@ -282,25 +328,29 @@ export const OverviewDashboard = () => {
   const navigate = useNavigate()
 
   const { data: seasons = [] } = useSeasons()
-  const hasActiveSeasons = seasons.some(s => s.isActive)
+  const hasActiveSeasons = seasons.some((s) => s.isActive)
 
-  const handleMetricCardClick = useCallback((tab: string) => {
-    const currentParams = new URLSearchParams(window.location.search)
-    const newPath = `/dashboard/${tab}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
-    navigate(newPath)
-  }, [navigate])
+  const handleMetricCardClick = useCallback(
+    (tab: string) => {
+      const currentParams = new URLSearchParams(window.location.search)
+      const newPath = `/dashboard/${tab}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
+      navigate(newPath)
+    },
+    [navigate],
+  )
 
-  const handleActivityClick = useCallback((activity: RecentActivity) => {
-    if (activity.type === 'booking' && (activity.ownerrezGuestId || activity.guestName)) {
-      openModal({
-        type: 'guest',
-        guestId: activity.ownerrezGuestId
-          ? `or_${activity.ownerrezGuestId}`
-          : `name_${activity.guestName!.toLowerCase().trim()}`,
-        guestName: activity.guestName || 'Unknown',
-      })
-    }
-  }, [openModal])
+  const handleActivityClick = useCallback(
+    (activity: RecentActivity) => {
+      if (activity.type === 'booking' && (activity.ownerrezGuestId || activity.guestName)) {
+        openModal({
+          type: 'guest',
+          guestId: activity.ownerrezGuestId ? `or_${activity.ownerrezGuestId}` : `name_${activity.guestName!.toLowerCase().trim()}`,
+          guestName: activity.guestName || 'Unknown',
+        })
+      }
+    },
+    [openModal],
+  )
 
   const { data: goalProgressData } = useGoalProgress()
   const revenueGoal = getMonthlyGoalValue(goalProgressData, 'revenue')
@@ -313,7 +363,7 @@ export const OverviewDashboard = () => {
     tagIds,
     comparisonRange?.from,
     comparisonRange?.to,
-    propertyIds
+    propertyIds,
   )
 
   useErrorToast(error, 'Failed to load overview data')
@@ -321,16 +371,14 @@ export const OverviewDashboard = () => {
   const charts = data?.charts
   const metrics = data?.metrics
 
-  const showEmptyNudge = metrics &&
-    Number(metrics.revenue.current) === 0 &&
-    metrics.bookings.current === 0
+  const showEmptyNudge = metrics && Number(metrics.revenue.current) === 0 && metrics.bookings.current === 0
 
   const handleViewLastYear = useCallback(() => {
     const today = new Date()
     const lastYear = subYears(today, 1)
     updateDateRange({
       from: formatDateISO(startOfYear(lastYear)),
-      to: formatDateISO(endOfYear(lastYear))
+      to: formatDateISO(endOfYear(lastYear)),
     })
   }, [updateDateRange])
 
@@ -338,7 +386,7 @@ export const OverviewDashboard = () => {
     const today = new Date()
     updateDateRange({
       from: formatDateISO(subDays(today, 365)),
-      to: formatDateISO(today)
+      to: formatDateISO(today),
     })
   }, [updateDateRange])
 
@@ -350,11 +398,13 @@ export const OverviewDashboard = () => {
     const sources: BookingSourceItem[] = charts?.bookingsBySource || []
     const totalBookings = sources.reduce((sum: number, item: BookingSourceItem) => sum + Number(item.count), 0)
     return sources
-      .map((item: BookingSourceItem): BookingSourceChartItem => ({
-        ...item,
-        count: Number(item.count),
-        totalBookings
-      }))
+      .map(
+        (item: BookingSourceItem): BookingSourceChartItem => ({
+          ...item,
+          count: Number(item.count),
+          totalBookings,
+        }),
+      )
       .sort((a: BookingSourceChartItem, b: BookingSourceChartItem) => b.count - a.count)
   }, [charts?.bookingsBySource])
 
@@ -365,9 +415,7 @@ export const OverviewDashboard = () => {
     const topRevenue = allSortedProps[0]?.revenue || 0
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
 
-    const significantProps = allSortedProps
-      .filter((p: TopProperty) => p.revenue >= revenueThreshold)
-      .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+    const significantProps = allSortedProps.filter((p: TopProperty) => p.revenue >= revenueThreshold).slice(0, MAX_INDIVIDUAL_PROPERTIES)
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
     const topPropsIndexMap = new Map<string, number>(topProps.map((p: TopProperty, i: number) => [p.name, i]))
@@ -384,9 +432,15 @@ export const OverviewDashboard = () => {
         dataByDate[dateKey] = {
           date: dateKey,
           displayDate: item.day || item.date || item.month || '',
-          prop1: 0, prop2: 0, prop3: 0, prop4: 0,
-          prop5: 0, prop6: 0, prop7: 0, prop8: 0,
-          other: 0
+          prop1: 0,
+          prop2: 0,
+          prop3: 0,
+          prop4: 0,
+          prop5: 0,
+          prop6: 0,
+          prop7: 0,
+          prop8: 0,
+          other: 0,
         }
       }
       dataByDate[dateKey].totalRevenue = (Number(dataByDate[dateKey].totalRevenue) || 0) + (item.revenue || 0)
@@ -397,8 +451,9 @@ export const OverviewDashboard = () => {
     const allPropsRevenue = allSortedProps.reduce((sum: number, p: TopProperty) => sum + (p.revenue || 0), 0)
     const hasMoreProperties = totalPropertyCount > topProps.length || allSortedProps.length > topProps.length
 
-    const hasPropertyData = charts.revenueLastWeek.some((item: RevenueLastWeekItem) =>
-      item.propertyName || item.property || item.propertyId || item.name)
+    const hasPropertyData = charts.revenueLastWeek.some(
+      (item: RevenueLastWeekItem) => item.propertyName || item.property || item.propertyId || item.name,
+    )
 
     if (hasPropertyData) {
       charts.revenueLastWeek.forEach((item: RevenueLastWeekItem) => {
@@ -409,9 +464,15 @@ export const OverviewDashboard = () => {
           dataByDate[dateKey] = {
             date: dateKey,
             displayDate: item.day || item.date || item.month || '',
-            prop1: 0, prop2: 0, prop3: 0, prop4: 0,
-            prop5: 0, prop6: 0, prop7: 0, prop8: 0,
-            other: 0
+            prop1: 0,
+            prop2: 0,
+            prop3: 0,
+            prop4: 0,
+            prop5: 0,
+            prop6: 0,
+            prop7: 0,
+            prop8: 0,
+            other: 0,
           }
         }
 
@@ -423,7 +484,7 @@ export const OverviewDashboard = () => {
         }
       })
     } else {
-      Object.keys(dataByDate).forEach(dateKey => {
+      Object.keys(dataByDate).forEach((dateKey) => {
         const periodRevenue = Number(dataByDate[dateKey].totalRevenue) || 0
 
         if (topPropsRevenue > 0) {
@@ -468,9 +529,11 @@ export const OverviewDashboard = () => {
       .map((item: Record<string, number | string>) => {
         const { date, displayDate, totalRevenue, ...properties } = item
         return {
-          week: String(displayDate || date).replace(' 2025', '').replace('2025-', ''),
+          week: String(displayDate || date)
+            .replace(' 2025', '')
+            .replace('2025-', ''),
           fullDate: String(date),
-          ...properties
+          ...properties,
         }
       })
   }, [charts?.topProperties, charts?.revenueLastWeek, metrics?.properties?.total, resolvedTheme])
@@ -480,28 +543,29 @@ export const OverviewDashboard = () => {
     return detectGranularity(charts.revenueLastWeek, 'date')
   }, [charts?.revenueLastWeek])
 
-  const handleRevenueChartClick = useCallback((data: { activeLabel?: string | number }) => {
-    if (!data?.activeLabel) return
-    const clicked = revenueChartData.find(
-      (d: Record<string, string | number>) => d.week === data.activeLabel
-    )
-    if (!clicked) return
+  const handleRevenueChartClick = useCallback(
+    (data: { activeLabel?: string | number }) => {
+      if (!data?.activeLabel) return
+      const clicked = revenueChartData.find((d: Record<string, string | number>) => d.week === data.activeLabel)
+      if (!clicked) return
 
-    const rawDate = String(clicked.fullDate)
-    let granularity: 'daily' | 'weekly' | 'monthly' = 'monthly'
-    if (revenueGranularity === 'Daily') granularity = 'daily'
-    else if (revenueGranularity === 'Weekly') granularity = 'weekly'
+      const rawDate = String(clicked.fullDate)
+      let granularity: 'daily' | 'weekly' | 'monthly' = 'monthly'
+      if (revenueGranularity === 'Daily') granularity = 'daily'
+      else if (revenueGranularity === 'Weekly') granularity = 'weekly'
 
-    const [year, month, day] = rawDate.split('-')
-    openModal({
-      type: 'period',
-      month,
-      year,
-      day,
-      originalDate: rawDate,
-      granularity
-    })
-  }, [revenueChartData, revenueGranularity, openModal])
+      const [year, month, day] = rawDate.split('-')
+      openModal({
+        type: 'period',
+        month,
+        year,
+        day,
+        originalDate: rawDate,
+        granularity,
+      })
+    },
+    [revenueChartData, revenueGranularity, openModal],
+  )
 
   const revenueChartAreas = useMemo(() => {
     if (!charts?.topProperties) return []
@@ -510,9 +574,7 @@ export const OverviewDashboard = () => {
     const topRevenue = allSortedProps[0]?.revenue || 0
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
 
-    const significantProps = allSortedProps
-      .filter((p: TopProperty) => p.revenue >= revenueThreshold)
-      .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+    const significantProps = allSortedProps.filter((p: TopProperty) => p.revenue >= revenueThreshold).slice(0, MAX_INDIVIDUAL_PROPERTIES)
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
     const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
@@ -533,7 +595,7 @@ export const OverviewDashboard = () => {
             fill={colors[i]}
             fillOpacity={0.6}
             name={topProps[i].code || topProps[i].name || `Property ${i + 1}`}
-          />
+          />,
         )
       }
     }
@@ -550,7 +612,7 @@ export const OverviewDashboard = () => {
           fill={otherColor}
           fillOpacity={0.6}
           name={`Other (${otherCount} properties)`}
-        />
+        />,
       )
     }
 
@@ -564,9 +626,7 @@ export const OverviewDashboard = () => {
     const topRevenue = allSortedProps[0]?.revenue || 0
     const revenueThreshold = topRevenue * REVENUE_THRESHOLD_RATIO
 
-    const significantProps = allSortedProps
-      .filter((p: TopProperty) => p.revenue >= revenueThreshold)
-      .slice(0, MAX_INDIVIDUAL_PROPERTIES)
+    const significantProps = allSortedProps.filter((p: TopProperty) => p.revenue >= revenueThreshold).slice(0, MAX_INDIVIDUAL_PROPERTIES)
 
     const topProps = significantProps.length > 0 ? significantProps : allSortedProps.slice(0, 5)
     const totalPropertyCount = metrics?.properties?.total || charts.topProperties?.length || 0
@@ -574,14 +634,14 @@ export const OverviewDashboard = () => {
 
     const items = topProps.slice(0, MAX_INDIVIDUAL_PROPERTIES).map((p: TopProperty, i: number) => ({
       name: p.code || p.name || `Property ${i + 1}`,
-      color: colors[i]
+      color: colors[i],
     }))
 
     const otherCount = Math.max(0, totalPropertyCount - topProps.length)
     if (otherCount > 0) {
       items.push({
         name: `Other (${otherCount})`,
-        color: CHART_INFRA.reference
+        color: CHART_INFRA.reference,
       })
     }
 
@@ -591,7 +651,7 @@ export const OverviewDashboard = () => {
   const enabledGoals = useMemo(() => {
     if (!goalProgressData) return []
     return goalProgressData
-      .map(g => {
+      .map((g) => {
         const config = GOAL_METRIC_CONFIG[g.metricKey]
         if (!config) return null
         return {
@@ -603,7 +663,14 @@ export const OverviewDashboard = () => {
           config,
         }
       })
-      .filter(Boolean) as Array<{ metricKey: string; current: number; target: number; pct: number; periodLabel: string; config: typeof GOAL_METRIC_CONFIG[string] }>
+      .filter(Boolean) as Array<{
+      metricKey: string
+      current: number
+      target: number
+      pct: number
+      periodLabel: string
+      config: (typeof GOAL_METRIC_CONFIG)[string]
+    }>
   }, [goalProgressData])
 
   if (isLoading || error || !data) {
@@ -625,7 +692,7 @@ export const OverviewDashboard = () => {
 
   const { recentActivity } = data
 
-  const actualUpcoming = parseInt(metrics.bookings.upcoming) || 0
+  const actualUpcoming = parseInt(metrics.bookings.upcoming, 10) || 0
 
   return (
     <div className="space-y-6">
@@ -634,9 +701,14 @@ export const OverviewDashboard = () => {
           <h2 className="text-lg font-semibold text-foreground">Your Business at a Glance</h2>
           <p className="text-muted-foreground text-sm mt-1">
             {filters.selectedTags.length > 0
-              ? `Filtered: ${filters.selectedTags.map(t => t.name).filter(Boolean).join(', ') || 'Selected tags'}`
-              : 'All Properties'
-            } · How your properties are performing right now
+              ? `Filtered: ${
+                  filters.selectedTags
+                    .map((t) => t.name)
+                    .filter(Boolean)
+                    .join(', ') || 'Selected tags'
+                }`
+              : 'All Properties'}{' '}
+            · How your properties are performing right now
           </p>
         </div>
       </div>
@@ -658,8 +730,7 @@ export const OverviewDashboard = () => {
             <AlertCircle className="w-5 h-5 text-warning mr-2 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm text-warning-fg">
-                <strong>No data in this date range.</strong>{' '}
-                Your bookings may fall outside the current period. Try a different range.
+                <strong>No data in this date range.</strong> Your bookings may fall outside the current period. Try a different range.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
                 <Button
@@ -707,33 +778,57 @@ export const OverviewDashboard = () => {
           format="currency"
           tooltip="Nightly revenue for stays in this range. Stays that cross the boundary split by night."
           staggerIndex={0}
-          subValue={comparisonMode !== 'none' && metrics.revenue.previous !== undefined
-            ? <>vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : metrics.revenue.operatingExpenses > 0
-              ? `Profit: ${formatCompactCurrency(metrics.revenue.operatingProfit)} | Host fees + Expenses: ${formatCompactCurrency(metrics.revenue.platformFees + metrics.revenue.operatingExpenses)}`
-              : `After host fees: ${formatCompactCurrency(metrics.revenue.net)}`
+          subValue={
+            comparisonMode !== 'none' && metrics.revenue.previous !== undefined ? (
+              <>
+                vs {comparisonLabel}: {formatCurrency(metrics.revenue.previous)}
+                {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+              </>
+            ) : metrics.revenue.operatingExpenses > 0 ? (
+              `Profit: ${formatCompactCurrency(metrics.revenue.operatingProfit)} | Host fees + Expenses: ${formatCompactCurrency(metrics.revenue.platformFees + metrics.revenue.operatingExpenses)}`
+            ) : (
+              `After host fees: ${formatCompactCurrency(metrics.revenue.net)}`
+            )
           }
-          trend={comparisonMode !== 'none' && metrics.revenue.growth !== undefined ? {
-            value: metrics.revenue.growth,
-            isPositive: metrics.revenue.growth > 0
-          } : undefined}
+          trend={
+            comparisonMode !== 'none' && metrics.revenue.growth !== undefined
+              ? {
+                  value: metrics.revenue.growth,
+                  isPositive: metrics.revenue.growth > 0,
+                }
+              : undefined
+          }
           color="green"
           gauge={{
             enabled: true,
             min: 0,
-            max: comparisonMode !== 'none' && metrics.revenue.previous ?
-              Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5 :
-              Math.max(metrics.revenue.current * 2, 1000),
-            segments: comparisonMode !== 'none' && metrics.revenue.previous ? [
-              { threshold: metrics.revenue.previous * 0.8 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: resolveToken('--danger'),  label: 'Below' },
-              { threshold: metrics.revenue.previous * 1.0 / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5) * 100, color: resolveToken('--warning'), label: 'Target' },
-              { threshold: 100, color: resolveToken('--success'), label: 'Above' }
-            ] : [
-              { threshold: 30,  color: resolveToken('--danger'),  label: 'Low' },
-              { threshold: 60,  color: resolveToken('--warning'), label: 'Medium' },
-              { threshold: 100, color: resolveToken('--success'), label: 'High' }
-            ],
-            target: metrics.revenue.previous
+            max:
+              comparisonMode !== 'none' && metrics.revenue.previous
+                ? Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5
+                : Math.max(metrics.revenue.current * 2, 1000),
+            segments:
+              comparisonMode !== 'none' && metrics.revenue.previous
+                ? [
+                    {
+                      threshold:
+                        ((metrics.revenue.previous * 0.8) / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5)) * 100,
+                      color: resolveToken('--danger'),
+                      label: 'Below',
+                    },
+                    {
+                      threshold:
+                        ((metrics.revenue.previous * 1.0) / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5)) * 100,
+                      color: resolveToken('--warning'),
+                      label: 'Target',
+                    },
+                    { threshold: 100, color: resolveToken('--success'), label: 'Above' },
+                  ]
+                : [
+                    { threshold: 30, color: resolveToken('--danger'), label: 'Low' },
+                    { threshold: 60, color: resolveToken('--warning'), label: 'Medium' },
+                    { threshold: 100, color: resolveToken('--success'), label: 'High' },
+                  ],
+            target: metrics.revenue.previous,
           }}
           comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('financial')}
@@ -745,31 +840,55 @@ export const OverviewDashboard = () => {
           format="number"
           tooltip="Confirmed reservations in this period"
           staggerIndex={1}
-          subValue={comparisonMode !== 'none' && metrics.bookings.previous !== undefined
-            ? <>vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
+          subValue={
+            comparisonMode !== 'none' && metrics.bookings.previous !== undefined ? (
+              <>
+                vs {comparisonLabel}: {metrics.bookings.previous} | {actualUpcoming} upcoming
+                {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+              </>
+            ) : (
+              `${actualUpcoming} coming up | ${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights average`
+            )
           }
-          trend={comparisonMode !== 'none' && metrics.bookings.previous !== undefined ? {
-            value: ((metrics.bookings.current - metrics.bookings.previous) / (metrics.bookings.previous || 1)) * 100,
-            isPositive: metrics.bookings.current > metrics.bookings.previous
-          } : undefined}
+          trend={
+            comparisonMode !== 'none' && metrics.bookings.previous !== undefined
+              ? {
+                  value: ((metrics.bookings.current - metrics.bookings.previous) / (metrics.bookings.previous || 1)) * 100,
+                  isPositive: metrics.bookings.current > metrics.bookings.previous,
+                }
+              : undefined
+          }
           color="blue"
           gauge={{
             enabled: true,
             min: 0,
-            max: comparisonMode !== 'none' && metrics.bookings.previous ?
-              Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5 :
-              Math.max(metrics.bookings.current * 2, 10),
-            segments: comparisonMode !== 'none' && metrics.bookings.previous ? [
-              { threshold: metrics.bookings.previous * 0.8 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: resolveToken('--danger'), label: 'Below' },
-              { threshold: metrics.bookings.previous * 1.0 / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5) * 100, color: resolveToken('--warning'), label: 'Target' },
-              { threshold: 100, color: resolveToken('--success'), label: 'Above' }
-            ] : [
-              { threshold: 30,  color: resolveToken('--danger'),  label: 'Low' },
-              { threshold: 60,  color: resolveToken('--warning'), label: 'Medium' },
-              { threshold: 100, color: resolveToken('--success'), label: 'High' }
-            ],
-            target: metrics.bookings.previous
+            max:
+              comparisonMode !== 'none' && metrics.bookings.previous
+                ? Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5
+                : Math.max(metrics.bookings.current * 2, 10),
+            segments:
+              comparisonMode !== 'none' && metrics.bookings.previous
+                ? [
+                    {
+                      threshold:
+                        ((metrics.bookings.previous * 0.8) / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5)) * 100,
+                      color: resolveToken('--danger'),
+                      label: 'Below',
+                    },
+                    {
+                      threshold:
+                        ((metrics.bookings.previous * 1.0) / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5)) * 100,
+                      color: resolveToken('--warning'),
+                      label: 'Target',
+                    },
+                    { threshold: 100, color: resolveToken('--success'), label: 'Above' },
+                  ]
+                : [
+                    { threshold: 30, color: resolveToken('--danger'), label: 'Low' },
+                    { threshold: 60, color: resolveToken('--warning'), label: 'Medium' },
+                    { threshold: 100, color: resolveToken('--success'), label: 'High' },
+                  ],
+            target: metrics.bookings.previous,
           }}
           comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('properties')}
@@ -781,25 +900,36 @@ export const OverviewDashboard = () => {
           format="percent"
           tooltip="Booked nights ÷ sellable nights in this range. Owner blocks (maintenance, personal stays) are excluded from the denominator."
           staggerIndex={2}
-          subValue={comparisonMode !== 'none' && metrics.occupancy.previous !== undefined
-            ? <>vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties{metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average${metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}`
+          subValue={
+            comparisonMode !== 'none' && metrics.occupancy.previous !== undefined ? (
+              <>
+                vs {comparisonLabel}: {formatPercentage(Number(metrics.occupancy.previous), 1)} | {metrics.properties.total} properties
+                {metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}
+                {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+              </>
+            ) : (
+              `${metrics.properties.total} properties | ${formatPercentage(Number(metrics.occupancy.avgPropertyOccupancy || 0), 1)} average${metrics.occupancy.blockedNights ? ` | ${metrics.occupancy.blockedNights} owner-blocked` : ''}`
+            )
           }
-          trend={comparisonMode !== 'none' && metrics.occupancy.growth !== undefined ? {
-            value: metrics.occupancy.growth,
-            isPositive: metrics.occupancy.growth > 0
-          } : undefined}
+          trend={
+            comparisonMode !== 'none' && metrics.occupancy.growth !== undefined
+              ? {
+                  value: metrics.occupancy.growth,
+                  isPositive: metrics.occupancy.growth > 0,
+                }
+              : undefined
+          }
           color="purple"
           gauge={{
             enabled: true,
             min: 0,
             max: 100,
             segments: [
-              { threshold: 50,  color: resolveToken('--danger'),  label: 'Low' },
-              { threshold: 75,  color: resolveToken('--warning'), label: 'Good' },
-              { threshold: 100, color: resolveToken('--success'), label: 'Excellent' }
+              { threshold: 50, color: resolveToken('--danger'), label: 'Low' },
+              { threshold: 75, color: resolveToken('--warning'), label: 'Good' },
+              { threshold: 100, color: resolveToken('--success'), label: 'Excellent' },
             ],
-            target: metrics.occupancy.previous
+            target: metrics.occupancy.previous,
           }}
           comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('occupancy')}
@@ -811,31 +941,53 @@ export const OverviewDashboard = () => {
           format="number"
           tooltip="Unique guests with bookings in this period"
           staggerIndex={3}
-          subValue={comparisonMode !== 'none' && metrics.guests.previous !== undefined
-            ? <>vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
+          subValue={
+            comparisonMode !== 'none' && metrics.guests.previous !== undefined ? (
+              <>
+                vs {comparisonLabel}: {metrics.guests.previous} | {metrics.guests.newThisMonth} new
+                {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+              </>
+            ) : (
+              `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
+            )
           }
-          trend={comparisonMode !== 'none' && metrics.guests.growth !== undefined ? {
-            value: metrics.guests.growth,
-            isPositive: metrics.guests.growth > 0
-          } : undefined}
+          trend={
+            comparisonMode !== 'none' && metrics.guests.growth !== undefined
+              ? {
+                  value: metrics.guests.growth,
+                  isPositive: metrics.guests.growth > 0,
+                }
+              : undefined
+          }
           color="orange"
           gauge={{
             enabled: true,
             min: 0,
-            max: comparisonMode !== 'none' && metrics.guests.previous ?
-              Math.max(metrics.guests.total, metrics.guests.previous) * 1.5 :
-              Math.max(metrics.guests.total * 2, 10),
-            segments: comparisonMode !== 'none' && metrics.guests.previous ? [
-              { threshold: metrics.guests.previous * 0.8 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: resolveToken('--danger'), label: 'Below' },
-              { threshold: metrics.guests.previous * 1.0 / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5) * 100, color: resolveToken('--warning'), label: 'Target' },
-              { threshold: 100, color: resolveToken('--success'), label: 'Above' }
-            ] : [
-              { threshold: 30,  color: resolveToken('--danger'),  label: 'Low' },
-              { threshold: 60,  color: resolveToken('--warning'), label: 'Medium' },
-              { threshold: 100, color: resolveToken('--success'), label: 'High' }
-            ],
-            target: metrics.guests.previous
+            max:
+              comparisonMode !== 'none' && metrics.guests.previous
+                ? Math.max(metrics.guests.total, metrics.guests.previous) * 1.5
+                : Math.max(metrics.guests.total * 2, 10),
+            segments:
+              comparisonMode !== 'none' && metrics.guests.previous
+                ? [
+                    {
+                      threshold: ((metrics.guests.previous * 0.8) / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5)) * 100,
+                      color: resolveToken('--danger'),
+                      label: 'Below',
+                    },
+                    {
+                      threshold: ((metrics.guests.previous * 1.0) / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5)) * 100,
+                      color: resolveToken('--warning'),
+                      label: 'Target',
+                    },
+                    { threshold: 100, color: resolveToken('--success'), label: 'Above' },
+                  ]
+                : [
+                    { threshold: 30, color: resolveToken('--danger'), label: 'Low' },
+                    { threshold: 60, color: resolveToken('--warning'), label: 'Medium' },
+                    { threshold: 100, color: resolveToken('--success'), label: 'High' },
+                  ],
+            target: metrics.guests.previous,
           }}
           comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('guests')}
@@ -849,16 +1001,24 @@ export const OverviewDashboard = () => {
             label="Operating Profit"
             value={metrics.revenue.operatingProfit}
             format="currency"
-            subValue={comparisonMode !== 'none' && metrics.revenue.previousOperatingProfit > 0
-              ? `vs ${comparisonLabel}: ${formatCompactCurrency(metrics.revenue.previousOperatingProfit)}`
-              : `${metrics.revenue.current > 0 ? formatPercentage((metrics.revenue.operatingProfit / metrics.revenue.current) * 100, 1) : '0%'} margin`
+            subValue={
+              comparisonMode !== 'none' && metrics.revenue.previousOperatingProfit > 0
+                ? `vs ${comparisonLabel}: ${formatCompactCurrency(metrics.revenue.previousOperatingProfit)}`
+                : `${metrics.revenue.current > 0 ? formatPercentage((metrics.revenue.operatingProfit / metrics.revenue.current) * 100, 1) : '0%'} margin`
             }
-            trend={comparisonMode !== 'none' && metrics.revenue.previousOperatingProfit > 0 ? {
-              value: ((metrics.revenue.operatingProfit - metrics.revenue.previousOperatingProfit) / metrics.revenue.previousOperatingProfit) * 100,
-              isPositive: metrics.revenue.operatingProfit > metrics.revenue.previousOperatingProfit
-            } : undefined}
+            trend={
+              comparisonMode !== 'none' && metrics.revenue.previousOperatingProfit > 0
+                ? {
+                    value:
+                      ((metrics.revenue.operatingProfit - metrics.revenue.previousOperatingProfit) /
+                        metrics.revenue.previousOperatingProfit) *
+                      100,
+                    isPositive: metrics.revenue.operatingProfit > metrics.revenue.previousOperatingProfit,
+                  }
+                : undefined
+            }
             size="sm"
-            color={metrics.revenue.operatingProfit > 0 ? "green" : "red"}
+            color={metrics.revenue.operatingProfit > 0 ? 'green' : 'red'}
             tooltip="Revenue minus platform fees, taxes, and operating expenses"
             staggerIndex={4}
           />
@@ -904,16 +1064,12 @@ export const OverviewDashboard = () => {
           format="percent"
           subValue="This period"
           size="sm"
-          color={Number(metrics.bookings.cancellationRate || 0) > 10 ? "red" : "gray"}
+          color={Number(metrics.bookings.cancellationRate || 0) > 10 ? 'red' : 'gray'}
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 8 : 7}
         />
       </div>
 
-      <PacingSummaryCard
-        tagIds={tagIds}
-        propertyIds={propertyIds}
-        onNavigate={() => handleMetricCardClick('occupancy')}
-      />
+      <PacingSummaryCard tagIds={tagIds} propertyIds={propertyIds} onNavigate={() => handleMetricCardClick('occupancy')} />
 
       <div className="grid lg:grid-cols-2 gap-6">
         <ChartWrapper
@@ -930,11 +1086,7 @@ export const OverviewDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={revenueChartData} onClick={handleRevenueChartClick} style={{ cursor: 'pointer' }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-                  <XAxis
-                    dataKey="week"
-                    stroke={CHART_INFRA.axis}
-                    tick={{ fontSize: 11 }}
-                  />
+                  <XAxis dataKey="week" stroke={CHART_INFRA.axis} tick={{ fontSize: 11 }} />
                   <YAxis
                     tickFormatter={(value: number) => `$${(value / 1000).toFixed(0)}k`}
                     stroke={CHART_INFRA.axis}
@@ -954,7 +1106,7 @@ export const OverviewDashboard = () => {
                         fill: CHART_INFRA.goal,
                         fontSize: 12,
                         fontWeight: 600,
-                        offset: 4
+                        offset: 4,
                       }}
                     />
                   )}
@@ -1053,7 +1205,7 @@ export const OverviewDashboard = () => {
           </div>
           <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
             {enabledGoals.length > 0 ? (
-              enabledGoals.map(goal => {
+              enabledGoals.map((goal) => {
                 const Icon = goal.config.icon
                 return (
                   <div key={goal.metricKey} className="py-2 border-b last:border-0">
@@ -1088,13 +1240,15 @@ export const OverviewDashboard = () => {
           </div>
         </div>
 
-          <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
+        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-muted-foreground" />
               <h3 className="text-lg font-semibold">What's New</h3>
             </div>
-            <span className="text-xs text-muted-foreground">{formatDateDisplay(filters.dateRange.from)} – {formatDateDisplay(filters.dateRange.to)}</span>
+            <span className="text-xs text-muted-foreground">
+              {formatDateDisplay(filters.dateRange.from)} – {formatDateDisplay(filters.dateRange.to)}
+            </span>
           </div>
           <div className="max-h-80 overflow-y-auto overflow-x-hidden pr-2 divide-y divide-border">
             {recentActivity && recentActivity.length > 0 ? (
@@ -1110,18 +1264,14 @@ export const OverviewDashboard = () => {
                 return (
                   <div
                     key={activity.id}
-                    className={`flex items-center justify-between py-3 px-2 -mx-2 rounded ${
-                      isCancelled ? 'opacity-60' : ''
-                    } ${
+                    className={`flex items-center justify-between py-3 px-2 -mx-2 rounded ${isCancelled ? 'opacity-60' : ''} ${
                       isClickable ? 'hover:bg-muted/50 transition-colors cursor-pointer' : ''
                     }`}
                     onClick={() => handleActivityClick(activity)}
                   >
                     <div className="flex-1 min-w-0 mr-2">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">
-                          {activity.description}
-                        </p>
+                        <p className="text-sm font-medium truncate">{activity.description}</p>
                         {isCancelled && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded flex-shrink-0">
                             <Ban className="w-2.5 h-2.5" />
@@ -1135,9 +1285,7 @@ export const OverviewDashboard = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted-foreground">
-                          {formatDateDisplay(activity.timestamp)}
-                        </span>
+                        <span className="text-xs text-muted-foreground">{formatDateDisplay(activity.timestamp)}</span>
                         {activity.metadata?.arrival && activity.metadata?.departure && (
                           <span className="text-xs text-muted-foreground/70">
                             · Stay: {formatDateDisplay(activity.metadata.arrival)} – {formatDateDisplay(activity.metadata.departure)}
@@ -1156,9 +1304,7 @@ export const OverviewDashboard = () => {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {activity.value != null && activity.value > 0 && (
-                        <div className={`text-sm font-medium ${
-                          isCancelled ? 'text-muted-foreground' : 'text-success'
-                        }`}>
+                        <div className={`text-sm font-medium ${isCancelled ? 'text-muted-foreground' : 'text-success'}`}>
                           {formatCurrency(activity.value)}
                         </div>
                       )}
@@ -1190,10 +1336,7 @@ export const OverviewDashboard = () => {
       </div>
 
       {/* Upcoming Section */}
-      {data.upcoming && data.upcoming.length > 0 && (
-        <UpcomingSection upcoming={data.upcoming} />
-      )}
-
+      {data.upcoming && data.upcoming.length > 0 && <UpcomingSection upcoming={data.upcoming} />}
     </div>
   )
 }
@@ -1201,9 +1344,9 @@ export const OverviewDashboard = () => {
 const UPCOMING_PAGE_SIZE = 8
 
 const UPCOMING_TYPE_STYLES: Record<UpcomingBooking['type'], { bg: string; icon: LucideIcon; iconClass: string; label: string }> = {
-  'check-in':  { bg: 'bg-success-subtle', icon: LogIn,      iconClass: 'text-success',  label: 'Check-in' },
-  'in-house':  { bg: 'bg-info-subtle',    icon: BedDouble,  iconClass: 'text-info',     label: 'In-house through' },
-  'check-out': { bg: 'bg-orange-subtle',  icon: LogOut,     iconClass: 'text-orange-fg', label: 'Check-out' },
+  'check-in': { bg: 'bg-success-subtle', icon: LogIn, iconClass: 'text-success', label: 'Check-in' },
+  'in-house': { bg: 'bg-info-subtle', icon: BedDouble, iconClass: 'text-info', label: 'In-house through' },
+  'check-out': { bg: 'bg-orange-subtle', icon: LogOut, iconClass: 'text-orange-fg', label: 'Check-out' },
 }
 
 const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
@@ -1245,16 +1388,13 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
             { key: 'today' as const, label: 'Today' },
             { key: 'week' as const, label: 'This Week' },
             { key: 'month' as const, label: 'This Month' },
-          ].map(btn => (
+          ].map((btn) => (
             <Button
               key={btn.key}
               variant="ghost"
               size="sm"
               onClick={() => handleFilterChange(btn.key)}
-              className={filter === btn.key
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-              }
+              className={filter === btn.key ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
             >
               {btn.label}
             </Button>
@@ -1267,9 +1407,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
             const style = UPCOMING_TYPE_STYLES[booking.type]
             const Icon = style.icon
             const dateLabel = booking.type === 'check-in' ? booking.arrival : booking.departure
-            const ownerrezUrl = booking.ownerrezBookingId
-              ? `https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}`
-              : null
+            const ownerrezUrl = booking.ownerrezBookingId ? `https://app.ownerrez.com/bookings/${booking.ownerrezBookingId}` : null
             return (
               <div
                 key={booking.id}
@@ -1288,9 +1426,7 @@ const UpcomingSection = ({ upcoming }: { upcoming: UpcomingBooking[] }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  {booking.amount > 0 && (
-                    <span className="text-sm font-medium text-success">{formatCurrency(booking.amount)}</span>
-                  )}
+                  {booking.amount > 0 && <span className="text-sm font-medium text-success">{formatCurrency(booking.amount)}</span>}
                   {ownerrezUrl && (
                     <a
                       href={ownerrezUrl}

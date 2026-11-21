@@ -1,4 +1,4 @@
-import { User as SupabaseUser } from '@supabase/supabase-js'
+import type { User as SupabaseUser } from '@supabase/supabase-js'
 
 export interface AppUser extends SupabaseUser {
   hasOwnerRezConnection?: boolean
@@ -7,7 +7,6 @@ export interface AppUser extends SupabaseUser {
   companyName?: string | null
   isDemo?: boolean
 }
-
 
 export interface MeResponse {
   id: string

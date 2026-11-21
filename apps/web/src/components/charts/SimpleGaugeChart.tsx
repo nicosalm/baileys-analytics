@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import { formatCompactCurrency } from '@baileys/utils'
 
 interface SimpleGaugeChartProps {
@@ -39,10 +39,10 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   color = 'var(--primary)',
   width = 180,
   height = 110,
-  onClick
+  onClick,
 }) => {
   const range = max - min
-  const normalizedValue = range > 0 ? ((value - min) / range) : 0
+  const normalizedValue = range > 0 ? (value - min) / range : 0
   const clamped = Math.min(Math.max(normalizedValue, 0), 1)
 
   const strokeWidth = 10
@@ -59,19 +59,10 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
   const d = halfArcPath(cx, cy, r)
 
   return (
-    <div
-      style={{ width, height, position: 'relative', cursor: onClick ? 'pointer' : 'default' }}
-      onClick={onClick}
-    >
+    <div style={{ width, height, position: 'relative', cursor: onClick ? 'pointer' : 'default' }} onClick={onClick}>
       <svg width={width} height={height} aria-hidden="true">
         {/* track */}
-        <path
-          d={d}
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth={strokeWidth}
-          strokeLinecap="round"
-        />
+        <path d={d} fill="none" stroke="var(--muted)" strokeWidth={strokeWidth} strokeLinecap="round" />
 
         {/* progress */}
         {clamped > 0 && (
@@ -87,28 +78,12 @@ export const SimpleGaugeChart: React.FC<SimpleGaugeChartProps> = ({
         )}
 
         {/* min label */}
-        <text
-          x={cx - r}
-          y={labelY}
-          textAnchor="start"
-          fontSize="10"
-          fill="var(--muted-foreground)"
-          fontFamily="inherit"
-          dx={-4}
-        >
+        <text x={cx - r} y={labelY} textAnchor="start" fontSize="10" fill="var(--muted-foreground)" fontFamily="inherit" dx={-4}>
           {formatValue(min, format)}
         </text>
 
         {/* max label */}
-        <text
-          x={cx + r}
-          y={labelY}
-          textAnchor="end"
-          fontSize="10"
-          fill="var(--muted-foreground)"
-          fontFamily="inherit"
-          dx={4}
-        >
+        <text x={cx + r} y={labelY} textAnchor="end" fontSize="10" fill="var(--muted-foreground)" fontFamily="inherit" dx={4}>
           {formatValue(max, format)}
         </text>
       </svg>

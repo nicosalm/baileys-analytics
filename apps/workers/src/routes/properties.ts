@@ -15,16 +15,12 @@ properties.get('/', async (c) => {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
 
-	const { data: properties, error } = await supabase
-		.from('properties')
-		.select('*')
-		.eq('tenant_id', tenantId)
-		.order('name');
-	
+	const { data: properties, error } = await supabase.from('properties').select('*').eq('tenant_id', tenantId).order('name');
+
 	if (error) {
 		return c.json({ error: error.message }, 500);
 	}
-	
+
 	return c.json({ properties: properties || [] });
 });
 

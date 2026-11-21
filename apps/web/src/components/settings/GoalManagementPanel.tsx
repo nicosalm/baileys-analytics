@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import type React from 'react'
+import { useState, useEffect } from 'react'
 import { useGoals, saveGoals } from '@/hooks/use-api'
 import { DollarSign, Calendar, Percent, Users, TrendingUp, Clock } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
@@ -19,25 +20,25 @@ const METRIC_CATALOG = [
   { key: 'avgStayLength', label: 'Avg Stay Length', icon: Clock, format: 'nights', placeholder: 'e.g. 4' },
 ] as const
 
-type MetricKey = typeof METRIC_CATALOG[number]['key']
+type MetricKey = (typeof METRIC_CATALOG)[number]['key']
 
 type GoalState = Record<MetricKey, { isEnabled: boolean; targetValue: string; period: GoalPeriod }>
 
-function getFormatting(metric: typeof METRIC_CATALOG[number]) {
+function getFormatting(metric: (typeof METRIC_CATALOG)[number]) {
   return {
     prefix: metric.format === 'currency' ? '$' : '',
-    suffix: metric.format === 'percent' ? '%' : metric.format === 'nights' ? ' nights' : ''
+    suffix: metric.format === 'percent' ? '%' : metric.format === 'nights' ? ' nights' : '',
   }
 }
 
 const buildInitialState = (savedGoals: GoalFormData[]): GoalState => {
   const state: GoalState = {} as GoalState
   for (const metric of METRIC_CATALOG) {
-    const saved = savedGoals.find(g => g.metricKey === metric.key)
+    const saved = savedGoals.find((g) => g.metricKey === metric.key)
     state[metric.key] = {
       isEnabled: saved?.isEnabled ?? false,
       targetValue: saved ? String(saved.targetValue) : '',
-      period: saved?.period ?? 'yearly'
+      period: saved?.period ?? 'yearly',
     }
   }
   return state
@@ -56,45 +57,45 @@ export const GoalManagementPanel: React.FC = () => {
   }, [goals])
 
   const handleToggle = (key: MetricKey) => {
-    setGoalState(prev => ({
+    setGoalState((prev) => ({
       ...prev,
-      [key]: { ...prev[key], isEnabled: !prev[key].isEnabled }
+      [key]: { ...prev[key], isEnabled: !prev[key].isEnabled },
     }))
   }
 
   const handleValueChange = (key: MetricKey, value: string) => {
     if (value !== '' && !/^\d*\.?\d*$/.test(value)) return
-    setGoalState(prev => ({
+    setGoalState((prev) => ({
       ...prev,
-      [key]: { ...prev[key], targetValue: value }
+      [key]: { ...prev[key], targetValue: value },
     }))
   }
 
   const handlePeriodChange = (key: MetricKey, period: GoalPeriod) => {
-    setGoalState(prev => ({
+    setGoalState((prev) => ({
       ...prev,
-      [key]: { ...prev[key], period }
+      [key]: { ...prev[key], period },
     }))
   }
 
   const handleSave = async () => {
-    const goalsToSave: GoalFormData[] = METRIC_CATALOG
-      .filter(m => goalState[m.key].isEnabled && goalState[m.key].targetValue !== '')
-      .map(m => ({
+    const goalsToSave: GoalFormData[] = METRIC_CATALOG.filter((m) => goalState[m.key].isEnabled && goalState[m.key].targetValue !== '').map(
+      (m) => ({
         metricKey: m.key,
         targetValue: Number(goalState[m.key].targetValue),
         isEnabled: true,
-        period: goalState[m.key].period
-      }))
+        period: goalState[m.key].period,
+      }),
+    )
 
-    const disabledGoals: GoalFormData[] = METRIC_CATALOG
-      .filter(m => !goalState[m.key].isEnabled && goals.some(g => g.metricKey === m.key))
-      .map(m => ({
-        metricKey: m.key,
-        targetValue: Number(goalState[m.key].targetValue) || 0,
-        isEnabled: false,
-        period: goalState[m.key].period
-      }))
+    const disabledGoals: GoalFormData[] = METRIC_CATALOG.filter(
+      (m) => !goalState[m.key].isEnabled && goals.some((g) => g.metricKey === m.key),
+    ).map((m) => ({
+      metricKey: m.key,
+      targetValue: Number(goalState[m.key].targetValue) || 0,
+      isEnabled: false,
+      period: goalState[m.key].period,
+    }))
 
     const allGoals = [...goalsToSave, ...disabledGoals]
 
@@ -170,7 +171,7 @@ export const GoalManagementPanel: React.FC = () => {
                     type="text"
                     inputMode="decimal"
                     value={state.targetValue}
-                    onChange={e => handleValueChange(metric.key, e.target.value)}
+                    onChange={(e) => handleValueChange(metric.key, e.target.value)}
                     placeholder={metric.placeholder}
                     disabled={!state.isEnabled}
                     className={`h-8 text-sm ${prefix ? 'pl-6' : ''} ${suffix ? 'pr-10' : ''}`}
@@ -193,11 +194,7 @@ export const GoalManagementPanel: React.FC = () => {
                   </SelectContent>
                 </Select>
 
-                <Switch
-                  checked={state.isEnabled}
-                  onCheckedChange={() => handleToggle(metric.key)}
-                  className="ml-auto"
-                />
+                <Switch checked={state.isEnabled} onCheckedChange={() => handleToggle(metric.key)} className="ml-auto" />
               </div>
             )
           })}
@@ -205,11 +202,7 @@ export const GoalManagementPanel: React.FC = () => {
       </div>
 
       <div className="flex justify-end">
-        <Button
-          onClick={handleSave}
-          loading={isSaving}
-          loadingText="Saving..."
-        >
+        <Button onClick={handleSave} loading={isSaving} loadingText="Saving...">
           Save Goals
         </Button>
       </div>

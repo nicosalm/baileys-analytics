@@ -7,7 +7,7 @@ import { useDashboard } from '@/contexts/dashboard'
  */
 export function useTagIds() {
   const { filters } = useDashboard()
-  return useMemo(() => filters.selectedTags.map(t => t.id), [filters.selectedTags])
+  return useMemo(() => filters.selectedTags.map((t) => t.id), [filters.selectedTags])
 }
 
 /**
@@ -23,12 +23,10 @@ export function usePropertyIds() {
  */
 export function useErrorToast(error: Error | undefined, messagePrefix: string = 'Error') {
   const { addToast } = useToast()
-  
+
   useEffect(() => {
     if (error) {
-      const message = error.message 
-        ? `${messagePrefix}: ${error.message}` 
-        : `${messagePrefix}: An unexpected error occurred`
+      const message = error.message ? `${messagePrefix}: ${error.message}` : `${messagePrefix}: An unexpected error occurred`
       addToast('error', message)
     }
   }, [error?.message, addToast, messagePrefix])
@@ -41,8 +39,8 @@ export function useComparisonDateRange() {
   const { comparisonMode, comparisonRange } = useDashboard()
   return useMemo(() => {
     if (comparisonMode === 'none' || !comparisonRange) return ''
-    const fromDate = new Date(comparisonRange.from + 'T00:00:00')
-    const toDate = new Date(comparisonRange.to + 'T00:00:00')
+    const fromDate = new Date(`${comparisonRange.from}T00:00:00`)
+    const toDate = new Date(`${comparisonRange.to}T00:00:00`)
     const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     const fmtYear = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     if (fromDate.getFullYear() === toDate.getFullYear()) {

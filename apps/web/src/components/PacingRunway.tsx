@@ -29,28 +29,14 @@ function PaceIndicator({ delta }: { delta: number }) {
 
   const ahead = delta > 0
   return (
-    <span className={cn(
-      'inline-flex items-center gap-0.5 text-xs font-semibold',
-      ahead ? 'text-success' : 'text-danger'
-    )}>
-      {ahead
-        ? <TrendingUp className="w-3 h-3" />
-        : <TrendingDown className="w-3 h-3" />
-      }
+    <span className={cn('inline-flex items-center gap-0.5 text-xs font-semibold', ahead ? 'text-success' : 'text-danger')}>
+      {ahead ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
       {Math.abs(delta).toFixed(1)} pts {ahead ? 'ahead' : 'behind'}
     </span>
   )
 }
 
-function MonthCard({
-  month,
-  isSelected,
-  onClick,
-}: {
-  month: PacingMonthSummary
-  isSelected: boolean
-  onClick: () => void
-}) {
+function MonthCard({ month, isSelected, onClick }: { month: PacingMonthSummary; isSelected: boolean; onClick: () => void }) {
   // MonthCard tells one story: occupancy pacing vs last year. Rate metrics
   // (ADR, RevPAR, last-year-final revenue) live in the detail panel below
   // so the card stays scannable at a glance.
@@ -60,25 +46,25 @@ function MonthCard({
   const revenueGap = month.priorAtThisPoint.revenue - month.current.revenue
   const isBehind = month.paceDelta < -0.5 && (nightsGap > 0 || revenueGap > 0)
 
-  const borderColor = month.paceDelta > 2
-    ? 'border-success/50'
-    : month.paceDelta < -5
-      ? 'border-danger/50'
-      : month.paceDelta < -1
-        ? 'border-warning/50'
-        : 'border-border'
+  const borderColor =
+    month.paceDelta > 2
+      ? 'border-success/50'
+      : month.paceDelta < -5
+        ? 'border-danger/50'
+        : month.paceDelta < -1
+          ? 'border-warning/50'
+          : 'border-border'
 
   return (
     <button
+      type="button"
       onClick={onClick}
       aria-pressed={isSelected}
       className={cn(
         'rounded-lg border-2 p-4 text-left transition-all duration-200',
         'cursor-pointer min-w-[160px] flex-shrink-0',
         borderColor,
-        isSelected
-          ? 'bg-primary/5 ring-2 ring-primary shadow-md'
-          : 'bg-card hover:shadow-md hover:bg-muted/30',
+        isSelected ? 'bg-primary/5 ring-2 ring-primary shadow-md' : 'bg-card hover:shadow-md hover:bg-muted/30',
       )}
     >
       <div className="text-xs font-medium text-muted-foreground mb-2">{month.label}</div>
@@ -108,7 +94,7 @@ function MonthCard({
           <div
             className={cn(
               'h-1.5 rounded-full transition-all',
-              occupancyPct >= 70 ? 'bg-success' : occupancyPct >= 50 ? 'bg-warning' : 'bg-danger'
+              occupancyPct >= 70 ? 'bg-success' : occupancyPct >= 50 ? 'bg-warning' : 'bg-danger',
             )}
             style={{ width: `${Math.min(occupancyPct, 100)}%` }}
           />
@@ -167,13 +153,17 @@ function formatCalendarDate(d: Date): string {
 }
 
 function CurveTooltip({
-  active, payload, label, mode, monthStart,
+  active,
+  payload,
+  label,
+  mode,
+  monthStart,
 }: Partial<TooltipContentProps<number, string>> & { mode?: CurveMode; monthStart?: Date }) {
   if (!active || !payload?.length) return null
 
   const curveMode = mode ?? 'nights'
-  const thisYear = payload.find(p => p.name === SERIES.current)?.value as number | null | undefined
-  const lastYear = payload.find(p => p.name === SERIES.prior)?.value as number | null | undefined
+  const thisYear = payload.find((p) => p.name === SERIES.current)?.value as number | null | undefined
+  const lastYear = payload.find((p) => p.name === SERIES.prior)?.value as number | null | undefined
 
   // label is the formatted daysOut from labelFormatter; find the raw value from payload
   const rawDaysOut = payload[0]?.payload?.daysOut as number | undefined
@@ -219,26 +209,18 @@ function CurveTooltip({
         )}
       </div>
       <div className="space-y-1 text-xs">
-        {payload.map(entry => {
+        {payload.map((entry) => {
           const isPrior = entry.name === SERIES.prior
           return (
             <div key={entry.name} className="flex justify-between gap-4">
               <div className="flex items-center gap-1">
-                <div
-                  className="w-3 h-3 rounded-sm"
-                  style={{ backgroundColor: entry.color }}
-                />
+                <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
                 <span className="text-muted-foreground">
                   {entry.name}
-                  {isPrior && lastYearDate && (
-                    <span className="text-muted-foreground/70"> · {lastYearDate}</span>
-                  )}
-                  :
+                  {isPrior && lastYearDate && <span className="text-muted-foreground/70"> · {lastYearDate}</span>}:
                 </span>
               </div>
-              <span className="font-medium">
-                {formatCurveValue(entry.value as number | null | undefined, curveMode)}
-              </span>
+              <span className="font-medium">{formatCurveValue(entry.value as number | null | undefined, curveMode)}</span>
             </div>
           )
         })}
@@ -274,10 +256,7 @@ function PacingDetail({
   const [propertyPage, setPropertyPage] = useState(1)
   const [curveMode, setCurveMode] = useState<CurveMode>('nights')
   const totalPages = Math.ceil(byProperty.length / PROPERTIES_PER_PAGE)
-  const pagedProperties = byProperty.slice(
-    (propertyPage - 1) * PROPERTIES_PER_PAGE,
-    propertyPage * PROPERTIES_PER_PAGE
-  )
+  const pagedProperties = byProperty.slice((propertyPage - 1) * PROPERTIES_PER_PAGE, propertyPage * PROPERTIES_PER_PAGE)
 
   // target month start as a local Date, used by the tooltip to resolve daysOut → calendar date
   const targetMonthStart = useMemo(() => {
@@ -285,26 +264,30 @@ function PacingDetail({
     return new Date(y, m - 1, 1)
   }, [month.month])
 
-  const chartData = useMemo(() => curve.map(pt => {
-    let thisYear: number | null
-    let prior: number | null
-    if (curveMode === 'nights') {
-      thisYear = pt.currentNights
-      prior = pt.priorNights
-    } else if (curveMode === 'revenue') {
-      thisYear = pt.currentRevenue
-      prior = pt.priorRevenue
-    } else {
-      thisYear = pt.currentNights > 0 ? pt.currentRevenue / pt.currentNights : null
-      prior = pt.priorNights > 0 ? pt.priorRevenue / pt.priorNights : null
-    }
+  const chartData = useMemo(
+    () =>
+      curve.map((pt) => {
+        let thisYear: number | null
+        let prior: number | null
+        if (curveMode === 'nights') {
+          thisYear = pt.currentNights
+          prior = pt.priorNights
+        } else if (curveMode === 'revenue') {
+          thisYear = pt.currentRevenue
+          prior = pt.priorRevenue
+        } else {
+          thisYear = pt.currentNights > 0 ? pt.currentRevenue / pt.currentNights : null
+          prior = pt.priorNights > 0 ? pt.priorRevenue / pt.priorNights : null
+        }
 
-    return {
-      daysOut: pt.daysOut,
-      [SERIES.current]: thisYear,
-      [SERIES.prior]: prior,
-    }
-  }), [curve, curveMode])
+        return {
+          daysOut: pt.daysOut,
+          [SERIES.current]: thisYear,
+          [SERIES.prior]: prior,
+        }
+      }),
+    [curve, curveMode],
+  )
 
   const maxValue = useMemo(() => {
     let max = 0
@@ -336,11 +319,12 @@ function PacingDetail({
       {curve.length > 2 && (
         <ChartWrapper
           title={`Booking Pace: ${month.label}`}
-          subtitle={curveMode === 'nights'
-            ? 'How bookings accumulated over time vs last year'
-            : curveMode === 'revenue'
-              ? 'How revenue accumulated over time vs last year'
-              : 'How the average rate evolved as bookings came in vs last year'
+          subtitle={
+            curveMode === 'nights'
+              ? 'How bookings accumulated over time vs last year'
+              : curveMode === 'revenue'
+                ? 'How revenue accumulated over time vs last year'
+                : 'How the average rate evolved as bookings came in vs last year'
           }
           icon={Activity}
           height={320}
@@ -348,16 +332,13 @@ function PacingDetail({
           noDataMessage="Not enough booking data to show a pace curve"
           actions={
             <div className="flex items-center gap-1 bg-muted p-1 rounded-lg">
-              {(['nights', 'revenue', 'adr'] as const).map(mode => (
+              {(['nights', 'revenue', 'adr'] as const).map((mode) => (
                 <Button
                   key={mode}
                   variant="ghost"
                   size="sm"
                   onClick={() => setCurveMode(mode)}
-                  className={curveMode === mode
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                  }
+                  className={curveMode === mode ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
                 >
                   {mode === 'adr' ? 'ADR' : mode === 'nights' ? 'Nights' : 'Revenue'}
                 </Button>
@@ -466,54 +447,57 @@ function PacingDetail({
                 </tr>
               </thead>
               <tbody>
-                {pagedProperties.map(prop => {
+                {pagedProperties.map((prop) => {
                   const curAdr = prop.currentNights > 0 ? prop.currentRevenue / prop.currentNights : 0
                   const priorAdr = prop.priorNightsAtThisPoint > 0 ? prop.priorRevenueAtThisPoint / prop.priorNightsAtThisPoint : 0
                   const adrChange = priorAdr > 0 ? ((curAdr - priorAdr) / priorAdr) * 100 : 0
                   // fallback for cached responses without priorAvailableNights.
                   const priorAvail = prop.priorAvailableNights ?? prop.availableNights
                   return (
-                  <tr
-                    key={prop.propertyId}
-                    className="border-b border-border/50 last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
-                    onClick={() => openModal({
-                      type: 'property',
-                      propertyId: prop.propertyId,
-                      propertyName: prop.propertyName,
-                    })}
-                  >
-                    <td className="py-2.5 pr-4">
-                      <span className="font-medium">{prop.propertyCode || prop.propertyName}</span>
-                      {prop.propertyCode && (
-                        <span className="text-xs text-muted-foreground ml-1.5 hidden md:inline">
-                          {prop.propertyName}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums">
-                      {prop.currentNights}/{prop.availableNights}
-                    </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
-                      {prop.priorNightsAtThisPoint}/{priorAvail}
-                    </td>
-                    <td className="py-2.5 px-4 text-right">
-                      <PaceIndicator delta={prop.paceDelta} />
-                    </td>
-                    <td className="py-2.5 px-4 text-right tabular-nums">
-                      <span>{formatCurrency(curAdr)}</span>
-                      {priorAdr > 0 && (
-                        <span className={cn(
-                          'text-xs ml-1',
-                          adrChange > 5 ? 'text-success' : adrChange < -5 ? 'text-danger' : 'text-muted-foreground'
-                        )}>
-                          {adrChange > 0 ? '+' : ''}{adrChange.toFixed(0)}%
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2.5 pl-4 text-right tabular-nums text-muted-foreground">
-                      {prop.priorNightsFinal}/{priorAvail}
-                    </td>
-                  </tr>
+                    <tr
+                      key={prop.propertyId}
+                      className="border-b border-border/50 last:border-0 hover:bg-muted/50 cursor-pointer transition-colors"
+                      onClick={() =>
+                        openModal({
+                          type: 'property',
+                          propertyId: prop.propertyId,
+                          propertyName: prop.propertyName,
+                        })
+                      }
+                    >
+                      <td className="py-2.5 pr-4">
+                        <span className="font-medium">{prop.propertyCode || prop.propertyName}</span>
+                        {prop.propertyCode && (
+                          <span className="text-xs text-muted-foreground ml-1.5 hidden md:inline">{prop.propertyName}</span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-4 text-right tabular-nums">
+                        {prop.currentNights}/{prop.availableNights}
+                      </td>
+                      <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                        {prop.priorNightsAtThisPoint}/{priorAvail}
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <PaceIndicator delta={prop.paceDelta} />
+                      </td>
+                      <td className="py-2.5 px-4 text-right tabular-nums">
+                        <span>{formatCurrency(curAdr)}</span>
+                        {priorAdr > 0 && (
+                          <span
+                            className={cn(
+                              'text-xs ml-1',
+                              adrChange > 5 ? 'text-success' : adrChange < -5 ? 'text-danger' : 'text-muted-foreground',
+                            )}
+                          >
+                            {adrChange > 0 ? '+' : ''}
+                            {adrChange.toFixed(0)}%
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 pl-4 text-right tabular-nums text-muted-foreground">
+                        {prop.priorNightsFinal}/{priorAvail}
+                      </td>
+                    </tr>
                   )
                 })}
               </tbody>
@@ -553,19 +537,18 @@ function KpiGroup({
   const renderDelta = () => {
     if (!delta) return null
     const ahead = delta.value >= 0
-    if (Math.abs(delta.value) < 0.5) return (
-      <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
-        <Minus className="w-3 h-3" /> even
-      </span>
-    )
-    const display = delta.format === 'pct'
-      ? `${ahead ? '+' : ''}${delta.value.toFixed(1)}%`
-      : `${ahead ? '+' : ''}${delta.unit ?? ''}${Math.abs(delta.value).toFixed(0)}`
+    if (Math.abs(delta.value) < 0.5)
+      return (
+        <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+          <Minus className="w-3 h-3" /> even
+        </span>
+      )
+    const display =
+      delta.format === 'pct'
+        ? `${ahead ? '+' : ''}${delta.value.toFixed(1)}%`
+        : `${ahead ? '+' : ''}${delta.unit ?? ''}${Math.abs(delta.value).toFixed(0)}`
     return (
-      <span className={cn(
-        'inline-flex items-center gap-0.5 text-xs font-semibold',
-        ahead ? 'text-success' : 'text-danger'
-      )}>
+      <span className={cn('inline-flex items-center gap-0.5 text-xs font-semibold', ahead ? 'text-success' : 'text-danger')}>
         {ahead ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
         {display}
       </span>
@@ -595,11 +578,9 @@ function KpiGroup({
         {renderDelta()}
       </div>
       <div className="text-2xl font-bold tabular-nums">{primary}</div>
-      {primaryCaption && (
-        <div className="text-xs text-muted-foreground mt-0.5">{primaryCaption}</div>
-      )}
+      {primaryCaption && <div className="text-xs text-muted-foreground mt-0.5">{primaryCaption}</div>}
       <div className="mt-3 pt-3 border-t border-border space-y-1">
-        {comparisons.map(c => (
+        {comparisons.map((c) => (
           <div key={c.label} className="flex justify-between text-xs">
             <span className="text-muted-foreground">{c.label}</span>
             <span className="tabular-nums">{c.value}</span>
@@ -680,7 +661,7 @@ function PortfolioPacingHeadline({ months }: { months: PacingMonthSummary[] }) {
       finRevenue: acc.finRevenue + m.priorFinal.revenue,
       finAvail: acc.finAvail + m.priorAvailableNights,
     }),
-    { curNights: 0, curRevenue: 0, curAvail: 0, ptNights: 0, ptRevenue: 0, ptAvail: 0, finNights: 0, finRevenue: 0, finAvail: 0 }
+    { curNights: 0, curRevenue: 0, curAvail: 0, ptNights: 0, ptRevenue: 0, ptAvail: 0, finNights: 0, finRevenue: 0, finAvail: 0 },
   )
   const curOcc = totals.curAvail > 0 ? (totals.curNights / totals.curAvail) * 100 : 0
   const ptOcc = totals.ptAvail > 0 ? (totals.ptNights / totals.ptAvail) * 100 : 0
@@ -744,22 +725,19 @@ export const PacingRunway = () => {
   // auto-select the month with the worst pacing delta on first load
   const effectiveSelected = useMemo(() => {
     if (!data?.months?.length) return null
-    if (selectedMonth && data.months.some(m => m.month === selectedMonth)) return selectedMonth
+    if (selectedMonth && data.months.some((m) => m.month === selectedMonth)) return selectedMonth
     // default: worst-pacing month
-    const worst = data.months.reduce((a, b) => a.paceDelta < b.paceDelta ? a : b)
+    const worst = data.months.reduce((a, b) => (a.paceDelta < b.paceDelta ? a : b))
     return worst.month
   }, [data?.months, selectedMonth])
 
-  const selectedSummary = useMemo(
-    () => data?.months?.find(m => m.month === effectiveSelected) ?? null,
-    [data?.months, effectiveSelected]
-  )
-  const selectedDetail = effectiveSelected ? data?.details?.[effectiveSelected] ?? null : null
+  const selectedSummary = useMemo(() => data?.months?.find((m) => m.month === effectiveSelected) ?? null, [data?.months, effectiveSelected])
+  const selectedDetail = effectiveSelected ? (data?.details?.[effectiveSelected] ?? null) : null
 
   // no prior-year data means comparisons are meaningless (new tenant)
   const hasPriorYearData = useMemo(() => {
     if (!data?.months?.length) return false
-    return data.months.some(m => m.priorFinal.bookedNights > 0 || m.priorAtThisPoint.bookedNights > 0)
+    return data.months.some((m) => m.priorFinal.bookedNights > 0 || m.priorAtThisPoint.bookedNights > 0)
   }, [data?.months])
 
   if (isLoading || error || !data?.months?.length || !hasPriorYearData) {
@@ -767,14 +745,16 @@ export const PacingRunway = () => {
     return (
       <div className="bg-card rounded-lg shadow-sm border border-border">
         <button
-          onClick={() => setExpanded(prev => !prev)}
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
           className="w-full flex items-center justify-between px-6 py-4 h-auto rounded-none cursor-pointer"
         >
           <div className="flex items-center gap-2">
-            {expanded
-              ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-              : <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            }
+            {expanded ? (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            )}
             <Activity className="w-5 h-5 text-muted-foreground" />
             <span className="font-bold text-foreground">Booking Pace</span>
             <span className="text-sm text-muted-foreground font-normal">forward-looking, vs last year</span>
@@ -793,10 +773,11 @@ export const PacingRunway = () => {
               error={error}
               empty={!isLoading && !error && (!data?.months?.length || noPriorYear)}
               loadingMessage="Loading pacing data..."
-              emptyMessage={noPriorYear ? "Not enough booking history yet" : "No pacing data available"}
-              emptySubMessage={noPriorYear
-                ? "Pacing compares against the same period last year. Come back after your first full year of bookings to see year-over-year trends."
-                : "Pacing data requires at least one year of booking history"
+              emptyMessage={noPriorYear ? 'Not enough booking history yet' : 'No pacing data available'}
+              emptySubMessage={
+                noPriorYear
+                  ? 'Pacing compares against the same period last year. Come back after your first full year of bookings to see year-over-year trends.'
+                  : 'Pacing data requires at least one year of booking history'
               }
               minHeight={100}
               className="py-8"
@@ -813,38 +794,41 @@ export const PacingRunway = () => {
     <div className="bg-card rounded-lg shadow-sm border border-border">
       {/* collapsible header */}
       <button
-        onClick={() => setExpanded(prev => !prev)}
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
         className="w-full flex items-center justify-between px-6 py-4 h-auto rounded-none cursor-pointer"
       >
         <div className="flex items-center gap-2">
-          {expanded
-            ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            : <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          }
+          {expanded ? (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          )}
           <Activity className="w-5 h-5 text-muted-foreground" />
           <span className="font-bold text-foreground">Booking Pace</span>
-          <span className="text-sm text-muted-foreground font-normal">
-            {data.window.label} · year-over-year
-          </span>
+          <span className="text-sm text-muted-foreground font-normal">{data.window.label} · year-over-year</span>
         </div>
         {!expanded && data.months.length > 0 && (
           <div className="flex items-center gap-2.5">
-            {data.months.map(m => (
-              <div key={m.month} className="flex flex-col items-center gap-0.5"
+            {data.months.map((m) => (
+              <div
+                key={m.month}
+                className="flex flex-col items-center gap-0.5"
                 title={`${m.label}: ${m.paceDelta > 0 ? '+' : ''}${m.paceDelta.toFixed(1)} pts`}
               >
                 <div
                   className={cn(
                     'w-2.5 h-2.5 rounded-full',
-                    m.paceDelta > 2 ? 'bg-success'
-                      : m.paceDelta < -5 ? 'bg-danger'
-                      : m.paceDelta < -1 ? 'bg-warning'
-                      : 'bg-muted-foreground/40'
+                    m.paceDelta > 2
+                      ? 'bg-success'
+                      : m.paceDelta < -5
+                        ? 'bg-danger'
+                        : m.paceDelta < -1
+                          ? 'bg-warning'
+                          : 'bg-muted-foreground/40',
                   )}
                 />
-                <span className="text-[9px] leading-none text-muted-foreground">
-                  {m.label.slice(0, 3)}
-                </span>
+                <span className="text-[9px] leading-none text-muted-foreground">{m.label.slice(0, 3)}</span>
               </div>
             ))}
           </div>
@@ -860,7 +844,7 @@ export const PacingRunway = () => {
           {/* month card runway — padding here has to clear the selected-card ring+shadow
               since overflow-x-auto clips both axes; -mx offsets keep the visual flush */}
           <div className="flex gap-3 overflow-x-auto pt-2 pb-3 -mx-2 px-2">
-            {data.months.map(month => (
+            {data.months.map((month) => (
               <MonthCard
                 key={month.month}
                 month={month}

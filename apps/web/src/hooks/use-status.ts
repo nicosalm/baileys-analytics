@@ -21,9 +21,9 @@ export const useStatus = () => {
     fetch(`https://updown.io/api/checks?api-key=${statusApiKey}`, {
       signal: controller.signal,
     })
-      .then(res => res.json())
+      .then((res) => res.json())
       .then((checks: Array<{ down: boolean }>) => {
-        const state: StatusState = checks.some(c => c.down) ? 'issues' : 'operational'
+        const state: StatusState = checks.some((c) => c.down) ? 'issues' : 'operational'
         setStatus(state)
         sessionStorage.setItem('updown-status', state)
       })

@@ -2,15 +2,9 @@ import '@/styles/newsreader.css'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { Footer } from '@/components/Footer'
-import {
-  ArrowRight, Check,
-  Shield, Zap, Lock, Building2, Calendar, DollarSign, Menu,
-  TrendingUp, Users
-} from 'lucide-react'
+import { ArrowRight, Check, Shield, Zap, Lock, Building2, Calendar, DollarSign, Menu, TrendingUp, Users } from 'lucide-react'
 import { useState, useEffect, useCallback } from 'react'
-import {
-  Sheet, SheetTrigger, SheetContent, SheetTitle
-} from '@/components/ui/sheet'
+import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { TIERS, getTierMonthlyDollars, getTierYearlyDollars } from '@baileys/constants'
@@ -36,7 +30,9 @@ const StatItem: React.FC<{
   return (
     <div className="text-center">
       <div className="landing-serif text-3xl md:text-5xl font-semibold text-white tracking-tight tabular-nums">
-        {prefix}{Math.round(animated)}{suffix}
+        {prefix}
+        {Math.round(animated)}
+        {suffix}
       </div>
       <p className="text-xs text-white/40 mt-2 uppercase tracking-wider">{label}</p>
     </div>
@@ -79,7 +75,7 @@ export const Landing = () => {
   }, [location.pathname])
 
   const handleLogout = useCallback(() => logout(), [logout])
-  const handleToggleBilling = useCallback(() => setYearlyBilling(prev => !prev), [])
+  const handleToggleBilling = useCallback(() => setYearlyBilling((prev) => !prev), [])
   const handleTryDemo = useCallback(async () => {
     setDemoLoading(true)
     const success = await signInAsDemo()
@@ -106,10 +102,11 @@ export const Landing = () => {
         </a>
 
         {/* nav — light text on dark hero */}
-        <nav className={`transition-all duration-300 ${scrolled
-          ? 'bg-[var(--landing-bg)/0.85] backdrop-blur-md shadow-sm border-b border-white/5'
-          : 'bg-transparent'
-          }`}>
+        <nav
+          className={`transition-all duration-300 ${
+            scrolled ? 'bg-[var(--landing-bg)/0.85] backdrop-blur-md shadow-sm border-b border-white/5' : 'bg-transparent'
+          }`}
+        >
           <div className="max-w-6xl mx-auto px-4 md:px-6 py-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-6">
@@ -121,29 +118,43 @@ export const Landing = () => {
                   </span>
                 </Link>
                 <div className="hidden md:flex items-center gap-5">
-                  <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Features</a>
-                  <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">Pricing</a>
+                  <a href="#features" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">
+                    Features
+                  </a>
+                  <a href="#pricing" className="text-sm text-white/70 hover:text-white transition-colors cursor-pointer">
+                    Pricing
+                  </a>
                 </div>
               </div>
               <div className="flex items-center gap-3">
                 {isAuthenticated ? (
                   <>
                     <button
+                      type="button"
                       onClick={handleLogout}
                       className="hidden sm:block px-4 py-2 text-white/70 hover:text-white font-medium transition-colors text-sm cursor-pointer"
                     >
                       Logout
                     </button>
-                    <Link to="/dashboard/overview" className="whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm">
+                    <Link
+                      to="/dashboard/overview"
+                      className="whitespace-nowrap px-4 py-2 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm"
+                    >
                       Dashboard
                     </Link>
                   </>
                 ) : (
                   <>
-                    <Link to="/login" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors">
+                    <Link
+                      to="/login"
+                      className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+                    >
                       Log in
                     </Link>
-                    <Link to="/signup" className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity">
+                    <Link
+                      to="/signup"
+                      className="hidden md:inline-flex whitespace-nowrap px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity"
+                    >
                       Get Started
                     </Link>
                   </>
@@ -152,25 +163,68 @@ export const Landing = () => {
                 {/* mobile hamburger */}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
-                    <button className="md:hidden p-2 text-white/70 hover:text-white transition-colors cursor-pointer" aria-label="Open menu">
+                    <button
+                      type="button"
+                      className="md:hidden p-2 text-white/70 hover:text-white transition-colors cursor-pointer"
+                      aria-label="Open menu"
+                    >
                       <Menu className="w-6 h-6" />
                     </button>
                   </SheetTrigger>
                   <SheetContent side="right" className="dark bg-[var(--landing-bg)] border-white/10 w-64">
                     <SheetTitle className="text-white sr-only">Navigation</SheetTitle>
                     <nav className="flex flex-col gap-1 mt-4">
-                      <a href="#features" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Features</a>
-                      <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</a>
+                      <a
+                        href="#features"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        Features
+                      </a>
+                      <a
+                        href="#pricing"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                      >
+                        Pricing
+                      </a>
                       <div className="h-px bg-white/10 my-2" />
                       {isAuthenticated ? (
                         <>
-                          <Link to="/dashboard/overview" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm font-medium text-white hover:bg-white/5 rounded-lg transition-colors">Dashboard</Link>
-                          <button onClick={() => { handleLogout(); setMobileMenuOpen(false) }} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left cursor-pointer">Logout</button>
+                          <Link
+                            to="/dashboard/overview"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="px-4 py-3 text-sm font-medium text-white hover:bg-white/5 rounded-lg transition-colors"
+                          >
+                            Dashboard
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleLogout()
+                              setMobileMenuOpen(false)
+                            }}
+                            className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors text-left cursor-pointer"
+                          >
+                            Logout
+                          </button>
                         </>
                       ) : (
                         <>
-                          <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Log in</Link>
-                          <Link to="/signup" onClick={() => setMobileMenuOpen(false)} className="mx-4 mt-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm text-center">Get Started</Link>
+                          <Link
+                            to="/login"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="px-4 py-3 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                          >
+                            Log in
+                          </Link>
+                          <Link
+                            to="/signup"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="mx-4 mt-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity font-medium text-sm text-center"
+                          >
+                            Get Started
+                          </Link>
                         </>
                       )}
                     </nav>
@@ -194,21 +248,34 @@ export const Landing = () => {
             <span className="text-sm font-medium text-white/60">hosts</span>
           </div>
 
-          <h1 className="landing-serif text-5xl sm:text-6xl md:text-7xl font-semibold text-white mb-6 tracking-tight leading-[1.1] hero-stagger" style={{ '--hero-index': 1 } as React.CSSProperties}>
+          <h1
+            className="landing-serif text-5xl sm:text-6xl md:text-7xl font-semibold text-white mb-6 tracking-tight leading-[1.1] hero-stagger"
+            style={{ '--hero-index': 1 } as React.CSSProperties}
+          >
             Know your real numbers.
           </h1>
 
-          <p className="text-lg md:text-xl font-light text-[var(--landing-body-bright)] mb-10 max-w-2xl mx-auto leading-relaxed hero-stagger" style={{ '--hero-index': 2 } as React.CSSProperties}>
+          <p
+            className="text-lg md:text-xl font-light text-[var(--landing-body-bright)] mb-10 max-w-2xl mx-auto leading-relaxed hero-stagger"
+            style={{ '--hero-index': 2 } as React.CSSProperties}
+          >
             Auto-sync 4 years of OwnerRez bookings. See pacing, P&L, and occupancy by property in minutes.
           </p>
 
           {!isAuthenticated && (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6 hero-stagger" style={{ '--hero-index': 3 } as React.CSSProperties}>
-              <Link to="/signup" className="whitespace-nowrap px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center">
+            <div
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-6 hero-stagger"
+              style={{ '--hero-index': 3 } as React.CSSProperties}
+            >
+              <Link
+                to="/signup"
+                className="whitespace-nowrap px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity flex items-center"
+              >
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
               <button
+                type="button"
                 onClick={handleTryDemo}
                 disabled={demoLoading}
                 className="whitespace-nowrap px-6 py-3 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-sm disabled:opacity-50 cursor-pointer"
@@ -257,12 +324,11 @@ export const Landing = () => {
       <section className="landing-section-primary py-16 md:py-20 border-y border-white/5">
         <div
           ref={stats.ref}
-          className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${stats.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-5xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            stats.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
-          <p className="text-center text-xs uppercase tracking-[0.15em] text-white/40 mb-10">
-            Already tracking
-          </p>
+          <p className="text-center text-xs uppercase tracking-[0.15em] text-white/40 mb-10">Already tracking</p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             <StatItem target={17} prefix="$" suffix="M+" label="in bookings" delay={0} inView={stats.isInView} />
             <StatItem target={26} suffix="K+" label="reservations" delay={120} inView={stats.isInView} />
@@ -276,8 +342,9 @@ export const Landing = () => {
       <section id="features" className="landing-section-secondary py-28 md:py-36">
         <div
           ref={feature1.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature1.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature1.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
@@ -288,7 +355,8 @@ export const Landing = () => {
                 See where your money actually goes
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                P&L by property, not just topline revenue. Platform fees, cleaning, and taxes laid out for every month. Click any row to see the bookings behind the numbers.
+                P&L by property, not just topline revenue. Platform fees, cleaning, and taxes laid out for every month. Click any row to see
+                the bookings behind the numbers.
               </p>
             </div>
             <div className="relative">
@@ -308,8 +376,9 @@ export const Landing = () => {
       <section className="landing-section-primary py-28 md:py-36">
         <div
           ref={feature2.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature2.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature2.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="relative md:order-1">
@@ -329,7 +398,8 @@ export const Landing = () => {
                 Find your best and worst performers
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                Rank every property by ADR, RevPAN, occupancy, or profit. Organize large portfolios into custom property groups, then compare performance across them.
+                Rank every property by ADR, RevPAN, occupancy, or profit. Organize large portfolios into custom property groups, then
+                compare performance across them.
               </p>
             </div>
           </div>
@@ -340,8 +410,9 @@ export const Landing = () => {
       <section className="landing-section-secondary py-28 md:py-36">
         <div
           ref={feature3.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature3.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature3.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
@@ -372,8 +443,9 @@ export const Landing = () => {
       <section className="landing-section-primary py-28 md:py-36">
         <div
           ref={feature4.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature4.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature4.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div className="relative md:order-1">
@@ -393,7 +465,8 @@ export const Landing = () => {
                 Know if this year is beating last year
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                Month-by-month pacing against the same point last year. Spot a soft shoulder season early and adjust rates before peak season locks in.
+                Month-by-month pacing against the same point last year. Spot a soft shoulder season early and adjust rates before peak
+                season locks in.
               </p>
             </div>
           </div>
@@ -404,8 +477,9 @@ export const Landing = () => {
       <section className="landing-section-secondary py-28 md:py-36">
         <div
           ref={feature5.ref}
-          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${feature5.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-6xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            feature5.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <div>
@@ -416,7 +490,8 @@ export const Landing = () => {
                 Every guest, in one searchable list
               </h2>
               <p className="font-light text-[var(--landing-body)] leading-relaxed text-lg">
-                Past and upcoming guests with contact info, tags, and full booking history. Click into any guest to see every stay, every charge, and every fee they've ever paid.
+                Past and upcoming guests with contact info, tags, and full booking history. Click into any guest to see every stay, every
+                charge, and every fee they've ever paid.
               </p>
             </div>
             <div className="relative">
@@ -436,8 +511,9 @@ export const Landing = () => {
       <section id="how-it-works" className="landing-section-primary py-28 md:py-36">
         <div
           ref={howItWorks.ref}
-          className={`max-w-4xl mx-auto px-4 md:px-6 transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-4xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <div className="text-center mb-14">
             <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">Up and running in 5 minutes</h2>
@@ -448,23 +524,42 @@ export const Landing = () => {
             {/* connector line (desktop) */}
             <div className="hidden md:block absolute top-5 left-[16.67%] right-[16.67%] h-px bg-gradient-to-r from-white/10 via-white/20 to-white/10" />
 
-            <div className={`text-center transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`}>
-              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">1</div>
+            <div
+              className={`text-center transition-all duration-700 ${
+                howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+            >
+              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">
+                1
+              </div>
               <h3 className="font-semibold text-white mb-1">Connect OwnerRez</h3>
               <p className="text-sm text-[var(--landing-caption)]">Click, authorize, done. We use OAuth so we never see your password.</p>
             </div>
 
-            <div className={`text-center transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`} style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}>
-              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">2</div>
+            <div
+              className={`text-center transition-all duration-700 ${
+                howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+              style={{ transitionDelay: howItWorks.isInView ? '100ms' : '0ms' }}
+            >
+              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">
+                2
+              </div>
               <h3 className="font-semibold text-white mb-1">Data syncs automatically</h3>
-              <p className="text-sm text-[var(--landing-caption)]">We pull 4 years of bookings, properties, and guests. Usually done in a few minutes.</p>
+              <p className="text-sm text-[var(--landing-caption)]">
+                We pull 4 years of bookings, properties, and guests. Usually done in a few minutes.
+              </p>
             </div>
 
-            <div className={`text-center transition-all duration-700 ${howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`} style={{ transitionDelay: howItWorks.isInView ? '200ms' : '0ms' }}>
-              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">3</div>
+            <div
+              className={`text-center transition-all duration-700 ${
+                howItWorks.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+              }`}
+              style={{ transitionDelay: howItWorks.isInView ? '200ms' : '0ms' }}
+            >
+              <div className="w-10 h-10 border border-white/25 bg-[var(--landing-bg)] text-white/70 rounded-full flex items-center justify-center text-sm font-medium mx-auto mb-4 relative z-10">
+                3
+              </div>
               <h3 className="font-semibold text-white mb-1">Start exploring</h3>
               <p className="text-sm text-[var(--landing-caption)]">Your dashboards are ready. Filter by date, property, or tag.</p>
             </div>
@@ -476,15 +571,15 @@ export const Landing = () => {
       <section className="landing-section-secondary py-20 md:py-28">
         <div
           ref={quote.ref}
-          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${quote.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${
+            quote.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <blockquote className="landing-serif text-xl md:text-2xl text-white/80 leading-relaxed font-normal italic">
-            "OwnerRez is great at managing my properties and bookings. I just needed a deeper analytics layer on top of it. So we built one. Now I check my numbers every morning."
+            "OwnerRez is great at managing my properties and bookings. I just needed a deeper analytics layer on top of it. So we built one.
+            Now I check my numbers every morning."
           </blockquote>
-          <p className="mt-6 text-sm text-white/40">
-            — Jerry, co-founder & property manager
-          </p>
+          <p className="mt-6 text-sm text-white/40">— Jerry, co-founder & property manager</p>
         </div>
       </section>
 
@@ -492,8 +587,9 @@ export const Landing = () => {
       <section id="pricing" className="landing-section-primary py-28 md:py-36">
         <div
           ref={pricing.ref}
-          className={`max-w-7xl mx-auto px-4 md:px-6 transition-all duration-700 ${pricing.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-7xl mx-auto px-4 md:px-6 transition-all duration-700 ${
+            pricing.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <div className="text-center mb-10">
             <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white mb-3">Pricing that makes sense</h2>
@@ -503,17 +599,13 @@ export const Landing = () => {
           {/* billing toggle */}
           <div className="flex justify-center items-center gap-3 mb-10">
             <span className={`text-sm transition-colors ${!yearlyBilling ? 'text-white font-medium' : 'text-white/40'}`}>Monthly</span>
-            <Switch
-              checked={yearlyBilling}
-              onCheckedChange={handleToggleBilling}
-              aria-label="Toggle billing cycle"
-            />
+            <Switch checked={yearlyBilling} onCheckedChange={handleToggleBilling} aria-label="Toggle billing cycle" />
             <span className={`text-sm transition-colors ${yearlyBilling ? 'text-white font-medium' : 'text-white/40'}`}>Yearly</span>
           </div>
 
           {/* price cards - compact, no repeated features */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-3xl mx-auto mb-14">
-            {TIERS.filter(t => !t.contactSales).map((tier) => {
+            {TIERS.filter((t) => !t.contactSales).map((tier) => {
               const monthlyDisplay = getTierMonthlyDollars(tier, yearlyBilling)
               const yearlyTotal = getTierYearlyDollars(tier)
               return (
@@ -523,9 +615,7 @@ export const Landing = () => {
                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-white/40 mb-1">{tier.name}</p>
                     <p className="text-sm text-white/50 mb-5">{tier.tagline}</p>
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="landing-serif text-4xl font-semibold tracking-tight text-white">
-                        ${monthlyDisplay}
-                      </span>
+                      <span className="landing-serif text-4xl font-semibold tracking-tight text-white">${monthlyDisplay}</span>
                       <span className="text-sm text-white/40 font-normal">/mo</span>
                     </div>
                     <div className="mt-2 h-5 mb-6">
@@ -581,9 +671,7 @@ export const Landing = () => {
             </div>
           </div>
 
-          <p className="text-center text-xs text-white/30 mt-8">
-            Cancel anytime.
-          </p>
+          <p className="text-center text-xs text-white/30 mt-8">Cancel anytime.</p>
         </div>
       </section>
 
@@ -591,18 +679,23 @@ export const Landing = () => {
       <section className="landing-section-secondary py-20 md:py-28">
         <div
           ref={bottomCta.ref}
-          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${bottomCta.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            }`}
+          className={`max-w-3xl mx-auto px-4 md:px-6 text-center transition-all duration-700 ${
+            bottomCta.isInView ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}
         >
           <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-white">Ready to see your real numbers?</h2>
           <p className="mt-4 text-sm text-white/40">Built with OwnerRez hosts, shaped by their feedback.</p>
           {!isAuthenticated && (
             <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/signup" className="whitespace-nowrap inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg">
+              <Link
+                to="/signup"
+                className="whitespace-nowrap inline-flex items-center px-8 py-4 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-lg"
+              >
                 Get Started
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>
               <button
+                type="button"
                 onClick={handleTryDemo}
                 disabled={demoLoading}
                 className="whitespace-nowrap px-8 py-4 border border-white/20 text-white/80 rounded-full font-medium hover:bg-white/5 hover:border-white/30 transition-all text-lg disabled:opacity-50 cursor-pointer"

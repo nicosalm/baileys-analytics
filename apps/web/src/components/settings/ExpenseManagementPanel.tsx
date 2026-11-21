@@ -4,9 +4,7 @@ import { useProperties, useOperatingExpenses, useExpenseTemplates, saveExpenseTe
 import type { PropertyRow, ExpenseTemplateRow, OperatingExpenseRow } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
 import { formatCurrency, format } from '@baileys/utils'
-import {
-  Building2, Calendar, CheckCircle, Layers, Edit, Plus, X, DollarSign, AlertCircle, Save
-} from 'lucide-react'
+import { Building2, Calendar, CheckCircle, Layers, Edit, Plus, X, DollarSign, AlertCircle, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
@@ -28,7 +26,7 @@ const EXPENSE_CATEGORIES = [
   { value: 'utilities', label: 'Utilities' },
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'insurance', label: 'Insurance' },
-  { value: 'other', label: 'Other' }
+  { value: 'other', label: 'Other' },
 ]
 
 interface TemplateRow {
@@ -54,11 +52,13 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
 
   useEffect(() => {
     if (templateList.length > 0) {
-      setRows(templateList.map((t) => ({
-        category: t.category,
-        amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
-        description: t.description || ''
-      })))
+      setRows(
+        templateList.map((t) => ({
+          category: t.category,
+          amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
+          description: t.description || '',
+        })),
+      )
     } else {
       setRows([{ category: '', amount: 0, description: '' }])
     }
@@ -66,17 +66,17 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
   }, [templates])
 
   const addRow = () => {
-    setRows(prev => [...prev, { category: '', amount: 0, description: '' }])
+    setRows((prev) => [...prev, { category: '', amount: 0, description: '' }])
     setIsDirty(true)
   }
 
   const removeRow = (index: number) => {
-    setRows(prev => prev.filter((_, i) => i !== index))
+    setRows((prev) => prev.filter((_, i) => i !== index))
     setIsDirty(true)
   }
 
   const updateRow = (index: number, field: keyof TemplateRow, value: string | number) => {
-    setRows(prev => {
+    setRows((prev) => {
       const next = [...prev]
       next[index] = { ...next[index], [field]: value }
       return next
@@ -87,14 +87,14 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
   const handleSave = async () => {
     try {
       setIsSaving(true)
-      const validRows = rows.filter(r => r.category && r.amount > 0)
+      const validRows = rows.filter((r) => r.category && r.amount > 0)
       await saveExpenseTemplates({
         propertyId: property.id,
-        templates: validRows.map(r => ({
+        templates: validRows.map((r) => ({
           category: r.category,
           amount: r.amount,
-          description: r.description || undefined
-        }))
+          description: r.description || undefined,
+        })),
       })
       await mutate()
       setIsDirty(false)
@@ -106,7 +106,7 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
     }
   }
 
-  const usedCategories = rows.map(r => r.category).filter(Boolean)
+  const usedCategories = rows.map((r) => r.category).filter(Boolean)
   // savedTotal reflects what's actually persisted, not what's in the editor
   const savedTotal = templateList.reduce((sum, t) => sum + (typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount), 0)
   const hasTemplate = templateList.length > 0
@@ -143,12 +143,12 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
         {rows.map((row, index) => (
           <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <div className="flex gap-2 items-center">
-              <Select value={row.category || undefined} onValueChange={v => updateRow(index, 'category', v)}>
+              <Select value={row.category || undefined} onValueChange={(v) => updateRow(index, 'category', v)}>
                 <SelectTrigger className="flex-1 sm:w-[180px] h-8 text-sm">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {EXPENSE_CATEGORIES.map(cat => (
+                  {EXPENSE_CATEGORIES.map((cat) => (
                     <SelectItem
                       key={cat.value}
                       value={cat.value}
@@ -178,7 +178,7 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
                   min="0"
                   step="0.01"
                   value={row.amount || ''}
-                  onChange={e => updateRow(index, 'amount', parseFloat(e.target.value) || 0)}
+                  onChange={(e) => updateRow(index, 'amount', parseFloat(e.target.value) || 0)}
                   className="pl-7 h-8 text-sm"
                   placeholder="0.00"
                 />
@@ -187,7 +187,7 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
               <Input
                 type="text"
                 value={row.description || ''}
-                onChange={e => updateRow(index, 'description', e.target.value)}
+                onChange={(e) => updateRow(index, 'description', e.target.value)}
                 className="flex-1 sm:flex-none sm:w-32 h-8 text-sm"
                 placeholder="Note"
               />
@@ -216,13 +216,7 @@ const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
           )}
 
           {isDirty ? (
-            <Button
-              size="sm"
-              onClick={handleSave}
-              disabled={isSaving}
-              loading={isSaving}
-              loadingText="Saving..."
-            >
+            <Button size="sm" onClick={handleSave} disabled={isSaving} loading={isSaving} loadingText="Saving...">
               <Save className="w-3.5 h-3.5" />
               Save Template
             </Button>
@@ -264,16 +258,18 @@ const PropertyOverrideRow = ({ property, month, onOverride }: PropertyOverrideRo
       ? templateList.map((t) => ({
           category: t.category,
           amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
-          description: t.description || undefined
+          description: t.description || undefined,
         }))
       : []
     onOverride(property.id, property.name, hasOverride ? undefined : templateRows)
   }
 
   return (
-    <div className={`bg-card rounded-lg shadow-sm border transition-colors hover:bg-muted/30 ${
-      hasOverride ? 'border-success/30' : 'border-border'
-    }`}>
+    <div
+      className={`bg-card rounded-lg shadow-sm border transition-colors hover:bg-muted/30 ${
+        hasOverride ? 'border-success/30' : 'border-border'
+      }`}
+    >
       <div className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -326,7 +322,7 @@ export const ExpenseManagementPanel = () => {
 
   const currentDate = new Date()
   const [selectedPeriod, setSelectedPeriod] = useState(
-    `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+    `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`,
   )
 
   const handleOverride = (propertyId: string, propertyName: string, templateData?: TemplateRow[]) => {
@@ -335,7 +331,7 @@ export const ExpenseManagementPanel = () => {
       propertyId,
       propertyName,
       month: selectedPeriod,
-      templateData
+      templateData,
     })
   }
 
@@ -345,14 +341,10 @@ export const ExpenseManagementPanel = () => {
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-lg font-semibold text-foreground mb-2">Operating Expenses</h3>
-            <p className="text-muted-foreground text-sm">
-              Set up monthly templates, then override individual months when costs change
-            </p>
+            <p className="text-muted-foreground text-sm">Set up monthly templates, then override individual months when costs change</p>
           </div>
           <div className="bg-muted/40 rounded-lg px-4 py-3">
-            <div className="text-2xl font-bold text-info">
-              {properties?.length || 0}
-            </div>
+            <div className="text-2xl font-bold text-info">{properties?.length || 0}</div>
             <div className="text-xs text-muted-foreground mt-1">Properties</div>
           </div>
         </div>
@@ -361,21 +353,19 @@ export const ExpenseManagementPanel = () => {
       {/* segmented control */}
       <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg w-fit">
         <button
+          type="button"
           onClick={() => setActiveView('templates')}
           className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            activeView === 'templates'
-              ? 'bg-background shadow-sm text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
+            activeView === 'templates' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Templates
         </button>
         <button
+          type="button"
           onClick={() => setActiveView('overrides')}
           className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            activeView === 'overrides'
-              ? 'bg-background shadow-sm text-foreground'
-              : 'text-muted-foreground hover:text-foreground'
+            activeView === 'overrides' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           Overrides
@@ -387,9 +377,7 @@ export const ExpenseManagementPanel = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-semibold text-foreground">Monthly Templates</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Templates apply to all months unless you override them
-              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Templates apply to all months unless you override them</p>
             </div>
           </div>
           <StateWrapper
@@ -419,8 +407,10 @@ export const ExpenseManagementPanel = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
-                  {generateMonthOptions().map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  {generateMonthOptions().map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -435,12 +425,7 @@ export const ExpenseManagementPanel = () => {
           >
             <div className="space-y-3">
               {(properties || []).map((property) => (
-                <PropertyOverrideRow
-                  key={property.id}
-                  property={property}
-                  month={selectedPeriod}
-                  onOverride={handleOverride}
-                />
+                <PropertyOverrideRow key={property.id} property={property} month={selectedPeriod} onOverride={handleOverride} />
               ))}
             </div>
           </StateWrapper>

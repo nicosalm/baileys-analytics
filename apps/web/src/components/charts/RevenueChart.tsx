@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import type { MouseHandlerDataParam } from 'recharts'
@@ -25,7 +25,11 @@ interface RevenueChartProps {
   revenueGoal?: number | null
 }
 
-type RevenueChartTooltipProps = Partial<TooltipContentProps<number, string>> & { showProfit?: boolean; showComparison?: boolean; comparisonLabel?: string }
+type RevenueChartTooltipProps = Partial<TooltipContentProps<number, string>> & {
+  showProfit?: boolean
+  showComparison?: boolean
+  comparisonLabel?: string
+}
 
 const RevenueChartTooltip = ({ active, payload, label, showProfit, showComparison, comparisonLabel }: RevenueChartTooltipProps) => {
   if (!active || !payload?.length) return null
@@ -93,7 +97,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
   showComparison = false,
   comparisonLabel = '',
   onPeriodClick,
-  revenueGoal
+  revenueGoal,
 }) => {
   if (!data || data.length === 0) {
     return (
@@ -102,7 +106,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
       </ChartWrapper>
     )
   }
-  
+
   const formattedData = formatChartData(data, 'month')
   return (
     <ChartWrapper title={title} subtitle={subtitle} height={height}>
@@ -111,7 +115,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           data={formattedData}
           onClick={(e: MouseHandlerDataParam) => {
             if (e?.activeLabel && onPeriodClick) {
-              const dataPoint = formattedData.find(d => d.month === e.activeLabel)
+              const dataPoint = formattedData.find((d) => d.month === e.activeLabel)
               if (dataPoint) {
                 // Look for the original date in the source data
                 const index = formattedData.indexOf(dataPoint)
@@ -130,7 +134,10 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
           <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
           <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
           <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-          <Tooltip content={<RevenueChartTooltip showProfit={showProfit} showComparison={showComparison} comparisonLabel={comparisonLabel} />} isAnimationActive={false} />
+          <Tooltip
+            content={<RevenueChartTooltip showProfit={showProfit} showComparison={showComparison} comparisonLabel={comparisonLabel} />}
+            isAnimationActive={false}
+          />
           <Legend />
           <Line
             type="monotone"
@@ -190,7 +197,7 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
                 fill: CHART_INFRA.goal,
                 fontSize: 12,
                 fontWeight: 600,
-                offset: 4
+                offset: 4,
               }}
             />
           )}

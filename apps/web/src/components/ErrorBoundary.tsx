@@ -1,4 +1,4 @@
-import { Component, ErrorInfo, ReactNode } from 'react'
+import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -28,9 +28,9 @@ export class ErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
-      errorCount: 0
+      errorCount: 0,
     }
-    
+
     if (props.resetKeys) {
       this.previousResetKeys = props.resetKeys
     }
@@ -39,26 +39,26 @@ export class ErrorBoundary extends Component<Props, State> {
   static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
-      error
+      error,
     }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { onError } = this.props
-    
+
     if (import.meta.env.DEV) {
       console.error('Error caught by ErrorBoundary:', error, errorInfo)
     }
-    
+
     if (onError) {
       onError(error, errorInfo)
     }
-    
-    this.setState(prevState => ({
+
+    this.setState((prevState) => ({
       errorInfo,
-      errorCount: prevState.errorCount + 1
+      errorCount: prevState.errorCount + 1,
     }))
-    
+
     if (this.props.level === 'component' && this.state.errorCount < 3) {
       this.resetTimeoutId = setTimeout(() => {
         this.resetErrorBoundary()
@@ -71,9 +71,7 @@ export class ErrorBoundary extends Component<Props, State> {
     const { hasError } = this.state
 
     if (hasError && resetKeys && prevProps.resetKeys) {
-      const hasResetKeyChanged = resetKeys.some(
-        (key, idx) => key !== this.previousResetKeys[idx]
-      )
+      const hasResetKeyChanged = resetKeys.some((key, idx) => key !== this.previousResetKeys[idx])
 
       if (hasResetKeyChanged) {
         this.resetErrorBoundary()
@@ -93,11 +91,11 @@ export class ErrorBoundary extends Component<Props, State> {
       clearTimeout(this.resetTimeoutId)
       this.resetTimeoutId = null
     }
-    
+
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     })
   }
 
@@ -118,17 +116,13 @@ export class ErrorBoundary extends Component<Props, State> {
                 <div className="w-16 h-16 bg-danger-subtle rounded-full flex items-center justify-center mb-4">
                   <AlertTriangle className="w-8 h-8 text-danger" />
                 </div>
-                <h1 className="text-2xl font-bold text-foreground mb-2">
-                  Something went wrong
-                </h1>
+                <h1 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h1>
                 <p className="text-muted-foreground mb-6">
                   We encountered an unexpected error. Please try refreshing the page or going back to the dashboard.
                 </p>
                 {import.meta.env.DEV && (
                   <details className="w-full mb-6 text-left">
-                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                      Error details
-                    </summary>
+                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">Error details</summary>
                     <pre className="mt-2 text-xs bg-muted p-3 rounded overflow-auto">
                       {error.toString()}
                       {this.state.errorInfo?.componentStack}
@@ -136,16 +130,11 @@ export class ErrorBoundary extends Component<Props, State> {
                   </details>
                 )}
                 <div className="flex gap-3">
-                  <Button
-                    variant="secondary"
-                    onClick={() => window.location.href = '/'}
-                  >
+                  <Button variant="secondary" onClick={() => (window.location.href = '/')}>
                     <Home className="w-4 h-4" />
                     Go to Dashboard
                   </Button>
-                  <Button
-                    onClick={() => window.location.reload()}
-                  >
+                  <Button onClick={() => window.location.reload()}>
                     <RefreshCw className="w-4 h-4" />
                     Refresh Page
                   </Button>
@@ -164,9 +153,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 <AlertTriangle className="w-5 h-5 text-warning" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-foreground mb-1">
-                  Unable to load this section
-                </h3>
+                <h3 className="text-lg font-semibold text-foreground mb-1">Unable to load this section</h3>
                 <p className="text-sm text-muted-foreground mb-3">
                   There was a problem loading this part of the page. You can try refreshing or continue using other sections.
                 </p>
@@ -175,11 +162,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     This error has occurred multiple times. Please contact support if it persists.
                   </p>
                 )}
-                <Button
-                  variant="link"
-                  onClick={this.resetErrorBoundary}
-                  className="text-sm text-primary hover:text-primary/80 px-0"
-                >
+                <Button variant="link" onClick={this.resetErrorBoundary} className="text-sm text-primary hover:text-primary/80 px-0">
                   Try again
                 </Button>
               </div>
@@ -210,9 +193,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <AlertTriangle className="w-5 h-5" />
             <span className="font-medium">Component Error</span>
           </div>
-          <p className="text-sm text-danger mt-1">
-            This component failed to render properly.
-          </p>
+          <p className="text-sm text-danger mt-1">This component failed to render properly.</p>
           <Button
             variant="link"
             onClick={this.resetErrorBoundary}

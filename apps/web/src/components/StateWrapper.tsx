@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import { cn } from '@/lib/utils'
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { LoadingState } from './LoadingState'
@@ -40,23 +40,18 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   minHeight = 200,
   centered = true,
   loadingStyle = 'component',
-  skeletonRows = 3
+  skeletonRows = 3,
 }) => {
   const heightValue = typeof minHeight === 'number' ? `${minHeight}px` : minHeight
 
-  const containerClasses = cn(
-    centered && 'flex flex-col items-center justify-center',
-    className
-  )
+  const containerClasses = cn(centered && 'flex flex-col items-center justify-center', className)
 
   if (loading) {
     if (loadingStyle === 'spinner') {
       return (
         <div className={containerClasses} style={{ minHeight: heightValue }}>
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground/70" />
-          {loadingMessage && (
-            <p className="text-sm text-muted-foreground mt-2">{loadingMessage}</p>
-          )}
+          {loadingMessage && <p className="text-sm text-muted-foreground mt-2">{loadingMessage}</p>}
         </div>
       )
     }
@@ -82,8 +77,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   }
 
   if (error) {
-    const errorMsg = errorMessage ||
-      (error instanceof Error ? error.message : String(error))
+    const errorMsg = errorMessage || (error instanceof Error ? error.message : String(error))
 
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
@@ -105,9 +99,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
       <div className={containerClasses} style={{ minHeight: heightValue }}>
         {emptyIcon || <EmptyQuadrants className="w-12 h-12 mb-2" />}
         <p className="text-sm font-medium text-muted-foreground">{emptyMessage}</p>
-        {emptySubMessage && (
-          <p className="text-xs text-muted-foreground/70 mt-1">{emptySubMessage}</p>
-        )}
+        {emptySubMessage && <p className="text-xs text-muted-foreground/70 mt-1">{emptySubMessage}</p>}
         {onRetry && (
           <Button onClick={onRetry} className="mt-4">
             <RefreshCw className="w-4 h-4" />

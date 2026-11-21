@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useCallback, memo } from 'react'
+import type React from 'react'
+import { useMemo, useState, useCallback, memo } from 'react'
 import { Sankey, Tooltip, ResponsiveContainer } from 'recharts'
 import type { SankeyNodeProps as NodeProps, SankeyLinkProps as LinkProps, SankeyData } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
@@ -32,16 +33,15 @@ interface LinkMeta {
   flowType: 'inflow' | 'deduction' | 'profit'
 }
 
-const categoryLabel = (cat: string) =>
-  cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+const categoryLabel = (cat: string) => cat.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 
 // resolve semantic colors at render time so they track light/dark mode
 function getSemanticColors() {
   return {
-    warning: resolveToken('--warning'),   // platform fees
-    info: resolveToken('--info'),         // taxes
-    danger: resolveToken('--danger'),     // operating expenses
-    success: resolveToken('--success'),   // profit / net revenue
+    warning: resolveToken('--warning'), // platform fees
+    info: resolveToken('--info'), // taxes
+    danger: resolveToken('--danger'), // operating expenses
+    success: resolveToken('--success'), // profit / net revenue
   }
 }
 
@@ -57,7 +57,7 @@ function buildSankeyData(data: RevenueFlowData): {
   const gross = data.grossRevenue
   const colors = getSemanticColors()
 
-  const platforms = data.platforms.filter(p => p.grossRevenue > 0)
+  const platforms = data.platforms.filter((p) => p.grossRevenue > 0)
   if (platforms.length === 0) return { sankeyData: { nodes: [], links: [] }, nodeColors: [], linkMeta: [] }
 
   // column 1: platforms
@@ -160,9 +160,7 @@ function buildSankeyData(data: RevenueFlowData): {
   return { sankeyData: { nodes, links }, nodeColors, linkMeta }
 }
 
-const SankeyNodeRenderer = memo<NodeProps & { nodeColors: string[] }>(({
-  x, y, width, height, index, payload, nodeColors
-}) => {
+const SankeyNodeRenderer = memo<NodeProps & { nodeColors: string[] }>(({ x, y, width, height, index, payload, nodeColors }) => {
   const color = nodeColors[index] || '#6b7280'
   const name = payload?.name || ''
   const isLeftColumn = x < 100
@@ -170,16 +168,7 @@ const SankeyNodeRenderer = memo<NodeProps & { nodeColors: string[] }>(({
 
   return (
     <g>
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        fill={color}
-        rx={3}
-        ry={3}
-        opacity={0.9}
-      />
+      <rect x={x} y={y} width={width} height={height} fill={color} rx={3} ry={3} opacity={0.9} />
       <text
         x={isRightColumn ? x + width + 8 : isLeftColumn ? x - 8 : x + width / 2}
         y={y + height / 2}
@@ -197,25 +186,23 @@ const SankeyNodeRenderer = memo<NodeProps & { nodeColors: string[] }>(({
 
 const LINK_TRANSITION = { transition: 'stroke-opacity 0.2s ease' } as const
 
-const SankeyLinkRenderer = memo<LinkProps & { activeIndex: number | null; linkIndex: number }>(({
-  sourceX, targetX, sourceY, targetY,
-  sourceControlX, targetControlX,
-  linkWidth, payload, activeIndex, linkIndex
-}) => {
-  const sourceColor = (payload?.source as unknown as { color?: string })?.color || '#6b7280'
-  const isActive = activeIndex === null || activeIndex === linkIndex
+const SankeyLinkRenderer = memo<LinkProps & { activeIndex: number | null; linkIndex: number }>(
+  ({ sourceX, targetX, sourceY, targetY, sourceControlX, targetControlX, linkWidth, payload, activeIndex, linkIndex }) => {
+    const sourceColor = (payload?.source as unknown as { color?: string })?.color || '#6b7280'
+    const isActive = activeIndex === null || activeIndex === linkIndex
 
-  return (
-    <path
-      d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
-      fill="none"
-      stroke={sourceColor}
-      strokeWidth={linkWidth}
-      strokeOpacity={isActive ? 0.35 : 0.08}
-      style={LINK_TRANSITION}
-    />
-  )
-})
+    return (
+      <path
+        d={`M${sourceX},${sourceY} C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}`}
+        fill="none"
+        stroke={sourceColor}
+        strokeWidth={linkWidth}
+        strokeOpacity={isActive ? 0.35 : 0.08}
+        style={LINK_TRANSITION}
+      />
+    )
+  },
+)
 
 const FlowTooltip = memo<{
   activeLinkIndex: number | null
@@ -229,20 +216,16 @@ const FlowTooltip = memo<{
       <p className="font-semibold text-sm mb-2">{meta.title}</p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">
-            {meta.flowType === 'inflow' ? 'Platform Revenue:' : 'Amount:'}
-          </span>
-          <span className={`font-medium ${
-            meta.flowType === 'profit' ? 'text-success' :
-            meta.flowType === 'deduction' ? 'text-warning' : ''
-          }`}>
-            {meta.flowType === 'deduction' ? '-' : ''}{formatCurrency(meta.value)}
+          <span className="text-muted-foreground">{meta.flowType === 'inflow' ? 'Platform Revenue:' : 'Amount:'}</span>
+          <span
+            className={`font-medium ${meta.flowType === 'profit' ? 'text-success' : meta.flowType === 'deduction' ? 'text-warning' : ''}`}
+          >
+            {meta.flowType === 'deduction' ? '-' : ''}
+            {formatCurrency(meta.value)}
           </span>
         </div>
         <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
-          <span className="text-muted-foreground">
-            {meta.flowType === 'inflow' ? 'Share of Gross:' : 'Of Gross Revenue:'}
-          </span>
+          <span className="text-muted-foreground">{meta.flowType === 'inflow' ? 'Share of Gross:' : 'Of Gross Revenue:'}</span>
           <span className="font-medium">{formatPercentage(meta.pctOfGross, 1)}</span>
         </div>
       </div>
@@ -255,32 +238,23 @@ export const RevenueFlowSankey: React.FC<RevenueFlowSankeyProps> = ({ data }) =>
 
   const { sankeyData, nodeColors, linkMeta } = useMemo(() => buildSankeyData(data), [data])
 
-  const coloredNodes = useMemo(
-    () => sankeyData.nodes.map((n, i) => ({ ...n, color: nodeColors[i] })),
-    [sankeyData.nodes, nodeColors]
-  )
+  const coloredNodes = useMemo(() => sankeyData.nodes.map((n, i) => ({ ...n, color: nodeColors[i] })), [sankeyData.nodes, nodeColors])
 
-  const sankeyInput = useMemo(
-    () => ({ nodes: coloredNodes, links: sankeyData.links }),
-    [coloredNodes, sankeyData.links]
-  )
+  const sankeyInput = useMemo(() => ({ nodes: coloredNodes, links: sankeyData.links }), [coloredNodes, sankeyData.links])
 
   const handleMouseEnter = useCallback((_item: NodeProps | LinkProps, type: string, _e: React.MouseEvent) => {
     if (type === 'link') {
-      setActiveLink(((_item as LinkProps).index))
+      setActiveLink((_item as LinkProps).index)
     }
   }, [])
 
   const handleMouseLeave = useCallback(() => setActiveLink(null), [])
 
-  const renderNode = useCallback(
-    (props: NodeProps) => <SankeyNodeRenderer {...props} nodeColors={nodeColors} />,
-    [nodeColors]
-  )
+  const renderNode = useCallback((props: NodeProps) => <SankeyNodeRenderer {...props} nodeColors={nodeColors} />, [nodeColors])
 
   const renderLink = useCallback(
     (props: LinkProps) => <SankeyLinkRenderer {...props} activeIndex={activeLink} linkIndex={props.index} />,
-    [activeLink]
+    [activeLink],
   )
 
   if (sankeyData.nodes.length === 0) {
@@ -306,10 +280,7 @@ export const RevenueFlowSankey: React.FC<RevenueFlowSankeyProps> = ({ data }) =>
         onMouseEnter={handleMouseEnter as never}
         onMouseLeave={handleMouseLeave as never}
       >
-        <Tooltip
-          content={<FlowTooltip activeLinkIndex={activeLink} linkMeta={linkMeta} />}
-          isAnimationActive={false}
-        />
+        <Tooltip content={<FlowTooltip activeLinkIndex={activeLink} linkMeta={linkMeta} />} isAnimationActive={false} />
       </Sankey>
     </ResponsiveContainer>
   )

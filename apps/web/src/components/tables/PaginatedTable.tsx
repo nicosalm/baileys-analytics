@@ -53,7 +53,7 @@ export function PaginatedTable<T extends Record<string, any>>({
   onRefresh,
   rowClassName,
   showRowNumbers = false,
-  loading = false
+  loading = false,
 }: PaginatedTableProps<T>) {
   const [searchTerm, setSearchTerm] = React.useState('')
   const [currentPage, setCurrentPage] = React.useState(1)
@@ -91,17 +91,17 @@ export function PaginatedTable<T extends Record<string, any>>({
   const filteredData = React.useMemo(() => {
     if (!enableSearch || !searchTerm) return sortedData
 
-    return sortedData.filter(item => {
+    return sortedData.filter((item) => {
       const searchLower = searchTerm.toLowerCase()
 
       if (searchKeys.length > 0) {
-        return searchKeys.some(key => {
+        return searchKeys.some((key) => {
           const value = item[key]
-          return value && value.toString().toLowerCase().includes(searchLower)
+          return value?.toString().toLowerCase().includes(searchLower)
         })
       }
 
-      return Object.values(item).some(value => {
+      return Object.values(item).some((value) => {
         if (value && (typeof value === 'string' || typeof value === 'number')) {
           return value.toString().toLowerCase().includes(searchLower)
         }
@@ -122,14 +122,14 @@ export function PaginatedTable<T extends Record<string, any>>({
   }, [searchTerm])
 
   const handleSort = (column: string) => {
-    if (!columns.find(c => c.key === column)?.sortable) return
+    if (!columns.find((c) => c.key === column)?.sortable) return
 
     if (onSort) {
       onSort(column)
     } else {
       // built-in sort: toggle order if same column, otherwise switch column
       if (column === internalSortBy) {
-        setInternalSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+        setInternalSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
       } else {
         setInternalSortBy(column)
         setInternalSortOrder('desc')
@@ -173,22 +173,12 @@ export function PaginatedTable<T extends Record<string, any>>({
 
           <div className="flex items-center space-x-2">
             {enableRefresh && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onRefresh}
-                title="Refresh"
-              >
+              <Button variant="ghost" size="icon" onClick={onRefresh} title="Refresh">
                 <RefreshCw className="w-4 h-4" />
               </Button>
             )}
             {enableExport && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onExport}
-                title="Export"
-              >
+              <Button variant="ghost" size="icon" onClick={onExport} title="Export">
                 <Download className="w-4 h-4" />
               </Button>
             )}
@@ -200,9 +190,7 @@ export function PaginatedTable<T extends Record<string, any>>({
         <div className="flex flex-col items-center justify-center h-64 text-muted-foreground border rounded-lg bg-card">
           <EmptyQuadrants className="w-12 h-12 mb-2" />
           <p className="text-sm font-medium text-muted-foreground">{emptyMessage}</p>
-          {enableSearch && searchTerm && (
-            <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>
-          )}
+          {enableSearch && searchTerm && <div className="mt-2 text-sm">No results found for "{searchTerm}"</div>}
         </div>
       ) : (
         <>
@@ -212,9 +200,7 @@ export function PaginatedTable<T extends Record<string, any>>({
                 <thead className="bg-muted/50">
                   <tr>
                     {showRowNumbers && (
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">
-                        #
-                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-16">#</th>
                     )}
                     {columns.map((column) => (
                       <th
@@ -229,11 +215,7 @@ export function PaginatedTable<T extends Record<string, any>>({
                           <span>{column.header}</span>
                           {column.sortable && activeSortBy === column.key && (
                             <span className="ml-2">
-                              {activeSortOrder === 'asc' ? (
-                                <ChevronUp className="w-4 h-4" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4" />
-                              )}
+                              {activeSortOrder === 'asc' ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                             </span>
                           )}
                         </div>
@@ -250,16 +232,10 @@ export function PaginatedTable<T extends Record<string, any>>({
                     return (
                       <tr
                         key={rowId}
-                        className={`hover:bg-muted/50 transition-all ${
-                          onRowClick ? 'cursor-pointer' : ''
-                        } ${customClassName}`}
+                        className={`hover:bg-muted/50 transition-all ${onRowClick ? 'cursor-pointer' : ''} ${customClassName}`}
                         onClick={() => onRowClick?.(item, actualIndex)}
                       >
-                        {showRowNumbers && (
-                          <td className="px-4 py-3 text-sm text-muted-foreground">
-                            {actualIndex + 1}
-                          </td>
-                        )}
+                        {showRowNumbers && <td className="px-4 py-3 text-sm text-muted-foreground">{actualIndex + 1}</td>}
                         {columns.map((column) => (
                           <td
                             key={`${rowId}-${String(column.key)}`}
@@ -280,14 +256,14 @@ export function PaginatedTable<T extends Record<string, any>>({
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-card p-4 rounded-lg shadow-sm">
               <div className="text-sm text-muted-foreground">
-                Showing {((currentPage - 1) * pageSize) + 1}-{Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length}
+                Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length}
               </div>
 
               <div className="flex items-center space-x-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -322,7 +298,7 @@ export function PaginatedTable<T extends Record<string, any>>({
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
                 >
                   <ChevronRight className="w-4 h-4" />

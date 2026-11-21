@@ -1,17 +1,13 @@
 import { memo, useCallback } from 'react'
 import { formatCompactCurrency, formatPercentage } from '@baileys/utils'
-import { PropertyMetrics } from '@/types/api'
+import type { PropertyMetrics } from '@/types/api'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 import { useModal } from '@/contexts/modal'
 import { getOccupancyColor } from '@/lib/theme'
 
 type ComparisonMode = 'none' | 'previous-period' | 'previous-year'
 
-const getGrowthIndicator = (
-  current: number,
-  previous: number | undefined,
-  comparisonMode: ComparisonMode
-) => {
+const getGrowthIndicator = (current: number, previous: number | undefined, comparisonMode: ComparisonMode) => {
   if (comparisonMode === 'none' || !previous) return null
   const growth = ((current - previous) / previous) * 100
   const isPositive = growth > 0
@@ -36,7 +32,7 @@ export const PropertyCard = memo(({ property, previousProperty, comparisonMode }
     openModal({
       type: 'property',
       propertyId: property.propertyId,
-      propertyName: property.propertyName
+      propertyName: property.propertyName,
     })
   }, [openModal, property.propertyId, property.propertyName])
 
@@ -45,7 +41,9 @@ export const PropertyCard = memo(({ property, previousProperty, comparisonMode }
       className="bg-card p-4 rounded-lg shadow-sm border border-border cursor-pointer hover:shadow-md hover:bg-muted/30 transition-[background-color,box-shadow] duration-200"
       onClick={handleClick}
     >
-      <h3 className="text-base font-bold mb-3 truncate" title={property.propertyName}>{property.propertyName}</h3>
+      <h3 className="text-base font-bold mb-3 truncate" title={property.propertyName}>
+        {property.propertyName}
+      </h3>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <div className="text-sm text-muted-foreground">Revenue</div>
@@ -54,9 +52,7 @@ export const PropertyCard = memo(({ property, previousProperty, comparisonMode }
             {getGrowthIndicator(property.revenue, previousProperty?.revenue, comparisonMode)}
           </div>
           {comparisonMode !== 'none' && previousProperty && (
-            <div className="text-xs text-muted-foreground">
-              vs {formatCompactCurrency(previousProperty.revenue)}
-            </div>
+            <div className="text-xs text-muted-foreground">vs {formatCompactCurrency(previousProperty.revenue)}</div>
           )}
         </div>
         <div>
@@ -66,9 +62,7 @@ export const PropertyCard = memo(({ property, previousProperty, comparisonMode }
             {getGrowthIndicator(property.bookings, previousProperty?.bookings, comparisonMode)}
           </div>
           {comparisonMode !== 'none' && previousProperty && (
-            <div className="text-xs text-muted-foreground">
-              vs {previousProperty.bookings}
-            </div>
+            <div className="text-xs text-muted-foreground">vs {previousProperty.bookings}</div>
           )}
         </div>
         <div>

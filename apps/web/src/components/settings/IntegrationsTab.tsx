@@ -66,7 +66,7 @@ export const IntegrationsTab = () => {
     // Reset the sync status to trigger a fresh sync
     try {
       const result = await api.request('/sync/reset', {
-        method: 'POST'
+        method: 'POST',
       })
       if (result.success) {
         // Navigate to dashboard with sync parameter
@@ -86,16 +86,10 @@ export const IntegrationsTab = () => {
         <div className="p-6">
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-start gap-4">
-              <img
-                src="/logos/ownerrez-app-icon.png"
-                alt="OwnerRez"
-                className="w-12 h-12 rounded-lg"
-              />
+              <img src="/logos/ownerrez-app-icon.png" alt="OwnerRez" className="w-12 h-12 rounded-lg" />
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">OwnerRez</h3>
-                <p className="text-muted-foreground text-sm">
-                  Syncs your properties, bookings, and guests. Stays up to date via webhooks.
-                </p>
+                <p className="text-muted-foreground text-sm">Syncs your properties, bookings, and guests. Stays up to date via webhooks.</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -125,82 +119,82 @@ export const IntegrationsTab = () => {
           </div>
 
           {isConnected && syncStatus && (
-            <>
-              <div className="border-t pt-6">
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Sync Status</h3>
-                  {(() => {
-                    const hours = webhookHealth?.lastWebhookHoursAgo
-                    const hoursDisplay = hours != null ? (hours < 1 ? '<1 hour' : `${Math.round(hours)} hours`) : null
+            <div className="border-t pt-6">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-foreground mb-2">Sync Status</h3>
+                {(() => {
+                  const hours = webhookHealth?.lastWebhookHoursAgo
+                  const hoursDisplay = hours != null ? (hours < 1 ? '<1 hour' : `${Math.round(hours)} hours`) : null
 
-                    if (hours != null && hours < 24) {
-                      return (
-                        <div className="bg-success-subtle border border-success/30 rounded-lg p-3">
-                          <p className="text-sm text-success-fg">
-                            <span className="font-medium">✓ Real-time webhooks active</span> · last event {hoursDisplay} ago
-                          </p>
-                        </div>
-                      )
-                    }
-
-                    if (hours != null && hours < 72) {
-                      return (
-                        <div className="bg-warning-subtle border border-warning/30 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-warning-fg">
-                              <span className="font-medium">⚠ No webhooks received in {hoursDisplay}</span> · data may be stale
-                            </p>
-                            <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
-                              <RefreshCw className="w-3 h-3" />
-                              Re-sync
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    }
-
-                    if (hours != null && hours >= 72) {
-                      return (
-                        <div className="bg-danger-subtle border border-danger/30 rounded-lg p-3">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-danger-fg">
-                              <span className="font-medium">✗ Webhooks may be disconnected</span> · no events in {hoursDisplay}
-                            </p>
-                            <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
-                              <RefreshCw className="w-3 h-3" />
-                              Re-sync
-                            </Button>
-                          </div>
-                        </div>
-                      )
-                    }
-
-                    // Loading or unknown state — show neutral/loading
+                  if (hours != null && hours < 24) {
                     return (
-                      <div className="bg-muted/40 border rounded-lg p-3">
-                        <p className="text-sm text-muted-foreground">
-                          <span className="font-medium">Checking webhook status...</span>
+                      <div className="bg-success-subtle border border-success/30 rounded-lg p-3">
+                        <p className="text-sm text-success-fg">
+                          <span className="font-medium">✓ Real-time webhooks active</span> · last event {hoursDisplay} ago
                         </p>
                       </div>
                     )
-                  })()}
-                </div>
+                  }
 
-                <h3 className="text-lg font-semibold text-foreground mb-4">Manual Sync</h3>
-                <div className="flex flex-wrap gap-3">
-                  <Button onClick={handleManualSync}>
-                    <RefreshCw className="w-4 h-4" />
-                    Re-sync All Data (4 years)
-                  </Button>
-                  <p className="text-xs text-muted-foreground w-full mt-2">
-                    This will re-run the initial sync process, refreshing all properties and bookings from the last 4 years.
-                  </p>
-                  <p className="text-xs text-muted-foreground/50 w-full mt-4">
-                    Revenue, bookings, guests, and host service fees are synced from OwnerRez. Guest-facing OTA fees are estimated automatically (Vrbo ~8%, Airbnb ~14% pre-Oct 2025, 0% after). Operating expenses, tax jurisdictions, and platform remittance rules must be configured manually in Settings.
-                  </p>
-                </div>
+                  if (hours != null && hours < 72) {
+                    return (
+                      <div className="bg-warning-subtle border border-warning/30 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-warning-fg">
+                            <span className="font-medium">⚠ No webhooks received in {hoursDisplay}</span> · data may be stale
+                          </p>
+                          <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
+                            <RefreshCw className="w-3 h-3" />
+                            Re-sync
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (hours != null && hours >= 72) {
+                    return (
+                      <div className="bg-danger-subtle border border-danger/30 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-danger-fg">
+                            <span className="font-medium">✗ Webhooks may be disconnected</span> · no events in {hoursDisplay}
+                          </p>
+                          <Button variant="outline" size="sm" onClick={handleManualSync} className="ml-3 text-xs">
+                            <RefreshCw className="w-3 h-3" />
+                            Re-sync
+                          </Button>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  // Loading or unknown state — show neutral/loading
+                  return (
+                    <div className="bg-muted/40 border rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">Checking webhook status...</span>
+                      </p>
+                    </div>
+                  )
+                })()}
               </div>
-            </>
+
+              <h3 className="text-lg font-semibold text-foreground mb-4">Manual Sync</h3>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleManualSync}>
+                  <RefreshCw className="w-4 h-4" />
+                  Re-sync All Data (4 years)
+                </Button>
+                <p className="text-xs text-muted-foreground w-full mt-2">
+                  This will re-run the initial sync process, refreshing all properties and bookings from the last 4 years.
+                </p>
+                <p className="text-xs text-muted-foreground/50 w-full mt-4">
+                  Revenue, bookings, guests, and host service fees are synced from OwnerRez. Guest-facing OTA fees are estimated
+                  automatically (Vrbo ~8%, Airbnb ~14% pre-Oct 2025, 0% after). Operating expenses, tax jurisdictions, and platform
+                  remittance rules must be configured manually in Settings.
+                </p>
+              </div>
+            </div>
           )}
 
           {!isConnected && (
@@ -209,12 +203,10 @@ export const IntegrationsTab = () => {
                 <div className="flex gap-3">
                   <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm text-warning-fg font-medium mb-1">
-                      Connection Required
-                    </p>
+                    <p className="text-sm text-warning-fg font-medium mb-1">Connection Required</p>
                     <p className="text-sm text-warning-fg">
-                      Connect your OwnerRez account to start syncing property and booking data.
-                      Initial connection will sync 4 years of historical data and enable real-time webhook updates.
+                      Connect your OwnerRez account to start syncing property and booking data. Initial connection will sync 4 years of
+                      historical data and enable real-time webhook updates.
                     </p>
                   </div>
                 </div>
@@ -234,7 +226,6 @@ export const IntegrationsTab = () => {
         variant="danger"
         isLoading={isDisconnecting}
       />
-
     </div>
   )
 }

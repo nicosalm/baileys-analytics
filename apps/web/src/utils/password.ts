@@ -8,15 +8,27 @@ export const PASSWORD_REQUIREMENTS = {
   requireSpecial: false, // nist recommends NOT requiring special chars
   preventCommonPasswords: true,
   preventSequentialChars: true, // prevent "12345", "abcde"
-  preventRepeatingChars: true // prevent "aaaa", "1111"
+  preventRepeatingChars: true, // prevent "aaaa", "1111"
 }
 
 // common weak passwords to check against
 const COMMON_PASSWORDS = [
-  'password', 'Password', 'Password1', 'Password123',
-  '12345678', '123456789', 'qwerty', 'Qwerty123',
-  'letmein', 'welcome', 'Welcome1', 'admin',
-  'Admin123', 'password1', 'p@ssw0rd', 'P@ssw0rd'
+  'password',
+  'Password',
+  'Password1',
+  'Password123',
+  '12345678',
+  '123456789',
+  'qwerty',
+  'Qwerty123',
+  'letmein',
+  'welcome',
+  'Welcome1',
+  'admin',
+  'Admin123',
+  'password1',
+  'p@ssw0rd',
+  'P@ssw0rd',
 ]
 
 export interface PasswordStrength {
@@ -40,7 +52,7 @@ export const validatePassword = (password: string): { isValid: boolean; errors: 
   if (password.length < PASSWORD_REQUIREMENTS.minLength) {
     errors.push(`Password must be at least ${PASSWORD_REQUIREMENTS.minLength} characters`)
   }
-  
+
   if (password.length > PASSWORD_REQUIREMENTS.maxLength) {
     errors.push(`Password must be no more than ${PASSWORD_REQUIREMENTS.maxLength} characters`)
   }
@@ -61,23 +73,26 @@ export const validatePassword = (password: string): { isValid: boolean; errors: 
   if (PASSWORD_REQUIREMENTS.requireSpecial && !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
     errors.push('Password must contain at least one special character')
   }
-  
+
   // security checks
   if (PASSWORD_REQUIREMENTS.preventCommonPasswords) {
     const lowerPassword = password.toLowerCase()
-    if (COMMON_PASSWORDS.some(common => lowerPassword === common.toLowerCase())) {
+    if (COMMON_PASSWORDS.some((common) => lowerPassword === common.toLowerCase())) {
       errors.push('This password is too common. Please choose a more unique password')
     }
   }
-  
+
   if (PASSWORD_REQUIREMENTS.preventSequentialChars) {
     // check for sequential characters like "abc", "123"
-    const hasSequential = /(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(password)
+    const hasSequential =
+      /(?:abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i.test(
+        password,
+      )
     if (hasSequential) {
       warnings.push('Avoid sequential characters for a stronger password')
     }
   }
-  
+
   if (PASSWORD_REQUIREMENTS.preventRepeatingChars) {
     // check for repeating characters like "aaa", "111"
     const hasRepeating = /(.)\1{2,}/.test(password)
@@ -89,7 +104,7 @@ export const validatePassword = (password: string): { isValid: boolean; errors: 
   return {
     isValid: errors.length === 0,
     errors,
-    warnings
+    warnings,
   }
 }
 
@@ -99,20 +114,20 @@ export const getPasswordStrength = (password: string): PasswordStrength => {
     hasUppercase: /[A-Z]/.test(password),
     hasLowercase: /[a-z]/.test(password),
     hasNumber: /\d/.test(password),
-    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+    hasSpecial: /[!@#$%^&*(),.?":{}|<>]/.test(password),
   }
 
   let score = 0
-  
+
   // basic requirements (required)
   if (meets.minLength) score++
   if (meets.hasUppercase && meets.hasLowercase && meets.hasNumber) score++
-  
+
   // additional strength factors
   if (meets.hasSpecial) score++ // bonus for special chars
   if (password.length >= 12) score++ // bonus for length
   if (password.length >= 16) score++ // extra bonus for long passwords
-  
+
   // penalty for weak patterns
   const validation = validatePassword(password)
   if (validation.warnings.length > 0) score = Math.max(0, score - 1)
@@ -124,15 +139,15 @@ export const getPasswordStrength = (password: string): PasswordStrength => {
 
   const strengthMap: Record<number, { label: PasswordStrength['label']; color: string }> = {
     0: { label: 'Very Weak', color: 'text-danger-fg bg-danger-subtle' },
-    1: { label: 'Weak',      color: 'text-warning-fg bg-warning-subtle' },
-    2: { label: 'Fair',      color: 'text-warning-fg bg-warning-subtle' },
-    3: { label: 'Good',      color: 'text-info-fg bg-info-subtle' },
-    4: { label: 'Strong',    color: 'text-success-fg bg-success-subtle' }
+    1: { label: 'Weak', color: 'text-warning-fg bg-warning-subtle' },
+    2: { label: 'Fair', color: 'text-warning-fg bg-warning-subtle' },
+    3: { label: 'Good', color: 'text-info-fg bg-info-subtle' },
+    4: { label: 'Strong', color: 'text-success-fg bg-success-subtle' },
   }
 
   return {
     score: score as 0 | 1 | 2 | 3 | 4,
     ...strengthMap[score],
-    meets
+    meets,
   }
 }

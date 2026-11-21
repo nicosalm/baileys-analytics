@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { getExpensesWithTemplateFallback } from './expense-utils';
 import { normalizePlatform } from '../utils/platform';
 import { fetchAllRows, fetchChunked } from '../utils/fetch-all';
@@ -10,7 +10,7 @@ import {
 	collectBlockedNightsExclusive,
 	sumBlockedNights,
 	buildDailyBlockGrid,
-	TranslatedBlock,
+	type TranslatedBlock,
 } from '../utils/blocks';
 import { MS_PER_DAY } from '../constants';
 
@@ -20,7 +20,7 @@ async function fetchBookings(
 	from: string,
 	to: string,
 	tagIds: string[] = [],
-	filterPropertyIds: string[] = []
+	filterPropertyIds: string[] = [],
 ) {
 	let matchedBookingIds: string[] | null = null;
 	if (tagIds.length > 0) {
@@ -31,7 +31,9 @@ async function fetchBookings(
 	return fetchAllRows(() => {
 		let q = supabase
 			.from('bookings')
-			.select('id, total_amount, arrival, departure, ownerrez_guest_id, guest_name, platform, property_id, host_service_fee, guest_listing_site_fee')
+			.select(
+				'id, total_amount, arrival, departure, ownerrez_guest_id, guest_name, platform, property_id, host_service_fee, guest_listing_site_fee',
+			)
 			.eq('tenant_id', tenantId)
 			.lte('arrival', to)
 			.gte('departure', from)
@@ -51,13 +53,9 @@ export async function getOverviewData(
 	tagIds: string[] = [],
 	comparisonFrom?: string,
 	comparisonTo?: string,
-	filterPropertyIds: string[] = []
+	filterPropertyIds: string[] = [],
 ) {
-	let propertiesQuery = supabase
-		.from('properties')
-		.select('id, name, internal_code')
-		.eq('tenant_id', tenantId)
-		.eq('active', true);
+	let propertiesQuery = supabase.from('properties').select('id, name, internal_code').eq('tenant_id', tenantId).eq('active', true);
 
 	if (filterPropertyIds.length > 0) {
 		propertiesQuery = propertiesQuery.in('id', filterPropertyIds);
@@ -67,13 +65,11 @@ export async function getOverviewData(
 
 	const sharedProperties = properties || [];
 
-	const sharedPropertyIds = sharedProperties.map(p => p.id);
+	const sharedPropertyIds = sharedProperties.map((p) => p.id);
 
 	const [currentBookings, comparisonBookings, currentBlocks, comparisonBlocks] = await Promise.all([
 		fetchBookings(supabase, tenantId, from, to, tagIds, filterPropertyIds),
-		comparisonFrom && comparisonTo
-			? fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds, filterPropertyIds)
-			: null,
+		comparisonFrom && comparisonTo ? fetchBookings(supabase, tenantId, comparisonFrom, comparisonTo, tagIds, filterPropertyIds) : null,
 		fetchBlocks(supabase, tenantId, from, to, sharedPropertyIds.length > 0 ? sharedPropertyIds : undefined),
 		comparisonFrom && comparisonTo
 			? fetchBlocks(supabase, tenantId, comparisonFrom, comparisonTo, sharedPropertyIds.length > 0 ? sharedPropertyIds : undefined)
@@ -85,13 +81,20 @@ export async function getOverviewData(
 		getChartsData(currentBookings, sharedProperties, from, to, currentBlocks),
 		getAlerts(supabase, tenantId, from, to, tagIds, filterPropertyIds),
 		getRecentActivity(supabase, tenantId, from, to),
-		getUpcomingBookings(supabase, tenantId)
+		getUpcomingBookings(supabase, tenantId),
 	]);
 
 	let previousMetrics = null;
 	if (comparisonBookings) {
 		previousMetrics = await getCurrentPeriodMetrics(
-			supabase, tenantId, comparisonFrom!, comparisonTo!, comparisonBookings, sharedProperties, tagIds, comparisonBlocks || []
+			supabase,
+			tenantId,
+			comparisonFrom!,
+			comparisonTo!,
+			comparisonBookings,
+			sharedProperties,
+			tagIds,
+			comparisonBlocks || [],
 		);
 	}
 
@@ -103,7 +106,7 @@ export async function getOverviewData(
 		alerts,
 		recentActivity,
 		upcoming,
-		view: 'overview'
+		view: 'overview',
 	};
 }
 
@@ -115,10 +118,10 @@ async function getCurrentPeriodMetrics(
 	bookings: any[],
 	properties: any[],
 	tagIds: string[] = [],
-	blocks: TranslatedBlock[] = []
+	blocks: TranslatedBlock[] = [],
 ) {
 	const propertyCount = properties.length;
-	const propertyIds = properties.map(p => p.id);
+	const propertyIds = properties.map((p) => p.id);
 
 	// canceledCount must honor the same property and tag filters as the active
 	// bookings query above, otherwise cancellationRate = canceled / (active+canceled)
@@ -167,15 +170,11 @@ async function getCurrentPeriodMetrics(
 
 	// Taxes attribute to the arrival event (what the host actually remits), full amount.
 	const arrivalInPeriod = arrivalInPeriodMap(bookings, from, to);
-	const bookingIds = bookings.map(b => b.id);
+	const bookingIds = bookings.map((b) => b.id);
 	let taxes = 0;
 	if (bookingIds.length > 0) {
-		const taxCharges = await fetchChunked(bookingIds, ids =>
-			supabase
-				.from('booking_charges')
-				.select('booking_id, amount')
-				.in('booking_id', ids)
-				.eq('type', 'tax')
+		const taxCharges = await fetchChunked(bookingIds, (ids) =>
+			supabase.from('booking_charges').select('booking_id, amount').in('booking_id', ids).eq('type', 'tax'),
 		);
 		taxes = sumChargesForArrivalsInPeriod(taxCharges, arrivalInPeriod);
 	}
@@ -184,7 +183,7 @@ async function getCurrentPeriodMetrics(
 	const expenseRows = await getExpensesWithTemplateFallback(supabase, tenantId, from, to, propertyIds);
 	const operatingExpensesTotal = expenseRows.reduce((sum, e) => sum + e.amount, 0);
 	const operatingExpensesByCategory: Record<string, number> = {};
-	expenseRows.forEach(e => {
+	expenseRows.forEach((e) => {
 		operatingExpensesByCategory[e.category] = (operatingExpensesByCategory[e.category] || 0) + e.amount;
 	});
 
@@ -193,10 +192,8 @@ async function getCurrentPeriodMetrics(
 
 	// avgNights = average booking duration (full booking length, not clipped)
 	let totalBookingNights = 0;
-	bookings.forEach(b => {
-		totalBookingNights += Math.ceil(
-			(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)
-		);
+	bookings.forEach((b) => {
+		totalBookingNights += Math.ceil((new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24));
 	});
 	const avgNights = totalBookings > 0 ? totalBookingNights / totalBookings : 0;
 
@@ -224,7 +221,7 @@ async function getCurrentPeriodMetrics(
 	const sellableNights = Math.max(0, totalDays * (propertyCount || 1) - blockedNights);
 	const occupancyRate = sellableNights > 0 ? (occupiedPropertyDays.size / sellableNights) * 100 : 0;
 
-	const uniqueGuests = new Set(bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean));
+	const uniqueGuests = new Set(bookings.map((b) => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
 
 	// repeat guest rate via SQL (avoids fetching all historical bookings)
@@ -247,7 +244,7 @@ async function getCurrentPeriodMetrics(
 	const cancellationRate = totalWithCanceled > 0 ? ((canceledCount || 0) / totalWithCanceled) * 100 : 0;
 
 	const today = new Date().toISOString().split('T')[0];
-	const upcomingBookings = bookings.filter(b => b.arrival >= today).length;
+	const upcomingBookings = bookings.filter((b) => b.arrival >= today).length;
 
 	return {
 		revenue: totalRevenue,
@@ -269,30 +266,29 @@ async function getCurrentPeriodMetrics(
 		avgBookingValue,
 		avgNights,
 		totalProperties: propertyCount || 0,
-		avgPropertyOccupancy: occupancyRate
+		avgPropertyOccupancy: occupancyRate,
 	};
 }
 
-function getChartsData(
-	bookings: any[],
-	properties: any[],
-	from: string,
-	to: string,
-	blocks: TranslatedBlock[] = []
-) {
+function getChartsData(bookings: any[], properties: any[], from: string, to: string, blocks: TranslatedBlock[] = []) {
 	const daysDiff = Math.ceil((new Date(to).getTime() - new Date(from).getTime()) / (1000 * 60 * 60 * 24));
 	const revenueUseDaily = daysDiff <= 30;
 	const revenueUseWeekly = daysDiff > 30 && daysDiff <= 180;
 
 	const revenueData = buildRevenueChartData(bookings, from, to, revenueUseDaily, revenueUseWeekly);
 
-	const propertyById = new Map(properties.map(p => [p.id, p]));
+	const propertyById = new Map(properties.map((p) => [p.id, p]));
 	const propertyRevenue = new Map();
-	bookings.forEach(b => {
+	bookings.forEach((b) => {
 		const property = propertyById.get(b.property_id);
 		if (!property) return;
 		const pr = prorateBooking(b, from, to);
-		const current = propertyRevenue.get(property.name) || { name: property.name, code: property.internal_code || null, revenue: 0, bookings: 0 };
+		const current = propertyRevenue.get(property.name) || {
+			name: property.name,
+			code: property.internal_code || null,
+			revenue: 0,
+			bookings: 0,
+		};
 		current.revenue += pr.revenue;
 		current.bookings++;
 		propertyRevenue.set(property.name, current);
@@ -303,7 +299,7 @@ function getChartsData(
 		.slice(0, 5);
 
 	const sourceMap = new Map<string, { count: number; revenue: number }>();
-	bookings.forEach(b => {
+	bookings.forEach((b) => {
 		const source = normalizePlatform(b.platform);
 		const pr = prorateBooking(b, from, to);
 		const existing = sourceMap.get(source) || { count: 0, revenue: 0 };
@@ -322,17 +318,11 @@ function getChartsData(
 		revenueLastWeek: revenueData,
 		topProperties,
 		bookingsBySource,
-		occupancyTrend: occupancyData
+		occupancyTrend: occupancyData,
 	};
 }
 
-function buildRevenueChartData(
-	bookings: any[],
-	from: string,
-	to: string,
-	useDaily: boolean,
-	useWeekly: boolean
-) {
+function buildRevenueChartData(bookings: any[], from: string, to: string, useDaily: boolean, useWeekly: boolean) {
 	const granularity = useDaily ? 'day' : useWeekly ? 'week' : 'month';
 	const revenueMap = new Map<string, { day: string; date: string; revenue: number }>();
 
@@ -346,9 +336,7 @@ function buildRevenueChartData(
 	}
 
 	// zero-fill empty buckets across the full period so the chart shows gaps correctly
-	return enumerateBuckets(from, to, granularity).map(b =>
-		revenueMap.get(b.key) || { day: b.label, date: b.key, revenue: 0 }
-	);
+	return enumerateBuckets(from, to, granularity).map((b) => revenueMap.get(b.key) || { day: b.label, date: b.key, revenue: 0 });
 }
 
 function buildOccupancyChartData(
@@ -357,7 +345,7 @@ function buildOccupancyChartData(
 	from: string,
 	to: string,
 	useDaily: boolean,
-	blocks: TranslatedBlock[] = []
+	blocks: TranslatedBlock[] = [],
 ) {
 	const totalProperties = properties.length || 1;
 	const startDate = new Date(from);
@@ -374,7 +362,10 @@ function buildOccupancyChartData(
 			const bEnd = Math.min(Math.floor(new Date(b.departure).getTime() / MS_PER_DAY), endEpoch + 1);
 			for (let d = bStart; d < bEnd; d++) {
 				let set = grid.get(d);
-				if (!set) { set = new Set(); grid.set(d, set); }
+				if (!set) {
+					set = new Set();
+					grid.set(d, set);
+				}
 				set.add(b.property_id);
 			}
 		}
@@ -443,9 +434,7 @@ function buildOccupancyChartData(
 			const effectiveEnd = monthEnd < endDate ? monthEnd : endDate;
 			const effectiveEndExcl = new Date(effectiveEnd.getTime() + MS_PER_DAY);
 			const daysInMonth = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / MS_PER_DAY) + 1;
-			const monthBlocked = sumBlockedNights(
-				collectBlockedNightsExclusive(blocks, effectiveStart, effectiveEndExcl)
-			);
+			const monthBlocked = sumBlockedNights(collectBlockedNightsExclusive(blocks, effectiveStart, effectiveEndExcl));
 			const sellable = Math.max(0, daysInMonth * totalProperties - monthBlocked);
 
 			const bookedNights = monthNights.get(key) || 0;
@@ -514,11 +503,7 @@ async function getAlerts(
 		return q;
 	};
 	const buildPropertyCountQuery = () => {
-		let q = supabase
-			.from('properties')
-			.select('*', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId)
-			.eq('active', true);
+		let q = supabase.from('properties').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true);
 		if (hasPropertyFilter) q = q.in('id', filterPropertyIds);
 		return q;
 	};
@@ -557,7 +542,7 @@ async function getAlerts(
 			type: 'info' as const,
 			title: `${upcomingCount} ${upcomingCount === 1 ? 'Guest' : 'Guests'} Arriving Soon`,
 			description: `Check-ins scheduled within the next 7 days`,
-			timestamp: new Date().toISOString()
+			timestamp: new Date().toISOString(),
 		});
 	}
 
@@ -570,13 +555,11 @@ async function getAlerts(
 		const windowEndMs = windowStartMs + 30 * MS_PER_DAY;
 		const windowStartDate = new Date(windowStartMs);
 		const windowEndDate = new Date(windowEndMs);
-		const blockedNights = sumBlockedNights(
-			collectBlockedNightsExclusive(upcomingBlocks, windowStartDate, windowEndDate)
-		);
+		const blockedNights = sumBlockedNights(collectBlockedNightsExclusive(upcomingBlocks, windowStartDate, windowEndDate));
 		const sellableNights = Math.max(0, 30 * propertyCount - blockedNights);
 		let bookedNights = 0;
 
-		upcomingBookings.forEach(b => {
+		upcomingBookings.forEach((b) => {
 			const arrivalMs = new Date(b.arrival).getTime();
 			const departureMs = new Date(b.departure).getTime();
 			const clampedStart = Math.max(arrivalMs, windowStartMs);
@@ -593,7 +576,7 @@ async function getAlerts(
 				type: 'warning' as const,
 				title: `${Math.round(occupancyRate)}% Occupancy Next 30 Days`,
 				description: `${bookedNights} of ${sellableNights} sellable nights booked across ${propertyCount} ${propertyCount === 1 ? 'property' : 'properties'}`,
-				timestamp: new Date().toISOString()
+				timestamp: new Date().toISOString(),
 			});
 		}
 	}
@@ -607,7 +590,7 @@ async function getAlerts(
 				type: 'warning' as const,
 				title: `${Math.round(cancellationRate)}% Cancellation Rate`,
 				description: `${canceledBookings} of ${totalBookings} bookings canceled in selected period`,
-				timestamp: new Date().toISOString()
+				timestamp: new Date().toISOString(),
 			});
 		}
 	}
@@ -615,12 +598,7 @@ async function getAlerts(
 	return alerts;
 }
 
-async function getRecentActivity(
-	supabase: SupabaseClient,
-	tenantId: string,
-	from: string,
-	to: string
-) {
+async function getRecentActivity(supabase: SupabaseClient, tenantId: string, from: string, to: string) {
 	const [{ data: recentBookings }, { data: recentInquiries }] = await Promise.all([
 		supabase
 			.from('bookings')
@@ -646,15 +624,10 @@ async function getRecentActivity(
 	]);
 
 	// build property lookup for inquiries (they store ownerrez numeric id, not uuid)
-	const inquiryPropertyIds = (recentInquiries || [])
-		.map(i => i.property_id)
-		.filter(Boolean);
-	let propertyByOrId = new Map<string, string>();
+	const inquiryPropertyIds = (recentInquiries || []).map((i) => i.property_id).filter(Boolean);
+	const propertyByOrId = new Map<string, string>();
 	if (inquiryPropertyIds.length > 0) {
-		const { data: props } = await supabase
-			.from('properties')
-			.select('name, ownerrez_id')
-			.eq('tenant_id', tenantId);
+		const { data: props } = await supabase.from('properties').select('name, ownerrez_id').eq('tenant_id', tenantId);
 		if (props) {
 			for (const p of props) {
 				if (p.ownerrez_id) propertyByOrId.set(String(p.ownerrez_id), p.name);
@@ -662,15 +635,15 @@ async function getRecentActivity(
 		}
 	}
 
-	const bookingItems = (recentBookings || []).map(b => ({
+	const bookingItems = (recentBookings || []).map((b) => ({
 		id: b.id,
 		type: 'booking' as const,
-		description: b.status === 'canceled'
-			? `${b.guest_name} cancelled ${(b.properties as unknown as { name: string })?.name}`
-			: `${b.guest_name} booked ${(b.properties as unknown as { name: string })?.name}`,
-		timestamp: b.status === 'canceled'
-			? (b.canceled_utc || b.booked_utc || b.created_at || b.arrival)
-			: (b.booked_utc || b.created_at || b.arrival),
+		description:
+			b.status === 'canceled'
+				? `${b.guest_name} cancelled ${(b.properties as unknown as { name: string })?.name}`
+				: `${b.guest_name} booked ${(b.properties as unknown as { name: string })?.name}`,
+		timestamp:
+			b.status === 'canceled' ? b.canceled_utc || b.booked_utc || b.created_at || b.arrival : b.booked_utc || b.created_at || b.arrival,
 		value: b.total_amount,
 		platform: normalizePlatform(b.platform),
 		ownerrezBookingId: b.ownerrez_booking_id || null,
@@ -680,10 +653,10 @@ async function getRecentActivity(
 		metadata: {
 			arrival: b.arrival,
 			departure: b.departure,
-		}
+		},
 	}));
 
-	const inquiryItems = (recentInquiries || []).map(i => {
+	const inquiryItems = (recentInquiries || []).map((i) => {
 		const data = i.data as Record<string, unknown> | null;
 		const propertyName = i.property_id ? propertyByOrId.get(String(i.property_id)) : null;
 		return {
@@ -701,7 +674,7 @@ async function getRecentActivity(
 			metadata: {
 				arrival: i.arrival,
 				departure: i.departure,
-			}
+			},
 		};
 	});
 
@@ -713,10 +686,7 @@ async function getRecentActivity(
 	return all;
 }
 
-async function getUpcomingBookings(
-	supabase: SupabaseClient,
-	tenantId: string
-) {
+async function getUpcomingBookings(supabase: SupabaseClient, tenantId: string) {
 	const today = new Date().toISOString().split('T')[0];
 	const thirtyDaysOut = new Date(Date.now() + 30 * MS_PER_DAY).toISOString().split('T')[0];
 	const sevenDaysOut = new Date(Date.now() + 7 * MS_PER_DAY).toISOString().split('T')[0];
@@ -737,7 +707,9 @@ async function getUpcomingBookings(
 		`)
 		.eq('tenant_id', tenantId)
 		.neq('status', 'canceled')
-		.or(`and(arrival.gte.${today},arrival.lte.${thirtyDaysOut}),and(departure.gte.${today},departure.lte.${thirtyDaysOut}),and(arrival.lt.${today},departure.gt.${today})`)
+		.or(
+			`and(arrival.gte.${today},arrival.lte.${thirtyDaysOut}),and(departure.gte.${today},departure.lte.${thirtyDaysOut}),and(arrival.lt.${today},departure.gt.${today})`,
+		)
 		.order('arrival', { ascending: true })
 		.limit(500);
 
@@ -755,17 +727,11 @@ async function getUpcomingBookings(
 			type = 'in-house';
 		}
 
-		const isToday =
-			type === 'check-in' ? b.arrival === today :
-			type === 'check-out' ? b.departure === today :
-			false;
+		const isToday = type === 'check-in' ? b.arrival === today : type === 'check-out' ? b.departure === today : false;
 
 		// in-house guests are by definition staying this week, regardless of when
 		// they leave.
-		const isThisWeek =
-			type === 'in-house' ? true :
-			type === 'check-in' ? b.arrival <= sevenDaysOut :
-			b.departure <= sevenDaysOut;
+		const isThisWeek = type === 'in-house' ? true : type === 'check-in' ? b.arrival <= sevenDaysOut : b.departure <= sevenDaysOut;
 
 		return {
 			id: b.id,
@@ -795,35 +761,39 @@ function formatOverviewMetrics(current: any, previous: any = null) {
 			operatingExpensesByCategory: current.operatingExpensesByCategory,
 			operatingProfit: current.operatingProfit,
 			previousOperatingProfit: previous?.operatingProfit || 0,
-			avgBookingValue: current.avgBookingValue
+			avgBookingValue: current.avgBookingValue,
 		},
 		bookings: {
 			current: current.bookings,
 			previous: previous?.bookings || 0,
 			upcoming: current.upcomingBookings,
 			cancellationRate: current.cancellationRate,
-			avgNights: current.avgNights
+			avgNights: current.avgNights,
 		},
 		occupancy: {
 			current: current.occupancyRate,
 			previous: previous?.occupancyRate || 0,
 			growth: previous?.occupancyRate ? ((current.occupancyRate - previous.occupancyRate) / previous.occupancyRate) * 100 : 0,
-			trend: current.occupancyRate > (previous?.occupancyRate || 0) ? 'up' :
-			       current.occupancyRate < (previous?.occupancyRate || 0) ? 'down' : 'stable',
+			trend:
+				current.occupancyRate > (previous?.occupancyRate || 0)
+					? 'up'
+					: current.occupancyRate < (previous?.occupancyRate || 0)
+						? 'down'
+						: 'stable',
 			avgPropertyOccupancy: current.avgPropertyOccupancy,
 			blockedNights: current.blockedNights,
-			sellableNights: current.sellableNights
+			sellableNights: current.sellableNights,
 		},
 		guests: {
 			total: current.totalGuests,
 			previous: previous?.totalGuests || 0,
 			growth: previous?.totalGuests ? ((current.totalGuests - previous.totalGuests) / previous.totalGuests) * 100 : 0,
 			newThisMonth: current.newGuests,
-			repeatRate: current.repeatGuestRate
+			repeatRate: current.repeatGuestRate,
 		},
 		properties: {
 			total: current.totalProperties,
-			avgOccupancy: current.avgPropertyOccupancy
-		}
+			avgOccupancy: current.avgPropertyOccupancy,
+		},
 	};
 }

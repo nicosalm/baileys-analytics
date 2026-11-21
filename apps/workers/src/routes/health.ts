@@ -8,9 +8,9 @@ health.get('/', async (c) => {
 		worker: 'healthy',
 		database: 'unknown',
 		cache: 'unknown',
-		timestamp: new Date().toISOString()
+		timestamp: new Date().toISOString(),
 	};
-	
+
 	try {
 		const supabase = createSupabaseClient(c.env);
 		const { error } = await supabase.from('tenants').select('id').limit(1);
@@ -18,7 +18,7 @@ health.get('/', async (c) => {
 	} catch {
 		checks.database = 'unhealthy';
 	}
-	
+
 	if (c.env.CACHE) {
 		try {
 			const testKey = 'health-check';
@@ -33,10 +33,10 @@ health.get('/', async (c) => {
 	} else {
 		checks.cache = 'not configured';
 	}
-	
+
 	const { timestamp: _, ...services } = checks;
-	const allHealthy = Object.values(services).every(v => v === 'healthy');
-	
+	const allHealthy = Object.values(services).every((v) => v === 'healthy');
+
 	return c.json(checks, allHealthy ? 200 : 503);
 });
 

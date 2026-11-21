@@ -25,7 +25,7 @@ async function deleteByPrefix(cache: KVNamespace, prefix: string): Promise<void>
 	let cursor: string | undefined;
 	do {
 		const page = await cache.list({ prefix, cursor });
-		await Promise.all(page.keys.map(key => cache.delete(key.name)));
+		await Promise.all(page.keys.map((key) => cache.delete(key.name)));
 		cursor = page.list_complete ? undefined : page.cursor;
 	} while (cursor);
 }
@@ -33,7 +33,7 @@ async function deleteByPrefix(cache: KVNamespace, prefix: string): Promise<void>
 async function invalidateViews(cache: KVNamespace | undefined, tenantId: string, views: string[]): Promise<void> {
 	if (!cache || views.length === 0) return;
 	try {
-		await Promise.all(views.map(view => deleteByPrefix(cache, `dashboard:${tenantId}:${view}:`)));
+		await Promise.all(views.map((view) => deleteByPrefix(cache, `dashboard:${tenantId}:${view}:`)));
 	} catch (error) {
 		console.error('cache invalidation failed:', error);
 	}
@@ -43,7 +43,7 @@ export async function invalidateBookingViews(cache: KVNamespace | undefined, ten
 	if (!cache) return;
 	await Promise.all([
 		invalidateViews(cache, tenantId, BOOKING_VIEWS),
-		deleteByPrefix(cache, responseCachePrefix(tenantId)).catch(error => console.error('cache invalidation failed:', error)),
+		deleteByPrefix(cache, responseCachePrefix(tenantId)).catch((error) => console.error('cache invalidation failed:', error)),
 	]);
 }
 
@@ -62,7 +62,7 @@ export async function buildDashboardCacheKey(
 		properties?: string[];
 		comparisonFrom?: string;
 		comparisonTo?: string;
-	} = {}
+	} = {},
 ): Promise<string> {
 	const suffix = [
 		extras.tags?.join(',') || '',
@@ -81,7 +81,7 @@ export async function buildDashboardCacheKey(
 export async function sha256Hex(input: string): Promise<string> {
 	const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
 	return [...new Uint8Array(hash)]
-		.map(b => b.toString(16).padStart(2, '0'))
+		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('')
 		.slice(0, 32);
 }

@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from 'react'
+import { useState, type FormEvent, useEffect } from 'react'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
 import { useToast } from '@/contexts/toast'
@@ -29,7 +29,7 @@ const EXPENSE_CATEGORIES = [
   { value: 'utilities', label: 'Utilities' },
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'insurance', label: 'Insurance' },
-  { value: 'other', label: 'Other' }
+  { value: 'other', label: 'Other' },
 ]
 
 const generateMonthOptions = () => {
@@ -64,19 +64,19 @@ export const OperatingExpenseEntryModal = ({
   useEffect(() => {
     if (existingExpenses && existingExpenses.length > 0) {
       setExpenseRows(
-        existingExpenses.map(exp => ({
+        existingExpenses.map((exp) => ({
           category: exp.category,
           amount: parseFloat(String(exp.amount)) || 0,
-          description: exp.description || ''
-        }))
+          description: exp.description || '',
+        })),
       )
     } else if (templateData && templateData.length > 0) {
       setExpenseRows(
-        templateData.map(t => ({
+        templateData.map((t) => ({
           category: t.category,
           amount: t.amount,
-          description: t.description || ''
-        }))
+          description: t.description || '',
+        })),
       )
     } else {
       setExpenseRows([{ category: '', amount: 0, description: '' }])
@@ -105,7 +105,7 @@ export const OperatingExpenseEntryModal = ({
     try {
       setIsSubmitting(true)
 
-      const validRows = expenseRows.filter(row => row.category && row.amount > 0)
+      const validRows = expenseRows.filter((row) => row.category && row.amount > 0)
 
       if (validRows.length === 0) {
         addToast('error', 'Please add at least one expense with an amount')
@@ -116,13 +116,13 @@ export const OperatingExpenseEntryModal = ({
 
       await saveOperatingExpensesBulk({
         propertyId,
-        year: parseInt(year),
-        month: parseInt(monthNum),
-        expenses: validRows.map(row => ({
+        year: parseInt(year, 10),
+        month: parseInt(monthNum, 10),
+        expenses: validRows.map((row) => ({
           category: row.category,
           amount: row.amount,
-          description: row.description || undefined
-        }))
+          description: row.description || undefined,
+        })),
       })
 
       addToast('success', 'Operating expenses saved successfully')
@@ -134,38 +134,35 @@ export const OperatingExpenseEntryModal = ({
     }
   }
 
-  const usedCategories = expenseRows.map(row => row.category).filter(Boolean)
+  const usedCategories = expenseRows.map((row) => row.category).filter(Boolean)
 
   return (
     <Modal
       isOpen={true}
       onClose={closeModal}
       title="Operating Expenses"
-      subtitle={`${propertyName} - ${format(new Date(month + '-01'), 'MMMM yyyy')}`}
+      subtitle={`${propertyName} - ${format(new Date(`${month}-01`), 'MMMM yyyy')}`}
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-6">
-
         <div>
-          <Label className="mb-2">
-            Month
-          </Label>
+          <Label className="mb-2">Month</Label>
           <Select value={month} onValueChange={setMonth}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {generateMonthOptions().map(opt => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              {generateMonthOptions().map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
         <div>
-          <Label className="mb-3">
-            Expenses
-          </Label>
+          <Label className="mb-3">Expenses</Label>
 
           <div className="space-y-3">
             {expenseRows.map((row, index) => (
@@ -226,12 +223,7 @@ export const OperatingExpenseEntryModal = ({
           </div>
 
           {expenseRows.length < EXPENSE_CATEGORIES.length && (
-            <Button
-              type="button"
-              variant="link"
-              onClick={addExpenseRow}
-              className="mt-3 text-sm px-0"
-            >
+            <Button type="button" variant="link" onClick={addExpenseRow} className="mt-3 text-sm px-0">
               <Plus className="w-4 h-4" />
               Add another expense
             </Button>
@@ -244,27 +236,15 @@ export const OperatingExpenseEntryModal = ({
               <span className="font-medium text-info-fg">Total Operating Expenses:</span>
               <span className="text-xl font-bold text-info-fg">{formatCurrency(totalExpenses)}</span>
             </div>
-            <p className="text-xs text-info-fg mt-2">
-              These expenses will be subtracted from Net Revenue to calculate Operating Profit
-            </p>
+            <p className="text-xs text-info-fg mt-2">These expenses will be subtracted from Net Revenue to calculate Operating Profit</p>
           </div>
         )}
 
         <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={closeModal}
-            disabled={isSubmitting}
-          >
+          <Button type="button" variant="ghost" onClick={closeModal} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            loading={isSubmitting}
-            loadingText="Saving..."
-          >
+          <Button type="submit" disabled={isSubmitting} loading={isSubmitting} loadingText="Saving...">
             Save Expenses
           </Button>
         </div>

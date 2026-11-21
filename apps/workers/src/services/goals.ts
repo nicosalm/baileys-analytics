@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '../utils/fetch-all';
 import { prorateBooking } from '../utils/prorate';
 import { fetchBlocks, collectBlockedNights, sumBlockedNights } from '../utils/blocks';
@@ -53,12 +53,7 @@ interface GoalMetrics {
 	avgStayLength: number;
 }
 
-async function getGoalMetrics(
-	supabase: SupabaseClient,
-	tenantId: string,
-	from: string,
-	to: string
-): Promise<GoalMetrics> {
+async function getGoalMetrics(supabase: SupabaseClient, tenantId: string, from: string, to: string): Promise<GoalMetrics> {
 	const bookings = await fetchAllRows(() =>
 		supabase
 			.from('bookings')
@@ -67,7 +62,7 @@ async function getGoalMetrics(
 			.lte('arrival', to)
 			.gte('departure', from)
 			.neq('status', 'canceled')
-			.order('id')
+			.order('id'),
 	);
 
 	const { count: propertyCount } = await supabase
@@ -98,14 +93,12 @@ async function getGoalMetrics(
 	const sellableNights = Math.max(0, totalDays * (propertyCount || 1) - blockedNights);
 	const occupancy = sellableNights > 0 ? (totalNights / sellableNights) * 100 : 0;
 
-	const uniqueGuests = new Set(
-		bookings.map(b => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean)
-	);
+	const uniqueGuests = new Set(bookings.map((b) => b.ownerrez_guest_id || b.guest_name?.toLowerCase()?.trim()).filter(Boolean));
 	const totalGuests = uniqueGuests.size;
 
 	let repeatGuests = 0;
 	if (totalGuests > 0) {
-		const bookingIds = bookings.map(b => b.id);
+		const bookingIds = bookings.map((b) => b.id);
 		const { data: repeatCount } = await supabase.rpc('get_repeat_guest_count', {
 			p_tenant_id: tenantId,
 			p_from: from,
@@ -138,15 +131,8 @@ const METRIC_KEY_MAP: Record<string, keyof GoalMetrics> = {
 	avgStayLength: 'avgStayLength',
 };
 
-export async function getGoalProgress(
-	supabase: SupabaseClient,
-	tenantId: string
-) {
-	const { data: goals, error } = await supabase
-		.from('goals')
-		.select('*')
-		.eq('tenant_id', tenantId)
-		.eq('is_enabled', true);
+export async function getGoalProgress(supabase: SupabaseClient, tenantId: string) {
+	const { data: goals, error } = await supabase.from('goals').select('*').eq('tenant_id', tenantId).eq('is_enabled', true);
 
 	if (error || !goals || goals.length === 0) {
 		return [];
@@ -171,7 +157,7 @@ export async function getGoalProgress(
 	}
 
 	// Map results back to goals
-	const results = goals.map(goal => {
+	const results = goals.map((goal) => {
 		const period = (goal.period || 'yearly') as GoalPeriod;
 		const { metrics, range } = periodMetrics.get(period)!;
 		const metricKey = METRIC_KEY_MAP[goal.metric_key];

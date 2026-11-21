@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import { getTagColor } from '@/lib/theme'
 
 interface TagProps {
@@ -13,20 +13,14 @@ interface TagProps {
   selected?: boolean
 }
 
-export const Tag: React.FC<TagProps> = ({
-  tag,
-  size = 'sm',
-  onClick,
-  onRemove,
-  selected = false
-}) => {
+export const Tag: React.FC<TagProps> = ({ tag, size = 'sm', onClick, onRemove, selected = false }) => {
   const sizeClasses = size === 'sm' ? 'px-2 py-0.5 text-xs' : 'px-3 py-1 text-sm'
 
   const color = getTagColor(tag)
   const styles = {
     backgroundColor: `${color}20`,
     color: color,
-    borderColor: color
+    borderColor: color,
   }
 
   const Component = onClick ? 'button' : 'span'
@@ -43,6 +37,7 @@ export const Tag: React.FC<TagProps> = ({
       <span className="truncate">{tag.name}</span>
       {onRemove && (
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation()
             onRemove()

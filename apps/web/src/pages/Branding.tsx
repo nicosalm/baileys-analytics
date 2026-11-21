@@ -9,9 +9,18 @@ import { DollarSign, TrendingUp, Users, Calendar, ArrowLeft, BarChart3, Info } f
 import { useState, useEffect, useRef } from 'react'
 import { resolveToken } from '@/lib/theme'
 import {
-  PieChart, Pie, Cell, Label,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
-  ResponsiveContainer, ReferenceLine
+  PieChart,
+  Pie,
+  Cell,
+  Label,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts'
 
 const LOGO_FILLS = [
@@ -40,14 +49,11 @@ const StaggerDemo = () => {
   const [key, setKey] = useState(0)
   return (
     <div>
-      <button
-        onClick={() => setKey(k => k + 1)}
-        className="text-sm text-primary hover:underline mb-4 cursor-pointer"
-      >
+      <button type="button" onClick={() => setKey((k) => k + 1)} className="text-sm text-primary hover:underline mb-4 cursor-pointer">
         Replay animation
       </button>
       <div key={key} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[0, 1, 2, 3].map(i => (
+        {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
             className="bg-card rounded-lg border p-4 text-center stagger-fade-in"
@@ -168,13 +174,7 @@ const BarDemo = () => {
               stroke={axisColor}
               tick={{ fill: axisColor }}
             />
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={90}
-              tick={{ fontSize: 12, fill: axisColor }}
-              stroke={axisColor}
-            />
+            <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 12, fill: axisColor }} stroke={axisColor} />
             <RechartsTooltip
               isAnimationActive={false}
               cursor={{ fill: cursorColor, opacity: 0.3 }}
@@ -220,7 +220,9 @@ function useResolvedToken(varName: string) {
   useEffect(() => {
     mounted.current = true
     setValue(resolveToken(varName))
-    return () => { mounted.current = false }
+    return () => {
+      mounted.current = false
+    }
   }, [varName])
   return value
 }
@@ -252,7 +254,6 @@ export const Branding = () => {
       </header>
 
       <main className="flex-1 max-w-6xl mx-auto px-4 md:px-6 py-12 w-full">
-
         {/* Logo */}
         <Section title="Logo">
           <div className="grid md:grid-cols-2 gap-8">
@@ -276,7 +277,9 @@ export const Branding = () => {
                   <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: hex }} />
                   <div>
                     <p className="text-sm font-medium">{label}</p>
-                    <p className="text-xs text-muted-foreground">{hex} / {token}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hex} / {token}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -337,10 +340,7 @@ export const Branding = () => {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {THEME_COLORS.map(({ label, css }) => (
                   <div key={css} className="bg-card rounded-lg border p-4 text-center">
-                    <div
-                      className="w-full h-12 rounded-lg mb-3"
-                      style={{ backgroundColor: `var(${css})` }}
-                    />
+                    <div className="w-full h-12 rounded-lg mb-3" style={{ backgroundColor: `var(${css})` }} />
                     <p className="text-sm font-medium">{label}</p>
                     <p className="text-xs text-muted-foreground font-mono">{css}</p>
                   </div>
@@ -358,10 +358,7 @@ export const Branding = () => {
                   { label: 'Border', css: '--border' },
                 ].map(({ label, css }) => (
                   <div key={css} className="bg-card rounded-lg border p-4 text-center">
-                    <div
-                      className="w-full h-12 rounded-lg mb-3 border"
-                      style={{ backgroundColor: `var(${css})` }}
-                    />
+                    <div className="w-full h-12 rounded-lg mb-3 border" style={{ backgroundColor: `var(${css})` }} />
                     <p className="text-sm font-medium">{label}</p>
                     <p className="text-xs text-muted-foreground font-mono">{css}</p>
                   </div>
@@ -374,10 +371,7 @@ export const Branding = () => {
               <div className="flex gap-2 flex-wrap">
                 {Array.from({ length: 10 }, (_, i) => (
                   <div key={i} className="text-center">
-                    <div
-                      className="w-10 h-10 rounded-lg"
-                      style={{ backgroundColor: `var(--chart-series-${i + 1})` }}
-                    />
+                    <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: `var(--chart-series-${i + 1})` }} />
                     <p className="text-xs text-muted-foreground mt-1">{i + 1}</p>
                   </div>
                 ))}
@@ -388,11 +382,10 @@ export const Branding = () => {
 
         {/* Metric Cards */}
         <Section title="Metric Cards">
-          <p className="text-sm text-muted-foreground mb-6">
-            Values animate with a count-up effect when they change. Try toggling:
-          </p>
+          <p className="text-sm text-muted-foreground mb-6">Values animate with a count-up effect when they change. Try toggling:</p>
           <button
-            onClick={() => setDarkPreview(p => !p)}
+            type="button"
+            onClick={() => setDarkPreview((p) => !p)}
             className="text-sm text-primary hover:underline mb-6 cursor-pointer"
           >
             Click to swap values and see the count-up animation
@@ -416,31 +409,17 @@ export const Branding = () => {
               staggerIndex={1}
               trend={{ value: darkPreview ? 5.1 : 8.7, period: 'vs prev' }}
             />
-            <MetricCard
-              icon={Calendar}
-              label="Bookings"
-              value={darkPreview ? 47 : 31}
-              format="number"
-              color="purple"
-              staggerIndex={2}
-            />
-            <MetricCard
-              icon={Users}
-              label="Guests"
-              value={darkPreview ? 126 : 84}
-              format="number"
-              color="orange"
-              staggerIndex={3}
-            />
+            <MetricCard icon={Calendar} label="Bookings" value={darkPreview ? 47 : 31} format="number" color="purple" staggerIndex={2} />
+            <MetricCard icon={Users} label="Guests" value={darkPreview ? 126 : 84} format="number" color="orange" staggerIndex={3} />
           </div>
         </Section>
 
         {/* Motion & Animation */}
         <Section title="Motion & Animation">
           <p className="text-sm text-muted-foreground mb-6">
-            All motion uses a consistent timing language. The base duration is 200ms for micro-interactions,
-            scaling up to 500-600ms for entrance animations. Easing is <code className="text-xs bg-muted px-1.5 py-0.5 rounded">ease-out</code> for
-            entrances and <code className="text-xs bg-muted px-1.5 py-0.5 rounded">ease</code> for hover/toggle transitions.
+            All motion uses a consistent timing language. The base duration is 200ms for micro-interactions, scaling up to 500-600ms for
+            entrance animations. Easing is <code className="text-xs bg-muted px-1.5 py-0.5 rounded">ease-out</code> for entrances and{' '}
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">ease</code> for hover/toggle transitions.
           </p>
 
           <div className="space-y-8">
@@ -466,9 +445,10 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Stagger Fade-In</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Cards animate in sequence with a 60ms offset per item. Uses <code className="text-xs bg-muted px-1.5 py-0.5 rounded">translateY(8px)</code> + opacity.
-                Applied via the <code className="text-xs bg-muted px-1.5 py-0.5 rounded">stagger-fade-in</code> CSS class
-                with <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--stagger-index</code> custom property.
+                Cards animate in sequence with a 60ms offset per item. Uses{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">translateY(8px)</code> + opacity. Applied via the{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">stagger-fade-in</code> CSS class with{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--stagger-index</code> custom property.
               </p>
               <StaggerDemo />
             </div>
@@ -497,8 +477,11 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Theme Transitions</h3>
               <p className="text-sm text-muted-foreground">
-                Background, text, and border colors transition at 200ms ease on theme switch.
-                Applied globally to <code className="text-xs bg-muted px-1.5 py-0.5 rounded">body</code>, <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.bg-card</code>, <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.bg-background</code>, and <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.bg-muted</code> surfaces.
+                Background, text, and border colors transition at 200ms ease on theme switch. Applied globally to{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">body</code>,{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.bg-card</code>,{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.bg-background</code>, and{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">.bg-muted</code> surfaces.
               </p>
             </div>
           </div>
@@ -507,9 +490,8 @@ export const Branding = () => {
         {/* Chart Styling */}
         <Section title="Chart Styling">
           <p className="text-sm text-muted-foreground mb-6">
-            All charts use Recharts, wrapped in <code className="text-xs bg-muted px-1.5 py-0.5 rounded">ChartWrapper</code> for
-            consistent card framing, loading/error/empty states, and optional info banners.
-            Colors resolve from CSS custom properties at render time
+            All charts use Recharts, wrapped in <code className="text-xs bg-muted px-1.5 py-0.5 rounded">ChartWrapper</code> for consistent
+            card framing, loading/error/empty states, and optional info banners. Colors resolve from CSS custom properties at render time
             via <code className="text-xs bg-muted px-1.5 py-0.5 rounded">resolveToken()</code> so charts stay in sync with the theme.
           </p>
 
@@ -560,9 +542,9 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Donut Chart</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                innerRadius 55%, outerRadius 80%. Segments separated
-                by <code className="text-xs bg-muted px-1.5 py-0.5 rounded">stroke=card-bg</code> + strokeWidth 2.
-                Sorted largest-first. Center label: large metric + caption. Hover dims inactive segments to 0.3 opacity at 200ms.
+                innerRadius 55%, outerRadius 80%. Segments separated by{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">stroke=card-bg</code> + strokeWidth 2. Sorted largest-first. Center
+                label: large metric + caption. Hover dims inactive segments to 0.3 opacity at 200ms.
               </p>
               <DonutDemo />
             </div>
@@ -570,11 +552,10 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Bar Chart</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Grid: dashed 3 3 using <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--border</code>.
-                Axis stroke/tick: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--muted-foreground</code>.
-                Bars: radius [0,4,4,0], maxBarSize 28, 500ms ease-out entrance.
-                Cursor hover: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">var(--muted)</code> at 0.3 opacity.
-                Reference lines: dashed "6 4" with <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--chart-goal</code>.
+                Grid: dashed 3 3 using <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--border</code>. Axis stroke/tick:{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--muted-foreground</code>. Bars: radius [0,4,4,0], maxBarSize 28,
+                500ms ease-out entrance. Cursor hover: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">var(--muted)</code> at 0.3
+                opacity. Reference lines: dashed "6 4" with <code className="text-xs bg-muted px-1.5 py-0.5 rounded">--chart-goal</code>.
               </p>
               <BarDemo />
             </div>
@@ -582,8 +563,9 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Tooltip</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Custom tooltips on all charts. Animation disabled (<code className="text-xs bg-muted px-1.5 py-0.5 rounded">isAnimationActive=false</code>) for instant display.
-                Color swatches inside tooltips use <code className="text-xs bg-muted px-1.5 py-0.5 rounded">w-3 h-3 rounded-sm</code>.
+                Custom tooltips on all charts. Animation disabled (
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">isAnimationActive=false</code>) for instant display. Color swatches
+                inside tooltips use <code className="text-xs bg-muted px-1.5 py-0.5 rounded">w-3 h-3 rounded-sm</code>.
               </p>
               <div className="flex gap-4 flex-wrap">
                 <div className="bg-card p-3 rounded-lg shadow-lg border border-border inline-block">
@@ -604,9 +586,15 @@ export const Branding = () => {
                 <div className="bg-card rounded-lg border p-4 flex-1 min-w-[200px]">
                   <p className="text-xs text-muted-foreground font-mono mb-2">Tooltip anatomy</p>
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <p>Container: <code className="bg-muted px-1 rounded">bg-card p-3 rounded-lg shadow-lg border</code></p>
-                    <p>Title: <code className="bg-muted px-1 rounded">font-semibold text-sm mb-2</code></p>
-                    <p>Swatches: <code className="bg-muted px-1 rounded">w-3 h-3 rounded-sm</code></p>
+                    <p>
+                      Container: <code className="bg-muted px-1 rounded">bg-card p-3 rounded-lg shadow-lg border</code>
+                    </p>
+                    <p>
+                      Title: <code className="bg-muted px-1 rounded">font-semibold text-sm mb-2</code>
+                    </p>
+                    <p>
+                      Swatches: <code className="bg-muted px-1 rounded">w-3 h-3 rounded-sm</code>
+                    </p>
                     <p>Animation: disabled (instant)</p>
                   </div>
                 </div>
@@ -622,10 +610,7 @@ export const Branding = () => {
                 <div className="flex flex-wrap gap-3 justify-center text-xs">
                   {['Revenue', 'Occupancy', 'Bookings', 'Tax', 'Expenses', 'Profit'].map((name) => (
                     <div key={name} className="flex items-center gap-1.5">
-                      <div
-                        className="w-3 h-2.5 rounded-sm"
-                        style={{ backgroundColor: `var(--metric-${name.toLowerCase()})` }}
-                      />
+                      <div className="w-3 h-2.5 rounded-sm" style={{ backgroundColor: `var(--metric-${name.toLowerCase()})` }} />
                       <span className="text-muted-foreground">{name}</span>
                     </div>
                   ))}
@@ -639,21 +624,30 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Chart Wrapper States</h3>
               <div className="grid md:grid-cols-3 gap-4">
-                <ChartWrapper title="Loading State" icon={BarChart3} loading height={160}><span /></ChartWrapper>
-                <ChartWrapper title="Error State" icon={BarChart3} error="Connection timeout" height={160}><span /></ChartWrapper>
-                <ChartWrapper title="Empty State" icon={BarChart3} noData noDataMessage="No bookings in period" height={160}><span /></ChartWrapper>
+                <ChartWrapper title="Loading State" icon={BarChart3} loading height={160}>
+                  <span />
+                </ChartWrapper>
+                <ChartWrapper title="Error State" icon={BarChart3} error="Connection timeout" height={160}>
+                  <span />
+                </ChartWrapper>
+                <ChartWrapper title="Empty State" icon={BarChart3} noData noDataMessage="No bookings in period" height={160}>
+                  <span />
+                </ChartWrapper>
               </div>
             </div>
 
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Info Banner</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Optional contextual info banner inside chart cards. Uses <code className="text-xs bg-muted px-1.5 py-0.5 rounded">bg-info-subtle border-info/30</code>.
+                Optional contextual info banner inside chart cards. Uses{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">bg-info-subtle border-info/30</code>.
               </p>
               <div className="bg-info-subtle border border-info/30 rounded-lg p-3">
                 <div className="flex items-start">
                   <Info className="w-4 h-4 text-info mr-2 mt-0.5" />
-                  <div className="text-sm text-info-fg">Platform fees shown are estimates based on standard OTA rates. Actual fees may vary by listing agreement.</div>
+                  <div className="text-sm text-info-fg">
+                    Platform fees shown are estimates based on standard OTA rates. Actual fees may vary by listing agreement.
+                  </div>
                 </div>
               </div>
             </div>
@@ -712,19 +706,31 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Buttons</h3>
               <div className="flex flex-wrap gap-3 items-center">
-                <button className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-sm">
+                <button
+                  type="button"
+                  className="px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:opacity-90 transition-opacity text-sm"
+                >
                   Primary CTA
                 </button>
-                <button className="px-6 py-3 border border-border text-foreground rounded-full font-medium hover:bg-muted transition-colors text-sm">
+                <button
+                  type="button"
+                  className="px-6 py-3 border border-border text-foreground rounded-full font-medium hover:bg-muted transition-colors text-sm"
+                >
                   Outline
                 </button>
-                <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity text-sm">
+                <button
+                  type="button"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity text-sm"
+                >
                   Action
                 </button>
-                <button className="px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all text-sm">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all text-sm"
+                >
                   Ghost
                 </button>
-                <button className="px-4 py-2 text-primary hover:underline text-sm">
+                <button type="button" className="px-4 py-2 text-primary hover:underline text-sm">
                   Link
                 </button>
               </div>
@@ -733,8 +739,9 @@ export const Branding = () => {
             <div>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Header Pattern</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                All page headers use sticky positioning with <code className="text-xs bg-muted px-1.5 py-0.5 rounded">backdrop-blur-sm</code> and a bottom border.
-                The logo links home and animates on hover.
+                All page headers use sticky positioning with{' '}
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">backdrop-blur-sm</code> and a bottom border. The logo links home
+                and animates on hover.
               </p>
               <div className="bg-background/80 backdrop-blur-sm border rounded-xl p-4 flex items-center gap-3">
                 <LogoCube className="w-9 h-9" />
@@ -786,7 +793,6 @@ export const Branding = () => {
             </div>
           </div>
         </Section>
-
       </main>
 
       <Footer />

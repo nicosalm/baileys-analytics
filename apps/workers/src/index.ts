@@ -28,7 +28,7 @@ import { tags } from './routes/tags';
 import { propertyGroups } from './routes/property-groups';
 import { tax } from './routes/tax';
 import { platformFees as platformFeesRoute } from './routes/platform-fees';
-import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses'
+import { operatingExpenses as operatingExpensesRoute } from './routes/operating-expenses';
 import { expenseTemplates as expenseTemplatesRoute } from './routes/expense-templates';
 import { validation } from './routes/validation';
 import { oauth } from './routes/oauth';
@@ -43,27 +43,30 @@ import type { AppEnv } from './types';
 
 const app = new Hono<AppEnv>();
 
-app.use('/*', cors({
-	origin: (origin, c) => {
-		const allowedOrigins = [c.env.FRONTEND_URL];
+app.use(
+	'/*',
+	cors({
+		origin: (origin, c) => {
+			const allowedOrigins = [c.env.FRONTEND_URL];
 
-		// Add production domains
-		if (c.env.FRONTEND_URL.includes('baileys-dashboard.pages.dev')) {
-			// Also allow the custom domain
-			allowedOrigins.push('https://baileysanalytics.com', 'https://www.baileysanalytics.com');
-		}
+			// Add production domains
+			if (c.env.FRONTEND_URL.includes('baileys-dashboard.pages.dev')) {
+				// Also allow the custom domain
+				allowedOrigins.push('https://baileysanalytics.com', 'https://www.baileysanalytics.com');
+			}
 
-		// in development, also allow localhost origins
-		if (c.env.FRONTEND_URL.includes('localhost')) {
-			allowedOrigins.push('http://localhost:5173', 'http://localhost:5174');
-		}
+			// in development, also allow localhost origins
+			if (c.env.FRONTEND_URL.includes('localhost')) {
+				allowedOrigins.push('http://localhost:5173', 'http://localhost:5174');
+			}
 
-		return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-	},
-	allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-	allowHeaders: ['Content-Type', 'Authorization'],
-	credentials: true,
-}));
+			return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+		},
+		allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+		allowHeaders: ['Content-Type', 'Authorization'],
+		credentials: true,
+	}),
+);
 
 // timeout: 30s
 app.use('/api/*', timeout({ ms: 30000 }));
@@ -71,7 +74,7 @@ app.use('/api/*', timeout({ ms: 30000 }));
 // max request size: 10mb
 app.use('/api/*', async (c, next) => {
 	const contentLength = c.req.header('content-length');
-	if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+	if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
 		return c.json({ error: 'Request body too large (max 10MB)' }, 413);
 	}
 	await next();
@@ -86,9 +89,9 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 
 	const [tenant, ownerrezToken] = tenantId
 		? await Promise.all([
-			supabase.from('tenants').select('company_name').eq('id', tenantId).maybeSingle(),
-			supabase.from('oauth_tokens').select('id').eq('tenant_id', tenantId).eq('provider', 'ownerrez').maybeSingle(),
-		])
+				supabase.from('tenants').select('company_name').eq('id', tenantId).maybeSingle(),
+				supabase.from('oauth_tokens').select('id').eq('tenant_id', tenantId).eq('provider', 'ownerrez').maybeSingle(),
+			])
 		: [null, null];
 
 	return c.json({
@@ -97,7 +100,7 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 		tenantId,
 		companyName: tenant?.data?.company_name ?? null,
 		hasOwnerRezConnection: !!ownerrezToken?.data,
-		createdAt: user.created_at || new Date().toISOString()
+		createdAt: user.created_at || new Date().toISOString(),
 	});
 });
 
@@ -110,30 +113,22 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 			bookingCount: 0,
 			guestCount: 0,
 			lastPropertySync: null,
-			lastBookingSync: null
+			lastBookingSync: null,
 		});
 	}
 
 	const supabase = createSupabaseClient(c.env);
-	const count = (table: string) => supabase
-		.from(table)
-		.select('id', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId);
+	const count = (table: string) => supabase.from(table).select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId);
 
 	const [properties, bookings, guests, syncStatuses] = await Promise.all([
 		count('properties'),
 		count('bookings'),
 		count('guests'),
-		supabase
-			.from('sync_status')
-			.select('*')
-			.eq('tenant_id', tenantId)
-			.order('last_sync', { ascending: false })
-			.limit(10)
+		supabase.from('sync_status').select('*').eq('tenant_id', tenantId).order('last_sync', { ascending: false }).limit(10),
 	]);
 
-	const lastPropertySync = syncStatuses.data?.find(s => s.sync_type === 'properties')?.last_sync || null;
-	const lastBookingSync = syncStatuses.data?.find(s => ['recent', 'historical', 'bookings'].includes(s.sync_type))?.last_sync || null;
+	const lastPropertySync = syncStatuses.data?.find((s) => s.sync_type === 'properties')?.last_sync || null;
+	const lastBookingSync = syncStatuses.data?.find((s) => ['recent', 'historical', 'bookings'].includes(s.sync_type))?.last_sync || null;
 
 	return c.json({
 		propertyCount: properties.count || 0,
@@ -141,7 +136,7 @@ app.get('/api/sync-status', authMiddleware, async (c) => {
 		guestCount: guests.count || 0,
 		lastPropertySync,
 		lastBookingSync,
-		syncHistory: syncStatuses.data || []
+		syncHistory: syncStatuses.data || [],
 	});
 });
 
@@ -150,34 +145,42 @@ type FinancialBatch = Awaited<ReturnType<typeof getFinancialBatchData>>;
 function previousFinancialPeriod(prev: FinancialBatch) {
 	const { pl, revenue, cashflow, tax } = prev;
 	return {
-		pl: pl ? {
-			revenue: pl.metrics.revenue,
-			performance: pl.metrics.performance,
-			operatingExpenses: pl.metrics.operatingExpenses,
-			operatingProfit: pl.metrics.operatingProfit,
-			monthlyTrend: pl.monthlyTrend,
-			weeklyRevenue: pl.weeklyRevenue
-		} : null,
-		revenue: revenue ? {
-			...revenue,
-			revenue: { gross: revenue.gross, net: revenue.net },
-			monthlyTrend: revenue.byMonth
-		} : null,
-		cashflow: cashflow ? {
-			...cashflow,
-			revenue: {
-				gross: pl?.metrics?.revenue?.gross || 0,
-				net: pl?.metrics?.revenue?.net || 0
-			},
-			monthlyTrend: pl?.monthlyTrend || []
-		} : null,
-		tax: tax ? {
-			...tax,
-			revenue: {
-				gross: pl?.metrics?.revenue?.gross || 0,
-				taxes: pl?.metrics?.revenue?.taxes || 0
-			}
-		} : null,
+		pl: pl
+			? {
+					revenue: pl.metrics.revenue,
+					performance: pl.metrics.performance,
+					operatingExpenses: pl.metrics.operatingExpenses,
+					operatingProfit: pl.metrics.operatingProfit,
+					monthlyTrend: pl.monthlyTrend,
+					weeklyRevenue: pl.weeklyRevenue,
+				}
+			: null,
+		revenue: revenue
+			? {
+					...revenue,
+					revenue: { gross: revenue.gross, net: revenue.net },
+					monthlyTrend: revenue.byMonth,
+				}
+			: null,
+		cashflow: cashflow
+			? {
+					...cashflow,
+					revenue: {
+						gross: pl?.metrics?.revenue?.gross || 0,
+						net: pl?.metrics?.revenue?.net || 0,
+					},
+					monthlyTrend: pl?.monthlyTrend || [],
+				}
+			: null,
+		tax: tax
+			? {
+					...tax,
+					revenue: {
+						gross: pl?.metrics?.revenue?.gross || 0,
+						taxes: pl?.metrics?.revenue?.taxes || 0,
+					},
+				}
+			: null,
 	};
 }
 
@@ -199,7 +202,10 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 	}
 
 	const cacheKey = await buildDashboardCacheKey(tenantId, view, from, to, {
-		tags, properties, comparisonFrom, comparisonTo
+		tags,
+		properties,
+		comparisonFrom,
+		comparisonTo,
 	});
 
 	if (c.env.CACHE) {
@@ -228,7 +234,7 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 				revenue: { ...current.revenue, previousPeriod: prev?.revenue ?? null },
 				cashflow: { ...current.cashflow, previousPeriod: prev?.cashflow ?? null },
 				tax: { ...current.tax, previousPeriod: prev?.tax ?? null },
-				view: 'financial'
+				view: 'financial',
 			};
 			break;
 		}
@@ -243,9 +249,7 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 				detectBookingGaps(supabase, tenantId, 60),
 				hasComparison ? getOccupancyData(supabase, tenantId, comparisonFrom, comparisonTo, tags, properties) : null,
 			]);
-			data = previous
-				? { current: { ...current, gaps }, previous, view: 'occupancy' }
-				: { ...current, gaps };
+			data = previous ? { current: { ...current, gaps }, previous, view: 'occupancy' } : { ...current, gaps };
 			break;
 		}
 
@@ -272,9 +276,7 @@ app.get('/api/dashboard-batch', authMiddleware, subscriptionMiddleware, async (c
 	}
 
 	if (c.env.CACHE) {
-		c.executionCtx.waitUntil(
-			c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: DASHBOARD_TTL_SECONDS })
-		);
+		c.executionCtx.waitUntil(c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: DASHBOARD_TTL_SECONDS }));
 	}
 
 	return c.json(data as Record<string, unknown>);
@@ -291,7 +293,8 @@ app.get('/api/pacing', authMiddleware, subscriptionMiddleware, async (c) => {
 
 	try {
 		const cacheKey = await buildDashboardCacheKey(tenantId, 'pacing', '', '', {
-			tags, properties: filterPropertyIds
+			tags,
+			properties: filterPropertyIds,
 		});
 
 		if (c.env.CACHE) {
@@ -304,17 +307,18 @@ app.get('/api/pacing', authMiddleware, subscriptionMiddleware, async (c) => {
 		const data = await getPacingData(createSupabaseClient(c.env), tenantId, tags, filterPropertyIds);
 
 		if (c.env.CACHE) {
-			c.executionCtx.waitUntil(
-				c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: PACING_TTL_SECONDS })
-			);
+			c.executionCtx.waitUntil(c.env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: PACING_TTL_SECONDS }));
 		}
 
 		return c.json(data);
 	} catch (error) {
 		console.error('pacing route error:', error);
-		return c.json({
-			error: error instanceof Error ? error.message : 'Failed to load pacing data'
-		}, 500);
+		return c.json(
+			{
+				error: error instanceof Error ? error.message : 'Failed to load pacing data',
+			},
+			500,
+		);
 	}
 });
 
@@ -340,18 +344,14 @@ const dashboardPaths = [
 
 // apply subscription check to dashboard routes. authMiddleware must run first so
 // tenantId is set; the sub-apps' own authMiddleware runs too late for this check.
-dashboardPaths.forEach(path => {
+dashboardPaths.forEach((path) => {
 	app.use(`${path}/*`, authMiddleware, subscriptionMiddleware);
 	app.use(path, authMiddleware, subscriptionMiddleware);
 });
 
 // block write operations for demo users
-const demoBlockedPaths = [
-	'/api/sync',
-	'/api/oauth',
-	'/api/account',
-];
-demoBlockedPaths.forEach(path => {
+const demoBlockedPaths = ['/api/sync', '/api/oauth', '/api/account'];
+demoBlockedPaths.forEach((path) => {
 	app.use(path, authMiddleware, demoGuard);
 	app.use(`${path}/*`, authMiddleware, demoGuard);
 });
@@ -366,7 +366,7 @@ const demoReadOnlyPaths = [
 	'/api/tax',
 	'/api/property-groups',
 ];
-demoReadOnlyPaths.forEach(path => {
+demoReadOnlyPaths.forEach((path) => {
 	app.post(path, authMiddleware, demoGuard);
 	app.put(path, authMiddleware, demoGuard);
 	app.delete(path, authMiddleware, demoGuard);

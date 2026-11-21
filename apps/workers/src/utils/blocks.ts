@@ -1,4 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from './fetch-all';
 import { MS_PER_DAY } from '../constants';
 
@@ -28,11 +28,7 @@ export interface BlockRow {
 // way in sync.ts, webhooks.ts, and admin.ts; centralized so the field list and
 // type/reason defaults stay consistent. blocks.property_id is bigint (OwnerRez
 // integer), not our UUID — writing a UUID here silently fails.
-export function mapToBlockRow(
-	b: OwnerRezBlockLike,
-	tenantId: string,
-	updatedAt: string = new Date().toISOString(),
-): BlockRow {
+export function mapToBlockRow(b: OwnerRezBlockLike, tenantId: string, updatedAt: string = new Date().toISOString()): BlockRow {
 	return {
 		ownerrez_block_id: b.id,
 		tenant_id: tenantId,
@@ -69,10 +65,7 @@ export async function fetchBlocks(
 	to: string,
 	restrictPropertyIds?: string[],
 ): Promise<TranslatedBlock[]> {
-	let q = supabase
-		.from('properties')
-		.select('id, ownerrez_id')
-		.eq('tenant_id', tenantId);
+	let q = supabase.from('properties').select('id, ownerrez_id').eq('tenant_id', tenantId);
 	if (restrictPropertyIds && restrictPropertyIds.length > 0) {
 		q = q.in('id', restrictPropertyIds);
 	}
@@ -127,11 +120,7 @@ export function collectBlockedNights(
 // Count unique blocked nights per property within [windowStart, windowEndExclusive).
 // Blocks for the same property may overlap on the calendar; a single night can
 // only be unavailable once, so the union of nights is what counts (not the sum).
-export function collectBlockedNightsExclusive(
-	blocks: TranslatedBlock[],
-	windowStart: Date,
-	windowEndExclusive: Date,
-): Map<string, number> {
+export function collectBlockedNightsExclusive(blocks: TranslatedBlock[], windowStart: Date, windowEndExclusive: Date): Map<string, number> {
 	const wsEpoch = Math.floor(windowStart.getTime() / MS_PER_DAY);
 	const weEpoch = Math.floor(windowEndExclusive.getTime() / MS_PER_DAY);
 	const daysByProp = new Map<string, Set<number>>();
@@ -140,7 +129,10 @@ export function collectBlockedNightsExclusive(
 		const bEnd = Math.min(Math.floor(new Date(bl.departure).getTime() / MS_PER_DAY), weEpoch);
 		if (bStart >= bEnd) continue;
 		let set = daysByProp.get(bl.property_id);
-		if (!set) { set = new Set<number>(); daysByProp.set(bl.property_id, set); }
+		if (!set) {
+			set = new Set<number>();
+			daysByProp.set(bl.property_id, set);
+		}
 		for (let d = bStart; d < bEnd; d++) set.add(d);
 	}
 	const out = new Map<string, number>();
@@ -157,18 +149,17 @@ export function sumBlockedNights(map: Map<string, number>): number {
 // Build a per-day index of which properties are blocked on each epoch-day.
 // Used by daily-granularity charts that subtract blocked properties from the
 // denominator one bucket at a time, independent of the per-property map.
-export function buildDailyBlockGrid(
-	blocks: TranslatedBlock[],
-	startEpoch: number,
-	endEpoch: number,
-): Map<number, Set<string>> {
+export function buildDailyBlockGrid(blocks: TranslatedBlock[], startEpoch: number, endEpoch: number): Map<number, Set<string>> {
 	const grid = new Map<number, Set<string>>();
 	for (const bl of blocks) {
 		const bStart = Math.max(Math.floor(new Date(bl.arrival).getTime() / MS_PER_DAY), startEpoch);
 		const bEnd = Math.min(Math.floor(new Date(bl.departure).getTime() / MS_PER_DAY), endEpoch + 1);
 		for (let d = bStart; d < bEnd; d++) {
 			let set = grid.get(d);
-			if (!set) { set = new Set(); grid.set(d, set); }
+			if (!set) {
+				set = new Set();
+				grid.set(d, set);
+			}
 			set.add(bl.property_id);
 		}
 	}

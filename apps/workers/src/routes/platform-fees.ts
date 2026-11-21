@@ -12,18 +12,20 @@ const bulkFeeSchema = z.object({
 	propertyId: z.string().uuid(),
 	year: z.number().int().min(2020).max(2100),
 	month: z.number().int().min(1).max(12),
-	fees: z.array(z.object({
-		platform: z.string().min(1).max(50),
-		amount: z.number().min(0),
-		notes: z.string().optional()
-	}))
+	fees: z.array(
+		z.object({
+			platform: z.string().min(1).max(50),
+			amount: z.number().min(0),
+			notes: z.string().optional(),
+		}),
+	),
 });
 
 const bookingFeeSchema = z.object({
 	booking_id: z.string().uuid(),
 	platform: z.string().min(1).max(50),
 	amount: z.number().min(0),
-	notes: z.string().optional()
+	notes: z.string().optional(),
 });
 
 platformFees.post('/bulk', async (c) => {
@@ -38,30 +40,28 @@ platformFees.post('/bulk', async (c) => {
 	const validation = bulkFeeSchema.safeParse(body);
 
 	if (!validation.success) {
-		return c.json({
-			error: 'Invalid input',
-			details: validation.error.issues
-		}, 400);
+		return c.json(
+			{
+				error: 'Invalid input',
+				details: validation.error.issues,
+			},
+			400,
+		);
 	}
 
 	const { propertyId, year, month, fees } = validation.data;
 
 	// Verify property belongs to tenant
-	const { data: property } = await supabase
-		.from('properties')
-		.select('id')
-		.eq('id', propertyId)
-		.eq('tenant_id', tenantId)
-		.single();
+	const { data: property } = await supabase.from('properties').select('id').eq('id', propertyId).eq('tenant_id', tenantId).single();
 
 	if (!property) {
 		return c.json({ error: 'Property not found' }, 404);
 	}
 
-	const rows = fees.map(fee => ({
+	const rows = fees.map((fee) => ({
 		platform: fee.platform,
 		amount: fee.amount,
-		notes: fee.notes || null
+		notes: fee.notes || null,
 	}));
 
 	const { error: rpcError } = await supabase.rpc('replace_platform_fees', {
@@ -69,7 +69,7 @@ platformFees.post('/bulk', async (c) => {
 		p_property_id: propertyId,
 		p_year: year,
 		p_month: month,
-		p_rows: rows
+		p_rows: rows,
 	});
 
 	if (rpcError) {
@@ -99,7 +99,7 @@ const singleFeeSchema = z.object({
 	month: z.string().regex(/^\d{4}-\d{2}$/), // "2025-10"
 	feeAmount: z.number().min(0),
 	platformTaxRemitted: z.number().min(0).optional(),
-	notes: z.string().optional()
+	notes: z.string().optional(),
 });
 
 platformFees.post('/', async (c) => {
@@ -114,10 +114,13 @@ platformFees.post('/', async (c) => {
 	const validation = singleFeeSchema.safeParse(body);
 
 	if (!validation.success) {
-		return c.json({
-			error: 'Invalid input',
-			details: validation.error.issues
-		}, 400);
+		return c.json(
+			{
+				error: 'Invalid input',
+				details: validation.error.issues,
+			},
+			400,
+		);
 	}
 
 	const { platform, month, feeAmount, notes } = validation.data;
@@ -128,8 +131,8 @@ platformFees.post('/', async (c) => {
 		.delete()
 		.eq('tenant_id', tenantId)
 		.eq('platform', platform)
-		.eq('year', parseInt(year))
-		.eq('month', parseInt(monthNum))
+		.eq('year', parseInt(year, 10))
+		.eq('month', parseInt(monthNum, 10))
 		.is('booking_id', null);
 
 	if (deleteError) {
@@ -143,10 +146,10 @@ platformFees.post('/', async (c) => {
 			tenant_id: tenantId,
 			platform,
 			amount: feeAmount,
-			year: parseInt(year),
-			month: parseInt(monthNum),
+			year: parseInt(year, 10),
+			month: parseInt(monthNum, 10),
 			notes: notes || null,
-			booking_id: null
+			booking_id: null,
 		})
 		.select()
 		.single();
@@ -174,29 +177,24 @@ platformFees.post('/booking', async (c) => {
 	const validation = bookingFeeSchema.safeParse(body);
 
 	if (!validation.success) {
-		return c.json({
-			error: 'Invalid input',
-			details: validation.error.issues
-		}, 400);
+		return c.json(
+			{
+				error: 'Invalid input',
+				details: validation.error.issues,
+			},
+			400,
+		);
 	}
 
 	const { booking_id, platform, amount, notes } = validation.data;
 
-	const { data: booking } = await supabase
-		.from('bookings')
-		.select('id')
-		.eq('id', booking_id)
-		.eq('tenant_id', tenantId)
-		.single();
+	const { data: booking } = await supabase.from('bookings').select('id').eq('id', booking_id).eq('tenant_id', tenantId).single();
 
 	if (!booking) {
 		return c.json({ error: 'Booking not found' }, 404);
 	}
 
-	const { error: deleteError } = await supabase
-		.from('platform_guest_fees')
-		.delete()
-		.eq('booking_id', booking_id);
+	const { error: deleteError } = await supabase.from('platform_guest_fees').delete().eq('booking_id', booking_id);
 
 	if (deleteError) {
 		console.error('Failed to delete existing booking fee:', deleteError);
@@ -212,7 +210,7 @@ platformFees.post('/booking', async (c) => {
 			amount,
 			notes: notes || null,
 			year: null,
-			month: null
+			month: null,
 		})
 		.select()
 		.single();
@@ -241,10 +239,7 @@ platformFees.get('/', async (c) => {
 	const bookingId = c.req.query('booking_id');
 	const propertyId = c.req.query('property');
 
-	let query = supabase
-		.from('platform_guest_fees')
-		.select('*')
-		.eq('tenant_id', tenantId);
+	let query = supabase.from('platform_guest_fees').select('*').eq('tenant_id', tenantId);
 
 	if (bookingId) {
 		query = query.eq('booking_id', bookingId);
@@ -252,15 +247,9 @@ platformFees.get('/', async (c) => {
 		// support both "YYYY-MM" format and separate year/month params
 		if (monthParam.includes('-')) {
 			const [year, month] = monthParam.split('-');
-			query = query
-				.eq('year', parseInt(year))
-				.eq('month', parseInt(month))
-				.is('booking_id', null);
+			query = query.eq('year', parseInt(year, 10)).eq('month', parseInt(month, 10)).is('booking_id', null);
 		} else if (yearParam) {
-			query = query
-				.eq('year', parseInt(yearParam))
-				.eq('month', parseInt(monthParam))
-				.is('booking_id', null);
+			query = query.eq('year', parseInt(yearParam, 10)).eq('month', parseInt(monthParam, 10)).is('booking_id', null);
 		}
 	}
 
@@ -288,11 +277,7 @@ platformFees.delete('/:id', async (c) => {
 
 	const id = c.req.param('id');
 
-	const { error } = await supabase
-		.from('platform_guest_fees')
-		.delete()
-		.eq('id', id)
-		.eq('tenant_id', tenantId);
+	const { error } = await supabase.from('platform_guest_fees').delete().eq('id', id).eq('tenant_id', tenantId);
 
 	if (error) {
 		console.error('Failed to delete platform fee:', error);

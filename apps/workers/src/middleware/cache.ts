@@ -1,4 +1,4 @@
-import { Context, Next } from 'hono';
+import type { Context, Next } from 'hono';
 import { responseCachePrefix, sha256Hex } from '../utils/cache';
 import type { AppEnv } from '../types';
 
@@ -13,7 +13,7 @@ export function cache({ ttl = 300 }: { ttl?: number } = {}) {
 		}
 
 		const url = new URL(c.req.url);
-		const cacheKey = responseCachePrefix(tenantId) + await sha256Hex(url.pathname + url.search);
+		const cacheKey = responseCachePrefix(tenantId) + (await sha256Hex(url.pathname + url.search));
 
 		const cached = await kv.get(cacheKey, 'json');
 		if (cached !== null) {

@@ -1,4 +1,4 @@
-import React from 'react'
+import type React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import type { MouseHandlerDataParam } from 'recharts'
@@ -66,12 +66,7 @@ interface TaxTrendChartProps {
   onPeriodClick?: (period: string) => void
 }
 
-export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
-  data,
-  title = 'Monthly Tax Trend',
-  height = 320,
-  onPeriodClick
-}) => {
+export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({ data, title = 'Monthly Tax Trend', height = 320, onPeriodClick }) => {
   if (!data || data.length === 0) {
     return (
       <ChartWrapper title={title} height={height} noData noDataMessage="No tax data available">
@@ -79,10 +74,10 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
       </ChartWrapper>
     )
   }
-  
+
   // Format the dates for display
   const formattedData = formatChartData(data, 'month')
-  
+
   return (
     <ChartWrapper title={title} height={height}>
       <ResponsiveContainer width="100%" height="100%">
@@ -90,7 +85,7 @@ export const TaxTrendChart: React.FC<TaxTrendChartProps> = ({
           data={formattedData}
           onClick={(e: MouseHandlerDataParam) => {
             if (e?.activeLabel && onPeriodClick) {
-              const dataPoint = formattedData.find(d => d.month === e.activeLabel)
+              const dataPoint = formattedData.find((d) => d.month === e.activeLabel)
               if (dataPoint) {
                 // Look for the original date in the source data
                 const index = formattedData.indexOf(dataPoint)

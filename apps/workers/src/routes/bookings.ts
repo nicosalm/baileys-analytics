@@ -26,14 +26,10 @@ bookings.get('/', async (c) => {
 	// clamp pagination params: non-numeric or out-of-range values fall back to
 	// the defaults rather than NaN (which supabase-js would forward as undefined).
 	const rawLimit = Number.parseInt(limitParam ?? '', 10);
-	const limit = Number.isFinite(rawLimit) && rawLimit > 0
-		? Math.min(rawLimit, BOOKINGS_MAX_LIMIT)
-		: BOOKINGS_DEFAULT_LIMIT;
+	const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, BOOKINGS_MAX_LIMIT) : BOOKINGS_DEFAULT_LIMIT;
 
 	const rawOffset = Number.parseInt(offsetParam ?? '', 10);
-	const offset = Number.isFinite(rawOffset) && rawOffset >= 0
-		? Math.min(rawOffset, BOOKINGS_MAX_OFFSET)
-		: 0;
+	const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? Math.min(rawOffset, BOOKINGS_MAX_OFFSET) : 0;
 
 	let query = supabase
 		.from('bookings')
@@ -45,11 +41,11 @@ bookings.get('/', async (c) => {
 		.order('arrival', { ascending: false })
 		.limit(limit)
 		.range(offset, offset + limit - 1);
-	
+
 	if (propertyId) {
 		query = query.eq('property_id', propertyId);
 	}
-	
+
 	if (startDate && endDate) {
 		// Overlap logic: booking touches range if arrival <= endDate AND departure >= startDate
 		query = query.lte('arrival', endDate).gte('departure', startDate);
@@ -58,17 +54,19 @@ bookings.get('/', async (c) => {
 	} else if (endDate) {
 		query = query.lte('departure', endDate);
 	}
-	
+
 	const { data: bookings, error } = await query;
-	
+
 	if (error) {
 		return c.json({ error: error.message }, 500);
 	}
-	
-	return c.json(bookings?.map(b => ({
-		...b,
-		property_name: b.properties?.name
-	})));
+
+	return c.json(
+		bookings?.map((b) => ({
+			...b,
+			property_name: b.properties?.name,
+		})),
+	);
 });
 
 bookings.get('/earliest-date', async (c) => {
@@ -99,7 +97,7 @@ bookings.get('/:id', async (c) => {
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
+
 	const [bookingResult, chargesResult, tagsResult] = await Promise.all([
 		supabase
 			.from('bookings')
@@ -111,18 +109,14 @@ bookings.get('/:id', async (c) => {
 			.eq('id', bookingId)
 			.eq('tenant_id', tenantId)
 			.single(),
-		supabase
-			.from('booking_charges')
-			.select('*')
-			.eq('booking_id', bookingId)
-			.order('charge_date'),
+		supabase.from('booking_charges').select('*').eq('booking_id', bookingId).order('charge_date'),
 		supabase
 			.from('booking_tags')
 			.select(`
 				tag_id,
 				tags!inner(name, color)
 			`)
-			.eq('booking_id', bookingId)
+			.eq('booking_id', bookingId),
 	]);
 
 	if (bookingResult.error || !bookingResult.data) {
@@ -130,9 +124,10 @@ bookings.get('/:id', async (c) => {
 	}
 
 	const booking = bookingResult.data;
-	const nights = booking.arrival && booking.departure
-		? Math.ceil((new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24))
-		: 0;
+	const nights =
+		booking.arrival && booking.departure
+			? Math.ceil((new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24))
+			: 0;
 
 	const avgNightlyRate = nights > 0 ? (booking.total_amount || 0) / nights : 0;
 
@@ -146,7 +141,7 @@ bookings.get('/:id', async (c) => {
 		guestTags = (guestTagRows || []).map((t: any) => ({
 			id: t.tag_id,
 			name: t.tags?.name,
-			color: t.tags?.color
+			color: t.tags?.color,
 		}));
 	}
 
@@ -161,15 +156,16 @@ bookings.get('/:id', async (c) => {
 			property_bathrooms: booking.properties?.bathrooms,
 			property_max_guests: booking.properties?.max_guests,
 			nights,
-			avgNightlyRate
+			avgNightlyRate,
 		},
 		charges: chargesResult.data || [],
-		tags: tagsResult.data?.map((t: any) => ({
-			id: t.tag_id,
-			name: t.tags?.name,
-			color: t.tags?.color
-		})) || [],
-		guestTags
+		tags:
+			tagsResult.data?.map((t: any) => ({
+				id: t.tag_id,
+				name: t.tags?.name,
+				color: t.tags?.color,
+			})) || [],
+		guestTags,
 	});
 });
 

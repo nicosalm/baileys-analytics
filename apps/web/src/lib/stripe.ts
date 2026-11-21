@@ -1,5 +1,5 @@
-import { api } from './api';
-import type { TierSlug } from '@baileys/constants';
+import { api } from './api'
+import type { TierSlug } from '@baileys/constants'
 
 export interface SubscriptionInfo {
   status: string
@@ -62,56 +62,55 @@ class BillingClient {
   // endpoint is the deterministic version.
   // throws on failure so callers can't mistake an outage for "no subscription"
   async getSubscription() {
-    const result = await api.request<SubscriptionResponse>('/billing/subscription');
-    if (!result.success) throw new Error(result.error);
-    return result.data;
+    const result = await api.request<SubscriptionResponse>('/billing/subscription')
+    if (!result.success) throw new Error(result.error)
+    return result.data
   }
 
   async createCheckoutSession(tier: TierSlug, isYearly: boolean = false) {
     const result = await api.request<{ url: string; sessionId: string }>('/billing/create-checkout-session', {
       method: 'POST',
-      body: JSON.stringify({ tier, isYearly })
-    });
+      body: JSON.stringify({ tier, isYearly }),
+    })
 
     if (!result.success) {
-      throw new Error(result.error || 'Failed to create checkout session');
+      throw new Error(result.error || 'Failed to create checkout session')
     }
 
     // redirect to stripe checkout
     if (result.data.url) {
-      window.location.href = result.data.url;
+      window.location.href = result.data.url
     }
 
-    return result.data;
+    return result.data
   }
 
   async createPortalSession() {
     const result = await api.request<{ url: string }>('/billing/create-portal-session', {
-      method: 'POST'
-    });
+      method: 'POST',
+    })
 
     if (!result.success) {
-      throw new Error(result.error || 'Failed to create portal session');
+      throw new Error(result.error || 'Failed to create portal session')
     }
 
     // redirect to stripe portal
     if (result.data.url) {
-      window.location.href = result.data.url;
+      window.location.href = result.data.url
     }
 
-    return result.data;
+    return result.data
   }
 
   async getBillingHistory() {
-    const result = await api.request<{ history: BillingHistoryEntry[] }>('/billing/history');
-    return result.success ? result.data.history : [];
+    const result = await api.request<{ history: BillingHistoryEntry[] }>('/billing/history')
+    return result.success ? result.data.history : []
   }
 
   async getUsageMetrics() {
-    const result = await api.request<{ metrics: UsageMetric[] }>('/billing/usage');
-    return result.success ? result.data.metrics : [];
+    const result = await api.request<{ metrics: UsageMetric[] }>('/billing/usage')
+    return result.success ? result.data.metrics : []
   }
-
 }
 
-export const billingClient = new BillingClient();
+export const billingClient = new BillingClient()

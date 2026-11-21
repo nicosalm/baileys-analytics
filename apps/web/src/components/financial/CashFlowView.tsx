@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react'
+import type React from 'react'
+import { useMemo } from 'react'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -12,14 +13,17 @@ import type { TooltipContentProps, MouseHandlerDataParam } from 'recharts'
 
 const CashFlowChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
-  const entry = payload.find(p => (p.value as number) > 0) ?? payload[0]
+  const entry = payload.find((p) => (p.value as number) > 0) ?? payload[0]
   const isCollected = entry.dataKey === 'collected'
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
       <p className="font-semibold text-sm mb-2">{label}</p>
       <div className="flex justify-between gap-4 text-xs">
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: isCollected ? resolveToken('--success') : resolveToken('--info') }} />
+          <div
+            className="w-3 h-3 rounded-sm"
+            style={{ backgroundColor: isCollected ? resolveToken('--success') : resolveToken('--info') }}
+          />
           <span className="text-muted-foreground">{isCollected ? 'Collected:' : 'Pending:'}</span>
         </div>
         <span className="font-medium">{formatCurrency(entry.value as number)}</span>
@@ -55,18 +59,14 @@ interface CashFlowViewProps {
   comparisonDateRange?: string
 }
 
-export const CashFlowView: React.FC<CashFlowViewProps> = ({
-  data,
-  loading,
-  onPeriodClick,
-}) => {
+export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPeriodClick }) => {
   const { showTips } = useTips()
 
   const monthlyData = useMemo(() => {
     if (!data?.byMonth) return []
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    return data.byMonth.map(m => {
+    return data.byMonth.map((m) => {
       const [year, month] = m.month.split('-').map(Number)
       const monthStart = new Date(year, month - 1, 1)
       const amount = m.amount || 0
@@ -100,7 +100,8 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
           <div className="flex items-start">
             <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
             <div className="text-sm text-info-fg">
-              <strong>Cash Flow:</strong> Collected is revenue from past arrivals in the period. Pending is from confirmed future arrivals. Pipeline cards show all upcoming bookings regardless of active filters.
+              <strong>Cash Flow:</strong> Collected is revenue from past arrivals in the period. Pending is from confirmed future arrivals.
+              Pipeline cards show all upcoming bookings regardless of active filters.
             </div>
           </div>
         </div>
@@ -149,7 +150,12 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
         />
       </div>
 
-      <ChartWrapper title={`${detectGranularity(monthlyData, 'month')} Revenue — Collected vs Pending`} height={360} noData={monthlyData.length === 0} noDataMessage="No revenue data for this period">
+      <ChartWrapper
+        title={`${detectGranularity(monthlyData, 'month')} Revenue — Collected vs Pending`}
+        height={360}
+        noData={monthlyData.length === 0}
+        noDataMessage="No revenue data for this period"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={monthlyData}
@@ -164,8 +170,22 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({
             <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
             <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
             <Tooltip content={<CashFlowChartTooltip />} isAnimationActive={false} />
-            <Bar dataKey="collected" stackId="revenue" name="Collected" fill={resolveToken('--success')} fillOpacity={0.85} radius={[2, 2, 0, 0]} />
-            <Bar dataKey="pending" stackId="revenue" name="Pending" fill={resolveToken('--info')} fillOpacity={0.85} radius={[2, 2, 0, 0]} />
+            <Bar
+              dataKey="collected"
+              stackId="revenue"
+              name="Collected"
+              fill={resolveToken('--success')}
+              fillOpacity={0.85}
+              radius={[2, 2, 0, 0]}
+            />
+            <Bar
+              dataKey="pending"
+              stackId="revenue"
+              name="Pending"
+              fill={resolveToken('--info')}
+              fillOpacity={0.85}
+              radius={[2, 2, 0, 0]}
+            />
           </BarChart>
         </ResponsiveContainer>
       </ChartWrapper>

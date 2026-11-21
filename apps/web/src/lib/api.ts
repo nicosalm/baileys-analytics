@@ -15,258 +15,263 @@ import type {
 
 const API_BASE = '/api'
 
-type ApiResult<T> =
-| { success: true; data: T }
-| { success: false; error: string; status?: number }
+type ApiResult<T> = { success: true; data: T } | { success: false; error: string; status?: number }
 
 class ApiClient {
-    private accessToken: string | null = null
+  private accessToken: string | null = null
 
-    setAccessToken(token: string | null) {
-        this.accessToken = token
-    }
+  setAccessToken(token: string | null) {
+    this.accessToken = token
+  }
 
-    async request<T>(
-        path: string,
-        options: RequestInit = {}
-    ): Promise<ApiResult<T>> {
-        try {
-            const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-            }
+  getAccessToken(): string | null {
+    return this.accessToken
+  }
 
-            if (this.accessToken) {
-                headers['Authorization'] = `Bearer ${this.accessToken}`
-            }
+  async request<T>(path: string, options: RequestInit = {}): Promise<ApiResult<T>> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      }
 
-            const response = await fetch(`${API_BASE}${path}`, {
-                ...options,
-                headers: {
-                    ...headers,
-                    ...options.headers,
-                },
-            })
+      if (this.accessToken) {
+        headers.Authorization = `Bearer ${this.accessToken}`
+      }
 
-            if (!response.ok) {
-                // For 401s, clear the in-memory token but don't nuke localStorage
-                // or force-redirect. The AuthProvider's onAuthStateChange listener
-                // will detect session expiry (via Supabase auto-refresh failure)
-                // and handle the redirect through ProtectedRoute naturally.
-                if (response.status === 401) {
-                    this.accessToken = null
-                }
-
-                const error = await response.json().catch(() => ({ error: 'Request failed' }))
-
-                // subscription lapsed mid-session: send them to billing instead of
-                // leaving every dashboard panel in an error state
-                if (
-                    response.status === 403 &&
-                    typeof error.code === 'string' &&
-                    error.code.startsWith('SUBSCRIPTION_') &&
-                    !window.location.pathname.startsWith('/settings')
-                ) {
-                    window.location.assign(error.redirectTo || '/settings?tab=billing')
-                }
-
-                return {
-                    success: false,
-                    error: response.status === 401
-                        ? 'Session expired. Please log in again.'
-                        : (error.error || response.statusText),
-                    status: response.status,
-                }
-            }
-
-            const data = await response.json()
-            return { success: true, data }
-        } catch (error) {
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Network error',
-            }
-        }
-    }
-
-    oauth = {
-        initiate: (): Promise<ApiResult<{ authUrl: string }>> => {
-            return this.request('/oauth/initiate')
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          ...headers,
+          ...options.headers,
         },
-        disconnect: (): Promise<ApiResult<{ success: boolean }>> => {
-            return this.request('/oauth/disconnect', { method: 'POST' })
-        },
-        callback: (code: string, state: string): Promise<ApiResult<{ success: boolean }>> => {
-            return this.request('/oauth/callback', {
-                method: 'POST',
-                body: JSON.stringify({ code, state })
-            })
+      })
+
+      if (!response.ok) {
+        // For 401s, clear the in-memory token but don't nuke localStorage
+        // or force-redirect. The AuthProvider's onAuthStateChange listener
+        // will detect session expiry (via Supabase auto-refresh failure)
+        // and handle the redirect through ProtectedRoute naturally.
+        if (response.status === 401) {
+          this.accessToken = null
         }
-    }
 
-    async initiateOAuth(): Promise<ApiResult<{ authUrl: string }>> {
-        return this.oauth.initiate()
-    }
+        const error = await response.json().catch(() => ({ error: 'Request failed' }))
 
-    async disconnectOwnerRez(): Promise<ApiResult<{ success: boolean }>> {
-        return this.oauth.disconnect()
-    }
+        // subscription lapsed mid-session: send them to billing instead of
+        // leaving every dashboard panel in an error state
+        if (
+          response.status === 403 &&
+          typeof error.code === 'string' &&
+          error.code.startsWith('SUBSCRIPTION_') &&
+          !window.location.pathname.startsWith('/settings')
+        ) {
+          window.location.assign(error.redirectTo || '/settings?tab=billing')
+        }
 
-    async getSyncStatus(): Promise<ApiResult<SyncStatusResponse>> {
-        return this.request('/sync-status')
-    }
+        return {
+          success: false,
+          error: response.status === 401 ? 'Session expired. Please log in again.' : error.error || response.statusText,
+          status: response.status,
+        }
+      }
 
-    async getProperties(): Promise<ApiResult<{ properties: PropertyRow[] }>> {
-        return this.request('/properties')
+      const data = await response.json()
+      return { success: true, data }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error',
+      }
     }
+  }
 
-    async getTags(): Promise<ApiResult<Tag[]>> {
-        return this.request('/tags')
-    }
+  oauth = {
+    initiate: (): Promise<ApiResult<{ authUrl: string }>> => {
+      return this.request('/oauth/initiate')
+    },
+    disconnect: (): Promise<ApiResult<{ success: boolean }>> => {
+      return this.request('/oauth/disconnect', { method: 'POST' })
+    },
+    callback: (code: string, state: string): Promise<ApiResult<{ success: boolean }>> => {
+      return this.request('/oauth/callback', {
+        method: 'POST',
+        body: JSON.stringify({ code, state }),
+      })
+    },
+  }
 
-    async getOperatingExpenses(propertyId?: string, month?: string): Promise<ApiResult<{ data: OperatingExpenseRow[] }>> {
-        const params = new URLSearchParams()
-        if (propertyId) params.append('property', propertyId)
-        if (month) params.append('month', month)
-        return this.request(`/operating-expenses?${params}`)
-    }
+  async initiateOAuth(): Promise<ApiResult<{ authUrl: string }>> {
+    return this.oauth.initiate()
+  }
 
-    async saveOperatingExpense(data: SaveOperatingExpenseData): Promise<ApiResult<void>> {
-        return this.request('/operating-expenses', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
+  async disconnectOwnerRez(): Promise<ApiResult<{ success: boolean }>> {
+    return this.oauth.disconnect()
+  }
 
-    async saveOperatingExpensesBulk(data: SaveOperatingExpensesBulkData): Promise<ApiResult<void>> {
-        return this.request('/operating-expenses/bulk', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
+  async getSyncStatus(): Promise<ApiResult<SyncStatusResponse>> {
+    return this.request('/sync-status')
+  }
 
-    async deleteOperatingExpense(id: string): Promise<ApiResult<void>> {
-        return this.request(`/operating-expenses/${id}`, {
-            method: 'DELETE'
-        })
-    }
+  async getProperties(): Promise<ApiResult<{ properties: PropertyRow[] }>> {
+    return this.request('/properties')
+  }
 
-    async getExpenseTemplates(propertyId?: string): Promise<ApiResult<{ data: ExpenseTemplateRow[] }>> {
-        const params = new URLSearchParams()
-        if (propertyId) params.append('property', propertyId)
-        return this.request(`/expense-templates?${params}`)
-    }
+  async getTags(): Promise<ApiResult<Tag[]>> {
+    return this.request('/tags')
+  }
 
-    async saveExpenseTemplates(data: SaveExpenseTemplatesData): Promise<ApiResult<void>> {
-        return this.request('/expense-templates/bulk', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
+  async getOperatingExpenses(propertyId?: string, month?: string): Promise<ApiResult<{ data: OperatingExpenseRow[] }>> {
+    const params = new URLSearchParams()
+    if (propertyId) params.append('property', propertyId)
+    if (month) params.append('month', month)
+    return this.request(`/operating-expenses?${params}`)
+  }
 
-    async getSeasons(): Promise<ApiResult<Season[]>> {
-        return this.request('/seasons')
-    }
+  async saveOperatingExpense(data: SaveOperatingExpenseData): Promise<ApiResult<void>> {
+    return this.request('/operating-expenses', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
 
-    async createSeason(data: { name: string; startMonth: number; startDay: number; endMonth: number; endDay: number }): Promise<ApiResult<Season>> {
-        return this.request('/seasons', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
+  async saveOperatingExpensesBulk(data: SaveOperatingExpensesBulkData): Promise<ApiResult<void>> {
+    return this.request('/operating-expenses/bulk', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
 
-    async updateSeason(id: string, data: { name: string; startMonth: number; startDay: number; endMonth: number; endDay: number }): Promise<ApiResult<Season>> {
-        return this.request(`/seasons/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        })
-    }
+  async deleteOperatingExpense(id: string): Promise<ApiResult<void>> {
+    return this.request(`/operating-expenses/${id}`, {
+      method: 'DELETE',
+    })
+  }
 
-    async deleteSeason(id: string): Promise<ApiResult<void>> {
-        return this.request(`/seasons/${id}`, {
-            method: 'DELETE'
-        })
-    }
+  async getExpenseTemplates(propertyId?: string): Promise<ApiResult<{ data: ExpenseTemplateRow[] }>> {
+    const params = new URLSearchParams()
+    if (propertyId) params.append('property', propertyId)
+    return this.request(`/expense-templates?${params}`)
+  }
 
-    async toggleSeasonActive(id: string, isActive: boolean): Promise<ApiResult<void>> {
-        return this.request(`/seasons/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ isActive })
-        })
-    }
+  async saveExpenseTemplates(data: SaveExpenseTemplatesData): Promise<ApiResult<void>> {
+    return this.request('/expense-templates/bulk', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
 
-    async getPropertyGroups(): Promise<ApiResult<PropertyGroup[]>> {
-        return this.request('/property-groups')
-    }
+  async getSeasons(): Promise<ApiResult<Season[]>> {
+    return this.request('/seasons')
+  }
 
-    async createPropertyGroup(data: { name: string; description?: string; propertyIds: string[] }): Promise<ApiResult<PropertyGroup>> {
-        return this.request('/property-groups', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        })
-    }
+  async createSeason(data: {
+    name: string
+    startMonth: number
+    startDay: number
+    endMonth: number
+    endDay: number
+  }): Promise<ApiResult<Season>> {
+    return this.request('/seasons', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
 
-    async updatePropertyGroup(id: string, data: { name?: string; description?: string; propertyIds?: string[] }): Promise<ApiResult<PropertyGroup>> {
-        return this.request(`/property-groups/${id}`, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        })
-    }
+  async updateSeason(
+    id: string,
+    data: { name: string; startMonth: number; startDay: number; endMonth: number; endDay: number },
+  ): Promise<ApiResult<Season>> {
+    return this.request(`/seasons/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
 
-    async deletePropertyGroup(id: string): Promise<ApiResult<void>> {
-        return this.request(`/property-groups/${id}`, {
-            method: 'DELETE'
-        })
-    }
+  async deleteSeason(id: string): Promise<ApiResult<void>> {
+    return this.request(`/seasons/${id}`, {
+      method: 'DELETE',
+    })
+  }
 
-    async getGoals(): Promise<ApiResult<Goal[]>> {
-        return this.request('/goals')
-    }
+  async toggleSeasonActive(id: string, isActive: boolean): Promise<ApiResult<void>> {
+    return this.request(`/seasons/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ isActive }),
+    })
+  }
 
-    async saveGoals(goals: { metricKey: string; targetValue: number; isEnabled: boolean; period: string }[]): Promise<ApiResult<void>> {
-        return this.request('/goals', {
-            method: 'PUT',
-            body: JSON.stringify(goals)
-        })
-    }
+  async getPropertyGroups(): Promise<ApiResult<PropertyGroup[]>> {
+    return this.request('/property-groups')
+  }
 
-    async getGoalProgress(): Promise<ApiResult<GoalProgress[]>> {
-        return this.request('/goals/progress')
-    }
+  async createPropertyGroup(data: { name: string; description?: string; propertyIds: string[] }): Promise<ApiResult<PropertyGroup>> {
+    return this.request('/property-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
 
-    async getBookings(params: { startDate?: string; endDate?: string; limit?: string }): Promise<ApiResult<BookingRow[]>> {
-        const qs = new URLSearchParams()
-        if (params.startDate) qs.append('startDate', params.startDate)
-        if (params.endDate) qs.append('endDate', params.endDate)
-        if (params.limit) qs.append('limit', params.limit)
-        return this.request(`/bookings?${qs.toString()}`)
-    }
+  async updatePropertyGroup(
+    id: string,
+    data: { name?: string; description?: string; propertyIds?: string[] },
+  ): Promise<ApiResult<PropertyGroup>> {
+    return this.request(`/property-groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
 
-    async getEarliestBookingDate(): Promise<ApiResult<{ earliestDate: string | null }>> {
-        return this.request('/bookings/earliest-date')
-    }
+  async deletePropertyGroup(id: string): Promise<ApiResult<void>> {
+    return this.request(`/property-groups/${id}`, {
+      method: 'DELETE',
+    })
+  }
 
+  async getGoals(): Promise<ApiResult<Goal[]>> {
+    return this.request('/goals')
+  }
+
+  async saveGoals(goals: { metricKey: string; targetValue: number; isEnabled: boolean; period: string }[]): Promise<ApiResult<void>> {
+    return this.request('/goals', {
+      method: 'PUT',
+      body: JSON.stringify(goals),
+    })
+  }
+
+  async getGoalProgress(): Promise<ApiResult<GoalProgress[]>> {
+    return this.request('/goals/progress')
+  }
+
+  async getBookings(params: { startDate?: string; endDate?: string; limit?: string }): Promise<ApiResult<BookingRow[]>> {
+    const qs = new URLSearchParams()
+    if (params.startDate) qs.append('startDate', params.startDate)
+    if (params.endDate) qs.append('endDate', params.endDate)
+    if (params.limit) qs.append('limit', params.limit)
+    return this.request(`/bookings?${qs.toString()}`)
+  }
+
+  async getEarliestBookingDate(): Promise<ApiResult<{ earliestDate: string | null }>> {
+    return this.request('/bookings/earliest-date')
+  }
 }
 
 export const api = new ApiClient()
 
-export const authenticatedFetch = async (
-    path: string,
-    options: RequestInit = {}
-): Promise<Response> => {
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-    }
+export const authenticatedFetch = async (path: string, options: RequestInit = {}): Promise<Response> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
 
-    const token = api['accessToken']
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`
-    }
+  const token = api.getAccessToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
 
-    return fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers: {
-            ...headers,
-            ...options.headers,
-        },
-    })
+  return fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
+  })
 }

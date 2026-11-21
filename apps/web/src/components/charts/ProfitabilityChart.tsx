@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback } from 'react'
+import type React from 'react'
+import { useMemo, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import type { TooltipContentProps, BarRectangleItem } from 'recharts'
 import { formatCurrency } from '@/utils/formatters'
@@ -49,9 +50,7 @@ const ProfitabilityTooltip = ({ active, payload }: Partial<TooltipContentProps<n
         )}
         <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
           <span className="text-muted-foreground">Net Revenue:</span>
-          <span className={`font-semibold ${d.netRevenue >= 0 ? 'text-success' : 'text-danger'}`}>
-            {formatCurrency(d.netRevenue)}
-          </span>
+          <span className={`font-semibold ${d.netRevenue >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(d.netRevenue)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Margin:</span>
@@ -99,50 +98,41 @@ const formatAxisK = (v: number) => {
 }
 
 export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, onPropertyClick }) => {
-  const chartData = useMemo(() =>
-    data.map(d => ({
-      ...d,
-      name: d.propertyCode || (d.propertyName.length > 18 ? d.propertyName.slice(0, 16) + '\u2026' : d.propertyName),
-      fullName: d.propertyName,
-      costs: d.platformFees + d.taxes + d.operatingExpenses
-    })),
-    [data]
+  const chartData = useMemo(
+    () =>
+      data.map((d) => ({
+        ...d,
+        name: d.propertyCode || (d.propertyName.length > 18 ? `${d.propertyName.slice(0, 16)}\u2026` : d.propertyName),
+        fullName: d.propertyName,
+        costs: d.platformFees + d.taxes + d.operatingExpenses,
+      })),
+    [data],
   )
 
-  const colors = useMemo(() => ({
-    success: resolveToken('--success'),
-    danger: resolveToken('--danger'),
-  }), [])
+  const colors = useMemo(
+    () => ({
+      success: resolveToken('--success'),
+      danger: resolveToken('--danger'),
+    }),
+    [],
+  )
 
-  const handleBarClick = useCallback((data: BarRectangleItem) => {
-    const p = data?.payload as { propertyId?: string; fullName?: string } | undefined
-    if (onPropertyClick && p?.propertyId) {
-      onPropertyClick(p.propertyId, p.fullName || '')
-    }
-  }, [onPropertyClick])
+  const handleBarClick = useCallback(
+    (data: BarRectangleItem) => {
+      const p = data?.payload as { propertyId?: string; fullName?: string } | undefined
+      if (onPropertyClick && p?.propertyId) {
+        onPropertyClick(p.propertyId, p.fullName || '')
+      }
+    },
+    [onPropertyClick],
+  )
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart
-        data={chartData}
-        layout="vertical"
-        margin={{ top: 5, right: 45, left: 10, bottom: 5 }}
-        barGap={0}
-        barCategoryGap="25%"
-      >
+      <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 45, left: 10, bottom: 5 }} barGap={0} barCategoryGap="25%">
         <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} horizontal={false} />
-        <XAxis
-          type="number"
-          tickFormatter={formatAxisK}
-          stroke={CHART_INFRA.axis}
-        />
-        <YAxis
-          type="category"
-          dataKey="name"
-          width={130}
-          tick={{ fontSize: 11 }}
-          stroke={CHART_INFRA.axis}
-        />
+        <XAxis type="number" tickFormatter={formatAxisK} stroke={CHART_INFRA.axis} />
+        <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11 }} stroke={CHART_INFRA.axis} />
         <Tooltip content={<ProfitabilityTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} isAnimationActive={false} />
         <Bar
           dataKey="netRevenue"
@@ -155,11 +145,7 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
           className={onPropertyClick ? 'cursor-pointer' : ''}
         >
           {chartData.map((entry, i) => (
-            <Cell
-              key={i}
-              fill={entry.netRevenue >= 0 ? colors.success : colors.danger}
-              fillOpacity={0.85}
-            />
+            <Cell key={i} fill={entry.netRevenue >= 0 ? colors.success : colors.danger} fillOpacity={0.85} />
           ))}
         </Bar>
         <Bar

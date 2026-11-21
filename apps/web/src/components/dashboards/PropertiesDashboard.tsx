@@ -1,9 +1,21 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
 import { formatCurrency, formatPercentage, sumBy } from '@baileys/utils'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
-import { PropertyMetrics } from '@/types/api'
+import type { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import { DollarSign, Info, Percent, TrendingUp, ArrowDown, ScatterChart, LayoutGrid, Table, Wallet, HelpCircle, GitBranch } from 'lucide-react'
+import {
+  DollarSign,
+  Info,
+  Percent,
+  TrendingUp,
+  ArrowDown,
+  ScatterChart,
+  LayoutGrid,
+  Table,
+  Wallet,
+  HelpCircle,
+  GitBranch,
+} from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
@@ -47,7 +59,6 @@ export const PropertiesDashboard = () => {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
   const [cardsPage, setCardsPage] = useState(1)
 
-
   const tagIds = useTagIds()
   const propertyIds = usePropertyIds()
 
@@ -58,7 +69,7 @@ export const PropertiesDashboard = () => {
     tagIds,
     comparisonRange?.from,
     comparisonRange?.to,
-    propertyIds
+    propertyIds,
   )
 
   let properties: PropertyMetrics[] = []
@@ -77,26 +88,24 @@ export const PropertiesDashboard = () => {
 
   useErrorToast(error, 'Failed to load property metrics')
 
-  const validProperties = Array.isArray(properties)
-    ? properties.filter((p: PropertyMetrics) => p && p.propertyName)
-    : [] as PropertyMetrics[]
+  const validProperties = Array.isArray(properties) ? properties.filter((p: PropertyMetrics) => p?.propertyName) : ([] as PropertyMetrics[])
 
   // reset cards page when data changes
-  useEffect(() => { setCardsPage(1) }, [validProperties.length])
+  useEffect(() => {
+    setCardsPage(1)
+  }, [validProperties.length])
 
   const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN, totalNetRevenue } = useMemo(() => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
     const totalBookedNights = sumBy(validProperties, (p: PropertyMetrics) => p.bookedNights)
     const totalRev = sumBy(validProperties, (p: PropertyMetrics) => p.revenue)
-    const totalNet = profitability.length > 0
-      ? sumBy(profitability, (p: PropertyProfitability) => p.netRevenue || 0)
-      : 0
+    const totalNet = profitability.length > 0 ? sumBy(profitability, (p: PropertyProfitability) => p.netRevenue || 0) : 0
     return {
       totalRevenue: totalRev,
       totalBookings: sumBy(validProperties, (p: PropertyMetrics) => p.bookings),
       avgOccupancy: totalAvailableNights > 0 ? totalBookedNights / totalAvailableNights : 0,
       avgRevPAN: totalAvailableNights > 0 ? totalRev / totalAvailableNights : 0,
-      totalNetRevenue: totalNet
+      totalNetRevenue: totalNet,
     }
   }, [validProperties, profitability])
 
@@ -109,7 +118,7 @@ export const PropertiesDashboard = () => {
       prevTotalRevenue: prevTotalRev,
       prevTotalBookings: sumBy(prev, (p: PropertyMetrics) => p.bookings),
       prevAvgOccupancy: prevTotalAvailableNights > 0 ? prevTotalBookedNights / prevTotalAvailableNights : 0,
-      prevAvgRevPAN: prevTotalAvailableNights > 0 ? prevTotalRev / prevTotalAvailableNights : 0
+      prevAvgRevPAN: prevTotalAvailableNights > 0 ? prevTotalRev / prevTotalAvailableNights : 0,
     }
   }, [previousProperties])
 
@@ -126,37 +135,43 @@ export const PropertiesDashboard = () => {
       .map(([name]) => name)
   }, [platformMix])
 
-  const previousPropertiesMap = useMemo(() =>
-    new Map(previousProperties?.map(p => [p.propertyId, p]) ?? []),
-    [previousProperties]
-  )
+  const previousPropertiesMap = useMemo(() => new Map(previousProperties?.map((p) => [p.propertyId, p]) ?? []), [previousProperties])
 
   // memoized view toggle handlers
   const handleViewCards = useCallback(() => setViewMode('cards'), [])
   const handleViewTable = useCallback(() => setViewMode('table'), [])
   // memoized click handlers
-  const handleScatterClick = useCallback((property: PropertyMetrics) => {
-    openModal({
-      type: 'property',
-      propertyId: property.propertyId,
-      propertyName: property.propertyName
-    })
-  }, [openModal])
+  const handleScatterClick = useCallback(
+    (property: PropertyMetrics) => {
+      openModal({
+        type: 'property',
+        propertyId: property.propertyId,
+        propertyName: property.propertyName,
+      })
+    },
+    [openModal],
+  )
 
-  const handleChartPropertyClick = useCallback((propertyId: string, propertyName: string) => {
-    openModal({ type: 'property', propertyId, propertyName })
-  }, [openModal])
+  const handleChartPropertyClick = useCallback(
+    (propertyId: string, propertyName: string) => {
+      openModal({ type: 'property', propertyId, propertyName })
+    },
+    [openModal],
+  )
 
-  const handlePropertyClick = useCallback((propertyId: string) => {
-    const prop = validProperties.find((p: PropertyMetrics) => p.propertyId === propertyId)
-    openModal({ type: 'property', propertyId, propertyName: prop?.propertyName || '' })
-  }, [openModal, validProperties])
+  const handlePropertyClick = useCallback(
+    (propertyId: string) => {
+      const prop = validProperties.find((p: PropertyMetrics) => p.propertyId === propertyId)
+      openModal({ type: 'property', propertyId, propertyName: prop?.propertyName || '' })
+    },
+    [openModal, validProperties],
+  )
 
   const { topProperties, bottomProperties } = useMemo(() => {
     const sorted = [...validProperties].sort((a, b) => (b.revenue || 0) - (a.revenue || 0))
     return {
       topProperties: sorted.slice(0, 3),
-      bottomProperties: sorted.length > 3 ? sorted.slice(-3).reverse() : []
+      bottomProperties: sorted.length > 3 ? sorted.slice(-3).reverse() : [],
     }
   }, [validProperties])
 
@@ -165,9 +180,7 @@ export const PropertiesDashboard = () => {
       <div className="space-y-6">
         <div className="bg-card rounded-xl border border-border p-4">
           <h2 className="text-lg font-semibold text-foreground">Your Properties at a Glance</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            See how each property is performing and compare them side by side
-          </p>
+          <p className="text-muted-foreground text-sm mt-1">See how each property is performing and compare them side by side</p>
         </div>
         <StateWrapper
           loading={isLoading}
@@ -197,9 +210,7 @@ export const PropertiesDashboard = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Your Properties at a Glance</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              See how each property is performing and compare them side by side
-            </p>
+            <p className="text-muted-foreground text-sm mt-1">See how each property is performing and compare them side by side</p>
           </div>
           <span className="text-sm font-medium text-muted-foreground">
             {validProperties.length} {validProperties.length === 1 ? 'property' : 'properties'}
@@ -225,14 +236,24 @@ export const PropertiesDashboard = () => {
           value={totalRevenue}
           format="currency"
           tooltip="Nightly revenue for stays in this range. Stays that cross the boundary split by night."
-          subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
-            ? <>vs {comparisonLabel}: {formatCurrency(prevTotalRevenue)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : `${totalBookings} bookings | All properties`
+          subValue={
+            comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? (
+              <>
+                vs {comparisonLabel}: {formatCurrency(prevTotalRevenue)}
+                {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+              </>
+            ) : (
+              `${totalBookings} bookings | All properties`
+            )
           }
-          trend={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? {
-            value: ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100,
-            isPositive: totalRevenue > prevTotalRevenue
-          } : undefined}
+          trend={
+            comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
+              ? {
+                  value: ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100,
+                  isPositive: totalRevenue > prevTotalRevenue,
+                }
+              : undefined
+          }
           color="green"
           staggerIndex={0}
         />
@@ -243,11 +264,19 @@ export const PropertiesDashboard = () => {
             value={totalNetRevenue}
             format="currency"
             tooltip="Revenue minus fees, taxes, and operating expenses"
-            subValue={comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0
-              ? <>vs {comparisonLabel}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-              : totalRevenue > 0 ? `${formatPercentage((totalNetRevenue / totalRevenue) * 100, 1)} margin` : '0% margin'
+            subValue={
+              comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? (
+                <>
+                  vs {comparisonLabel}
+                  {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+                </>
+              ) : totalRevenue > 0 ? (
+                `${formatPercentage((totalNetRevenue / totalRevenue) * 100, 1)} margin`
+              ) : (
+                '0% margin'
+              )
             }
-            color={totalNetRevenue > 0 ? "green" : "red"}
+            color={totalNetRevenue > 0 ? 'green' : 'red'}
             staggerIndex={1}
           />
         ) : (
@@ -257,14 +286,24 @@ export const PropertiesDashboard = () => {
             value={avgRevPAN}
             format="currency"
             tooltip="Revenue Per Available Night — factors in both rate and occupancy"
-            subValue={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
-              ? <>vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-              : "Across all properties"
+            subValue={
+              comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? (
+                <>
+                  vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}
+                  {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+                </>
+              ) : (
+                'Across all properties'
+              )
             }
-            trend={comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? {
-              value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100,
-              isPositive: avgRevPAN > prevAvgRevPAN
-            } : undefined}
+            trend={
+              comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0
+                ? {
+                    value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100,
+                    isPositive: avgRevPAN > prevAvgRevPAN,
+                  }
+                : undefined
+            }
             color="blue"
             staggerIndex={1}
           />
@@ -275,42 +314,67 @@ export const PropertiesDashboard = () => {
           value={avgOccupancy * 100}
           format="percent"
           tooltip="Booked nights ÷ calendar nights in this range, averaged across properties."
-          subValue={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
-            ? <>vs {comparisonLabel}: {formatPercentage(prevAvgOccupancy * 100, 1)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-            : "Across all properties"
+          subValue={
+            comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0 ? (
+              <>
+                vs {comparisonLabel}: {formatPercentage(prevAvgOccupancy * 100, 1)}
+                {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+              </>
+            ) : (
+              'Across all properties'
+            )
           }
-          trend={comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0 ? {
-            value: ((avgOccupancy - prevAvgOccupancy) / prevAvgOccupancy) * 100,
-            isPositive: avgOccupancy > prevAvgOccupancy
-          } : undefined}
-          color={avgOccupancy >= 0.7 ? "green" : avgOccupancy >= 0.5 ? "yellow" : "red"}
+          trend={
+            comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0
+              ? {
+                  value: ((avgOccupancy - prevAvgOccupancy) / prevAvgOccupancy) * 100,
+                  isPositive: avgOccupancy > prevAvgOccupancy,
+                }
+              : undefined
+          }
+          color={avgOccupancy >= 0.7 ? 'green' : avgOccupancy >= 0.5 ? 'yellow' : 'red'}
           staggerIndex={2}
         />
         <MetricCard
           icon={TrendingUp}
-          label={profitability.length > 0 ? "Avg RevPAN" : "Total Bookings"}
+          label={profitability.length > 0 ? 'Avg RevPAN' : 'Total Bookings'}
           value={profitability.length > 0 ? avgRevPAN : totalBookings}
-          format={profitability.length > 0 ? "currency" : "number"}
-          tooltip={profitability.length > 0
-            ? "Revenue Per Available Night"
-            : "Confirmed reservations in this period"
+          format={profitability.length > 0 ? 'currency' : 'number'}
+          tooltip={profitability.length > 0 ? 'Revenue Per Available Night' : 'Confirmed reservations in this period'}
+          subValue={
+            comparisonMode !== 'none' && previousProperties ? (
+              profitability.length > 0 && prevAvgRevPAN > 0 ? (
+                <>
+                  vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}
+                  {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+                </>
+              ) : prevTotalBookings > 0 ? (
+                <>
+                  vs {comparisonLabel}: {prevTotalBookings}
+                  {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
+                </>
+              ) : (
+                'In selected period'
+              )
+            ) : profitability.length > 0 ? (
+              'Across all properties'
+            ) : (
+              'In selected period'
+            )
           }
-          subValue={comparisonMode !== 'none' && previousProperties
-            ? profitability.length > 0 && prevAvgRevPAN > 0
-              ? <>vs {comparisonLabel}: {formatCurrency(prevAvgRevPAN)}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-              : prevTotalBookings > 0
-              ? <>vs {comparisonLabel}: {prevTotalBookings}{comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}</>
-              : "In selected period"
-            : profitability.length > 0 ? "Across all properties" : "In selected period"
-          }
-          trend={comparisonMode !== 'none' && previousProperties ? (
-            profitability.length > 0 && prevAvgRevPAN > 0
-              ? { value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100, isPositive: avgRevPAN > prevAvgRevPAN }
-              : prevTotalBookings > 0
-              ? { value: ((totalBookings - prevTotalBookings) / prevTotalBookings) * 100, isPositive: totalBookings > prevTotalBookings }
+          trend={
+            comparisonMode !== 'none' && previousProperties
+              ? profitability.length > 0 && prevAvgRevPAN > 0
+                ? { value: ((avgRevPAN - prevAvgRevPAN) / prevAvgRevPAN) * 100, isPositive: avgRevPAN > prevAvgRevPAN }
+                : prevTotalBookings > 0
+                  ? {
+                      value: ((totalBookings - prevTotalBookings) / prevTotalBookings) * 100,
+                      isPositive: totalBookings > prevTotalBookings,
+                    }
+                  : undefined
               : undefined
-          ) : undefined}
-          color={profitability.length > 0 ? "blue" : "purple"}
+          }
+          color={profitability.length > 0 ? 'blue' : 'purple'}
           staggerIndex={3}
         />
       </div>
@@ -344,19 +408,17 @@ export const PropertiesDashboard = () => {
         {viewMode === 'cards' ? (
           <div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {validProperties
-                .slice((cardsPage - 1) * CARDS_PAGE_SIZE, cardsPage * CARDS_PAGE_SIZE)
-                .map((property: PropertyMetrics) => {
-                  const previousProperty = previousPropertiesMap.get(property.propertyId)
-                  return (
-                    <PropertyCard
-                      key={property.propertyId}
-                      property={property}
-                      previousProperty={previousProperty}
-                      comparisonMode={comparisonMode}
-                    />
-                  )
-                })}
+              {validProperties.slice((cardsPage - 1) * CARDS_PAGE_SIZE, cardsPage * CARDS_PAGE_SIZE).map((property: PropertyMetrics) => {
+                const previousProperty = previousPropertiesMap.get(property.propertyId)
+                return (
+                  <PropertyCard
+                    key={property.propertyId}
+                    property={property}
+                    previousProperty={previousProperty}
+                    comparisonMode={comparisonMode}
+                  />
+                )
+              })}
             </div>
             <Pagination
               currentPage={cardsPage}
@@ -403,10 +465,10 @@ export const PropertiesDashboard = () => {
                     <Button variant="link" className="px-0 h-auto" onClick={() => handlePropertyClick(row.propertyId)}>
                       {row.propertyName}
                     </Button>
-                  )
+                  ),
                 },
                 { key: 'revenue', header: 'Revenue', render: (row: PropertyMetrics) => formatCurrency(row.revenue || 0) },
-                { key: 'bookings', header: 'Bookings', render: (row: PropertyMetrics) => String(row.bookings || 0) }
+                { key: 'bookings', header: 'Bookings', render: (row: PropertyMetrics) => String(row.bookings || 0) },
               ]}
             />
           </div>
@@ -435,10 +497,10 @@ export const PropertiesDashboard = () => {
                     <Button variant="link" className="px-0 h-auto" onClick={() => handlePropertyClick(row.propertyId)}>
                       {row.propertyName}
                     </Button>
-                  )
+                  ),
                 },
                 { key: 'revenue', header: 'Revenue', render: (row: PropertyMetrics) => formatCurrency(row.revenue || 0) },
-                { key: 'bookings', header: 'Bookings', render: (row: PropertyMetrics) => String(row.bookings || 0) }
+                { key: 'bookings', header: 'Bookings', render: (row: PropertyMetrics) => String(row.bookings || 0) },
               ]}
             />
           </div>
@@ -460,10 +522,7 @@ export const PropertiesDashboard = () => {
           <div className="h-full flex flex-col">
             <div className={`flex-1 min-h-0 ${profitabilityNeedsScroll ? 'overflow-y-auto' : ''}`}>
               <div style={{ height: `${profitabilityNaturalHeight}px` }}>
-                <ProfitabilityChart
-                  data={profitability}
-                  onPropertyClick={handleChartPropertyClick}
-                />
+                <ProfitabilityChart data={profitability} onPropertyClick={handleChartPropertyClick} />
               </div>
             </div>
             {profitability.length > 0 && <ProfitabilityLegend />}
@@ -482,10 +541,7 @@ export const PropertiesDashboard = () => {
         >
           <div className="h-full flex flex-col">
             <div className="flex-1">
-              <PropertyPerformanceScatter
-                properties={validProperties}
-                onPropertyClick={handleScatterClick}
-              />
+              <PropertyPerformanceScatter properties={validProperties} onPropertyClick={handleScatterClick} />
             </div>
             <PerformanceQuadrantLegend />
           </div>
@@ -493,29 +549,28 @@ export const PropertiesDashboard = () => {
       </div>
 
       {/* Platform → Property Revenue Flow */}
-      {platformMix.length > 0 && allPlatforms.length > 0 && (() => {
-        const sankeyNatural = Math.max(360, (allPlatforms.length + validProperties.length) * 36 + 60)
-        const sankeyCapped = Math.min(600, sankeyNatural)
-        const sankeyScrollable = sankeyNatural > sankeyCapped
-        return (
-          <ChartWrapper
-            title="Revenue Flow by Platform"
-            subtitle="How booking platform revenue distributes across properties"
-            icon={GitBranch}
-            height={sankeyCapped}
-            responsive={false}
-          >
-            <div className={`h-full ${sankeyScrollable ? 'overflow-y-auto' : ''}`}>
-              <div style={{ height: `${sankeyNatural}px` }}>
-                <PlatformPropertySankey
-                  data={platformMix}
-                  onPropertyClick={handleChartPropertyClick}
-                />
+      {platformMix.length > 0 &&
+        allPlatforms.length > 0 &&
+        (() => {
+          const sankeyNatural = Math.max(360, (allPlatforms.length + validProperties.length) * 36 + 60)
+          const sankeyCapped = Math.min(600, sankeyNatural)
+          const sankeyScrollable = sankeyNatural > sankeyCapped
+          return (
+            <ChartWrapper
+              title="Revenue Flow by Platform"
+              subtitle="How booking platform revenue distributes across properties"
+              icon={GitBranch}
+              height={sankeyCapped}
+              responsive={false}
+            >
+              <div className={`h-full ${sankeyScrollable ? 'overflow-y-auto' : ''}`}>
+                <div style={{ height: `${sankeyNatural}px` }}>
+                  <PlatformPropertySankey data={platformMix} onPropertyClick={handleChartPropertyClick} />
+                </div>
               </div>
-            </div>
-          </ChartWrapper>
-        )
-      })()}
+            </ChartWrapper>
+          )
+        })()}
     </div>
   )
 }

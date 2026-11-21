@@ -59,9 +59,7 @@ export const ForgotPassword = () => {
                   <Mail className="w-8 h-8 text-success" />
                 </div>
                 <h2 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h2>
-                <p className="text-muted-foreground mb-4">
-                  We've sent a password reset link to
-                </p>
+                <p className="text-muted-foreground mb-4">We've sent a password reset link to</p>
                 <p className="font-medium text-foreground mb-6">{email}</p>
                 <p className="text-sm text-muted-foreground mb-6">
                   Click the link in the email to reset your password. If you don't see it, check your spam folder.
@@ -84,9 +82,7 @@ export const ForgotPassword = () => {
           <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
           <div className="relative z-10 flex flex-col justify-center px-16 text-white">
             <h3 className="text-4xl font-bold mb-6">We've Got You</h3>
-            <p className="text-lg text-white/80 mb-8">
-              Check your inbox for a link to reset your password and get back to your data.
-            </p>
+            <p className="text-lg text-white/80 mb-8">Check your inbox for a link to reset your password and get back to your data.</p>
           </div>
         </div>
       </div>
@@ -134,11 +130,7 @@ export const ForgotPassword = () => {
               </div>
             </div>
 
-            {error && (
-              <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             <Button
               type="submit"
@@ -169,9 +161,7 @@ export const ForgotPassword = () => {
 
         <div className="relative z-10 flex flex-col justify-center px-16 text-white">
           <h3 className="text-4xl font-bold mb-6">Account Recovery</h3>
-          <p className="text-lg text-white/80 mb-8">
-            Happens to the best of us. We'll have you back in no time.
-          </p>
+          <p className="text-lg text-white/80 mb-8">Happens to the best of us. We'll have you back in no time.</p>
 
           {/* Info highlights */}
           <div className="space-y-4">

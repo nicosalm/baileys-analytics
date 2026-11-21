@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 type ThemePreference = 'light' | 'dark' | 'system'
 
@@ -29,8 +29,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // reactive: updates whenever the OS preference changes so resolvedTheme stays accurate
   const [systemDark, setSystemDark] = useState(mq.matches)
 
-  const resolvedTheme: 'light' | 'dark' =
-    theme === 'system' ? (systemDark ? 'dark' : 'light') : theme
+  const resolvedTheme: 'light' | 'dark' = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme
 
   // apply DOM class whenever preference or system state changes
   useEffect(() => {
@@ -49,11 +48,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setThemeState(t)
   }
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  )
+  return <ThemeContext.Provider value={{ theme, setTheme, resolvedTheme }}>{children}</ThemeContext.Provider>
 }
 
 export function useTheme(): ThemeContextValue {

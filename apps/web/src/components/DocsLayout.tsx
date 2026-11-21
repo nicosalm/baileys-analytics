@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
 import { FileText, Shield, ArrowLeft, ChevronRight, HelpCircle, BookOpen } from 'lucide-react'
@@ -16,7 +16,7 @@ const docPages = [
 
 const legalPages = [
   { path: '/terms', label: 'Terms of Service', icon: FileText },
-  { path: '/privacy', label: 'Privacy Policy', icon: Shield }
+  { path: '/privacy', label: 'Privacy Policy', icon: Shield },
 ]
 
 export const DocsLayout = ({ children }: DocsLayoutProps) => {
@@ -54,9 +54,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
           {/* sidebar navigation */}
           <aside className="md:col-span-1">
             <nav className="space-y-1">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Documentation
-              </h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Documentation</h3>
               {docPages.map(({ path, label, icon: Icon }) => {
                 const isActive = location.pathname === path
                 return (
@@ -65,9 +63,10 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
                     to={path}
                     className={`
                       flex items-center px-3 py-2 text-sm rounded-lg transition-all
-                      ${isActive
-                        ? 'bg-info-subtle text-info-fg font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                      ${
+                        isActive
+                          ? 'bg-info-subtle text-info-fg font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                       }
                     `}
                   >
@@ -78,9 +77,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
               })}
 
               <div className="pt-4 mt-4 md:pt-6 md:mt-6 border-t">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Legal
-                </h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Legal</h3>
                 {legalPages.map(({ path, label, icon: Icon }) => {
                   const isActive = location.pathname === path
                   return (
@@ -89,9 +86,10 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
                       to={path}
                       className={`
                         flex items-center px-3 py-2 text-sm rounded-lg transition-all
-                        ${isActive
-                          ? 'bg-info-subtle text-info-fg font-medium'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                        ${
+                          isActive
+                            ? 'bg-info-subtle text-info-fg font-medium'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                         }
                       `}
                     >
@@ -103,9 +101,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
               </div>
 
               <div className="pt-4 mt-4 md:pt-6 md:mt-6 border-t">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Resources
-                </h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Resources</h3>
                 <a
                   href="https://status.baileysanalytics.com"
                   target="_blank"
@@ -128,9 +124,7 @@ export const DocsLayout = ({ children }: DocsLayoutProps) => {
 
           {/* main content */}
           <main className="md:col-span-3">
-            <div className="bg-card rounded-xl border p-6 md:p-8">
-              {children}
-            </div>
+            <div className="bg-card rounded-xl border p-6 md:p-8">{children}</div>
           </main>
         </div>
       </div>

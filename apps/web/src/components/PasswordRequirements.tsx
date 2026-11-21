@@ -8,31 +8,26 @@ interface PasswordRequirementsProps {
 
 export const PasswordRequirements = ({ password, showStrength = true }: PasswordRequirementsProps) => {
   const strength = getPasswordStrength(password)
-  
+
   return (
     <div className="space-y-3">
       {showStrength && password.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-muted-foreground">Password strength</span>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded ${strength.color}`}>
-              {strength.label}
-            </span>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded ${strength.color}`}>{strength.label}</span>
           </div>
           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-            <div 
+            <div
               className={`h-full transition-all duration-300 ${
-                strength.score === 0 ? 'bg-danger' :
-                strength.score <= 2  ? 'bg-warning' :
-                strength.score === 3 ? 'bg-info' :
-                'bg-success'
+                strength.score === 0 ? 'bg-danger' : strength.score <= 2 ? 'bg-warning' : strength.score === 3 ? 'bg-info' : 'bg-success'
               }`}
               style={{ width: `${(strength.score + 1) * 20}%` }}
             />
           </div>
         </div>
       )}
-      
+
       <div className="space-y-1.5">
         <p className="text-xs text-muted-foreground font-medium">Requirements:</p>
         <ul className="space-y-1">
@@ -52,9 +47,7 @@ export const PasswordRequirements = ({ password, showStrength = true }: Password
             ) : (
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             )}
-            <span className={strength.meets.hasUppercase ? 'text-success-fg' : 'text-muted-foreground'}>
-              One uppercase letter
-            </span>
+            <span className={strength.meets.hasUppercase ? 'text-success-fg' : 'text-muted-foreground'}>One uppercase letter</span>
           </li>
           <li className="flex items-center gap-1.5 text-xs">
             {strength.meets.hasLowercase ? (
@@ -62,9 +55,7 @@ export const PasswordRequirements = ({ password, showStrength = true }: Password
             ) : (
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             )}
-            <span className={strength.meets.hasLowercase ? 'text-success-fg' : 'text-muted-foreground'}>
-              One lowercase letter
-            </span>
+            <span className={strength.meets.hasLowercase ? 'text-success-fg' : 'text-muted-foreground'}>One lowercase letter</span>
           </li>
           <li className="flex items-center gap-1.5 text-xs">
             {strength.meets.hasNumber ? (
@@ -72,9 +63,7 @@ export const PasswordRequirements = ({ password, showStrength = true }: Password
             ) : (
               <X className="w-3.5 h-3.5 text-muted-foreground" />
             )}
-            <span className={strength.meets.hasNumber ? 'text-success-fg' : 'text-muted-foreground'}>
-              One number
-            </span>
+            <span className={strength.meets.hasNumber ? 'text-success-fg' : 'text-muted-foreground'}>One number</span>
           </li>
         </ul>
       </div>

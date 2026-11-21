@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { createClient } from '@supabase/supabase-js'
-import { Database } from '@/types/database.types'
+import type { Database } from '@/types/database.types'
 import { supabase, clearAuthStorage } from '@/lib/supabase'
 import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
@@ -14,19 +14,16 @@ type AuthStatus = 'loading' | 'success' | 'error'
 // Create a fresh Supabase client for code exchange.
 // The main client's internal state can get corrupted, but a fresh instance
 // can still read the PKCE verifier from shared localStorage.
-const createCallbackClient = () => createClient<Database>(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY,
-  {
+const createCallbackClient = () =>
+  createClient<Database>(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
     auth: {
-      autoRefreshToken: false,  // Don't need this for one-time exchange
+      autoRefreshToken: false, // Don't need this for one-time exchange
       persistSession: true,
       detectSessionInUrl: false,
       flowType: 'pkce',
       storageKey: 'baileys-auth', // Same key as main client for shared PKCE verifier
-    }
-  }
-)
+    },
+  })
 
 /**
  * Auth callback handler for OAuth (Google, Microsoft) and email confirmations.
@@ -41,36 +38,42 @@ export const AuthCallback = () => {
   const hasStarted = useRef(false)
   const isOwnerRezFlow = useRef(false)
 
-  const handleSuccess = useCallback((type: string | null) => {
-    if (hasCompleted.current) return
-    hasCompleted.current = true
+  const handleSuccess = useCallback(
+    (type: string | null) => {
+      if (hasCompleted.current) return
+      hasCompleted.current = true
 
-    if (type === 'recovery') {
-      setStatus('success')
-      setMessage('Email verified! You can now reset your password.')
-      setTimeout(() => navigate('/reset-password', { replace: true }), 1500)
-    } else if (type === 'email_change') {
-      setStatus('success')
-      setMessage('Email changed successfully!')
-      setTimeout(() => navigate('/settings', { replace: true }), 1500)
-    } else {
-      setStatus('success')
-      setMessage('Signed in successfully!')
-      setTimeout(() => navigate('/dashboard/overview', { replace: true }), 1500)
-    }
-  }, [navigate])
+      if (type === 'recovery') {
+        setStatus('success')
+        setMessage('Email verified! You can now reset your password.')
+        setTimeout(() => navigate('/reset-password', { replace: true }), 1500)
+      } else if (type === 'email_change') {
+        setStatus('success')
+        setMessage('Email changed successfully!')
+        setTimeout(() => navigate('/settings', { replace: true }), 1500)
+      } else {
+        setStatus('success')
+        setMessage('Signed in successfully!')
+        setTimeout(() => navigate('/dashboard/overview', { replace: true }), 1500)
+      }
+    },
+    [navigate],
+  )
 
-  const handleError = useCallback((msg: string, redirectTo = '/login') => {
-    if (hasCompleted.current) return
-    hasCompleted.current = true
+  const handleError = useCallback(
+    (msg: string, redirectTo = '/login') => {
+      if (hasCompleted.current) return
+      hasCompleted.current = true
 
-    // clear any corrupted auth state so user can retry with clean slate
-    clearAuthStorage()
+      // clear any corrupted auth state so user can retry with clean slate
+      clearAuthStorage()
 
-    setStatus('error')
-    setMessage(msg)
-    setTimeout(() => navigate(redirectTo, { replace: true }), 3000)
-  }, [navigate])
+      setStatus('error')
+      setMessage(msg)
+      setTimeout(() => navigate(redirectTo, { replace: true }), 3000)
+    },
+    [navigate],
+  )
 
   useEffect(() => {
     // one-time codes must not be exchanged twice (StrictMode double-invokes effects)
@@ -88,8 +91,7 @@ export const AuthCallback = () => {
     const hashAccessToken = hashParams.get('access_token')
     const hashRefreshToken = hashParams.get('refresh_token')
 
-    const isOwnerRezState = !!state &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state)
+    const isOwnerRezState = !!state && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(state)
 
     // OwnerRez denial/error: the user is still signed in, so keep their session
     if (error && isOwnerRezState) {
@@ -175,10 +177,10 @@ export const AuthCallback = () => {
       // No code - check for existing session with timeout
       try {
         const sessionPromise = supabase.auth.getSession()
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('getSession timeout')), 5000)
-        )
-        const { data: { session: existingSession } } = await Promise.race([sessionPromise, timeoutPromise]) as Awaited<typeof sessionPromise>
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 5000))
+        const {
+          data: { session: existingSession },
+        } = (await Promise.race([sessionPromise, timeoutPromise])) as Awaited<typeof sessionPromise>
 
         if (existingSession) {
           handleSuccess(type)
@@ -227,7 +229,7 @@ export const AuthCallback = () => {
         if (!session) {
           const delays = [500, 1000, 1500, 2000]
           for (const delay of delays) {
-            await new Promise(resolve => setTimeout(resolve, delay))
+            await new Promise((resolve) => setTimeout(resolve, delay))
             session = (await supabase.auth.getSession()).data.session
             if (session) break
           }

@@ -1,4 +1,4 @@
-import { SWRConfiguration } from 'swr'
+import type { SWRConfiguration } from 'swr'
 import { api } from '@/lib/api'
 
 export const swrConfig: SWRConfiguration = {
@@ -15,5 +15,5 @@ export const swrConfig: SWRConfiguration = {
       throw new Error(result.error)
     }
     return result.data
-  }
+  },
 }

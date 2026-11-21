@@ -23,7 +23,7 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 	}
 
 	const currentYear = new Date().getFullYear();
-	const numYears = Math.min(parseInt(yearsBack) || 4, 5);
+	const numYears = Math.min(parseInt(yearsBack, 10) || 4, 5);
 	const results: any[] = [];
 
 	for (let offset = 0; offset < numYears; offset++) {
@@ -63,10 +63,10 @@ guests.get('/recurring-search', cache({ ttl: 1800 }), async (c) => {
 				departure: b.departure,
 				amount: b.total_amount,
 				platform: normalizePlatform(b.platform),
-				propertyName: b.properties?.name || 'Unknown'
+				propertyName: b.properties?.name || 'Unknown',
 			})),
 			guestCount: new Set((bookings || []).map((b: any) => b.ownerrez_guest_id || b.guest_name?.toLowerCase())).size,
-			totalRevenue: (bookings || []).reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0)
+			totalRevenue: (bookings || []).reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0),
 		});
 	}
 
@@ -81,7 +81,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 	if (!tenantId) {
 		return c.json({ error: 'Tenant not found' }, 404);
 	}
-	
+
 	// guestId format: "or_<ownerrez_guest_id>" or legacy "name_<name>" or "<name>_<email>"
 	let query = supabase
 		.from('bookings')
@@ -121,57 +121,51 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 	}
 
 	const { data: bookings } = await query.order('arrival', { ascending: false });
-	
+
 	if (!bookings || bookings.length === 0) {
 		return c.json({ error: 'Guest not found' }, 404);
 	}
-	
-	const propertyIds = [...new Set(bookings.map(b => b.property_id))];
-	const { data: properties } = await supabase
-		.from('properties')
-		.select('id, name')
-		.in('id', propertyIds);
-	
+
+	const propertyIds = [...new Set(bookings.map((b) => b.property_id))];
+	const { data: properties } = await supabase.from('properties').select('id, name').in('id', propertyIds);
+
 	const propertyMap = new Map<string, string>();
-	properties?.forEach(p => propertyMap.set(p.id, p.name));
-	
+	properties?.forEach((p) => propertyMap.set(p.id, p.name));
+
 	let totalNights = 0;
 	let totalRevenue = 0;
 	let totalListingSiteFees = 0;
 	const propertySet = new Set<string>();
 	const platformSet = new Set<string>();
 
-	bookings.forEach(booking => {
+	bookings.forEach((booking) => {
 		totalRevenue += booking.total_amount || 0;
 		totalListingSiteFees += (booking as any).guest_listing_site_fee || 0;
 		propertySet.add(booking.property_id);
 		platformSet.add(normalizePlatform(booking.platform));
-		
+
 		if (booking.arrival && booking.departure) {
-			const nights = Math.ceil(
-				(new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / 
-				(1000 * 60 * 60 * 24)
-			);
+			const nights = Math.ceil((new Date(booking.departure).getTime() - new Date(booking.arrival).getTime()) / (1000 * 60 * 60 * 24));
 			totalNights += nights;
 		}
 	});
-	
+
 	const avgNightlyRate = totalNights > 0 ? totalRevenue / totalNights : 0;
 	const avgStayLength = bookings.length > 0 ? totalNights / bookings.length : 0;
-	
+
 	const monthlySpending = new Map<string, number>();
-	bookings.forEach(booking => {
+	bookings.forEach((booking) => {
 		const month = booking.arrival.substring(0, 7);
 		monthlySpending.set(month, (monthlySpending.get(month) || 0) + (booking.total_amount || 0));
 	});
-	
+
 	const spendingTrend = Array.from(monthlySpending.entries())
 		.sort(([a], [b]) => a.localeCompare(b))
 		.map(([month, amount]) => ({
 			month,
-			amount
+			amount,
 		}));
-	
+
 	const guestContact = (bookings[0] as any).guests;
 
 	let guestTags: { id: string; name: string; color?: string }[] = [];
@@ -187,7 +181,7 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 		guestTags = ((guestWithTags as any)?.guest_tags || []).map((t: any) => ({
 			id: t.tag_id,
 			name: t.tags?.name,
-			color: t.tags?.color
+			color: t.tags?.color,
 		}));
 	}
 
@@ -203,15 +197,15 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			totalListingSiteFees,
 			avgStayLength,
 			avgNightlyRate,
-			properties: Array.from(propertySet).map(id => ({
+			properties: Array.from(propertySet).map((id) => ({
 				id,
-				name: propertyMap.get(id) || 'Unknown Property'
+				name: propertyMap.get(id) || 'Unknown Property',
 			})),
 			platforms: Array.from(platformSet),
 			firstBooking: bookings[bookings.length - 1].arrival,
-			lastBooking: bookings[0].arrival
+			lastBooking: bookings[0].arrival,
 		},
-		bookings: bookings.map(b => ({
+		bookings: bookings.map((b) => ({
 			id: b.id,
 			arrival: b.arrival,
 			departure: b.departure,
@@ -222,14 +216,12 @@ guests.get('/:guestId/detail', cache({ ttl: 1800 }), async (c) => {
 			hostServiceFee: b.host_service_fee || 0,
 			platform: normalizePlatform(b.platform),
 			status: b.status,
-			nights: b.arrival && b.departure ? Math.ceil(
-				(new Date(b.departure).getTime() - new Date(b.arrival).getTime()) /
-				(1000 * 60 * 60 * 24)
-			) : 0,
+			nights:
+				b.arrival && b.departure ? Math.ceil((new Date(b.departure).getTime() - new Date(b.arrival).getTime()) / (1000 * 60 * 60 * 24)) : 0,
 			ownerrezBookingId: b.ownerrez_booking_id,
-			charges: (b as any).booking_charges || []
+			charges: (b as any).booking_charges || [],
 		})),
-		spendingTrend
+		spendingTrend,
 	});
 });
 

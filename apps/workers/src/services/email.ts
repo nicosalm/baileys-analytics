@@ -1,30 +1,30 @@
 import { Resend } from 'resend';
 
 export class EmailService {
-  private resend: Resend;
+	private resend: Resend;
 
-  constructor(apiKey: string) {
-    this.resend = new Resend(apiKey);
-  }
+	constructor(apiKey: string) {
+		this.resend = new Resend(apiKey);
+	}
 
-  async sendWelcomeEmail(to: string, userName?: string): Promise<void> {
-    try {
-      await this.resend.emails.send({
-        from: 'Baileys Analytics <onboarding@baileysanalytics.com>',
-        to,
-        subject: 'Welcome to Baileys Analytics!',
-        html: this.getWelcomeEmailTemplate(userName)
-      });
-    } catch (error) {
-      console.error('Failed to send welcome email:', error);
-      // don't throw - email failure shouldn't block the flow
-    }
-  }
+	async sendWelcomeEmail(to: string, userName?: string): Promise<void> {
+		try {
+			await this.resend.emails.send({
+				from: 'Baileys Analytics <onboarding@baileysanalytics.com>',
+				to,
+				subject: 'Welcome to Baileys Analytics!',
+				html: this.getWelcomeEmailTemplate(userName),
+			});
+		} catch (error) {
+			console.error('Failed to send welcome email:', error);
+			// don't throw - email failure shouldn't block the flow
+		}
+	}
 
-  private getWelcomeEmailTemplate(userName?: string): string {
-    const name = userName ? userName.split(' ')[0] : 'there';
+	private getWelcomeEmailTemplate(userName?: string): string {
+		const name = userName ? userName.split(' ')[0] : 'there';
 
-    return `
+		return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -167,5 +167,5 @@ export class EmailService {
 </body>
 </html>
     `.trim();
-  }
+	}
 }

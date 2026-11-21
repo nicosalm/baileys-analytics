@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
-import { execSync } from 'child_process'
+import path from 'node:path'
+import { execSync } from 'node:child_process'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 // CI sets GITHUB_SHA; local builds read it from git

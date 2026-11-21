@@ -1,4 +1,5 @@
-import React, { memo, useState, useEffect, useMemo } from 'react'
+import type React from 'react'
+import { memo, useState, useEffect, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { Link } from 'react-router-dom'
 import { SmartPeriodSelector } from './SmartPeriodSelector'
@@ -22,17 +23,12 @@ const TagButton = memo(({ tag, isSelected, onToggle }: TagButtonProps) => (
     variant="ghost"
     onClick={() => onToggle(tag)}
     className={cn(
-      "w-full justify-start px-3 py-2 h-auto text-sm",
-      isSelected
-        ? "bg-primary/10 text-primary font-medium"
-        : "text-foreground"
+      'w-full justify-start px-3 py-2 h-auto text-sm',
+      isSelected ? 'bg-primary/10 text-primary font-medium' : 'text-foreground',
     )}
   >
     <div className="flex items-center gap-2">
-      <span
-        className="w-3 h-3 rounded-full flex-shrink-0"
-        style={{ backgroundColor: getTagColor(tag) }}
-      />
+      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getTagColor(tag) }} />
       <span>{tag.name}</span>
     </div>
   </Button>
@@ -51,10 +47,8 @@ const PropertyButton = memo(({ property, isSelected, onToggle }: PropertyButtonP
     variant="ghost"
     onClick={() => onToggle(property.id)}
     className={cn(
-      "w-full justify-start px-3 py-2 h-auto text-sm",
-      isSelected
-        ? "bg-primary/10 text-primary font-medium"
-        : "text-foreground"
+      'w-full justify-start px-3 py-2 h-auto text-sm',
+      isSelected ? 'bg-primary/10 text-primary font-medium' : 'text-foreground',
     )}
   >
     <div className="flex items-center gap-2">
@@ -84,19 +78,17 @@ const GroupButton = memo(({ group, selectionState, selectedCount, onToggle, onHo
     onMouseEnter={onHoverStart}
     onMouseLeave={onHoverEnd}
     className={cn(
-      "w-full justify-start px-3 py-2 h-auto text-sm",
-      selectionState !== 'none'
-        ? "bg-primary/10 text-primary font-medium"
-        : "text-foreground"
+      'w-full justify-start px-3 py-2 h-auto text-sm',
+      selectionState !== 'none' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground',
     )}
   >
     <div className="flex items-center gap-2 w-full">
       <div
         className={cn(
-          "w-3 h-3 rounded-sm flex-shrink-0 border transition-colors",
-          selectionState === 'all' && "bg-primary border-primary",
-          selectionState === 'partial' && "bg-primary/50 border-primary",
-          selectionState === 'none' && "border-border"
+          'w-3 h-3 rounded-sm flex-shrink-0 border transition-colors',
+          selectionState === 'all' && 'bg-primary border-primary',
+          selectionState === 'partial' && 'bg-primary/50 border-primary',
+          selectionState === 'none' && 'border-border',
         )}
       />
       <Layers className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
@@ -118,7 +110,7 @@ const ActiveFilterPills: React.FC<{
   clearFilters: () => void
 }> = ({ filters, availableProperties, toggleTag, toggleProperty, clearFilters }) => {
   const hasActiveFilters = filters.selectedTags.length > 0 || filters.selectedProperties.length > 0
-  const propertyById = useMemo(() => new Map(availableProperties.map(p => [p.id, p])), [availableProperties])
+  const propertyById = useMemo(() => new Map(availableProperties.map((p) => [p.id, p])), [availableProperties])
   if (!hasActiveFilters) return null
 
   return (
@@ -133,6 +125,7 @@ const ActiveFilterPills: React.FC<{
             <Home className="w-3 h-3 flex-shrink-0 text-primary/60" />
             {property?.name || 'Unknown'}
             <button
+              type="button"
               onClick={() => toggleProperty(propertyId)}
               aria-label={`Remove ${property?.name || 'property'} filter`}
               className="ml-0.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
@@ -147,12 +140,10 @@ const ActiveFilterPills: React.FC<{
           key={tag.id}
           className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-medium rounded-md border border-primary/20 bg-primary/5 text-foreground"
         >
-          <span
-            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: getTagColor(tag) }}
-          />
+          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: getTagColor(tag) }} />
           {tag.name}
           <button
+            type="button"
             onClick={() => toggleTag(tag)}
             aria-label={`Remove ${tag.name} filter`}
             className="ml-0.5 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
@@ -162,6 +153,7 @@ const ActiveFilterPills: React.FC<{
         </span>
       ))}
       <button
+        type="button"
         onClick={clearFilters}
         aria-label="Clear all filters"
         className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -182,10 +174,7 @@ const CollapsibleFilterSection: React.FC<{
 
   return (
     <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center justify-between w-full px-1 py-1.5 cursor-pointer"
-      >
+      <button type="button" onClick={() => setOpen(!open)} className="flex items-center justify-between w-full px-1 py-1.5 cursor-pointer">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
           {label}
           {count !== undefined && count > 0 && (
@@ -194,10 +183,11 @@ const CollapsibleFilterSection: React.FC<{
             </span>
           )}
         </span>
-        {open
-          ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-          : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-        }
+        {open ? (
+          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+        )}
       </button>
       {open && <div className="mt-1">{children}</div>}
     </div>
@@ -205,14 +195,7 @@ const CollapsibleFilterSection: React.FC<{
 }
 
 export const MobileFilterControls: React.FC = () => {
-  const {
-    filters,
-    comparisonRange,
-    updateDateRange,
-    toggleTag,
-    toggleProperty,
-    clearFilters
-  } = useDashboard()
+  const { filters, comparisonRange, updateDateRange, toggleTag, toggleProperty, clearFilters } = useDashboard()
 
   const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
   const { data: availableProperties = [], isLoading: isPropertiesLoading } = useProperties()
@@ -222,12 +205,7 @@ export const MobileFilterControls: React.FC = () => {
   return (
     <div className="space-y-3">
       <div>
-        <SmartPeriodSelector
-          value={filters.dateRange}
-          onChange={updateDateRange}
-          comparisonRange={comparisonRange}
-          className="w-full"
-        />
+        <SmartPeriodSelector value={filters.dateRange} onChange={updateDateRange} comparisonRange={comparisonRange} className="w-full" />
       </div>
 
       <CollapsibleFilterSection label="Properties" count={filters.selectedProperties.length}>
@@ -265,12 +243,7 @@ export const MobileFilterControls: React.FC = () => {
         ) : (
           <div className="space-y-0.5">
             {availableTags.map((tag) => (
-              <TagButton
-                key={tag.id}
-                tag={tag}
-                isSelected={filters.selectedTags.some(t => t.id === tag.id)}
-                onToggle={toggleTag}
-              />
+              <TagButton key={tag.id} tag={tag} isSelected={filters.selectedTags.some((t) => t.id === tag.id)} onToggle={toggleTag} />
             ))}
           </div>
         )}
@@ -281,6 +254,7 @@ export const MobileFilterControls: React.FC = () => {
           <div className="flex items-center justify-between mb-2 px-1">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active</span>
             <button
+              type="button"
               onClick={clearFilters}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
@@ -301,15 +275,7 @@ export const MobileFilterControls: React.FC = () => {
 }
 
 export const FilterBar: React.FC = () => {
-  const {
-    filters,
-    comparisonRange,
-    updateDateRange,
-    toggleTag,
-    toggleProperty,
-    applyGroupSelection,
-    clearFilters
-  } = useDashboard()
+  const { filters, comparisonRange, updateDateRange, toggleTag, toggleProperty, applyGroupSelection, clearFilters } = useDashboard()
 
   const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
   const { data: availableProperties = [], isLoading: isPropertiesLoading } = useProperties()
@@ -322,22 +288,17 @@ export const FilterBar: React.FC = () => {
   const selectedPropertySet = useMemo(() => new Set(filters.selectedProperties), [filters.selectedProperties])
 
   const hoveredGroup = useMemo(
-    () => hoveredGroupId ? availableGroups.find(g => g.id === hoveredGroupId) : null,
-    [hoveredGroupId, availableGroups]
+    () => (hoveredGroupId ? availableGroups.find((g) => g.id === hoveredGroupId) : null),
+    [hoveredGroupId, availableGroups],
   )
 
-  const hoveredPropertySet = useMemo(
-    () => hoveredGroup ? new Set(hoveredGroup.propertyIds) : null,
-    [hoveredGroup]
-  )
+  const hoveredPropertySet = useMemo(() => (hoveredGroup ? new Set(hoveredGroup.propertyIds) : null), [hoveredGroup])
 
   const groupSelections = useMemo(() => {
     const selected = new Set(filters.selectedProperties)
-    return availableGroups.map(group => {
-      const count = group.propertyIds.filter(id => selected.has(id)).length
-      const state: GroupSelectionState =
-        count === 0 ? 'none' :
-        count === group.propertyIds.length ? 'all' : 'partial'
+    return availableGroups.map((group) => {
+      const count = group.propertyIds.filter((id) => selected.has(id)).length
+      const state: GroupSelectionState = count === 0 ? 'none' : count === group.propertyIds.length ? 'all' : 'partial'
       return { groupId: group.id, state, count }
     })
   }, [availableGroups, filters.selectedProperties])
@@ -360,49 +321,47 @@ export const FilterBar: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-3 space-y-2">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 flex-wrap">
-            <SmartPeriodSelector
-              value={filters.dateRange}
-              onChange={updateDateRange}
-              comparisonRange={comparisonRange}
-            />
+            <SmartPeriodSelector value={filters.dateRange} onChange={updateDateRange} comparisonRange={comparisonRange} />
 
-            <Popover open={propertiesOpen} onOpenChange={(open) => {
-              setPropertiesOpen(open)
-              if (!open) setHoveredGroupId(null)
-            }}>
+            <Popover
+              open={propertiesOpen}
+              onOpenChange={(open) => {
+                setPropertiesOpen(open)
+                if (!open) setHoveredGroupId(null)
+              }}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   className={cn(
-                    "text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all",
-                    filters.selectedProperties.length > 0 && "border-primary bg-primary/5"
+                    'text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all',
+                    filters.selectedProperties.length > 0 && 'border-primary bg-primary/5',
                   )}
                 >
                   <Home className="w-4 h-4" />
                   <span>
                     {filters.selectedProperties.length > 0
                       ? `${filters.selectedProperties.length} Propert${filters.selectedProperties.length > 1 ? 'ies' : 'y'}`
-                      : 'Properties'
-                    }
+                      : 'Properties'}
                   </span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent
                 align="start"
-                className={hasGroups ? "w-[440px] p-0" : "min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3"}
+                className={hasGroups ? 'w-[440px] p-0' : 'min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3'}
               >
                 {isPropertiesLoading ? (
-                  <div className={cn("text-center py-4 text-muted-foreground", hasGroups && "p-2")}>Loading properties...</div>
+                  <div className={cn('text-center py-4 text-muted-foreground', hasGroups && 'p-2')}>Loading properties...</div>
                 ) : availableProperties.length === 0 ? (
-                  <div className={cn("text-center py-4 text-muted-foreground", hasGroups && "p-2")}>No properties available</div>
+                  <div className={cn('text-center py-4 text-muted-foreground', hasGroups && 'p-2')}>No properties available</div>
                 ) : hasGroups ? (
                   <div className="flex divide-x divide-border">
                     <div className="w-[45%] p-2 overflow-y-auto max-h-[340px]">
                       <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 pb-1">Groups</div>
                       <div className="space-y-1">
                         {availableGroups.map((group) => {
-                          const sel = groupSelections.find(s => s.groupId === group.id)
+                          const sel = groupSelections.find((s) => s.groupId === group.id)
                           return (
                             <GroupButton
                               key={group.id}
@@ -427,10 +386,8 @@ export const FilterBar: React.FC = () => {
                           <div
                             key={property.id}
                             className={cn(
-                              "transition-opacity duration-150",
-                              hoveredPropertySet && !hoveredPropertySet.has(property.id)
-                                ? "opacity-30"
-                                : "opacity-100"
+                              'transition-opacity duration-150',
+                              hoveredPropertySet && !hoveredPropertySet.has(property.id) ? 'opacity-30' : 'opacity-100',
                             )}
                           >
                             <PropertyButton
@@ -463,16 +420,15 @@ export const FilterBar: React.FC = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    "text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all",
-                    filters.selectedTags.length > 0 && "border-primary bg-primary/5"
+                    'text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all',
+                    filters.selectedTags.length > 0 && 'border-primary bg-primary/5',
                   )}
                 >
                   <Filter className="w-4 h-4" />
                   <span>
                     {filters.selectedTags.length > 0
                       ? `${filters.selectedTags.length} Tag${filters.selectedTags.length > 1 ? 's' : ''}`
-                      : 'Tags'
-                    }
+                      : 'Tags'}
                   </span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
@@ -485,7 +441,10 @@ export const FilterBar: React.FC = () => {
                     <p className="text-sm text-muted-foreground">No tags found.</p>
                     <p className="text-xs text-muted-foreground/80 leading-relaxed">
                       Tags are imported from OwnerRez.{' '}
-                      <Link to="/docs/ownerrez-data#tagging" className="text-primary hover:text-primary/80 underline-offset-2 hover:underline">
+                      <Link
+                        to="/docs/ownerrez-data#tagging"
+                        className="text-primary hover:text-primary/80 underline-offset-2 hover:underline"
+                      >
                         See how tagging works
                       </Link>
                     </p>
@@ -496,7 +455,7 @@ export const FilterBar: React.FC = () => {
                       <TagButton
                         key={tag.id}
                         tag={tag}
-                        isSelected={filters.selectedTags.some(t => t.id === tag.id)}
+                        isSelected={filters.selectedTags.some((t) => t.id === tag.id)}
                         onToggle={toggleTag}
                       />
                     ))}

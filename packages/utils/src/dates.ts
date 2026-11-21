@@ -1,17 +1,17 @@
-import { 
-  format, 
-  parseISO, 
+import {
+  format,
+  parseISO,
   formatISO,
-  startOfMonth, 
-  endOfMonth, 
-  startOfYear, 
+  startOfMonth,
+  endOfMonth,
+  startOfYear,
   endOfYear,
   startOfQuarter,
-  endOfQuarter, 
-  subDays, 
+  endOfQuarter,
+  subDays,
   addDays,
   addYears,
-  subYears, 
+  subYears,
   differenceInDays,
   differenceInMonths,
   isAfter,
@@ -33,7 +33,7 @@ import {
   getDay,
   setYear,
   setMonth,
-  formatDistanceToNow
+  formatDistanceToNow,
 } from 'date-fns'
 
 export const DATE_FORMAT = 'yyyy-MM-dd'
@@ -59,9 +59,9 @@ export const getDaysInRange = (from: string, to: string): number => {
 
 export const isDateInRange = (date: Date | string, from: string, to: string): boolean => {
   const d = typeof date === 'string' ? parseISO(date) : date
-  return isWithinInterval(d, { 
-    start: startOfDay(parseISO(from)), 
-    end: endOfDay(parseISO(to)) 
+  return isWithinInterval(d, {
+    start: startOfDay(parseISO(from)),
+    end: endOfDay(parseISO(to)),
   })
 }
 
@@ -101,5 +101,5 @@ export {
   getDay,
   setYear,
   setMonth,
-  formatDistanceToNow
+  formatDistanceToNow,
 }
