@@ -1,11 +1,11 @@
-import type { Context, Next } from 'hono';
+import { createMiddleware } from 'hono/factory';
 import { responseCachePrefix, sha256Hex } from '../utils/cache';
 import type { AppEnv } from '../types';
 
 // caches successful GET responses per tenant. entries are cleared with the tenant's
 // booking views (sync, webhooks) so they never outlive the data they were built from.
 export function cache({ ttl = 300 }: { ttl?: number } = {}) {
-	return async function cacheMiddleware(c: Context<AppEnv>, next: Next) {
+	return createMiddleware<AppEnv>(async (c, next) => {
 		const tenantId = c.get('tenantId');
 		const kv = c.env.CACHE;
 		if (c.req.method !== 'GET' || !tenantId || !kv) {
@@ -26,5 +26,5 @@ export function cache({ ttl = 300 }: { ttl?: number } = {}) {
 			const body = await c.res.clone().json();
 			c.executionCtx.waitUntil(kv.put(cacheKey, JSON.stringify(body), { expirationTtl: ttl }));
 		}
-	};
+	});
 }

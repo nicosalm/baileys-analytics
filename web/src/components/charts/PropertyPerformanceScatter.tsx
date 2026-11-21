@@ -12,7 +12,7 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from 'recharts'
-import type { TooltipContentProps } from 'recharts'
+import type { ScatterPointItem, TooltipContentProps } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import type { PropertyMetrics } from '@/types/api'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
@@ -244,7 +244,8 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
   }
 
   const handlePointClick = useCallback(
-    (point: ScatterPoint) => {
+    (item: ScatterPointItem) => {
+      const point = (item.payload ?? item) as ScatterPoint
       if (onPropertyClick && point?.property) {
         onPropertyClick(point.property)
       }

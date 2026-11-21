@@ -300,7 +300,7 @@ const FeeTooltip = ({ active, payload }: Partial<TooltipContentProps<number, str
       <p className="font-semibold text-sm mb-1">{data.name}</p>
       <p className="text-xs">
         <span className="text-muted-foreground">Amount: </span>
-        <span className="font-medium">{formatCurrency(data.value)}</span>
+        <span className="font-medium">{formatCurrency(Number(data.value ?? 0))}</span>
       </p>
     </div>
   )

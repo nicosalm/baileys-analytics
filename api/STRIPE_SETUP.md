@@ -4,7 +4,7 @@ single-tier pricing: $20/month or $192/year
 
 ## environment variables
 
-### frontend (apps/web)
+### frontend (web)
 
 add to `.env`:
 
@@ -12,7 +12,7 @@ add to `.env`:
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your-publishable-key-here
 ```
 
-### backend (apps/workers)
+### backend (api)
 
 add secrets using wrangler cli:
 

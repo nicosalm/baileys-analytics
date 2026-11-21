@@ -26,15 +26,19 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'chart-vendor': ['recharts'],
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [
+            { name: 'react', test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/, priority: 30 },
+            { name: 'charts', test: /[\\/]node_modules[\\/](recharts|d3-[^\\/]+|victory-vendor)[\\/]/, priority: 20 },
+            { name: 'icons', test: /[\\/]node_modules[\\/]lucide-react[\\/]/, priority: 10 },
+          ],
         },
       },
     },

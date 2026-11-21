@@ -3,12 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string
   readonly VITE_SUPABASE_ANON_KEY: string
-  readonly VITE_STRIPE_PUBLISHABLE_KEY: string
-  readonly DEV: boolean
+  readonly VITE_UPDOWN_API_KEY?: string
 }
 
 declare const __COMMIT_SHA__: string
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv
-}

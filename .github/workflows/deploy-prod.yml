@@ -50,14 +50,13 @@ jobs:
       - run: pnpm test
 
       - name: Build frontend
-        working-directory: apps/web
+        working-directory: web
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-          VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
           VITE_UPDOWN_API_KEY: ${{ vars.VITE_UPDOWN_API_KEY }}
         run: |
-          for v in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VITE_STRIPE_PUBLISHABLE_KEY; do
+          for v in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
             if [ -z "${!v}" ]; then
               echo "::error::$v is not set. Add it under Settings > Environments > production > Variables."
               exit 1
@@ -68,21 +67,21 @@ jobs:
       # API first: the frontend changes expect the API's new behavior, and the API's
       # changes are backward-compatible with the frontend that's live now.
       - name: Deploy API
-        working-directory: apps/workers
+        working-directory: api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm exec wrangler deploy --env production
 
       - name: Deploy frontend
-        working-directory: apps/web
+        working-directory: web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         # wrangler looks for functions/ (the /api proxy) in the directory it runs in, so
-        # it must run from apps/web; wrangler itself lives in apps/workers
+        # it must run from web/; wrangler itself is installed in api/
         run: >-
-          ../workers/node_modules/.bin/wrangler pages deploy dist
+          ../api/node_modules/.bin/wrangler pages deploy dist
           --project-name=baileys-dashboard --branch=main
           --commit-hash="${{ github.sha }}" --commit-message="deploy ${{ github.sha }}"
 

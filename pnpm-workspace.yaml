@@ -1,5 +1,6 @@
 packages:
-  - apps/*
+  - web
+  - api
   - packages/*
 
 # pnpm 11 replaced onlyBuiltDependencies/ignoredBuiltDependencies with allowBuilds;

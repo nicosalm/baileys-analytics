@@ -53,7 +53,7 @@
 	},
 	"overrides": [
 		{
-			"includes": ["apps/web/**", "packages/utils/**"],
+			"includes": ["web/**", "packages/utils/**"],
 			"formatter": {
 				"indentStyle": "space",
 				"indentWidth": 2
@@ -65,7 +65,7 @@
 			}
 		},
 		{
-			"includes": ["apps/workers/**", "packages/constants/**"],
+			"includes": ["api/**", "packages/constants/**"],
 			"formatter": {
 				"indentStyle": "tab"
 			},

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { createMiddleware } from 'hono/factory';
 import { createSupabaseClient } from '../services/supabase';
 import Stripe from 'stripe';
 import { authMiddleware } from '../middleware/auth';
@@ -10,29 +11,20 @@ import type { AppEnv } from '../types';
 
 const admin = new Hono<AppEnv>();
 
-// admin middleware - check if user is admin
-const adminMiddleware = async (c: any, next: any) => {
-	const user = c.get('user');
+function isAdmin(env: Env, email: string | undefined): boolean {
+	const admins = env.ADMIN_EMAILS?.split(',').map((e) => e.trim().toLowerCase()) ?? [];
+	return !!email && admins.includes(email.toLowerCase());
+}
 
-	// check if user email is in admin whitelist (case-insensitive)
-	const adminEmails = c.env.ADMIN_EMAILS?.split(',').map((e: string) => e.trim().toLowerCase()) || [];
-	const userEmail = user.email?.toLowerCase() || '';
-
-	if (!adminEmails.includes(userEmail)) {
+// responds 404 rather than 403 so the admin api is not discoverable
+const adminMiddleware = createMiddleware<AppEnv>(async (c, next) => {
+	if (!isAdmin(c.env, c.get('user').email)) {
 		return c.json({ error: 'Not found' }, 404);
 	}
-
 	await next();
-};
-
-// verify admin status endpoint
-admin.get('/verify', authMiddleware, async (c) => {
-	const user = c.get('user');
-	const adminEmails = c.env.ADMIN_EMAILS?.split(',').map((e: string) => e.trim().toLowerCase()) || [];
-	const userEmail = user.email?.toLowerCase() || '';
-
-	return c.json({ isAdmin: adminEmails.includes(userEmail) });
 });
+
+admin.get('/verify', authMiddleware, (c) => c.json({ isAdmin: isAdmin(c.env, c.get('user').email) }));
 
 // get system metrics
 admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {

@@ -1,6 +1,6 @@
 name = "baileys-analytics-api"
 main = "src/index.ts"
-compatibility_date = "2024-11-01"
+compatibility_date = "2026-11-01"
 compatibility_flags = ["nodejs_compat"]
 
 [observability]
@@ -14,7 +14,7 @@ subrequests = 10_000
 # renewal. Hourly cadence is required: the lead-time gate in
 # applyPendingTierUpgrades is 2 hours, and we need at least one cron run inside
 # that window for every renewal — otherwise a customer can get billed at the
-# old price for an entire extra cycle. See apps/workers/src/scheduled.ts and
+# old price for an entire extra cycle. See src/scheduled.ts and
 # CRON_LEAD_TIME_MS in services/tier-reconciliation.ts.
 [triggers]
 crons = ["0 * * * *"]

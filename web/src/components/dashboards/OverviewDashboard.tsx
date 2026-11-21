@@ -201,7 +201,7 @@ const BookingSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<n
 
 const RevenueChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (active && payload?.length) {
-    const total = payload.reduce((sum, entry) => sum + (entry.value || 0), 0)
+    const total = payload.reduce((sum, entry) => sum + Number(entry.value ?? 0), 0)
     return (
       <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
         <p className="font-semibold text-sm mb-2">{label}</p>
@@ -215,7 +215,7 @@ const RevenueChartTooltip = ({ active, payload, label }: Partial<TooltipContentP
                   <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: entry.color }} />
                   <span className="text-muted-foreground">{entry.name}:</span>
                 </div>
-                <span className="font-medium">{formatCompactCurrency(entry.value || 0)}</span>
+                <span className="font-medium">{formatCompactCurrency(Number(entry.value ?? 0))}</span>
               </div>
             ))}
           <div className="pt-1 mt-1 border-t border-border">

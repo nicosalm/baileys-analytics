@@ -8,21 +8,21 @@
 		"node": ">=22"
 	},
 	"scripts": {
-		"dev": "pnpm --parallel --filter ./apps/* dev",
+		"dev": "pnpm --parallel --filter @baileys/web --filter @baileys/api dev",
 		"build": "pnpm --filter @baileys/web build",
 		"lint": "biome check .",
 		"format": "biome check --write .",
 		"typecheck": "pnpm -r typecheck",
-		"test": "pnpm --filter workers test",
-		"db:types": "supabase gen types typescript --project-id ojpmtekljijcurgzrses > apps/web/src/types/database.types.ts",
+		"test": "pnpm --filter @baileys/api test",
+		"db:types": "supabase gen types typescript --project-id ojpmtekljijcurgzrses > web/src/types/database.types.ts",
 		"prepare": "husky"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.6.5",
 		"husky": "9.1.7",
 		"lint-staged": "17.6.0",
-		"supabase": "^2.76.15",
-		"typescript": "^5.9.3"
+		"supabase": "^2.122.1",
+		"typescript": "^7.0.2"
 	},
 	"lint-staged": {
 		"*.{ts,tsx,js,mjs,mts,json,css}": "biome check --write --no-errors-on-unmatched"
