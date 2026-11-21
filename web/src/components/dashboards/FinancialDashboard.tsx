@@ -222,23 +222,11 @@ export const FinancialDashboard = () => {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="bg-card rounded-xl border border-border p-4">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">Financial Center</h2>
-                <p className="text-muted-foreground text-sm mt-1 hidden sm:block">
-                  Track your vacation rental income, expenses, and profitability
-                </p>
-              </div>
-            </div>
-            <TabsList className="w-full sm:w-auto">
-              <TabsTrigger value="pl">P&L View</TabsTrigger>
-              <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-              <TabsTrigger value="tax_center">Tax Center</TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
+        <TabsList className="w-full sm:w-fit">
+          <TabsTrigger value="pl">P&L</TabsTrigger>
+          <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
+          <TabsTrigger value="tax_center">Taxes</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="pl" className="mt-6">
           <PLView

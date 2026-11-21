@@ -7,8 +7,6 @@ const CHART_SERIES_VARS = [
   '--chart-series-6',
   '--chart-series-7',
   '--chart-series-8',
-  '--chart-series-9',
-  '--chart-series-10',
 ] as const
 
 export const STATUS_STYLES = {
@@ -79,26 +77,44 @@ export const CHART_INFRA = {
   },
 }
 
-export const PLATFORM_COLORS: Record<string, string> = {
-  airbnb: '#FF5A5F',
-  vrbo: '#0061A7',
-  'booking.com': '#003580',
-  'google vacation rentals': '#4285F4',
-  hopper: '#8B5CF6',
-  hometogo: '#F97316',
-  direct: '#22C55E',
-  other: '#6B7280',
-} as const
+// each platform owns a fixed categorical slot so it reads the same in every chart
+const PLATFORM_SLOTS: Record<string, number> = {
+  vrbo: 0,
+  airbnb: 1,
+  tripadvisor: 2,
+  'google vacation rentals': 3,
+  'booking.com': 4,
+  direct: 5,
+  hometogo: 6,
+  hopper: 7,
+}
 
-export const getChartColor = (index: number): string => resolveToken(CHART_SERIES_VARS[index % CHART_SERIES_VARS.length])
+// slots past the palette repeat the last hue rather than cycling back to slot 1
+export const getChartColor = (index: number): string => resolveToken(CHART_SERIES_VARS[Math.min(index, CHART_SERIES_VARS.length - 1)])
 
 export const getPlatformColor = (platform: string, index: number = 0): string => {
-  const lowerPlatform = platform.toLowerCase()
-  if (PLATFORM_COLORS[lowerPlatform]) {
-    return PLATFORM_COLORS[lowerPlatform]
-  }
+  const slot = PLATFORM_SLOTS[platform.toLowerCase()]
+  if (slot !== undefined) return getChartColor(slot)
+  if (platform.toLowerCase() === 'other') return resolveToken('--chart-comparison')
   return getChartColor(index)
 }
+
+const CHARGE_SLOTS = {
+  rent: 0,
+  host_fee: 1,
+  tax: 2,
+  credit_card: 3,
+  cleaning: 4,
+  discount: 5,
+  pet: 6,
+  guest_fee: 7,
+} as const
+
+export type ChargeKind = keyof typeof CHARGE_SLOTS | 'other'
+
+// one color per charge category, shared by every chart and list that breaks charges down
+export const getChargeColor = (kind: ChargeKind): string =>
+  kind === 'other' ? resolveToken('--chart-comparison') : getChartColor(CHARGE_SLOTS[kind])
 
 export const getTagColor = (tag: { color?: string; id?: string; name?: string }): string => {
   if (tag.color) return tag.color

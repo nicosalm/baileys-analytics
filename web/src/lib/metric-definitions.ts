@@ -1,0 +1,30 @@
+// one definition per metric, shown in the (?) tooltip wherever the metric appears
+export const METRIC_DEFINITIONS = {
+  revenue: 'Nightly revenue for stays in this range. A stay that crosses either end of the range counts only its nights inside it.',
+  bookings: 'Reservations with at least one night in this range, excluding cancellations.',
+  occupancy: 'Booked nights ÷ sellable nights in this range. Owner blocks are excluded from sellable nights.',
+  propertyOccupancy: 'Booked nights ÷ sellable nights in this range, averaged across properties. Owner blocks are excluded.',
+  bookedNights: 'Nights reserved in this range, summed across properties.',
+  sellableNights: 'Nights available to book in this range, summed across properties. Owner blocks are excluded.',
+  adr: 'Revenue ÷ booked nights in this range.',
+  revpan: 'Revenue ÷ sellable nights in this range. Reflects both rate and occupancy.',
+  guests: 'Unique guests with a stay in this range.',
+  repeatGuests: 'Share of guests in this range who have booked more than once.',
+  avgStay: 'Average nights per booking in this range.',
+  avgBookingValue: 'Revenue ÷ bookings in this range.',
+  revenuePerGuest: 'Revenue ÷ unique guests in this range.',
+  cancellationRate: 'Cancelled bookings ÷ all bookings in this range, cancellations included.',
+  netRevenue: 'Revenue minus host platform fees and taxes.',
+  operatingProfit: 'Revenue minus host platform fees, taxes, and operating expenses.',
+  costs: 'Host platform fees plus operating expenses. Guest platform fees are charged to the guest and do not reduce your revenue.',
+  taxCollected: 'Occupancy and lodging tax on bookings arriving in this range, the basis for remittance.',
+  taxOwnerRemitted:
+    'Tax you remit to tax authorities yourself. Inferred from the booking platform; confirm with your tax advisor before filing.',
+  taxPlatformRemitted:
+    'Tax the booking platform remits on your behalf. Inferred from the booking platform; confirm with your tax advisor before filing.',
+  taxProperties: 'Properties with tax charges in this range.',
+  collected: 'Revenue in this range from stays that have already arrived.',
+  pending: 'Revenue from confirmed stays that have not arrived yet, including stays after this range.',
+  pipeline30: 'Full booking value of every stay arriving in the next 30 days. Ignores dashboard filters.',
+  pipeline90: 'Full booking value of every stay arriving in the next 90 days. Ignores dashboard filters.',
+} as const

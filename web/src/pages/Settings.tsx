@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useState, useEffect, lazy, Suspense, type ComponentType, useCallback } from 'react'
 import { useToast } from '@/contexts/toast'
-import { useTips } from '@/hooks/use-tips'
 import { useTheme } from '@/contexts/theme'
 import { LoadingState } from '@/components/LoadingState'
 import {
@@ -24,7 +23,6 @@ import {
 import { Footer } from '@/components/Footer'
 import { BRAND } from '@/constants'
 import { LogoCube } from '@/components/LogoCube'
-import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -104,25 +102,14 @@ const THEME_OPTIONS = [
 ] as const
 
 const PreferencesTab = () => {
-  const { showTips, toggleTips } = useTips()
-  const { addToast } = useToast()
   const { theme, setTheme } = useTheme()
-
-  const handleToggleTips = () => {
-    toggleTips()
-    addToast('success', showTips ? 'Tips disabled' : 'Tips enabled')
-  }
 
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-1">Appearance</h3>
-        <p className="text-sm text-muted-foreground mb-4">Pick a look that works for you</p>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Appearance</h3>
         <div className="flex justify-between items-center">
-          <div>
-            <span className="text-sm font-medium text-foreground">Color theme</span>
-            <p className="text-xs text-muted-foreground mt-0.5">Choose light, dark, or follow your OS setting</p>
-          </div>
+          <span className="text-sm font-medium text-foreground">Theme</span>
           <div className="flex rounded-lg border border-border overflow-hidden">
             {THEME_OPTIONS.map(({ value, label }) => (
               <button
@@ -136,20 +123,6 @@ const PreferencesTab = () => {
                 {label}
               </button>
             ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-1">Display Preferences</h3>
-        <p className="text-sm text-muted-foreground mb-4">Control what shows up on your dashboard</p>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <span className="text-sm font-medium text-foreground">Tips & Hints</span>
-              <p className="text-xs text-muted-foreground mt-0.5">Show helpful tips throughout the dashboard</p>
-            </div>
-            <Switch checked={showTips} onCheckedChange={handleToggleTips} />
           </div>
         </div>
       </div>

@@ -4,6 +4,8 @@ import type { PropertyMetrics } from '@/types/api'
 import { TrendingUp, TrendingDown, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react'
 import { useModal } from '@/contexts/modal'
 import { Pagination } from '@/components/Pagination'
+import { tableStyles } from './table-styles'
+import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 15
 
@@ -138,72 +140,51 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
   const paginatedProperties = sortedProperties.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+    <div className={tableStyles.card}>
       <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-muted/50 border-b border-border">
-            <tr>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
-                onClick={() => handleSort('name')}
-              >
+        <table className={cn(tableStyles.table, 'w-full')}>
+          <thead>
+            <tr className={tableStyles.headRow}>
+              <th className={cn(tableStyles.th, tableStyles.sortable)} onClick={() => handleSort('name')}>
                 <div className="flex items-center gap-1">
-                  Property Name
+                  Property
                   <SortIcon field="name" currentField={sortField} direction={sortDirection} />
                 </div>
               </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
-                onClick={() => handleSort('revenue')}
-              >
+              <th className={cn(tableStyles.th, tableStyles.sortable)} onClick={() => handleSort('revenue')}>
                 <div className="flex items-center gap-1">
                   Revenue
                   <SortIcon field="revenue" currentField={sortField} direction={sortDirection} />
                 </div>
               </th>
               {profitability && profitability.length > 0 && (
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
-                  onClick={() => handleSort('margin')}
-                >
+                <th className={cn(tableStyles.th, tableStyles.sortable)} onClick={() => handleSort('margin')}>
                   <div className="flex items-center gap-1">
                     Margin
                     <SortIcon field="margin" currentField={sortField} direction={sortDirection} />
                   </div>
                 </th>
               )}
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
-                onClick={() => handleSort('revpan')}
-              >
+              <th className={cn(tableStyles.th, tableStyles.sortable)} onClick={() => handleSort('revpan')}>
                 <div className="flex items-center gap-1">
                   RevPAN
                   <SortIcon field="revpan" currentField={sortField} direction={sortDirection} />
                 </div>
               </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
-                onClick={() => handleSort('bookings')}
-              >
+              <th className={cn(tableStyles.th, tableStyles.sortable)} onClick={() => handleSort('bookings')}>
                 <div className="flex items-center gap-1">
                   Bookings
                   <SortIcon field="bookings" currentField={sortField} direction={sortDirection} />
                 </div>
               </th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
-                onClick={() => handleSort('occupancy')}
-              >
+              <th className={cn(tableStyles.th, tableStyles.sortable)} onClick={() => handleSort('occupancy')}>
                 <div className="flex items-center gap-1">
                   Occupancy
                   <SortIcon field="occupancy" currentField={sortField} direction={sortDirection} />
                 </div>
               </th>
               {comparisonMode !== 'none' && (
-                <th
-                  className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer hover:bg-muted"
-                  onClick={() => handleSort('trend')}
-                >
+                <th className={cn(tableStyles.th, tableStyles.sortable)} onClick={() => handleSort('trend')}>
                   <div className="flex items-center gap-1">
                     Trend
                     <SortIcon field="trend" currentField={sortField} direction={sortDirection} />
@@ -212,7 +193,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
               )}
             </tr>
           </thead>
-          <tbody className="bg-card divide-y divide-border">
+          <tbody>
             {paginatedProperties.map((property) => {
               const previousProperty = previousMap.get(property.propertyId)
               const trend = getTrend(property.revenue, previousProperty?.revenue)
@@ -221,10 +202,14 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
               return (
                 <tr
                   key={property.propertyId}
-                  className="hover:bg-muted/50 cursor-pointer transition-colors"
+                  className={cn(tableStyles.row, tableStyles.rowInteractive)}
+                  tabIndex={0}
                   onClick={() => handlePropertyClick(property)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handlePropertyClick(property)
+                  }}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                     <div className="text-sm font-medium text-foreground flex items-center gap-2">
                       {property.propertyName}
                       {property.propertyCode && (
@@ -234,7 +219,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                     <div className="text-sm font-semibold text-foreground">{formatCurrency(property.revenue)}</div>
                     {comparisonMode !== 'none' && previousProperty && (
                       <div className="text-xs text-muted-foreground">vs {formatCompactCurrency(previousProperty.revenue)}</div>
@@ -246,7 +231,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                       const prof = profitabilityMap.get(property.propertyId)
                       const margin = prof && prof.grossRevenue > 0 ? (prof.netRevenue / prof.grossRevenue) * 100 : 0
                       return (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                           <div
                             className={`text-sm font-medium ${margin >= 50 ? 'text-success' : margin >= 30 ? 'text-warning' : 'text-danger'}`}
                           >
@@ -256,7 +241,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                         </td>
                       )
                     })()}
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                     <div className="text-sm text-foreground">
                       {formatCurrency(property.revenue / Math.max(property.availableNights, 1))}
                     </div>
@@ -266,13 +251,13 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                     <div className="text-sm text-foreground">{property.bookings}</div>
                     {comparisonMode !== 'none' && previousProperty && (
                       <div className="text-xs text-muted-foreground">vs {previousProperty.bookings}</div>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                     <div className="flex items-center gap-2">
                       <div className="w-16 bg-muted rounded-full h-2">
                         <div
@@ -295,7 +280,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                     </div>
                   </td>
                   {comparisonMode !== 'none' && (
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                       {previousProperty ? (
                         <div
                           className={`flex items-center gap-1 ${isPositive ? 'text-success' : trend < 0 ? 'text-danger' : 'text-muted-foreground'}`}
@@ -314,7 +299,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
           </tbody>
         </table>
       </div>
-      <div className="px-6 pb-4">
+      <div className="px-4 pb-3">
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}

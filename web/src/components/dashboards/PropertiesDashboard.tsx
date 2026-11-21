@@ -1,37 +1,21 @@
-import { useMemo, useState, useCallback, useEffect } from 'react'
+import { useMemo, useCallback } from 'react'
 import { formatCurrency, formatPercentage, sumBy } from '@baileys/utils'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import type { PropertyMetrics } from '@/types/api'
 import { Button } from '@/components/ui/button'
-import {
-  DollarSign,
-  Info,
-  Percent,
-  TrendingUp,
-  ArrowDown,
-  ScatterChart,
-  LayoutGrid,
-  Table,
-  Wallet,
-  HelpCircle,
-  GitBranch,
-} from 'lucide-react'
+import { DollarSign, Percent, TrendingUp, ArrowDown, ScatterChart, Wallet, HelpCircle, GitBranch } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
-import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { PropertyPerformanceScatter, PerformanceQuadrantLegend } from '@/components/charts/PropertyPerformanceScatter'
-import { PropertyCard } from '@/components/cards/PropertyCard'
 import { PropertyTable } from '@/components/tables/PropertyTable'
-import { SimpleTable } from '@/components/tables'
+import { DataTable } from '@/components/tables/DataTable'
 import { ProfitabilityChart, ProfitabilityLegend } from '@/components/charts/ProfitabilityChart'
 import { PlatformPropertySankey } from '@/components/charts/PlatformPropertySankey'
-import { Pagination } from '@/components/Pagination'
-
-const CARDS_PAGE_SIZE = 12
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 interface PropertyProfitability {
   propertyId: string
@@ -53,11 +37,8 @@ interface PropertyPlatformMix {
 
 export const PropertiesDashboard = () => {
   const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
-  const { showTips } = useTips()
   const { openModal } = useModal()
   const comparisonDateRange = useComparisonDateRange()
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table')
-  const [cardsPage, setCardsPage] = useState(1)
 
   const tagIds = useTagIds()
   const propertyIds = usePropertyIds()
@@ -89,11 +70,6 @@ export const PropertiesDashboard = () => {
   useErrorToast(error, 'Failed to load property metrics')
 
   const validProperties = Array.isArray(properties) ? properties.filter((p: PropertyMetrics) => p?.propertyName) : ([] as PropertyMetrics[])
-
-  // reset cards page when data changes
-  useEffect(() => {
-    setCardsPage(1)
-  }, [validProperties.length])
 
   const { totalRevenue, totalBookings, avgOccupancy, avgRevPAN, totalNetRevenue } = useMemo(() => {
     const totalAvailableNights = sumBy(validProperties, (p: PropertyMetrics) => p.availableNights)
@@ -135,11 +111,6 @@ export const PropertiesDashboard = () => {
       .map(([name]) => name)
   }, [platformMix])
 
-  const previousPropertiesMap = useMemo(() => new Map(previousProperties?.map((p) => [p.propertyId, p]) ?? []), [previousProperties])
-
-  // memoized view toggle handlers
-  const handleViewCards = useCallback(() => setViewMode('cards'), [])
-  const handleViewTable = useCallback(() => setViewMode('table'), [])
   // memoized click handlers
   const handleScatterClick = useCallback(
     (property: PropertyMetrics) => {
@@ -178,10 +149,6 @@ export const PropertiesDashboard = () => {
   if (isLoading || error || validProperties.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="text-lg font-semibold text-foreground">Your Properties at a Glance</h2>
-          <p className="text-muted-foreground text-sm mt-1">See how each property is performing and compare them side by side</p>
-        </div>
         <StateWrapper
           loading={isLoading}
           error={error}
@@ -206,36 +173,13 @@ export const PropertiesDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Your Properties at a Glance</h2>
-            <p className="text-muted-foreground text-sm mt-1">See how each property is performing and compare them side by side</p>
-          </div>
-          <span className="text-sm font-medium text-muted-foreground">
-            {validProperties.length} {validProperties.length === 1 ? 'property' : 'properties'}
-          </span>
-        </div>
-      </div>
-
-      {showTips && (
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-            <div className="text-sm text-info-fg">
-              <strong>Tip:</strong> Click any property card for a full breakdown. Compare RevPAN across properties to spot top performers.
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
           icon={DollarSign}
           label="Total Revenue"
           value={totalRevenue}
           format="currency"
-          tooltip="Nightly revenue for stays in this range. Stays that cross the boundary split by night."
+          tooltip={METRIC_DEFINITIONS.revenue}
           subValue={
             comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? (
               <>
@@ -254,7 +198,6 @@ export const PropertiesDashboard = () => {
                 }
               : undefined
           }
-          color="green"
           staggerIndex={0}
         />
         {profitability.length > 0 ? (
@@ -263,7 +206,7 @@ export const PropertiesDashboard = () => {
             label="Operating Profit"
             value={totalNetRevenue}
             format="currency"
-            tooltip="Revenue minus fees, taxes, and operating expenses"
+            tooltip={METRIC_DEFINITIONS.operatingProfit}
             subValue={
               comparisonMode !== 'none' && previousProperties && prevTotalRevenue > 0 ? (
                 <>
@@ -276,7 +219,7 @@ export const PropertiesDashboard = () => {
                 '0% margin'
               )
             }
-            color={totalNetRevenue > 0 ? 'green' : 'red'}
+            tone={totalNetRevenue < 0 ? 'negative' : undefined}
             staggerIndex={1}
           />
         ) : (
@@ -285,7 +228,7 @@ export const PropertiesDashboard = () => {
             label="Avg RevPAN"
             value={avgRevPAN}
             format="currency"
-            tooltip="Revenue Per Available Night — factors in both rate and occupancy"
+            tooltip={METRIC_DEFINITIONS.revpan}
             subValue={
               comparisonMode !== 'none' && previousProperties && prevAvgRevPAN > 0 ? (
                 <>
@@ -304,7 +247,6 @@ export const PropertiesDashboard = () => {
                   }
                 : undefined
             }
-            color="blue"
             staggerIndex={1}
           />
         )}
@@ -313,7 +255,7 @@ export const PropertiesDashboard = () => {
           label="Occupancy Rate"
           value={avgOccupancy * 100}
           format="percent"
-          tooltip="Booked nights ÷ calendar nights in this range, averaged across properties."
+          tooltip={METRIC_DEFINITIONS.propertyOccupancy}
           subValue={
             comparisonMode !== 'none' && previousProperties && prevAvgOccupancy > 0 ? (
               <>
@@ -332,7 +274,6 @@ export const PropertiesDashboard = () => {
                 }
               : undefined
           }
-          color={avgOccupancy >= 0.7 ? 'green' : avgOccupancy >= 0.5 ? 'yellow' : 'red'}
           staggerIndex={2}
         />
         <MetricCard
@@ -340,7 +281,7 @@ export const PropertiesDashboard = () => {
           label={profitability.length > 0 ? 'Avg RevPAN' : 'Total Bookings'}
           value={profitability.length > 0 ? avgRevPAN : totalBookings}
           format={profitability.length > 0 ? 'currency' : 'number'}
-          tooltip={profitability.length > 0 ? 'Revenue Per Available Night' : 'Confirmed reservations in this period'}
+          tooltip={profitability.length > 0 ? METRIC_DEFINITIONS.revpan : METRIC_DEFINITIONS.bookings}
           subValue={
             comparisonMode !== 'none' && previousProperties ? (
               profitability.length > 0 && prevAvgRevPAN > 0 ? (
@@ -353,14 +294,10 @@ export const PropertiesDashboard = () => {
                   vs {comparisonLabel}: {prevTotalBookings}
                   {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
                 </>
-              ) : (
-                'In selected period'
-              )
+              ) : undefined
             ) : profitability.length > 0 ? (
               'Across all properties'
-            ) : (
-              'In selected period'
-            )
+            ) : undefined
           }
           trend={
             comparisonMode !== 'none' && previousProperties
@@ -374,69 +311,19 @@ export const PropertiesDashboard = () => {
                   : undefined
               : undefined
           }
-          color={profitability.length > 0 ? 'blue' : 'purple'}
           staggerIndex={3}
         />
       </div>
 
-      {/* View Toggle and Properties Display */}
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-foreground">Property Performance</h3>
-          <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleViewTable}
-              className={viewMode === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-            >
-              <Table className="w-4 h-4" />
-              Table
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleViewCards}
-              className={viewMode === 'cards' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}
-            >
-              <LayoutGrid className="w-4 h-4" />
-              Cards
-            </Button>
-          </div>
-        </div>
-
-        {viewMode === 'cards' ? (
-          <div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {validProperties.slice((cardsPage - 1) * CARDS_PAGE_SIZE, cardsPage * CARDS_PAGE_SIZE).map((property: PropertyMetrics) => {
-                const previousProperty = previousPropertiesMap.get(property.propertyId)
-                return (
-                  <PropertyCard
-                    key={property.propertyId}
-                    property={property}
-                    previousProperty={previousProperty}
-                    comparisonMode={comparisonMode}
-                  />
-                )
-              })}
-            </div>
-            <Pagination
-              currentPage={cardsPage}
-              totalPages={Math.ceil(validProperties.length / CARDS_PAGE_SIZE)}
-              totalItems={validProperties.length}
-              pageSize={CARDS_PAGE_SIZE}
-              onPageChange={setCardsPage}
-            />
-          </div>
-        ) : (
-          <PropertyTable
-            properties={validProperties}
-            previousProperties={previousProperties}
-            comparisonMode={comparisonMode}
-            profitability={profitability}
-          />
-        )}
-      </div>
+      <section className="space-y-3">
+        <h3 className="text-lg font-semibold text-foreground">Property performance</h3>
+        <PropertyTable
+          properties={validProperties}
+          previousProperties={previousProperties}
+          comparisonMode={comparisonMode}
+          profitability={profitability}
+        />
+      </section>
 
       {/* Top & Bottom Performers */}
       {topProperties.length > 0 && bottomProperties.length > 0 && (
@@ -455,7 +342,7 @@ export const PropertiesDashboard = () => {
                 </div>
               </div>
             </div>
-            <SimpleTable
+            <DataTable
               data={topProperties}
               columns={[
                 {
@@ -487,7 +374,7 @@ export const PropertiesDashboard = () => {
                 </div>
               </div>
             </div>
-            <SimpleTable
+            <DataTable
               data={bottomProperties}
               columns={[
                 {
@@ -532,7 +419,7 @@ export const PropertiesDashboard = () => {
         {/* Performance Matrix */}
         <ChartWrapper
           title="Performance Matrix"
-          subtitle="Revenue vs Occupancy Analysis"
+          subtitle="Revenue vs. occupancy by property"
           icon={ScatterChart}
           height={400}
           responsive={false}
@@ -556,13 +443,7 @@ export const PropertiesDashboard = () => {
           const sankeyCapped = Math.min(600, sankeyNatural)
           const sankeyScrollable = sankeyNatural > sankeyCapped
           return (
-            <ChartWrapper
-              title="Revenue Flow by Platform"
-              subtitle="How booking platform revenue distributes across properties"
-              icon={GitBranch}
-              height={sankeyCapped}
-              responsive={false}
-            >
+            <ChartWrapper title="Platform revenue by property" icon={GitBranch} height={sankeyCapped} responsive={false}>
               <div className={`h-full ${sankeyScrollable ? 'overflow-y-auto' : ''}`}>
                 <div style={{ height: `${sankeyNatural}px` }}>
                   <PlatformPropertySankey data={platformMix} onPropertyClick={handleChartPropertyClick} />

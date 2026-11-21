@@ -1,22 +1,22 @@
 import type React from 'react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { RevenueChart } from '@/components/charts/RevenueChart'
 import { GuestSpendChart } from '@/components/charts/GuestSpendChart'
 import { RevenueFlowSankey, RevenueFlowLegend } from '@/components/charts/RevenueFlowSankey'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { useTips } from '@/hooks/use-tips'
 import { useGoalProgress } from '@/hooks/use-api'
 import { getMonthlyGoalValue } from '@/utils/goals'
-import { DollarSign, Wallet, Receipt, Info, Landmark, TrendingDown, Calendar, ArrowUp, ArrowDown, GitBranch, Download } from 'lucide-react'
+import { DollarSign, Wallet, Receipt, Landmark, Calendar, ArrowUp, ArrowDown, GitBranch, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { authenticatedFetch } from '@/lib/api'
+import { getChargeColor, type ChargeKind } from '@/lib/theme'
 import { useToast } from '@/contexts/toast'
 import { formatPercentage, formatCurrency, formatCompactCurrency } from '@/utils/formatters'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { useDashboard } from '@/contexts/dashboard'
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 interface PlatformEntry {
   platform: string
@@ -36,6 +36,17 @@ interface PreviousPeriodData {
   operatingProfit?: number
   monthlyTrend?: MonthlyTrendEntry[]
 }
+
+const DETAIL_KINDS: Record<string, ChargeKind> = {
+  tax: 'tax',
+  fee: 'host_fee',
+  discount: 'discount',
+  cleaning: 'cleaning',
+  pet: 'pet',
+  credit_card: 'credit_card',
+}
+
+const chargeKindFor = (type: string): ChargeKind => DETAIL_KINDS[type] ?? 'other'
 
 interface ChargeDetail {
   type: string
@@ -93,7 +104,6 @@ interface PLViewProps {
 }
 
 export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, comparisonMode = 'none', comparisonDateRange = '' }) => {
-  const { showTips } = useTips()
   const { filters, comparisonLabel } = useDashboard()
   const { addToast } = useToast()
   const { data: goalProgressData } = useGoalProgress()
@@ -296,38 +306,13 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
 
   return (
     <div className="space-y-6">
-      {showTips && (
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-            <div className="text-sm text-info-fg">
-              <strong>P&L Summary:</strong> Revenue → Host Fees → Taxes{revenue.operatingExpenses.total > 0 ? ' → Operating Expenses' : ''}{' '}
-              → {revenue.operatingExpenses.total > 0 ? 'Operating Profit' : 'Net Revenue'}. Guest platform fees are shown for reference but
-              not deducted.{' '}
-              {revenue.operatingExpenses.total > 0 ? (
-                `Operating margin: ${formatPercentage(profitability.operatingMargin, 1)}.`
-              ) : (
-                <>
-                  Configure{' '}
-                  <Link to="/settings?tab=expenses" className="underline hover:text-info-fg">
-                    Expenses
-                  </Link>{' '}
-                  in Settings for a complete picture.
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
           icon={DollarSign}
           label="Total Revenue"
           value={revenue.gross}
           format="currency"
-          tooltip="Gross stay revenue earned in this range. Multi-night stays that cross the boundary split by night."
-          color="blue"
+          tooltip={METRIC_DEFINITIONS.revenue}
           subValue={
             comparisonMode !== 'none' && comparison.previousRevenue > 0 ? (
               <>
@@ -353,8 +338,7 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
           label={revenue.operatingExpenses.total > 0 ? 'Host Fees & Expenses' : 'Host Commission'}
           value={revenue.totalCosts}
           format="currency"
-          tooltip="Host platform fees (deducted from revenue) plus operating expenses. Guest platform fees are billed separately and do not affect owner revenue."
-          color="orange"
+          tooltip={METRIC_DEFINITIONS.costs}
           subValue={
             comparisonMode !== 'none' && comparison.previousTotalCosts > 0 ? (
               <>
@@ -382,8 +366,7 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
           label="Taxes"
           value={revenue.taxes}
           format="currency"
-          tooltip="Occupancy and lodging tax on bookings that arrived in this range. Matches your remittance report."
-          color="yellow"
+          tooltip={METRIC_DEFINITIONS.taxCollected}
           subValue={
             comparisonMode !== 'none' && comparison.previousTaxes > 0 ? (
               <>
@@ -409,8 +392,8 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
           label={revenue.operatingExpenses.total > 0 ? 'Operating Profit' : 'Net Revenue'}
           value={revenue.operatingProfit}
           format="currency"
-          tooltip={revenue.operatingExpenses.total > 0 ? 'Net after fees, taxes, and operating expenses' : 'Net after fees and taxes'}
-          color={profitability.operatingMargin > 70 ? 'green' : profitability.operatingMargin > 50 ? 'yellow' : 'red'}
+          tooltip={revenue.operatingExpenses.total > 0 ? METRIC_DEFINITIONS.operatingProfit : METRIC_DEFINITIONS.netRevenue}
+          tone={profitability.operatingMargin < 0 ? 'negative' : undefined}
           subValue={
             comparisonMode !== 'none' && comparison.previousOperatingProfit > 0 ? (
               <>
@@ -454,7 +437,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
             label="Monthly Average"
             value={highlights.avgMonthlyRevenue}
             format="currency"
-            color="gray"
             size="sm"
             subValue={`${highlights.monthCount} months`}
             staggerIndex={4}
@@ -464,7 +446,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
             label="Best Month"
             value={highlights.bestMonthValue}
             format="currency"
-            color="gray"
             size="sm"
             subValue={highlights.bestMonthLabel}
             staggerIndex={5}
@@ -474,7 +455,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
             label="Lowest Month"
             value={highlights.lowestMonthValue}
             format="currency"
-            color="gray"
             size="sm"
             subValue={highlights.lowestMonthLabel}
             staggerIndex={6}
@@ -484,13 +464,7 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
 
       {/* Revenue Flow Sankey */}
       {platforms.length > 0 && (
-        <ChartWrapper
-          title="Revenue Flow"
-          subtitle="Where your revenue comes from and where it goes"
-          icon={GitBranch}
-          height={Math.max(360, platforms.length * 50 + 100)}
-          responsive={false}
-        >
+        <ChartWrapper title="Revenue Flow" icon={GitBranch} height={Math.max(360, platforms.length * 50 + 100)} responsive={false}>
           <div className="h-full flex flex-col">
             <div className="flex-1">
               <RevenueFlowSankey
@@ -533,43 +507,29 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
                 Export
               </Button>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              {data.chargeComposition.taxes > 0 && (
-                <div className="bg-info-subtle rounded-lg p-3">
-                  <div className="text-xs text-info font-medium">Taxes</div>
-                  <div className="text-lg font-bold text-info-fg">{formatCurrency(data.chargeComposition.taxes)}</div>
-                </div>
-              )}
-              {data.chargeComposition.cleaningAndLinens > 0 && (
-                <div className="bg-purple-500/10 rounded-lg p-3">
-                  <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Cleaning & Linens</div>
-                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.cleaningAndLinens)}</div>
-                </div>
-              )}
-              {data.chargeComposition.petFees > 0 && (
-                <div className="bg-amber-500/10 rounded-lg p-3">
-                  <div className="text-xs text-amber-600 dark:text-amber-400 font-medium">Pet Fees</div>
-                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.petFees)}</div>
-                </div>
-              )}
-              {data.chargeComposition.creditCardFees > 0 && (
-                <div className="bg-orange-500/10 rounded-lg p-3">
-                  <div className="text-xs text-orange-600 dark:text-orange-400 font-medium">CC Fees</div>
-                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.creditCardFees)}</div>
-                </div>
-              )}
-              {data.chargeComposition.discounts !== 0 && (
-                <div className="bg-success-subtle rounded-lg p-3">
-                  <div className="text-xs text-success font-medium">Discounts</div>
-                  <div className="text-lg font-bold text-success-fg">-{formatCurrency(Math.abs(data.chargeComposition.discounts))}</div>
-                </div>
-              )}
-              {data.chargeComposition.otherSurcharges > 0 && (
-                <div className="bg-muted/30 rounded-lg p-3">
-                  <div className="text-xs text-muted-foreground font-medium">Other</div>
-                  <div className="text-lg font-bold text-foreground">{formatCurrency(data.chargeComposition.otherSurcharges)}</div>
-                </div>
-              )}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              {(
+                [
+                  ['tax', 'Taxes', data.chargeComposition.taxes],
+                  ['cleaning', 'Cleaning & Linens', data.chargeComposition.cleaningAndLinens],
+                  ['pet', 'Pet Fees', data.chargeComposition.petFees],
+                  ['credit_card', 'CC Fees', data.chargeComposition.creditCardFees],
+                  ['discount', 'Discounts', data.chargeComposition.discounts],
+                  ['other', 'Other', data.chargeComposition.otherSurcharges],
+                ] as const
+              )
+                .filter(([, , amount]) => amount !== 0)
+                .map(([kind, label, amount]) => (
+                  <div key={kind} className="rounded-lg border border-border/60 bg-muted/30 p-3">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: getChargeColor(kind) }} />
+                      {label}
+                    </div>
+                    <div className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                      {kind === 'discount' ? `-${formatCurrency(Math.abs(amount))}` : formatCurrency(amount)}
+                    </div>
+                  </div>
+                ))}
             </div>
             <div className="space-y-2">
               {(chargesExpanded ? data.chargeComposition.details : data.chargeComposition.details.slice(0, 10)).map(
@@ -577,26 +537,13 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
                   <div key={i} className="flex justify-between items-center text-sm py-1 border-b border-border/60 last:border-0 gap-2">
                     <span className="text-muted-foreground flex items-center gap-2 min-w-0">
                       <span
-                        className={`w-2 h-2 rounded-full shrink-0 ${
-                          detail.type === 'tax'
-                            ? 'bg-info'
-                            : detail.type === 'fee'
-                              ? 'bg-warning'
-                              : detail.type === 'discount'
-                                ? 'bg-success'
-                                : detail.type === 'cleaning'
-                                  ? 'bg-purple-500'
-                                  : detail.type === 'pet'
-                                    ? 'bg-amber-500'
-                                    : detail.type === 'credit_card'
-                                      ? 'bg-orange-500'
-                                      : 'bg-muted-foreground'
-                        }`}
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: getChargeColor(chargeKindFor(detail.type)) }}
                       />
                       <span className="truncate">{detail.description}</span>
                       <span className="text-xs text-muted-foreground shrink-0">({detail.count})</span>
                     </span>
-                    <span className={`font-medium shrink-0 ${detail.type === 'discount' ? 'text-success' : ''}`}>
+                    <span className="font-medium shrink-0 tabular-nums">
                       {detail.type === 'discount' ? '-' : ''}
                       {formatCurrency(Math.abs(detail.total))}
                     </span>
@@ -616,18 +563,6 @@ export const PLView: React.FC<PLViewProps> = ({ data, loading, onPeriodClick, co
             <p className="text-xs text-muted-foreground/60 mt-4 pt-3 border-t border-border/40">
               Data sourced from OwnerRez. Counts may differ between tax types if a charge is missing in the source system.
             </p>
-          </div>
-        </div>
-      )}
-
-      {showTips && profitability.operatingMargin < 60 && (
-        <div className="bg-warning-subtle border border-warning/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <TrendingDown className="w-5 h-5 text-warning mr-2 mt-0.5" />
-            <div className="text-sm text-warning-fg">
-              <strong>Low Margin:</strong> Operating margin is {formatPercentage(profitability.operatingMargin, 1)}. Review platform fees or
-              increase direct bookings to improve.
-            </div>
           </div>
         </div>
       )}

@@ -3,16 +3,15 @@ import { useDashboardBatch } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay, formatPercentage, parseISO } from '@baileys/utils'
 import { Button } from '@/components/ui/button'
-import { Users, UserCheck, Calendar, DollarSign, Info, BarChart3, Search, X, Loader2 } from 'lucide-react'
+import { Users, UserCheck, Calendar, DollarSign, BarChart3, Search, X, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api'
-import { PaginatedTable } from '@/components/tables'
+import { DataTable } from '@/components/tables/DataTable'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
-import { useTips } from '@/hooks/use-tips'
 import { useTheme } from '@/contexts/theme'
 import { getPlatformColor, getTagColor, resolveToken } from '@/lib/theme'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
@@ -20,6 +19,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { GuestListItem, GuestSourceData, GuestTagDistribution } from '@/types/api'
 import type { TooltipContentProps } from 'recharts'
 import { PieChart, Pie, Cell, Label, Tooltip, ResponsiveContainer } from 'recharts'
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 const CancelledGuestsTab = lazy(() => import('./CancelledGuestsTab').then((m) => ({ default: m.CancelledGuestsTab })))
 const InquiriesTab = lazy(() => import('./InquiriesTab').then((m) => ({ default: m.InquiriesTab })))
@@ -67,7 +67,6 @@ const GuestSourceTooltip = ({ active, payload }: Partial<TooltipContentProps<num
 export const GuestsDashboard = () => {
   const { openModal } = useModal()
   const { filters, comparisonRange, comparisonMode, comparisonLabel, toggleTag } = useDashboard()
-  const { showTips } = useTips()
   const { resolvedTheme } = useTheme()
   const comparisonDateRange = useComparisonDateRange()
   const [subTab, setSubTab] = useState<GuestSubTab>('active')
@@ -374,38 +373,19 @@ export const GuestsDashboard = () => {
   }, [tagChartData, tagDistribution])
 
   const headerCard = (
-    <div className="bg-card rounded-xl border border-border p-4">
-      <div className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Guest Center</h2>
-          <p className="text-muted-foreground text-sm mt-1 hidden sm:block">Understand your guests and their booking patterns</p>
-        </div>
-        <Tabs value={subTab} onValueChange={(v) => setSubTab(v as GuestSubTab)}>
-          <TabsList className="w-full sm:w-auto">
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
-            <TabsTrigger value="inquiries">Inquiries</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-    </div>
+    <Tabs value={subTab} onValueChange={(v) => setSubTab(v as GuestSubTab)}>
+      <TabsList className="w-full sm:w-fit">
+        <TabsTrigger value="active">Guests</TabsTrigger>
+        <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+        <TabsTrigger value="inquiries">Inquiries</TabsTrigger>
+      </TabsList>
+    </Tabs>
   )
 
   if (subTab === 'cancelled') {
     return (
       <div className="space-y-6">
         {headerCard}
-        {showTips && (
-          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-            <div className="flex items-start">
-              <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-              <div className="text-sm text-info-fg">
-                <strong>Tip:</strong> Shows bookings cancelled during the selected period. Track cancellation patterns by platform and
-                property to identify issues. Click any row to view the guest's full profile and booking history.
-              </div>
-            </div>
-          </div>
-        )}
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-12">
@@ -423,17 +403,6 @@ export const GuestsDashboard = () => {
     return (
       <div className="space-y-6">
         {headerCard}
-        {showTips && (
-          <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-            <div className="flex items-start">
-              <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-              <div className="text-sm text-info-fg">
-                <strong>Tip:</strong> Shows inquiries received during the selected period. Hover over truncated notes to read the full
-                message.
-              </div>
-            </div>
-          </div>
-        )}
         <Suspense
           fallback={
             <div className="flex items-center justify-center py-12">
@@ -472,34 +441,20 @@ export const GuestsDashboard = () => {
     <div className="space-y-6">
       {headerCard}
 
-      {showTips && (
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-            <div className="text-sm text-info-fg">
-              <strong>Tip:</strong> Scoped to the selected period. Filter by repeat, new, or top spenders. Use Search Across Years to find
-              returnees for the same dates. Click any row for their full profile.
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
           icon={Users}
           label="Total Guests"
           value={data.metrics.totalGuests}
           format="number"
-          tooltip="Unique guests with bookings in this period"
+          tooltip={METRIC_DEFINITIONS.guests}
           subValue={
             comparisonMode !== 'none' && previousData?.metrics ? (
               <>
                 vs {comparisonLabel}: {previousData.metrics.totalGuests}
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : (
-              'In selected period'
-            )
+            ) : undefined
           }
           trend={
             comparisonMode !== 'none' && previousData?.metrics
@@ -514,7 +469,6 @@ export const GuestsDashboard = () => {
                 }
               : undefined
           }
-          color="blue"
           staggerIndex={0}
         />
         <MetricCard
@@ -522,7 +476,7 @@ export const GuestsDashboard = () => {
           label="Repeat Rate"
           value={data.metrics.repeatRate * 100}
           format="percent"
-          tooltip="Guests with more than one lifetime booking"
+          tooltip={METRIC_DEFINITIONS.repeatGuests}
           subValue={
             comparisonMode !== 'none' && previousData?.metrics ? (
               <>
@@ -533,7 +487,6 @@ export const GuestsDashboard = () => {
               `${data.metrics.repeatGuests} returning guests`
             )
           }
-          color="green"
           trend={
             comparisonMode !== 'none' && previousData?.metrics
               ? {
@@ -554,16 +507,14 @@ export const GuestsDashboard = () => {
           label="Average Stay"
           value={`${data.metrics.avgStayLength.toFixed(1)} nights`}
           format="custom"
-          tooltip="Average nights per booking"
+          tooltip={METRIC_DEFINITIONS.avgStay}
           subValue={
             comparisonMode !== 'none' && previousData?.metrics ? (
               <>
                 vs {comparisonLabel}: {previousData.metrics.avgStayLength.toFixed(1)} nights
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : (
-              'Per booking'
-            )
+            ) : undefined
           }
           trend={
             comparisonMode !== 'none' && previousData?.metrics
@@ -578,7 +529,6 @@ export const GuestsDashboard = () => {
                 }
               : undefined
           }
-          color="purple"
           staggerIndex={2}
         />
         <MetricCard
@@ -592,9 +542,7 @@ export const GuestsDashboard = () => {
                 vs {comparisonLabel}: {formatCurrency(previousData.metrics.avgSpend)}
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : (
-              'Per guest this period'
-            )
+            ) : undefined
           }
           trend={
             comparisonMode !== 'none' && previousData?.metrics && previousData.metrics.avgSpend > 0
@@ -604,21 +552,13 @@ export const GuestsDashboard = () => {
                 }
               : undefined
           }
-          tooltip="Revenue per unique guest"
-          color="orange"
+          tooltip={METRIC_DEFINITIONS.revenuePerGuest}
           staggerIndex={3}
         />
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <ChartWrapper
-          title="Guest Sources"
-          subtitle="Where your guests come from"
-          icon={BarChart3}
-          height={320}
-          noData={sourceChartData.length === 0}
-          responsive={false}
-        >
+        <ChartWrapper title="Guest Sources" icon={BarChart3} height={320} noData={sourceChartData.length === 0} responsive={false}>
           <div style={{ height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -677,7 +617,6 @@ export const GuestsDashboard = () => {
 
         <ChartWrapper
           title="Guest Tags"
-          subtitle="Click a tag to filter the dashboard"
           icon={BarChart3}
           height={320}
           noData={!tagChartData || tagChartData.length === 0}
@@ -777,7 +716,7 @@ export const GuestsDashboard = () => {
           }
         </div>
 
-        <PaginatedTable
+        <DataTable
           data={sortedGuests}
           columns={columns}
           loading={isLoading}

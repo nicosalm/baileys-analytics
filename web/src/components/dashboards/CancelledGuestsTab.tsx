@@ -3,7 +3,7 @@ import { useDashboardBatch } from '@/hooks/use-api'
 import { usePropertyIds, useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { StateWrapper } from '@/components/StateWrapper'
-import { PaginatedTable } from '@/components/tables'
+import { DataTable } from '@/components/tables/DataTable'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
 import { getPlatformColor } from '@/lib/theme'
@@ -81,7 +81,7 @@ export const CancelledGuestsTab = () => {
           <span className="text-xs text-muted-foreground">All-time · sorted by cancellation date</span>
         </div>
       </div>
-      <PaginatedTable
+      <DataTable
         data={data.bookings}
         emptyMessage="No cancellations in this period"
         columns={[

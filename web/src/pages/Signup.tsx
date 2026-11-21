@@ -120,8 +120,8 @@ export const Signup = () => {
           <div className="absolute bottom-20 left-20 w-72 h-72 bg-[oklch(0.32_0.09_270/0.2)] rounded-full filter blur-xl animate-blob animation-delay-4000" />
 
           <div className="relative z-10 flex flex-col justify-center px-16 text-white">
-            <h3 className="landing-serif text-4xl font-semibold mb-6">Almost There!</h3>
-            <p className="text-lg text-white/80">Confirm your email to unlock your dashboard. It only takes a second.</p>
+            <h3 className="landing-serif text-4xl font-semibold mb-6">Check your email</h3>
+            <p className="text-lg text-white/80">Open the confirmation link we sent to finish creating your account.</p>
           </div>
         </div>
       </div>

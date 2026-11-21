@@ -2,7 +2,7 @@ import { useDashboardBatch } from '@/hooks/use-api'
 import { useErrorToast } from '@/hooks/use-dashboard-utils'
 import { formatDateDisplay } from '@baileys/utils'
 import { StateWrapper } from '@/components/StateWrapper'
-import { PaginatedTable } from '@/components/tables'
+import { DataTable } from '@/components/tables/DataTable'
 import { useDashboard } from '@/contexts/dashboard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getPlatformColor } from '@/lib/theme'
@@ -89,7 +89,7 @@ export const InquiriesTab = () => {
             </p>
           </div>
         ) : (
-          <PaginatedTable
+          <DataTable
             data={inquiries}
             emptyMessage="No inquiries received in this period"
             columns={[

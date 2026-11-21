@@ -100,8 +100,7 @@ export const AccountTab = ({ onChangeEmail, onChangePassword }: AccountTabProps)
     <div className="space-y-6">
       {/* account info */}
       <div className="bg-card rounded-lg shadow-sm border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-1">Account Information</h3>
-        <p className="text-sm text-muted-foreground mb-4">Your account details at a glance</p>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Account</h3>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2 border-b border-border/60">

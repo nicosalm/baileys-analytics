@@ -2,28 +2,13 @@ import { useMemo, useState, Fragment } from 'react'
 import { useGuestDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, format, parseDate } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
-import {
-  User,
-  Calendar,
-  DollarSign,
-  TrendingUp,
-  Home,
-  Mail,
-  Star,
-  Info,
-  Award,
-  ExternalLink,
-  ChevronDown,
-  Sparkles,
-  Tags,
-} from 'lucide-react'
+import { User, Calendar, DollarSign, TrendingUp, Home, Mail, Star, Award, ExternalLink, ChevronDown, Sparkles, Tags } from 'lucide-react'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
-import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
 import { Pagination } from '@/components/Pagination'
 import type { TooltipContentProps } from 'recharts'
@@ -438,7 +423,6 @@ interface GuestDetailModalProps {
 
 export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestDetailModalProps) => {
   const { closeModal } = useModal()
-  const { showTips } = useTips()
 
   const { data, isLoading, error } = useGuestDetail(guestId)
 
@@ -515,16 +499,6 @@ export const GuestDetailModal = ({ guestId, guestName, performanceData }: GuestD
       >
         <div className="space-y-6">
           {/* Info Banner */}
-          {showTips && (
-            <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-              <div className="flex items-start">
-                <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-                <div className="text-sm text-info-fg">
-                  <strong>Guest Profile:</strong> Full booking history and spending for this guest.
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Guest Info Card */}
           <div className="bg-muted/40 rounded-lg p-6">

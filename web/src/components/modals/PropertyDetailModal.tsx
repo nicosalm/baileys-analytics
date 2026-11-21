@@ -2,7 +2,7 @@ import { useMemo, useCallback, useState } from 'react'
 import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency, formatDateDisplay } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
-import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, Info, ExternalLink } from 'lucide-react'
+import { TrendingUp, Calendar, DollarSign, Users, Home, Bed, Bath, MapPin, ExternalLink } from 'lucide-react'
 import { EmptyQuadrants } from '@/components/EmptyQuadrants'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
@@ -11,12 +11,12 @@ import { Modal } from '@/components/Modal'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
 import { useDashboard } from '@/contexts/dashboard'
-import { useTips } from '@/hooks/use-tips'
 import { METRIC_COLORS, CHART_INFRA, getChartColor, resolveToken } from '@/lib/theme'
 import { Pagination } from '@/components/Pagination'
 
 const MODAL_PAGE_SIZE = 10
 import type { TooltipContentProps } from 'recharts'
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 interface PropertyMonthlyEntry {
   month: string
@@ -111,7 +111,6 @@ const PlatformRevenueTooltip = ({ active, payload }: Partial<TooltipContentProps
 
 export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: PropertyDetailModalProps) => {
   const { closeModal, openModal } = useModal()
-  const { showTips } = useTips()
   const { filters } = useDashboard()
   const [bookingsPage, setBookingsPage] = useState(1)
 
@@ -177,18 +176,6 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
         {data && (
           <div className="space-y-6">
             {/* Info Banner */}
-            {showTips && (
-              <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-                <div className="flex items-start">
-                  <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-                  <div className="text-sm text-info-fg">
-                    <strong>Property Overview:</strong> Revenue and nights cover only the portion of each stay that fell inside this date
-                    range. Taxes follow the guest's arrival date, so totals tie out to what you remit. Click any guest name for their
-                    booking history.
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Property Info Card */}
             <div className="bg-muted/50 rounded-lg p-6">
@@ -237,12 +224,10 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                 label="Total Revenue"
                 value={data.metrics.totalRevenue}
                 format="currency"
-                subValue="This period"
                 size="sm"
-                color="green"
                 staggerIndex={0}
                 className="border border-border"
-                tooltip="Nightly revenue earned during this range. Stays that extend past the boundary contribute only their in-range nights."
+                tooltip={METRIC_DEFINITIONS.revenue}
               />
               <MetricCard
                 icon={Calendar}
@@ -251,10 +236,9 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                 format="number"
                 subValue={`${(data.metrics.avgStayLength || 0).toFixed(1)} nights avg`}
                 size="sm"
-                color="blue"
                 staggerIndex={1}
                 className="border border-border"
-                tooltip="Reservations with any stay night inside this range."
+                tooltip={METRIC_DEFINITIONS.bookings}
               />
               <MetricCard
                 icon={Home}
@@ -267,22 +251,19 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                     : `${data.metrics.totalNights || 0} of ${data.metrics.totalDays || 0} nights`
                 }
                 size="sm"
-                color="purple"
                 staggerIndex={2}
                 className="border border-border"
-                tooltip="Booked nights ÷ sellable nights in this range. Owner blocks (maintenance, personal stays) are excluded."
+                tooltip={METRIC_DEFINITIONS.occupancy}
               />
               <MetricCard
                 icon={TrendingUp}
                 label="Average Nightly Rate"
                 value={data.metrics.avgNightlyRate}
                 format="currency"
-                subValue="Average"
                 size="sm"
-                color="orange"
                 staggerIndex={3}
                 className="border border-border"
-                tooltip="Revenue ÷ occupied nights in this range."
+                tooltip={METRIC_DEFINITIONS.adr}
               />
             </div>
 

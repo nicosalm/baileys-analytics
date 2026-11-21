@@ -1,13 +1,12 @@
 import { useCallback } from 'react'
 import { useBookingDetail } from '@/hooks/use-api'
 import { formatCurrency, formatDateDisplay, differenceInDays, parseISO } from '@baileys/utils'
-import { Calendar, DollarSign, User, Home, CreditCard, Info, MapPin, ExternalLink, Tags } from 'lucide-react'
+import { Calendar, DollarSign, User, Home, CreditCard, MapPin, ExternalLink, Tags } from 'lucide-react'
 import { CollapsibleTags } from '@/components/CollapsibleTags'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { useModal } from '@/contexts/modal'
-import { useTips } from '@/hooks/use-tips'
 
 interface BookingDetailModalProps {
   bookingId: string
@@ -16,7 +15,6 @@ interface BookingDetailModalProps {
 
 export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalProps) => {
   const { closeModal, openModal } = useModal()
-  const { showTips } = useTips()
   const { data, isLoading, error } = useBookingDetail(bookingId)
 
   const booking = data?.booking
@@ -55,16 +53,6 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
       >
         <div className="space-y-6">
           {/* Info Banner */}
-          {showTips && (
-            <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-              <div className="flex items-start">
-                <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-                <div className="text-sm text-info-fg">
-                  <strong>Booking Details:</strong> Click the guest name to view their full profile.
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Status */}
           <div className="flex items-center justify-between">

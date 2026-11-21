@@ -39,7 +39,8 @@ export interface MetricCardProps {
     value: number
     label?: string
   }
-  color?: 'blue' | 'green' | 'purple' | 'orange' | 'red' | 'yellow' | 'gray'
+  // negative values that are bad by definition, such as a loss
+  tone?: 'negative'
   size?: 'sm' | 'md' | 'lg'
   loading?: boolean
   error?: string
@@ -58,7 +59,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   tooltip,
   trend,
   target,
-  color = 'blue',
+  tone,
   size = 'md',
   loading = false,
   error,
@@ -66,21 +67,10 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   className,
   staggerIndex,
 }) => {
-  const colorClasses = {
-    blue: 'bg-info-subtle text-info-fg',
-    green: 'bg-success-subtle text-success-fg',
-    purple: 'bg-purple-subtle text-purple-fg',
-    orange: 'bg-orange-subtle text-orange-fg',
-    red: 'bg-danger-subtle text-danger-fg',
-    yellow: 'bg-warning-subtle text-warning-fg',
-    gray: 'bg-muted text-muted-foreground',
-  }
-
   const sizeClasses = {
     sm: {
       padding: 'p-4',
       icon: 'w-4 h-4',
-      iconWrapper: 'p-1.5',
       value: 'text-xl',
       label: 'text-xs',
       sub: 'text-xs',
@@ -88,7 +78,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     md: {
       padding: 'p-6',
       icon: 'w-5 h-5',
-      iconWrapper: 'p-2',
       value: 'text-3xl',
       label: 'text-sm',
       sub: 'text-sm',
@@ -96,7 +85,6 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     lg: {
       padding: 'p-8',
       icon: 'w-6 h-6',
-      iconWrapper: 'p-3',
       value: 'text-4xl',
       label: 'text-base',
       sub: 'text-sm',
@@ -156,7 +144,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <div
       className={cn(
         'bg-card rounded-lg shadow-sm border border-border transition-all duration-200',
-        onClick && 'cursor-pointer hover:shadow-md hover:scale-[1.01] hover:bg-muted/30',
+        onClick && 'cursor-pointer hover:shadow-md hover:bg-muted/30',
         staggerIndex !== undefined && 'stagger-fade-in',
         currentSize.padding,
         className,
@@ -164,62 +152,58 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       style={staggerIndex !== undefined ? ({ '--stagger-index': staggerIndex } as React.CSSProperties) : undefined}
       onClick={onClick}
     >
-      {/* Header with icon and trend */}
-      <div className="flex items-center justify-between mb-4">
-        <div className={cn('rounded-lg', currentSize.iconWrapper, colorClasses[color])}>
-          <Icon className={currentSize.icon} />
-        </div>
+      <div className={cn('flex items-center justify-between gap-2 text-muted-foreground', currentSize.label)}>
+        <span className="flex items-center gap-1.5 font-medium">
+          <Icon
+            className={cn('shrink-0', tone === 'negative' ? 'text-danger' : undefined, size === 'sm' ? 'w-3.5 h-3.5' : currentSize.icon)}
+            aria-hidden
+          />
+          {label}
+          {tooltip && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="top">{tooltip}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+        </span>
 
         {trend && (
-          <div
+          <span
             className={cn(
-              'flex items-center font-medium',
-              currentSize.sub,
+              'flex items-center font-medium tabular-nums',
               trend.value === 0 ? 'text-muted-foreground' : trendDirection ? 'text-success' : 'text-danger',
             )}
           >
             {trend.value === 0 ? (
-              <Minus className="w-4 h-4" />
+              <Minus className="w-3.5 h-3.5" />
             ) : trendDirection ? (
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="w-3.5 h-3.5" />
             ) : (
-              <ArrowDownRight className="w-4 h-4" />
+              <ArrowDownRight className="w-3.5 h-3.5" />
             )}
-            <span>{Math.abs(trend.value).toFixed(1)}%</span>
+            {Math.abs(trend.value).toFixed(1)}%
             {trend.period && <span className="text-muted-foreground ml-1 font-normal">{trend.period}</span>}
-          </div>
+          </span>
         )}
       </div>
 
-      {/* Main value — hover to reveal full value, click to copy */}
-      <CopyableValue
-        value={value}
-        format={format}
-        formatValue={formatValue}
-        sizeClass={currentSize.value}
-        staggerIndex={staggerIndex}
-        hasCardClick={!!onClick}
-      />
-
-      {/* Label with tooltip */}
-      <div className={cn('text-muted-foreground mt-1 flex items-center gap-1', currentSize.label)}>
-        {label}
-        {tooltip && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="top">{tooltip}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+      <div className={cn('mt-2', tone === 'negative' && 'text-danger')}>
+        <CopyableValue
+          value={value}
+          format={format}
+          formatValue={formatValue}
+          sizeClass={currentSize.value}
+          staggerIndex={staggerIndex}
+          hasCardClick={!!onClick}
+        />
       </div>
 
-      {/* Subtitle or subValue */}
       {(subtitle || subValue) && <div className={cn('text-muted-foreground mt-1', currentSize.sub)}>{subtitle || subValue}</div>}
 
-      {/* Target progress bar */}
       {target && targetProgress !== null && (
         <div className="mt-3">
           <div className="flex justify-between text-xs text-muted-foreground mb-1">

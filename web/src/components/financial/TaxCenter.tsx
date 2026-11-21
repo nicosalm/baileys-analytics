@@ -2,11 +2,10 @@ import type React from 'react'
 import { useMemo, useRef, useCallback, useState, useEffect } from 'react'
 import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
-import { SimpleTable } from '@/components/tables'
+import { DataTable } from '@/components/tables/DataTable'
 import { TaxTrendChart } from '@/components/charts/TaxTrendChart'
 import { TaxRemittanceWidget } from '@/components/tax/TaxRemittanceWidget'
-import { useTips } from '@/hooks/use-tips'
-import { FileText, DollarSign, CheckCircle, Home, Info, AlertTriangle, Building, Download } from 'lucide-react'
+import { FileText, DollarSign, CheckCircle, Home, Building, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { useDashboard } from '@/contexts/dashboard'
@@ -14,6 +13,7 @@ import { detectGranularity } from '@/utils/chart-helpers'
 import { authenticatedFetch } from '@/lib/api'
 import { useToast } from '@/contexts/toast'
 import { Pagination } from '@/components/Pagination'
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 interface TaxByPropertyRow {
   propertyId: string
@@ -49,7 +49,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   comparisonMode = 'none',
   comparisonDateRange = '',
 }) => {
-  const { showTips } = useTips()
   const { filters, comparisonLabel } = useDashboard()
   const { addToast } = useToast()
   const trendRef = useRef<HTMLDivElement>(null)
@@ -157,17 +156,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
   return (
     <div className="space-y-6">
       {/* Info Banner */}
-      {showTips && (
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-            <div className="text-sm text-info-fg">
-              <strong>Tax Tracking:</strong> Occupancy taxes collected in this period, split by owner-remitted and platform-remitted.
-              Remittance split is determined by platform name — verify with your tax advisor before filing.
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -176,7 +164,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           label="Total Tax Due"
           value={taxData.totalTax}
           format="currency"
-          color="green"
           staggerIndex={0}
           subValue={
             comparisonMode !== 'none' && taxData.comparison.previousTaxes > 0 ? (
@@ -188,7 +175,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
               `${formatPercentage(taxData.effectiveTaxRate, 2)} rate`
             )
           }
-          tooltip="Tax on bookings that arrived in this range. Matches what you remit — click for trend."
+          tooltip={METRIC_DEFINITIONS.taxCollected}
           trend={
             comparisonMode !== 'none' && taxData.comparison.taxGrowth !== 0
               ? {
@@ -204,7 +191,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           label="You Remit"
           value={taxData.ownerRemitted}
           format="currency"
-          color="blue"
           staggerIndex={1}
           subValue={
             comparisonMode !== 'none' && taxData.comparison.previousOwnerRemitted > 0 ? (
@@ -216,7 +202,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
               'Your responsibility'
             )
           }
-          tooltip="Tax you file and pay to local authorities"
+          tooltip={METRIC_DEFINITIONS.taxOwnerRemitted}
           trend={
             comparisonMode !== 'none' && taxData.comparison.ownerRemittedGrowth !== 0
               ? {
@@ -231,20 +217,16 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
           label="Platform Remits"
           value={taxData.platformRemitted}
           format="currency"
-          color="green"
           staggerIndex={2}
-          subValue="Paid by platforms"
-          tooltip="Tax collected and remitted by OTAs on your behalf"
+          tooltip={METRIC_DEFINITIONS.taxPlatformRemitted}
         />
         <MetricCard
           icon={Home}
           label="Properties"
           value={taxData.propertyCount}
           format="number"
-          color="yellow"
           staggerIndex={3}
-          subValue="Being tracked"
-          tooltip="Properties with tax data in this period"
+          tooltip={METRIC_DEFINITIONS.taxProperties}
         />
       </div>
 
@@ -278,7 +260,7 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
             </div>
           </div>
           <div className="p-4">
-            <SimpleTable
+            <DataTable
               data={taxData.byProperty.slice((taxPropertyPage - 1) * TAX_PAGE_SIZE, taxPropertyPage * TAX_PAGE_SIZE)}
               columns={[
                 {
@@ -314,17 +296,6 @@ export const TaxCenter: React.FC<TaxCenterProps> = ({
       </div>
 
       {/* Tax Rate Alert */}
-      {showTips && taxData.effectiveTaxRate > 15 && (
-        <div className="bg-warning-subtle border border-warning/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <AlertTriangle className="w-5 h-5 text-warning mr-2 mt-0.5" />
-            <div className="text-sm text-warning-fg">
-              <strong>High Tax Rate:</strong> Effective rate is {formatPercentage(taxData.effectiveTaxRate, 2)} — verify tax charges in
-              OwnerRez are correct.
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

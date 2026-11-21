@@ -131,7 +131,7 @@ export const BillingTab = () => {
             <AlertCircle className="w-5 h-5 text-warning mt-0.5" />
             <div>
               <h3 className="font-semibold text-warning-fg">No Active Subscription</h3>
-              <p className="text-sm text-warning-fg mt-1">Choose a plan below to unlock all features and continue using the platform.</p>
+              <p className="text-sm text-warning-fg mt-1">Choose a plan below to keep using your dashboards.</p>
             </div>
           </div>
         </div>

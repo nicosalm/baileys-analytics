@@ -106,8 +106,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
         <div className="flex-1 flex items-start justify-center py-12 px-4">
           <div className="w-full max-w-6xl">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-foreground mb-2">Get started</h2>
-              <p className="text-muted-foreground">Unlock financial clarity for your rentals.</p>
+              <h2 className="text-2xl font-bold text-foreground">Choose a plan</h2>
             </div>
             <PricingPlans />
           </div>

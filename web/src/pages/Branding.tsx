@@ -396,7 +396,6 @@ export const Branding = () => {
               label="Revenue"
               value={darkPreview ? 48250 : 32100}
               format="currency"
-              color="blue"
               staggerIndex={0}
               trend={{ value: darkPreview ? 12.3 : -4.2, period: 'vs prev' }}
             />
@@ -405,12 +404,11 @@ export const Branding = () => {
               label="Occupancy"
               value={darkPreview ? 78.5 : 62.1}
               format="percent"
-              color="green"
               staggerIndex={1}
               trend={{ value: darkPreview ? 5.1 : 8.7, period: 'vs prev' }}
             />
-            <MetricCard icon={Calendar} label="Bookings" value={darkPreview ? 47 : 31} format="number" color="purple" staggerIndex={2} />
-            <MetricCard icon={Users} label="Guests" value={darkPreview ? 126 : 84} format="number" color="orange" staggerIndex={3} />
+            <MetricCard icon={Calendar} label="Bookings" value={darkPreview ? 47 : 31} format="number" staggerIndex={2} />
+            <MetricCard icon={Users} label="Guests" value={darkPreview ? 126 : 84} format="number" staggerIndex={3} />
           </div>
         </Section>
 

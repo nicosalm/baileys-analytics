@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'rechar
 import type { TooltipContentProps } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { Button } from '@/components/ui/button'
-import { getChartColor, resolveToken } from '@/lib/theme'
+import { getChartColor, getChargeColor, type ChargeKind, resolveToken } from '@/lib/theme'
 import { formatCurrency, formatCompactCurrency } from '@baileys/utils'
 
 interface ChannelCharges {
@@ -39,17 +39,19 @@ interface GuestSpendChartProps {
 
 type ChannelFilter = 'all' | 'direct' | 'ota'
 
-const SEGMENT_COLORS: Record<string, string> = {
-  'Base Rent': '#3B82F6',
-  Taxes: '#F59E0B',
-  'Cleaning & Linens': '#8B5CF6',
-  'Pet Fees': '#D97706',
-  'CC Fees': '#EA580C',
-  'Host Fees': '#EC4899',
-  'Guest Fees': '#6366F1',
-  Other: '#9CA3AF',
-  Discounts: '#6B7280',
+const SEGMENT_KINDS: Record<string, ChargeKind> = {
+  'Base Rent': 'rent',
+  Taxes: 'tax',
+  'Cleaning & Linens': 'cleaning',
+  'Pet Fees': 'pet',
+  'CC Fees': 'credit_card',
+  'Host Fees': 'host_fee',
+  'Guest Fees': 'guest_fee',
+  Discounts: 'discount',
+  Other: 'other',
 }
+
+const segmentColor = (name: string, index: number) => (SEGMENT_KINDS[name] ? getChargeColor(SEGMENT_KINDS[name]) : getChartColor(index))
 
 const CHANNEL_OPTIONS: { key: ChannelFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -150,7 +152,6 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({ grossRevenue, 
     return (
       <ChartWrapper
         title="Guest Spend Breakdown"
-        subtitle="Per guest dollar"
         height={260}
         controls={channelToggle}
         noData
@@ -184,7 +185,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({ grossRevenue, 
               {chartData.map((entry, index) => (
                 <Cell
                   key={`cell-${index}`}
-                  fill={SEGMENT_COLORS[entry.name] || getChartColor(index)}
+                  fill={segmentColor(entry.name, index)}
                   opacity={activeIndex === null || activeIndex === index ? 1 : 0.3}
                   style={{ transition: 'opacity 0.2s ease' }}
                 />
@@ -212,10 +213,7 @@ export const GuestSpendChart: React.FC<GuestSpendChartProps> = ({ grossRevenue, 
       <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center text-xs px-4 pt-2 pb-1">
         {chartData.map((entry, index) => (
           <div key={entry.name} className="flex items-center gap-1.5">
-            <div
-              className="w-3 h-2.5 rounded-sm flex-shrink-0"
-              style={{ backgroundColor: SEGMENT_COLORS[entry.name] || getChartColor(index) }}
-            />
+            <div className="w-3 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: segmentColor(entry.name, index) }} />
             <span className="text-muted-foreground whitespace-nowrap">{entry.name}</span>
           </div>
         ))}

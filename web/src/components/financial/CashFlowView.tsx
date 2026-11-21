@@ -4,12 +4,12 @@ import { MetricCard } from '@/components/MetricCard'
 import { StateWrapper } from '@/components/StateWrapper'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { ChartWrapper } from '@/components/ChartWrapper'
-import { useTips } from '@/hooks/use-tips'
-import { CheckCircle, Clock, Calendar, TrendingUp, Info } from 'lucide-react'
+import { CheckCircle, Clock, Calendar, TrendingUp } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
 import { CHART_INFRA, resolveToken } from '@/lib/theme'
 import type { TooltipContentProps, MouseHandlerDataParam } from 'recharts'
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 const CashFlowChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
@@ -60,8 +60,6 @@ interface CashFlowViewProps {
 }
 
 export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPeriodClick }) => {
-  const { showTips } = useTips()
-
   const monthlyData = useMemo(() => {
     if (!data?.byMonth) return []
     const today = new Date()
@@ -95,58 +93,39 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPer
 
   return (
     <div className="space-y-6">
-      {showTips && (
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-            <div className="text-sm text-info-fg">
-              <strong>Cash Flow:</strong> Collected is revenue from past arrivals in the period. Pending is from confirmed future arrivals.
-              Pipeline cards show all upcoming bookings regardless of active filters.
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
           icon={CheckCircle}
           label="Collected"
           value={data.collected}
           format="currency"
-          color="green"
           staggerIndex={0}
           subValue={`${data.collectionRate.toFixed(1)}% of period revenue`}
-          tooltip="In-range revenue from stays that have already arrived."
+          tooltip={METRIC_DEFINITIONS.collected}
         />
         <MetricCard
           icon={Clock}
           label="Pending"
           value={data.pending}
           format="currency"
-          color="blue"
           staggerIndex={1}
-          subValue="All confirmed future bookings"
-          tooltip="Revenue on the books for stays yet to arrive. Not limited to this date range."
+          tooltip={METRIC_DEFINITIONS.pending}
         />
         <MetricCard
           icon={Calendar}
           label="Next 30 Days"
           value={data.upcoming.next30Days}
           format="currency"
-          color="yellow"
           staggerIndex={2}
-          subValue="Arriving within 30 days"
-          tooltip="Full booking value for every stay arriving in the next 30 days."
+          tooltip={METRIC_DEFINITIONS.pipeline30}
         />
         <MetricCard
           icon={TrendingUp}
           label="Next 90 Days"
           value={data.upcoming.next90Days}
           format="currency"
-          color="purple"
           staggerIndex={3}
-          subValue="Revenue pipeline"
-          tooltip="Full booking value for every stay arriving in the next 90 days."
+          tooltip={METRIC_DEFINITIONS.pipeline90}
         />
       </div>
 

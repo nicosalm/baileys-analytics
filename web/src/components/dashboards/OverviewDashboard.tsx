@@ -1,7 +1,6 @@
 import { useMemo, useCallback, useState } from 'react'
 import { useDashboardBatch, useGoalProgress, useSeasons, usePacing } from '@/hooks/use-api'
 import type { PacingMonthSummary } from '@/hooks/use-api'
-import { useTips } from '@/hooks/use-tips'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import {
   formatCurrency,
@@ -22,7 +21,6 @@ import {
   Calendar,
   Clock,
   BarChart3,
-  Info,
   Percent,
   Layers,
   Target,
@@ -33,13 +31,13 @@ import {
   LogIn,
   LogOut,
   BedDouble,
-  Sparkles,
+  History,
   Ban,
   Activity,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
-import { MetricCardWithGauge } from '@/components/MetricCardWithGauge'
+import { HeadlineMetric } from '@/components/HeadlineMetric'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
 import {
@@ -66,6 +64,7 @@ import { detectGranularity } from '@/utils/chart-helpers'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/Pagination'
 import { useNavigate, Link } from 'react-router-dom'
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 interface RecentActivity {
   id: string
@@ -320,7 +319,6 @@ function PacingSummaryCard({ tagIds, propertyIds, onNavigate }: { tagIds?: strin
 
 export const OverviewDashboard = () => {
   const { filters, comparisonRange, comparisonMode, comparisonLabel, updateDateRange } = useDashboard()
-  const { showTips } = useTips()
   const { openModal } = useModal()
   const { resolvedTheme } = useTheme()
   const tagIds = useTagIds()
@@ -696,34 +694,6 @@ export const OverviewDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl border border-border p-4">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Your Business at a Glance</h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            {filters.selectedTags.length > 0
-              ? `Filtered: ${
-                  filters.selectedTags
-                    .map((t) => t.name)
-                    .filter(Boolean)
-                    .join(', ') || 'Selected tags'
-                }`
-              : 'All Properties'}{' '}
-            · How your properties are performing right now
-          </p>
-        </div>
-      </div>
-
-      {showTips && (
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-            <div className="text-sm text-info-fg">
-              <strong>Tip:</strong> Click any metric card to drill into that section. Arrows show change vs. your comparison period.
-            </div>
-          </div>
-        </div>
-      )}
-
       {showEmptyNudge && (
         <div className="bg-warning-subtle border border-warning/30 rounded-lg p-4">
           <div className="flex items-start">
@@ -771,12 +741,12 @@ export const OverviewDashboard = () => {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 cursor-pointer gap-3 md:gap-4">
-        <MetricCardWithGauge
+        <HeadlineMetric
           icon={DollarSign}
           label="Total Revenue"
           value={Number(metrics.revenue.current) || 0}
           format="currency"
-          tooltip="Nightly revenue for stays in this range. Stays that cross the boundary split by night."
+          tooltip={METRIC_DEFINITIONS.revenue}
           staggerIndex={0}
           subValue={
             comparisonMode !== 'none' && metrics.revenue.previous !== undefined ? (
@@ -798,47 +768,14 @@ export const OverviewDashboard = () => {
                 }
               : undefined
           }
-          color="green"
-          gauge={{
-            enabled: true,
-            min: 0,
-            max:
-              comparisonMode !== 'none' && metrics.revenue.previous
-                ? Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5
-                : Math.max(metrics.revenue.current * 2, 1000),
-            segments:
-              comparisonMode !== 'none' && metrics.revenue.previous
-                ? [
-                    {
-                      threshold:
-                        ((metrics.revenue.previous * 0.8) / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5)) * 100,
-                      color: resolveToken('--danger'),
-                      label: 'Below',
-                    },
-                    {
-                      threshold:
-                        ((metrics.revenue.previous * 1.0) / (Math.max(metrics.revenue.current, metrics.revenue.previous) * 1.5)) * 100,
-                      color: resolveToken('--warning'),
-                      label: 'Target',
-                    },
-                    { threshold: 100, color: resolveToken('--success'), label: 'Above' },
-                  ]
-                : [
-                    { threshold: 30, color: resolveToken('--danger'), label: 'Low' },
-                    { threshold: 60, color: resolveToken('--warning'), label: 'Medium' },
-                    { threshold: 100, color: resolveToken('--success'), label: 'High' },
-                  ],
-            target: metrics.revenue.previous,
-          }}
-          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('financial')}
         />
-        <MetricCardWithGauge
+        <HeadlineMetric
           icon={Calendar}
           label="Total Bookings"
           value={metrics.bookings.current}
           format="number"
-          tooltip="Confirmed reservations in this period"
+          tooltip={METRIC_DEFINITIONS.bookings}
           staggerIndex={1}
           subValue={
             comparisonMode !== 'none' && metrics.bookings.previous !== undefined ? (
@@ -858,47 +795,15 @@ export const OverviewDashboard = () => {
                 }
               : undefined
           }
-          color="blue"
-          gauge={{
-            enabled: true,
-            min: 0,
-            max:
-              comparisonMode !== 'none' && metrics.bookings.previous
-                ? Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5
-                : Math.max(metrics.bookings.current * 2, 10),
-            segments:
-              comparisonMode !== 'none' && metrics.bookings.previous
-                ? [
-                    {
-                      threshold:
-                        ((metrics.bookings.previous * 0.8) / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5)) * 100,
-                      color: resolveToken('--danger'),
-                      label: 'Below',
-                    },
-                    {
-                      threshold:
-                        ((metrics.bookings.previous * 1.0) / (Math.max(metrics.bookings.current, metrics.bookings.previous) * 1.5)) * 100,
-                      color: resolveToken('--warning'),
-                      label: 'Target',
-                    },
-                    { threshold: 100, color: resolveToken('--success'), label: 'Above' },
-                  ]
-                : [
-                    { threshold: 30, color: resolveToken('--danger'), label: 'Low' },
-                    { threshold: 60, color: resolveToken('--warning'), label: 'Medium' },
-                    { threshold: 100, color: resolveToken('--success'), label: 'High' },
-                  ],
-            target: metrics.bookings.previous,
-          }}
-          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('properties')}
         />
-        <MetricCardWithGauge
+        <HeadlineMetric
           icon={Percent}
           label="Occupancy Rate"
           value={Number(metrics.occupancy.current || 0)}
           format="percent"
-          tooltip="Booked nights ÷ sellable nights in this range. Owner blocks (maintenance, personal stays) are excluded from the denominator."
+          progress={{ previous: comparisonMode !== 'none' ? Number(metrics.occupancy.previous ?? 0) : undefined }}
+          tooltip={METRIC_DEFINITIONS.occupancy}
           staggerIndex={2}
           subValue={
             comparisonMode !== 'none' && metrics.occupancy.previous !== undefined ? (
@@ -919,27 +824,14 @@ export const OverviewDashboard = () => {
                 }
               : undefined
           }
-          color="purple"
-          gauge={{
-            enabled: true,
-            min: 0,
-            max: 100,
-            segments: [
-              { threshold: 50, color: resolveToken('--danger'), label: 'Low' },
-              { threshold: 75, color: resolveToken('--warning'), label: 'Good' },
-              { threshold: 100, color: resolveToken('--success'), label: 'Excellent' },
-            ],
-            target: metrics.occupancy.previous,
-          }}
-          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('occupancy')}
         />
-        <MetricCardWithGauge
+        <HeadlineMetric
           icon={Users}
           label="Total Guests"
           value={metrics.guests.total}
           format="number"
-          tooltip="Unique guests with bookings in this period"
+          tooltip={METRIC_DEFINITIONS.guests}
           staggerIndex={3}
           subValue={
             comparisonMode !== 'none' && metrics.guests.previous !== undefined ? (
@@ -948,7 +840,7 @@ export const OverviewDashboard = () => {
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : (
-              `${metrics.guests.newThisMonth} first-timers | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
+              `${metrics.guests.newThisMonth} ${metrics.guests.newThisMonth === 1 ? 'first-time guest' : 'first-time guests'} | ${formatPercentage(Number(metrics.guests.repeatRate || 0) * 100, 1)} returning`
             )
           }
           trend={
@@ -959,37 +851,6 @@ export const OverviewDashboard = () => {
                 }
               : undefined
           }
-          color="orange"
-          gauge={{
-            enabled: true,
-            min: 0,
-            max:
-              comparisonMode !== 'none' && metrics.guests.previous
-                ? Math.max(metrics.guests.total, metrics.guests.previous) * 1.5
-                : Math.max(metrics.guests.total * 2, 10),
-            segments:
-              comparisonMode !== 'none' && metrics.guests.previous
-                ? [
-                    {
-                      threshold: ((metrics.guests.previous * 0.8) / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5)) * 100,
-                      color: resolveToken('--danger'),
-                      label: 'Below',
-                    },
-                    {
-                      threshold: ((metrics.guests.previous * 1.0) / (Math.max(metrics.guests.total, metrics.guests.previous) * 1.5)) * 100,
-                      color: resolveToken('--warning'),
-                      label: 'Target',
-                    },
-                    { threshold: 100, color: resolveToken('--success'), label: 'Above' },
-                  ]
-                : [
-                    { threshold: 30, color: resolveToken('--danger'), label: 'Low' },
-                    { threshold: 60, color: resolveToken('--warning'), label: 'Medium' },
-                    { threshold: 100, color: resolveToken('--success'), label: 'High' },
-                  ],
-            target: metrics.guests.previous,
-          }}
-          comparisonMode={comparisonMode}
           onClick={() => handleMetricCardClick('guests')}
         />
       </div>
@@ -1018,8 +879,8 @@ export const OverviewDashboard = () => {
                 : undefined
             }
             size="sm"
-            color={metrics.revenue.operatingProfit > 0 ? 'green' : 'red'}
-            tooltip="Revenue minus platform fees, taxes, and operating expenses"
+            tone={metrics.revenue.operatingProfit < 0 ? 'negative' : undefined}
+            tooltip={METRIC_DEFINITIONS.operatingProfit}
             staggerIndex={4}
           />
         )}
@@ -1028,10 +889,8 @@ export const OverviewDashboard = () => {
           label="Average Booking Value"
           value={Number(metrics.revenue.avgBookingValue) || 0}
           format="currency"
-          subValue="Per reservation"
           size="sm"
-          color="gray"
-          tooltip="Revenue per booking"
+          tooltip={METRIC_DEFINITIONS.avgBookingValue}
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 5 : 4}
         />
         <MetricCard
@@ -1039,10 +898,8 @@ export const OverviewDashboard = () => {
           label="Average Stay Length"
           value={`${Number(metrics.bookings.avgNights || 0).toFixed(1)} nights`}
           format="custom"
-          subValue="Per booking"
           size="sm"
-          color="gray"
-          tooltip="Average nights per booking"
+          tooltip={METRIC_DEFINITIONS.avgStay}
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 6 : 5}
         />
         <MetricCard
@@ -1050,21 +907,17 @@ export const OverviewDashboard = () => {
           label="Repeat Guests"
           value={Number(metrics.guests.repeatRate || 0) * 100}
           format="percent"
-          subValue={metrics.guests.total > 0 ? 'Return rate' : 'No data yet'}
           size="sm"
-          color="gray"
-          tooltip="Guests with more than one lifetime booking"
+          tooltip={METRIC_DEFINITIONS.repeatGuests}
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 7 : 6}
         />
         <MetricCard
           icon={TrendingDown}
           label="Cancellation Rate"
           value={Number(metrics.bookings.cancellationRate || 0)}
-          tooltip="Cancellations as a percentage of total bookings"
+          tooltip={METRIC_DEFINITIONS.cancellationRate}
           format="percent"
-          subValue="This period"
           size="sm"
-          color={Number(metrics.bookings.cancellationRate || 0) > 10 ? 'red' : 'gray'}
           staggerIndex={metrics.revenue.operatingExpenses > 0 ? 8 : 7}
         />
       </div>
@@ -1074,7 +927,6 @@ export const OverviewDashboard = () => {
       <div className="grid lg:grid-cols-2 gap-6">
         <ChartWrapper
           title="Revenue Composition by Property"
-          subtitle="Showing revenue breakdown across your top properties"
           icon={Layers}
           height={340}
           responsive={false}
@@ -1194,7 +1046,7 @@ export const OverviewDashboard = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Target className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">Your Goals</h3>
+              <h3 className="text-lg font-semibold">Goals</h3>
             </div>
             {enabledGoals.length > 0 && (
               <Link to="/settings?tab=goals" className="text-xs text-info hover:text-info-fg flex items-center gap-1">
@@ -1243,8 +1095,8 @@ export const OverviewDashboard = () => {
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">What's New</h3>
+              <History className="w-5 h-5 text-muted-foreground" />
+              <h3 className="text-lg font-semibold">Recent activity</h3>
             </div>
             <span className="text-xs text-muted-foreground">
               {formatDateDisplay(filters.dateRange.from)} – {formatDateDisplay(filters.dateRange.to)}

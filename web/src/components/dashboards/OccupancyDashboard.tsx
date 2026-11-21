@@ -3,14 +3,13 @@ import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { OccupancyListView } from '@/components/OccupancyListView'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
 import { Button } from '@/components/ui/button'
-import { Calendar, Home, Info, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
+import { Calendar, Home, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
-import { useTips } from '@/hooks/use-tips'
 import { MetricCard } from '@/components/MetricCard'
 import { WhatIfCalculator } from '@/components/WhatIfCalculator'
-import { PacingRunway } from '@/components/PacingRunway'
+import { PacingRunway } from '@/components/pacing/PacingRunway'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { StateWrapper } from '@/components/StateWrapper'
@@ -19,6 +18,7 @@ import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import { useModal } from '@/contexts/modal'
 import type { OccupancyTrendData, OccupancyByProperty } from '@/types/api'
 import type { TooltipContentProps } from 'recharts'
+import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 const OccupancyChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
@@ -70,7 +70,6 @@ const OccupancyChartTooltip = ({ active, payload, label }: Partial<TooltipConten
 export const OccupancyDashboard = () => {
   const { filters, comparisonRange, comparisonMode, comparisonLabel } = useDashboard()
   const { openModal } = useModal()
-  const { showTips } = useTips()
   const tagIds = useTagIds()
   const propertyIds = usePropertyIds()
   const comparisonDateRange = useComparisonDateRange()
@@ -277,32 +276,13 @@ export const OccupancyDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-card rounded-xl border border-border p-4">
-        <h2 className="text-lg font-semibold text-foreground">How Busy Are Your Properties?</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Where you&apos;re booked, where there&apos;s room, and how the runway is filling up.
-        </p>
-      </div>
-
-      {showTips && (
-        <div className="bg-info-subtle border border-info/30 rounded-lg p-4">
-          <div className="flex items-start">
-            <Info className="w-5 h-5 text-info mr-2 mt-0.5" />
-            <div className="text-sm text-info-fg">
-              <strong>Tip:</strong> The heatmap flags slow stretches at a glance. What If projects revenue from the empty nights below. The
-              trend chart tracks occupancy period over period.
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <MetricCard
           icon={Percent}
           label="Occupancy Rate"
           value={currentData.overall * 100}
           format="percent"
-          tooltip="Booked nights ÷ sellable nights. Owner blocks (maintenance, personal stays) are excluded from the denominator."
+          tooltip={METRIC_DEFINITIONS.occupancy}
           subValue={
             comparisonMode !== 'none' && previousData?.overall !== undefined ? (
               <>
@@ -326,7 +306,6 @@ export const OccupancyDashboard = () => {
                 }
               : undefined
           }
-          color={currentData.overall > 0.7 ? 'green' : currentData.overall > 0.5 ? 'yellow' : 'red'}
           staggerIndex={0}
         />
         <MetricCard
@@ -334,16 +313,14 @@ export const OccupancyDashboard = () => {
           label="Booked Nights"
           value={currentData.bookedNights}
           format="number"
-          tooltip="Property-nights reserved in this range across every property."
+          tooltip={METRIC_DEFINITIONS.bookedNights}
           subValue={
             comparisonMode !== 'none' && previousData?.bookedNights !== undefined ? (
               <>
                 vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : (
-              'In selected period'
-            )
+            ) : undefined
           }
           trend={
             comparisonMode !== 'none' && previousData?.bookedNights !== undefined
@@ -358,7 +335,6 @@ export const OccupancyDashboard = () => {
                 }
               : undefined
           }
-          color="blue"
           staggerIndex={1}
         />
         <MetricCard
@@ -366,16 +342,14 @@ export const OccupancyDashboard = () => {
           label="Available Nights"
           value={currentData.availableNights}
           format="number"
-          tooltip="Sellable inventory in this range. Owner blocks — maintenance, personal stays — are excluded."
+          tooltip={METRIC_DEFINITIONS.sellableNights}
           subValue={
             comparisonMode !== 'none' && previousData?.availableNights !== undefined ? (
               <>
                 vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : (
-              'Across every active property'
-            )
+            ) : undefined
           }
           trend={
             comparisonMode !== 'none' && previousData?.availableNights !== undefined
@@ -390,7 +364,6 @@ export const OccupancyDashboard = () => {
                 }
               : undefined
           }
-          color="purple"
           staggerIndex={2}
         />
         <MetricCard
@@ -417,8 +390,7 @@ export const OccupancyDashboard = () => {
                   })()
                 : `${formatPeriodDisplay(lowestPeriod.month)} · ${formatPercentage(lowestPeriod.rate * 100, 1)} booked`
           }
-          tooltip={`The ${periodWord.toLowerCase()} with the lowest occupancy rate. Focus fill efforts here.${occupancyGoal !== null ? ` Goal: ${occupancyGoal}%.` : ''}`}
-          color="yellow"
+          tooltip={`The ${periodWord.toLowerCase()} with the lowest occupancy in this range.${occupancyGoal !== null ? ` Your occupancy goal is ${occupancyGoal}%.` : ''}`}
           staggerIndex={3}
         />
       </div>
