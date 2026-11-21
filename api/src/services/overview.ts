@@ -76,10 +76,9 @@ export async function getOverviewData(
 			: null,
 	]);
 
-	const [currentMetrics, charts, alerts, recentActivity, upcoming] = await Promise.all([
+	const [currentMetrics, charts, recentActivity, upcoming] = await Promise.all([
 		getCurrentPeriodMetrics(supabase, tenantId, from, to, currentBookings, sharedProperties, tagIds, currentBlocks),
 		getChartsData(currentBookings, sharedProperties, from, to, currentBlocks),
-		getAlerts(supabase, tenantId, from, to, tagIds, filterPropertyIds),
 		getRecentActivity(supabase, tenantId, from, to),
 		getUpcomingBookings(supabase, tenantId),
 	]);
@@ -103,7 +102,6 @@ export async function getOverviewData(
 	return {
 		metrics,
 		charts,
-		alerts,
 		recentActivity,
 		upcoming,
 		view: 'overview',
@@ -445,157 +443,6 @@ function buildOccupancyChartData(
 		}
 		return result;
 	}
-}
-
-async function getAlerts(
-	supabase: SupabaseClient,
-	tenantId: string,
-	from: string,
-	to: string,
-	tagIds: string[] = [],
-	filterPropertyIds: string[] = [],
-) {
-	const alerts = [];
-
-	const today = new Date();
-	const todayStr = today.toISOString().split('T')[0];
-	const sevenDaysFromNow = new Date(today.getTime() + 7 * MS_PER_DAY);
-	const thirtyDaysFromNow = new Date(today.getTime() + 30 * MS_PER_DAY);
-	const sevenDaysFromNowStr = sevenDaysFromNow.toISOString().split('T')[0];
-	const thirtyDaysFromNowStr = thirtyDaysFromNow.toISOString().split('T')[0];
-
-	// alerts must respect the dashboard's property/tag filter so the banner
-	// numbers (cancellation rate, low occupancy) match the metric cards below.
-	const hasPropertyFilter = filterPropertyIds.length > 0;
-	let tagBookingIds: string[] | null = null;
-	if (tagIds.length > 0) {
-		tagBookingIds = await getBookingIdsForTags(supabase, tenantId, tagIds);
-		// tag filter matched nothing: every per-booking query should return 0.
-		// property count is still tenant-wide though, so the low-occupancy
-		// alert can still fire against its proper denominator.
-		if (tagBookingIds === null) tagBookingIds = [];
-	}
-
-	const buildUpcomingArrivalsQuery = () => {
-		let q = supabase
-			.from('bookings')
-			.select('*', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId)
-			.gte('arrival', todayStr)
-			.lte('arrival', sevenDaysFromNowStr)
-			.neq('status', 'canceled');
-		if (hasPropertyFilter) q = q.in('property_id', filterPropertyIds);
-		if (tagBookingIds) q = q.in('id', tagBookingIds);
-		return q;
-	};
-	const buildUpcomingWindowQuery = () => {
-		let q = supabase
-			.from('bookings')
-			.select('arrival, departure')
-			.eq('tenant_id', tenantId)
-			// overlap with [today, today+30d): starts in window OR active today
-			.lte('arrival', thirtyDaysFromNowStr)
-			.gt('departure', todayStr)
-			.neq('status', 'canceled')
-			.order('id');
-		if (hasPropertyFilter) q = q.in('property_id', filterPropertyIds);
-		if (tagBookingIds) q = q.in('id', tagBookingIds);
-		return q;
-	};
-	const buildPropertyCountQuery = () => {
-		let q = supabase.from('properties').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('active', true);
-		if (hasPropertyFilter) q = q.in('id', filterPropertyIds);
-		return q;
-	};
-	const buildBookingCountQuery = (canceledOnly: boolean) => {
-		let q = supabase
-			.from('bookings')
-			.select('*', { count: 'exact', head: true })
-			.eq('tenant_id', tenantId)
-			.lte('arrival', to)
-			.gte('departure', from);
-		if (canceledOnly) q = q.eq('status', 'canceled');
-		if (hasPropertyFilter) q = q.in('property_id', filterPropertyIds);
-		if (tagBookingIds) q = q.in('id', tagBookingIds);
-		return q;
-	};
-
-	const [
-		{ count: upcomingCount },
-		upcomingBookings,
-		{ count: propertyCount },
-		{ count: totalBookings },
-		{ count: canceledBookings },
-		upcomingBlocks,
-	] = await Promise.all([
-		buildUpcomingArrivalsQuery(),
-		fetchAllRows(buildUpcomingWindowQuery),
-		buildPropertyCountQuery(),
-		buildBookingCountQuery(false),
-		buildBookingCountQuery(true),
-		fetchBlocks(supabase, tenantId, todayStr, thirtyDaysFromNowStr, hasPropertyFilter ? filterPropertyIds : undefined),
-	]);
-
-	if (upcomingCount && upcomingCount > 0) {
-		alerts.push({
-			id: 'upcoming-arrivals',
-			type: 'info' as const,
-			title: `${upcomingCount} ${upcomingCount === 1 ? 'Guest' : 'Guests'} Arriving Soon`,
-			description: `Check-ins scheduled within the next 7 days`,
-			timestamp: new Date().toISOString(),
-		});
-	}
-
-	if (propertyCount) {
-		// align the window to UTC midnight to match the DATE-typed arrival/departure
-		// columns. using today.getTime() directly would clip by the current time-of-day
-		// and systematically undercount nights of stays arriving today or extending past
-		// the window end.
-		const windowStartMs = Math.floor(today.getTime() / MS_PER_DAY) * MS_PER_DAY;
-		const windowEndMs = windowStartMs + 30 * MS_PER_DAY;
-		const windowStartDate = new Date(windowStartMs);
-		const windowEndDate = new Date(windowEndMs);
-		const blockedNights = sumBlockedNights(collectBlockedNightsExclusive(upcomingBlocks, windowStartDate, windowEndDate));
-		const sellableNights = Math.max(0, 30 * propertyCount - blockedNights);
-		let bookedNights = 0;
-
-		upcomingBookings.forEach((b) => {
-			const arrivalMs = new Date(b.arrival).getTime();
-			const departureMs = new Date(b.departure).getTime();
-			const clampedStart = Math.max(arrivalMs, windowStartMs);
-			const clampedEnd = Math.min(departureMs, windowEndMs);
-			const nights = Math.max(0, Math.floor((clampedEnd - clampedStart) / MS_PER_DAY));
-			bookedNights += nights;
-		});
-
-		const occupancyRate = sellableNights > 0 ? (bookedNights / sellableNights) * 100 : 0;
-
-		if (occupancyRate < 50) {
-			alerts.push({
-				id: 'low-occupancy',
-				type: 'warning' as const,
-				title: `${Math.round(occupancyRate)}% Occupancy Next 30 Days`,
-				description: `${bookedNights} of ${sellableNights} sellable nights booked across ${propertyCount} ${propertyCount === 1 ? 'property' : 'properties'}`,
-				timestamp: new Date().toISOString(),
-			});
-		}
-	}
-
-	if (totalBookings && canceledBookings) {
-		const cancellationRate = (canceledBookings / totalBookings) * 100;
-
-		if (cancellationRate > 10) {
-			alerts.push({
-				id: 'high-cancellations',
-				type: 'warning' as const,
-				title: `${Math.round(cancellationRate)}% Cancellation Rate`,
-				description: `${canceledBookings} of ${totalBookings} bookings canceled in selected period`,
-				timestamp: new Date().toISOString(),
-			});
-		}
-	}
-
-	return alerts;
 }
 
 async function getRecentActivity(supabase: SupabaseClient, tenantId: string, from: string, to: string) {
