@@ -653,6 +653,26 @@ export async function saveGoals(goals: GoalFormData[]) {
   return result
 }
 
+// owner blocks; property_id is our property uuid
+export interface BlockRow {
+  property_id: string
+  arrival: string
+  departure: string
+}
+
+export function useBlocksForRange(from?: string, to?: string) {
+  const key = from && to ? `blocks-range:${from}|${to}` : null
+  return useSWR<BlockRow[]>(
+    key,
+    async () => {
+      const result = await api.getBlocks(from!, to!)
+      if (!result.success) throw new Error(result.error)
+      return result.data
+    },
+    { refreshInterval: 120000, keepPreviousData: true },
+  )
+}
+
 export function useBookingsForRange(from?: string, to?: string) {
   const key = from && to ? `bookings-range:${from}|${to}` : null
   return useSWR<BookingRow[]>(

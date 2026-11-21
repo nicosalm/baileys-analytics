@@ -3,6 +3,7 @@ import type { Season } from '@/types/season'
 import type { Goal, GoalProgress } from '@/types/goal'
 import type {
   PropertyRow,
+  BlockRow,
   BookingRow,
   ExpenseTemplateRow,
   OperatingExpenseRow,
@@ -248,6 +249,10 @@ class ApiClient {
     if (params.endDate) qs.append('endDate', params.endDate)
     if (params.limit) qs.append('limit', params.limit)
     return this.request(`/bookings?${qs.toString()}`)
+  }
+
+  async getBlocks(from: string, to: string): Promise<ApiResult<BlockRow[]>> {
+    return this.request(`/occupancy/blocks?${new URLSearchParams({ from, to }).toString()}`)
   }
 
   async getEarliestBookingDate(): Promise<ApiResult<{ earliestDate: string | null }>> {

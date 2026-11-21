@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react'
 import { ChevronDown, ChevronRight, ChevronUp, Info } from 'lucide-react'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { MS_PER_DAY } from '@baileys/constants'
-import { useBookingsForRange, type BookingRow } from '@/hooks/use-api'
+import { useBlocksForRange, useBookingsForRange, type BookingRow } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { StateWrapper } from '@/components/StateWrapper'
 import { Button } from '@/components/ui/button'
@@ -84,6 +84,26 @@ function daysBetween(a: string, b: string) {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / MS_PER_DAY)
 }
 
+type Stay = { arrival: string; departure: string }
+
+// clips stays to [from, to) and merges overlaps, so a night counts once
+function mergeStays(stays: Stay[], from: string, to: string): Stay[] {
+  const clipped = stays
+    .map((s) => ({ arrival: s.arrival < from ? from : s.arrival, departure: s.departure > to ? to : s.departure }))
+    .filter((s) => s.arrival < s.departure)
+    .sort((a, b) => (a.arrival < b.arrival ? -1 : a.arrival > b.arrival ? 1 : 0))
+  const merged: Stay[] = []
+  for (const s of clipped) {
+    const last = merged[merged.length - 1]
+    if (last && s.arrival <= last.departure) {
+      if (s.departure > last.departure) last.departure = s.departure
+    } else merged.push({ ...s })
+  }
+  return merged
+}
+
+const nightsIn = (stays: Stay[]) => stays.reduce((sum, s) => sum + daysBetween(s.arrival, s.departure), 0)
+
 export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   const [lookAhead, setLookAhead] = useState<LookAhead>(60)
 
@@ -94,6 +114,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   }, [lookAhead])
 
   const { data: bookings, isLoading, error } = useBookingsForRange(dateRange.from, dateRange.to)
+  const { data: blocks, isLoading: blocksLoading, error: blocksError } = useBlocksForRange(dateRange.from, dateRange.to)
   const { openModal } = useModal()
   const [groupBy, setGroupBy] = useState<'property' | 'time'>('property')
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'occupancy', dir: 'asc' })
@@ -150,6 +171,12 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
       (b) => propertyIdSet.has(b.property_id) && !INACTIVE_STATUSES.includes((b.status || '').toLowerCase()),
     )
 
+    const blocksByProperty = new Map<string, Stay[]>()
+    for (const bl of blocks || []) {
+      if (!blocksByProperty.has(bl.property_id)) blocksByProperty.set(bl.property_id, [])
+      blocksByProperty.get(bl.property_id)!.push(bl)
+    }
+
     // Group by property
     const byProperty = new Map<string, BookingRow[]>()
     for (const b of activeBookings) {
@@ -173,92 +200,49 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
         const totalBookedNights = sorted.reduce((sum, b) => sum + daysBetween(b.arrival, b.departure), 0)
         const avgNightlyRate = totalBookedNights > 0 ? totalRevenue / totalBookedNights : 0
 
-        if (sorted.length === 0) {
-          // Entire range is a gap
-          const gapNights = daysBetween(rangeStart, rangeEnd)
-          if (gapNights > 0) {
+        for (const b of sorted) {
+          entries.push({
+            type: 'booking',
+            id: b.id,
+            propertyId,
+            propertyName: name,
+            guestName: b.guest_name || 'Unknown Guest',
+            arrival: b.arrival,
+            departure: b.departure,
+            nights: daysBetween(b.arrival, b.departure),
+            amount: b.total_amount || 0,
+          })
+        }
+
+        // owner blocks aren't bookable, so only nights free of both bookings and blocks are gaps
+        const propBlocks = mergeStays(blocksByProperty.get(propertyId) || [], rangeStart, rangeEnd)
+        const busy = mergeStays([...sorted, ...propBlocks], rangeStart, rangeEnd)
+        let cursor = rangeStart
+        for (const stretch of [...busy, { arrival: rangeEnd, departure: rangeEnd }]) {
+          if (stretch.arrival > cursor) {
+            const gapNights = daysBetween(cursor, stretch.arrival)
             entries.push({
               type: 'gap',
               propertyId,
               propertyName: name,
-              gapStart: rangeStart,
-              gapEnd: rangeEnd,
+              gapStart: cursor,
+              gapEnd: stretch.arrival,
               nights: gapNights,
               estimatedLoss: avgNightlyRate * gapNights,
             })
           }
-        } else {
-          // Gap before first booking
-          if (sorted[0].arrival > rangeStart) {
-            const gapNights = daysBetween(rangeStart, sorted[0].arrival)
-            if (gapNights > 0) {
-              entries.push({
-                type: 'gap',
-                propertyId,
-                propertyName: name,
-                gapStart: rangeStart,
-                gapEnd: sorted[0].arrival,
-                nights: gapNights,
-                estimatedLoss: avgNightlyRate * gapNights,
-              })
-            }
-          }
-
-          for (let i = 0; i < sorted.length; i++) {
-            const b = sorted[i]
-            const nights = daysBetween(b.arrival, b.departure)
-            entries.push({
-              type: 'booking',
-              id: b.id,
-              propertyId,
-              propertyName: name,
-              guestName: b.guest_name || 'Unknown Guest',
-              arrival: b.arrival,
-              departure: b.departure,
-              nights,
-              amount: b.total_amount || 0,
-            })
-
-            // Gap between this and next booking
-            if (i < sorted.length - 1) {
-              const gapNights = daysBetween(b.departure, sorted[i + 1].arrival)
-              if (gapNights > 0) {
-                entries.push({
-                  type: 'gap',
-                  propertyId,
-                  propertyName: name,
-                  gapStart: b.departure,
-                  gapEnd: sorted[i + 1].arrival,
-                  nights: gapNights,
-                  estimatedLoss: avgNightlyRate * gapNights,
-                })
-              }
-            }
-          }
-
-          // Gap after last booking
-          if (sorted[sorted.length - 1].departure < rangeEnd) {
-            const gapNights = daysBetween(sorted[sorted.length - 1].departure, rangeEnd)
-            if (gapNights > 0) {
-              entries.push({
-                type: 'gap',
-                propertyId,
-                propertyName: name,
-                gapStart: sorted[sorted.length - 1].departure,
-                gapEnd: rangeEnd,
-                nights: gapNights,
-                estimatedLoss: avgNightlyRate * gapNights,
-              })
-            }
-          }
+          cursor = stretch.departure
         }
+        entries.sort((a, b) => {
+          const dateA = a.type === 'booking' ? a.arrival : a.gapStart
+          const dateB = b.type === 'booking' ? b.arrival : b.gapStart
+          return dateA < dateB ? -1 : dateA > dateB ? 1 : 0
+        })
 
-        const totalNightsInRange = daysBetween(rangeStart, rangeEnd)
-        const bookedNights = sorted.reduce((sum, b) => {
-          const start = b.arrival < rangeStart ? rangeStart : b.arrival
-          const end = b.departure > rangeEnd ? rangeEnd : b.departure
-          return sum + Math.max(0, daysBetween(start, end))
-        }, 0)
+        // same rule as the occupancy dashboard: blocked nights leave the denominator
+        const blockedNights = nightsIn(propBlocks)
+        const totalNightsInRange = daysBetween(rangeStart, rangeEnd) - blockedNights
+        const bookedNights = nightsIn(mergeStays(sorted, rangeStart, rangeEnd))
         const occupancyRate = totalNightsInRange > 0 ? bookedNights / totalNightsInRange : 0
         const gapCount = entries.filter((e) => e.type === 'gap').length
 
@@ -278,7 +262,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
         const diff = sort.key === 'name' ? a.name.localeCompare(b.name) : SORT_VALUE[sort.key](a) - SORT_VALUE[sort.key](b)
         return sort.dir === 'asc' ? diff : -diff
       })
-  }, [bookings, dateRange.from, dateRange.to, properties, sort])
+  }, [bookings, blocks, dateRange.from, dateRange.to, properties, sort])
 
   // Flat chronological view
   const chronologicalEntries = useMemo(() => {
@@ -298,7 +282,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
     [openModal],
   )
 
-  if (isLoading || (!bookings && !error)) {
+  if (isLoading || blocksLoading || (!bookings && !error)) {
     return (
       <StateWrapper loading={true} loadingMessage="Loading bookings..." minHeight={300} className="py-12 border-t border-border">
         <div />
@@ -306,9 +290,14 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
     )
   }
 
-  if (error) {
+  if (error || blocksError) {
     return (
-      <StateWrapper error={error} errorMessage="Failed to load bookings" minHeight={300} className="py-12 border-t border-border">
+      <StateWrapper
+        error={error || blocksError}
+        errorMessage="Failed to load bookings"
+        minHeight={300}
+        className="py-12 border-t border-border"
+      >
         <div />
       </StateWrapper>
     )
@@ -425,16 +414,23 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                     </span>
                     <span className="text-right tabular-nums">{group.gapCount}</span>
                     <span className="text-right tabular-nums">{group.avgNightlyRate > 0 ? formatCurrency(group.avgNightlyRate) : '—'}</span>
-                    <span className="flex items-center justify-end gap-2">
-                      <span className="h-1.5 w-12 rounded-full bg-muted" aria-hidden>
-                        <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(occupancyPct, 100)}%` }} />
+                    {group.totalNights > 0 ? (
+                      <span className="flex items-center justify-end gap-2">
+                        <span className="h-1.5 w-12 rounded-full bg-muted" aria-hidden>
+                          <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(occupancyPct, 100)}%` }} />
+                        </span>
+                        <span className="w-10 text-right font-medium tabular-nums">{Math.round(occupancyPct)}%</span>
                       </span>
-                      <span className="w-10 text-right font-medium tabular-nums">{Math.round(occupancyPct)}%</span>
-                    </span>
+                    ) : (
+                      <span className="text-right text-muted-foreground">Blocked</span>
+                    )}
                   </button>
 
                   {isExpanded && (
                     <div className="border-t border-border/60 bg-muted/20 divide-y divide-border/60">
+                      {group.entries.length === 0 && (
+                        <p className={cn(entryRow, 'text-sm text-muted-foreground')}>Owner blocked for these dates</p>
+                      )}
                       {group.entries.map((entry, idx) =>
                         entry.type === 'booking' ? (
                           <BookingListRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} />
