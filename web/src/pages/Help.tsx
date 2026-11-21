@@ -346,8 +346,7 @@ export const Help = () => {
               </summary>
               <div className="space-y-2 pb-4 text-sm leading-relaxed">
                 <p className="text-muted-foreground text-sm">
-                  Yes. The guest, cancellation, and inquiry tables, the P&amp;L charge composition, and the Tax Center each download as CSV
-                  for the selected period.
+                  Yes. The guest list, the P&amp;L charge composition, and the Tax Center each download as CSV for the selected period.
                 </p>
               </div>
             </details>
