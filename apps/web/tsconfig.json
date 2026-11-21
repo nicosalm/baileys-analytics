@@ -19,10 +19,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../../packages/shared-types" },
-    { "path": "../../packages/constants" },
-    { "path": "../../packages/utils" }
-  ]
+  "include": ["src"]
 }

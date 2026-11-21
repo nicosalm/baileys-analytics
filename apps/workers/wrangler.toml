@@ -10,11 +10,6 @@ enabled = true
 cpu_ms = 300_000
 subrequests = 10_000
 
-# uncomment after creating kv namespace with: wrangler kv namespace create CACHE
-# [[kv_namespaces]]
-# binding = "CACHE"
-# id = "cache_namespace_id_placeholder"
-
 # cron pushes pending tier upgrades into Stripe shortly before each customer's
 # renewal. Hourly cadence is required: the lead-time gate in
 # applyPendingTierUpgrades is 2 hours, and we need at least one cron run inside
@@ -26,8 +21,7 @@ crons = ["0 * * * *"]
 
 [vars]
 FRONTEND_URL = "http://localhost:5173"
-ADMIN_EMAILS ="nico@baileysanalytics.com,admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
-# DCTX widget access: see apps/workers/src/routes/dctz-report.ts and apps/web/src/components/dctz/constants.ts to add tenant id
+ADMIN_EMAILS = "nico@baileysanalytics.com,admin@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
 
 [env.production]
 name = "baileys-analytics-api-production"
@@ -42,14 +36,4 @@ id = "7d9626e159cb4c97b4c9912ddf0523fe"
 
 [env.production.vars]
 FRONTEND_URL = "https://baileysanalytics.com"
-ADMIN_EMAILS ="admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"
-
-[env.staging]
-name = "baileys-analytics-api-staging"
-
-[[env.staging.kv_namespaces]]
-binding = "CACHE"
-id = "STAGING_KV_NAMESPACE_ID"
-
-[env.staging.vars]
-FRONTEND_URL = "https://staging.dashboard.baileys.com"
+ADMIN_EMAILS = "admin@baileysanalytics.com,demo@baileysanalytics.com,martina@doorcountystay.com,jerry@doorcountystay.com"

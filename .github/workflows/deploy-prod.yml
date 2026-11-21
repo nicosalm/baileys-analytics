@@ -31,29 +31,21 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
+      # version comes from packageManager in package.json
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Build shared packages
-        run: pnpm --filter "./packages/**" build
+      - run: pnpm typecheck
 
-      - name: Test API
-        working-directory: apps/workers
-        run: pnpm exec vitest run --config vitest.node.config.mts
-
-      - name: Type-check API
-        working-directory: apps/workers
-        run: pnpm build
+      - run: pnpm test
 
       - name: Build frontend
         working-directory: apps/web

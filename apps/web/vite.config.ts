@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 import { execSync } from 'child_process'
 import { visualizer } from 'rollup-plugin-visualizer'
@@ -19,12 +20,9 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    visualizer({
-      open: false,
-      filename: 'dist/stats.html',
-      gzipSize: true,
-      brotliSize: true,
-    }),
+    tailwindcss(),
+    // ANALYZE=1 pnpm build writes the report outside dist so it is never deployed
+    process.env.ANALYZE ? visualizer({ filename: 'bundle-stats.html', gzipSize: true, brotliSize: true }) : null,
   ],
   resolve: {
     alias: {
@@ -37,23 +35,14 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'chart-vendor': ['recharts'],
-          'ui-vendor': ['lucide-react'],
-          'data-vendor': ['swr', 'zod'],
         },
       },
     },
-    chunkSizeWarningLimit: 600,
   },
   server: {
     port: 5173,
     host: true,
-    allowedHosts: [
-      'localhost',
-      '127.0.0.1',
-      'grub-live-enormously.ngrok-free.app',
-      '.ngrok-free.app',
-      '.ngrok.io'
-    ],
+    allowedHosts: ['localhost', '127.0.0.1', '.ngrok-free.app'],
     proxy: {
       '/api': {
         target: 'http://localhost:8787',

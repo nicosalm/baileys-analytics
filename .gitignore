@@ -15,9 +15,8 @@ build/
 .env.*.local
 .env.production
 .dev.vars
-
-# Wrangler config with secrets (use wrangler.toml instead)
-wrangler.jsonc
+!.dev.vars.example
+.wrangler/
 
 # IDE
 .vscode/*
@@ -42,12 +41,13 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
-# Claude AI
+# local tooling
 .claude/
+.mcp.json
+tmp/
 
-# Temporary files
+# temporary files
 *.tmp
 *.temp
 *.bak
-*.backup
 *.old

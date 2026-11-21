@@ -1,33 +1,24 @@
 {
   "name": "baileys-analytics",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "private": true,
-  "description": "Multi-tenant vacation rental analytics platform",
+  "description": "Multi-tenant vacation rental analytics for OwnerRez hosts",
+  "packageManager": "pnpm@12.8.1",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "dev": "./run-dev.sh",
-    "dev:backend": "cd apps/workers && pnpm dev",
-    "dev:frontend": "cd apps/web && pnpm dev",
-    "build": "pnpm -r build",
-    "build:backend": "cd apps/workers && pnpm build",
-    "build:frontend": "cd apps/web && pnpm build",
-    "test": "echo 'No tests yet'",
-    "db:types": "npx supabase gen types typescript --project-id ojpmtekljijcurgzrses > apps/web/src/types/database.types.ts"
+    "dev": "pnpm --parallel --filter ./apps/* dev",
+    "build": "pnpm --filter @baileys/web build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter workers test",
+    "db:types": "supabase gen types typescript --project-id ojpmtekljijcurgzrses > apps/web/src/types/database.types.ts"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "^2.95.3",
-    "@types/node": "^24.10.13",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "wrangler": "^4.65.0"
-  },
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=8.0.0"
-  },
-  "dependencies": {
-    "date-fns": "^4.1.0",
-    "p-limit": "^6.2.0",
+    "@biomejs/biome": "2.6.5",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
     "supabase": "^2.76.15",
-    "zod": "^4.3.6"
+    "typescript": "^5.9.3"
   }
 }
