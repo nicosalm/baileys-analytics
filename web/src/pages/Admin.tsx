@@ -28,9 +28,7 @@ import {
   Search,
   Trash2,
   AlertTriangle,
-  Settings,
-  LogOut,
-  LayoutDashboard,
+  ArrowLeft,
   RefreshCw,
   ChevronDown,
   Shield,
@@ -45,7 +43,7 @@ import {
   ChevronUp,
   Activity,
 } from 'lucide-react'
-import { LogoCube } from '@/components/LogoCube'
+import { AppHeader } from '@/components/AppHeader'
 import { Footer } from '@/components/Footer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -711,7 +709,7 @@ const SortHeader = ({
 // --- main component ---
 
 export const Admin = () => {
-  const { state, logout } = useAuth()
+  const { state } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
 
@@ -917,53 +915,20 @@ export const Admin = () => {
   const totalPages = Math.max(1, Math.ceil(sortedFilteredUsers.length / USERS_PER_PAGE))
   const paginatedUsers = sortedFilteredUsers.slice((page - 1) * USERS_PER_PAGE, page * USERS_PER_PAGE)
 
-  const handleLogout = async () => {
-    await logout()
-    navigate('/')
-  }
-
   if (state.status !== 'authenticated' || loading || !isVerified) {
     return <LoadingState fullScreen />
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <header className="bg-background/80 backdrop-blur-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
-          <div className="flex justify-between items-center">
-            <Link to="/dashboard" className="flex items-center">
-              <LogoCube />
-              <div className="ml-3">
-                <h1 className="text-xl font-semibold text-foreground">Admin Panel</h1>
-                <p className="text-xs text-muted-foreground -mt-0.5">System management</p>
-              </div>
-            </Link>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground hidden sm:inline">{state.user?.email}</span>
-              <div className="flex items-center gap-2 pl-3 border-l">
-                <Link
-                  to="/dashboard/overview"
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-                  title="Back to Dashboard"
-                >
-                  <LayoutDashboard className="w-5 h-5" />
-                </Link>
-                <Link
-                  to="/settings"
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-                  title="Settings"
-                >
-                  <Settings className="w-5 h-5" />
-                </Link>
-                <Button variant="ghost" size="sm" onClick={handleLogout}>
-                  <LogOut className="w-4 h-4" />
-                  <span className="hidden sm:inline">Logout</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader title="Admin">
+        <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+          <Link to="/dashboard/overview">
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </Link>
+        </Button>
+      </AppHeader>
 
       <div className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full space-y-6">
         {/* heading + refresh */}

@@ -7,7 +7,7 @@ import { ChartWrapper } from '@/components/ChartWrapper'
 import { CheckCircle, Clock, Calendar, TrendingUp } from 'lucide-react'
 import { formatCurrency } from '@/utils/formatters'
 import { chartFormatters, detectGranularity } from '@/utils/chart-helpers'
-import { CHART_INFRA, METRIC_COLORS, resolveToken } from '@/lib/theme'
+import { CHART_INFRA, METRIC_COLORS, resolveToken, BAR_SPEC } from '@/lib/theme'
 import type { TooltipContentProps, MouseHandlerDataParam } from 'recharts'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 import { ChartLegend } from '@/components/charts/ChartLegend'
@@ -18,22 +18,21 @@ const formatMonthTick = (value: string) =>
 
 const CashFlowChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
-  const entry = payload.find((p) => (p.value as number) > 0) ?? payload[0]
-  const isCollected = entry.dataKey === 'collected'
+  const rows = payload.filter((p) => (p.value as number) > 0)
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
-      <p className="font-semibold text-sm mb-2">{label}</p>
-      <div className="flex justify-between gap-4 text-xs">
-        <div className="flex items-center gap-1">
-          <div
-            className="w-3 h-3 rounded-sm"
-            style={{ backgroundColor: isCollected ? resolveToken('--success') : resolveToken('--info') }}
-          />
-          <span className="text-muted-foreground">{isCollected ? 'Collected:' : 'Pending:'}</span>
-        </div>
-        <span className="font-medium">{formatCurrency(entry.value as number)}</span>
+      <p className="font-semibold text-sm mb-2">{formatMonthTick(String(label))}</p>
+      <div className="space-y-1 text-xs">
+        {(rows.length ? rows : payload.slice(0, 1)).map((p) => (
+          <div key={String(p.dataKey)} className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="size-2.5 rounded-sm" style={{ backgroundColor: p.color }} aria-hidden />
+              {p.name}
+            </span>
+            <span className="font-medium tabular-nums">{formatCurrency(p.value as number)}</span>
+          </div>
+        ))}
       </div>
-      <p className="text-xs text-muted-foreground mt-2 border-t border-border pt-2">Click to view details</p>
     </div>
   )
 }
@@ -167,14 +166,31 @@ export const CashFlowView: React.FC<CashFlowViewProps> = ({ data, loading, onPer
                   axisLine={false}
                   tickLine={false}
                 />
-                <Tooltip content={<CashFlowChartTooltip />} isAnimationActive={false} />
-                <Bar dataKey="collected" stackId="revenue" name="Collected" fill={METRIC_COLORS.revenue} radius={[2, 2, 0, 0]} />
-                <Bar dataKey="pending" stackId="revenue" name="Pending" fill={CHART_INFRA.comparison} radius={[2, 2, 0, 0]} />
+                <Tooltip content={<CashFlowChartTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} isAnimationActive={false} />
+                <Bar
+                  dataKey="collected"
+                  stackId="revenue"
+                  name="Collected"
+                  fill={METRIC_COLORS.revenue}
+                  radius={BAR_SPEC.radiusUp}
+                  maxBarSize={BAR_SPEC.maxBarSize}
+                />
+                {/* the surface-colored stroke opens the gap between stacked segments */}
+                <Bar
+                  dataKey="pending"
+                  stackId="revenue"
+                  name="Pending"
+                  fill={CHART_INFRA.comparison}
+                  radius={BAR_SPEC.radiusUp}
+                  maxBarSize={BAR_SPEC.maxBarSize}
+                  stroke={resolveToken('--card')}
+                  strokeWidth={BAR_SPEC.gap}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
           <ChartLegend
-            className="mt-2"
+            className="mt-3"
             items={[
               { label: 'Collected', color: METRIC_COLORS.revenue, shape: 'square' },
               { label: 'Pending', color: CHART_INFRA.comparison, shape: 'square' },

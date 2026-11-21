@@ -1,7 +1,8 @@
 import type React from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import type { TooltipContentProps } from 'recharts'
 import type { MouseHandlerDataParam } from 'recharts'
+import { ChartLegend } from '@/components/charts/ChartLegend'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { METRIC_COLORS, CHART_INFRA } from '@/lib/theme'
 import { chartFormatters, formatChartData } from '@/utils/chart-helpers'
@@ -109,100 +110,133 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({
 
   const formattedData = formatChartData(data, 'month')
   return (
-    <ChartWrapper title={title} subtitle={subtitle} height={height}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={formattedData}
-          onClick={(e: MouseHandlerDataParam) => {
-            if (e?.activeLabel && onPeriodClick) {
-              const dataPoint = formattedData.find((d) => d.month === e.activeLabel)
-              if (dataPoint) {
-                // Look for the original date in the source data
-                const index = formattedData.indexOf(dataPoint)
-                const originalDate = data[index]?.month
-                if (originalDate) {
-                  onPeriodClick(originalDate)
-                } else {
-                  // Fallback to the formatted label
-                  onPeriodClick(String(e.activeLabel))
+    <ChartWrapper title={title} subtitle={subtitle} height={height} responsive={false}>
+      <div className="h-full flex flex-col">
+        <div className="flex-1 min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={formattedData}
+              onClick={(e: MouseHandlerDataParam) => {
+                if (e?.activeLabel && onPeriodClick) {
+                  const dataPoint = formattedData.find((d) => d.month === e.activeLabel)
+                  if (dataPoint) {
+                    // Look for the original date in the source data
+                    const index = formattedData.indexOf(dataPoint)
+                    const originalDate = data[index]?.month
+                    if (originalDate) {
+                      onPeriodClick(originalDate)
+                    } else {
+                      // Fallback to the formatted label
+                      onPeriodClick(String(e.activeLabel))
+                    }
+                  }
                 }
-              }
-            }
-          }}
-          style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-          <XAxis dataKey="month" stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-          <YAxis tickFormatter={chartFormatters.currency} stroke={CHART_INFRA.axis} tick={{ fill: CHART_INFRA.axis }} />
-          <Tooltip
-            content={<RevenueChartTooltip showProfit={showProfit} showComparison={showComparison} comparisonLabel={comparisonLabel} />}
-            isAnimationActive={false}
-          />
-          <Legend />
-          <Line
-            type="monotone"
-            dataKey="revenue"
-            stroke={METRIC_COLORS.revenue}
-            strokeWidth={3}
-            dot={{ fill: METRIC_COLORS.revenue, r: 5 }}
-            activeDot={{ r: 7 }}
-            cursor={onPeriodClick ? 'pointer' : undefined}
-            name="Gross Revenue"
-          />
-          {showProfit && (
-            <Line
-              type="monotone"
-              dataKey="profit"
-              stroke={METRIC_COLORS.profit}
-              strokeWidth={3}
-              dot={{ fill: METRIC_COLORS.profit, r: 5 }}
-              activeDot={{ r: 7 }}
-              cursor={onPeriodClick ? 'pointer' : undefined}
-              name="Net Profit"
-            />
-          )}
-          {showComparison && (
-            <>
+              }}
+              style={{ cursor: onPeriodClick ? 'pointer' : 'default' }}
+            >
+              <CartesianGrid vertical={false} stroke={CHART_INFRA.grid} strokeOpacity={0.6} />
+              <XAxis dataKey="month" tick={{ fill: CHART_INFRA.axis, fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis
+                tickFormatter={chartFormatters.currency}
+                tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                content={<RevenueChartTooltip showProfit={showProfit} showComparison={showComparison} comparisonLabel={comparisonLabel} />}
+                isAnimationActive={false}
+              />
               <Line
                 type="monotone"
-                dataKey="previousRevenue"
-                stroke={CHART_INFRA.comparison}
+                dataKey="revenue"
+                stroke={METRIC_COLORS.revenue}
                 strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                name={comparisonLabel ? `${comparisonLabel} Revenue` : 'Previous Revenue'}
+                dot={{ fill: METRIC_COLORS.revenue, r: 4 }}
+                activeDot={{ r: 6 }}
+                cursor={onPeriodClick ? 'pointer' : undefined}
+                name="Gross revenue"
               />
               {showProfit && (
                 <Line
                   type="monotone"
-                  dataKey="previousProfit"
-                  stroke={CHART_INFRA.comparison}
+                  dataKey="profit"
+                  stroke={METRIC_COLORS.profit}
                   strokeWidth={2}
-                  strokeDasharray="3 3"
-                  dot={false}
-                  name={comparisonLabel ? `${comparisonLabel} Profit` : 'Previous Profit'}
+                  dot={{ fill: METRIC_COLORS.profit, r: 4 }}
+                  activeDot={{ r: 6 }}
+                  cursor={onPeriodClick ? 'pointer' : undefined}
+                  name="Net profit"
                 />
               )}
-            </>
-          )}
-          {revenueGoal != null && (
-            <ReferenceLine
-              y={revenueGoal}
-              stroke={CHART_INFRA.goal}
-              strokeDasharray="6 4"
-              strokeWidth={1.5}
-              label={{
-                value: `⬥ Goal: ${formatCurrency(revenueGoal)}`,
-                position: 'insideTopLeft',
-                fill: CHART_INFRA.goal,
-                fontSize: 12,
-                fontWeight: 600,
-                offset: 4,
-              }}
-            />
-          )}
-        </LineChart>
-      </ResponsiveContainer>
+              {showComparison && (
+                <>
+                  <Line
+                    type="monotone"
+                    dataKey="previousRevenue"
+                    stroke={CHART_INFRA.comparison}
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    name={comparisonLabel ? `${comparisonLabel} revenue` : 'Previous revenue'}
+                  />
+                  {showProfit && (
+                    <Line
+                      type="monotone"
+                      dataKey="previousProfit"
+                      stroke={CHART_INFRA.comparison}
+                      strokeWidth={2}
+                      strokeDasharray="3 3"
+                      dot={false}
+                      name={comparisonLabel ? `${comparisonLabel} profit` : 'Previous profit'}
+                    />
+                  )}
+                </>
+              )}
+              {revenueGoal != null && (
+                <ReferenceLine
+                  y={revenueGoal}
+                  stroke={CHART_INFRA.goal}
+                  strokeDasharray="6 4"
+                  strokeWidth={1.5}
+                  label={{
+                    value: `⬥ Goal: ${formatCurrency(revenueGoal)}`,
+                    position: 'insideTopLeft',
+                    fill: CHART_INFRA.goal,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    offset: 4,
+                  }}
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <ChartLegend
+          className="mt-3"
+          items={[
+            { label: 'Gross revenue', color: METRIC_COLORS.revenue },
+            ...(showProfit ? [{ label: 'Net profit', color: METRIC_COLORS.profit }] : []),
+            ...(showComparison
+              ? [
+                  {
+                    label: comparisonLabel ? `${comparisonLabel} revenue` : 'Previous revenue',
+                    color: CHART_INFRA.comparison,
+                    dashed: true,
+                  },
+                  ...(showProfit
+                    ? [
+                        {
+                          label: comparisonLabel ? `${comparisonLabel} profit` : 'Previous profit',
+                          color: CHART_INFRA.comparison,
+                          dashed: true,
+                        },
+                      ]
+                    : []),
+                ]
+              : []),
+          ]}
+        />
+      </div>
     </ChartWrapper>
   )
 }

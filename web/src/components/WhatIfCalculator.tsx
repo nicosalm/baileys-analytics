@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react'
 import { parseISO } from 'date-fns'
-import { ChevronDown, ChevronRight, Calculator, TrendingUp, ArrowRight, Calendar } from 'lucide-react'
+import { ChevronDown, Calculator, ArrowRight } from 'lucide-react'
 import { formatCurrency, formatPercentage, safeDivide } from '@baileys/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import type { OccupancyByProperty } from '@/types/api'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { useSeasons } from '@/hooks/use-api'
+import { cn } from '@/lib/utils'
 import type { Season } from '@/types/season'
 
 interface WhatIfCalculatorProps {
@@ -117,7 +119,7 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
 
   const inputRate = rateInput === '' ? scope.weightedAvgRate : parseFloat(rateInput) || 0
   const projectableNights = nightContext.projectableOpenNights
-  const additionalRevenue = projectableNights * inputRate
+  const additionalRevenue = Math.round(projectableNights) * inputRate
   const newTotalRevenue = scope.estimatedRevenue + additionalRevenue
   const projectedRevPAN = safeDivide(newTotalRevenue, scope.availableNights)
   const revPANChangePct = safeDivide(projectedRevPAN - scope.currentRevPAN, scope.currentRevPAN) * 100
@@ -135,40 +137,41 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
   if (byProperty.length === 0) return null
 
   const isSeasonal = nightContext.activeSeason !== null
+  const nights = Math.round(projectableNights)
+  const nightsLabel = nightContext.historical ? 'Open nights' : isSeasonal ? 'Season nights left' : 'Open nights left'
 
   return (
-    <div className="bg-card rounded-lg shadow-sm border border-border">
+    <section className="bg-card rounded-lg shadow-sm border border-border">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
         aria-expanded={expanded}
-        className="w-full flex items-center justify-between px-6 py-4 cursor-pointer"
+        className="w-full flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-left cursor-pointer"
       >
-        <div className="flex items-center gap-2">
-          {expanded ? (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          )}
-          <Calculator className="w-5 h-5 text-muted-foreground" />
-          <span className="font-bold text-foreground">What If?</span>
-          <span className="text-sm text-muted-foreground font-normal">RevPAN scenario calculator</span>
-        </div>
+        <span className="flex items-center gap-2 mr-auto">
+          <Calculator className="w-4 h-4 text-muted-foreground" aria-hidden />
+          <span className="font-semibold">Rate scenario</span>
+          <span className="text-sm text-muted-foreground">RevPAN if open nights book at a set rate</span>
+        </span>
+        <span className="flex items-baseline gap-2">
+          <span className="text-xs text-muted-foreground">{nightsLabel}</span>
+          <span className="text-sm font-semibold tabular-nums">{nights.toLocaleString()}</span>
+        </span>
+        <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !expanded && '-rotate-90')} aria-hidden />
       </button>
 
       {expanded && (
-        <div className="px-6 pb-6 pt-2 border-t border-border">
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Left column — inputs */}
+        <div className="border-t border-border px-5 py-5">
+          <div className="grid gap-6 md:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <Label className="mb-1">Scope</Label>
+                <Label className="mb-1.5">Properties</Label>
                 <Select value={selectedPropertyId} onValueChange={handlePropertyChange}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full max-w-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__portfolio__">All Properties (Portfolio)</SelectItem>
+                    <SelectItem value="__portfolio__">All properties</SelectItem>
                     {byProperty.map((p) => (
                       <SelectItem key={p.propertyId} value={p.propertyId}>
                         {p.propertyName}
@@ -178,107 +181,84 @@ export const WhatIfCalculator = ({ byProperty, dateRange }: WhatIfCalculatorProp
                 </Select>
               </div>
 
-              <div className="flex gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">
-                    {nightContext.historical ? 'Open nights' : isSeasonal ? 'Season nights left' : 'Remaining nights'}
-                  </span>
-                  <p className="font-semibold">{Math.round(projectableNights)}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Current occupancy</span>
-                  <p className="font-semibold">{formatPercentage(scope.currentOccupancy * 100)}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Current RevPAN</span>
-                  <p className="font-semibold">{formatCurrency(scope.currentRevPAN)}</p>
-                </div>
-              </div>
-
               <div>
-                <Label className="mb-1">Hypothetical nightly rate</Label>
+                <Label htmlFor="what-if-rate" className="mb-1.5">
+                  Nightly rate
+                </Label>
                 <div className="relative w-48">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm z-10">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
                   <Input
+                    id="what-if-rate"
                     type="text"
                     inputMode="decimal"
                     value={rateInput}
                     onChange={(e) => handleRateChange(e.target.value)}
                     placeholder={scope.weightedAvgRate > 0 ? scope.weightedAvgRate.toFixed(0) : '0'}
-                    className="pl-7 pr-14 text-sm"
+                    className="pl-7 pr-14 text-sm tabular-nums"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">/night</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">/night</span>
                 </div>
               </div>
+
+              <dl className="flex flex-wrap gap-x-8 gap-y-3 pt-1 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">{nightsLabel}</dt>
+                  <dd className="mt-0.5 font-semibold tabular-nums">{nights.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Occupancy</dt>
+                  <dd className="mt-0.5 font-semibold tabular-nums">{formatPercentage(scope.currentOccupancy * 100)}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">Avg rate</dt>
+                  <dd className="mt-0.5 font-semibold tabular-nums">{formatCurrency(scope.weightedAvgRate)}</dd>
+                </div>
+              </dl>
             </div>
 
-            {/* Right column — results */}
-            <div className="bg-muted/50 rounded-lg p-4 space-y-4">
-              {/* RevPAN transition */}
-              <div>
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  RevPAN
-                  {isSeasonal && (
-                    <span className="ml-auto inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-success-subtle text-success-fg normal-case tracking-normal">
-                      <Calendar className="w-3 h-3" />
-                      {nightContext.activeSeason!.name}
-                    </span>
-                  )}
-                </h4>
-                <div className="flex items-end gap-2">
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-foreground">{formatCurrency(scope.currentRevPAN)}</div>
-                    <div className="text-xs text-muted-foreground">current</div>
-                  </div>
-                  <div className="pb-4">
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-bold text-foreground">{formatCurrency(projectedRevPAN)}</div>
-                    <div className="text-xs text-muted-foreground">projected</div>
-                  </div>
-                  {inputRate > 0 && (
-                    <span
-                      className={`mb-4 text-xs font-semibold px-1.5 py-0.5 rounded ${
-                        revPANChangePct >= 0 ? 'bg-success-subtle text-success-fg' : 'bg-danger-subtle text-danger-fg'
-                      }`}
-                    >
-                      {revPANChangePct >= 0 ? '+' : ''}
-                      {formatPercentage(revPANChangePct)}
-                    </span>
-                  )}
-                </div>
+            <div className="rounded-lg border border-border p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">RevPAN</span>
+                {isSeasonal && <Badge variant="neutral">{nightContext.activeSeason?.name}</Badge>}
+              </div>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="text-lg font-semibold tabular-nums text-muted-foreground">{formatCurrency(scope.currentRevPAN)}</span>
+                <ArrowRight className="size-4 self-center text-muted-foreground" aria-hidden />
+                <span className="text-2xl font-semibold tabular-nums">{formatCurrency(projectedRevPAN)}</span>
+                {inputRate > 0 && scope.currentRevPAN > 0 && (
+                  <span className="text-sm text-muted-foreground tabular-nums">
+                    {revPANChangePct >= 0 ? '+' : ''}
+                    {formatPercentage(revPANChangePct)}
+                  </span>
+                )}
               </div>
 
-              {/* Revenue breakdown */}
-              <div className="border-t border-border pt-3 space-y-1.5">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Current revenue</span>
-                  <span className="font-medium">{formatCurrency(scope.estimatedRevenue)}</span>
+              <dl className="mt-4 space-y-2 border-t border-border pt-3 text-sm">
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Booked revenue</dt>
+                  <dd className="tabular-nums">{formatCurrency(scope.estimatedRevenue)}</dd>
                 </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">
-                    + {projectableNights} night{projectableNights !== 1 ? 's' : ''} × {formatCurrency(inputRate)}
-                  </span>
-                  <span className={`font-medium ${additionalRevenue > 0 ? 'text-success' : ''}`}>
-                    {additionalRevenue > 0 ? '+' : ''}
-                    {formatCurrency(additionalRevenue)}
-                  </span>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">
+                    {nights.toLocaleString()} {nights === 1 ? 'night' : 'nights'} at {formatCurrency(inputRate)}
+                  </dt>
+                  <dd className="tabular-nums">+{formatCurrency(additionalRevenue)}</dd>
                 </div>
-                <div className="flex justify-between items-center pt-1.5 border-t border-border">
-                  <span className="text-sm font-semibold text-foreground">New total revenue</span>
-                  <span className="text-lg font-bold text-foreground">{formatCurrency(newTotalRevenue)}</span>
+                <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold">
+                  <dt>Projected revenue</dt>
+                  <dd className="tabular-nums">{formatCurrency(newTotalRevenue)}</dd>
                 </div>
-              </div>
+              </dl>
 
               {nightContext.historical && (
-                <p className="text-xs text-warning">Date range is in the past · showing historical opportunity</p>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  This range has ended, so the projection shows revenue the open nights missed.
+                </p>
               )}
             </div>
           </div>
         </div>
       )}
-    </div>
+    </section>
   )
 }

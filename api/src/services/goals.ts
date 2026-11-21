@@ -21,7 +21,7 @@ function getPeriodRange(period: GoalPeriod): PeriodRange {
 		case 'monthly': {
 			const start = new Date(now.getFullYear(), now.getMonth(), 1);
 			from = start.toISOString().split('T')[0];
-			label = `${start.toLocaleDateString('en-US', { month: 'long' })} to Date`;
+			label = `${start.toLocaleDateString('en-US', { month: 'long' })} to date`;
 			break;
 		}
 		case 'quarterly': {
@@ -29,13 +29,13 @@ function getPeriodRange(period: GoalPeriod): PeriodRange {
 			const start = new Date(now.getFullYear(), quarterMonth, 1);
 			from = start.toISOString().split('T')[0];
 			const q = Math.floor(quarterMonth / 3) + 1;
-			label = `Q${q} to Date`;
+			label = `Q${q} to date`;
 			break;
 		}
 		case 'yearly': {
 			const start = new Date(now.getFullYear(), 0, 1);
 			from = start.toISOString().split('T')[0];
-			label = 'Year to Date';
+			label = 'Year to date';
 			break;
 		}
 	}

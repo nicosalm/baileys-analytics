@@ -3,31 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { useState, useEffect, lazy, Suspense, type ComponentType, useCallback } from 'react'
 import { useToast } from '@/contexts/toast'
-import { useTheme } from '@/contexts/theme'
 import { LoadingState } from '@/components/LoadingState'
-import {
-  Calendar,
-  LogOut,
-  Palette,
-  CreditCard,
-  Link2,
-  Lock,
-  MessageSquare,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  Receipt,
-  Target,
-  Layers,
-} from 'lucide-react'
+import { Calendar, CreditCard, Link2, Lock, MessageSquare, ArrowLeft, Eye, EyeOff, Receipt, Target, Layers } from 'lucide-react'
 import { Footer } from '@/components/Footer'
-import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
+import { AppHeader } from '@/components/AppHeader'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { SegmentedControl } from '@/components/ui/segmented-control'
 
 const SeasonManagementPanel = lazy(() =>
   import('@/components/settings/SeasonManagementPanel').then((m) => ({ default: m.SeasonManagementPanel })),
@@ -51,18 +34,13 @@ const PropertyGroupManagementPanel = lazy(() =>
   import('@/components/settings/PropertyGroupManagementPanel').then((m) => ({ default: m.PropertyGroupManagementPanel })),
 )
 
-type SettingsTab = 'account' | 'preferences' | 'goals' | 'integrations' | 'billing' | 'seasons' | 'expenses' | 'property-groups'
+type SettingsTab = 'account' | 'goals' | 'integrations' | 'billing' | 'seasons' | 'expenses' | 'property-groups'
 
 const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ className?: string }> }[] = [
   {
     id: 'account',
     label: 'Account',
     icon: Lock,
-  },
-  {
-    id: 'preferences',
-    label: 'Preferences',
-    icon: Palette,
   },
   {
     id: 'goals',
@@ -96,41 +74,13 @@ const tabConfig: { id: SettingsTab; label: string; icon: ComponentType<{ classNa
   },
 ]
 
-const THEME_OPTIONS = [
-  { value: 'light', label: 'Light' },
-  { value: 'system', label: 'System' },
-  { value: 'dark', label: 'Dark' },
-] as const
-
-const PreferencesTab = () => {
-  const { theme, setTheme } = useTheme()
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border border-border p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Appearance</h3>
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium text-foreground">Theme</span>
-          <SegmentedControl
-            label="Theme"
-            size="default"
-            value={theme}
-            onChange={setTheme}
-            options={THEME_OPTIONS.map(({ value, label }) => ({ value, label }))}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 export const Settings = () => {
-  const { state, logout, updateEmail, updatePassword } = useAuth()
+  const { state, updateEmail, updatePassword } = useAuth()
   const { addToast } = useToast()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const tab = searchParams.get('tab')
-    return (tab as SettingsTab) || 'account'
+    return tabConfig.some(({ id }) => id === tab) ? (tab as SettingsTab) : 'account'
   })
   const [changeEmailModalOpen, setChangeEmailModalOpen] = useState(false)
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false)
@@ -142,22 +92,13 @@ export const Settings = () => {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  // Handle checkout success/cancel from Stripe
   useEffect(() => {
     const checkout = searchParams.get('checkout')
-    if (checkout === 'success') {
-      addToast('success', 'Subscription activated successfully! Welcome to Baileys Analytics.')
-      // Remove checkout param from URL
-      const newParams = new URLSearchParams(searchParams)
-      newParams.delete('checkout')
-      setSearchParams(newParams, { replace: true })
-    } else if (checkout === 'cancel') {
-      addToast('info', 'Checkout canceled. You can complete your subscription anytime.')
-      // Remove checkout param from URL
-      const newParams = new URLSearchParams(searchParams)
-      newParams.delete('checkout')
-      setSearchParams(newParams, { replace: true })
-    }
+    if (checkout !== 'success' && checkout !== 'cancel') return
+    addToast(checkout === 'success' ? 'success' : 'info', checkout === 'success' ? 'Subscription active' : 'Checkout canceled')
+    const newParams = new URLSearchParams(searchParams)
+    newParams.delete('checkout')
+    setSearchParams(newParams, { replace: true })
   }, [])
 
   const handleTabChange = useCallback(
@@ -177,12 +118,11 @@ export const Settings = () => {
   }, [])
 
   const handleConfirmChangePassword = async () => {
-    // Trim whitespace
     const trimmedPassword = newPassword.trim()
     const trimmedConfirm = confirmNewPassword.trim()
 
     if (!trimmedPassword) {
-      addToast('error', 'Please enter a new password')
+      addToast('error', 'Enter a new password')
       return
     }
 
@@ -202,12 +142,12 @@ export const Settings = () => {
     try {
       const result = await updatePassword(trimmedPassword)
       if (result) {
-        addToast('success', 'Password changed successfully')
+        addToast('success', 'Password changed')
         setChangePasswordModalOpen(false)
         setNewPassword('')
         setConfirmNewPassword('')
       } else {
-        addToast('error', 'Failed to change password. Please try again.')
+        addToast('error', 'Failed to change password')
       }
     } finally {
       setIsChangingPassword(false)
@@ -215,17 +155,16 @@ export const Settings = () => {
   }
 
   const handleChangeEmail = () => {
-    setNewEmail('') // Clear state first
+    setNewEmail('')
     setChangeEmailModalOpen(true)
   }
 
   const handleConfirmChangeEmail = async () => {
     const trimmedEmail = newEmail.trim()
 
-    // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
-      addToast('error', 'Please enter a valid email address')
+      addToast('error', 'Enter a valid email address')
       return
     }
 
@@ -238,27 +177,18 @@ export const Settings = () => {
     try {
       const result = await updateEmail(trimmedEmail)
       if (result) {
-        addToast('success', 'Confirmation link sent to your new email. Click the link to complete the change.')
+        addToast('success', 'Confirmation link sent to the new address')
         setChangeEmailModalOpen(false)
         setNewEmail('')
       } else {
-        addToast('error', 'Failed to update email. Please try again.')
+        addToast('error', 'Failed to update email')
       }
-    } catch (error) {
-      addToast('error', 'An error occurred while updating email.')
+    } catch {
+      addToast('error', 'Failed to update email')
     } finally {
       setIsChangingEmail(false)
     }
   }
-
-  const handleSendFeedback = useCallback(() => {
-    window.location.href = 'mailto:support@baileysanalytics.com'
-  }, [])
-
-  const handleLogout = useCallback(async () => {
-    await logout()
-    window.location.href = '/'
-  }, [logout])
 
   if (state.status === 'loading') {
     return <LoadingState />
@@ -272,43 +202,17 @@ export const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <Link to="/dashboard/overview" className="flex items-center">
-                <LogoCube />
-                <div className="ml-3">
-                  <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
-                  {user.companyName && <p className="text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>}
-                </div>
-              </Link>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link
-                to="/dashboard/overview"
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-              <Button
-                variant="ghost"
-                onClick={handleLogout}
-                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader>
+        <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+          <Link to="/dashboard/overview">
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Dashboard</span>
+          </Link>
+        </Button>
+      </AppHeader>
 
       <main className="flex-1 max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 w-full">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Settings</h1>
-          <p className="text-muted-foreground text-sm">Manage your account settings and preferences</p>
-        </div>
+        <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
 
         {/* mobile tab bar */}
         <div className="md:hidden mb-6">
@@ -318,24 +222,15 @@ export const Settings = () => {
                 type="button"
                 key={id}
                 onClick={() => handleTabChange(id)}
-                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all cursor-pointer ${
-                  activeTab === id
-                    ? 'bg-primary/10 text-primary border border-primary/30'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent'
+                aria-current={activeTab === id ? 'page' : undefined}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 {label}
               </button>
             ))}
-            <button
-              type="button"
-              onClick={handleSendFeedback}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent transition-all cursor-pointer"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Feedback
-            </button>
           </nav>
         </div>
 
@@ -348,6 +243,7 @@ export const Settings = () => {
                   type="button"
                   key={id}
                   onClick={() => handleTabChange(id)}
+                  aria-current={activeTab === id ? 'page' : undefined}
                   className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-all cursor-pointer ${
                     activeTab === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
@@ -358,16 +254,13 @@ export const Settings = () => {
               ))}
             </nav>
 
-            <div className="mt-6 pt-6 border-t border-border">
-              <button
-                type="button"
-                onClick={handleSendFeedback}
-                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all cursor-pointer"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Send Feedback
-              </button>
-            </div>
+            <a
+              href="mailto:support@baileysanalytics.com"
+              className="mt-3 w-full flex items-center gap-3 px-5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <MessageSquare className="w-4 h-4" />
+              Send feedback
+            </a>
           </div>
 
           <div className="flex-1 min-w-0">
@@ -378,7 +271,6 @@ export const Settings = () => {
                   onChangePassword={!user.isOAuthUser ? handleChangePassword : undefined}
                 />
               )}
-              {activeTab === 'preferences' && <PreferencesTab />}
               {activeTab === 'goals' && <GoalManagementPanel />}
               {activeTab === 'integrations' && <IntegrationsTab />}
               {activeTab === 'billing' && <BillingTab />}
@@ -396,9 +288,7 @@ export const Settings = () => {
         <DialogContent className="sm:max-w-md" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Change Email Address</DialogTitle>
-            <DialogDescription>
-              A confirmation link will be sent to your new email address. Click the link to complete the change.
-            </DialogDescription>
+            <DialogDescription>The change takes effect once you open the link sent to the new address.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -417,7 +307,7 @@ export const Settings = () => {
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !isChangingEmail && handleConfirmChangeEmail()}
-                placeholder="your.new.email@example.com"
+                placeholder="name@example.com"
                 autoFocus
                 disabled={isChangingEmail}
               />
@@ -444,9 +334,7 @@ export const Settings = () => {
         <DialogContent className="sm:max-w-md" showCloseButton={false}>
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
-            <DialogDescription>
-              Enter your new password below. Must be at least 8 characters with uppercase, lowercase, and number.
-            </DialogDescription>
+            <DialogDescription>At least 8 characters, with an uppercase letter, a lowercase letter and a number.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>

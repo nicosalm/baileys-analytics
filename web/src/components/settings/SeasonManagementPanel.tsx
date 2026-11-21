@@ -1,7 +1,7 @@
 import type React from 'react'
 import { useState } from 'react'
 import { useSeasons, createSeason, updateSeason, deleteSeason, toggleSeasonActive } from '@/hooks/use-api'
-import { Plus, Edit2, Calendar, Check, Trash2 } from 'lucide-react'
+import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import { ConfirmModal } from '@/components/ConfirmModal'
@@ -9,14 +9,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import type { Season, SeasonFormData } from '@/types/season'
 import { Badge } from '@/components/ui/badge'
+import { SettingsSection, SettingsError } from './SettingsSection'
 
 const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 function getDaysInMonth(month: number): number {
-  return new Date(2001, month, 0).getDate() // non-leap year; seasons are yearly-recurring
+  // seasons recur yearly, so use a non-leap year
+  return new Date(2001, month, 0).getDate()
 }
 
 const SeasonForm: React.FC<{
@@ -49,22 +50,25 @@ const SeasonForm: React.FC<{
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card rounded-lg shadow-sm border p-6">
+    <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 bg-muted/30">
       <div className="space-y-4">
         <div>
-          <Label className="mb-1">Season Name</Label>
+          <Label htmlFor="season-name" className="mb-1.5">
+            Name
+          </Label>
           <Input
+            id="season-name"
             type="text"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Summer Season"
+            placeholder="Summer"
             required
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="mb-1">Start Date</Label>
+            <Label className="mb-1.5">Starts</Label>
             <div className="flex gap-2">
               <Select
                 value={String(formData.startMonth)}
@@ -101,7 +105,7 @@ const SeasonForm: React.FC<{
           </div>
 
           <div>
-            <Label className="mb-1">End Date</Label>
+            <Label className="mb-1.5">Ends</Label>
             <div className="flex gap-2">
               <Select
                 value={String(formData.endMonth)}
@@ -139,12 +143,11 @@ const SeasonForm: React.FC<{
         </div>
       </div>
 
-      <Separator className="mt-6" />
       <div className="flex items-center gap-2 pt-4">
-        <Button type="submit" disabled={isSubmitting || !formData.name}>
-          {isEditing ? 'Save Changes' : 'Add Season'}
+        <Button type="submit" size="sm" disabled={isSubmitting || !formData.name} loading={isSubmitting}>
+          {isEditing ? 'Save' : 'Add season'}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
       </div>
@@ -152,131 +155,108 @@ const SeasonForm: React.FC<{
   )
 }
 
+const formatSeasonDate = (month: number, day: number) => `${months[month - 1]} ${day}`
+
 const SeasonRow: React.FC<{
   season: Season
   onEdit: (season: Season) => void
   onDelete: (season: Season) => void
   onToggleActive: (season: Season) => void
-}> = ({ season, onEdit, onDelete, onToggleActive }) => {
-  const formatSeasonDate = (month: number, day: number) => {
-    return `${months[month - 1]} ${day}`
-  }
-
-  return (
-    <div
-      className={`bg-card rounded-lg shadow-sm border p-4 transition-colors ${
-        season.isActive ? 'border-success/30 bg-success-subtle/30' : 'border-border'
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${season.isActive ? 'bg-success-subtle' : 'bg-muted'}`}>
-            <Calendar className={`w-5 h-5 ${season.isActive ? 'text-success' : 'text-muted-foreground'}`} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h4 className="font-medium text-foreground">{season.name}</h4>
-              {season.isActive && <Badge variant="success">Active</Badge>}
-            </div>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {formatSeasonDate(season.startMonth, season.startDay)} – {formatSeasonDate(season.endMonth, season.endDay)}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {season.isActive ? (
-            <Button variant="ghost" size="sm" onClick={() => onToggleActive(season)}>
-              Deactivate
-            </Button>
-          ) : (
-            <Button size="sm" onClick={() => onToggleActive(season)}>
-              Activate
-            </Button>
-          )}
-          <Button variant="ghost" size="icon-sm" onClick={() => onEdit(season)} title="Edit">
-            <Edit2 className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => onDelete(season)}
-            title="Delete"
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
+}> = ({ season, onEdit, onDelete, onToggleActive }) => (
+  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 sm:px-6 py-3">
+    <div className="min-w-0">
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-medium text-foreground truncate">{season.name}</p>
+        {season.isActive && <Badge variant="success">Active</Badge>}
       </div>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {formatSeasonDate(season.startMonth, season.startDay)} to {formatSeasonDate(season.endMonth, season.endDay)}
+      </p>
     </div>
-  )
-}
+
+    <div className="flex items-center gap-1">
+      <Button variant="outline" size="sm" onClick={() => onToggleActive(season)} className="mr-1">
+        {season.isActive ? 'Deactivate' : 'Activate'}
+      </Button>
+      <Button variant="ghost" size="icon-sm" onClick={() => onEdit(season)} aria-label={`Edit ${season.name}`}>
+        <Edit2 className="w-4 h-4" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => onDelete(season)}
+        aria-label={`Delete ${season.name}`}
+        className="text-muted-foreground hover:text-destructive"
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  </div>
+)
 
 export const SeasonManagementPanel: React.FC = () => {
   const { data: seasons = [], isLoading, error, mutate } = useSeasons()
   const { addToast } = useToast()
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [editingSeasonId, setEditingSeasonId] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; season: Season | null }>({ show: false, season: null })
-
-  const activeSeason = seasons.find((s) => s.isActive)
+  const [deleteConfirm, setDeleteConfirm] = useState<Season | null>(null)
 
   const handleCreateSeason = async (data: SeasonFormData) => {
     const result = await createSeason(data)
     if (result.success) {
-      addToast('success', 'Season created successfully')
+      addToast('success', 'Season added')
       setIsAddingNew(false)
       mutate()
     } else {
-      addToast('error', result.error || 'Failed to create season')
+      addToast('error', result.error || 'Failed to add season')
     }
   }
 
   const handleUpdateSeason = async (id: string, data: SeasonFormData) => {
     const result = await updateSeason(id, data)
     if (result.success) {
-      addToast('success', 'Season updated successfully')
+      addToast('success', 'Season saved')
       setEditingSeasonId(null)
       mutate()
     } else {
-      addToast('error', result.error || 'Failed to update season')
+      addToast('error', result.error || 'Failed to save season')
     }
   }
 
-  const handleDeleteSeason = (season: Season) => {
-    setDeleteConfirm({ show: true, season })
-  }
-
   const handleConfirmDelete = async () => {
-    if (!deleteConfirm.season) return
+    if (!deleteConfirm) return
 
-    const result = await deleteSeason(deleteConfirm.season.id)
+    const result = await deleteSeason(deleteConfirm.id)
     if (result.success) {
-      addToast('success', 'Season deleted successfully')
+      addToast('success', 'Season deleted')
       mutate()
     } else {
       addToast('error', result.error || 'Failed to delete season')
     }
 
-    setDeleteConfirm({ show: false, season: null })
+    setDeleteConfirm(null)
   }
 
+  // only one season can be active, so activating one deactivates the current one first
   const handleToggleActive = async (season: Season) => {
-    if (!season.isActive) {
-      const activeSeasons = seasons.filter((s) => s.isActive && s.id !== season.id)
-      if (activeSeasons.length > 0) {
-        addToast('error', 'Only one season can be active. Please deactivate the current season first.')
-        return
+    const activate = !season.isActive
+    if (activate) {
+      for (const other of seasons.filter((s) => s.isActive && s.id !== season.id)) {
+        const result = await toggleSeasonActive(other.id, false)
+        if (!result.success) {
+          addToast('error', result.error || 'Failed to update season')
+          return
+        }
       }
     }
 
-    const result = await toggleSeasonActive(season.id, !season.isActive)
+    const result = await toggleSeasonActive(season.id, activate)
     if (result.success) {
-      addToast('success', `Season ${!season.isActive ? 'activated' : 'deactivated'} successfully`)
-      mutate()
+      addToast('success', `${season.name} ${activate ? 'activated' : 'deactivated'}`)
     } else {
       addToast('error', result.error || 'Failed to update season')
     }
+    mutate()
   }
 
   if (isLoading) {
@@ -284,56 +264,28 @@ export const SeasonManagementPanel: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4">
-        <p className="text-danger-fg">Failed to load seasons: {error.message}</p>
-      </div>
-    )
+    return <SettingsError message={`Failed to load seasons: ${error.message}`} />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Seasons</h3>
-            <p className="text-muted-foreground text-sm">Named date ranges that appear in the period selector.</p>
-          </div>
-          {!isAddingNew && !editingSeasonId && (
+    <>
+      <SettingsSection
+        title="Seasons"
+        description="The active season sets the default dashboard period and the season options in the period selector."
+        flush
+        action={
+          !isAddingNew &&
+          !editingSeasonId && (
             <Button size="sm" onClick={() => setIsAddingNew(true)}>
               <Plus className="w-4 h-4" />
-              Add Season
+              Add season
             </Button>
-          )}
-        </div>
-
-        {activeSeason ? (
-          <div className="bg-success-subtle border border-success/30 rounded-lg p-3 flex items-center gap-3">
-            <div className="w-8 h-8 bg-success-subtle rounded-full flex items-center justify-center">
-              <Check className="w-4 h-4 text-success" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-success-fg">Active Season: {activeSeason.name}</p>
-              <p className="text-xs text-success-fg">
-                {months[activeSeason.startMonth - 1]} {activeSeason.startDay} – {months[activeSeason.endMonth - 1]} {activeSeason.endDay}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-muted/40 border rounded-lg p-3 flex items-center gap-3">
-            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-sm text-muted-foreground">No active season, showing all data</p>
-          </div>
-        )}
-      </div>
-
-      {isAddingNew && <SeasonForm onSubmit={handleCreateSeason} onCancel={() => setIsAddingNew(false)} />}
-
-      {seasons.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-foreground">Your Seasons</h3>
+          )
+        }
+      >
+        <div className="divide-y divide-border/60">
+          {isAddingNew && <SeasonForm onSubmit={handleCreateSeason} onCancel={() => setIsAddingNew(false)} />}
+          {seasons.length === 0 && !isAddingNew && <p className="px-4 sm:px-6 py-4 text-sm text-muted-foreground">No seasons</p>}
           {seasons.map((season: Season) =>
             editingSeasonId === season.id ? (
               <SeasonForm
@@ -354,24 +306,23 @@ export const SeasonManagementPanel: React.FC = () => {
                 key={season.id}
                 season={season}
                 onEdit={(s) => setEditingSeasonId(s.id)}
-                onDelete={handleDeleteSeason}
+                onDelete={setDeleteConfirm}
                 onToggleActive={handleToggleActive}
               />
             ),
           )}
         </div>
-      )}
+      </SettingsSection>
 
       <ConfirmModal
-        isOpen={deleteConfirm.show}
-        onClose={() => setDeleteConfirm({ show: false, season: null })}
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
         onConfirm={handleConfirmDelete}
-        title="Delete Season"
-        message={`Are you sure you want to delete the "${deleteConfirm.season?.name}" season? This action cannot be undone.`}
+        title="Delete season?"
+        message={`"${deleteConfirm?.name}" will be removed from the period selector.`}
         confirmText="Delete"
-        cancelText="Cancel"
         variant="danger"
       />
-    </div>
+    </>
   )
 }

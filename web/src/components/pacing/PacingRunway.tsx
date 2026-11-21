@@ -115,21 +115,26 @@ export const PacingRunway = () => {
 
   const detail = selected ? data?.details?.[selected.month] : undefined
   const ready = !isLoading && !error && months.length > 0 && hasPriorYear(months)
+  // nothing on the books this year or last year at this point, so there is nothing to compare
+  const empty = ready && summary !== null && summary.now.occupancy === 0 && summary.then.occupancy === 0
+  const open = expanded && !empty
 
   return (
     <section className="bg-card rounded-lg shadow-sm border border-border">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-        className="w-full flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-left cursor-pointer"
+        aria-expanded={open}
+        disabled={empty}
+        className="w-full flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-left cursor-pointer disabled:cursor-default"
       >
         <span className="flex items-center gap-2 mr-auto">
           <Activity className="w-4 h-4 text-muted-foreground" aria-hidden />
           <span className="font-semibold">Booking pace</span>
           {data?.window && <span className="text-sm text-muted-foreground">{data.window.label} vs. last year</span>}
         </span>
-        {ready && summary && (
+        {empty && <span className="text-sm text-muted-foreground">No bookings yet</span>}
+        {ready && summary && !empty && (
           <span className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
             <SummaryStat
               label="Occupancy"
@@ -148,10 +153,12 @@ export const PacingRunway = () => {
             />
           </span>
         )}
-        <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !expanded && '-rotate-90')} aria-hidden />
+        {!empty && (
+          <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', !expanded && '-rotate-90')} aria-hidden />
+        )}
       </button>
 
-      {expanded && (
+      {open && (
         <div className="border-t border-border px-5 pb-5">
           {!ready ? (
             <StateWrapper

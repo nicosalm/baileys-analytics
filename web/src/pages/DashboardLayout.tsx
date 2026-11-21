@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/auth'
 import { cn } from '@/lib/utils'
 import { useDashboard } from '@/contexts/dashboard'
 import { useNavigate, Link, useLocation, useSearchParams } from 'react-router-dom'
-import { LogOut, Home, Calendar, Users, DollarSign, Settings, LayoutDashboard, Shield, ArrowLeft, Eye, Menu } from 'lucide-react'
+import { Home, Calendar, Users, DollarSign, LayoutDashboard, ArrowLeft, Menu } from 'lucide-react'
 import { lazy, Suspense, useState, useEffect, useRef } from 'react'
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/sheet'
 
@@ -19,11 +19,10 @@ import { LoadingState } from '@/components/LoadingState'
 import type { DashboardTab } from '@/types/dashboard'
 import { api } from '@/lib/api'
 import { Footer } from '@/components/Footer'
-import { BRAND } from '@/constants'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { InitialSyncModal } from '@/components/InitialSyncModal'
 import { Button } from '@/components/ui/button'
-import { LogoCube } from '@/components/LogoCube'
+import { AppHeader } from '@/components/AppHeader'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useToast } from '@/contexts/toast'
 
@@ -87,44 +86,30 @@ const DashboardContent = () => {
   )
 }
 
-const DashboardTabs = () => {
+const DashboardNav = () => {
   const { activeTab } = useDashboard()
-  const navigate = useNavigate()
   const location = useLocation()
 
-  const handleTabClick = (tabId: DashboardTab) => {
-    // Preserve query params when navigating
-    const currentParams = new URLSearchParams(location.search)
-    const newPath = `/dashboard/${tabId}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
-    navigate(newPath)
-  }
-
   return (
-    <div className="hidden sm:block bg-background/90 backdrop-blur-sm border-b border-border">
-      <div className="max-w-7xl mx-auto">
-        <nav className="flex gap-1 px-4 md:px-6 overflow-x-auto scrollbar-hide" aria-label="Tabs">
-          {tabConfig.map(({ id, label, icon: Icon }) => (
-            <button
-              type="button"
-              key={id}
-              onClick={() => handleTabClick(id)}
-              className={`
-                py-3 px-3 md:px-4 border-b-2 font-medium text-sm flex items-center transition-all whitespace-nowrap cursor-pointer
-                ${
-                  activeTab === id
-                    ? 'border-primary text-primary bg-primary/5'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                }
-              `}
-              aria-current={activeTab === id ? 'page' : undefined}
-            >
-              <Icon className="w-4 h-4 mr-1.5 md:mr-2" />
-              {label}
-            </button>
-          ))}
-        </nav>
-      </div>
-    </div>
+    <nav className="flex items-stretch gap-1 overflow-x-auto scrollbar-hide" aria-label="Dashboards">
+      {tabConfig.map(({ id, label }) => {
+        const active = activeTab === id
+        return (
+          <Link
+            key={id}
+            to={`/dashboard/${id}${location.search}`}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'relative inline-flex items-center whitespace-nowrap px-3 text-sm font-medium transition-colors',
+              'after:absolute after:inset-x-3 after:-bottom-px after:h-0.5 after:rounded-full after:transition-colors',
+              active ? 'text-foreground after:bg-primary' : 'text-muted-foreground hover:text-foreground after:bg-transparent',
+            )}
+          >
+            {label}
+          </Link>
+        )
+      })}
+    </nav>
   )
 }
 
@@ -132,12 +117,11 @@ export const DashboardLayout = () => {
   const { activeTab } = useDashboard()
   const tabLabel = tabConfig.find((t) => t.id === activeTab)?.label || 'Dashboard'
   usePageTitle(tabLabel)
-  const { state, logout } = useAuth()
+  const { state } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showInitialSync, setShowInitialSync] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [connectLoading, setConnectLoading] = useState(false)
   const { addToast } = useToast()
@@ -156,20 +140,6 @@ export const DashboardLayout = () => {
       }, 100)
     }
   }, [searchParams, setSearchParams])
-
-  useEffect(() => {
-    const checkAdminStatus = async () => {
-      try {
-        const result = await api.request<{ isAdmin: boolean }>('/admin/verify', { method: 'GET' })
-        if (result.success && result.data?.isAdmin) {
-          setIsAdmin(true)
-        }
-      } catch {
-        // silently ignore - user is not admin
-      }
-    }
-    checkAdminStatus()
-  }, [])
 
   // detect incomplete initial sync (e.g. user refreshed mid-sync)
   useEffect(() => {
@@ -192,11 +162,6 @@ export const DashboardLayout = () => {
 
   const { user } = state
   const isDemo = user.isDemo === true
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/')
-  }
 
   const handleMobileTabClick = (tabId: DashboardTab) => {
     const currentParams = new URLSearchParams(location.search)
@@ -224,21 +189,7 @@ export const DashboardLayout = () => {
 
     return (
       <div className="min-h-screen bg-background flex flex-col">
-        {/* header */}
-        <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
-            <div className="flex justify-between items-center">
-              <Link to="/" className="flex items-center">
-                <LogoCube />
-                <span className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</span>
-              </Link>
-              <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-foreground text-sm">
-                <LogOut className="w-4 h-4" />
-                Logout
-              </Button>
-            </div>
-          </div>
-        </header>
+        <AppHeader subtitle={null} />
 
         {/* main content */}
         <div className="flex-1 flex items-center justify-center py-12 px-4">
@@ -305,201 +256,58 @@ export const DashboardLayout = () => {
         />
       )}
       <div className="min-h-screen bg-background flex flex-col">
-        <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
-            <div className="flex justify-between items-center">
-              <Link to="/" className="flex items-center shrink-0">
-                <LogoCube />
-                <div className="ml-2 sm:ml-3">
-                  <h1 className="text-lg sm:text-xl font-semibold text-foreground">{BRAND.name}</h1>
-                  {user.companyName && <p className="hidden sm:block text-xs text-muted-foreground -mt-0.5">for {user.companyName}</p>}
-                </div>
-              </Link>
-              <div className="flex items-center gap-2 sm:gap-3">
-                {isDemo ? (
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <span className="hidden sm:inline-flex h-8 items-center gap-1.5 px-3 rounded-md bg-muted text-sm text-muted-foreground whitespace-nowrap">
-                      <Eye className="w-3.5 h-3.5 shrink-0" />
-                      Demo
-                    </span>
-                    <Link
-                      to="/signup"
-                      className="hidden sm:inline-flex h-8 items-center px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium whitespace-nowrap hover:opacity-90 transition-opacity"
-                    >
-                      Sign Up
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={handleLogout}
-                      className="hidden sm:inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-                      title="Exit demo"
-                      aria-label="Exit demo"
-                    >
-                      <LogOut className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <span className="hidden sm:inline text-sm text-muted-foreground">{user.email}</span>
-                    <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-border">
-                      {isAdmin && (
-                        <Link
-                          to="/admin"
-                          className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-                          title="Admin Panel"
-                          aria-label="Admin Panel"
-                        >
-                          <Shield className="w-5 h-5" />
-                        </Link>
-                      )}
-                      <Link
-                        to="/settings"
-                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
-                        title="Settings"
-                        aria-label="Settings"
-                      >
-                        <Settings className="w-5 h-5" />
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        onClick={handleLogout}
-                        className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                        style={{ isolation: 'isolate' }}
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span className="hidden sm:inline">Logout</span>
-                      </Button>
-                    </div>
-                  </>
-                )}
-
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <button
-                      type="button"
-                      className="sm:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                      aria-label="Open menu"
-                    >
-                      <Menu className="w-6 h-6" />
-                    </button>
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-80 overflow-y-auto p-0 gap-0">
-                    <SheetTitle className="sr-only">Menu</SheetTitle>
-
-                    {/* pr-10 clears the sheet close button */}
-                    <div className="px-5 pr-10 pt-5 pb-3">
-                      {isDemo ? (
-                        <div className="flex items-center justify-between">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted px-2.5 py-1.5 rounded-md">
-                            <Eye className="w-3.5 h-3.5 shrink-0" />
-                            Demo Mode
-                          </span>
-                          <Link
-                            to="/signup"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs font-medium hover:opacity-90 transition-opacity"
-                          >
-                            Sign Up
-                          </Link>
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                      )}
-                    </div>
-
-                    <div className="h-px bg-border" />
-
-                    <div className="px-5 py-3">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">Navigation</p>
-                      <nav className="flex flex-col gap-0.5" aria-label="Dashboard tabs">
-                        {tabConfig.map(({ id, label, icon: Icon }) => (
-                          <button
-                            type="button"
-                            key={id}
-                            onClick={() => handleMobileTabClick(id)}
-                            className={cn(
-                              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors cursor-pointer text-left',
-                              activeTab === id
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                            )}
-                          >
-                            <Icon className="w-4 h-4" />
-                            {label}
-                          </button>
-                        ))}
-                      </nav>
-                    </div>
-
-                    <div className="h-px bg-border" />
-
-                    <div className="px-5 py-3">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-1">Filters</p>
-                      <MobileFilterControls />
-                    </div>
-
-                    {/* pushes account section to the bottom of the sheet */}
-                    <div className="flex-1" />
-
-                    <div className="h-px bg-border" />
-
-                    <div className="px-5 py-3">
-                      <div className="flex flex-col gap-0.5">
-                        {isDemo ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleLogout()
-                              setMobileMenuOpen(false)
-                            }}
-                            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer text-left"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            Exit Demo
-                          </button>
-                        ) : (
-                          <>
-                            {isAdmin && (
-                              <Link
-                                to="/admin"
-                                onClick={() => setMobileMenuOpen(false)}
-                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                              >
-                                <Shield className="w-4 h-4" />
-                                Admin
-                              </Link>
-                            )}
-                            <Link
-                              to="/settings"
-                              onClick={() => setMobileMenuOpen(false)}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-                            >
-                              <Settings className="w-4 h-4" />
-                              Settings
-                            </Link>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleLogout()
-                                setMobileMenuOpen(false)
-                              }}
-                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer text-left"
-                            >
-                              <LogOut className="w-4 h-4" />
-                              Logout
-                            </button>
-                          </>
+        <AppHeader
+          nav={<DashboardNav />}
+          menu={
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  className="md:hidden p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted transition-colors cursor-pointer"
+                  aria-label="Open menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-80 overflow-y-auto p-0 gap-0 pt-10">
+                <SheetTitle className="sr-only">Menu</SheetTitle>
+                <div className="px-5 py-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5 px-2">Dashboards</p>
+                  <nav className="flex flex-col gap-0.5" aria-label="Dashboard tabs">
+                    {tabConfig.map(({ id, label, icon: Icon }) => (
+                      <button
+                        type="button"
+                        key={id}
+                        onClick={() => handleMobileTabClick(id)}
+                        className={cn(
+                          'flex items-center gap-3 px-2 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer text-left',
+                          activeTab === id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                         )}
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              </div>
-            </div>
-          </div>
-        </header>
+                      >
+                        <Icon className="w-4 h-4" />
+                        {label}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
 
-        <DashboardTabs />
+                <div className="h-px bg-border" />
+
+                <div className="px-5 py-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5 px-2">Filters</p>
+                  <MobileFilterControls />
+                </div>
+              </SheetContent>
+            </Sheet>
+          }
+        >
+          {isDemo && (
+            <Button asChild className="hidden sm:inline-flex">
+              <Link to="/signup">Sign Up</Link>
+            </Button>
+          )}
+        </AppHeader>
+
         <FilterBar />
 
         <main className="max-w-7xl mx-auto px-4 md:px-6 py-4 md:py-6 flex-1 w-full">

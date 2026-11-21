@@ -102,3 +102,11 @@ export const getTagColor = (tag: { color?: string; id?: string; name?: string })
   }
   return getChartColor(Math.abs(hash) % CHART_SERIES_VARS.length)
 }
+
+// bar marks: capped thickness, 4px rounded data end, 2px surface gap between stacked segments
+export const BAR_SPEC = {
+  maxBarSize: 24,
+  radiusUp: [4, 4, 0, 0] as [number, number, number, number],
+  radiusRight: [0, 4, 4, 0] as [number, number, number, number],
+  gap: 2,
+}

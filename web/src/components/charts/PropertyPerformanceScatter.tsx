@@ -11,6 +11,7 @@ import {
   Cell,
   ReferenceLine,
   ReferenceArea,
+  LabelList,
 } from 'recharts'
 import type { ScatterPointItem, TooltipContentProps } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
@@ -28,34 +29,36 @@ function niceStep(range: number): number {
   return 10 * pow
 }
 
+const steps = (min: number, max: number, step: number) => {
+  const ticks: number[] = []
+  for (let v = min; v <= max + step / 1000; v += step) ticks.push(Math.round(v * 1000) / 1000)
+  return ticks
+}
+
 const ScatterTooltip = ({ active, payload }: Partial<TooltipContentProps<number, string>>) => {
   if (!active || !payload?.length) return null
   const data = payload[0].payload
   return (
     <div className="bg-card p-3 rounded-lg shadow-lg border border-border">
       <p className="font-semibold text-sm mb-2">{data.fullName || data.name}</p>
-      {data.isZeroData ? (
-        <div className="text-xs text-muted-foreground italic">No booking data for selected period</div>
-      ) : (
-        <div className="space-y-1 text-xs">
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Revenue:</span>
-            <span className="font-medium text-foreground">{formatCurrency(data.property.revenue)}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Bookings:</span>
-            <span className="font-medium">{data.property.bookings || 0}</span>
-          </div>
-          <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
-            <span className="text-muted-foreground">Occupancy:</span>
-            <span className="font-medium">{formatPercentage(data.property.occupancyRate * 100, 1)}</span>
-          </div>
-          <div className="flex justify-between gap-4">
-            <span className="text-muted-foreground">Avg Rate:</span>
-            <span className="font-medium">{formatCurrency(data.avgNightlyRate)}</span>
-          </div>
+      <div className="space-y-1 text-xs">
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Revenue:</span>
+          <span className="font-medium text-foreground">{formatCurrency(data.property.revenue)}</span>
         </div>
-      )}
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Bookings:</span>
+          <span className="font-medium">{data.property.bookings || 0}</span>
+        </div>
+        <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
+          <span className="text-muted-foreground">Occupancy:</span>
+          <span className="font-medium">{formatPercentage(data.property.occupancyRate * 100, 1)}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Avg Rate:</span>
+          <span className="font-medium">{formatCurrency(data.avgNightlyRate)}</span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -93,26 +96,17 @@ const makeQuadrantLabel =
     }
 
     return (
-      <text
-        x={labelX}
-        y={labelY}
-        textAnchor={anchor}
-        fill="currentColor"
-        opacity={0.5}
-        fontSize={10}
-        fontWeight={500}
-        className="text-muted-foreground"
-      >
+      <text x={labelX} y={labelY} textAnchor={anchor} fill={CHART_INFRA.axis} fontSize={11}>
         {text}
       </text>
     )
   }
 
 // pre-built label renderers (stable references, no re-creation per render)
-const labelTopRight = makeQuadrantLabel('Top Performers', 'top-right')
-const labelTopLeft = makeQuadrantLabel('High Value', 'top-left')
-const labelBottomRight = makeQuadrantLabel('High Volume', 'bottom-right')
-const labelBottomLeft = makeQuadrantLabel('Needs Attention', 'bottom-left')
+const labelTopRight = makeQuadrantLabel('Top performers', 'top-right')
+const labelTopLeft = makeQuadrantLabel('High value', 'top-left')
+const labelBottomRight = makeQuadrantLabel('High volume', 'bottom-right')
+const labelBottomLeft = makeQuadrantLabel('Needs attention', 'bottom-left')
 
 const formatOccupancyTick = (value: number) => `${Math.round(value)}%`
 const formatRevenueTick = (value: number) => {
@@ -128,7 +122,6 @@ interface ScatterPoint {
   fullName?: string
   propertyId: string
   avgNightlyRate: number
-  isZeroData: boolean
   property: PropertyMetrics
 }
 
@@ -140,11 +133,14 @@ interface PropertyPerformanceScatterProps {
 export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProps> = ({ properties, onPropertyClick }) => {
   const scatterData = useMemo(() => {
     const empty = {
-      data: [],
+      data: [] as ScatterPoint[],
+      unbooked: [] as PropertyMetrics[],
       avgOccupancy: 0,
       avgRevenue: 0,
       xDomain: [0, 100] as [number, number],
       yDomain: [0, 1000] as [number, number],
+      xTicks: undefined as number[] | undefined,
+      yTicks: undefined as number[] | undefined,
     }
     if (!properties || properties.length === 0) return empty
 
@@ -166,13 +162,12 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
           fullName: property.propertyName,
           propertyId: property.propertyId,
           avgNightlyRate: property.avgNightlyRate || 0,
-          isZeroData: false,
           property,
         })
       }
     }
 
-    if (realPoints.length === 0) return empty
+    if (realPoints.length === 0) return { ...empty, unbooked: zeroProperties }
 
     const xValues = realPoints.map((d) => d.x)
     const yValues = realPoints.map((d) => d.y)
@@ -197,51 +192,25 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
     const yMin = Math.max(0, Math.floor(rawYMin / yTickStep) * yTickStep)
     const yMax = Math.ceil(rawYMax / yTickStep) * yTickStep
 
-    let zeroOffsetIndex = 0
-    const zeroPoints = zeroProperties.map((property) => {
-      const x = xMin + (xMax - xMin) * 0.04 + (zeroOffsetIndex % 3) * (xMax - xMin) * 0.02
-      const y = yMin + (yMax - yMin) * 0.04 + Math.floor(zeroOffsetIndex / 3) * (yMax - yMin) * 0.02
-      zeroOffsetIndex++
-      return {
-        x,
-        y,
-        z: 64,
-        name: property.propertyName,
-        propertyId: property.propertyId,
-        avgNightlyRate: property.avgNightlyRate || 0,
-        isZeroData: true,
-        property,
-      }
-    })
-
-    const data = [...realPoints, ...zeroPoints]
+    const data = realPoints
 
     const avgOccupancy = realPoints.reduce((sum: number, d) => sum + d.x, 0) / realPoints.length
     const avgRevenue = realPoints.reduce((sum: number, d) => sum + d.y, 0) / realPoints.length
 
-    return { data, avgOccupancy, avgRevenue, xDomain: [xMin, xMax] as [number, number], yDomain: [yMin, yMax] as [number, number] }
+    return {
+      data,
+      unbooked: zeroProperties,
+      avgOccupancy,
+      avgRevenue,
+      xDomain: [xMin, xMax] as [number, number],
+      yDomain: [yMin, yMax] as [number, number],
+      // the domain ends are already multiples of these steps, so the ticks land evenly
+      xTicks: steps(xMin, xMax, 5),
+      yTicks: steps(yMin, yMax, yTickStep),
+    }
   }, [properties])
 
-  // memoize resolved colors to avoid getComputedStyle per cell per render
-  const quadrantColors = useMemo(
-    () => ({
-      success: resolveToken('--success'),
-      info: resolveToken('--info'),
-      warning: resolveToken('--warning'),
-      danger: resolveToken('--danger'),
-      reference: CHART_INFRA.reference,
-    }),
-    [],
-  )
-
-  const getPointColor = (point: ScatterPoint) => {
-    const { avgOccupancy, avgRevenue } = scatterData
-    if (point.isZeroData) return quadrantColors.reference
-    if (point.x >= avgOccupancy && point.y >= avgRevenue) return quadrantColors.success
-    if (point.x >= avgOccupancy && point.y < avgRevenue) return quadrantColors.warning
-    if (point.x < avgOccupancy && point.y >= avgRevenue) return quadrantColors.info
-    return quadrantColors.danger
-  }
+  const surface = useMemo(() => resolveToken('--card'), [])
 
   const handlePointClick = useCallback(
     (item: ScatterPointItem) => {
@@ -253,134 +222,121 @@ export const PropertyPerformanceScatter: React.FC<PropertyPerformanceScatterProp
     [onPropertyClick],
   )
 
-  const { avgOccupancy, avgRevenue, xDomain, yDomain } = scatterData
+  const { avgOccupancy, avgRevenue, xDomain, yDomain, xTicks, yTicks, unbooked } = scatterData
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <ScatterChart margin={{ top: 20, right: 30, left: 60, bottom: 50 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 24, right: 40, left: 0, bottom: 4 }}>
+            <CartesianGrid stroke={CHART_INFRA.grid} strokeOpacity={0.6} />
 
-        {avgOccupancy > 0 && avgRevenue > 0 && (
-          <>
-            <ReferenceArea
-              x1={avgOccupancy}
-              x2={xDomain[1]}
-              y1={avgRevenue}
-              y2={yDomain[1]}
-              fill={quadrantColors.success}
-              fillOpacity={0.04}
-              stroke="none"
-              label={labelTopRight}
-            />
-            <ReferenceArea
-              x1={xDomain[0]}
-              x2={avgOccupancy}
-              y1={avgRevenue}
-              y2={yDomain[1]}
-              fill={quadrantColors.info}
-              fillOpacity={0.04}
-              stroke="none"
-              label={labelTopLeft}
-            />
-            <ReferenceArea
-              x1={avgOccupancy}
-              x2={xDomain[1]}
-              y1={yDomain[0]}
-              y2={avgRevenue}
-              fill={quadrantColors.warning}
-              fillOpacity={0.04}
-              stroke="none"
-              label={labelBottomRight}
-            />
-            <ReferenceArea
-              x1={xDomain[0]}
-              x2={avgOccupancy}
-              y1={yDomain[0]}
-              y2={avgRevenue}
-              fill={quadrantColors.danger}
-              fillOpacity={0.04}
-              stroke="none"
-              label={labelBottomLeft}
-            />
-          </>
-        )}
+            {avgOccupancy > 0 && avgRevenue > 0 && (
+              <>
+                <ReferenceArea
+                  x1={avgOccupancy}
+                  x2={xDomain[1]}
+                  y1={avgRevenue}
+                  y2={yDomain[1]}
+                  fillOpacity={0}
+                  stroke="none"
+                  label={labelTopRight}
+                />
+                <ReferenceArea
+                  x1={xDomain[0]}
+                  x2={avgOccupancy}
+                  y1={avgRevenue}
+                  y2={yDomain[1]}
+                  fillOpacity={0}
+                  stroke="none"
+                  label={labelTopLeft}
+                />
+                <ReferenceArea
+                  x1={avgOccupancy}
+                  x2={xDomain[1]}
+                  y1={yDomain[0]}
+                  y2={avgRevenue}
+                  fillOpacity={0}
+                  stroke="none"
+                  label={labelBottomRight}
+                />
+                <ReferenceArea
+                  x1={xDomain[0]}
+                  x2={avgOccupancy}
+                  y1={yDomain[0]}
+                  y2={avgRevenue}
+                  fillOpacity={0}
+                  stroke="none"
+                  label={labelBottomLeft}
+                />
+              </>
+            )}
 
-        <XAxis
-          type="number"
-          dataKey="x"
-          name="Occupancy"
-          domain={xDomain}
-          tickFormatter={formatOccupancyTick}
-          label={{ value: 'Occupancy Rate (%)', position: 'insideBottom', offset: -15, style: { fontSize: 13 } }}
-          stroke={CHART_INFRA.axis}
-        />
-        <YAxis
-          type="number"
-          dataKey="y"
-          name="Revenue"
-          domain={yDomain}
-          tickFormatter={formatRevenueTick}
-          label={{ value: 'Revenue', angle: -90, position: 'insideLeft', offset: -10, style: { fontSize: 13 } }}
-          stroke={CHART_INFRA.axis}
-        />
-        <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} isAnimationActive={false} />
+            <XAxis
+              type="number"
+              dataKey="x"
+              name="Occupancy"
+              domain={xDomain}
+              ticks={xTicks}
+              tickFormatter={formatOccupancyTick}
+              tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              type="number"
+              dataKey="y"
+              name="Revenue"
+              domain={yDomain}
+              ticks={yTicks}
+              tickFormatter={formatRevenueTick}
+              tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              width={48}
+            />
+            <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} isAnimationActive={false} />
 
-        {avgOccupancy > 0 && (
-          <ReferenceLine
-            x={avgOccupancy}
-            stroke={CHART_INFRA.reference}
-            strokeDasharray="5 5"
-            label={{ value: 'Avg', position: 'top', style: { fontSize: 13 } }}
-          />
-        )}
-        {avgRevenue > 0 && (
-          <ReferenceLine
-            y={avgRevenue}
-            stroke={CHART_INFRA.reference}
-            strokeDasharray="5 5"
-            label={{ value: 'Avg', position: 'right', style: { fontSize: 13 } }}
-          />
-        )}
+            {avgOccupancy > 0 && (
+              <ReferenceLine
+                x={avgOccupancy}
+                stroke={CHART_INFRA.reference}
+                strokeDasharray="5 5"
+                label={{ value: 'Avg', position: 'top', fill: CHART_INFRA.axis, fontSize: 11 }}
+              />
+            )}
+            {avgRevenue > 0 && (
+              <ReferenceLine
+                y={avgRevenue}
+                stroke={CHART_INFRA.reference}
+                strokeDasharray="5 5"
+                label={{ value: 'Avg', position: 'right', fill: CHART_INFRA.axis, fontSize: 11 }}
+              />
+            )}
 
-        <Scatter
-          name="Properties"
-          data={scatterData.data}
-          fill={METRIC_COLORS.revenue}
-          animationDuration={500}
-          animationEasing="ease-out"
-          onClick={handlePointClick}
-          className={onPropertyClick ? 'cursor-pointer' : ''}
-        >
-          {scatterData.data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={getPointColor(entry)} style={{ cursor: 'pointer' }} />
-          ))}
-        </Scatter>
-      </ScatterChart>
-    </ResponsiveContainer>
+            <Scatter
+              name="Properties"
+              data={scatterData.data}
+              fill={METRIC_COLORS.revenue}
+              animationDuration={500}
+              animationEasing="ease-out"
+              onClick={handlePointClick}
+              className={onPropertyClick ? 'cursor-pointer' : ''}
+            >
+              {/* the surface ring keeps dots distinct where they sit on a reference line */}
+              {scatterData.data.map((entry) => (
+                <Cell key={entry.propertyId} fill={METRIC_COLORS.revenue} stroke={surface} strokeWidth={2} />
+              ))}
+              <LabelList dataKey="name" position="right" offset={8} fill={CHART_INFRA.axis} fontSize={11} />
+            </Scatter>
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+      {unbooked.length > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          No bookings in this range: {unbooked.map((p) => p.propertyCode || p.propertyName).join(', ')}
+        </p>
+      )}
+    </div>
   )
 }
-
-export const PerformanceQuadrantLegend: React.FC = () => (
-  <div className="flex flex-wrap gap-3 justify-center text-xs mt-3 px-4">
-    <div className="flex items-center gap-1.5">
-      <div className="w-3 h-2.5 bg-success rounded-sm" />
-      <span className="text-muted-foreground">High Occupancy & Revenue</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-3 h-2.5 bg-info rounded-sm" />
-      <span className="text-muted-foreground">High Revenue, Low Occupancy</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-3 h-2.5 bg-warning rounded-sm" />
-      <span className="text-muted-foreground">High Occupancy, Low Revenue</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-3 h-2.5 bg-danger rounded-sm" />
-      <span className="text-muted-foreground">Low Occupancy & Revenue</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-3 h-2.5 bg-chart-reference rounded-sm" />
-      <span className="text-muted-foreground">No Bookings</span>
-    </div>
-  </div>
-)

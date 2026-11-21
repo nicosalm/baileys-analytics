@@ -118,6 +118,8 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   // Calculate trend comparison
   const trendDirection = trend ? (trend.isPositive !== undefined ? trend.isPositive : trend.value > 0) : null
+  // a change that rounds to 0.0% reads as flat, not as a colored arrow
+  const trendFlat = trend ? Math.abs(trend.value) < 0.05 : false
 
   // Calculate progress to target
   const targetProgress = target && typeof value === 'number' ? Math.min((value / target.value) * 100, 100) : null
@@ -175,10 +177,10 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <span
             className={cn(
               'flex items-center font-medium tabular-nums',
-              trend.value === 0 ? 'text-muted-foreground' : trendDirection ? 'text-success' : 'text-danger',
+              trendFlat ? 'text-muted-foreground' : trendDirection ? 'text-success' : 'text-danger',
             )}
           >
-            {trend.value === 0 ? (
+            {trendFlat ? (
               <Minus className="w-3.5 h-3.5" />
             ) : trend.value > 0 ? (
               <ArrowUpRight className="w-3.5 h-3.5" />

@@ -6,11 +6,27 @@ import { SmartPeriodSelector } from './SmartPeriodSelector'
 import { useDashboard } from '@/contexts/dashboard'
 import { useTags, useProperties, usePropertyGroups } from '@/hooks/use-api'
 import type { PropertyGroup } from '@/hooks/use-api'
-import { Filter, X, ChevronDown, ChevronRight, Home, Layers } from 'lucide-react'
+import { Tag as TagIcon, X, Check, Minus, ChevronDown, Home } from 'lucide-react'
 import { getTagColor } from '@/lib/theme'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
+import { menuStyles } from '@/components/ui/menu-styles'
+import { Badge } from '@/components/ui/badge'
 import type { Tag } from '@/types/dashboard'
+
+// visual check box for multi-select rows; the row itself is the button
+const SelectBox = ({ state }: { state: 'all' | 'partial' | 'none' }) => (
+  <span
+    aria-hidden
+    className={cn(
+      'grid size-4 shrink-0 place-items-center rounded-[4px] border transition-colors',
+      state === 'none' ? 'border-input' : 'border-primary bg-primary text-primary-foreground',
+    )}
+  >
+    {state === 'all' && <Check className="size-3" />}
+    {state === 'partial' && <Minus className="size-3" />}
+  </span>
+)
 
 interface TagButtonProps {
   tag: Tag
@@ -19,19 +35,11 @@ interface TagButtonProps {
 }
 
 const TagButton = memo(({ tag, isSelected, onToggle }: TagButtonProps) => (
-  <Button
-    variant="ghost"
-    onClick={() => onToggle(tag)}
-    className={cn(
-      'w-full justify-start px-3 py-2 h-auto text-sm',
-      isSelected ? 'bg-primary/10 text-primary font-medium' : 'text-foreground',
-    )}
-  >
-    <div className="flex items-center gap-2">
-      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getTagColor(tag) }} />
-      <span>{tag.name}</span>
-    </div>
-  </Button>
+  <button type="button" aria-pressed={isSelected} onClick={() => onToggle(tag)} className={menuStyles.item}>
+    <SelectBox state={isSelected ? 'all' : 'none'} />
+    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: getTagColor(tag) }} />
+    <span className="truncate">{tag.name}</span>
+  </button>
 ))
 
 TagButton.displayName = 'TagButton'
@@ -43,19 +51,10 @@ interface PropertyButtonProps {
 }
 
 const PropertyButton = memo(({ property, isSelected, onToggle }: PropertyButtonProps) => (
-  <Button
-    variant="ghost"
-    onClick={() => onToggle(property.id)}
-    className={cn(
-      'w-full justify-start px-3 py-2 h-auto text-sm',
-      isSelected ? 'bg-primary/10 text-primary font-medium' : 'text-foreground',
-    )}
-  >
-    <div className="flex items-center gap-2">
-      <Home className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
-      <span>{property.name}</span>
-    </div>
-  </Button>
+  <button type="button" aria-pressed={isSelected} onClick={() => onToggle(property.id)} className={menuStyles.item}>
+    <SelectBox state={isSelected ? 'all' : 'none'} />
+    <span className="truncate">{property.name}</span>
+  </button>
 ))
 
 PropertyButton.displayName = 'PropertyButton'
@@ -72,32 +71,20 @@ interface GroupButtonProps {
 }
 
 const GroupButton = memo(({ group, selectionState, selectedCount, onToggle, onHoverStart, onHoverEnd }: GroupButtonProps) => (
-  <Button
-    variant="ghost"
+  <button
+    type="button"
     onClick={onToggle}
     onMouseEnter={onHoverStart}
     onMouseLeave={onHoverEnd}
-    className={cn(
-      'w-full justify-start px-3 py-2 h-auto text-sm',
-      selectionState !== 'none' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground',
-    )}
+    aria-pressed={selectionState === 'all' ? true : selectionState === 'partial' ? 'mixed' : false}
+    className={menuStyles.item}
   >
-    <div className="flex items-center gap-2 w-full">
-      <div
-        className={cn(
-          'w-3 h-3 rounded-sm flex-shrink-0 border transition-colors',
-          selectionState === 'all' && 'bg-primary border-primary',
-          selectionState === 'partial' && 'bg-primary/50 border-primary',
-          selectionState === 'none' && 'border-border',
-        )}
-      />
-      <Layers className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
-      <span className="flex-1 text-left truncate">{group.name}</span>
-      <span className="text-xs text-muted-foreground tabular-nums">
-        {selectedCount}/{group.propertyIds.length}
-      </span>
-    </div>
-  </Button>
+    <SelectBox state={selectionState} />
+    <span className="flex-1 text-left truncate">{group.name}</span>
+    <span className="text-xs text-muted-foreground tabular-nums">
+      {selectedCount}/{group.propertyIds.length}
+    </span>
+  </button>
 ))
 
 GroupButton.displayName = 'GroupButton'
@@ -174,20 +161,21 @@ const CollapsibleFilterSection: React.FC<{
 
   return (
     <div>
-      <button type="button" onClick={() => setOpen(!open)} className="flex items-center justify-between w-full px-1 py-1.5 cursor-pointer">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className={cn(menuStyles.item, 'justify-between font-medium')}
+      >
+        <span className="flex items-center gap-2">
           {label}
           {count !== undefined && count > 0 && (
-            <span className="inline-flex items-center justify-center w-4.5 h-4.5 rounded-full bg-primary/15 text-primary text-[10px] font-semibold">
+            <Badge variant="info" className="tabular-nums">
               {count}
-            </span>
+            </Badge>
           )}
         </span>
-        {open ? (
-          <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
-        )}
+        <ChevronDown className={cn('size-4 text-muted-foreground transition-transform', !open && '-rotate-90')} />
       </button>
       {open && <div className="mt-1">{children}</div>}
     </div>
@@ -195,7 +183,7 @@ const CollapsibleFilterSection: React.FC<{
 }
 
 export const MobileFilterControls: React.FC = () => {
-  const { filters, comparisonRange, updateDateRange, toggleTag, toggleProperty, clearFilters } = useDashboard()
+  const { filters, toggleTag, toggleProperty, clearFilters } = useDashboard()
 
   const { data: availableTags = [], isLoading: isTagsLoading } = useTags()
   const { data: availableProperties = [], isLoading: isPropertiesLoading } = useProperties()
@@ -204,15 +192,11 @@ export const MobileFilterControls: React.FC = () => {
 
   return (
     <div className="space-y-3">
-      <div>
-        <SmartPeriodSelector value={filters.dateRange} onChange={updateDateRange} comparisonRange={comparisonRange} className="w-full" />
-      </div>
-
       <CollapsibleFilterSection label="Properties" count={filters.selectedProperties.length}>
         {isPropertiesLoading ? (
           <p className="text-sm text-muted-foreground px-1">Loading...</p>
         ) : availableProperties.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-1">No properties available</p>
+          <p className="text-sm text-muted-foreground px-1">No properties</p>
         ) : (
           <div className="space-y-0.5">
             {availableProperties.map((property) => (
@@ -252,7 +236,7 @@ export const MobileFilterControls: React.FC = () => {
       {hasActiveFilters && (
         <div className="pt-2 border-t">
           <div className="flex items-center justify-between mb-2 px-1">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active</span>
+            <span className="text-xs font-medium text-muted-foreground">Active</span>
             <button
               type="button"
               onClick={clearFilters}
@@ -317,11 +301,17 @@ export const FilterBar: React.FC = () => {
   }, [tagsOpen, propertiesOpen])
 
   return (
-    <div className="hidden sm:block bg-background/80 backdrop-blur-sm border-b border-border relative z-30">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-2 md:py-3 space-y-2">
+    <div className="bg-background/80 backdrop-blur-sm border-b border-border relative z-30">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-2.5 md:py-3 space-y-2.5">
         <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 flex-wrap">
-            <SmartPeriodSelector value={filters.dateRange} onChange={updateDateRange} comparisonRange={comparisonRange} />
+          <div className="flex w-full items-center gap-2 md:w-auto md:flex-wrap">
+            {/* properties and tags live in the menu sheet below md */}
+            <SmartPeriodSelector
+              value={filters.dateRange}
+              onChange={updateDateRange}
+              comparisonRange={comparisonRange}
+              className="min-w-0 flex-1 md:flex-none"
+            />
 
             <Popover
               open={propertiesOpen}
@@ -334,32 +324,32 @@ export const FilterBar: React.FC = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    'text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all',
-                    filters.selectedProperties.length > 0 && 'border-primary bg-primary/5',
+                    'hidden md:inline-flex text-sm font-medium',
+                    filters.selectedProperties.length > 0 && 'border-primary/40 bg-primary/5',
+                    propertiesOpen && 'bg-muted/50',
                   )}
                 >
-                  <Home className="w-4 h-4" />
+                  <Home className="w-4 h-4 text-muted-foreground" />
                   <span>
                     {filters.selectedProperties.length > 0
-                      ? `${filters.selectedProperties.length} Propert${filters.selectedProperties.length > 1 ? 'ies' : 'y'}`
+                      ? `${filters.selectedProperties.length} propert${filters.selectedProperties.length > 1 ? 'ies' : 'y'}`
                       : 'Properties'}
                   </span>
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown
+                    className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform', propertiesOpen && 'rotate-180')}
+                  />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                className={hasGroups ? 'w-[440px] p-0' : 'min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3'}
-              >
+              <PopoverContent align="start" className={hasGroups ? 'w-[460px] p-0' : 'w-64 max-h-80 overflow-y-auto p-1'}>
                 {isPropertiesLoading ? (
                   <div className={cn('text-center py-4 text-muted-foreground', hasGroups && 'p-2')}>Loading properties...</div>
                 ) : availableProperties.length === 0 ? (
-                  <div className={cn('text-center py-4 text-muted-foreground', hasGroups && 'p-2')}>No properties available</div>
+                  <div className={cn('text-center py-4 text-muted-foreground', hasGroups && 'p-2')}>No properties</div>
                 ) : hasGroups ? (
                   <div className="flex divide-x divide-border">
-                    <div className="w-[45%] p-2 overflow-y-auto max-h-[340px]">
-                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 pb-1">Groups</div>
-                      <div className="space-y-1">
+                    <div className="w-[45%] p-1 overflow-y-auto max-h-80">
+                      <div className={menuStyles.label}>Groups</div>
+                      <div className="space-y-0.5">
                         {availableGroups.map((group) => {
                           const sel = groupSelections.find((s) => s.groupId === group.id)
                           return (
@@ -379,9 +369,9 @@ export const FilterBar: React.FC = () => {
                         })}
                       </div>
                     </div>
-                    <div className="flex-1 p-2 overflow-y-auto max-h-[340px]">
-                      <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 pb-1">Properties</div>
-                      <div className="space-y-1">
+                    <div className="flex-1 p-1 overflow-y-auto max-h-80">
+                      <div className={menuStyles.label}>Properties</div>
+                      <div className="space-y-0.5">
                         {availableProperties.map((property) => (
                           <div
                             key={property.id}
@@ -401,7 +391,7 @@ export const FilterBar: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {availableProperties.map((property) => (
                       <PropertyButton
                         key={property.id}
@@ -420,37 +410,32 @@ export const FilterBar: React.FC = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    'text-sm font-medium text-foreground/80 hover:bg-muted/50 transition-all',
-                    filters.selectedTags.length > 0 && 'border-primary bg-primary/5',
+                    'hidden md:inline-flex text-sm font-medium',
+                    filters.selectedTags.length > 0 && 'border-primary/40 bg-primary/5',
+                    tagsOpen && 'bg-muted/50',
                   )}
                 >
-                  <Filter className="w-4 h-4" />
+                  <TagIcon className="w-4 h-4 text-muted-foreground" />
                   <span>
                     {filters.selectedTags.length > 0
-                      ? `${filters.selectedTags.length} Tag${filters.selectedTags.length > 1 ? 's' : ''}`
+                      ? `${filters.selectedTags.length} tag${filters.selectedTags.length > 1 ? 's' : ''}`
                       : 'Tags'}
                   </span>
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className={cn('w-4 h-4 shrink-0 text-muted-foreground transition-transform', tagsOpen && 'rotate-180')} />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="start" className="min-w-[200px] max-h-[300px] overflow-y-auto p-2 pr-3">
+              <PopoverContent align="start" className="w-64 max-h-80 overflow-y-auto p-1">
                 {isTagsLoading ? (
-                  <div className="text-center py-4 text-muted-foreground">Loading tags...</div>
+                  <div className="text-center py-4 text-muted-foreground">Loading...</div>
                 ) : availableTags.length === 0 ? (
-                  <div className="py-4 px-3 space-y-1 text-center">
-                    <p className="text-sm text-muted-foreground">No tags found.</p>
-                    <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                      Tags are imported from OwnerRez.{' '}
-                      <Link
-                        to="/docs/ownerrez-data#tagging"
-                        className="text-primary hover:text-primary/80 underline-offset-2 hover:underline"
-                      >
-                        See how tagging works
-                      </Link>
-                    </p>
+                  <div className="py-3 px-2 space-y-1 text-sm">
+                    <p className="text-muted-foreground">No tags. Tags sync from OwnerRez.</p>
+                    <Link to="/docs/ownerrez-data#tagging" className="text-primary underline-offset-2 hover:underline">
+                      Tagging in OwnerRez
+                    </Link>
                   </div>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {availableTags.map((tag) => (
                       <TagButton
                         key={tag.id}

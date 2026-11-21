@@ -1,15 +1,51 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useModal } from '@/contexts/modal'
 import { useProperties, useOperatingExpenses, useExpenseTemplates, saveExpenseTemplates } from '@/hooks/use-api'
 import type { PropertyRow, ExpenseTemplateRow, OperatingExpenseRow } from '@/hooks/use-api'
 import { StateWrapper } from '@/components/StateWrapper'
+import { tableStyles } from '@/components/tables/table-styles'
 import { formatCurrency, format } from '@baileys/utils'
-import { Building2, Calendar, CheckCircle, Layers, Edit, Plus, X, DollarSign, AlertCircle, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { useToast } from '@/contexts/toast'
 import { Badge } from '@/components/ui/badge'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { useToast } from '@/contexts/toast'
+import { cn } from '@/lib/utils'
+import { SettingsSection } from './SettingsSection'
+
+const EXPENSE_CATEGORIES = [
+  { value: 'cleaning', label: 'Cleaning' },
+  { value: 'management', label: 'Management' },
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'other', label: 'Other' },
+] as const
+
+const VIEW_OPTIONS = [
+  { value: 'templates', label: 'Templates' },
+  { value: 'overrides', label: 'Overrides' },
+] as const
+
+type ExpenseView = (typeof VIEW_OPTIONS)[number]['value']
+
+// property id -> category -> amount as typed
+type TemplateDraft = Record<string, Record<string, string>>
+
+interface TemplateRow {
+  category: string
+  amount: number
+  description?: string
+}
+
+// stable fallbacks so memoized drafts do not reset on every render while loading
+const NO_TEMPLATES: ExpenseTemplateRow[] = []
+const NO_PROPERTIES: PropertyRow[] = []
+
+const AMOUNT_PATTERN = /^\d*\.?\d{0,2}$/
+
+const toNumber = (value: number | string | null | undefined) => (typeof value === 'string' ? parseFloat(value) : (value ?? 0)) || 0
 
 function generateMonthOptions() {
   const options: { value: string; label: string }[] = []
@@ -21,217 +57,140 @@ function generateMonthOptions() {
   return options.reverse()
 }
 
-const EXPENSE_CATEGORIES = [
-  { value: 'cleaning', label: 'Cleaning' },
-  { value: 'management', label: 'Management' },
-  { value: 'utilities', label: 'Utilities' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'other', label: 'Other' },
-]
-
-interface TemplateRow {
-  category: string
-  amount: number
-  description?: string
+const buildDraft = (properties: PropertyRow[], templates: ExpenseTemplateRow[]): TemplateDraft => {
+  const draft: TemplateDraft = {}
+  for (const property of properties) draft[property.id] = {}
+  for (const t of templates) {
+    if (draft[t.property_id]) draft[t.property_id][t.category] = String(toNumber(t.amount))
+  }
+  return draft
 }
 
-// --- Templates view ---
+const sumRow = (row: Record<string, string> | undefined) => Object.values(row ?? {}).reduce((sum, v) => sum + toNumber(v), 0)
 
-interface PropertyTemplateCardProps {
-  property: PropertyRow
+const sameRow = (a: Record<string, string> = {}, b: Record<string, string> = {}) =>
+  EXPENSE_CATEGORIES.every(({ value }) => toNumber(a[value]) === toNumber(b[value]))
+
+interface TemplateGridProps {
+  properties: PropertyRow[]
 }
 
-const PropertyTemplateCard = ({ property }: PropertyTemplateCardProps) => {
-  const { data: templates, mutate } = useExpenseTemplates(property.id)
+const TemplateGrid = ({ properties }: TemplateGridProps) => {
+  const { data: templates = NO_TEMPLATES, isLoading } = useExpenseTemplates()
   const { addToast } = useToast()
-  const templateList: ExpenseTemplateRow[] = Array.isArray(templates) ? templates : []
-
-  const [rows, setRows] = useState<TemplateRow[]>([])
-  const [isDirty, setIsDirty] = useState(false)
+  const saved = useMemo(() => buildDraft(properties, templates), [properties, templates])
+  const [draft, setDraft] = useState<TemplateDraft>(saved)
   const [isSaving, setIsSaving] = useState(false)
 
-  useEffect(() => {
-    if (templateList.length > 0) {
-      setRows(
-        templateList.map((t) => ({
-          category: t.category,
-          amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
-          description: t.description || '',
-        })),
-      )
-    } else {
-      setRows([{ category: '', amount: 0, description: '' }])
-    }
-    setIsDirty(false)
-  }, [templates])
+  useEffect(() => setDraft(saved), [saved])
 
-  const addRow = () => {
-    setRows((prev) => [...prev, { category: '', amount: 0, description: '' }])
-    setIsDirty(true)
-  }
+  const dirtyIds = properties.filter((p) => !sameRow(draft[p.id], saved[p.id])).map((p) => p.id)
 
-  const removeRow = (index: number) => {
-    setRows((prev) => prev.filter((_, i) => i !== index))
-    setIsDirty(true)
-  }
-
-  const updateRow = (index: number, field: keyof TemplateRow, value: string | number) => {
-    setRows((prev) => {
-      const next = [...prev]
-      next[index] = { ...next[index], [field]: value }
-      return next
-    })
-    setIsDirty(true)
+  const updateCell = (propertyId: string, category: string, value: string) => {
+    if (!AMOUNT_PATTERN.test(value)) return
+    setDraft((prev) => ({ ...prev, [propertyId]: { ...prev[propertyId], [category]: value } }))
   }
 
   const handleSave = async () => {
+    setIsSaving(true)
     try {
-      setIsSaving(true)
-      const validRows = rows.filter((r) => r.category && r.amount > 0)
-      await saveExpenseTemplates({
-        propertyId: property.id,
-        templates: validRows.map((r) => ({
-          category: r.category,
-          amount: r.amount,
-          description: r.description || undefined,
-        })),
-      })
-      await mutate()
-      setIsDirty(false)
-      addToast('success', 'Template saved')
+      await Promise.all(
+        dirtyIds.map((propertyId) =>
+          saveExpenseTemplates({
+            propertyId,
+            templates: EXPENSE_CATEGORIES.filter(({ value }) => toNumber(draft[propertyId]?.[value]) > 0).map(({ value }) => ({
+              category: value,
+              amount: toNumber(draft[propertyId][value]),
+              // notes are not edited here, so carry over whatever was saved
+              description: templates.find((t) => t.property_id === propertyId && t.category === value)?.description || undefined,
+            })),
+          }),
+        ),
+      )
+      addToast('success', dirtyIds.length === 1 ? 'Template saved' : `${dirtyIds.length} templates saved`)
     } catch {
-      addToast('error', 'Failed to save template')
+      addToast('error', 'Failed to save templates')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const usedCategories = rows.map((r) => r.category).filter(Boolean)
-  // savedTotal reflects what's actually persisted, not what's in the editor
-  const savedTotal = templateList.reduce((sum, t) => sum + (typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount), 0)
-  const hasTemplate = templateList.length > 0
+  const columnTotal = (category: string) => properties.reduce((sum, p) => sum + toNumber(draft[p.id]?.[category]), 0)
+  const grandTotal = properties.reduce((sum, p) => sum + sumRow(draft[p.id]), 0)
 
   return (
-    <div className="bg-card rounded-lg border shadow-sm">
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Building2 className="w-5 h-5 text-muted-foreground" />
-            <div>
-              <h4 className="text-sm font-medium text-foreground">{property.name}</h4>
-              {hasTemplate ? (
-                <p className="text-xs text-muted-foreground mt-0.5">{formatCurrency(savedTotal)}/mo</p>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-0.5">No template set, expenses default to $0</p>
-              )}
-            </div>
-          </div>
-          {isDirty ? (
-            <Badge variant="warning">Unsaved</Badge>
-          ) : hasTemplate ? (
-            <Badge variant="success">
-              <CheckCircle />
-              Active
-            </Badge>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="p-4 space-y-3">
-        {rows.map((row, index) => (
-          <div key={index} className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <div className="flex gap-2 items-center">
-              <Select value={row.category || undefined} onValueChange={(v) => updateRow(index, 'category', v)}>
-                <SelectTrigger className="flex-1 sm:w-[180px] h-8 text-sm">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <SelectItem
-                      key={cat.value}
-                      value={cat.value}
-                      disabled={usedCategories.includes(cat.value) && row.category !== cat.value}
-                    >
-                      {cat.label}
-                    </SelectItem>
+    <StateWrapper loading={isLoading} minHeight={240}>
+      <div className="overflow-x-auto">
+        <table className={tableStyles.table}>
+          <thead>
+            <tr className={tableStyles.headRow}>
+              <th className={cn(tableStyles.th, 'pl-4 sm:pl-6')}>Property</th>
+              {EXPENSE_CATEGORIES.map(({ value, label }) => (
+                <th key={value} className={cn(tableStyles.th, 'pl-1.5 pr-[18px] text-right')}>
+                  {label}
+                </th>
+              ))}
+              <th className={cn(tableStyles.th, 'pr-4 sm:pr-6 text-right')}>Per month</th>
+            </tr>
+          </thead>
+          <tbody>
+            {properties.map((property) => {
+              const isDirty = dirtyIds.includes(property.id)
+              return (
+                <tr key={property.id} className={tableStyles.row}>
+                  <td className={cn(tableStyles.td, 'pl-4 sm:pl-6 font-medium whitespace-nowrap')}>
+                    <span className="flex items-center gap-2">
+                      {property.name}
+                      {isDirty && <span className="size-1.5 rounded-full bg-warning" title="Unsaved" />}
+                    </span>
+                  </td>
+                  {EXPENSE_CATEGORIES.map(({ value, label }) => (
+                    <td key={value} className="px-1.5 py-1.5">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={draft[property.id]?.[value] ?? ''}
+                        onChange={(e) => updateCell(property.id, value, e.target.value)}
+                        placeholder="0"
+                        aria-label={`${property.name} ${label}`}
+                        className="h-8 w-24 text-sm text-right tabular-nums"
+                      />
+                    </td>
                   ))}
-                </SelectContent>
-              </Select>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeRow(index)}
-                className="h-8 w-8 text-muted-foreground hover:text-danger hover:bg-danger-subtle sm:hidden shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            <div className="flex gap-2 items-center">
-              <div className="relative w-28 shrink-0">
-                <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground z-10" />
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={row.amount || ''}
-                  onChange={(e) => updateRow(index, 'amount', parseFloat(e.target.value) || 0)}
-                  className="pl-7 h-8 text-sm"
-                  placeholder="0.00"
-                />
-              </div>
-
-              <Input
-                type="text"
-                value={row.description || ''}
-                onChange={(e) => updateRow(index, 'description', e.target.value)}
-                className="flex-1 sm:flex-none sm:w-32 h-8 text-sm"
-                placeholder="Note"
-              />
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeRow(index)}
-                className="h-8 w-8 text-muted-foreground hover:text-danger hover:bg-danger-subtle hidden sm:inline-flex shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-
-        <div className="flex items-center justify-between pt-1">
-          {rows.length < EXPENSE_CATEGORIES.length ? (
-            <Button type="button" variant="link" onClick={addRow} className="text-xs px-0 h-auto">
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              Add category
-            </Button>
-          ) : (
-            <span />
-          )}
-
-          {isDirty ? (
-            <Button size="sm" onClick={handleSave} disabled={isSaving} loading={isSaving} loadingText="Saving...">
-              <Save className="w-3.5 h-3.5" />
-              Save Template
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" disabled className="text-muted-foreground">
-              <CheckCircle className="w-3.5 h-3.5" />
-              {hasTemplate ? 'Saved' : 'Save Template'}
-            </Button>
-          )}
-        </div>
+                  <td className={cn(tableStyles.td, 'pr-4 sm:pr-6 text-right tabular-nums')}>
+                    {formatCurrency(sumRow(draft[property.id]))}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-border">
+              <td className={cn(tableStyles.td, 'pl-4 sm:pl-6 text-muted-foreground')}>Total</td>
+              {EXPENSE_CATEGORIES.map(({ value }) => (
+                <td key={value} className="pl-1.5 pr-[18px] py-2.5 text-right text-muted-foreground tabular-nums">
+                  {formatCurrency(columnTotal(value))}
+                </td>
+              ))}
+              <td className={cn(tableStyles.td, 'pr-4 sm:pr-6 text-right font-medium tabular-nums')}>{formatCurrency(grandTotal)}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
-    </div>
+
+      <div className="flex items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t border-border">
+        {dirtyIds.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setDraft(saved)} disabled={isSaving}>
+            Discard
+          </Button>
+        )}
+        <Button size="sm" onClick={handleSave} disabled={dirtyIds.length === 0} loading={isSaving} loadingText="Saving...">
+          Save
+        </Button>
+      </div>
+    </StateWrapper>
   )
 }
-
-// --- Overrides view ---
 
 interface PropertyOverrideRowProps {
   property: PropertyRow
@@ -249,80 +208,48 @@ const PropertyOverrideRow = ({ property, month, onOverride }: PropertyOverrideRo
   const hasOverride = expensesList.length > 0
   const hasTemplate = templateList.length > 0
 
-  const overrideTotal = expensesList.reduce((sum, e) => sum + (typeof e.amount === 'string' ? parseFloat(e.amount) : e.amount), 0)
-  const templateTotal = templateList.reduce((sum, t) => sum + (typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount), 0)
+  const overrideTotal = expensesList.reduce((sum, e) => sum + toNumber(e.amount), 0)
+  const templateTotal = templateList.reduce((sum, t) => sum + toNumber(t.amount), 0)
 
   const handleOverride = () => {
-    const templateRows: TemplateRow[] = hasTemplate
-      ? templateList.map((t) => ({
-          category: t.category,
-          amount: typeof t.amount === 'string' ? parseFloat(t.amount) : t.amount,
-          description: t.description || undefined,
-        }))
-      : []
+    const templateRows: TemplateRow[] = templateList.map((t) => ({
+      category: t.category,
+      amount: toNumber(t.amount),
+      description: t.description || undefined,
+    }))
     onOverride(property.id, property.name, hasOverride ? undefined : templateRows)
   }
 
   return (
-    <div
-      className={`bg-card rounded-lg shadow-sm border transition-colors hover:bg-muted/30 ${
-        hasOverride ? 'border-success/30' : 'border-border'
-      }`}
-    >
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Building2 className="w-5 h-5 text-muted-foreground" />
-            <div>
-              <h4 className="text-sm font-medium text-foreground">{property.name}</h4>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {hasOverride ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-success-fg">
-                    <CheckCircle className="w-3 h-3" />
-                    Custom override ({formatCurrency(overrideTotal)})
-                  </span>
-                ) : hasTemplate ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <Layers className="w-3 h-3" />
-                    Using template ({formatCurrency(templateTotal)}/mo)
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <AlertCircle className="w-3 h-3" />
-                    No template set
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <Button
-            onClick={handleOverride}
-            size="sm"
-            variant={hasOverride ? 'default' : 'outline'}
-            className={hasOverride ? 'bg-success hover:bg-success/90' : ''}
-          >
-            <Edit className="w-4 h-4" />
-            {hasOverride ? 'Edit Override' : hasTemplate ? 'Override This Month' : 'Add Expenses'}
-          </Button>
-        </div>
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 sm:px-6 py-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{property.name}</p>
+        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground tabular-nums">
+          {hasOverride ? (
+            <>
+              <Badge variant="info">Override</Badge>
+              {formatCurrency(overrideTotal)}
+            </>
+          ) : hasTemplate ? (
+            `Template, ${formatCurrency(templateTotal)}`
+          ) : (
+            'No template'
+          )}
+        </p>
       </div>
+      <Button onClick={handleOverride} size="sm" variant="outline">
+        {hasOverride ? 'Edit' : hasTemplate ? 'Override' : 'Add expenses'}
+      </Button>
     </div>
   )
 }
 
-// --- Main panel ---
-
 export const ExpenseManagementPanel = () => {
   const { openModal } = useModal()
-  const { data: properties, isLoading } = useProperties()
-
-  const [activeView, setActiveView] = useState<'templates' | 'overrides'>('templates')
-
-  const currentDate = new Date()
-  const [selectedPeriod, setSelectedPeriod] = useState(
-    `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`,
-  )
+  const { data: properties = NO_PROPERTIES, isLoading } = useProperties()
+  const [activeView, setActiveView] = useState<ExpenseView>('templates')
+  const monthOptions = useMemo(generateMonthOptions, [])
+  const [selectedPeriod, setSelectedPeriod] = useState(() => format(new Date(), 'yyyy-MM'))
 
   const handleOverride = (propertyId: string, propertyName: string, templateData?: TemplateRow[]) => {
     openModal({
@@ -335,78 +262,30 @@ export const ExpenseManagementPanel = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">Operating Expenses</h3>
-            <p className="text-muted-foreground text-sm">Set up monthly templates, then override individual months when costs change</p>
-          </div>
-          <div className="bg-muted/40 rounded-lg px-4 py-3">
-            <div className="text-2xl font-bold text-info">{properties?.length || 0}</div>
-            <div className="text-xs text-muted-foreground mt-1">Properties</div>
-          </div>
-        </div>
-      </div>
-
-      {/* segmented control */}
-      <div className="flex items-center gap-1 p-1 bg-muted/50 rounded-lg w-fit">
-        <button
-          type="button"
-          onClick={() => setActiveView('templates')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            activeView === 'templates' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Templates
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveView('overrides')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            activeView === 'overrides' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          Overrides
-        </button>
-      </div>
-
-      {activeView === 'templates' && (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-semibold text-foreground">Monthly Templates</h3>
-              <p className="text-xs text-muted-foreground mt-0.5">Templates apply to all months unless you override them</p>
-            </div>
-          </div>
-          <StateWrapper
-            loading={isLoading}
-            empty={!properties?.length && !isLoading}
-            loadingMessage="Loading properties..."
-            emptyMessage="No properties found. Sync your properties from OwnerRez first."
-            minHeight={400}
-          >
-            <div className="space-y-4">
-              {(properties || []).map((property) => (
-                <PropertyTemplateCard key={property.id} property={property} />
-              ))}
-            </div>
-          </StateWrapper>
-        </>
-      )}
-
-      {activeView === 'overrides' && (
-        <>
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-foreground">Monthly Overrides</h3>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
+    <SettingsSection
+      title="Operating expenses"
+      description="Templates set each property's monthly costs. An override replaces the template for one month."
+      flush
+      action={<SegmentedControl label="Expense view" size="default" value={activeView} onChange={setActiveView} options={VIEW_OPTIONS} />}
+    >
+      <StateWrapper
+        loading={isLoading}
+        empty={!isLoading && properties.length === 0}
+        emptyMessage="No properties. Connect OwnerRez under Integrations to sync them."
+        minHeight={240}
+      >
+        {activeView === 'templates' ? (
+          <TemplateGrid properties={properties} />
+        ) : (
+          <>
+            <div className={tableStyles.toolbar}>
+              <span className="pl-0 sm:pl-2 text-sm text-muted-foreground">Month</span>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger className="w-44 h-8 text-sm">
+                <SelectTrigger className="w-44 h-8 text-sm" aria-label="Month">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="max-h-64">
-                  {generateMonthOptions().map((opt) => (
+                  {monthOptions.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
                       {opt.label}
                     </SelectItem>
@@ -414,22 +293,14 @@ export const ExpenseManagementPanel = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <StateWrapper
-            loading={isLoading}
-            empty={!properties?.length && !isLoading}
-            loadingMessage="Loading properties..."
-            emptyMessage="No properties found. Sync your properties from OwnerRez first."
-            minHeight={400}
-          >
-            <div className="space-y-3">
-              {(properties || []).map((property) => (
+            <div className="divide-y divide-border/60">
+              {properties.map((property) => (
                 <PropertyOverrideRow key={property.id} property={property} month={selectedPeriod} onOverride={handleOverride} />
               ))}
             </div>
-          </StateWrapper>
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </StateWrapper>
+    </SettingsSection>
   )
 }

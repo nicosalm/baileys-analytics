@@ -1,7 +1,7 @@
 import { useMemo, useState, useCallback } from 'react'
 import { OccupancyHeatmap } from '@/components/OccupancyHeatmap'
 import { OccupancyListView } from '@/components/OccupancyListView'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
 import { Calendar, Home, Percent, TrendingUp, TrendingDown, List } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch, useGoalProgress } from '@/hooks/use-api'
@@ -10,6 +10,7 @@ import { MetricCard } from '@/components/MetricCard'
 import { WhatIfCalculator } from '@/components/WhatIfCalculator'
 import { PacingRunway } from '@/components/pacing/PacingRunway'
 import { ChartWrapper } from '@/components/ChartWrapper'
+import { ChartLegend } from '@/components/charts/ChartLegend'
 import { detectGranularity } from '@/utils/chart-helpers'
 import { StateWrapper } from '@/components/StateWrapper'
 import { formatPercentage, minBy } from '@baileys/utils'
@@ -290,7 +291,7 @@ export const OccupancyDashboard = () => {
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
             ) : (
-              `${currentData.bookedNights.toLocaleString()} booked of ${currentData.availableNights.toLocaleString()} sellable${currentData.blockedNights ? ` | ${currentData.blockedNights.toLocaleString()} owner-blocked` : ''}`
+              `${currentData.byProperty.length} ${currentData.byProperty.length === 1 ? 'property' : 'properties'}`
             )
           }
           trend={
@@ -320,7 +321,9 @@ export const OccupancyDashboard = () => {
                 vs {comparisonLabel}: {previousData.bookedNights.toLocaleString()} nights
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : undefined
+            ) : (
+              `of ${currentData.availableNights.toLocaleString()} sellable`
+            )
           }
           trend={
             comparisonMode !== 'none' && previousData?.bookedNights !== undefined
@@ -339,7 +342,7 @@ export const OccupancyDashboard = () => {
         />
         <MetricCard
           icon={Home}
-          label="Available Nights"
+          label="Sellable Nights"
           value={currentData.availableNights}
           format="number"
           tooltip={METRIC_DEFINITIONS.sellableNights}
@@ -349,7 +352,11 @@ export const OccupancyDashboard = () => {
                 vs {comparisonLabel}: {previousData.availableNights.toLocaleString()}
                 {comparisonDateRange && <span className="block text-xs text-muted-foreground/70 mt-0.5">{comparisonDateRange}</span>}
               </>
-            ) : undefined
+            ) : currentData.blockedNights ? (
+              `${currentData.blockedNights.toLocaleString()} owner-blocked excluded`
+            ) : (
+              'No owner blocks'
+            )
           }
           trend={
             comparisonMode !== 'none' && previousData?.availableNights !== undefined
@@ -372,23 +379,11 @@ export const OccupancyDashboard = () => {
           value={lowestPeriod ? `${lowestPeriod.availableNights - lowestPeriod.bookedNights} open` : '—'}
           format="custom"
           subValue={
-            !lowestPeriod
-              ? 'No trend data in this range'
-              : occupancyGoal !== null
-                ? (() => {
-                    const deviation = lowestPeriod.rate * 100 - occupancyGoal
-                    const isAbove = deviation >= 0
-                    return (
-                      <>
-                        {formatPeriodDisplay(lowestPeriod.month)} ·{' '}
-                        <span className={`inline-flex items-center gap-0.5 ${isAbove ? 'text-success' : 'text-danger'}`}>
-                          {isAbove ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                          {Math.abs(deviation).toFixed(1)}% {isAbove ? 'above' : 'below'} goal
-                        </span>
-                      </>
-                    )
-                  })()
-                : `${formatPeriodDisplay(lowestPeriod.month)} · ${formatPercentage(lowestPeriod.rate * 100, 1)} booked`
+            lowestPeriod
+              ? `${formatPeriodDisplay(lowestPeriod.month)} · ${formatPercentage(lowestPeriod.rate * 100, 1)} booked${
+                  occupancyGoal !== null ? `, goal ${occupancyGoal}%` : ''
+                }`
+              : 'No trend data in this range'
           }
           tooltip={`The ${periodWord.toLowerCase()} with the lowest occupancy in this range.${occupancyGoal !== null ? ` Your occupancy goal is ${occupancyGoal}%.` : ''}`}
           staggerIndex={3}
@@ -397,14 +392,12 @@ export const OccupancyDashboard = () => {
 
       <PacingRunway />
 
-      <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-muted-foreground" />
-              {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
-            </h3>
-          </div>
+      <section className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <h3 className="text-lg font-semibold flex items-center">
+            <Calendar className="w-5 h-5 mr-2 text-muted-foreground" />
+            {calendarView === 'calendar' ? 'Occupancy Calendar' : 'Booking Timeline'}
+          </h3>
           <SegmentedControl
             label="Booking view"
             value={calendarView}
@@ -416,7 +409,9 @@ export const OccupancyDashboard = () => {
           />
         </div>
         {calendarView === 'calendar' ? (
-          <OccupancyHeatmap dateRange={filters.dateRange} tagIds={filters.selectedTags.map((t) => t.id)} />
+          <div className="px-4 pb-6 sm:px-6">
+            <OccupancyHeatmap dateRange={filters.dateRange} tagIds={filters.selectedTags.map((t) => t.id)} />
+          </div>
         ) : (
           <OccupancyListView
             properties={(currentData.byProperty || []).map((p: OccupancyByProperty) => ({
@@ -425,7 +420,7 @@ export const OccupancyDashboard = () => {
             }))}
           />
         )}
-      </div>
+      </section>
 
       <WhatIfCalculator byProperty={currentData.byProperty} dateRange={filters.dateRange} />
 
@@ -433,155 +428,144 @@ export const OccupancyDashboard = () => {
         <div className="lg:col-span-2">
           <ChartWrapper
             title={getChartTitle()}
-            subtitle={comparisonMode !== 'none' && previousData ? `Current period vs ${comparisonLabel}` : undefined}
             icon={TrendingUp}
             height={360}
+            responsive={false}
             noData={chartData.length === 0}
             noDataMessage="No occupancy data for this period"
           >
-            <LineChart
-              data={chartData}
-              onClick={handlePeriodClick}
-              margin={{ top: 8, right: 24, bottom: 0, left: 0 }}
-              style={{ cursor: 'pointer' }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} />
-              <XAxis
-                dataKey="month"
-                angle={xAxisConfig.angle}
-                textAnchor={xAxisConfig.textAnchor}
-                height={xAxisConfig.height}
-                interval={xAxisConfig.interval}
-                stroke={CHART_INFRA.axis}
-                tick={{ fill: CHART_INFRA.axis }}
-              />
-              <YAxis
-                tickFormatter={(value: number) => `${Math.round(value)}%`}
-                domain={[0, 100]}
-                allowDataOverflow
-                stroke={CHART_INFRA.axis}
-                tick={{ fill: CHART_INFRA.axis }}
-              />
-              <Tooltip content={<OccupancyChartTooltip />} isAnimationActive={false} />
-              {comparisonMode !== 'none' && previousData && <Legend />}
-              {occupancyGoal !== null && (
-                <ReferenceLine
-                  y={occupancyGoal}
-                  stroke={CHART_INFRA.goal}
-                  strokeDasharray="6 4"
-                  strokeWidth={1.5}
-                  label={{
-                    value: `⬥ Goal: ${occupancyGoal}%`,
-                    position: 'insideTopLeft',
-                    fill: CHART_INFRA.goal,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    offset: 4,
-                  }}
-                />
-              )}
-              <Line
-                type="monotone"
-                dataKey="rate"
-                stroke={METRIC_COLORS.occupancy}
-                strokeWidth={3}
-                dot={{ fill: METRIC_COLORS.occupancy, r: 6, strokeWidth: 0 }}
-                style={{ cursor: 'pointer' }}
-                activeDot={{ r: 8, fill: METRIC_COLORS.occupancy }}
-                name="Current Period"
-              />
+            <div className="h-full flex flex-col">
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    onClick={handlePeriodClick}
+                    margin={{ top: 8, right: 24, bottom: 0, left: 0 }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CartesianGrid vertical={false} stroke={CHART_INFRA.grid} strokeOpacity={0.6} />
+                    <XAxis
+                      dataKey="month"
+                      angle={xAxisConfig.angle}
+                      textAnchor={xAxisConfig.textAnchor}
+                      height={xAxisConfig.height}
+                      interval={xAxisConfig.interval}
+                      tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tickFormatter={(value: number) => `${Math.round(value)}%`}
+                      domain={[0, 100]}
+                      allowDataOverflow
+                      tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<OccupancyChartTooltip />} isAnimationActive={false} />
+                    {occupancyGoal !== null && (
+                      <ReferenceLine
+                        y={occupancyGoal}
+                        stroke={CHART_INFRA.goal}
+                        strokeDasharray="6 4"
+                        strokeWidth={1.5}
+                        label={{
+                          value: `⬥ Goal: ${occupancyGoal}%`,
+                          position: 'insideTopLeft',
+                          fill: CHART_INFRA.goal,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          offset: 4,
+                        }}
+                      />
+                    )}
+                    <Line
+                      type="monotone"
+                      dataKey="rate"
+                      stroke={METRIC_COLORS.occupancy}
+                      strokeWidth={2}
+                      dot={{ fill: METRIC_COLORS.occupancy, r: 4, strokeWidth: 0 }}
+                      style={{ cursor: 'pointer' }}
+                      activeDot={{ r: 6, fill: METRIC_COLORS.occupancy }}
+                      name="This period"
+                    />
+                    {comparisonMode !== 'none' && previousData && (
+                      <Line
+                        type="monotone"
+                        dataKey="previousRate"
+                        stroke={CHART_INFRA.comparison}
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        activeDot={{ r: 4, fill: CHART_INFRA.comparison }}
+                        name={comparisonLabel || 'Previous period'}
+                      />
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
               {comparisonMode !== 'none' && previousData && (
-                <Line
-                  type="monotone"
-                  dataKey="previousRate"
-                  stroke={CHART_INFRA.comparison}
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={{ fill: CHART_INFRA.comparison, r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: CHART_INFRA.comparison }}
-                  name={comparisonLabel || 'Previous Period'}
+                <ChartLegend
+                  className="mt-3"
+                  items={[
+                    { label: 'This period', color: METRIC_COLORS.occupancy },
+                    { label: comparisonLabel || 'Previous period', color: CHART_INFRA.comparison, dashed: true },
+                  ]}
                 />
               )}
-            </LineChart>
+            </div>
           </ChartWrapper>
         </div>
 
-        <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Home className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">Property Occupancy</h3>
-            </div>
-            {currentData.byProperty.length > 5 && (
-              <span className="text-xs text-muted-foreground">
-                Top {Math.min(currentData.byProperty.length, 10)} of {currentData.byProperty.length}
-              </span>
-            )}
-          </div>
-          <div className="max-h-80 overflow-y-auto overflow-x-hidden pr-2 divide-y divide-border">
-            {sortedProperties.length > 0 ? (
-              sortedProperties.map((property: OccupancyByProperty) => {
+        <div className="bg-card p-6 rounded-lg shadow-sm border border-border flex flex-col min-h-0">
+          <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+            <Home className="w-5 h-5 text-muted-foreground" />
+            Property Occupancy
+          </h3>
+          {sortedProperties.length > 0 ? (
+            <ul className="-mx-2 flex-1 overflow-y-auto lg:max-h-[372px]">
+              {sortedProperties.map((property: OccupancyByProperty) => {
                 const occupancyPercent = property.rate * 100
                 const prevProperty = prevByPropertyMap.get(property.propertyId)
-                const prevOccupancy = prevProperty ? prevProperty.rate * 100 : null
+                const prevOccupancy = comparisonMode !== 'none' && prevProperty ? prevProperty.rate * 100 : null
+                const name = property.propertyName || `Property ${property.propertyId.slice(0, 8)}`
 
                 return (
-                  <div
-                    key={property.propertyId}
-                    className="py-3 px-2 -mx-2 rounded hover:bg-muted/50 cursor-pointer transition-colors"
-                    onClick={() => handlePropertyClick(property)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0 mr-3">
-                        <p className="text-sm font-medium truncate">
-                          {property.propertyName || `Property ${property.propertyId.slice(0, 8)}`}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {property.bookedNights}/{property.availableNights} nights
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-sm font-semibold ${'text-foreground'}`}>{formatPercentage(occupancyPercent, 1)}</span>
-                        {comparisonMode !== 'none' && prevOccupancy !== null && (
-                          <span
-                            className={`text-xs flex items-center gap-0.5 ${occupancyPercent > prevOccupancy ? 'text-success' : occupancyPercent < prevOccupancy ? 'text-danger' : 'text-muted-foreground'}`}
-                          >
-                            {occupancyPercent > prevOccupancy ? (
-                              <TrendingUp className="w-3 h-3" />
-                            ) : occupancyPercent < prevOccupancy ? (
-                              <TrendingDown className="w-3 h-3" />
-                            ) : null}
-                            {Math.abs(occupancyPercent - prevOccupancy).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="mt-2 relative">
-                      <div className="w-full bg-muted rounded-full h-1.5">
-                        <div
-                          className={`h-1.5 rounded-full transition-all ${'bg-primary'}`}
+                  <li key={property.propertyId}>
+                    <button
+                      type="button"
+                      onClick={() => handlePropertyClick(property)}
+                      title={`${property.bookedNights} of ${property.availableNights} nights booked`}
+                      className="grid w-full grid-cols-[minmax(0,1fr)_6rem_3.5rem] items-center gap-3 rounded-md px-2 py-2 text-left text-sm cursor-pointer transition-colors hover:bg-muted/50"
+                    >
+                      <span className="truncate font-medium">{name}</span>
+                      <span className="relative h-1.5 rounded-full bg-muted" aria-hidden>
+                        <span
+                          className="absolute inset-y-0 left-0 rounded-full bg-primary"
                           style={{ width: `${Math.min(occupancyPercent, 100)}%` }}
                         />
-                      </div>
-                      {comparisonMode !== 'none' && prevOccupancy !== null && prevOccupancy > 0 && (
-                        <div
-                          className="absolute top-0 w-0.5 h-1.5 bg-muted-foreground/50 rounded-full"
-                          style={{ left: `${Math.min(prevOccupancy, 100)}%` }}
-                          title={`Previous: ${formatPercentage(prevOccupancy, 1)}`}
-                        />
-                      )}
-                    </div>
-                  </div>
+                        {prevOccupancy !== null && prevOccupancy > 0 && (
+                          <span
+                            className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-foreground/50"
+                            style={{ left: `${Math.min(prevOccupancy, 100)}%` }}
+                          />
+                        )}
+                      </span>
+                      <span className="text-right font-semibold tabular-nums">{formatPercentage(occupancyPercent, 1)}</span>
+                    </button>
+                  </li>
                 )
-              })
-            ) : (
-              <div className="text-center text-muted-foreground py-8">
-                <Home className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">No property data available</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Data will appear once bookings are synced</p>
-              </div>
-            )}
-          </div>
+              })}
+            </ul>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">No properties in this range</p>
+          )}
+          {comparisonMode !== 'none' && previousData && sortedProperties.length > 0 && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="inline-block h-2.5 w-0.5 rounded-full bg-foreground/50" aria-hidden />
+              {comparisonLabel}
+            </p>
+          )}
         </div>
       </div>
     </div>

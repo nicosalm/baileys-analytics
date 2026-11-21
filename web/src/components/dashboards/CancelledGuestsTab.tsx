@@ -155,7 +155,7 @@ export const CancelledGuestsTab = () => {
             ),
           },
         ]}
-        pageSize={15}
+        pageSize={10}
         sortBy="canceledUtc"
         sortOrder="desc"
         onRowClick={handleBookingClick}

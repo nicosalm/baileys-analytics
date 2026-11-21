@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from 'react'
-import { ChevronDown, ChevronRight, AlertTriangle, TrendingDown, Calendar, Info } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Info } from 'lucide-react'
 import { formatCurrency, formatDateDisplay } from '@baileys/utils'
 import { MS_PER_DAY } from '@baileys/constants'
 import { useBookingsForRange, type BookingRow } from '@/hooks/use-api'
@@ -8,6 +8,8 @@ import { StateWrapper } from '@/components/StateWrapper'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/Pagination'
 import { SegmentedControl } from '@/components/ui/segmented-control'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface OccupancyListViewProps {
   properties: { propertyId: string; propertyName: string }[]
@@ -34,18 +36,42 @@ type ListEntry =
       gapStart: string
       gapEnd: string
       nights: number
-      severity: 'critical' | 'warning' | 'info'
       estimatedLoss: number
     }
 
 const INACTIVE_STATUSES = ['cancelled', 'canceled', 'declined', 'rejected']
+type SortKey = 'name' | 'bookings' | 'nights' | 'gaps' | 'rate' | 'occupancy'
+
+interface PropertyGroupSummary {
+  bookingCount: number
+  bookedNights: number
+  gapCount: number
+  avgNightlyRate: number
+  occupancyRate: number
+}
+
+const SORT_VALUE: Record<Exclude<SortKey, 'name'>, (g: PropertyGroupSummary) => number> = {
+  bookings: (g) => g.bookingCount,
+  nights: (g) => g.bookedNights,
+  gaps: (g) => g.gapCount,
+  rate: (g) => g.avgNightlyRate,
+  occupancy: (g) => g.occupancyRate,
+}
+
+const COLUMNS: { key: SortKey; label: string; align: 'left' | 'right' }[] = [
+  { key: 'name', label: 'Property', align: 'left' },
+  { key: 'bookings', label: 'Bookings', align: 'right' },
+  { key: 'nights', label: 'Nights', align: 'right' },
+  { key: 'gaps', label: 'Gaps', align: 'right' },
+  { key: 'rate', label: 'Avg rate', align: 'right' },
+  { key: 'occupancy', label: 'Occupancy', align: 'right' },
+]
+
+// property, bookings, nights, gaps, avg rate, occupancy
+const GRID = 'grid grid-cols-[minmax(0,1fr)_4.5rem_6rem_3.5rem_5.5rem_8.5rem] items-center gap-x-4'
+
 const TRUNCATION_LIMIT = 1000
 const PAGE_SIZE = 15
-const GAP_SEVERITY_STYLES = {
-  critical: 'bg-danger-subtle border-l-danger text-danger-fg',
-  warning: 'bg-warning-subtle border-l-warning text-warning-fg',
-  info: 'bg-info-subtle border-l-info text-info-fg',
-} as const
 
 function toDateString(d: Date) {
   const year = d.getFullYear()
@@ -56,12 +82,6 @@ function toDateString(d: Date) {
 
 function daysBetween(a: string, b: string) {
   return Math.round((new Date(b).getTime() - new Date(a).getTime()) / MS_PER_DAY)
-}
-
-function getGapSeverity(nights: number): 'critical' | 'warning' | 'info' {
-  if (nights >= 7) return 'critical'
-  if (nights >= 3) return 'warning'
-  return 'info'
 }
 
 export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
@@ -76,7 +96,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   const { data: bookings, isLoading, error } = useBookingsForRange(dateRange.from, dateRange.to)
   const { openModal } = useModal()
   const [groupBy, setGroupBy] = useState<'property' | 'time'>('property')
-  const [sortBy, setSortBy] = useState<'name' | 'occupancy'>('occupancy')
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'occupancy', dir: 'asc' })
   const [expandedProperties, setExpandedProperties] = useState<Set<string>>(new Set())
   const [propertyPage, setPropertyPage] = useState(1)
   const [timePage, setTimePage] = useState(1)
@@ -91,7 +111,12 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
   // reset property page when sort changes (reorders groups)
   useEffect(() => {
     setPropertyPage(1)
-  }, [sortBy])
+  }, [sort])
+
+  const handleSort = (key: SortKey) =>
+    setSort((prev) =>
+      prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'name' ? 'asc' : 'desc' },
+    )
 
   const isTruncated = bookings?.length === TRUNCATION_LIMIT
 
@@ -159,7 +184,6 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
               gapStart: rangeStart,
               gapEnd: rangeEnd,
               nights: gapNights,
-              severity: getGapSeverity(gapNights),
               estimatedLoss: avgNightlyRate * gapNights,
             })
           }
@@ -175,7 +199,6 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                 gapStart: rangeStart,
                 gapEnd: sorted[0].arrival,
                 nights: gapNights,
-                severity: getGapSeverity(gapNights),
                 estimatedLoss: avgNightlyRate * gapNights,
               })
             }
@@ -207,7 +230,6 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                   gapStart: b.departure,
                   gapEnd: sorted[i + 1].arrival,
                   nights: gapNights,
-                  severity: getGapSeverity(gapNights),
                   estimatedLoss: avgNightlyRate * gapNights,
                 })
               }
@@ -225,7 +247,6 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
                 gapStart: sorted[sorted.length - 1].departure,
                 gapEnd: rangeEnd,
                 nights: gapNights,
-                severity: getGapSeverity(gapNights),
                 estimatedLoss: avgNightlyRate * gapNights,
               })
             }
@@ -253,8 +274,11 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
           avgNightlyRate,
         }
       })
-      .sort((a, b) => (sortBy === 'occupancy' ? a.occupancyRate - b.occupancyRate : a.name.localeCompare(b.name)))
-  }, [bookings, dateRange.from, dateRange.to, properties, sortBy])
+      .sort((a, b) => {
+        const diff = sort.key === 'name' ? a.name.localeCompare(b.name) : SORT_VALUE[sort.key](a) - SORT_VALUE[sort.key](b)
+        return sort.dir === 'asc' ? diff : -diff
+      })
+  }, [bookings, dateRange.from, dateRange.to, properties, sort])
 
   // Flat chronological view
   const chronologicalEntries = useMemo(() => {
@@ -276,7 +300,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
 
   if (isLoading || (!bookings && !error)) {
     return (
-      <StateWrapper loading={true} loadingMessage="Loading bookings..." minHeight={300} className="py-12">
+      <StateWrapper loading={true} loadingMessage="Loading bookings..." minHeight={300} className="py-12 border-t border-border">
         <div />
       </StateWrapper>
     )
@@ -284,7 +308,7 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
 
   if (error) {
     return (
-      <StateWrapper error={error} errorMessage="Failed to load bookings" minHeight={300} className="py-12">
+      <StateWrapper error={error} errorMessage="Failed to load bookings" minHeight={300} className="py-12 border-t border-border">
         <div />
       </StateWrapper>
     )
@@ -304,154 +328,155 @@ export const OccupancyListView = ({ properties }: OccupancyListViewProps) => {
     )
   }
 
-  return (
-    <div className="space-y-3">
-      {/* Truncation warning */}
-      {isTruncated && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-warning-subtle border border-warning/30 rounded-lg text-sm text-warning-fg">
-          <Info className="w-4 h-4 shrink-0" />
-          Showing first {TRUNCATION_LIMIT.toLocaleString()} bookings. Try a shorter look-ahead for complete results.
-        </div>
-      )}
+  const groupSlice = propertyGroups.slice((propertyPage - 1) * PAGE_SIZE, propertyPage * PAGE_SIZE)
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3 sm:px-6">
+        <SegmentedControl
+          label="Group bookings"
+          value={groupBy}
+          onChange={setGroupBy}
+          options={[
+            { value: 'property', label: 'By property' },
+            { value: 'time', label: 'By date' },
+          ]}
+        />
         <div className="flex items-center gap-2">
-          {/* Group toggle */}
-          <SegmentedControl
-            label="Group bookings"
-            value={groupBy}
-            onChange={setGroupBy}
-            options={[
-              { value: 'property', label: 'By property' },
-              { value: 'time', label: 'By date' },
-            ]}
-          />
-          {/* Look-ahead selector */}
+          {groupBy === 'property' && (
+            <Button variant="ghost" size="sm" onClick={allExpanded ? collapseAll : expandAll} className="text-muted-foreground">
+              {allExpanded ? 'Collapse all' : 'Expand all'}
+            </Button>
+          )}
           <SegmentedControl
             label="Days ahead"
             value={lookAhead}
             onChange={setLookAhead}
-            options={([30, 60, 90] as LookAhead[]).map((days) => ({ value: days, label: `${days}d` }))}
+            options={([30, 60, 90] as LookAhead[]).map((days) => ({ value: days, label: `Next ${days} days` }))}
           />
         </div>
-        {groupBy === 'property' && (
-          <div className="flex items-center gap-2">
-            <SegmentedControl
-              label="Sort properties"
-              value={sortBy}
-              onChange={setSortBy}
-              options={[
-                { value: 'name', label: 'Name' },
-                { value: 'occupancy', label: 'Occupancy' },
-              ]}
-            />
-            <div className="w-px h-5 bg-border" aria-hidden />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={allExpanded ? collapseAll : expandAll}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {allExpanded ? 'Collapse all' : 'Expand all'}
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* By Property view */}
-      {groupBy === 'property' && (
-        <div className="space-y-2">
-          {propertyGroups.slice((propertyPage - 1) * PAGE_SIZE, propertyPage * PAGE_SIZE).map((group) => {
-            const isExpanded = expandedProperties.has(group.propertyId)
-            const occupancyPct = Math.round(group.occupancyRate * 100)
+      {isTruncated && (
+        <p className="flex items-center gap-2 border-t border-border px-4 py-2 text-xs text-muted-foreground sm:px-6">
+          <Info className="size-3.5 shrink-0" />
+          Showing the first {TRUNCATION_LIMIT.toLocaleString()} bookings. Choose a shorter range for complete results.
+        </p>
+      )}
 
-            return (
-              <div key={group.propertyId} className="border border-border rounded-lg overflow-hidden">
-                {/* Property header */}
-                <button
-                  type="button"
-                  onClick={() => toggleProperty(group.propertyId)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2">
-                    {isExpanded ? (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+      {groupBy === 'property' ? (
+        <div className="overflow-x-auto border-t border-border">
+          <div className="min-w-[44rem]">
+            <div className={cn(GRID, 'border-b border-border px-4 py-2.5 sm:px-6')}>
+              {COLUMNS.map(({ key, label, align }) => {
+                const active = sort.key === key
+                const Arrow = sort.dir === 'asc' ? ChevronUp : ChevronDown
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleSort(key)}
+                    aria-pressed={active}
+                    title={`Sort by ${label.toLowerCase()}`}
+                    className={cn(
+                      'flex items-center gap-1 text-xs font-medium whitespace-nowrap cursor-pointer select-none transition-colors',
+                      align === 'right' && 'justify-end',
+                      key === 'name' && 'pl-6',
+                      active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
                     )}
-                    <span className="font-medium text-sm text-foreground">{group.name}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>
-                      {group.bookingCount} {group.bookingCount === 1 ? 'booking' : 'bookings'}
+                  >
+                    {label}
+                    {active && <Arrow className="size-3" aria-hidden />}
+                  </button>
+                )
+              })}
+            </div>
+
+            {groupSlice.map((group) => {
+              const isExpanded = expandedProperties.has(group.propertyId)
+              const occupancyPct = group.occupancyRate * 100
+              return (
+                <div key={group.propertyId} className="border-b border-border/60 last:border-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleProperty(group.propertyId)}
+                    aria-expanded={isExpanded}
+                    className={cn(GRID, 'w-full px-4 py-2.5 text-left text-sm cursor-pointer transition-colors hover:bg-muted/40 sm:px-6')}
+                  >
+                    <span className="flex min-w-0 items-center gap-2 font-medium text-foreground">
+                      <ChevronRight
+                        className={cn('size-4 shrink-0 text-muted-foreground transition-transform', isExpanded && 'rotate-90')}
+                        aria-hidden
+                      />
+                      <span className="truncate">{group.name}</span>
                     </span>
-                    <span>
-                      {group.bookedNights} / {group.totalNights} nights
+                    <span className="text-right tabular-nums">{group.bookingCount}</span>
+                    <span className="text-right tabular-nums">
+                      {group.bookedNights}
+                      <span className="text-muted-foreground"> / {group.totalNights}</span>
                     </span>
-                    {group.gapCount > 0 && (
-                      <span className="text-warning">
-                        {group.gapCount} {group.gapCount === 1 ? 'gap' : 'gaps'}
+                    <span className="text-right tabular-nums">{group.gapCount}</span>
+                    <span className="text-right tabular-nums">{group.avgNightlyRate > 0 ? formatCurrency(group.avgNightlyRate) : '—'}</span>
+                    <span className="flex items-center justify-end gap-2">
+                      <span className="h-1.5 w-12 rounded-full bg-muted" aria-hidden>
+                        <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(occupancyPct, 100)}%` }} />
                       </span>
-                    )}
-                    <span className={`font-semibold ${'text-foreground'}`}>{occupancyPct}%</span>
-                    {group.avgNightlyRate > 0 && (
-                      <span className="text-muted-foreground/70">~{formatCurrency(group.avgNightlyRate)}/night</span>
-                    )}
-                  </div>
-                </button>
+                      <span className="w-10 text-right font-medium tabular-nums">{Math.round(occupancyPct)}%</span>
+                    </span>
+                  </button>
 
-                {/* Entries */}
-                {isExpanded && (
-                  <div className="divide-y divide-border">
-                    {group.entries.map((entry, idx) =>
-                      entry.type === 'booking' ? (
-                        <BookingListRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} />
-                      ) : (
-                        <GapRow key={`g-${idx}`} entry={entry} />
-                      ),
-                    )}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-          <Pagination
-            currentPage={propertyPage}
-            totalPages={Math.ceil(propertyGroups.length / PAGE_SIZE)}
-            totalItems={propertyGroups.length}
-            pageSize={PAGE_SIZE}
-            onPageChange={setPropertyPage}
-          />
+                  {isExpanded && (
+                    <div className="border-t border-border/60 bg-muted/20 divide-y divide-border/60">
+                      {group.entries.map((entry, idx) =>
+                        entry.type === 'booking' ? (
+                          <BookingListRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} />
+                        ) : (
+                          <GapRow key={`g-${idx}`} entry={entry} />
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="border-t border-border divide-y divide-border/60">
+          {chronologicalEntries
+            .slice((timePage - 1) * PAGE_SIZE, timePage * PAGE_SIZE)
+            .map((entry, idx) =>
+              entry.type === 'booking' ? (
+                <BookingListRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} showProperty />
+              ) : (
+                <GapRow key={`g-${idx}`} entry={entry} showProperty />
+              ),
+            )}
         </div>
       )}
 
-      {/* By Time view */}
-      {groupBy === 'time' && (
-        <div>
-          <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
-            {chronologicalEntries
-              .slice((timePage - 1) * PAGE_SIZE, timePage * PAGE_SIZE)
-              .map((entry, idx) =>
-                entry.type === 'booking' ? (
-                  <BookingListRow key={`b-${entry.id}`} entry={entry} onClick={handleBookingClick} showProperty />
-                ) : (
-                  <GapRow key={`g-${idx}`} entry={entry} showProperty />
-                ),
-              )}
-          </div>
-          <Pagination
-            currentPage={timePage}
-            totalPages={Math.ceil(chronologicalEntries.length / PAGE_SIZE)}
-            totalItems={chronologicalEntries.length}
-            pageSize={PAGE_SIZE}
-            onPageChange={setTimePage}
-          />
-        </div>
+      {groupBy === 'property' ? (
+        <Pagination
+          currentPage={propertyPage}
+          totalPages={Math.ceil(propertyGroups.length / PAGE_SIZE)}
+          totalItems={propertyGroups.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPropertyPage}
+        />
+      ) : (
+        <Pagination
+          currentPage={timePage}
+          totalPages={Math.ceil(chronologicalEntries.length / PAGE_SIZE)}
+          totalItems={chronologicalEntries.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setTimePage}
+        />
       )}
     </div>
   )
 }
+
+const entryRow = 'flex items-center justify-between gap-4 py-2.5 pr-4 pl-10 sm:pr-6 sm:pl-12'
 
 function BookingListRow({
   entry,
@@ -463,48 +488,45 @@ function BookingListRow({
   showProperty?: boolean
 }) {
   return (
-    <div
-      className="flex items-center justify-between px-4 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
+    <button
+      type="button"
+      className={cn(entryRow, 'w-full text-left cursor-pointer transition-colors hover:bg-muted/50', showProperty && 'pl-4 sm:pl-6')}
       onClick={() => onClick(entry.id, entry.guestName)}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          {showProperty && <span className="text-xs text-muted-foreground/70 shrink-0">{entry.propertyName}</span>}
-          <span className="text-sm font-medium text-foreground truncate">{entry.guestName}</span>
-        </div>
-        <div className="text-xs text-muted-foreground mt-0.5">
-          {formatDateDisplay(entry.arrival)} &rarr; {formatDateDisplay(entry.departure)}
-          <span className="ml-2">
-            {entry.nights} {entry.nights === 1 ? 'night' : 'nights'}
-          </span>
-        </div>
-      </div>
-      <div className="text-sm font-medium text-foreground shrink-0 ml-4">{entry.amount > 0 ? formatCurrency(entry.amount) : ''}</div>
-    </div>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2">
+          {showProperty && <span className="shrink-0 text-xs text-muted-foreground">{entry.propertyName}</span>}
+          <span className="truncate text-sm font-medium text-foreground">{entry.guestName}</span>
+        </span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {formatDateDisplay(entry.arrival)} to {formatDateDisplay(entry.departure)}, {entry.nights}{' '}
+          {entry.nights === 1 ? 'night' : 'nights'}
+        </span>
+      </span>
+      {entry.amount > 0 && (
+        <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">{formatCurrency(entry.amount)}</span>
+      )}
+    </button>
   )
 }
 
 function GapRow({ entry, showProperty }: { entry: Extract<ListEntry, { type: 'gap' }>; showProperty?: boolean }) {
-  const Icon = entry.severity === 'critical' ? AlertTriangle : entry.severity === 'warning' ? TrendingDown : Calendar
-
   return (
-    <div className={`flex items-center justify-between px-4 py-2 border-l-4 ${GAP_SEVERITY_STYLES[entry.severity]}`}>
-      <div className="flex items-center gap-2">
-        <Icon className="w-3.5 h-3.5 shrink-0" />
-        <div>
-          <div className="flex items-center gap-2">
-            {showProperty && <span className="text-xs opacity-70">{entry.propertyName}</span>}
-            <span className="text-sm font-medium">
-              Gap: {entry.nights} {entry.nights === 1 ? 'night' : 'nights'}
-            </span>
-          </div>
-          <div className="text-xs opacity-70">
-            {formatDateDisplay(entry.gapStart)} &rarr; {formatDateDisplay(entry.gapEnd)}
-          </div>
-        </div>
-      </div>
+    <div className={cn(entryRow, showProperty && 'pl-4 sm:pl-6')}>
+      <span className="min-w-0">
+        <span className="flex items-center gap-2">
+          {showProperty && <span className="shrink-0 text-xs text-muted-foreground">{entry.propertyName}</span>}
+          <Badge variant="neutral">Open</Badge>
+          <span className="text-sm text-muted-foreground">
+            {entry.nights} {entry.nights === 1 ? 'night' : 'nights'}
+          </span>
+        </span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          {formatDateDisplay(entry.gapStart)} to {formatDateDisplay(entry.gapEnd)}
+        </span>
+      </span>
       {entry.estimatedLoss > 0 && (
-        <div className="text-xs font-medium opacity-70 shrink-0 ml-2">~{formatCurrency(entry.estimatedLoss)} lost</div>
+        <span className="shrink-0 text-xs text-muted-foreground tabular-nums">about {formatCurrency(entry.estimatedLoss)} at avg rate</span>
       )}
     </div>
   )

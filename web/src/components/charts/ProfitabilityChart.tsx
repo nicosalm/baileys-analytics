@@ -1,9 +1,10 @@
 import type React from 'react'
 import { useMemo, useCallback } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts'
-import type { TooltipContentProps, BarRectangleItem } from 'recharts'
+import type { TooltipContentProps, MouseHandlerDataParam } from 'recharts'
 import { formatCurrency } from '@/utils/formatters'
-import { resolveToken, CHART_INFRA } from '@/lib/theme'
+import { resolveToken, CHART_INFRA, METRIC_COLORS, BAR_SPEC } from '@/lib/theme'
+import { ChartLegend } from '@/components/charts/ChartLegend'
 
 interface PropertyProfitability {
   propertyId: string
@@ -36,16 +37,16 @@ const ProfitabilityTooltip = ({ active, payload }: Partial<TooltipContentProps<n
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Platform Fees (est.):</span>
-          <span className="font-medium text-warning">-{formatCurrency(d.platformFees)}</span>
+          <span className="font-medium">-{formatCurrency(d.platformFees)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Taxes:</span>
-          <span className="font-medium text-info">-{formatCurrency(d.taxes)}</span>
+          <span className="font-medium">-{formatCurrency(d.taxes)}</span>
         </div>
         {d.operatingExpenses > 0 && (
           <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Operating Expenses:</span>
-            <span className="font-medium text-danger">-{formatCurrency(d.operatingExpenses)}</span>
+            <span className="font-medium">-{formatCurrency(d.operatingExpenses)}</span>
           </div>
         )}
         <div className="pt-1 mt-1 border-t border-border flex justify-between gap-4">
@@ -109,55 +110,74 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
 
   const colors = useMemo(
     () => ({
-      success: resolveToken('--success'),
+      net: METRIC_COLORS.revenue,
+      costs: CHART_INFRA.comparison,
       danger: resolveToken('--danger'),
     }),
     [],
   )
 
-  const handleBarClick = useCallback(
-    (data: BarRectangleItem) => {
-      const p = data?.payload as { propertyId?: string; fullName?: string } | undefined
-      if (onPropertyClick && p?.propertyId) {
-        onPropertyClick(p.propertyId, p.fullName || '')
+  // the whole highlighted row is the target, not just the bars inside it
+  const handleRowClick = useCallback(
+    (e: MouseHandlerDataParam) => {
+      const index = e?.activeTooltipIndex
+      const row = index == null ? undefined : chartData[Number(index)]
+      if (onPropertyClick && row?.propertyId) {
+        onPropertyClick(row.propertyId, row.fullName)
       }
     },
-    [onPropertyClick],
+    [chartData, onPropertyClick],
   )
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 45, left: 10, bottom: 5 }} barGap={0} barCategoryGap="25%">
-        <CartesianGrid strokeDasharray="3 3" stroke={CHART_INFRA.grid} horizontal={false} />
-        <XAxis type="number" tickFormatter={formatAxisK} stroke={CHART_INFRA.axis} />
-        <YAxis type="category" dataKey="name" width={130} tick={{ fontSize: 11 }} stroke={CHART_INFRA.axis} />
+      <BarChart
+        data={chartData}
+        layout="vertical"
+        margin={{ top: 5, right: 45, left: 0, bottom: 12 }}
+        barGap={BAR_SPEC.gap}
+        barCategoryGap="25%"
+        onClick={handleRowClick}
+        style={{ cursor: onPropertyClick ? 'pointer' : 'default' }}
+      >
+        <CartesianGrid stroke={CHART_INFRA.grid} strokeOpacity={0.6} horizontal={false} />
+        <XAxis
+          type="number"
+          tickFormatter={formatAxisK}
+          tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          width={56}
+          tick={{ fill: CHART_INFRA.axis, fontSize: 12 }}
+          axisLine={false}
+          tickLine={false}
+        />
         <Tooltip content={<ProfitabilityTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.3 }} isAnimationActive={false} />
         <Bar
           dataKey="netRevenue"
-          radius={[0, 4, 4, 0]}
-          maxBarSize={28}
+          radius={BAR_SPEC.radiusRight}
+          maxBarSize={BAR_SPEC.maxBarSize}
           animationDuration={500}
           animationEasing="ease-out"
           label={<MarginLabel />}
-          onClick={handleBarClick}
-          className={onPropertyClick ? 'cursor-pointer' : ''}
         >
           {chartData.map((entry, i) => (
-            <Cell key={i} fill={entry.netRevenue >= 0 ? colors.success : colors.danger} fillOpacity={0.85} />
+            <Cell key={i} fill={entry.netRevenue >= 0 ? colors.net : colors.danger} />
           ))}
         </Bar>
         <Bar
           dataKey="costs"
-          radius={[0, 4, 4, 0]}
-          maxBarSize={28}
-          fillOpacity={0.4}
+          radius={BAR_SPEC.radiusRight}
+          maxBarSize={BAR_SPEC.maxBarSize}
           animationDuration={500}
           animationEasing="ease-out"
-          onClick={handleBarClick}
-          className={onPropertyClick ? 'cursor-pointer' : ''}
         >
           {chartData.map((_, i) => (
-            <Cell key={i} fill={colors.danger} />
+            <Cell key={i} fill={colors.costs} />
           ))}
         </Bar>
       </BarChart>
@@ -166,14 +186,11 @@ export const ProfitabilityChart: React.FC<ProfitabilityChartProps> = ({ data, on
 }
 
 export const ProfitabilityLegend: React.FC = () => (
-  <div className="flex flex-wrap gap-3 justify-center text-xs mt-3 px-4">
-    <div className="flex items-center gap-1.5">
-      <div className="w-3 h-2.5 bg-success rounded-sm opacity-85" />
-      <span className="text-muted-foreground">Net Revenue</span>
-    </div>
-    <div className="flex items-center gap-1.5">
-      <div className="w-3 h-2.5 bg-danger rounded-sm opacity-40" />
-      <span className="text-muted-foreground">Total Costs (Fees + Taxes + Expenses)</span>
-    </div>
-  </div>
+  <ChartLegend
+    className="mt-3"
+    items={[
+      { label: 'Net revenue', color: METRIC_COLORS.revenue, shape: 'square' },
+      { label: 'Fees, taxes and expenses', color: CHART_INFRA.comparison, shape: 'square' },
+    ]}
+  />
 )

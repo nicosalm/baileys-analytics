@@ -1,16 +1,17 @@
 import type React from 'react'
 import { useState } from 'react'
-import { cn } from '@/lib/utils'
 import { usePropertyGroups, useProperties, createPropertyGroup, updatePropertyGroup, deletePropertyGroup } from '@/hooks/use-api'
 import type { PropertyGroup } from '@/hooks/use-api'
-import { Plus, Edit2, Layers, Trash2, Home } from 'lucide-react'
+import { Plus, Edit2, Trash2 } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import { ConfirmModal } from '@/components/ConfirmModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { SettingsSection, SettingsError } from './SettingsSection'
 
 interface GroupFormData {
   name: string
@@ -50,73 +51,71 @@ const GroupForm: React.FC<{
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card rounded-lg shadow-sm border p-6">
+    <form onSubmit={handleSubmit} className="px-4 sm:px-6 py-4 bg-muted/30">
       <div className="space-y-4">
-        <div>
-          <Label className="mb-1">Group Name</Label>
-          <Input
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Beach Rentals"
-            required
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="group-name" className="mb-1.5">
+              Name
+            </Label>
+            <Input
+              id="group-name"
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Lakefront"
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="group-description" className="mb-1.5">
+              Description
+            </Label>
+            <Input
+              id="group-description"
+              type="text"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Optional"
+            />
+          </div>
         </div>
 
-        <div>
-          <Label className="mb-1">Description (optional)</Label>
-          <Input
-            type="text"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Short description"
-          />
-        </div>
-
-        <div>
-          <Label className="mb-2 block">Properties</Label>
+        <fieldset>
+          <legend className="mb-1.5 text-sm font-medium text-foreground">
+            Properties
+            {formData.propertyIds.length > 0 && (
+              <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">{formData.propertyIds.length} selected</span>
+            )}
+          </legend>
           {availableProperties.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No properties available</p>
+            <p className="text-sm text-muted-foreground">No properties</p>
           ) : (
-            <div className="space-y-1 max-h-[240px] overflow-y-auto rounded-md border p-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 max-h-60 overflow-y-auto rounded-md border border-border bg-background p-1">
               {availableProperties.map((property) => (
-                <button
+                <label
                   key={property.id}
-                  type="button"
-                  onClick={() => toggleProperty(property.id)}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left cursor-pointer',
-                    formData.propertyIds.includes(property.id)
-                      ? 'bg-primary/10 text-primary font-medium'
-                      : 'text-foreground hover:bg-muted/50',
-                  )}
+                  htmlFor={`group-property-${property.id}`}
+                  className="flex items-center gap-2.5 px-2.5 py-2 text-sm text-foreground rounded-md cursor-pointer hover:bg-muted/50"
                 >
-                  <div
-                    className={cn(
-                      'w-3.5 h-3.5 rounded-sm flex-shrink-0 border transition-colors',
-                      formData.propertyIds.includes(property.id) ? 'bg-primary border-primary' : 'border-border',
-                    )}
+                  <Checkbox
+                    id={`group-property-${property.id}`}
+                    checked={formData.propertyIds.includes(property.id)}
+                    onCheckedChange={() => toggleProperty(property.id)}
                   />
-                  <Home className="w-3 h-3 flex-shrink-0 text-muted-foreground" />
-                  <span>{property.name}</span>
-                </button>
+                  <span className="truncate">{property.name}</span>
+                </label>
               ))}
             </div>
           )}
-          {formData.propertyIds.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1.5">
-              {formData.propertyIds.length} propert{formData.propertyIds.length === 1 ? 'y' : 'ies'} selected
-            </p>
-          )}
-        </div>
+        </fieldset>
       </div>
 
-      <Separator className="mt-6" />
       <div className="flex items-center gap-2 pt-4">
-        <Button type="submit" disabled={isSubmitting || !formData.name}>
-          {isEditing ? 'Save Changes' : 'Create Group'}
+        <Button type="submit" size="sm" disabled={isSubmitting || !formData.name} loading={isSubmitting}>
+          {isEditing ? 'Save' : 'Create group'}
         </Button>
-        <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
           Cancel
         </Button>
       </div>
@@ -129,44 +128,42 @@ const GroupRow: React.FC<{
   propertyNames: Map<string, string>
   onEdit: (group: PropertyGroup) => void
   onDelete: (group: PropertyGroup) => void
-}> = ({ group, propertyNames, onEdit, onDelete }) => (
-  <div className="bg-card rounded-lg shadow-sm border p-4">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-          <Layers className="w-5 h-5 text-muted-foreground" />
+}> = ({ group, propertyNames, onEdit, onDelete }) => {
+  const members = group.propertyIds.map((id) => propertyNames.get(id) || 'Unknown').join(', ')
+
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 sm:px-6 py-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-foreground truncate">{group.name}</p>
+          <Badge variant="neutral" className="tabular-nums">
+            {group.memberCount}
+          </Badge>
         </div>
-        <div>
-          <h4 className="font-medium text-foreground">{group.name}</h4>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {group.memberCount} propert{group.memberCount === 1 ? 'y' : 'ies'}
-            {group.description && <> &middot; {group.description}</>}
+        {(group.description || members) && (
+          <p className="mt-0.5 text-xs text-muted-foreground truncate" title={members}>
+            {group.description || members}
           </p>
-          {group.propertyIds.length > 0 && (
-            <p className="text-xs text-muted-foreground/70 mt-1 truncate max-w-md">
-              {group.propertyIds.map((id) => propertyNames.get(id) || 'Unknown').join(', ')}
-            </p>
-          )}
-        </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon-sm" onClick={() => onEdit(group)} title="Edit">
+      <div className="flex shrink-0 items-center gap-1">
+        <Button variant="ghost" size="icon-sm" onClick={() => onEdit(group)} aria-label={`Edit ${group.name}`}>
           <Edit2 className="w-4 h-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon-sm"
           onClick={() => onDelete(group)}
-          title="Delete"
+          aria-label={`Delete ${group.name}`}
           className="text-muted-foreground hover:text-destructive"
         >
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
     </div>
-  </div>
-)
+  )
+}
 
 export const PropertyGroupManagementPanel: React.FC = () => {
   const { data: groups = [], isLoading, error, mutate } = usePropertyGroups()
@@ -174,7 +171,7 @@ export const PropertyGroupManagementPanel: React.FC = () => {
   const { addToast } = useToast()
   const [isAddingNew, setIsAddingNew] = useState(false)
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; group: PropertyGroup | null }>({ show: false, group: null })
+  const [deleteConfirm, setDeleteConfirm] = useState<PropertyGroup | null>(null)
 
   const propertyNames = new Map(properties.map((p) => [p.id, p.name]))
 
@@ -185,7 +182,7 @@ export const PropertyGroupManagementPanel: React.FC = () => {
       propertyIds: data.propertyIds,
     })
     if (result.success) {
-      addToast('success', 'Property group created')
+      addToast('success', 'Group created')
       setIsAddingNew(false)
       mutate()
     } else {
@@ -200,26 +197,26 @@ export const PropertyGroupManagementPanel: React.FC = () => {
       propertyIds: data.propertyIds,
     })
     if (result.success) {
-      addToast('success', 'Property group updated')
+      addToast('success', 'Group saved')
       setEditingGroupId(null)
       mutate()
     } else {
-      addToast('error', result.error || 'Failed to update group')
+      addToast('error', result.error || 'Failed to save group')
     }
   }
 
   const handleConfirmDelete = async () => {
-    if (!deleteConfirm.group) return
+    if (!deleteConfirm) return
 
-    const result = await deletePropertyGroup(deleteConfirm.group.id)
+    const result = await deletePropertyGroup(deleteConfirm.id)
     if (result.success) {
-      addToast('success', 'Property group deleted')
+      addToast('success', 'Group deleted')
       mutate()
     } else {
       addToast('error', result.error || 'Failed to delete group')
     }
 
-    setDeleteConfirm({ show: false, group: null })
+    setDeleteConfirm(null)
   }
 
   if (isLoading) {
@@ -227,44 +224,28 @@ export const PropertyGroupManagementPanel: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4">
-        <p className="text-danger-fg">Failed to load property groups: {error.message}</p>
-      </div>
-    )
+    return <SettingsError message={`Failed to load property groups: ${error.message}`} />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Property Groups</h3>
-            <p className="text-muted-foreground text-sm">Group properties for quick selection in the filter bar</p>
-          </div>
-          {!isAddingNew && !editingGroupId && (
+    <>
+      <SettingsSection
+        title="Property groups"
+        description="Groups appear as one-click selections in the property filter."
+        flush
+        action={
+          !isAddingNew &&
+          !editingGroupId && (
             <Button size="sm" onClick={() => setIsAddingNew(true)}>
               <Plus className="w-4 h-4" />
-              Add Group
+              Add group
             </Button>
-          )}
-        </div>
-
-        {groups.length === 0 && !isAddingNew ? (
-          <div className="bg-muted/40 border rounded-lg p-3 flex items-center gap-3">
-            <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-              <Layers className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-sm text-muted-foreground">No property groups yet</p>
-          </div>
-        ) : null}
-      </div>
-
-      {isAddingNew && <GroupForm onSubmit={handleCreate} onCancel={() => setIsAddingNew(false)} />}
-
-      {groups.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-foreground">Your Groups</h3>
+          )
+        }
+      >
+        <div className="divide-y divide-border/60">
+          {isAddingNew && <GroupForm onSubmit={handleCreate} onCancel={() => setIsAddingNew(false)} />}
+          {groups.length === 0 && !isAddingNew && <p className="px-4 sm:px-6 py-4 text-sm text-muted-foreground">No groups</p>}
           {groups.map((group: PropertyGroup) =>
             editingGroupId === group.id ? (
               <GroupForm
@@ -284,23 +265,22 @@ export const PropertyGroupManagementPanel: React.FC = () => {
                 group={group}
                 propertyNames={propertyNames}
                 onEdit={(g) => setEditingGroupId(g.id)}
-                onDelete={(g) => setDeleteConfirm({ show: true, group: g })}
+                onDelete={setDeleteConfirm}
               />
             ),
           )}
         </div>
-      )}
+      </SettingsSection>
 
       <ConfirmModal
-        isOpen={deleteConfirm.show}
-        onClose={() => setDeleteConfirm({ show: false, group: null })}
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
         onConfirm={handleConfirmDelete}
-        title="Delete Property Group"
-        message={`Are you sure you want to delete the "${deleteConfirm.group?.name}" group? This will not affect the properties themselves.`}
+        title="Delete group?"
+        message={`"${deleteConfirm?.name}" will be deleted. Its properties are not affected.`}
         confirmText="Delete"
-        cancelText="Cancel"
         variant="danger"
       />
-    </div>
+    </>
   )
 }

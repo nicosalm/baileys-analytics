@@ -31,7 +31,6 @@ import {
   LogOut,
   BedDouble,
   History,
-  Ban,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { MetricCard } from '@/components/MetricCard'
@@ -156,16 +155,14 @@ const formatGoalValue = (value: number, format: string) => {
   }
 }
 
-const getProgressColor = (pct: number) => {
-  if (pct >= 80) return 'bg-success'
-  if (pct >= 50) return 'bg-warning'
-  return 'bg-danger'
-}
-
-const getProgressBgColor = (pct: number) => {
-  if (pct >= 80) return 'bg-success-subtle'
-  if (pct >= 50) return 'bg-warning-subtle'
-  return 'bg-danger-subtle'
+// stay dates drop the repeated year: "Sep 17 – Sep 20, 2026"
+const formatStay = (arrival: string, departure: string) => {
+  const from = new Date(`${arrival.slice(0, 10)}T00:00:00`)
+  const to = new Date(`${departure.slice(0, 10)}T00:00:00`)
+  const short = { month: 'short', day: 'numeric' } as const
+  const full = { ...short, year: 'numeric' } as const
+  const start = from.toLocaleDateString('en-US', from.getFullYear() === to.getFullYear() ? short : full)
+  return `${start} – ${to.toLocaleDateString('en-US', full)}`
 }
 
 // extracted tooltip component to module scope
@@ -675,7 +672,7 @@ export const OverviewDashboard = () => {
             )
           }
           trend={
-            comparisonMode !== 'none' && metrics.revenue.growth !== undefined
+            comparisonMode !== 'none' && Number(metrics.revenue.previous) > 0 && metrics.revenue.growth !== undefined
               ? {
                   value: metrics.revenue.growth,
                   isPositive: metrics.revenue.growth > 0,
@@ -702,9 +699,9 @@ export const OverviewDashboard = () => {
             )
           }
           trend={
-            comparisonMode !== 'none' && metrics.bookings.previous !== undefined
+            comparisonMode !== 'none' && Number(metrics.bookings.previous) > 0
               ? {
-                  value: ((metrics.bookings.current - metrics.bookings.previous) / (metrics.bookings.previous || 1)) * 100,
+                  value: ((metrics.bookings.current - metrics.bookings.previous) / metrics.bookings.previous) * 100,
                   isPositive: metrics.bookings.current > metrics.bookings.previous,
                 }
               : undefined
@@ -731,7 +728,7 @@ export const OverviewDashboard = () => {
             )
           }
           trend={
-            comparisonMode !== 'none' && metrics.occupancy.growth !== undefined
+            comparisonMode !== 'none' && Number(metrics.occupancy.previous) > 0 && metrics.occupancy.growth !== undefined
               ? {
                   value: metrics.occupancy.growth,
                   isPositive: metrics.occupancy.growth > 0,
@@ -758,7 +755,7 @@ export const OverviewDashboard = () => {
             )
           }
           trend={
-            comparisonMode !== 'none' && metrics.guests.growth !== undefined
+            comparisonMode !== 'none' && Number(metrics.guests.previous) > 0 && metrics.guests.growth !== undefined
               ? {
                   value: metrics.guests.growth,
                   isPositive: metrics.guests.growth > 0,
@@ -963,47 +960,45 @@ export const OverviewDashboard = () => {
               <h3 className="text-lg font-semibold">Goals</h3>
             </div>
             {enabledGoals.length > 0 && (
-              <Link to="/settings?tab=goals" className="text-xs text-info hover:text-info-fg flex items-center gap-1">
-                <Settings className="w-3 h-3" />
-                Edit
-              </Link>
+              <Button asChild variant="ghost" size="sm" className="-my-1 text-muted-foreground">
+                <Link to="/settings?tab=goals">Edit</Link>
+              </Button>
             )}
           </div>
-          <div className="space-y-3 max-h-80 overflow-y-auto pr-2">
-            {enabledGoals.length > 0 ? (
-              enabledGoals.map((goal) => {
-                const Icon = goal.config.icon
-                return (
-                  <div key={goal.metricKey} className="py-2 border-b last:border-0">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm font-medium text-foreground">{goal.config.label}</span>
-                        <span className="text-xs text-muted-foreground/70">({goal.periodLabel})</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatGoalValue(goal.current, goal.config.format)} / {formatGoalValue(goal.target, goal.config.format)}
-                      </span>
-                    </div>
-                    <div className={`w-full h-2 rounded-full ${getProgressBgColor(goal.pct)}`}>
+          {enabledGoals.length > 0 ? (
+            <ul className="space-y-4 max-h-80 overflow-y-auto">
+              {enabledGoals.map((goal) => (
+                <li key={goal.metricKey}>
+                  <div className="flex items-baseline justify-between gap-4">
+                    <span className="min-w-0 truncate text-sm">
+                      <span className="font-medium text-foreground">{goal.config.label}</span>
+                      <span className="text-muted-foreground"> · {goal.periodLabel}</span>
+                    </span>
+                    <span className="shrink-0 text-sm tabular-nums">
+                      {formatGoalValue(goal.current, goal.config.format)}
+                      <span className="text-muted-foreground"> of {formatGoalValue(goal.target, goal.config.format)}</span>
+                    </span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="h-1.5 flex-1 rounded-full bg-muted">
                       <div
-                        className={`h-2 rounded-full transition-all duration-500 ${getProgressColor(goal.pct)}`}
-                        style={{ width: `${goal.pct}%` }}
+                        className="h-full rounded-full bg-primary transition-[width] duration-500"
+                        style={{ width: `${Math.min(goal.pct, 100)}%` }}
                       />
                     </div>
+                    <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">{Math.round(goal.pct)}%</span>
                   </div>
-                )
-              })
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Target className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">No goals set yet</p>
-                <Link to="/settings?tab=goals" className="text-xs text-info hover:text-info-fg mt-1 inline-block">
-                  Set goals in Settings to track your progress
-                </Link>
-              </div>
-            )}
-          </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              <p>No goals</p>
+              <Link to="/settings?tab=goals" className="mt-1 inline-block text-primary underline-offset-2 hover:underline">
+                Set goals
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="bg-card p-6 rounded-lg shadow-sm border border-border">
@@ -1030,31 +1025,29 @@ export const OverviewDashboard = () => {
                 return (
                   <div
                     key={activity.id}
-                    className={`flex items-center justify-between py-3 px-2 -mx-2 rounded ${isCancelled ? 'opacity-60' : ''} ${
+                    className={`flex items-center justify-between py-3 px-2 -mx-2 rounded ${
                       isClickable ? 'hover:bg-muted/50 transition-colors cursor-pointer' : ''
                     }`}
                     onClick={() => handleActivityClick(activity)}
                   >
                     <div className="flex-1 min-w-0 mr-2">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">{activity.description}</p>
-                        {isCancelled && (
-                          <Badge variant="danger">
-                            <Ban />
-                            Cancelled
-                          </Badge>
-                        )}
-                        {isInquiry && <Badge variant="info">Inquiry</Badge>}
+                        <p className={`text-sm font-medium truncate ${isCancelled ? 'text-muted-foreground' : ''}`}>
+                          {activity.description}
+                        </p>
+                        {isInquiry && <Badge variant="neutral">Inquiry</Badge>}
                       </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-muted-foreground">{formatDateDisplay(activity.timestamp)}</span>
+                      <div className="flex flex-wrap items-center gap-x-1.5 mt-0.5 text-xs text-muted-foreground">
+                        <span>{formatDateDisplay(activity.timestamp)}</span>
                         {activity.metadata?.arrival && activity.metadata?.departure && (
-                          <span className="text-xs text-muted-foreground/70">
-                            · Stay: {formatDateDisplay(activity.metadata.arrival)} – {formatDateDisplay(activity.metadata.departure)}
-                          </span>
+                          <>
+                            <span aria-hidden>·</span>
+                            <span>Stay {formatStay(activity.metadata.arrival, activity.metadata.departure)}</span>
+                          </>
                         )}
+                        {activity.platform && <span aria-hidden>·</span>}
                         {activity.platform && (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
                             <span
                               className="w-2 h-2 rounded-full flex-shrink-0"
                               style={{ backgroundColor: getPlatformColor(activity.platform) }}
@@ -1066,7 +1059,7 @@ export const OverviewDashboard = () => {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {activity.value != null && activity.value > 0 && (
-                        <div className={`text-sm font-medium ${isCancelled ? 'text-muted-foreground' : 'text-success'}`}>
+                        <div className={`text-sm font-medium tabular-nums ${isCancelled ? 'text-muted-foreground line-through' : ''}`}>
                           {formatCurrency(activity.value)}
                         </div>
                       )}
@@ -1075,8 +1068,9 @@ export const OverviewDashboard = () => {
                           href={ownerrezUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-muted-foreground/70 hover:text-info transition-colors"
+                          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
                           title="Open in OwnerRez"
+                          aria-label="Open in OwnerRez"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <ExternalLink className="w-3.5 h-3.5" />
@@ -1087,11 +1081,7 @@ export const OverviewDashboard = () => {
                 )
               })
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm font-medium">No activity in this period</p>
-                <p className="text-xs mt-1 text-muted-foreground/70">No bookings or inquiries were received during this time</p>
-              </div>
+              <p className="py-8 text-center text-sm text-muted-foreground">No bookings or inquiries in this period</p>
             )}
           </div>
         </div>

@@ -1,7 +1,6 @@
 import type React from 'react'
 import { useState, useEffect } from 'react'
 import { useGoals, saveGoals } from '@/hooks/use-api'
-import { DollarSign, Calendar, Percent, Users, TrendingUp, Clock } from 'lucide-react'
 import { useToast } from '@/contexts/toast'
 import { LoadingState } from '@/components/LoadingState'
 import type { GoalFormData, GoalPeriod } from '@/types/goal'
@@ -9,16 +8,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { SettingsSection, SettingsError } from './SettingsSection'
 
 const METRIC_CATALOG = [
-  { key: 'revenue', label: 'Total Revenue', icon: DollarSign, format: 'currency', placeholder: 'e.g. 50000' },
-  { key: 'bookings', label: 'Total Bookings', icon: Calendar, format: 'number', placeholder: 'e.g. 100' },
-  { key: 'occupancy', label: 'Occupancy Rate', icon: Percent, format: 'percent', placeholder: 'e.g. 80' },
-  { key: 'guests', label: 'Total Guests', icon: Users, format: 'number', placeholder: 'e.g. 200' },
-  { key: 'avgBookingValue', label: 'Avg Booking Value', icon: DollarSign, format: 'currency', placeholder: 'e.g. 500' },
-  { key: 'repeatRate', label: 'Repeat Guest Rate', icon: TrendingUp, format: 'percent', placeholder: 'e.g. 25' },
-  { key: 'avgStayLength', label: 'Avg Stay Length', icon: Clock, format: 'nights', placeholder: 'e.g. 4' },
+  { key: 'revenue', label: 'Total Revenue', format: 'currency', placeholder: '50000' },
+  { key: 'bookings', label: 'Total Bookings', format: 'number', placeholder: '100' },
+  { key: 'occupancy', label: 'Occupancy Rate', format: 'percent', placeholder: '80' },
+  { key: 'guests', label: 'Total Guests', format: 'number', placeholder: '200' },
+  { key: 'avgBookingValue', label: 'Avg Booking Value', format: 'currency', placeholder: '500' },
+  { key: 'repeatRate', label: 'Repeat Guest Rate', format: 'percent', placeholder: '25' },
+  { key: 'avgStayLength', label: 'Avg Stay Length', format: 'nights', placeholder: '4' },
 ] as const
+
+// two columns on phones (label and switch, then target and period), four from sm up
+const GRID = 'grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,1fr)_9rem_7rem_auto] gap-x-4'
 
 type MetricKey = (typeof METRIC_CATALOG)[number]['key']
 
@@ -55,6 +58,8 @@ export const GoalManagementPanel: React.FC = () => {
       setGoalState(buildInitialState(goals))
     }
   }, [goals])
+
+  const isDirty = JSON.stringify(goalState) !== JSON.stringify(buildInitialState(goals))
 
   const handleToggle = (key: MetricKey) => {
     setGoalState((prev) => ({
@@ -100,7 +105,7 @@ export const GoalManagementPanel: React.FC = () => {
     const allGoals = [...goalsToSave, ...disabledGoals]
 
     if (allGoals.length === 0 && goals.length === 0) {
-      addToast('info', 'Enable at least one goal and set a target value')
+      addToast('info', 'Enable a goal and set its target')
       return
     }
 
@@ -108,7 +113,7 @@ export const GoalManagementPanel: React.FC = () => {
     try {
       const result = await saveGoals(allGoals)
       if (result.success) {
-        addToast('success', 'Goals saved successfully')
+        addToast('success', 'Goals saved')
       } else {
         addToast('error', result.error || 'Failed to save goals')
       }
@@ -122,90 +127,79 @@ export const GoalManagementPanel: React.FC = () => {
   }
 
   if (error) {
-    return (
-      <div className="bg-danger-subtle border border-danger/30 rounded-lg p-4">
-        <p className="text-danger-fg">Failed to load goals: {error.message}</p>
-      </div>
-    )
+    return <SettingsError message={`Failed to load goals: ${error.message}`} />
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground mb-1">Goals</h3>
-            <p className="text-muted-foreground text-sm">
-              Pick the metrics you care about and set targets. They'll show up on your Overview.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-card rounded-lg shadow-sm border overflow-hidden">
-        <div className="flex items-center gap-4 px-4 py-2 border-b bg-muted text-xs font-medium text-muted-foreground">
-          <span className="w-44">Goal</span>
-          <span className="w-36">Target</span>
-          <span className="w-28">Period</span>
-          <span className="ml-auto">Enabled</span>
-        </div>
-
-        <div className="divide-y divide-border/60">
-          {METRIC_CATALOG.map((metric) => {
-            const state = goalState[metric.key]
-            const Icon = metric.icon
-            const { prefix, suffix } = getFormatting(metric)
-
-            return (
-              <div key={metric.key} className="flex items-center gap-4 px-4 py-3">
-                <div className="flex items-center gap-2 w-44 shrink-0">
-                  <Icon className={`w-4 h-4 shrink-0 ${state.isEnabled ? 'text-info' : 'text-muted-foreground/50'}`} />
-                  <span className={`text-sm font-medium ${state.isEnabled ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {metric.label}
-                  </span>
-                </div>
-
-                <div className="relative w-36">
-                  {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground z-10">{prefix}</span>}
-                  <Input
-                    type="text"
-                    inputMode="decimal"
-                    value={state.targetValue}
-                    onChange={(e) => handleValueChange(metric.key, e.target.value)}
-                    placeholder={metric.placeholder}
-                    disabled={!state.isEnabled}
-                    className={`h-8 text-sm ${prefix ? 'pl-6' : ''} ${suffix ? 'pr-10' : ''}`}
-                  />
-                  {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{suffix}</span>}
-                </div>
-
-                <Select
-                  value={state.period}
-                  onValueChange={(v) => handlePeriodChange(metric.key, v as GoalPeriod)}
-                  disabled={!state.isEnabled}
-                >
-                  <SelectTrigger className="w-28 h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <Switch checked={state.isEnabled} onCheckedChange={() => handleToggle(metric.key)} className="ml-auto" />
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave} loading={isSaving} loadingText="Saving...">
-          Save Goals
+    <SettingsSection
+      title="Goals"
+      description="Enabled goals appear on the Overview."
+      flush
+      action={
+        <Button size="sm" onClick={handleSave} loading={isSaving} loadingText="Saving..." disabled={!isDirty}>
+          Save
         </Button>
+      }
+    >
+      <div className={`hidden sm:grid ${GRID} px-6 py-2.5 border-b border-border text-xs font-medium text-muted-foreground`}>
+        <span>Metric</span>
+        <span>Target</span>
+        <span>Period</span>
+        <span className="justify-self-end">Enabled</span>
       </div>
-    </div>
+
+      <div className="divide-y divide-border/60">
+        {METRIC_CATALOG.map((metric) => {
+          const state = goalState[metric.key]
+          const { prefix, suffix } = getFormatting(metric)
+          const inputId = `goal-${metric.key}`
+
+          return (
+            <div key={metric.key} className={`grid ${GRID} items-center gap-y-2 px-4 sm:px-6 py-3`}>
+              <label htmlFor={inputId} className={`text-sm font-medium ${state.isEnabled ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {metric.label}
+              </label>
+
+              <div className="relative order-3 sm:order-none">
+                {prefix && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{prefix}</span>}
+                <Input
+                  id={inputId}
+                  type="text"
+                  inputMode="decimal"
+                  value={state.targetValue}
+                  onChange={(e) => handleValueChange(metric.key, e.target.value)}
+                  placeholder={metric.placeholder}
+                  disabled={!state.isEnabled}
+                  className={`h-8 text-sm tabular-nums ${prefix ? 'pl-6' : ''} ${suffix ? 'pr-14' : ''}`}
+                />
+                {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{suffix}</span>}
+              </div>
+
+              <Select
+                value={state.period}
+                onValueChange={(v) => handlePeriodChange(metric.key, v as GoalPeriod)}
+                disabled={!state.isEnabled}
+              >
+                <SelectTrigger className="order-4 sm:order-none w-28 h-8 text-sm" aria-label={`${metric.label} period`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Switch
+                checked={state.isEnabled}
+                onCheckedChange={() => handleToggle(metric.key)}
+                aria-label={`Enable ${metric.label} goal`}
+                className="order-2 sm:order-none justify-self-end"
+              />
+            </div>
+          )
+        })}
+      </div>
+    </SettingsSection>
   )
 }

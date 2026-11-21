@@ -118,14 +118,14 @@ export function getComparisonLabel(
   isSeasonActive: boolean,
   options?: { yearOffset?: number; seasonName?: string; baseYear?: number; customLabel?: string },
 ): string {
-  if (comparisonType === 'none') return 'No Comparison'
+  if (comparisonType === 'none') return 'No comparison'
 
   if (comparisonType === 'custom') {
-    return options?.customLabel || 'vs Custom Range'
+    return options?.customLabel || 'vs custom range'
   }
 
   if (comparisonType === 'lastPeriod') {
-    return isSeasonActive ? 'vs Previous Period' : 'vs Last Period'
+    return isSeasonActive ? 'vs previous period' : 'vs last period'
   }
 
   if (comparisonType === 'lastYear') {
@@ -138,5 +138,5 @@ export function getComparisonLabel(
     return isSeasonActive ? 'vs Last Season' : 'vs Last Year'
   }
 
-  return 'No Comparison'
+  return 'No comparison'
 }

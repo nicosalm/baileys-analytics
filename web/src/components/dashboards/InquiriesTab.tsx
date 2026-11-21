@@ -191,7 +191,7 @@ export const InquiriesTab = () => {
                   ) : null,
               },
             ]}
-            pageSize={15}
+            pageSize={10}
             sortBy="createdAt"
             sortOrder="desc"
             showRowNumbers

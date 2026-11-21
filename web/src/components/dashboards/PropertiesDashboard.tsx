@@ -2,17 +2,17 @@ import { useMemo, useCallback } from 'react'
 import { formatCurrency, formatPercentage, sumBy } from '@baileys/utils'
 import { useTagIds, usePropertyIds, useErrorToast, useComparisonDateRange } from '@/hooks/use-dashboard-utils'
 import type { PropertyMetrics } from '@/types/api'
-import { DollarSign, Percent, TrendingUp, ScatterChart, Wallet, GitBranch } from 'lucide-react'
+import { DollarSign, Percent, TrendingUp, ScatterChart, Wallet, BarChart3 } from 'lucide-react'
 import { useDashboard } from '@/contexts/dashboard'
 import { useDashboardBatch } from '@/hooks/use-api'
 import { useModal } from '@/contexts/modal'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { StateWrapper } from '@/components/StateWrapper'
-import { PropertyPerformanceScatter, PerformanceQuadrantLegend } from '@/components/charts/PropertyPerformanceScatter'
+import { PropertyPerformanceScatter } from '@/components/charts/PropertyPerformanceScatter'
 import { PropertyTable } from '@/components/tables/PropertyTable'
 import { ProfitabilityChart, ProfitabilityLegend } from '@/components/charts/ProfitabilityChart'
-import { PlatformPropertySankey } from '@/components/charts/PlatformPropertySankey'
+import { PlatformMixBars } from '@/components/charts/PlatformMixBars'
 import { METRIC_DEFINITIONS } from '@/lib/metric-definitions'
 
 interface PropertyProfitability {
@@ -308,9 +308,10 @@ export const PropertiesDashboard = () => {
       </section>
 
       {/* Analysis Charts */}
-      <div className="grid lg:grid-cols-2 gap-6 items-start">
+      <div className="grid lg:grid-cols-2 gap-6">
         {/* Net Profitability */}
         <ChartWrapper
+          className="h-full"
           title="Net Profitability"
           subtitle="Revenue after fees, taxes, and expenses"
           icon={Wallet}
@@ -331,6 +332,7 @@ export const PropertiesDashboard = () => {
 
         {/* Performance Matrix */}
         <ChartWrapper
+          className="h-full"
           title="Performance Matrix"
           subtitle="Revenue vs. occupancy by property"
           icon={ScatterChart}
@@ -339,32 +341,15 @@ export const PropertiesDashboard = () => {
           noData={validProperties.length === 0}
           noDataMessage="No property data for this period"
         >
-          <div className="h-full flex flex-col">
-            <div className="flex-1">
-              <PropertyPerformanceScatter properties={validProperties} onPropertyClick={handleScatterClick} />
-            </div>
-            <PerformanceQuadrantLegend />
-          </div>
+          <PropertyPerformanceScatter properties={validProperties} onPropertyClick={handleScatterClick} />
         </ChartWrapper>
       </div>
 
-      {/* Platform → Property Revenue Flow */}
-      {platformMix.length > 0 &&
-        allPlatforms.length > 0 &&
-        (() => {
-          const sankeyNatural = Math.max(360, (allPlatforms.length + validProperties.length) * 36 + 60)
-          const sankeyCapped = Math.min(600, sankeyNatural)
-          const sankeyScrollable = sankeyNatural > sankeyCapped
-          return (
-            <ChartWrapper title="Platform revenue by property" icon={GitBranch} height={sankeyCapped} responsive={false}>
-              <div className={`h-full ${sankeyScrollable ? 'overflow-y-auto' : ''}`}>
-                <div style={{ height: `${sankeyNatural}px` }}>
-                  <PlatformPropertySankey data={platformMix} onPropertyClick={handleChartPropertyClick} />
-                </div>
-              </div>
-            </ChartWrapper>
-          )
-        })()}
+      {platformMix.length > 0 && allPlatforms.length > 0 && (
+        <ChartWrapper title="Revenue by platform" icon={BarChart3} height="auto" responsive={false}>
+          <PlatformMixBars data={platformMix} onPropertyClick={handleChartPropertyClick} />
+        </ChartWrapper>
+      )}
     </div>
   )
 }

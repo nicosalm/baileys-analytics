@@ -188,11 +188,11 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
     const today = new Date()
     const periods = [
       { label: 'Today', from: today, to: today },
-      { label: 'Last 7 Days', from: subDays(today, 7), to: today },
-      { label: 'Last 30 Days', from: subDays(today, 30), to: today },
-      { label: 'Last 90 Days', from: subDays(today, 90), to: today },
-      { label: 'Month to Date', from: startOfMonth(today), to: today },
-      { label: 'Quarter to Date', from: startOfQuarter(today), to: today },
+      { label: 'Last 7 days', from: subDays(today, 7), to: today },
+      { label: 'Last 30 days', from: subDays(today, 30), to: today },
+      { label: 'Last 90 days', from: subDays(today, 90), to: today },
+      { label: 'Month to date', from: startOfMonth(today), to: today },
+      { label: 'Quarter to date', from: startOfQuarter(today), to: today },
     ]
 
     if (activeSeasons.length === 0) return periods
@@ -327,7 +327,7 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
                               handleQuickSelect(range.from, range.to)
                             }}
                           >
-                            {inSeason ? 'Season to Date' : `${season.name} ${currentYear}`}
+                            {inSeason ? 'Season to date' : `${season.name} ${currentYear}`}
                           </Button>
                         )}
                         <Button
