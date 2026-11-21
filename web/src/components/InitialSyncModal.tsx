@@ -105,9 +105,11 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
       let totalBookings = 0
       let totalBlocks = 0
-      let bookingsOffset: number | null = 0
+      // each response says where the next chunk starts; null means done
+      let bookingsNext: string | null = null
 
-      while (bookingsOffset !== null) {
+      do {
+        const query: string = bookingsNext ? `?next=${encodeURIComponent(bookingsNext)}` : ''
         const bookingsResult = await withRetry(
           () =>
             api.request<{
@@ -115,8 +117,8 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
               bookingsCount: number
               blocksCount: number
               done: boolean
-              nextOffset: number | null
-            }>(`/sync/bookings?offset=${bookingsOffset}`, { method: 'POST' }),
+              next: string | null
+            }>(`/sync/bookings${query}`, { method: 'POST' }),
           2,
           5000,
         )
@@ -127,14 +129,14 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
         totalBookings += bookingsResult.data.bookingsCount
         totalBlocks += bookingsResult.data.blocksCount
-        bookingsOffset = bookingsResult.data.nextOffset
+        bookingsNext = bookingsResult.data.next
 
         setProgress((prev) => ({
           ...prev,
           bookingsLoaded: totalBookings,
           blocksLoaded: totalBlocks,
         }))
-      }
+      } while (bookingsNext)
 
       setProgress((prev) => ({
         ...prev,
@@ -156,25 +158,26 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
 
       let totalGuests = 0
       try {
-        let guestsOffset: number | null = 0
-        while (guestsOffset !== null) {
+        let guestsNext: string | null = null
+        do {
+          const query: string = guestsNext ? `?next=${encodeURIComponent(guestsNext)}` : ''
           const guestsResult = await withRetry(() =>
             api.request<{
               success: boolean
               guestsCount: number
               done: boolean
-              nextOffset: number | null
-            }>(`/sync/guests?offset=${guestsOffset}`, { method: 'POST' }),
+              next: string | null
+            }>(`/sync/guests${query}`, { method: 'POST' }),
           )
           if (!guestsResult.success) break
           totalGuests += guestsResult.data.guestsCount
-          guestsOffset = guestsResult.data.nextOffset
+          guestsNext = guestsResult.data.next
 
           setProgress((prev) => ({
             ...prev,
             guestsLoaded: totalGuests,
           }))
-        }
+        } while (guestsNext)
       } catch {
         // guest sync is supplementary - don't block completion
       }

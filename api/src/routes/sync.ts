@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
-import { OwnerRezService } from '../services/ownerrez';
+import { OwnerRezService, type PageResume } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
 import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 import { mapToBlockRow } from '../utils/blocks';
@@ -11,6 +11,13 @@ import type { AppEnv } from '../types';
 const sync = new Hono<AppEnv>();
 
 sync.use('/*', authMiddleware);
+
+// ?offset= is what the pre-cursor web build sends; drop it once that build is gone
+function resumeFrom(next: string | undefined, legacyOffset: string | undefined): PageResume {
+	if (next) return next;
+	const offset = Number.parseInt(legacyOffset ?? '', 10);
+	return offset > 0 ? `o:${offset}` : null;
+}
 
 // check if initial sync is needed
 sync.get('/status', async (c) => {
@@ -181,14 +188,14 @@ sync.post('/properties', async (c) => {
 });
 
 // sync bookings in chunks to stay under the 30s worker wall-clock limit.
-// accepts ?offset=N to resume from where the last invocation left off.
-// returns { done, nextOffset } so the client can loop until complete.
+// accepts ?next=<token> from the previous response to resume where it left off.
+// returns { done, next } so the client can loop until complete.
 const PAGES_PER_CHUNK = 10;
 
 sync.post('/bookings', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
-	const offset = parseInt(c.req.query('offset') || '0', 10);
+	const resume = resumeFrom(c.req.query('next'), c.req.query('offset'));
 
 	const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
 	if (tokenResult.error) {
@@ -223,11 +230,11 @@ sync.post('/bookings', async (c) => {
 		let totalBookings = 0;
 		let totalBlocks = 0;
 
-		const { totalItems, nextOffset } = await ownerRez.fetchBookingsChunked(
+		const { totalItems, next, nextOffset } = await ownerRez.fetchBookingsChunked(
 			ownerrezPropertyIds,
 			startDate.toISOString().split('T')[0],
 			endDate.toISOString().split('T')[0],
-			offset,
+			resume,
 			PAGES_PER_CHUNK,
 			async (pageBookings: any[]) => {
 				const now = new Date().toISOString();
@@ -399,7 +406,8 @@ sync.post('/bookings', async (c) => {
 			bookingsCount: totalBookings,
 			blocksCount: totalBlocks,
 			totalFromApi: totalItems,
-			done: nextOffset === null,
+			done: next === null,
+			next,
 			nextOffset,
 		});
 	} catch (error) {
@@ -410,14 +418,14 @@ sync.post('/bookings', async (c) => {
 });
 
 // sync guests in chunks to stay under the 30s worker wall-clock limit.
-// accepts ?offset=N to resume from where the last invocation left off.
-// returns { done, nextOffset } so the client can loop until complete.
+// accepts ?next=<token> from the previous response to resume where it left off.
+// returns { done, next } so the client can loop until complete.
 const GUEST_PAGES_PER_CHUNK = 10;
 
 sync.post('/guests', async (c) => {
 	const supabase = createSupabaseClient(c.env);
 	const tenantId = c.get('tenantId');
-	const offset = parseInt(c.req.query('offset') || '0', 10);
+	const resume = resumeFrom(c.req.query('next'), c.req.query('offset'));
 
 	const tokenResult = await getValidOwnerRezToken(c.env, tenantId);
 	if (tokenResult.error) {
@@ -433,7 +441,7 @@ sync.post('/guests', async (c) => {
 		const CHUNK_SIZE = 500;
 		let totalGuests = 0;
 
-		const { totalItems, nextOffset } = await ownerRez.fetchGuestsChunked(offset, GUEST_PAGES_PER_CHUNK, async (pageGuests: any[]) => {
+		const { totalItems, next, nextOffset } = await ownerRez.fetchGuestsChunked(resume, GUEST_PAGES_PER_CHUNK, async (pageGuests: any[]) => {
 			const now = new Date().toISOString();
 			const guestData: any[] = [];
 			const pageTagMap = new Map<string, string[]>();
@@ -520,7 +528,8 @@ sync.post('/guests', async (c) => {
 			success: true,
 			guestsCount: totalGuests,
 			totalFromApi: totalItems,
-			done: nextOffset === null,
+			done: next === null,
+			next,
 			nextOffset,
 		});
 	} catch (error) {

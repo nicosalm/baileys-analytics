@@ -1,5 +1,33 @@
 import { OWNERREZ_API } from '../constants';
 
+// resume token for the next chunk of a paged list: 'c:<cursor>' taken from ownerrez's
+// next_page_url, or 'o:<offset>' where no cursor was issued. ownerrez rejects offsets
+// above 0 from 2027-01-05, and ignores a cursor if the filters change between requests,
+// so every chunked request must send identical filters.
+export type PageResume = string | null;
+
+// nextOffset only serves a browser still running the pre-cursor sync loop mid-deploy
+export interface ChunkResult {
+	totalItems: number;
+	next: PageResume;
+	nextOffset: number | null;
+}
+
+function applyResume(params: URLSearchParams, resume: PageResume) {
+	if (resume?.startsWith('c:')) params.set('cursor', resume.slice(2));
+	else params.set('offset', resume?.startsWith('o:') ? String(Number.parseInt(resume.slice(2), 10) || 0) : '0');
+}
+
+// next_page_url may drop the include_* params, so carry the originals over, but never
+// a paging param: a cursor page must not also send the first request's offset
+function withOriginalParams(nextPage: string, originalParams: URLSearchParams): string {
+	const nextUrl = nextPage.startsWith('/') ? new URL(`https://api.ownerrez.com${nextPage}`) : new URL(nextPage);
+	for (const [k, v] of originalParams) {
+		if (k !== 'offset' && k !== 'cursor' && !nextUrl.searchParams.has(k)) nextUrl.searchParams.set(k, v);
+	}
+	return nextUrl.toString();
+}
+
 export class OwnerRezService {
 	private baseUrl = OWNERREZ_API.BASE_URL;
 	private accessToken: string;
@@ -127,15 +155,7 @@ export class OwnerRezService {
 			}
 
 			const nextPage = data.next_page_url || null;
-			if (nextPage) {
-				const nextUrl = nextPage.startsWith('/') ? new URL(`https://api.ownerrez.com${nextPage}`) : new URL(nextPage);
-				for (const [k, v] of originalParams) {
-					if (!nextUrl.searchParams.has(k)) nextUrl.searchParams.set(k, v);
-				}
-				currentUrl = nextUrl.toString();
-			} else {
-				currentUrl = null;
-			}
+			currentUrl = nextPage ? withOriginalParams(nextPage, originalParams) : null;
 
 			isFirstPage = false;
 			page++;
@@ -176,61 +196,61 @@ export class OwnerRezService {
 		return this.fetchAllPages(`${this.baseUrl}/bookings?${params}`);
 	}
 
-	// fetches up to maxPages pages of bookings starting at offset, calling onPage
-	// per page. returns the next offset (null if no more pages).
+	// fetches up to maxPages pages of bookings from resume (null for the start), calling
+	// onPage per page. withDetails: false skips guests, charges, fields and tags for
+	// callers that only need dates.
 	async fetchBookingsChunked(
 		propertyIds: string[],
 		startDate: string,
 		endDate: string,
-		offset: number,
+		resume: PageResume,
 		maxPages: number,
 		onPage: (items: any[]) => Promise<void>,
-	): Promise<{ totalItems: number; nextOffset: number | null }> {
+		{ withDetails = true }: { withDetails?: boolean } = {},
+	): Promise<ChunkResult> {
 		const params = new URLSearchParams();
 		params.set('property_ids', propertyIds.join(','));
 		params.set('from', startDate);
 		params.set('to', endDate);
-		params.set('include_guest', 'true');
-		params.set('include_charges', 'true');
-		params.set('include_fields', 'true');
-		params.set('include_tags', 'true');
+		if (withDetails) {
+			params.set('include_guest', 'true');
+			params.set('include_charges', 'true');
+			params.set('include_fields', 'true');
+			params.set('include_tags', 'true');
+		}
 		params.set('limit', '100');
-		params.set('offset', String(offset));
+		applyResume(params, resume);
 
 		return this.fetchPagesChunked(`${this.baseUrl}/bookings?${params}`, maxPages, onPage);
 	}
 
 	async fetchGuestsChunked(
-		offset: number,
+		resume: PageResume,
 		maxPages: number,
 		onPage: (items: any[]) => Promise<void>,
 		createdSinceUtc?: string,
-	): Promise<{ totalItems: number; nextOffset: number | null }> {
+	): Promise<ChunkResult> {
 		const params = new URLSearchParams({
 			include_tags: 'true',
 			include_fields: 'true',
 			limit: '100',
 		});
-		params.set('offset', String(offset));
+		applyResume(params, resume);
 
 		if (createdSinceUtc) {
 			params.set('created_since_utc', createdSinceUtc);
 		} else {
-			const fourYearsAgo = new Date();
-			fourYearsAgo.setFullYear(fourYearsAgo.getFullYear() - 4);
-			params.set('created_since_utc', fourYearsAgo.toISOString());
+			// midnight, not now: a filter that moved every request would void the cursor
+			const now = new Date();
+			params.set('created_since_utc', new Date(Date.UTC(now.getUTCFullYear() - 4, now.getUTCMonth(), now.getUTCDate())).toISOString());
 		}
 
 		return this.fetchPagesChunked(`${this.baseUrl}/guests?${params}`, maxPages, onPage);
 	}
 
 	// fetches up to maxPages pages, processing each via onPage callback.
-	// returns next offset if more pages exist, null if done.
-	private async fetchPagesChunked(
-		url: string,
-		maxPages: number,
-		onPage: (items: any[]) => Promise<void>,
-	): Promise<{ totalItems: number; nextOffset: number | null }> {
+	// next is null once there are no more pages.
+	private async fetchPagesChunked(url: string, maxPages: number, onPage: (items: any[]) => Promise<void>): Promise<ChunkResult> {
 		let currentUrl: string | null = url;
 		let page = 0;
 		let totalItems = 0;
@@ -251,7 +271,7 @@ export class OwnerRezService {
 					await onPage(data);
 					totalItems += data.length;
 				}
-				return { totalItems, nextOffset: null };
+				return { totalItems, next: null, nextOffset: null };
 			}
 
 			if (data.items && Array.isArray(data.items) && data.items.length > 0) {
@@ -260,26 +280,18 @@ export class OwnerRezService {
 			}
 
 			const nextPage = data.next_page_url || null;
-			if (nextPage) {
-				const nextUrl = nextPage.startsWith('/') ? new URL(`https://api.ownerrez.com${nextPage}`) : new URL(nextPage);
-				for (const [k, v] of originalParams) {
-					if (!nextUrl.searchParams.has(k)) nextUrl.searchParams.set(k, v);
-				}
-				currentUrl = nextUrl.toString();
-			} else {
-				currentUrl = null;
-			}
+			currentUrl = nextPage ? withOriginalParams(nextPage, originalParams) : null;
 
 			page++;
 		}
 
-		// if we hit maxPages and there are more pages, return the next offset
 		if (currentUrl) {
-			const initialOffset = parseInt(originalParams.get('offset') || '0', 10);
-			return { totalItems, nextOffset: initialOffset + totalItems };
+			const cursor = new URL(currentUrl).searchParams.get('cursor');
+			const nextOffset = Number.parseInt(originalParams.get('offset') || '0', 10) + totalItems;
+			return { totalItems, next: cursor ? `c:${cursor}` : `o:${nextOffset}`, nextOffset };
 		}
 
-		return { totalItems, nextOffset: null };
+		return { totalItems, next: null, nextOffset: null };
 	}
 
 	async fetchBookingDetail(bookingId: string): Promise<any> {

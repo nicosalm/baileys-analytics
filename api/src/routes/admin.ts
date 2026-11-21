@@ -447,11 +447,15 @@ admin.post('/users/:tenantId/impersonate', authMiddleware, adminMiddleware, asyn
 	}
 });
 
+// OwnerRez pages hold 100 bookings; 20 lean pages finish well inside the 30s API timeout
+const REFRESH_BLOCKS_PAGES_PER_CALL = 20;
+
 // Refresh blocks for a single tenant by re-fetching from OwnerRez.
 // Covers cases where the blocks table drifts from OwnerRez: dropped webhooks,
 // retry ceiling exceeded, interrupted initial sync. Default window is 1y back
-// to 2y forward; large tenants can narrow via ?from=YYYY-MM-DD&to=YYYY-MM-DD
-// to stay under the cloudflare edge timeout.
+// to 2y forward, narrowable via ?from=YYYY-MM-DD&to=YYYY-MM-DD. Each call covers
+// a bounded number of pages; while next is non-null, call again with
+// ?next=<next> (and the same from/to) to continue.
 admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, async (c) => {
 	const tenantId = c.req.param('tenantId');
 	const supabase = createSupabaseClient(c.env);
@@ -478,8 +482,6 @@ admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, a
 	// we no longer have (deleted / deactivated since last property sync)
 	const knownIntIds = new Set(orPropertyIds.map((id) => parseInt(id, 10)).filter((n) => !Number.isNaN(n)));
 
-	// default window: 1y back, 2y forward. Overridable via ?from=YYYY-MM-DD&to=YYYY-MM-DD
-	// for large tenants that would otherwise exceed the cloudflare edge timeout.
 	const now = new Date();
 	const qFrom = c.req.query('from');
 	const qTo = c.req.query('to');
@@ -487,6 +489,7 @@ admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, a
 	const from =
 		qFrom && isValidDate(qFrom) ? qFrom : new Date(Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), 1)).toISOString().slice(0, 10);
 	const to = qTo && isValidDate(qTo) ? qTo : new Date(Date.UTC(now.getUTCFullYear() + 2, now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+	const resume = c.req.query('next') || null;
 
 	const ownerRez = new OwnerRezService(tokenResult.accessToken, c.env.CACHE);
 	const nowIso = new Date().toISOString();
@@ -498,20 +501,30 @@ admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, a
 	let upserted = 0;
 	let upsertErrorMessage: string | null = null;
 	let totalItems = 0;
+	let next: string | null = null;
 	try {
-		const result = await ownerRez.fetchBookingsChunked(orPropertyIds, from, to, 0, 500, async (pageItems) => {
-			const rows = pageItems
-				.filter((b) => (b.is_block || b.type === 'block') && knownIntIds.has(Number(b.property_id)))
-				.map((b) => mapToBlockRow(b, tenantId, nowIso));
-			if (rows.length === 0) return;
-			const { error } = await supabase.from('blocks').upsert(rows, { onConflict: 'ownerrez_block_id,tenant_id' });
-			if (error) {
-				upsertErrorMessage = error.message;
-				throw new Error('upsert failed');
-			}
-			upserted += rows.length;
-		});
+		const result = await ownerRez.fetchBookingsChunked(
+			orPropertyIds,
+			from,
+			to,
+			resume,
+			REFRESH_BLOCKS_PAGES_PER_CALL,
+			async (pageItems) => {
+				const rows = pageItems
+					.filter((b) => (b.is_block || b.type === 'block') && knownIntIds.has(Number(b.property_id)))
+					.map((b) => mapToBlockRow(b, tenantId, nowIso));
+				if (rows.length === 0) return;
+				const { error } = await supabase.from('blocks').upsert(rows, { onConflict: 'ownerrez_block_id,tenant_id' });
+				if (error) {
+					upsertErrorMessage = error.message;
+					throw new Error('upsert failed');
+				}
+				upserted += rows.length;
+			},
+			{ withDetails: false },
+		);
 		totalItems = result.totalItems;
+		next = result.next;
 	} catch (err) {
 		if (upsertErrorMessage) {
 			console.error('Block upsert failed during admin refresh:', upsertErrorMessage);
@@ -527,6 +540,7 @@ admin.post('/users/:tenantId/refresh-blocks', authMiddleware, adminMiddleware, a
 		blocks: upserted,
 		propertiesScanned: orPropertyIds.length,
 		range: { from, to },
+		next,
 	});
 });
 
