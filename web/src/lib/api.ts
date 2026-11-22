@@ -16,7 +16,7 @@ import type {
 
 const API_BASE = '/api'
 
-type ApiResult<T> = { success: true; data: T } | { success: false; error: string; status?: number }
+type ApiResult<T> = { success: true; data: T } | { success: false; error: string; status?: number; code?: string }
 
 class ApiClient {
   private accessToken: string | null = null
@@ -73,6 +73,7 @@ class ApiClient {
           success: false,
           error: response.status === 401 ? 'Session expired. Please log in again.' : error.error || response.statusText,
           status: response.status,
+          code: typeof error.code === 'string' ? error.code : undefined,
         }
       }
 

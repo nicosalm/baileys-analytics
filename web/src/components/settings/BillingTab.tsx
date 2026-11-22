@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { ExternalLink, TrendingUp } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { billingClient, type SubscriptionInfo, type TierStatus, type PendingTier } from '@/lib/stripe'
-import { PricingPlans } from '@/components/PricingPlans'
+import { PlanStep } from '@/components/onboarding/PlanStep'
 import { DataTable, type Column } from '@/components/tables/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -119,10 +119,10 @@ export const BillingTab = () => {
       <div className="space-y-6">
         <SettingsSection
           title="Plan"
-          description="Choose a plan to keep using the dashboards."
+          description="Subscribe to keep using the dashboards. Your plan is set by your active OwnerRez properties."
           action={<Badge variant="warning">No active subscription</Badge>}
         />
-        <PricingPlans />
+        <PlanStep className="max-w-md" />
       </div>
     )
   }

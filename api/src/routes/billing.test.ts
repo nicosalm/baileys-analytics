@@ -143,7 +143,9 @@ describe('POST /billing/confirm-checkout', () => {
 
 	it('returns 404 for a session that belongs to someone else', async () => {
 		confirmCheckout.mockResolvedValueOnce('not_found');
-		expect((await post('confirm-checkout', { sessionId: 'cs_other' })).status).toBe(404);
+		const res = await post('confirm-checkout', { sessionId: 'cs_other' });
+		expect(res.status).toBe(404);
+		expect(((await res.json()) as any).code).toBe('CHECKOUT_NOT_FOUND');
 	});
 
 	it('reports whether the plan is active yet', async () => {

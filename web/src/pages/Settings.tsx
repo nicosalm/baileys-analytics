@@ -85,15 +85,6 @@ export const Settings = () => {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  useEffect(() => {
-    const checkout = searchParams.get('checkout')
-    if (checkout !== 'success' && checkout !== 'cancel') return
-    addToast(checkout === 'success' ? 'success' : 'info', checkout === 'success' ? 'Subscription active' : 'Checkout canceled')
-    const newParams = new URLSearchParams(searchParams)
-    newParams.delete('checkout')
-    setSearchParams(newParams, { replace: true })
-  }, [])
-
   // follow ?tab= when it changes after load, such as from the command palette
   const tabParam = searchParams.get('tab')
   useEffect(() => {

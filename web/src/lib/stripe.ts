@@ -41,6 +41,24 @@ export interface SubscriptionResponse {
   isExempt: boolean
 }
 
+export interface PlanQuote {
+  propertyCount: number
+  tier: TierSlug | null
+  tierName: string | null
+  monthlyCents: number | null
+  yearlyCents: number | null
+  needsContactSales: boolean
+}
+
+export class BillingError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message)
+  }
+}
+
 interface BillingHistoryEntry {
   id: string
   amount: number
@@ -67,14 +85,22 @@ class BillingClient {
     return result.data
   }
 
-  async createCheckoutSession(tier: TierSlug, isYearly: boolean = false) {
+  // the server counts active OwnerRez properties and picks the tier; a 0 count has no tier
+  async getQuote(): Promise<PlanQuote> {
+    const result = await api.request<PlanQuote>('/billing/quote')
+    if (!result.success) throw new BillingError(result.error, result.code)
+    return result.data
+  }
+
+  // the tier comes from the property count on the server, so only the cycle is sent
+  async createCheckoutSession(isYearly: boolean) {
     const result = await api.request<{ url: string; sessionId: string }>('/billing/create-checkout-session', {
       method: 'POST',
-      body: JSON.stringify({ tier, isYearly }),
+      body: JSON.stringify({ isYearly }),
     })
 
     if (!result.success) {
-      throw new Error(result.error || 'Failed to create checkout session')
+      throw new BillingError(result.error || 'Failed to create checkout session', result.code)
     }
 
     // redirect to stripe checkout
@@ -83,6 +109,16 @@ class BillingClient {
     }
 
     return result.data
+  }
+
+  // asks Stripe directly on return from Checkout, in case the webhook has not landed yet
+  async confirmCheckout(sessionId: string): Promise<boolean> {
+    const result = await api.request<{ hasActivePlan: boolean }>('/billing/confirm-checkout', {
+      method: 'POST',
+      body: JSON.stringify({ sessionId }),
+    })
+    if (!result.success) throw new BillingError(result.error, result.code)
+    return result.data.hasActivePlan
   }
 
   async createPortalSession() {

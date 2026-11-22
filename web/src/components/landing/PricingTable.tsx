@@ -19,7 +19,7 @@ export function PricingTable() {
       <div>
         <h2 className="landing-serif text-3xl md:text-4xl font-semibold text-landing-fg">Pricing</h2>
         <p className="mt-3 text-landing-caption leading-relaxed">
-          Every feature on every plan. The price depends on how many properties you sync.
+          Every feature on every plan. Connect OwnerRez first and we'll match you to the plan for your active properties.
         </p>
         <ul className="mt-8 space-y-3">
           {TIERS[0].features.map((feature) => (

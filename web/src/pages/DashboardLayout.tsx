@@ -26,7 +26,6 @@ import { Button } from '@/components/ui/button'
 import { AppHeader } from '@/components/AppHeader'
 import { usePageTitle } from '@/hooks/use-page-title'
 import { useToast } from '@/contexts/toast'
-import { OwnerRezLogo } from '@/components/OwnerRezLogo'
 
 const tabConfig: Array<{ id: DashboardTab; label: string }> = [
   { id: 'overview', label: 'Overview' },
@@ -143,8 +142,6 @@ export const DashboardLayout = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [showInitialSync, setShowInitialSync] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [connectLoading, setConnectLoading] = useState(false)
-  const { addToast } = useToast()
   const syncChecked = useRef(false)
 
   useEffect(() => {
@@ -188,46 +185,6 @@ export const DashboardLayout = () => {
     const newPath = `/dashboard/${tabId}${currentParams.toString() ? `?${currentParams.toString()}` : ''}`
     navigate(newPath)
     setMobileMenuOpen(false)
-  }
-
-  if (!user.hasOwnerRezConnection) {
-    const handleConnect = async () => {
-      setConnectLoading(true)
-      try {
-        const result = await api.initiateOAuth()
-        if (result.success) {
-          window.location.href = result.data.authUrl
-        } else {
-          addToast('error', 'Failed to start the OwnerRez connection')
-          setConnectLoading(false)
-        }
-      } catch {
-        addToast('error', 'Failed to start the OwnerRez connection')
-        setConnectLoading(false)
-      }
-    }
-
-    return (
-      <div className="min-h-screen bg-background flex flex-col">
-        <AppHeader subtitle={null} />
-
-        <main className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-sm sm:p-8">
-            <OwnerRezLogo className="-ml-1" imgClassName="h-7 brightness-0 dark:invert group-hover:opacity-75" />
-            <h2 className="mt-5 text-xl font-semibold text-foreground">Connect OwnerRez</h2>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Baileys imports four years of properties, bookings and guests, then stays current through webhooks. You sign in on OwnerRez,
-              so Baileys never sees your password.
-            </p>
-            <Button onClick={handleConnect} loading={connectLoading} loadingText="Connecting..." className="mt-6 w-full">
-              Connect OwnerRez
-            </Button>
-          </div>
-        </main>
-
-        <Footer />
-      </div>
-    )
   }
 
   return (

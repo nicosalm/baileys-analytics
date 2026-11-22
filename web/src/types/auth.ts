@@ -6,7 +6,7 @@ export interface AppUser extends SupabaseUser {
   isOAuthUser?: boolean
   companyName?: string | null
   isDemo?: boolean
-  // undefined when /auth/me didn't answer; the subscription gate then asks billing itself
+  // undefined when /auth/me didn't answer; onboarding then offers a retry
   hasActivePlan?: boolean
 }
 

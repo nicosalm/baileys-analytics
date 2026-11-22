@@ -190,7 +190,7 @@ billing.post('/confirm-checkout', async (c) => {
 		const supabase = createSupabaseClient(c.env);
 		const result = await new StripeService(c.env, supabase).confirmCheckout(c.get('tenantId'), sessionId);
 		if (result === 'not_found') {
-			return c.json({ error: 'Checkout session not found' }, 404);
+			return c.json({ error: 'Checkout session not found', code: 'CHECKOUT_NOT_FOUND' }, 404);
 		}
 		return c.json({ hasActivePlan: result === 'active' });
 	} catch (error) {

@@ -9,7 +9,7 @@ import { DashboardProvider } from '@/contexts/dashboard'
 import { ModalProvider } from '@/contexts/modal'
 import { ModalManager } from '@/components/ModalManager'
 import { ProtectedRoute, NoDemoRoute } from '@/components/ProtectedRoute'
-import { SubscriptionGate } from '@/components/SubscriptionGate'
+import { OnboardingGate } from '@/components/onboarding/OnboardingGate'
 import { LoadingState } from '@/components/LoadingState'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { loadDashboardLayout, prefetchDashboard } from '@/pages/dashboard-preload'
@@ -70,14 +70,14 @@ export const App = () => {
                     <Route
                       path="/dashboard/:tab"
                       element={
-                        <SubscriptionGate>
+                        <OnboardingGate>
                           <DashboardProvider>
                             <ModalProvider>
                               <DashboardLayout />
                               <ModalManager />
                             </ModalProvider>
                           </DashboardProvider>
-                        </SubscriptionGate>
+                        </OnboardingGate>
                       }
                     />
                     <Route

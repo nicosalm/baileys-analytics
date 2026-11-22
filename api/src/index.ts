@@ -120,7 +120,7 @@ app.get('/api/auth/me', authMiddleware, async (c) => {
 		tenantId,
 		companyName: tenant?.data?.company_name ?? null,
 		hasOwnerRezConnection: !!ownerrezToken?.data,
-		// same rule the dashboard's subscription gate applies
+		// same rule the subscription middleware applies
 		hasActivePlan: isExempt || subscription?.data?.status === 'active',
 		createdAt: user.created_at || new Date().toISOString(),
 	});
