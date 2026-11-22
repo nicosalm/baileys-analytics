@@ -1,5 +1,4 @@
-Baileys Analytics
-=================
+# Baileys Analytics
 
 Baileys Analytics is a dashboard for vacation rental hosts who run
 their business on OwnerRez. It connects to a host's OwnerRez account,
@@ -10,9 +9,7 @@ against the nights that could be sold, booking pace against last year,
 cash flow, a tax summary, and which guests keep coming back. It runs at
 baileysanalytics.com, where "Try the demo" opens a seeded account.
 
-
-How it works
-------------
+## How it works
 
 There are two deployable pieces. `web/` is a React single-page app
 served by Cloudflare Pages, and `api/` is a Cloudflare Worker built
@@ -46,9 +43,7 @@ time, and removes anonymous demo users older than 30 days. Billing is
 Stripe Checkout plus the customer portal, with tiers priced by property
 count (`packages/constants`).
 
-
-Layout
-------
+## Layout
 
     web/                  React 19, Vite, Tailwind 4, shadcn/ui,
                           Recharts and SWR
@@ -61,9 +56,7 @@ Layout
     supabase/             SQL migrations, the demo seed and pre-deploy
                           checks
 
-
-Running it locally
-------------------
+## Running it locally
 
 You need Node 22 or newer, pnpm (its version is pinned in
 `package.json`) and a Supabase project. Connecting a real account also
@@ -95,9 +88,7 @@ These commands cover the usual checks:
 A pre-commit hook runs Biome on staged files, and CI runs lint, type
 checks, tests and a build on every pull request and push to `main`.
 
-
-Deploying
----------
+## Deploying
 
 Production deploys from the "Deploy production" GitHub Actions
 workflow, which is started by hand and asks for the confirmation text
@@ -110,9 +101,7 @@ code that depends on them is live. When a migration changes grants,
 indexes or functions, run `supabase/checks/pre-deploy-checks.sql`
 first.
 
-
-Demo data
----------
+## Demo data
 
 `supabase/seed-demo.sql` regenerates the demo tenant's bookings
 relative to today, three years back and a year ahead, so its charts
