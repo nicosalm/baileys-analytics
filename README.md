@@ -1,59 +1,44 @@
 # Baileys Analytics
 
-A dashboard for vacation rental hosts who use OwnerRez. It syncs a
-host's properties, bookings, guests, owner blocks and inquiries, and
-reports revenue and profit after fees and taxes, occupancy, booking
-pace, cash flow, taxes and repeat guests. It runs at
-baileysanalytics.com, which has a public demo.
+Analytics for vacation rental hosts on OwnerRez. Connect an OwnerRez
+account and it pulls in your properties, bookings and guests, then shows
+revenue, occupancy, booking pace, cash flow and taxes. Live at
+[baileysanalytics.com](https://baileysanalytics.com), with a demo if you
+don't have an account.
 
-## Architecture
+## Stack
 
-- `web/` is a React single-page app on Cloudflare Pages.
-- `api/` is a Cloudflare Worker built with Hono.
-- Supabase provides Postgres and authentication.
+React on Cloudflare Pages, a Hono API on Cloudflare Workers, and
+Supabase for Postgres and auth.
 
-The browser uses Supabase only to sign in. All data access goes through
-the worker, which scopes every query to the caller's tenant
-(`api/src/middleware/auth.ts`). The `anon` and `authenticated` roles
-have no table grants. On the site, `/api` is a Pages Function that
-proxies to the worker.
-
-OwnerRez data arrives through an initial sync after OAuth, then through
-webhooks. An hourly cron applies subscription changes, finishes account
-deletions and removes old demo users. Billing uses Stripe.
+The frontend only talks to Supabase to log in. Everything else goes
+through the worker, which checks the user's token and limits each query
+to their tenant (`api/src/middleware/auth.ts`). After the first sync,
+OwnerRez webhooks keep the data up to date.
 
 ## Layout
 
-    web/                  React app
-    web/functions/api/    Pages Function that proxies /api/* to the worker
-    api/                  worker routes, services, middleware and cron
-    packages/constants/   shared constants, including subscription tiers
-    packages/utils/       shared date and currency helpers
-    supabase/             migrations, demo seed and pre-deploy checks
+    web/            frontend
+    web/functions/  /api proxy to the worker
+    api/            the worker
+    packages/       shared constants and utils
+    supabase/       migrations and the demo seed
 
-## Development
+## Running locally
 
-Requires Node 22 or newer, pnpm (version pinned in `package.json`) and
-a Supabase project. Connecting a real account requires an OwnerRez
-developer app. Stripe and Resend are only needed for billing and email.
+You'll need Node 22+, pnpm and a Supabase project. Connecting a real
+OwnerRez account also needs an OwnerRez developer app.
 
     pnpm install
     cp api/.dev.vars.example api/.dev.vars
     cp web/.env.example web/.env.local
     pnpm dev
 
-Fill in both env files before running `pnpm dev`. The web app runs on
-port 5173 and the worker on port 8787, and Vite proxies `/api` to the
-worker.
+Fill in both env files first. The app runs on localhost:5173 and the
+worker on :8787.
 
-The migrations in `supabase/migrations` build on the schema as of March
-2026, which is not in the repository yet. A new Supabase project cannot
-be set up from them alone.
+The migrations start from the March 2026 schema, which isn't checked in
+yet, so you can't build a fresh database from them alone.
 
-    pnpm lint        Biome lint and format check
-    pnpm format      apply Biome fixes
-    pnpm typecheck   type-check every package
-    pnpm test        worker tests (Vitest)
-    pnpm build       production build of the web app
-
-CI runs lint, type checks, tests and a build on every pull request.
+CI runs `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm build` on
+pull requests.
