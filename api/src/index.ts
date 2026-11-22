@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { authMiddleware } from './middleware/auth';
-import { subscriptionMiddleware } from './middleware/subscription';
+import { subscriptionMiddleware, PAID_SYNC_PATHS } from './middleware/subscription';
 import { demoGuard } from './middleware/demo-guard';
 import { rateLimit } from './middleware/rate-limit';
 import { timeout } from './middleware/timeout';
@@ -367,6 +367,10 @@ const dashboardPaths = [
 // tenantId is set; the sub-apps' own authMiddleware runs too late for this check.
 dashboardPaths.forEach((path) => {
 	app.use(`${path}/*`, authMiddleware, subscriptionMiddleware);
+	app.use(path, authMiddleware, subscriptionMiddleware);
+});
+
+PAID_SYNC_PATHS.forEach((path) => {
 	app.use(path, authMiddleware, subscriptionMiddleware);
 });
 

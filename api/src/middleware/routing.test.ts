@@ -34,7 +34,7 @@ function fakeSupabase() {
 				maybeSingle: async () => q.single(),
 				single: async () => {
 					if (table === 'tenants' && filters.user_id) return { data: { id: TENANT_BY_USER[filters.user_id] } };
-					if (table === 'tenants') return { data: { subscription_exempt: false, created_at: '2020-01-01' } };
+					if (table === 'tenants') return { data: { subscription_exempt: false, created_at: new Date().toISOString() } };
 					if (table === 'subscriptions') {
 						const status = subscriptionStatus[filters.tenant_id];
 						return status ? { data: { status } } : { data: null, error: { message: 'none' } };
@@ -52,7 +52,7 @@ function fakeSupabase() {
 }
 
 const { authMiddleware } = await import('./auth');
-const { subscriptionMiddleware } = await import('./subscription');
+const { subscriptionMiddleware, PAID_SYNC_PATHS } = await import('./subscription');
 const { oauth } = await import('../routes/oauth');
 
 // Mirrors index.ts: app-level auth + subscription check, sub-app with its own auth.
@@ -61,6 +61,15 @@ function buildApp() {
 	app.use('/api/bookings/*', authMiddleware, subscriptionMiddleware);
 	app.use('/api/bookings', authMiddleware, subscriptionMiddleware);
 	app.use('/api/oauth/*', authMiddleware);
+
+	PAID_SYNC_PATHS.forEach((path) => {
+		app.use(path, authMiddleware, subscriptionMiddleware);
+	});
+
+	const sync = new Hono<AppEnv>();
+	sync.use('/*', authMiddleware);
+	sync.post('/*', (c) => c.json({ ok: true }));
+	app.route('/api/sync', sync);
 
 	const bookings = new Hono<AppEnv>();
 	bookings.use('/*', authMiddleware);
@@ -93,7 +102,7 @@ describe('dashboard route middleware ordering', () => {
 		expect(((await res.json()) as any).code).toBe('SUBSCRIPTION_INACTIVE');
 	});
 
-	it('blocks a tenant with no subscription past the grace period', async () => {
+	it('blocks a tenant with no subscription, including one created today', async () => {
 		subscriptionStatus.tenant_a = undefined;
 		const res = await get('/api/bookings', 'tok_a');
 		expect(res.status).toBe(403);
@@ -102,6 +111,29 @@ describe('dashboard route middleware ordering', () => {
 
 	it('still rejects unauthenticated requests', async () => {
 		expect((await get('/api/bookings')).status).toBe(401);
+	});
+});
+
+describe('sync gating before payment', () => {
+	beforeEach(() => {
+		subscriptionStatus = { tenant_a: 'active', tenant_b: undefined };
+	});
+
+	const postSync = (step: string, token: string) =>
+		buildApp().request(`/api/sync/${step}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }, env);
+
+	it('lets an unpaid tenant sync its property list for a quote', async () => {
+		expect((await postSync('properties', 'tok_b')).status).toBe(200);
+	});
+
+	it.each(['bookings', 'guests', 'inquiries', 'complete', 'reset'])('blocks /sync/%s until the tenant pays', async (step) => {
+		const res = await postSync(step, 'tok_b');
+		expect(res.status).toBe(403);
+		expect(((await res.json()) as any).code).toBe('SUBSCRIPTION_REQUIRED');
+	});
+
+	it('runs the full import for a paying tenant', async () => {
+		expect((await postSync('bookings', 'tok_a')).status).toBe(200);
 	});
 });
 

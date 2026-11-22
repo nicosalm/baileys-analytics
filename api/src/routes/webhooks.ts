@@ -29,6 +29,7 @@ import { authMiddleware } from '../middleware/auth';
 import { normalizeBookingStatus, estimateGuestListingSiteFee } from '../constants';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
+import { isUnpaidProspect } from '../services/billable-properties';
 import { mapToBlockRow } from '../utils/blocks';
 import { invalidateBookingViews } from '../utils/cache';
 import type { AppEnv } from '../types';
@@ -220,6 +221,12 @@ webhooks.post('/ownerrez', async (c) => {
 
 	if (payload.action === 'webhook_test') {
 		return c.json({ status: 'success', message: 'Webhook test received' });
+	}
+
+	// a tenant that has never paid only keeps its property list current, which its plan quote needs
+	const isEntityEvent = payload.action === 'entity_create' || payload.action === 'entity_update' || payload.action === 'entity_delete';
+	if (isEntityEvent && payload.entity_type !== 'property' && (await isUnpaidProspect(supabase, tenant.id))) {
+		return c.json({ status: 'ignored', reason: 'not_subscribed' });
 	}
 
 	// return 200 immediately, process in background (ownerrez requires <2s response)

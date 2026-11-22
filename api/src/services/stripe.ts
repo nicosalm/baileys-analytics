@@ -54,8 +54,10 @@ export class StripeService {
 		priceId: string,
 		successUrl: string,
 		cancelUrl: string,
+		extraMetadata: Record<string, string> = {},
 	): Promise<{ sessionId: string; url: string }> {
 		const customerId = await this.createOrRetrieveCustomer(tenantId, email);
+		const metadata = { ...extraMetadata, tenant_id: tenantId };
 
 		const sessionConfig: Stripe.Checkout.SessionCreateParams = {
 			customer: customerId,
@@ -63,20 +65,14 @@ export class StripeService {
 			mode: 'subscription',
 			success_url: successUrl,
 			cancel_url: cancelUrl,
-			metadata: {
-				tenant_id: tenantId,
-			},
+			metadata,
 			line_items: [
 				{
 					price: priceId,
 					quantity: 1,
 				},
 			],
-			subscription_data: {
-				metadata: {
-					tenant_id: tenantId,
-				},
-			},
+			subscription_data: { metadata },
 		};
 
 		const session = await this.stripe.checkout.sessions.create(sessionConfig);
@@ -85,6 +81,25 @@ export class StripeService {
 			sessionId: session.id,
 			url: session.url!,
 		};
+	}
+
+	// the browser can return from Checkout before the webhook lands, so the success page
+	// asks Stripe directly and writes the subscription itself. safe to race the webhook,
+	// both upsert on tenant_id
+	async confirmCheckout(tenantId: string, sessionId: string): Promise<'not_found' | 'pending' | 'active'> {
+		let session: Stripe.Checkout.Session;
+		try {
+			session = await this.stripe.checkout.sessions.retrieve(sessionId);
+		} catch {
+			return 'not_found';
+		}
+		if (session.metadata?.tenant_id !== tenantId) return 'not_found';
+		if (session.status !== 'complete' || !session.subscription) return 'pending';
+
+		const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+		const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+		await this.syncSubscription(subscription);
+		return subscription.status === 'active' ? 'active' : 'pending';
 	}
 
 	// create customer portal session
@@ -234,7 +249,7 @@ export class StripeService {
 
 				case 'customer.subscription.created':
 				case 'customer.subscription.updated':
-					eventTenantId = await this.handleSubscriptionUpdate(event.data.object as Stripe.Subscription);
+					eventTenantId = await this.syncSubscription(event.data.object as Stripe.Subscription);
 					break;
 
 				case 'customer.subscription.deleted':
@@ -286,7 +301,7 @@ export class StripeService {
 		if (session.subscription) {
 			try {
 				const subscription = await this.stripe.subscriptions.retrieve(session.subscription as string);
-				await this.handleSubscriptionUpdate(subscription);
+				await this.syncSubscription(subscription);
 			} catch (err) {
 				console.error('Failed to sync subscription from checkout session:', err);
 			}
@@ -295,7 +310,8 @@ export class StripeService {
 		return tenantId;
 	}
 
-	private async handleSubscriptionUpdate(subscription: Stripe.Subscription): Promise<string | null> {
+	// writes a Stripe subscription into our tables. the webhook and confirm-checkout both land here
+	async syncSubscription(subscription: Stripe.Subscription): Promise<string | null> {
 		const tenantId = subscription.metadata?.tenant_id;
 		if (!tenantId) return null;
 
@@ -481,12 +497,12 @@ export class StripeService {
 
 		// Promote a deferred tier change if there is one. The cron sets metadata
 		// on the Stripe subscription and writes a pending row in DB; both got
-		// suppressed from the customer view by handleSubscriptionUpdate. Now that
+		// suppressed from the customer view by syncSubscription. Now that
 		// an actual invoice has been paid (= the new period started), it's safe to
 		// promote. Read stripe_subscription_id from our DB rather than from the
 		// invoice payload — the invoice.subscription field was deprecated/moved
 		// in newer Stripe API versions and casting through `any` would silently
-		// drop it. Our DB row is authoritative because handleSubscriptionUpdate
+		// drop it. Our DB row is authoritative because syncSubscription
 		// would have written it.
 		try {
 			const { data: dbSub } = await this.supabase

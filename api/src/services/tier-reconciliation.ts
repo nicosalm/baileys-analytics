@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TIERS, getTierBySlug, getTierRank, resolveTierForPropertyCount, type Tier, type TierSlug } from '@baileys/constants';
+import { countBillableProperties } from './billable-properties';
 
 // Map a (tier, billing cycle) pair to the env var holding the matching Stripe
 // price id. Single source of truth — routes/billing.ts imports this. Enterprise
@@ -106,14 +107,7 @@ export async function getTierStatus(supabase: SupabaseClient, tenantId: string):
 	const currentTier = getTierBySlug(currentTierSlug);
 	if (!currentTier) return null;
 
-	// count active, non-deleted properties
-	const { count } = await supabase
-		.from('properties')
-		.select('id', { count: 'exact', head: true })
-		.eq('tenant_id', tenantId)
-		.eq('active', true)
-		.is('deleted_at', null);
-	const propertyCount = count ?? 0;
+	const propertyCount = await countBillableProperties(supabase, tenantId);
 
 	// skip during initial sync — wait for at least one property to exist before
 	// making any tier judgments

@@ -5,6 +5,9 @@ import type { AppEnv } from '../types';
 // subscription statuses that allow access
 const ACTIVE_STATUSES = ['active'];
 
+// an unpaid tenant may sync its property list to get a plan quote; the full import waits for payment
+export const PAID_SYNC_PATHS = ['/api/sync/bookings', '/api/sync/guests', '/api/sync/inquiries', '/api/sync/complete', '/api/sync/reset'];
+
 // public routes that don't require subscription
 const PUBLIC_ROUTES = ['/api/auth', '/api/billing', '/api/oauth', '/api/webhooks', '/api/waitlist', '/health'];
 
@@ -51,22 +54,8 @@ export const subscriptionMiddleware = async (c: Context<AppEnv>, next: Next) => 
 		.eq('tenant_id', tenantId)
 		.single();
 
-	// if no subscription found, check if tenant is new (allow grace period)
+	// new tenants pay before any data beyond their property list is synced, so there is no grace period
 	if (!subscription || error) {
-		const { data: tenant } = await supabase.from('tenants').select('created_at').eq('id', tenantId).single();
-
-		if (tenant) {
-			const createdAt = new Date(tenant.created_at);
-			const now = new Date();
-			const daysSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-
-			// allow 1-day grace period for new accounts to set up billing
-			if (daysSinceCreation <= 1) {
-				return next();
-			}
-		}
-
-		// no subscription and past grace period
 		return c.json(
 			{
 				error: 'No active subscription',

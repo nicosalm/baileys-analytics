@@ -3,7 +3,9 @@ import { authMiddleware } from '../middleware/auth';
 import { createSupabaseClient } from '../services/supabase';
 import { StripeService } from '../services/stripe';
 import { markPendingTierIfNeeded, TIER_PRICE_ENV_VARS } from '../services/tier-reconciliation';
-import { PURCHASABLE_TIER_SLUGS, type TierSlug } from '@baileys/constants';
+import { countBillableProperties } from '../services/billable-properties';
+import { resolveTierForPropertyCount, type Tier, type TierSlug } from '@baileys/constants';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppEnv } from '../types';
 
 const billing = new Hono<AppEnv>();
@@ -83,7 +85,43 @@ billing.get('/subscription', async (c) => {
 	}
 });
 
-// create checkout session for new subscription
+type PlanQuote = { ok: true; propertyCount: number; tier: Tier | null } | { ok: false; code: 'OWNERREZ_NOT_CONNECTED'; error: string };
+
+// the tier comes from the property count, never from the client. a count of 0 has no tier
+async function quotePlan(supabase: SupabaseClient, tenantId: string): Promise<PlanQuote> {
+	const { data: token } = await supabase
+		.from('oauth_tokens')
+		.select('id')
+		.eq('tenant_id', tenantId)
+		.eq('provider', 'ownerrez')
+		.maybeSingle();
+	if (!token) {
+		return { ok: false, code: 'OWNERREZ_NOT_CONNECTED', error: 'Connect OwnerRez before choosing a plan' };
+	}
+	const propertyCount = await countBillableProperties(supabase, tenantId);
+	return { ok: true, propertyCount, tier: propertyCount > 0 ? resolveTierForPropertyCount(propertyCount) : null };
+}
+
+billing.get('/quote', async (c) => {
+	try {
+		const quote = await quotePlan(createSupabaseClient(c.env), c.get('tenantId'));
+		if (!quote.ok) return c.json({ error: quote.error, code: quote.code }, 409);
+		const { tier } = quote;
+		return c.json({
+			propertyCount: quote.propertyCount,
+			tier: tier?.slug ?? null,
+			tierName: tier?.name ?? null,
+			monthlyCents: tier?.monthlyPriceCents ?? null,
+			yearlyCents: tier?.yearlyPriceCents ?? null,
+			needsContactSales: tier?.contactSales === true,
+		});
+	} catch (error) {
+		console.error('Error building plan quote:', error);
+		return c.json({ error: 'Failed to count your properties' }, 500);
+	}
+});
+
+// create checkout session for new subscription. the client only picks the billing cycle
 billing.post('/create-checkout-session', async (c) => {
 	try {
 		const supabase = createSupabaseClient(c.env);
@@ -91,39 +129,73 @@ billing.post('/create-checkout-session', async (c) => {
 		const tenantId = c.get('tenantId');
 		const user = c.get('user');
 
-		const { tier, isYearly } = await c.req.json<{ tier?: string; isYearly?: boolean }>();
-
-		if (!tier || !PURCHASABLE_TIER_SLUGS.includes(tier as TierSlug)) {
-			return c.json({ error: 'Invalid or non-purchasable tier' }, 400);
-		}
-
-		// plan changes go through the Stripe portal; a second checkout would double-bill
-		const { data: existing } = await supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).maybeSingle();
-		if (existing && ['active', 'trialing', 'past_due'].includes(existing.status)) {
-			return c.json({ error: 'You already have a subscription. Manage it from the billing portal.' }, 409);
-		}
-
-		const envVars = TIER_PRICE_ENV_VARS[tier as Exclude<TierSlug, 'enterprise'>];
-		const stripePriceId = c.env[isYearly ? envVars.yearly : envVars.monthly];
-
-		if (typeof stripePriceId !== 'string' || !stripePriceId) {
-			console.error(`Missing Stripe price env var for tier=${tier} yearly=${isYearly}`);
-			return c.json({ error: 'Tier not yet configured' }, 500);
-		}
+		const { isYearly } = await c.req.json<{ isYearly?: boolean }>();
 
 		if (!user.email) {
 			return c.json({ error: 'An account with an email address is required to subscribe' }, 400);
 		}
 
-		const successUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=success`;
-		const cancelUrl = `${c.env.FRONTEND_URL}/settings?tab=billing&checkout=cancel`;
+		// a second checkout would double-bill; the plan follows the property count from here on
+		const { data: existing } = await supabase.from('subscriptions').select('status').eq('tenant_id', tenantId).maybeSingle();
+		if (existing && ['active', 'trialing', 'past_due'].includes(existing.status)) {
+			return c.json(
+				{
+					error: 'You already have a subscription. Your plan follows your property count automatically.',
+					code: 'ALREADY_SUBSCRIBED',
+				},
+				409,
+			);
+		}
 
-		const session = await stripeService.createCheckoutSession(tenantId, user.email, stripePriceId, successUrl, cancelUrl);
+		const quote = await quotePlan(supabase, tenantId);
+		if (!quote.ok) return c.json({ error: quote.error, code: quote.code }, 409);
+		const { tier, propertyCount } = quote;
+		if (!tier) {
+			return c.json({ error: 'No active properties found in OwnerRez', code: 'NO_PROPERTIES' }, 409);
+		}
+		if (tier.contactSales) {
+			return c.json({ error: 'Portfolios of 20 or more properties are priced individually', code: 'CONTACT_SALES' }, 409);
+		}
+
+		const envVars = TIER_PRICE_ENV_VARS[tier.slug as Exclude<TierSlug, 'enterprise'>];
+		const stripePriceId = c.env[isYearly ? envVars.yearly : envVars.monthly];
+
+		if (typeof stripePriceId !== 'string' || !stripePriceId) {
+			console.error(`Missing Stripe price env var for tier=${tier.slug} yearly=${isYearly}`);
+			return c.json({ error: 'Tier not yet configured' }, 500);
+		}
+
+		// stripe fills in {CHECKOUT_SESSION_ID}; the dashboard confirms the session in case the webhook is late
+		const successUrl = `${c.env.FRONTEND_URL}/dashboard/overview?checkout_session={CHECKOUT_SESSION_ID}`;
+		const cancelUrl = `${c.env.FRONTEND_URL}/dashboard/overview?checkout=cancel`;
+
+		const session = await stripeService.createCheckoutSession(tenantId, user.email, stripePriceId, successUrl, cancelUrl, {
+			tier: tier.slug,
+			property_count: String(propertyCount),
+		});
 
 		return c.json(session);
 	} catch (error) {
 		console.error('Error creating checkout session:', error);
 		return c.json({ error: 'Failed to create checkout session' }, 500);
+	}
+});
+
+billing.post('/confirm-checkout', async (c) => {
+	try {
+		const { sessionId } = await c.req.json<{ sessionId?: string }>();
+		if (!sessionId?.startsWith('cs_')) {
+			return c.json({ error: 'Invalid checkout session' }, 400);
+		}
+		const supabase = createSupabaseClient(c.env);
+		const result = await new StripeService(c.env, supabase).confirmCheckout(c.get('tenantId'), sessionId);
+		if (result === 'not_found') {
+			return c.json({ error: 'Checkout session not found' }, 404);
+		}
+		return c.json({ hasActivePlan: result === 'active' });
+	} catch (error) {
+		console.error('Error confirming checkout session:', error);
+		return c.json({ error: 'Failed to confirm checkout' }, 500);
 	}
 });
 

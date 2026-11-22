@@ -111,3 +111,51 @@ describe('Stripe webhook processing', () => {
 		await expect(service.handleWebhook('t=1,v1=deadbeef', subscriptionEvent)).rejects.toThrow('Invalid signature');
 	});
 });
+
+describe('confirmCheckout', () => {
+	beforeEach(() => {
+		existingEvent = null;
+		failSubscriptionUpsert = false;
+		writes = [];
+	});
+
+	const subscription = JSON.parse(subscriptionEvent).data.object;
+
+	function serviceWith(session: Record<string, unknown> | null) {
+		const service = new StripeService(env, fakeSupabase());
+		(service as any).stripe = {
+			checkout: {
+				sessions: {
+					retrieve: async () => {
+						if (!session) throw new Error('No such checkout session');
+						return session;
+					},
+				},
+			},
+			subscriptions: { retrieve: async () => subscription },
+		};
+		return service;
+	}
+
+	it('writes the subscription when the session is complete', async () => {
+		const service = serviceWith({ status: 'complete', subscription: 'sub_1', metadata: { tenant_id: 'tenant_a' } });
+		await expect(service.confirmCheckout('tenant_a', 'cs_1')).resolves.toBe('active');
+		expect(writes).toContain('upsert:subscriptions');
+	});
+
+	it('refuses a session that belongs to another tenant', async () => {
+		const service = serviceWith({ status: 'complete', subscription: 'sub_1', metadata: { tenant_id: 'tenant_b' } });
+		await expect(service.confirmCheckout('tenant_a', 'cs_1')).resolves.toBe('not_found');
+		expect(writes).toEqual([]);
+	});
+
+	it('waits on a session that is still open', async () => {
+		const service = serviceWith({ status: 'open', subscription: null, metadata: { tenant_id: 'tenant_a' } });
+		await expect(service.confirmCheckout('tenant_a', 'cs_1')).resolves.toBe('pending');
+		expect(writes).toEqual([]);
+	});
+
+	it('treats an unknown session id as not found', async () => {
+		await expect(serviceWith(null).confirmCheckout('tenant_a', 'cs_missing')).resolves.toBe('not_found');
+	});
+});
