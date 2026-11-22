@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/contexts/theme'
 
 const SLIDES = [
   { id: 'overview', label: 'Overview', caption: 'Revenue, bookings, occupancy, and guests for any date range, against your goals.' },
@@ -17,9 +18,17 @@ const INTERVAL_MS = 7000
 
 export function ProductTour() {
   const [active, setActive] = useState(0)
+  // only slides that have been shown, plus the next one, load their screenshot
+  const [loaded, setLoaded] = useState(() => new Set([0, 1]))
+  const { resolvedTheme } = useTheme()
   const [paused, setPaused] = useState(false)
   const reducedMotion = useRef(typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   const autoplay = !paused && !reducedMotion.current
+
+  useEffect(() => {
+    const next = (active + 1) % SLIDES.length
+    setLoaded((prev) => (prev.has(active) && prev.has(next) ? prev : new Set([...prev, active, next])))
+  }, [active])
 
   useEffect(() => {
     if (!autoplay) return
@@ -56,14 +65,14 @@ export function ProductTour() {
               onClick={() => setActive(i)}
               className={cn(
                 'relative px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-colors cursor-pointer',
-                i === active ? 'text-white bg-white/10' : 'text-white/50 hover:text-white/80',
+                i === active ? 'text-landing-fg bg-landing-fg/10' : 'text-landing-caption hover:text-landing-fg/80',
               )}
             >
               {slide.label}
               {i === active && autoplay && (
                 <span
                   key={active}
-                  className="absolute left-4 right-4 bottom-1 h-px origin-left bg-white/50 tour-progress"
+                  className="absolute left-4 right-4 bottom-1 h-px origin-left bg-landing-fg/50 tour-progress"
                   style={{ animationDuration: `${INTERVAL_MS}ms` }}
                 />
               )}
@@ -72,7 +81,7 @@ export function ProductTour() {
         </div>
       </div>
 
-      <div className="relative rounded-xl overflow-hidden ring-1 ring-white/10 shadow-2xl bg-[var(--landing-card)] aspect-[1440/900]">
+      <div className="relative rounded-xl overflow-hidden ring-1 ring-landing-fg/10 shadow-2xl bg-landing-card aspect-[1440/900]">
         {SLIDES.map((slide, i) => (
           <div
             key={slide.id}
@@ -80,34 +89,36 @@ export function ProductTour() {
             role="tabpanel"
             aria-labelledby={`tour-tab-${slide.id}`}
             aria-hidden={i !== active}
-            className={cn('absolute inset-0 transition-opacity duration-500', i === active ? 'opacity-100' : 'opacity-0')}
+            className={cn('absolute inset-0 transition-opacity duration-400', i === active ? 'opacity-100' : 'opacity-0')}
           >
-            <picture>
-              <source
-                type="image/avif"
-                srcSet={`/tour/${slide.id}-1440.avif 1440w, /tour/${slide.id}-2880.avif 2880w`}
-                sizes="(min-width: 1024px) 960px, 100vw"
-              />
-              <source
-                type="image/webp"
-                srcSet={`/tour/${slide.id}-1440.webp 1440w, /tour/${slide.id}-2880.webp 2880w`}
-                sizes="(min-width: 1024px) 960px, 100vw"
-              />
-              <img
-                src={`/tour/${slide.id}-1440.webp`}
-                alt={`${slide.label} dashboard`}
-                width={1440}
-                height={900}
-                loading={i === 0 ? 'eager' : 'lazy'}
-                fetchPriority={i === 0 ? 'high' : 'auto'}
-                className="w-full h-full object-cover object-top"
-              />
-            </picture>
+            {loaded.has(i) && (
+              <picture>
+                <source
+                  type="image/avif"
+                  srcSet={`/tour/${slide.id}-${resolvedTheme}-1440.avif 1440w, /tour/${slide.id}-${resolvedTheme}-2880.avif 2880w`}
+                  sizes="(min-width: 1024px) 960px, 100vw"
+                />
+                <source
+                  type="image/webp"
+                  srcSet={`/tour/${slide.id}-${resolvedTheme}-1440.webp 1440w, /tour/${slide.id}-${resolvedTheme}-2880.webp 2880w`}
+                  sizes="(min-width: 1024px) 960px, 100vw"
+                />
+                <img
+                  src={`/tour/${slide.id}-${resolvedTheme}-1440.webp`}
+                  alt={`${slide.label} dashboard`}
+                  width={1440}
+                  height={900}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  fetchPriority={i === 0 ? 'high' : 'auto'}
+                  className="w-full h-full object-cover object-top"
+                />
+              </picture>
+            )}
           </div>
         ))}
       </div>
 
-      <p className="mt-4 text-sm text-white/50 text-center min-h-5" aria-live="polite">
+      <p className="mt-4 text-sm text-landing-caption text-center min-h-5" aria-live="polite">
         {SLIDES[active].caption}
       </p>
     </div>
