@@ -1,42 +1,39 @@
 name: Deploy production
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: 'Type "deploy prod" to deploy the API and frontend to production'
-        required: true
-
-# never run two production deploys at once; a queued one waits for the first
-concurrency:
-  group: deploy-prod
-  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
-  deploy:
-    name: Deploy API and frontend
-    if: github.ref == 'refs/heads/main'
+  build:
     runs-on: ubuntu-latest
-    environment: production
+    outputs:
+      api: ${{ steps.changes.outputs.api }}
     steps:
-      - name: Confirm
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # a manual run, a new branch or a force push has no base to diff against, so the API deploys
+      - name: Detect API changes
+        id: changes
         env:
-          CONFIRM: ${{ inputs.confirm }}
+          BEFORE: ${{ github.event.before }}
         run: |
-          if [ "$CONFIRM" != "deploy prod" ]; then
-            echo "::error::Confirmation text did not match. Type exactly: deploy prod"
-            exit 1
+          if [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null || ! git diff --quiet "$BEFORE" HEAD -- api/ packages/constants/ pnpm-lock.yaml; then
+            echo "api=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/checkout@v5
-
       # version comes from packageManager in package.json
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -58,15 +55,58 @@ jobs:
         run: |
           for v in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
             if [ -z "${!v}" ]; then
-              echo "::error::$v is not set. Add it under Settings > Environments > production > Variables."
+              echo "::error::$v is not set. Add it under Settings > Secrets and variables > Actions > Variables."
               exit 1
             fi
           done
           pnpm build
 
+      - name: Check API bundle
+        if: steps.changes.outputs.api == 'true'
+        working-directory: api
+        run: pnpm exec wrangler deploy --env production --dry-run
+
+      # functions/ (the /api proxy) ships with the site, so it travels with dist/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web
+          path: |
+            web/dist
+            web/functions
+          include-hidden-files: true
+
+  production:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://baileysanalytics.com
+    # never run two production deploys at once; a queued one waits for the first
+    concurrency:
+      group: production
+    steps:
+      # wrangler is installed in api/ and bundles the worker from source
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: web
+          path: web
+
       # API first: the frontend changes expect the API's new behavior, and the API's
       # changes are backward-compatible with the frontend that's live now.
       - name: Deploy API
+        if: needs.build.outputs.api == 'true'
         working-directory: api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -101,9 +141,13 @@ jobs:
           exit 1
 
       - name: Smoke test
+        env:
+          API_DEPLOYED: ${{ needs.build.outputs.api }}
         run: |
           curl -fsS --retry 3 --retry-delay 5 https://baileys-analytics-api-production.nicosalm.workers.dev/health
           curl -fsS --retry 3 --retry-delay 5 -o /dev/null https://baileysanalytics.com
+          # an unchanged API keeps reporting the commit it was last deployed from
+          [ "$API_DEPLOYED" = true ] || exit 0
           # the worker, reached through the site's proxy, must report the commit this run just deployed;
           # retries cover edge propagation
           for attempt in 1 2 3 4 5 6; do
