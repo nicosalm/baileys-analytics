@@ -2,7 +2,7 @@ import '@/styles/newsreader.css'
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Footer } from '@/components/Footer'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 import { BRAND } from '@/constants'
 import { cn } from '@/lib/utils'
 
@@ -31,7 +31,7 @@ export const DocsLayout = ({ children }: { children: ReactNode }) => {
       <header className="sticky top-0 z-40 border-b bg-background/85 backdrop-blur-sm">
         <div className="max-w-5xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5">
-            <LogoCube className="w-6 h-6" />
+            <Logo className="w-6 h-6" />
             <span className="font-semibold text-foreground">{BRAND.name}</span>
           </Link>
           <Link to="/dashboard/overview" className="text-sm text-muted-foreground hover:text-foreground transition-colors">

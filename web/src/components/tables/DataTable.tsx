@@ -2,7 +2,7 @@ import React from 'react'
 import { ChevronDown, ChevronUp, Search } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
 import { Pagination } from '@/components/Pagination'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
+import { EmptyMark } from '@/components/EmptyMark'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { tableStyles } from './table-styles'
@@ -128,7 +128,7 @@ export function DataTable<T extends Record<string, any>>({
 
       {visible.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <EmptyQuadrants className="w-10 h-10 mb-2" />
+          <EmptyMark className="w-10 h-10 mb-2" />
           <p className="text-sm">{searchTerm ? `No rows match "${searchTerm}"` : emptyMessage}</p>
         </div>
       ) : (

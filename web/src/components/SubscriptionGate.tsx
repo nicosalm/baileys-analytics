@@ -9,7 +9,7 @@ import { LoadingState } from './LoadingState'
 import { Footer } from './Footer'
 import { Button } from '@/components/ui/button'
 import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 
 interface SubscriptionGateProps {
   children: React.ReactNode
@@ -92,7 +92,7 @@ export const SubscriptionGate: React.FC<SubscriptionGateProps> = ({ children }) 
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
             <div className="flex justify-between items-center">
               <Link to="/" className="flex items-center">
-                <LogoCube />
+                <Logo />
                 <span className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</span>
               </Link>
               <Button variant="ghost" onClick={handleLogout} className="text-muted-foreground hover:text-foreground text-sm">

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/auth'
 import { LoadingState } from '@/components/LoadingState'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 
 type AuthStatus = 'loading' | 'success' | 'error'
 
@@ -291,7 +291,7 @@ export const AuthCallback = () => {
       <div className="max-w-md w-full px-8">
         <div className="bg-card rounded-xl shadow-sm border p-8">
           <div className="flex items-center justify-center mb-6">
-            <LogoCube />
+            <Logo />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 

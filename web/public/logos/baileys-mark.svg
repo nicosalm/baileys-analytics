@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Baileys Analytics</title>
+  <clipPath id="sun"><circle cx="32" cy="31" r="27" /></clipPath>
+  <g clip-path="url(#sun)">
+    <g fill="#1d3b5c">
+      <rect x="5" y="29" width="11.25" height="13" />
+      <rect x="19.25" y="21" width="11.25" height="21" />
+      <rect x="33.5" y="13" width="11.25" height="29" />
+      <rect x="47.75" y="0" width="11.25" height="42" />
+    </g>
+    <g fill="#86a5c3">
+      <rect x="0" y="45" width="64" height="5.5" />
+      <rect x="0" y="53.5" width="64" height="4" />
+    </g>
+  </g>
+</svg>

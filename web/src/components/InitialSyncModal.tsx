@@ -4,7 +4,7 @@ import { api } from '@/lib/api'
 import { LoadingState } from '@/components/LoadingState'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, Home, Calendar, Users } from 'lucide-react'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 
 interface SyncProgress {
   step: 'checking' | 'properties' | 'bookings' | 'guests' | 'complete'
@@ -278,7 +278,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
       <div className="bg-card rounded-xl shadow-xl p-8 max-w-lg w-full mx-4">
         <div className="text-center">
           <div className="flex flex-col items-center mb-6">
-            <LogoCube className="w-12 h-12 mb-3" />
+            <Logo className="w-12 h-12 mb-3" />
             {progress.step === 'complete' ? <CheckCircle className="w-6 h-6 text-success" /> : <LoadingState size="sm" />}
           </div>
 

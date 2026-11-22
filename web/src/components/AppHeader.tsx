@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
 import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 import { AccountMenu } from '@/components/AccountMenu'
 import { CommandPalette } from '@/components/CommandPalette'
 import { cn } from '@/lib/utils'
@@ -31,7 +31,7 @@ export const AppHeader = ({ children, nav, menu, title, subtitle }: AppHeaderPro
     <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto flex h-14 items-center justify-between gap-3 px-4 md:h-16 md:px-6">
         <Link to="/dashboard/overview" className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-3">
-          <LogoCube />
+          <Logo />
           {/* with inline nav the wordmark only fits from lg up */}
           <div className={cn('min-w-0', nav && 'md:hidden lg:block')}>
             <p className="truncate text-lg font-semibold leading-tight text-foreground sm:text-xl">{heading}</p>

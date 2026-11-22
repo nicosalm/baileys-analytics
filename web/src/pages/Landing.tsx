@@ -10,7 +10,7 @@ import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/s
 import { useNavigate, useLocation } from 'react-router-dom'
 import { BRAND } from '@/constants'
 import { usePageTitle } from '@/hooks/use-page-title'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 import { OwnerRezLogo } from '@/components/OwnerRezLogo'
 
 const STATS = [
@@ -74,7 +74,7 @@ export const Landing = () => {
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-6">
                 <Link to="/" className="flex items-center" onClick={handleLogoClick}>
-                  <LogoCube />
+                  <Logo />
                   <span className="text-xl font-semibold text-white ml-3">
                     <span className="sm:hidden">Baileys</span>
                     <span className="hidden sm:inline">{BRAND.name}</span>

@@ -1,9 +1,26 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<svg id="Layer_2" xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
-  <g id="Layer_1-2">
-    <rect width="500" height="500" fill="#dbeafe" stroke-width="0" />
-    <rect x="500" width="500" height="500" fill="#60a5fa" stroke-width="0" />
-    <rect y="500" width="500" height="500" fill="#3b82f6" stroke-width="0" />
-    <rect x="500" y="500" width="500" height="500" fill="#1e3a8a" stroke-width="0" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="4 3 56 56">
+  <title>Baileys Analytics</title>
+  <style>
+  .fg {
+    fill: #1d3b5c;
+  }
+  .water {
+    fill: #86a5c3;
+  }
+  @media (prefers-color-scheme: dark) {
+    .fg {
+      fill: #e9eef4;
+    }
+    .water {
+      fill: #6f8fb0;
+    }
+  }
+  </style>
+  <clipPath id="sun"><circle cx="32" cy="31" r="27" /></clipPath>
+  <g clip-path="url(#sun)">
+    <rect class="fg" x="5" y="27" width="15" height="14" />
+    <rect class="fg" x="24.5" y="17" width="15" height="24" />
+    <rect class="fg" x="44" y="0" width="15" height="41" />
+    <rect class="water" x="0" y="45.5" width="64" height="12" />
   </g>
 </svg>

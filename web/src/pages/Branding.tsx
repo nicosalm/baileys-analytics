@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
+import { Logo } from '@/components/Logo'
+import { EmptyMark } from '@/components/EmptyMark'
 import { MetricCard } from '@/components/MetricCard'
 import { ChartWrapper } from '@/components/ChartWrapper'
 import { Footer } from '@/components/Footer'
@@ -24,14 +24,22 @@ import {
 } from 'recharts'
 
 const LOGO_FILLS = [
-  { hex: '#dbeafe', label: 'Sky', token: 'blue-100' },
-  { hex: '#60a5fa', label: 'Azure', token: 'blue-400' },
-  { hex: '#3b82f6', label: 'Royal', token: 'blue-500' },
-  { hex: '#1e3a8a', label: 'Navy', token: 'blue-900' },
+  { hex: '#1d3b5c', label: 'Harbor', token: '--logo-fg' },
+  { hex: '#86a5c3', label: 'Water', token: '--logo-water' },
+  { hex: '#f4f1ea', label: 'Limestone', token: '--background' },
+  { hex: '#0f1a26', label: 'Night', token: '.dark --background' },
 ]
 
+// the light logo preview keeps its palette even when the app is in dark mode
+const LIGHT_PREVIEW = {
+  background: 'oklch(0.983 0.006 85)',
+  color: 'oklch(0.252 0.028 251)',
+  '--logo-fg': 'oklch(0.346 0.068 252)',
+  '--logo-water': 'oklch(0.709 0.056 248)',
+} as React.CSSProperties
+
 const THEME_COLORS = [
-  { label: 'Primary', light: 'oklch(0.45 0.085 265)', dark: 'oklch(0.78 0.08 265)', css: '--primary' },
+  { label: 'Primary', light: 'oklch(0.346 0.068 252)', dark: 'oklch(0.876 0.027 250)', css: '--primary' },
   { label: 'Success', light: 'oklch(0.696 0.167 162.5)', dark: 'oklch(0.72 0.17 162.5)', css: '--success' },
   { label: 'Warning', light: 'oklch(0.795 0.184 78.0)', dark: 'oklch(0.79 0.18 78.0)', css: '--warning' },
   { label: 'Danger', light: 'oklch(0.637 0.237 25.3)', dark: 'oklch(0.65 0.22 25.3)', css: '--danger' },
@@ -236,7 +244,7 @@ export const Branding = () => {
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center">
-              <LogoCube />
+              <Logo />
               <div className="ml-3">
                 <h1 className="text-xl font-semibold text-foreground">{BRAND.name}</h1>
                 <p className="text-xs text-muted-foreground -mt-0.5">Brand Guide</p>
@@ -257,20 +265,20 @@ export const Branding = () => {
         {/* Logo */}
         <Section title="Logo">
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-card rounded-xl border p-8 flex flex-col items-center justify-center gap-4">
-              <LogoCube className="w-20 h-20" />
+            <div className="rounded-xl border p-8 flex flex-col items-center justify-center gap-4" style={LIGHT_PREVIEW}>
+              <Logo className="w-20 h-20" />
               <span className="text-lg font-semibold">{BRAND.name}</span>
-              <p className="text-xs text-muted-foreground">Hover the logo to see the shuffle animation</p>
+              <p className="text-xs opacity-70">Hover the logo to watch the sunrise</p>
             </div>
-            <div className="bg-[oklch(0.12_0.02_265)] rounded-xl border border-white/10 p-8 flex flex-col items-center justify-center gap-4">
-              <LogoCube className="w-20 h-20" />
-              <span className="text-lg font-semibold text-white">{BRAND.name}</span>
-              <p className="text-xs text-white/40">On dark background</p>
+            <div className="dark bg-background rounded-xl border p-8 flex flex-col items-center justify-center gap-4">
+              <Logo className="w-20 h-20" />
+              <span className="text-lg font-semibold text-foreground">{BRAND.name}</span>
+              <p className="text-xs text-muted-foreground">On dark background</p>
             </div>
           </div>
 
           <div className="mt-8">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Logo Quadrants</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Logo Colors</h3>
             <div className="flex gap-4 flex-wrap">
               {LOGO_FILLS.map(({ hex, label, token }) => (
                 <div key={hex} className="flex items-center gap-3 bg-card rounded-lg border px-4 py-3">
@@ -676,21 +684,21 @@ export const Branding = () => {
         {/* Empty States */}
         <Section title="Empty States">
           <p className="text-sm text-muted-foreground mb-6">
-            The logo quadrant motif at reduced opacity serves as the branded empty-state icon across charts, tables, and data views.
+            The logo mark at reduced opacity serves as the branded empty-state icon across charts, tables, and data views.
           </p>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-card rounded-xl border p-8 flex flex-col items-center justify-center text-center">
-              <EmptyQuadrants className="w-12 h-12 mb-3" />
+              <EmptyMark className="w-12 h-12 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">No data available</p>
               <p className="text-xs text-muted-foreground/70 mt-1">Try adjusting your filters</p>
             </div>
             <div className="bg-card rounded-xl border p-8 flex flex-col items-center justify-center text-center">
-              <EmptyQuadrants className="w-16 h-16 mb-3" />
+              <EmptyMark className="w-16 h-16 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">No bookings found</p>
               <p className="text-xs text-muted-foreground/70 mt-1">Data will appear after your first sync</p>
             </div>
             <div className="bg-card rounded-xl border p-8 flex flex-col items-center justify-center text-center">
-              <EmptyQuadrants className="w-10 h-10 mb-3" />
+              <EmptyMark className="w-10 h-10 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">No chart data</p>
             </div>
           </div>
@@ -740,7 +748,7 @@ export const Branding = () => {
                 and animates on hover.
               </p>
               <div className="bg-background/80 backdrop-blur-sm border rounded-xl p-4 flex items-center gap-3">
-                <LogoCube className="w-9 h-9" />
+                <Logo className="w-9 h-9" />
                 <div>
                   <p className="text-xl font-semibold">{BRAND.name}</p>
                   <p className="text-xs text-muted-foreground -mt-0.5">Subtitle</p>

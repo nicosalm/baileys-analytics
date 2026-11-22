@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 import { usePageTitle } from '@/hooks/use-page-title'
 
 export const Login = () => {
@@ -126,7 +126,7 @@ export const Login = () => {
 
           {/* Logo */}
           <div className="flex items-center mb-8">
-            <LogoCube />
+            <Logo />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 

@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 import { LoadingState } from './LoadingState'
 import { Button } from '@/components/ui/button'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
+import { EmptyMark } from '@/components/EmptyMark'
 
 export interface StateWrapperProps {
   loading?: boolean
@@ -97,7 +97,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
   if (empty) {
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
-        {emptyIcon || <EmptyQuadrants className="w-12 h-12 mb-2" />}
+        {emptyIcon || <EmptyMark className="w-12 h-12 mb-2" />}
         <p className="text-sm font-medium text-muted-foreground">{emptyMessage}</p>
         {emptySubMessage && <p className="text-xs text-muted-foreground/70 mt-1">{emptySubMessage}</p>}
         {onRetry && (

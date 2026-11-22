@@ -5,7 +5,7 @@ import { Mail, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 
 export const ForgotPassword = () => {
   const [email, setEmail] = useState('')
@@ -91,7 +91,7 @@ export const ForgotPassword = () => {
 
           {/* Logo */}
           <div className="flex items-center mb-8">
-            <LogoCube />
+            <Logo />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 

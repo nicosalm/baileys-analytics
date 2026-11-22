@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordRequirements } from '@/components/PasswordRequirements'
 import { BRAND } from '@/constants'
-import { LogoCube } from '@/components/LogoCube'
+import { Logo } from '@/components/Logo'
 import { validatePassword } from '@/utils/password'
 
 export const ResetPassword = () => {
@@ -140,7 +140,7 @@ export const ResetPassword = () => {
           <div className="max-w-md w-full mx-auto">
             <div className="bg-card rounded-xl shadow-sm border p-8">
               <div className="flex flex-col items-center text-center">
-                <LogoCube className="w-10 h-10 mb-4" />
+                <Logo className="w-10 h-10 mb-4" />
                 <Button loading loadingText="Verifying reset link..." variant="ghost" />
               </div>
             </div>
@@ -186,7 +186,7 @@ export const ResetPassword = () => {
 
           {/* Logo */}
           <div className="flex items-center mb-8">
-            <LogoCube />
+            <Logo />
             <h1 className="text-xl font-semibold text-foreground ml-3">{BRAND.name}</h1>
           </div>
 

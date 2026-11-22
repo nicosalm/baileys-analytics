@@ -3,7 +3,7 @@ import { useDailyOccupancy } from '@/hooks/use-api'
 import { formatDateDisplay } from '@baileys/utils'
 import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
+import { EmptyMark } from '@/components/EmptyMark'
 import { Button } from '@/components/ui/button'
 import { LoadingState } from '@/components/LoadingState'
 import { useModal } from '@/contexts/modal'
@@ -113,7 +113,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   if (!monthsData.length)
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-        <EmptyQuadrants className="w-12 h-12 mb-2" />
+        <EmptyMark className="w-12 h-12 mb-2" />
         <p className="text-sm font-medium">No occupancy data available</p>
         <p className="text-xs text-muted-foreground/70 mt-1">Data will appear once bookings are synced</p>
       </div>

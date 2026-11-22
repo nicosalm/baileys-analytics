@@ -3,7 +3,7 @@ import { usePropertyDetail } from '@/hooks/use-api'
 import { formatCurrency, formatPercentage, formatCompactCurrency, formatDateDisplay } from '@baileys/utils'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Label } from 'recharts'
 import { ExternalLink } from 'lucide-react'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
+import { EmptyMark } from '@/components/EmptyMark'
 import { StateWrapper } from '@/components/StateWrapper'
 import { StatusBadge } from '@/components/StatusBadge'
 import { MetricCard } from '@/components/MetricCard'
@@ -439,7 +439,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                       </>
                     ) : (
                       <div className="text-center py-8">
-                        <EmptyQuadrants className="w-12 h-12 mx-auto mb-2" />
+                        <EmptyMark className="w-12 h-12 mx-auto mb-2" />
                         <p className="text-muted-foreground">No platform data available</p>
                       </div>
                     )}

@@ -4,7 +4,7 @@ import { Sankey, Tooltip, ResponsiveContainer } from 'recharts'
 import type { SankeyNodeProps as NodeProps, SankeyLinkProps as LinkProps, SankeyData } from 'recharts'
 import { formatCurrency, formatPercentage } from '@/utils/formatters'
 import { getPlatformColor, resolveToken, METRIC_COLORS } from '@/lib/theme'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
+import { EmptyMark } from '@/components/EmptyMark'
 
 interface PlatformEntry {
   platform: string
@@ -260,7 +260,7 @@ export const RevenueFlowSankey: React.FC<RevenueFlowSankeyProps> = ({ data }) =>
   if (sankeyData.nodes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-        <EmptyQuadrants className="w-12 h-12 mb-2" />
+        <EmptyMark className="w-12 h-12 mb-2" />
         <p className="text-sm font-medium">No revenue flow data</p>
       </div>
     )

@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { Loader2, AlertCircle, Info } from 'lucide-react'
 import { ResponsiveContainer } from 'recharts'
 import { ChartErrorBoundary } from './ChartErrorBoundary'
-import { EmptyQuadrants } from '@/components/EmptyQuadrants'
+import { EmptyMark } from '@/components/EmptyMark'
 
 export interface ChartWrapperProps {
   title: string
@@ -92,7 +92,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
         </div>
         {controls && <div className="mb-4">{controls}</div>}
         <div className="flex flex-col items-center justify-center text-muted-foreground" style={{ height: heightValue }}>
-          <EmptyQuadrants className="w-12 h-12 mb-2" />
+          <EmptyMark className="w-12 h-12 mb-2" />
           <p className="text-sm font-medium">{noDataMessage}</p>
         </div>
       </div>
