@@ -57,20 +57,3 @@ be set up from them alone.
     pnpm build       production build of the web app
 
 CI runs lint, type checks, tests and a build on every pull request.
-
-## Deployment
-
-Every push to `main` runs the "Deploy production" workflow. It builds
-and tests, waits for approval on the `production` environment, deploys
-the worker if `api/` changed, deploys the web app, and runs a smoke
-test.
-
-Migrations are applied by hand in the Supabase SQL editor after the
-code that depends on them is live. If a migration changes grants,
-indexes or functions, run `supabase/checks/pre-deploy-checks.sql`
-first.
-
-## Demo data
-
-`supabase/seed-demo.sql` regenerates the demo tenant's bookings
-relative to the current date. It is safe to run again.
