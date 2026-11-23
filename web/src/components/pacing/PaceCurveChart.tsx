@@ -68,7 +68,7 @@ function CurveTooltip({
       {diff !== null && (
         <div className="flex justify-between gap-4 pt-1 border-t border-border">
           <span className="text-muted-foreground">Difference</span>
-          <span className={cn('font-medium tabular-nums', diff >= 0 ? 'text-success' : 'text-danger')}>
+          <span className={cn('font-medium tabular-nums', diff >= 0 ? 'text-success-fg' : 'text-danger-fg')}>
             {diff > 0 ? '+' : ''}
             {mode === 'nights' ? `${Math.round(diff)} nights` : formatCurrency(diff)}
           </span>

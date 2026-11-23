@@ -303,20 +303,16 @@ export const AuthCallback = () => {
 
           {status === 'success' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-success" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Success</h2>
+              <CheckCircle className="mx-auto mb-4 size-6 text-success" aria-hidden />
+              <h2 className="text-xl font-semibold text-foreground mb-2">Signed in</h2>
               <p className="text-muted-foreground">{message}</p>
             </div>
           )}
 
           {status === 'error' && (
             <div className="text-center">
-              <div className="w-16 h-16 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertCircle className="w-8 h-8 text-danger" />
-              </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Authentication Error</h2>
+              <AlertCircle className="mx-auto mb-4 size-6 text-danger" aria-hidden />
+              <h2 className="text-xl font-semibold text-foreground mb-2">Sign-in didn't work</h2>
               <p className="text-muted-foreground mb-2">{message}</p>
               <p className="text-sm text-muted-foreground mb-4">Redirecting...</p>
               <Link to="/login" className="text-sm text-primary hover:text-primary/80 font-medium">

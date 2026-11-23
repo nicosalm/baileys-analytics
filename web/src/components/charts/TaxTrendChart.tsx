@@ -46,7 +46,7 @@ const TaxChartTooltip = ({ active, payload, label }: Partial<TooltipContentProps
           <div className="pt-1 mt-1 border-t border-border">
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Your responsibility:</span>
-              <span className="font-medium text-warning">{formatCurrency(data.ownerRemitted)}</span>
+              <span className="font-medium text-warning-fg">{formatCurrency(data.ownerRemitted)}</span>
             </div>
           </div>
         )}

@@ -50,7 +50,7 @@ export const App = () => {
           <BrowserRouter>
             <AuthProvider>
               <ScrollToTop />
-              <Toaster position="bottom-right" richColors />
+              <Toaster position="bottom-right" />
               <Suspense fallback={<LoadingState fullScreen />}>
                 <Routes>
                   <Route path="/" element={<Landing />} />

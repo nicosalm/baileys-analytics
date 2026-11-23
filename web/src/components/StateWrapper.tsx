@@ -81,7 +81,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
 
     return (
       <div className={containerClasses} style={{ minHeight: heightValue }}>
-        <AlertCircle className="w-12 h-12 text-danger mb-4" />
+        <AlertCircle className="mb-3 size-6 text-muted-foreground" aria-hidden />
         <p className="text-foreground font-medium mb-1">Something went wrong</p>
         <p className="text-sm text-muted-foreground mb-4">{errorMsg}</p>
         {onRetry && (

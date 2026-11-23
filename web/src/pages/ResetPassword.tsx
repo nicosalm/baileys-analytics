@@ -119,10 +119,8 @@ export const ResetPassword = () => {
           <div className="max-w-md w-full mx-auto">
             <div className="bg-card rounded-xl shadow-sm border border-border p-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-success" />
-                </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">Password Reset Successfully</h2>
+                <CheckCircle className="mx-auto mb-4 size-6 text-success" aria-hidden />
+                <h2 className="text-xl font-semibold text-foreground mb-2">Password reset</h2>
                 <p className="text-muted-foreground">Redirecting to login...</p>
               </div>
             </div>
@@ -158,10 +156,8 @@ export const ResetPassword = () => {
           <div className="max-w-md w-full mx-auto">
             <div className="bg-card rounded-xl shadow-sm border p-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-danger-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-8 h-8 text-danger" />
-                </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">Invalid Reset Link</h2>
+                <Lock className="mx-auto mb-4 size-6 text-danger" aria-hidden />
+                <h2 className="text-xl font-semibold text-foreground mb-2">This reset link no longer works</h2>
                 <p className="text-muted-foreground mb-6">{error}</p>
                 <Button asChild>
                   <Link to="/forgot-password">Request New Link</Link>
@@ -255,7 +251,7 @@ export const ResetPassword = () => {
               </div>
             </div>
 
-            {error && <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
+            {error && <div className="bg-danger-subtle border border-danger/30 text-danger-fg px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             <Button
               type="submit"

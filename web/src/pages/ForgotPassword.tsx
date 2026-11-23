@@ -55,10 +55,8 @@ export const ForgotPassword = () => {
           <div className="max-w-md w-full mx-auto">
             <div className="bg-card rounded-xl shadow-sm border border-border p-8">
               <div className="text-center">
-                <div className="w-16 h-16 bg-success-subtle rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-success" />
-                </div>
-                <h2 className="text-2xl font-bold text-foreground mb-2">Check Your Email</h2>
+                <Mail className="mx-auto mb-4 size-6 text-muted-foreground" aria-hidden />
+                <h2 className="text-xl font-semibold text-foreground mb-2">Check your email</h2>
                 <p className="text-muted-foreground mb-4">We've sent a password reset link to</p>
                 <p className="font-medium text-foreground mb-6">{email}</p>
                 <p className="text-sm text-muted-foreground mb-6">
@@ -119,7 +117,7 @@ export const ForgotPassword = () => {
               </div>
             </div>
 
-            {error && <div className="bg-danger-subtle border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">{error}</div>}
+            {error && <div className="bg-danger-subtle border border-danger/30 text-danger-fg px-4 py-3 rounded-lg text-sm">{error}</div>}
 
             <Button
               type="submit"

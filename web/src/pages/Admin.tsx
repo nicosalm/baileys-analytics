@@ -442,7 +442,7 @@ const SyncHealthSummary = memo(({ health, totalConnected }: { health: SyncHealth
     { label: 'Healthy', value: health.healthy, color: 'bg-success' },
     { label: 'Partial', value: health.partial, color: 'bg-warning' },
     { label: 'Failing', value: health.failing, color: 'bg-danger' },
-    { label: 'Stale (>48h)', value: health.stale, color: 'bg-orange-400' },
+    { label: 'Stale (>48h)', value: health.stale, color: 'bg-danger/50' },
     { label: 'No Sync', value: health.noSync, color: 'bg-muted-foreground/40' },
   ].filter((s) => s.value > 0)
 

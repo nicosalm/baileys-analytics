@@ -58,7 +58,7 @@ const OccupancyChartTooltip = ({ active, payload, label }: Partial<TooltipConten
           {emptyNights > 0 && (
             <div className="flex justify-between gap-4">
               <span className="text-muted-foreground">Empty:</span>
-              <span className="font-medium text-warning">{emptyNights.toLocaleString()} nights</span>
+              <span className="font-medium text-warning-fg">{emptyNights.toLocaleString()} nights</span>
             </div>
           )}
         </div>

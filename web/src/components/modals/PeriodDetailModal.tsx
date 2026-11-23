@@ -174,7 +174,7 @@ export const PeriodDetailModal = ({ month, year, day, granularity }: PeriodDetai
                 )}
                 <div className="flex justify-between pt-2 border-t font-semibold">
                   <span>Net revenue</span>
-                  <span className={`tabular-nums ${data.costs.netRevenue < 0 ? 'text-danger' : ''}`}>
+                  <span className={`tabular-nums ${data.costs.netRevenue < 0 ? 'text-danger-fg' : ''}`}>
                     {formatCurrency(data.costs.netRevenue)}
                   </span>
                 </div>

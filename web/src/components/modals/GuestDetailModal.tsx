@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/StatusBadge'
 import { Modal } from '@/components/Modal'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useModal } from '@/contexts/modal'
-import { METRIC_COLORS, CHART_INFRA, resolveToken } from '@/lib/theme'
+import { METRIC_COLORS, CHART_INFRA, getChargeColor, resolveToken } from '@/lib/theme'
 import { Pagination } from '@/components/Pagination'
 import type { TooltipContentProps } from 'recharts'
 import { Badge } from '@/components/ui/badge'
@@ -138,7 +138,7 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
             <span className="text-muted-foreground">
               {booking.platform} guest fee <span className="text-xs">(est.)</span>
             </span>
-            <span className="font-medium text-warning">{formatCurrency(guestFee)}</span>
+            <span className="font-medium text-warning-fg">{formatCurrency(guestFee)}</span>
           </div>
           <div className="flex justify-between text-sm font-semibold border-t pt-2">
             <span>Guest paid (total)</span>
@@ -153,7 +153,7 @@ const BookingFeeBreakdown = ({ booking }: { booking: GuestDetailBooking }) => {
           <span className="text-muted-foreground">
             {booking.platform} host fee <span className="text-xs">(est.)</span>
           </span>
-          <span className="font-medium text-warning">{formatCurrency(hostFee)}</span>
+          <span className="font-medium text-warning-fg">{formatCurrency(hostFee)}</span>
         </div>
       )}
 
@@ -292,25 +292,17 @@ const FeeTooltip = ({ active, payload }: Partial<TooltipContentProps<number, str
   )
 }
 
-const FEE_PIE_COLORS = {
-  rent: '#6366f1',
-  surcharges: '#8b5cf6',
-  taxes: '#f59e0b',
-  ccFees: '#ef4444',
-  platformFees: '#f97316',
-}
-
 const FeeAnalysisTab = ({ feeAnalysis, guestName }: { feeAnalysis: FeeAnalysis; guestName: string }) => {
   const { rent, surcharges, taxes, ccFees, platformFees, directSavings } = feeAnalysis
   const total = rent + surcharges + taxes + ccFees + platformFees
   const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
   const pieData = [
-    { name: 'Rent', value: rent, color: FEE_PIE_COLORS.rent },
-    { name: 'Surcharges', value: surcharges, color: FEE_PIE_COLORS.surcharges },
-    { name: 'Taxes', value: taxes, color: FEE_PIE_COLORS.taxes },
-    { name: 'Credit card fee', value: ccFees, color: FEE_PIE_COLORS.ccFees },
-    { name: 'Platform fees', value: platformFees, color: FEE_PIE_COLORS.platformFees },
+    { name: 'Rent', value: rent, color: getChargeColor('rent') },
+    { name: 'Surcharges', value: surcharges, color: getChargeColor('cleaning') },
+    { name: 'Taxes', value: taxes, color: getChargeColor('tax') },
+    { name: 'Credit card fee', value: ccFees, color: getChargeColor('credit_card') },
+    { name: 'Platform fees', value: platformFees, color: getChargeColor('host_fee') },
   ].filter((d) => d.value > 0)
 
   if (total === 0) {

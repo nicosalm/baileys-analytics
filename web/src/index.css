@@ -409,7 +409,8 @@
   --muted-foreground: oklch(0.5 0.023 246);
   --accent: oklch(0.93 0.014 85);
   --accent-foreground: oklch(0.252 0.028 251);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* one red: shadcn's destructive is the app's danger */
+  --destructive: var(--danger);
   --border: oklch(0.899 0.017 85);
   --input: oklch(0.899 0.017 85);
   --ring: oklch(0.346 0.068 252);
@@ -425,18 +426,20 @@
   --logo-water: oklch(0.709 0.056 248);
 
   /* semantic status */
-  --success: oklch(0.696 0.167 162.5);
-  --success-subtle: oklch(0.982 0.04 163);
-  --success-fg: oklch(0.369 0.11 163);
-  --warning: oklch(0.795 0.184 78);
-  --warning-subtle: oklch(0.987 0.026 102.2);
-  --warning-fg: oklch(0.449 0.115 78);
-  --danger: oklch(0.637 0.237 25.3);
-  --danger-subtle: oklch(0.97 0.026 17.6);
-  --danger-fg: oklch(0.432 0.177 25);
-  --info: oklch(0.588 0.19 240);
-  --info-subtle: oklch(0.97 0.02 240);
-  --info-fg: oklch(0.42 0.14 240);
+  /* held to a chroma near the harbor palette's. -fg is for text (7:1 or better on cards and
+     on -subtle); the base color is for icons, dots and bars (3:1 or better on cards) */
+  --success: oklch(0.58 0.105 158);
+  --success-subtle: oklch(0.962 0.024 160);
+  --success-fg: oklch(0.38 0.075 160);
+  --warning: oklch(0.63 0.12 70);
+  --warning-subtle: oklch(0.966 0.03 85);
+  --warning-fg: oklch(0.45 0.09 65);
+  --danger: oklch(0.555 0.135 28);
+  --danger-subtle: oklch(0.958 0.017 28);
+  --danger-fg: oklch(0.44 0.115 28);
+  --info: oklch(0.55 0.095 245);
+  --info-subtle: oklch(0.958 0.02 245);
+  --info-fg: oklch(0.4 0.08 248);
 
   /* extra icon accents */
   --purple-subtle: oklch(0.969 0.021 300);
@@ -497,7 +500,7 @@
   --muted-foreground: oklch(0.7 0.025 250);
   --accent: oklch(0.3 0.032 252);
   --accent-foreground: oklch(0.955 0.008 85);
-  --destructive: oklch(0.704 0.191 22.216);
+  --destructive: var(--danger);
   --border: oklch(0.33 0.035 252);
   --input: oklch(0.36 0.035 252);
   --ring: oklch(0.876 0.027 250);
@@ -513,18 +516,18 @@
   --logo-water: oklch(0.55 0.05 250);
 
   /* semantic status */
-  --success: oklch(0.72 0.17 162.5);
-  --success-subtle: oklch(0.24 0.05 163);
-  --success-fg: oklch(0.82 0.14 163);
-  --warning: oklch(0.79 0.18 78);
-  --warning-subtle: oklch(0.24 0.05 89);
-  --warning-fg: oklch(0.85 0.15 78);
-  --danger: oklch(0.65 0.22 25.3);
-  --danger-subtle: oklch(0.24 0.06 17.6);
-  --danger-fg: oklch(0.82 0.18 25);
-  --info: oklch(0.65 0.19 240);
-  --info-subtle: oklch(0.22 0.05 240);
-  --info-fg: oklch(0.82 0.15 240);
+  --success: oklch(0.72 0.11 158);
+  --success-subtle: oklch(0.3 0.045 160);
+  --success-fg: oklch(0.85 0.085 158);
+  --warning: oklch(0.79 0.12 78);
+  --warning-subtle: oklch(0.31 0.045 80);
+  --warning-fg: oklch(0.87 0.095 80);
+  --danger: oklch(0.67 0.13 27);
+  --danger-subtle: oklch(0.3 0.05 25);
+  --danger-fg: oklch(0.85 0.07 25);
+  --info: oklch(0.7 0.085 245);
+  --info-subtle: oklch(0.3 0.045 248);
+  --info-fg: oklch(0.85 0.065 245);
 
   /* extra icon accents */
   --purple-subtle: oklch(0.22 0.04 300);

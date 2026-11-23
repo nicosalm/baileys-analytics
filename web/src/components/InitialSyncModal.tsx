@@ -252,7 +252,7 @@ export const InitialSyncModal = ({ onComplete }: InitialSyncModalProps = {}) => 
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
         <div className="bg-card rounded-xl shadow-xl p-8 max-w-md w-full mx-4">
-          <h2 className="text-xl font-semibold text-danger mb-4">Sync Error</h2>
+          <h2 className="text-xl font-semibold text-danger-fg mb-4">Sync Error</h2>
           <p className="text-muted-foreground mb-6">{error}</p>
           <div className="flex gap-3">
             <Button

@@ -90,7 +90,10 @@ export const HeadlineMetric: React.FC<HeadlineMetricProps> = ({
         })()}
         {trend && (
           <span
-            className={cn('inline-flex items-center text-xs font-medium tabular-nums', trend.isPositive ? 'text-success' : 'text-danger')}
+            className={cn(
+              'inline-flex items-center text-xs font-medium tabular-nums',
+              trend.isPositive ? 'text-success-fg' : 'text-danger-fg',
+            )}
           >
             <TrendIcon className="w-3.5 h-3.5" aria-hidden />
             {Math.abs(trend.value).toFixed(1)}%<span className="sr-only">{trend.value < 0 ? ' decrease' : ' increase'}</span>

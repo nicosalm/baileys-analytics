@@ -161,7 +161,7 @@ function buildSankeyData(data: RevenueFlowData): {
 }
 
 const SankeyNodeRenderer = memo<NodeProps & { nodeColors: string[] }>(({ x, y, width, height, index, payload, nodeColors }) => {
-  const color = nodeColors[index] || '#6b7280'
+  const color = nodeColors[index] || resolveToken('--chart-comparison')
   const name = payload?.name || ''
   const isLeftColumn = x < 100
   const isRightColumn = !isLeftColumn && index !== undefined && payload?.depth === 2
@@ -188,7 +188,7 @@ const LINK_TRANSITION = { transition: 'stroke-opacity 0.2s ease' } as const
 
 const SankeyLinkRenderer = memo<LinkProps & { activeIndex: number | null; linkIndex: number }>(
   ({ sourceX, targetX, sourceY, targetY, sourceControlX, targetControlX, linkWidth, payload, activeIndex, linkIndex }) => {
-    const sourceColor = (payload?.source as unknown as { color?: string })?.color || '#6b7280'
+    const sourceColor = (payload?.source as unknown as { color?: string })?.color || resolveToken('--chart-comparison')
     const isActive = activeIndex === null || activeIndex === linkIndex
 
     return (
@@ -218,7 +218,7 @@ const FlowTooltip = memo<{
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">{meta.flowType === 'inflow' ? 'Platform Revenue:' : 'Amount:'}</span>
           <span
-            className={`font-medium ${meta.flowType === 'profit' ? 'text-success' : meta.flowType === 'deduction' ? 'text-warning' : ''}`}
+            className={`font-medium ${meta.flowType === 'profit' ? 'text-success-fg' : meta.flowType === 'deduction' ? 'text-warning-fg' : ''}`}
           >
             {meta.flowType === 'deduction' ? '-' : ''}
             {formatCurrency(meta.value)}

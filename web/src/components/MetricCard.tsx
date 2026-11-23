@@ -132,7 +132,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   if (error) {
     return (
       <div className={cn('bg-card rounded-lg shadow-sm border border-border', currentSize.padding, className)}>
-        <div className="text-danger text-sm">{error}</div>
+        <div className="text-danger-fg text-sm">{error}</div>
       </div>
     )
   }
@@ -168,7 +168,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <span
             className={cn(
               'flex items-center font-medium tabular-nums',
-              trendFlat ? 'text-muted-foreground' : trendDirection ? 'text-success' : 'text-danger',
+              trendFlat ? 'text-muted-foreground' : trendDirection ? 'text-success-fg' : 'text-danger-fg',
             )}
           >
             {trendFlat ? (
@@ -184,7 +184,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         )}
       </div>
 
-      <div className={cn('mt-2', tone === 'negative' && 'text-danger')}>
+      <div className={cn('mt-2', tone === 'negative' && 'text-danger-fg')}>
         <CopyableValue
           value={value}
           format={format}

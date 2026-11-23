@@ -161,7 +161,7 @@ export const BookingDetailModal = ({ bookingId, guestName }: BookingDetailModalP
                         />
                         {charge.description || charge.type}
                       </span>
-                      <span className={`font-medium ${charge.type === 'discount' ? 'text-success' : ''}`}>
+                      <span className={`font-medium ${charge.type === 'discount' ? 'text-success-fg' : ''}`}>
                         {charge.type === 'discount' ? '-' : ''}
                         {formatCurrency(Math.abs(charge.amount))}
                       </span>

@@ -105,7 +105,7 @@ export const OccupancyHeatmap = ({ dateRange, tagIds }: OccupancyHeatmapProps) =
   if (error)
     return (
       <div className="text-center py-8">
-        <AlertCircle className="w-12 h-12 text-danger opacity-50 mx-auto mb-2" />
+        <AlertCircle className="mx-auto mb-2 size-6 text-muted-foreground" aria-hidden />
         <p className="text-sm font-medium text-muted-foreground">Error loading heatmap</p>
         <p className="text-xs text-muted-foreground/70 mt-1">{error.message}</p>
       </div>

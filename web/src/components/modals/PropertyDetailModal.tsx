@@ -260,7 +260,7 @@ export const PropertyDetailModal = ({ propertyId, propertyName, from, to }: Prop
                   )}
                   <div>
                     <div className="text-xs text-muted-foreground">Net revenue</div>
-                    <div className={`text-lg font-semibold tabular-nums ${data.metrics.netRevenue < 0 ? 'text-danger' : ''}`}>
+                    <div className={`text-lg font-semibold tabular-nums ${data.metrics.netRevenue < 0 ? 'text-danger-fg' : ''}`}>
                       {formatCurrency(data.metrics.netRevenue)}
                     </div>
                   </div>

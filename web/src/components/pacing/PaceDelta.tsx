@@ -20,7 +20,11 @@ export function PaceDelta({ value, unit = 'pts', className }: { value: number | 
   const Icon = ahead ? ArrowUpRight : ArrowDownRight
   return (
     <span
-      className={cn('inline-flex items-center gap-0.5 text-xs font-medium tabular-nums', ahead ? 'text-success' : 'text-danger', className)}
+      className={cn(
+        'inline-flex items-center gap-0.5 text-xs font-medium tabular-nums',
+        ahead ? 'text-success-fg' : 'text-danger-fg',
+        className,
+      )}
     >
       <Icon className="w-3 h-3" aria-hidden />
       {ahead ? '+' : '−'}

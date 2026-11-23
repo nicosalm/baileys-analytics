@@ -72,7 +72,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
             <h3 className="text-lg font-semibold">{title}</h3>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center text-danger" style={{ height: heightValue }}>
+        <div className="flex flex-col items-center justify-center text-danger-fg" style={{ height: heightValue }}>
           <AlertCircle className="w-8 h-8 mb-2" />
           <p className="text-sm font-medium">Error loading chart</p>
           <p className="text-xs mt-1">{error}</p>

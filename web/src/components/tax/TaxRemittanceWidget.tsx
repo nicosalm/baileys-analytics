@@ -118,7 +118,7 @@ export const TaxRemittanceWidget = ({ taxData, periodStart, periodEnd }: TaxRemi
                 {totals.overdue > 0 && (
                   <div className="flex items-center text-sm">
                     <AlertTriangle className="w-4 h-4 text-danger mr-1" />
-                    <span className="text-danger font-medium">{totals.overdue} overdue</span>
+                    <span className="text-danger-fg font-medium">{totals.overdue} overdue</span>
                   </div>
                 )}
               </div>

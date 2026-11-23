@@ -203,10 +203,10 @@ export const InlineDateRangePicker: React.FC<InlineDateRangePickerProps> = ({
     <div className={cn('bg-card rounded-lg', className)}>
       {/* Season Notice */}
       {activeSeasons.length > 0 && (
-        <div className="mb-4 p-3 bg-success-subtle border border-success/30 rounded-lg flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-          <div className="text-sm text-success-fg">
-            <p className="font-medium mb-1">Season Filter Active</p>
+        <div className="mb-4 p-3 bg-info-subtle border border-info/30 rounded-lg flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 text-info mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-info-fg">
+            <p className="font-medium mb-1">Season filter active</p>
             <p className="text-xs">Only dates within {activeSeasons.map((s) => s.name).join(', ')} can be selected.</p>
           </div>
         </div>

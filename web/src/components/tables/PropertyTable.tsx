@@ -232,7 +232,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                       const margin = prof && prof.grossRevenue > 0 ? (prof.netRevenue / prof.grossRevenue) * 100 : 0
                       return (
                         <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
-                          <div className={`text-sm font-medium ${margin < 0 ? 'text-danger' : 'text-foreground'}`}>
+                          <div className={`text-sm font-medium ${margin < 0 ? 'text-danger-fg' : 'text-foreground'}`}>
                             {formatPercentage(margin, 1)}
                           </div>
                           {prof && <div className="text-xs text-muted-foreground">{formatCompactCurrency(prof.netRevenue)} net</div>}
@@ -272,7 +272,7 @@ export const PropertyTable = memo(({ properties, previousProperties, comparisonM
                     <td className={cn(tableStyles.td, 'whitespace-nowrap')}>
                       {previousProperty ? (
                         <div
-                          className={`flex items-center gap-1 ${isPositive ? 'text-success' : trend < 0 ? 'text-danger' : 'text-muted-foreground'}`}
+                          className={`flex items-center gap-1 ${isPositive ? 'text-success-fg' : trend < 0 ? 'text-danger-fg' : 'text-muted-foreground'}`}
                         >
                           {isPositive ? <TrendingUp className="w-4 h-4" /> : trend < 0 ? <TrendingDown className="w-4 h-4" /> : null}
                           <span className="text-sm font-medium">{trend !== 0 ? `${Math.abs(trend).toFixed(0)}%` : '—'}</span>
