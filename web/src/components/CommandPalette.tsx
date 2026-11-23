@@ -268,7 +268,9 @@ export const CommandPalette = () => {
         { id: 'theme-light', label: 'Light theme', keywords: ['appearance', 'mode'], run: () => setTheme('light') },
         { id: 'theme-dark', label: 'Dark theme', keywords: ['appearance', 'mode'], run: () => setTheme('dark') },
         { id: 'theme-system', label: 'System theme', keywords: ['appearance', 'mode', 'auto'], run: () => setTheme('system') },
-        ...(isAdmin ? [{ id: 'admin', label: 'Admin', keywords: ['users', 'tenants'], run: () => navigate('/admin') }] : []),
+        ...(isAdmin
+          ? [{ id: 'admin', label: 'Admin Dashboard', keywords: ['admin', 'users', 'tenants'], run: () => navigate('/admin') }]
+          : []),
         ...(isDemo
           ? [
               { id: 'site', label: 'Back to the site', keywords: ['home', 'landing', 'leave', 'exit demo'], run: () => navigate('/') },

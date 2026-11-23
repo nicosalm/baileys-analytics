@@ -166,7 +166,7 @@ export const AccountMenu = () => {
               <DropdownMenuItem asChild>
                 <Link to="/admin">
                   <Shield />
-                  Admin
+                  Admin Dashboard
                 </Link>
               </DropdownMenuItem>
             )}

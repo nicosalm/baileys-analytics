@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { usePageTitle } from '@/hooks/use-page-title'
 import { useToast } from '@/contexts/toast'
 import { api } from '@/lib/api'
 import { MS_PER_DAY } from '@baileys/constants'
@@ -709,6 +710,7 @@ const SortHeader = ({
 // --- main component ---
 
 export const Admin = () => {
+  usePageTitle('Admin Dashboard')
   const { state } = useAuth()
   const { addToast } = useToast()
   const navigate = useNavigate()
@@ -921,7 +923,7 @@ export const Admin = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <AppHeader title="Admin">
+      <AppHeader title="Admin Dashboard">
         <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
           <Link to="/dashboard/overview">
             <ArrowLeft className="w-4 h-4" />
