@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { isDemoSession } from '@/lib/session'
 import { BRAND } from '@/constants'
 import { Logo } from '@/components/Logo'
 import { AccountMenu } from '@/components/AccountMenu'
@@ -24,13 +25,15 @@ interface AppHeaderProps {
 export const AppHeader = ({ children, nav, menu, title, subtitle }: AppHeaderProps) => {
   const { state } = useAuth()
   const companyName = state.status === 'authenticated' ? state.user.companyName : null
+  // a demo visitor's home is the public site, not a dashboard of their own
+  const home = isDemoSession(state) ? '/' : '/dashboard/overview'
   const heading = title ?? companyName ?? BRAND.name
   const caption = subtitle !== undefined ? subtitle : heading === BRAND.name ? null : BRAND.name
 
   return (
     <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
       <div className="max-w-7xl mx-auto flex h-14 items-center justify-between gap-3 px-4 md:h-16 md:px-6">
-        <Link to="/dashboard/overview" className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-3">
+        <Link to={home} className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-3">
           <Logo />
           {/* with inline nav the wordmark only fits from lg up */}
           <div className={cn('min-w-0', nav && 'md:hidden lg:block')}>

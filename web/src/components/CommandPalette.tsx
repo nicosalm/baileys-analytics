@@ -271,6 +271,7 @@ export const CommandPalette = () => {
         ...(isAdmin ? [{ id: 'admin', label: 'Admin', keywords: ['users', 'tenants'], run: () => navigate('/admin') }] : []),
         ...(isDemo
           ? [
+              { id: 'site', label: 'Back to the site', keywords: ['home', 'landing', 'leave', 'exit demo'], run: () => navigate('/') },
               { id: 'signup', label: 'Create an account', keywords: ['sign up'], run: () => navigate('/signup') },
               { id: 'signin', label: 'Sign in', keywords: ['log in', 'login', 'account'], run: () => navigate('/login') },
             ]

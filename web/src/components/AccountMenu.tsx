@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, Eye, LogIn, LogOut, MessageSquare, Monitor, Moon, Settings, Shield, Sun, UserPlus } from 'lucide-react'
+import { ChevronDown, Eye, House, LogIn, LogOut, MessageSquare, Monitor, Moon, Settings, Shield, Sun, UserPlus } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTheme } from '@/contexts/theme'
 import { api } from '@/lib/api'
@@ -135,6 +135,12 @@ export const AccountMenu = () => {
 
         {isDemo ? (
           <>
+            <DropdownMenuItem asChild>
+              <Link to="/">
+                <House />
+                Back to the site
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to="/signup">
                 <UserPlus />
