@@ -59,6 +59,30 @@ const templates: Array<{ file: string; dashboard: string; subject: string; conte
 			after: [ignore],
 		},
 	},
+	{
+		file: 'invite-user.html',
+		dashboard: 'Invite user',
+		subject: "You're invited to Baileys Analytics",
+		content: {
+			preheader: 'Accept your invitation to Baileys Analytics.',
+			heading: "You're invited",
+			paragraphs: ['You have been invited to Baileys Analytics as {{ .Email }}. Accept the invitation to set up your account.'],
+			action: { label: 'Accept invitation', href: '{{ .ConfirmationURL }}' },
+			after: ["If you weren't expecting this, you can ignore this email."],
+		},
+	},
+	{
+		file: 'reauthentication.html',
+		dashboard: 'Reauthentication',
+		subject: 'Your Baileys Analytics confirmation code',
+		content: {
+			preheader: 'Your code to confirm this change.',
+			heading: 'Confirm it is you',
+			paragraphs: ['Enter this code in Baileys Analytics to confirm the change to your account.'],
+			code: '{{ .Token }}',
+			after: [`The code expires soon. ${ignore}`],
+		},
+	},
 ];
 
 const outDir = join(dirname(fileURLToPath(import.meta.url)), '../../supabase/templates');

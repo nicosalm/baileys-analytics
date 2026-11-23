@@ -34,6 +34,8 @@ export interface EmailContent {
 	// trusted html: plain sentences, optionally with a link
 	paragraphs: string[];
 	action?: { label: string; href: string };
+	// a one-time code shown large, for flows that send a code instead of a link
+	code?: string;
 	// smaller print under the button
 	after?: string[];
 }
@@ -49,6 +51,7 @@ const DARK_RULES = (prefix: string) =>
 		`${prefix}.e-bg{background-color:${D.background} !important}`,
 		`${prefix}.e-card{background-color:${D.card} !important;border-color:${D.border} !important}`,
 		`${prefix}.e-btn{background-color:${D.primary} !important}`,
+		`${prefix}.e-code{background-color:${D.background} !important;border-color:${D.border} !important}`,
 	].join('');
 const DARK_TEXT_RULES = (prefix: string) =>
 	[
@@ -73,6 +76,9 @@ export function renderEmail(content: EmailContent): string {
 		.join('');
 	const action = content.action
 		? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;"><tr><td class="e-btn" style="border-radius:8px;background-color:${C.primary};"><a href="${content.action.href}" class="e-btn-text" style="display:inline-block;padding:12px 22px;font-size:15px;font-weight:600;color:${C.primaryText};text-decoration:none;border-radius:8px;">${content.action.label}</a></td></tr></table>`
+		: '';
+	const code = content.code
+		? `<p class="e-code e-text" style="margin:8px 0 24px;padding:14px 18px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:28px;font-weight:600;letter-spacing:6px;text-align:center;color:${C.text};background-color:${C.background};border:1px solid ${C.border};border-radius:8px;">${content.code}</p>`
 		: '';
 	const after = (content.after ?? [])
 		.map((p) => `<p class="e-muted" style="margin:0 0 8px;font-size:13px;line-height:1.5;color:${C.muted};">${p}</p>`)
@@ -101,7 +107,7 @@ ${DARK_STYLE}
 </td></tr>
 <tr><td class="e-card" style="background-color:${C.card};border:1px solid ${C.border};border-radius:12px;padding:32px;">
 <h1 class="e-text" style="margin:0 0 16px;font-family:${SERIF};font-size:24px;line-height:1.3;font-weight:600;color:${C.text};">${content.heading}</h1>
-${paragraphs}${action}${after}
+${paragraphs}${code}${action}${after}
 </td></tr>
 <tr><td class="e-muted" style="padding:20px 4px 0;font-size:12px;line-height:1.5;color:${C.muted};">
 Baileys Analytics, made in Wisconsin. ${emailLink(`${SITE_URL}/help`, 'Help')} · ${emailLink(`${SITE_URL}/privacy`, 'Privacy')} · ${emailLink(`${SITE_URL}/terms`, 'Terms')}
@@ -118,6 +124,7 @@ export function renderText(content: EmailContent): string {
 	const strip = (html: string) => html.replace(/<a [^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>/g, '$2 ($1)').replace(/<[^>]+>/g, '');
 	return [
 		...content.paragraphs.map(strip),
+		...(content.code ? [content.code] : []),
 		...(content.action ? [`${content.action.label}: ${content.action.href}`] : []),
 		...(content.after ?? []).map(strip),
 	].join('\n\n');

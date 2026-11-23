@@ -88,6 +88,13 @@ describe('renderEmail', () => {
 		expect(html).toContain('href="{{ .ConfirmationURL }}"');
 	});
 
+	it('shows a one-time code without a button', () => {
+		const withCode = renderEmail({ preheader: '', heading: 'Confirm it is you', paragraphs: ['Enter this code.'], code: '{{ .Token }}' });
+		expect(withCode).toContain('{{ .Token }}</p>');
+		expect(withCode).not.toContain('class="e-btn"');
+		expect(renderText({ preheader: '', heading: '', paragraphs: ['Enter this code.'], code: '123456' })).toBe('Enter this code.\n\n123456');
+	});
+
 	it('gives text-only clients the link', () => {
 		expect(renderText({ preheader: '', heading: '', paragraphs: ['Hi.'], action: { label: 'Go', href: 'https://x.test' } })).toBe(
 			'Hi.\n\nGo: https://x.test',
