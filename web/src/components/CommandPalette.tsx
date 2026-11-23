@@ -117,10 +117,12 @@ export const CommandPalette = () => {
   const user = state.status === 'authenticated' ? state.user : null
   const isDemo = user?.isDemo === true
   const isAdmin = useIsAdmin(!!user && !isDemo)
-  const { data: properties = [] } = useProperties()
-  const { data: tags = [] } = useTags()
-  const { data: seasons = [] } = useSeasons()
-  const { data: earliestDate } = useEarliestBookingDate()
+  // before paying, the account's data endpoints answer 403, so the palette leaves them alone
+  const canReadData = isDemo || user?.hasActivePlan === true
+  const { data: properties = [] } = useProperties(canReadData)
+  const { data: tags = [] } = useTags(canReadData)
+  const { data: seasons = [] } = useSeasons(canReadData)
+  const { data: earliestDate } = useEarliestBookingDate(canReadData)
 
   // guests and bookings come from the server; they open in a dialog, so they need a page that hosts modals
   const term = useDebounced(query.trim(), 200)

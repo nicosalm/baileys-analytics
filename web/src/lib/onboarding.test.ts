@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getOnboardingStep } from './onboarding'
+import { getOnboardingStep, isPlanStale } from './onboarding'
 
 describe('getOnboardingStep', () => {
   it.each([
@@ -13,5 +13,16 @@ describe('getOnboardingStep', () => {
     ['an account whose profile did not load', 'unknown', { isDemo: false, hasOwnerRezConnection: false, hasActivePlan: undefined }],
   ] as const)('sends %s to %s', (_label, step, user) => {
     expect(getOnboardingStep(user)).toBe(step)
+  })
+})
+
+describe('isPlanStale', () => {
+  it.each([
+    ['a paying account told its plan is gone', { isDemo: false, hasActivePlan: true }, true],
+    ['an account already on the plan step', { isDemo: false, hasActivePlan: false }, false],
+    ['an account whose profile did not load', { isDemo: false, hasActivePlan: undefined }, false],
+    ['a demo visitor', { isDemo: true, hasActivePlan: undefined }, false],
+  ] as const)('%s', (_label, user, stale) => {
+    expect(isPlanStale(user)).toBe(stale)
   })
 })

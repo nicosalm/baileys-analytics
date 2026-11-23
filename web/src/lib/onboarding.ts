@@ -11,3 +11,7 @@ export const getOnboardingStep = (user: Pick<AppUser, 'isDemo' | 'hasOwnerRezCon
   if (!user.hasOwnerRezConnection) return 'connect'
   return user.hasActivePlan ? 'ready' : 'plan'
 }
+
+// the server said the plan is gone while the profile still says it is active: the subscription
+// lapsed mid-session, so the profile needs reloading. anything else is already showing onboarding.
+export const isPlanStale = (user: Pick<AppUser, 'isDemo' | 'hasActivePlan'>): boolean => !user.isDemo && user.hasActivePlan === true

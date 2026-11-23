@@ -16,6 +16,8 @@ import type {
 
 const API_BASE = '/api'
 
+export const SUBSCRIPTION_REQUIRED_EVENT = 'baileys:subscription-required'
+
 type ApiResult<T> = { success: true; data: T } | { success: false; error: string; status?: number; code?: string }
 
 class ApiClient {
@@ -58,15 +60,10 @@ class ApiClient {
 
         const error = await response.json().catch(() => ({ error: 'Request failed' }))
 
-        // subscription lapsed mid-session: send them to billing instead of
-        // leaving every dashboard panel in an error state
-        if (
-          response.status === 403 &&
-          typeof error.code === 'string' &&
-          error.code.startsWith('SUBSCRIPTION_') &&
-          !window.location.pathname.startsWith('/settings')
-        ) {
-          window.location.assign(error.redirectTo || '/settings?tab=billing')
+        // the auth context decides what to do: if it still believes the plan is active, the
+        // subscription lapsed mid-session and it reloads the profile so onboarding shows the plan
+        if (response.status === 403 && typeof error.code === 'string' && error.code.startsWith('SUBSCRIPTION_')) {
+          window.dispatchEvent(new Event(SUBSCRIPTION_REQUIRED_EVENT))
         }
 
         return {

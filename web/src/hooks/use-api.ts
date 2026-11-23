@@ -261,16 +261,18 @@ export function useDashboardBatch(...args: Parameters<typeof dashboardBatchReque
   }
 }
 
-export function useProperties() {
-  return useSWR<PropertyRow[]>('/properties', async () => {
+// `enabled` lets a caller that renders before the account has a plan (the command palette
+// on the onboarding screen) skip endpoints that require one
+export function useProperties(enabled = true) {
+  return useSWR<PropertyRow[]>(enabled ? '/properties' : null, async () => {
     const result = await api.getProperties()
     if (!result.success) throw new Error(result.error)
     return result.data?.properties || []
   })
 }
 
-export function useTags() {
-  return useSWR<Tag[]>('/tags', async () => {
+export function useTags(enabled = true) {
+  return useSWR<Tag[]>(enabled ? '/tags' : null, async () => {
     const result = await api.getTags()
     if (!result.success) throw new Error(result.error)
     return result.data
@@ -496,13 +498,13 @@ export const seasonsFetcher = async (): Promise<Season[]> => {
   return result.data || []
 }
 
-export function useSeasons() {
-  return useSWR<Season[]>('/seasons', seasonsFetcher, { keepPreviousData: true })
+export function useSeasons(enabled = true) {
+  return useSWR<Season[]>(enabled ? '/seasons' : null, seasonsFetcher, { keepPreviousData: true })
 }
 
-export function useEarliestBookingDate() {
+export function useEarliestBookingDate(enabled = true) {
   return useSWR<string | null>(
-    '/bookings/earliest-date',
+    enabled ? '/bookings/earliest-date' : null,
     async () => {
       const result = await api.getEarliestBookingDate()
       if (!result.success) return null

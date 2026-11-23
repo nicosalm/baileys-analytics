@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode, useRef, useCallback } from 'react'
 import { supabaseAuth } from '@/lib/supabase'
-import { api } from '@/lib/api'
+import { api, SUBSCRIPTION_REQUIRED_EVENT } from '@/lib/api'
+import { isPlanStale } from '@/lib/onboarding'
 import type { Session } from '@supabase/auth-js'
 import type { AppUser, MeResponse } from '@/types/auth'
 
@@ -375,6 +376,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return refreshPromiseRef.current
   }, [processSession])
+
+  // a 403 for a missing subscription only matters when the profile still says the plan is
+  // active; reloading it lets the onboarding gate show the plan step
+  useEffect(() => {
+    const onSubscriptionRequired = () => {
+      const current = stateRef.current
+      if (current.status === 'authenticated' && isPlanStale(current.user)) refreshUser()
+    }
+    window.addEventListener(SUBSCRIPTION_REQUIRED_EVENT, onSubscriptionRequired)
+    return () => window.removeEventListener(SUBSCRIPTION_REQUIRED_EVENT, onSubscriptionRequired)
+  }, [refreshUser])
 
   useEffect(() => {
     // prevent multiple initializations

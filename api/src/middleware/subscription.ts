@@ -60,7 +60,6 @@ export const subscriptionMiddleware = async (c: Context<AppEnv>, next: Next) => 
 			{
 				error: 'No active subscription',
 				code: 'SUBSCRIPTION_REQUIRED',
-				redirectTo: '/settings?tab=billing',
 			},
 			403,
 		);
@@ -74,7 +73,6 @@ export const subscriptionMiddleware = async (c: Context<AppEnv>, next: Next) => 
 				error: 'Subscription is not active',
 				code: 'SUBSCRIPTION_INACTIVE',
 				status: subscription.status,
-				redirectTo: '/settings?tab=billing',
 			},
 			403,
 		);
