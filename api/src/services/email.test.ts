@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { tierChangeEmail, welcomeEmail, type TierChangeNotice } from './email';
-import { EMAIL_COLORS, renderEmail, renderText, SITE_URL } from './email-layout';
+import { EMAIL_COLORS, EMAIL_COLORS_DARK, renderEmail, renderText, SITE_URL } from './email-layout';
 
 const base: TierChangeNotice = {
 	propertyCount: 12,
@@ -75,6 +75,13 @@ describe('renderEmail', () => {
 		expect(html).toContain(EMAIL_COLORS.primary);
 		expect(html).toContain(EMAIL_COLORS.background);
 		expect(html).not.toMatch(/#3b82f6|#f9fafb|#111827/i);
+	});
+
+	it("follows the reader's light or dark preference where the client allows it", () => {
+		expect(html).toContain('<meta name="color-scheme" content="light dark">');
+		expect(html).toContain('@media (prefers-color-scheme: dark)');
+		expect(html).toContain(`[data-ogsc] .e-text{color:${EMAIL_COLORS_DARK.text} !important}`);
+		expect(html).toContain(`.e-card{background-color:${EMAIL_COLORS_DARK.card} !important`);
 	});
 
 	it('leaves template placeholders untouched for Supabase', () => {
