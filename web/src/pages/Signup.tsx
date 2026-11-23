@@ -1,7 +1,8 @@
 import '@/styles/newsreader.css'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { isDemoSession } from '@/lib/session'
 import { useToast } from '@/contexts/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +16,7 @@ import { usePageTitle } from '@/hooks/use-page-title'
 
 export const Signup = () => {
   usePageTitle('Sign Up')
-  const { signup, signInWithGoogle, signInWithMicrosoft } = useAuth()
+  const { signup, signInWithGoogle, signInWithMicrosoft, logout, state } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,6 +27,15 @@ export const Signup = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [signupSuccess, setSignupSuccess] = useState(false)
+
+  // a demo visitor signing up gets a real account, so the demo session quietly ends here
+  const endedDemo = useRef(false)
+  useEffect(() => {
+    if (isDemoSession(state) && !endedDemo.current) {
+      endedDemo.current = true
+      logout()
+    }
+  }, [state, logout])
 
   // Reset OAuth loading states when page is restored from bfcache (user hit back)
   useEffect(() => {

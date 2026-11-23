@@ -2,6 +2,7 @@ import '@/styles/newsreader.css'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { hasAccount, isDemoSession } from '@/lib/session'
 import { useToast } from '@/contexts/toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +16,7 @@ export const Login = () => {
   usePageTitle('Log In')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { login, signInWithGoogle, signInWithMicrosoft, signInAsDemo, state } = useAuth()
+  const { login, signInWithGoogle, signInWithMicrosoft, signInAsDemo, logout, state } = useAuth()
   const { addToast } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,6 +27,7 @@ export const Login = () => {
   const [demoLoading, setDemoLoading] = useState(false)
   const hasShownSuccessToast = useRef(false)
   const hasShownOAuthSuccess = useRef(false)
+  const endedDemo = useRef(false)
 
   // Reset OAuth loading states when page is restored from bfcache (user hit back)
   useEffect(() => {
@@ -45,19 +47,22 @@ export const Login = () => {
       addToast('success', 'OwnerRez connected successfully!')
       hasShownOAuthSuccess.current = true
       // If user is authenticated, they just connected OwnerRez, trigger sync
-      if (state.status === 'authenticated') {
+      if (hasAccount(state)) {
         navigate('/dashboard/overview?sync=initial', { replace: true })
       }
     }
-  }, [searchParams, addToast, state.status, navigate])
+  }, [searchParams, addToast, state, navigate])
 
-  // redirect when authentication state changes
+  // an account goes straight to the dashboard; a demo visitor came here to sign in, so the
+  // demo session quietly ends instead
   useEffect(() => {
-    if (state.status === 'authenticated') {
-      // navigate to dashboard immediately
+    if (hasAccount(state)) {
       navigate('/dashboard/overview', { replace: true })
+    } else if (isDemoSession(state) && !endedDemo.current) {
+      endedDemo.current = true
+      logout()
     }
-  }, [state.status, navigate])
+  }, [state, navigate, logout])
 
   // handle success toast separately
   useEffect(() => {
@@ -107,8 +112,12 @@ export const Login = () => {
 
   const handleTryDemo = async () => {
     setDemoLoading(true)
+    // this demo session is wanted, so the effect above must not end it
+    endedDemo.current = true
     const success = await signInAsDemo()
-    if (!success) {
+    if (success) {
+      navigate('/dashboard/overview', { replace: true })
+    } else {
       setDemoLoading(false)
       addToast('error', 'Failed to start demo. Please try again.')
     }

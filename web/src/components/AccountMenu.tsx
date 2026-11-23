@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronDown, Eye, LogOut, MessageSquare, Monitor, Moon, Settings, Shield, Sun, UserPlus } from 'lucide-react'
+import { ChevronDown, Eye, LogIn, LogOut, MessageSquare, Monitor, Moon, Settings, Shield, Sun, UserPlus } from 'lucide-react'
 import { useAuth } from '@/contexts/auth'
 import { useTheme } from '@/contexts/theme'
 import { api } from '@/lib/api'
@@ -124,18 +124,30 @@ export const AccountMenu = () => {
 
       <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel className="font-normal">
-          <p className="truncate text-sm font-medium text-foreground">{isDemo ? 'Demo account' : user.companyName || 'Account'}</p>
-          {!isDemo && user.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>}
+          <p className="truncate text-sm font-medium text-foreground">{isDemo ? 'Demo' : user.companyName || 'Account'}</p>
+          {isDemo ? (
+            <p className="truncate text-xs text-muted-foreground">Sample data from {user.companyName ?? 'a demo portfolio'}</p>
+          ) : (
+            user.email && <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+          )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
         {isDemo ? (
-          <DropdownMenuItem asChild>
-            <Link to="/signup">
-              <UserPlus />
-              Create an account
-            </Link>
-          </DropdownMenuItem>
+          <>
+            <DropdownMenuItem asChild>
+              <Link to="/signup">
+                <UserPlus />
+                Create an account
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/login">
+                <LogIn />
+                Sign in
+              </Link>
+            </DropdownMenuItem>
+          </>
         ) : (
           <>
             <DropdownMenuItem asChild>
@@ -166,12 +178,17 @@ export const AccountMenu = () => {
           <span className="text-sm text-foreground">Theme</span>
           <SegmentedControl label="Theme" value={theme} onChange={setTheme} options={THEME_OPTIONS} />
         </div>
-        <DropdownMenuSeparator />
 
-        <DropdownMenuItem onSelect={handleLogout}>
-          <LogOut />
-          {isDemo ? 'Exit demo' : 'Log out'}
-        </DropdownMenuItem>
+        {/* a demo has no account to log out of; signing in or up ends it */}
+        {!isDemo && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={handleLogout}>
+              <LogOut />
+              Log out
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

@@ -1,6 +1,7 @@
 import '@/styles/newsreader.css'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/auth'
+import { hasAccount, isDemoSession } from '@/lib/session'
 import { Footer } from '@/components/Footer'
 import { ProductTour } from '@/components/landing/ProductTour'
 import { PricingTable } from '@/components/landing/PricingTable'
@@ -35,7 +36,8 @@ export const Landing = () => {
   usePageTitle()
   const { state, logout, signInAsDemo } = useAuth()
   const { resolvedTheme, setTheme } = useTheme()
-  const isAuthenticated = state.status === 'authenticated'
+  // a demo session is not an account, so it gets the public nav
+  const isAuthenticated = hasAccount(state)
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
   const [demoLoading, setDemoLoading] = useState(false)
@@ -57,13 +59,18 @@ export const Landing = () => {
 
   const handleLogout = useCallback(() => logout(), [logout])
   const handleTryDemo = useCallback(async () => {
+    // pick up an open demo session where it left off
+    if (isDemoSession(state)) {
+      navigate('/dashboard/overview')
+      return
+    }
     setDemoLoading(true)
     const success = await signInAsDemo()
     if (success) {
       navigate('/dashboard/overview')
     }
     setDemoLoading(false)
-  }, [signInAsDemo, navigate])
+  }, [state, signInAsDemo, navigate])
 
   return (
     <div className="min-h-screen flex flex-col bg-landing-bg">

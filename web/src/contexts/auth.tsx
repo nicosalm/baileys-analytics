@@ -2,10 +2,14 @@ import { createContext, useContext, useEffect, useState, type ReactNode, useRef,
 import { supabaseAuth } from '@/lib/supabase'
 import { api, SUBSCRIPTION_REQUIRED_EVENT } from '@/lib/api'
 import { isPlanStale } from '@/lib/onboarding'
+import { mutate } from 'swr'
 import type { Session } from '@supabase/auth-js'
 import type { AppUser, MeResponse } from '@/types/auth'
 
-type AuthState = { status: 'loading' } | { status: 'unauthenticated' } | { status: 'authenticated'; user: AppUser; session: Session }
+// drops every cached response so the next account never sees the last one's numbers
+const clearDataCache = () => mutate(() => true, undefined, { revalidate: false })
+
+export type AuthState = { status: 'loading' } | { status: 'unauthenticated' } | { status: 'authenticated'; user: AppUser; session: Session }
 
 type AuthContextValue = {
   state: AuthState
@@ -222,6 +226,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Silent error handling
     } finally {
       api.setAccessToken(null)
+      clearDataCache()
       setState({ status: 'unauthenticated' })
     }
   }
@@ -404,6 +409,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       switch (event) {
         case 'SIGNED_OUT':
           api.setAccessToken(null)
+          clearDataCache()
           setState({ status: 'unauthenticated' })
           break
 

@@ -269,7 +269,12 @@ export const CommandPalette = () => {
         { id: 'theme-dark', label: 'Dark theme', keywords: ['appearance', 'mode'], run: () => setTheme('dark') },
         { id: 'theme-system', label: 'System theme', keywords: ['appearance', 'mode', 'auto'], run: () => setTheme('system') },
         ...(isAdmin ? [{ id: 'admin', label: 'Admin', keywords: ['users', 'tenants'], run: () => navigate('/admin') }] : []),
-        ...(isDemo ? [{ id: 'signup', label: 'Create an account', keywords: ['sign up'], run: () => navigate('/signup') }] : []),
+        ...(isDemo
+          ? [
+              { id: 'signup', label: 'Create an account', keywords: ['sign up'], run: () => navigate('/signup') },
+              { id: 'signin', label: 'Sign in', keywords: ['log in', 'login', 'account'], run: () => navigate('/login') },
+            ]
+          : []),
         {
           id: 'feedback',
           label: 'Send feedback',
@@ -278,15 +283,19 @@ export const CommandPalette = () => {
             window.location.href = 'mailto:support@baileysanalytics.com'
           },
         },
-        {
-          id: 'logout',
-          label: isDemo ? 'Exit demo' : 'Log out',
-          keywords: ['sign out', 'logout'],
-          run: async () => {
-            await logout()
-            navigate('/')
-          },
-        },
+        ...(isDemo
+          ? []
+          : [
+              {
+                id: 'logout',
+                label: 'Log out',
+                keywords: ['sign out', 'logout'],
+                run: async () => {
+                  await logout()
+                  navigate('/')
+                },
+              },
+            ]),
       ],
     })
     return list
