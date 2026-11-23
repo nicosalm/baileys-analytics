@@ -4,7 +4,7 @@ import { createSupabaseClient } from '../services/supabase';
 import { StripeService } from '../services/stripe';
 import { markPendingTierIfNeeded, TIER_PRICE_ENV_VARS } from '../services/tier-reconciliation';
 import { countBillableProperties } from '../services/billable-properties';
-import { resolveTierForPropertyCount, type Tier, type TierSlug } from '@baileys/constants';
+import { PURCHASABLE_TIER_SLUGS, resolveTierForPropertyCount, type Tier, type TierSlug } from '@baileys/constants';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppEnv } from '../types';
 
@@ -196,6 +196,46 @@ billing.post('/confirm-checkout', async (c) => {
 	} catch (error) {
 		console.error('Error confirming checkout session:', error);
 		return c.json({ error: 'Failed to confirm checkout' }, 500);
+	}
+});
+
+// switches between monthly and yearly at the next renewal; the cron applies it with the tier
+billing.post('/billing-cycle', async (c) => {
+	try {
+		const { cycle } = await c.req.json<{ cycle?: string }>();
+		if (cycle !== 'monthly' && cycle !== 'yearly') {
+			return c.json({ error: 'Billing cycle must be monthly or yearly' }, 400);
+		}
+		const supabase = createSupabaseClient(c.env);
+		const tenantId = c.get('tenantId');
+
+		const { data: sub } = await supabase
+			.from('subscriptions')
+			.select('status, tier, billing_cycle')
+			.eq('tenant_id', tenantId)
+			.maybeSingle();
+		if (!sub || sub.status !== 'active') {
+			return c.json({ error: 'No active subscription', code: 'NO_SUBSCRIPTION' }, 409);
+		}
+		if (!PURCHASABLE_TIER_SLUGS.includes(sub.tier as TierSlug)) {
+			return c.json(
+				{
+					error: 'Early supporter plans keep their original billing. Email support@baileysanalytics.com to change it.',
+					code: 'LEGACY_PLAN',
+				},
+				409,
+			);
+		}
+
+		await supabase
+			.from('subscriptions')
+			.update({ preferred_billing_cycle: cycle === sub.billing_cycle ? null : cycle })
+			.eq('tenant_id', tenantId);
+
+		return c.json({ tierStatus: await markPendingTierIfNeeded(c.env, supabase, tenantId) });
+	} catch (error) {
+		console.error('Error changing billing cycle:', error);
+		return c.json({ error: 'Failed to change billing cycle' }, 500);
 	}
 });
 

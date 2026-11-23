@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import type { AppEnv } from '../types';
 
-let state: { connected: boolean; propertyCount: number; subscriptionStatus?: string };
+let state: { connected: boolean; propertyCount: number; subscriptionStatus?: string; tier?: string; cycle?: string };
+let subscriptionUpdates: Record<string, unknown>[];
+const markPendingTierIfNeeded = vi.fn(async (..._args: unknown[]) => ({ targetBillingCycle: 'yearly' }));
 const createCheckoutSession = vi.fn(async (..._args: unknown[]) => ({ sessionId: 'cs_1', url: 'https://checkout.stripe.test/cs_1' }));
 const confirmCheckout = vi.fn(async (..._args: unknown[]): Promise<'not_found' | 'pending' | 'active'> => 'active');
 
@@ -13,6 +15,10 @@ vi.mock('../middleware/auth', () => ({
 		c.set('tenantId', 'tenant_a');
 		await next();
 	},
+}));
+vi.mock('../services/tier-reconciliation', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../services/tier-reconciliation')>()),
+	markPendingTierIfNeeded,
 }));
 vi.mock('../services/stripe', () => ({
 	StripeService: class {
@@ -28,9 +34,19 @@ function fakeSupabase() {
 				select: () => q,
 				eq: () => q,
 				is: () => q,
+				update: (patch: Record<string, unknown>) => {
+					if (table === 'subscriptions') subscriptionUpdates.push(patch);
+					return q;
+				},
 				maybeSingle: async () => {
 					if (table === 'oauth_tokens') return { data: state.connected ? { id: 'tok' } : null };
-					if (table === 'subscriptions') return { data: state.subscriptionStatus ? { status: state.subscriptionStatus } : null };
+					if (table === 'subscriptions') {
+						return {
+							data: state.subscriptionStatus
+								? { status: state.subscriptionStatus, tier: state.tier ?? 'growth', billing_cycle: state.cycle ?? 'monthly' }
+								: null,
+						};
+					}
 					return { data: null };
 				},
 				then: (resolve: any) => resolve(table === 'properties' ? { count: state.propertyCount, error: null } : { data: null, error: null }),
@@ -60,6 +76,8 @@ const post = (path: string, body: unknown) =>
 beforeEach(() => {
 	state = { connected: true, propertyCount: 7 };
 	createCheckoutSession.mockClear();
+	markPendingTierIfNeeded.mockClear();
+	subscriptionUpdates = [];
 	confirmCheckout.mockClear();
 	vi.spyOn(console, 'error').mockImplementation(() => {});
 });
@@ -154,5 +172,36 @@ describe('POST /billing/confirm-checkout', () => {
 
 		confirmCheckout.mockResolvedValueOnce('pending');
 		expect(await (await post('confirm-checkout', { sessionId: 'cs_1' })).json()).toEqual({ hasActivePlan: false });
+	});
+});
+
+describe('POST /billing/billing-cycle', () => {
+	beforeEach(() => {
+		state.subscriptionStatus = 'active';
+	});
+
+	it('records a switch to yearly for the next renewal and returns the new status', async () => {
+		const res = await post('billing-cycle', { cycle: 'yearly' });
+		expect(await res.json()).toEqual({ tierStatus: { targetBillingCycle: 'yearly' } });
+		expect(subscriptionUpdates).toEqual([{ preferred_billing_cycle: 'yearly' }]);
+		expect(markPendingTierIfNeeded).toHaveBeenCalled();
+	});
+
+	it('clears the preference when the customer picks the cycle they already have', async () => {
+		await post('billing-cycle', { cycle: 'monthly' });
+		expect(subscriptionUpdates).toEqual([{ preferred_billing_cycle: null }]);
+	});
+
+	it.each([
+		['an unknown cycle', { cycle: 'weekly' }, {}, 400, undefined],
+		['no subscription', { cycle: 'yearly' }, { subscriptionStatus: undefined }, 409, 'NO_SUBSCRIPTION'],
+		['a cancelled subscription', { cycle: 'yearly' }, { subscriptionStatus: 'canceled' }, 409, 'NO_SUBSCRIPTION'],
+		['an early supporter plan', { cycle: 'yearly' }, { tier: 'legacy' }, 409, 'LEGACY_PLAN'],
+	])('refuses %s', async (_label, body, patch, status, code) => {
+		Object.assign(state, patch);
+		const res = await post('billing-cycle', body);
+		expect(res.status).toBe(status);
+		if (code) expect(((await res.json()) as any).code).toBe(code);
+		expect(subscriptionUpdates).toEqual([]);
 	});
 });

@@ -169,7 +169,8 @@ export const PlanStep = ({ className }: { className?: string }) => {
       </ul>
 
       <p className="mt-6 text-xs text-muted-foreground leading-relaxed">
-        Properties marked inactive in OwnerRez don't count. If you add properties later, your plan moves up at your next renewal.
+        Properties marked inactive in OwnerRez don't count. If you add or remove properties later, your plan moves up or down at your next
+        renewal, and we email you before it happens.
       </p>
     </div>
   )

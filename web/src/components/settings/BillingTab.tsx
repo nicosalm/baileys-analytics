@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { ExternalLink, TrendingUp } from 'lucide-react'
+import { CalendarClock, ExternalLink, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { LoadingState } from '@/components/LoadingState'
-import { billingClient, type SubscriptionInfo, type TierStatus, type PendingTier } from '@/lib/stripe'
+import { billingClient, type BillingCycle, type SubscriptionInfo, type TierStatus } from '@/lib/stripe'
+import { describeUpcomingChange, type UpcomingChange } from '@/lib/billing-copy'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { PlanStep } from '@/components/onboarding/PlanStep'
 import { DataTable, type Column } from '@/components/tables/DataTable'
 import { Button } from '@/components/ui/button'
@@ -24,6 +26,18 @@ const resolvePlanDisplay = (subscription: SubscriptionInfo) => {
 
   return { planName: tier?.name ?? 'Baileys Analytics', isLegacy: !tier, monthlyDollars, totalCharge, isYearly }
 }
+
+const UPCOMING_ICON: Record<UpcomingChange['kind'], LucideIcon> = {
+  up: TrendingUp,
+  down: TrendingDown,
+  cycle: CalendarClock,
+  contact: TrendingUp,
+}
+
+const CYCLES = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+] as const
 
 interface BillingHistoryEntry {
   id: string
@@ -67,6 +81,7 @@ export const BillingTab = () => {
   const [isExempt, setIsExempt] = useState(false)
   const [loading, setLoading] = useState(true)
   const [portalLoading, setPortalLoading] = useState(false)
+  const [cycleSaving, setCycleSaving] = useState(false)
   const { addToast } = useToast()
 
   useEffect(() => {
@@ -129,10 +144,9 @@ export const BillingTab = () => {
 
   const { planName, isLegacy, monthlyDollars, totalCharge, isYearly } = resolvePlanDisplay(subscription)
 
-  // legacy customers have no tier status. the pending row, when present, is the queued
-  // change; the live fields cover the window before the first read writes it.
-  const showOverage = tierStatus?.isOverage === true
-  const pending: PendingTier | null = tierStatus?.pending ?? null
+  // legacy customers have no tier status, so they get no banner and no cycle toggle
+  const upcoming = tierStatus ? describeUpcomingChange(tierStatus) : null
+  const UpcomingIcon = upcoming ? UPCOMING_ICON[upcoming.kind] : null
 
   const propertiesLabel = tierStatus
     ? tierStatus.currentTierMaxProperties != null
@@ -140,43 +154,39 @@ export const BillingTab = () => {
       : `${tierStatus.propertyCount}`
     : 'Unlimited'
 
-  const targetTierName = pending?.tierName ?? tierStatus?.resolvedTierName
-  const targetYearlyDollars = pending?.yearlyDollars ?? tierStatus?.resolvedYearlyDollars
-  const targetMonthlyDollars = pending?.monthlyDollars ?? tierStatus?.resolvedMonthlyDollars
-  const effectiveAt = pending?.effectiveAt ?? tierStatus?.upgradeAt
-
-  const targetPrice =
-    tierStatus?.billingCycle === 'yearly' && targetYearlyDollars != null
-      ? ` ($${targetYearlyDollars}/year${targetMonthlyDollars != null ? `, about $${targetMonthlyDollars}/mo` : ''})`
-      : targetMonthlyDollars != null
-        ? ` ($${targetMonthlyDollars}/mo)`
-        : ''
+  const handleCycleChange = async (cycle: BillingCycle) => {
+    if (cycleSaving || cycle === tierStatus?.targetBillingCycle) return
+    setCycleSaving(true)
+    try {
+      setTierStatus(await billingClient.setBillingCycle(cycle))
+    } catch (error) {
+      addToast('error', error instanceof Error ? error.message : 'Failed to change billing')
+    } finally {
+      setCycleSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
-      {showOverage && tierStatus && (
+      {upcoming && UpcomingIcon && (
         <div className="bg-info-subtle border border-info/30 rounded-lg p-4 flex items-start gap-3">
-          <TrendingUp className="w-5 h-5 text-info mt-0.5 flex-shrink-0" />
+          <UpcomingIcon className="w-5 h-5 text-info mt-0.5 flex-shrink-0" aria-hidden />
           <div className="text-sm text-info-fg space-y-1">
-            <p className="font-semibold">
-              {tierStatus.propertyCount} properties exceeds the {tierStatus.currentTierName} limit
+            <p className="font-semibold">{upcoming.title}</p>
+            <p>
+              {upcoming.body}
+              {upcoming.kind === 'contact' && (
+                <>
+                  {' '}
+                  <a
+                    href="mailto:support@baileysanalytics.com?subject=Enterprise%20pricing%20inquiry"
+                    className="font-medium underline underline-offset-2"
+                  >
+                    Contact us
+                  </a>
+                </>
+              )}
             </p>
-            {tierStatus.needsContactSales ? (
-              <p>
-                Enterprise pricing is set per portfolio.{' '}
-                <a
-                  href="mailto:support@baileysanalytics.com?subject=Enterprise%20pricing%20inquiry"
-                  className="font-medium underline underline-offset-2"
-                >
-                  Contact us
-                </a>
-              </p>
-            ) : (
-              <p>
-                Your plan moves to <span className="font-semibold">{targetTierName}</span>
-                {targetPrice} at renewal{effectiveAt && <> on {formatDateDisplay(effectiveAt)}</>}. Nothing is charged before then.
-              </p>
-            )}
           </div>
         </div>
       )}
@@ -203,6 +213,14 @@ export const BillingTab = () => {
               {isYearly ? `$${totalCharge}/year` : `$${monthlyDollars}/month`}
               {isYearly && monthlyDollars != null && <span className="text-muted-foreground font-normal"> (${monthlyDollars}/mo)</span>}
             </span>
+          </SettingsRow>
+        )}
+        {tierStatus && (
+          <SettingsRow label="Billing">
+            <SegmentedControl value={tierStatus.targetBillingCycle} onChange={handleCycleChange} options={CYCLES} label="Billing cycle" />
+            {tierStatus.targetBillingCycle !== tierStatus.billingCycle && (
+              <span className="text-xs text-muted-foreground font-normal">Switches at renewal</span>
+            )}
           </SettingsRow>
         )}
         {subscription.current_period_end && <SettingsRow label="Renews">{formatDateDisplay(subscription.current_period_end)}</SettingsRow>}

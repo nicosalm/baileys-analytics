@@ -5,7 +5,7 @@ if (!(crypto.subtle as any).timingSafeEqual) {
 	(crypto.subtle as any).timingSafeEqual = (a: Uint8Array, b: Uint8Array) => a.byteLength === b.byteLength && a.every((v, i) => v === b[i]);
 }
 
-vi.mock('./tier-reconciliation', () => ({ DEFERRED_TIER_METADATA_KEY: 'deferred_tier_change' }));
+vi.mock('./tier-reconciliation', () => ({ DEFERRED_TIER_METADATA_KEY: 'deferred_tier_change', CLEARED_PENDING: {} }));
 
 const { StripeService } = await import('./stripe');
 

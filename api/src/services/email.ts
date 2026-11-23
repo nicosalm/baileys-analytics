@@ -1,5 +1,54 @@
 import { Resend } from 'resend';
 
+export const OPS_EMAIL = 'support@baileysanalytics.com';
+
+export type BillingCycle = 'monthly' | 'yearly';
+
+export interface TierChangeNotice {
+	propertyCount: number;
+	fromTierName: string;
+	toTierName: string;
+	fromCycle: BillingCycle;
+	toCycle: BillingCycle;
+	// the charge at the new renewal, such as "$79 a month" or "$799 a year"
+	priceLabel: string;
+	effectiveAt: string;
+}
+
+const longDate = (iso: string) =>
+	new Date(iso).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+
+export function tierChangeEmail(notice: TierChangeNotice): { subject: string; paragraphs: string[] } {
+	const date = longDate(notice.effectiveAt);
+	const tierChanges = notice.fromTierName !== notice.toTierName;
+	const cycleChanges = notice.fromCycle !== notice.toCycle;
+	const properties = `${notice.propertyCount} active ${notice.propertyCount === 1 ? 'property' : 'properties'}`;
+
+	let change: string;
+	if (tierChanges) {
+		const billed = cycleChanges ? `, billed ${notice.toCycle},` : '';
+		change = `You now have ${properties} in OwnerRez, so your plan moves from ${notice.fromTierName} to ${notice.toTierName}${billed} at your next renewal on ${date}.`;
+	} else {
+		change = `As you asked, your billing switches from ${notice.fromCycle} to ${notice.toCycle} at your next renewal on ${date}.`;
+	}
+
+	return {
+		subject: tierChanges
+			? `Your Baileys plan moves to ${notice.toTierName} on ${date}`
+			: `Your Baileys billing switches to ${notice.toCycle} on ${date}`,
+		paragraphs: [
+			change,
+			`The new price is ${notice.priceLabel}. Nothing changes before then.`,
+			'Your plan follows the number of active properties in OwnerRez. If that count looks wrong, check which properties are marked active there, or reply to this email.',
+		],
+	};
+}
+
+const plainHtml = (paragraphs: string[]) =>
+	`<!DOCTYPE html><html><body style="margin:0;padding:32px 16px;background-color:#f9fafb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;"><div style="max-width:560px;margin:0 auto;background-color:#ffffff;border-radius:8px;padding:32px;color:#111827;font-size:15px;line-height:1.6;">${paragraphs
+		.map((p) => `<p style="margin:0 0 16px;">${p}</p>`)
+		.join('')}</div></body></html>`;
+
 export class EmailService {
 	private resend: Resend;
 
@@ -18,6 +67,33 @@ export class EmailService {
 		} catch (error) {
 			console.error('Failed to send welcome email:', error);
 			// don't throw - email failure shouldn't block the flow
+		}
+	}
+
+	// resolves false instead of throwing so a caller can retry on the next run
+	async sendTierChangeNotice(to: string, notice: TierChangeNotice): Promise<boolean> {
+		const { subject, paragraphs } = tierChangeEmail(notice);
+		return this.send({
+			from: 'Baileys Analytics <support@baileysanalytics.com>',
+			to,
+			subject,
+			text: paragraphs.join('\n\n'),
+			html: plainHtml(paragraphs),
+		});
+	}
+
+	async sendOpsAlert(subject: string, text: string): Promise<boolean> {
+		return this.send({ from: 'Baileys Analytics <support@baileysanalytics.com>', to: OPS_EMAIL, subject, text });
+	}
+
+	private async send(message: { from: string; to: string; subject: string; text: string; html?: string }): Promise<boolean> {
+		try {
+			const { error } = await this.resend.emails.send(message);
+			if (error) console.error(`Failed to send "${message.subject}":`, error);
+			return !error;
+		} catch (error) {
+			console.error(`Failed to send "${message.subject}":`, error);
+			return false;
 		}
 	}
 

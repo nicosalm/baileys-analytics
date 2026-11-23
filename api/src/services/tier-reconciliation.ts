@@ -2,32 +2,62 @@ import type Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TIERS, getTierBySlug, getTierRank, resolveTierForPropertyCount, type Tier, type TierSlug } from '@baileys/constants';
 import { countBillableProperties } from './billable-properties';
+import { EmailService, type BillingCycle } from './email';
 
-// Map a (tier, billing cycle) pair to the env var holding the matching Stripe
-// price id. Single source of truth — routes/billing.ts imports this. Enterprise
-// is excluded because those deals are quoted manually and purchased via custom
-// price ids, not through the self-serve checkout.
+// The rule: at every renewal a subscription is billed for the tier its active property
+// count falls in, at the billing cycle the customer prefers. Nothing changes mid-cycle.
+//
+// - reconcileTier (lazy, DB only) records the change due at the next renewal in pending_*
+//   and sends the customer notice and the 20+ ops alert. It runs on /auth/me, the billing
+//   read and the cron.
+// - reconcileRenewals (cron) pushes the pending price into Stripe shortly before renewal.
+//   It looks at every renewal, not just rows with a pending change, so an owner who never
+//   opens the app is still billed correctly.
+// - The webhook holds the displayed tier until the renewal invoice is paid.
+//
+// Legacy (pre-tier) subscriptions are left alone; see LEGACY_MIGRATION_TARGET_DATE.
+
+export type { BillingCycle };
+
+// Map a (tier, billing cycle) pair to the env var holding the matching Stripe price id.
+// Enterprise is excluded because those deals are quoted and priced by hand.
 export const TIER_PRICE_ENV_VARS: Record<Exclude<TierSlug, 'enterprise'>, { monthly: keyof Env; yearly: keyof Env }> = {
 	starter: { monthly: 'STRIPE_PRICE_STARTER_MONTHLY', yearly: 'STRIPE_PRICE_STARTER_YEARLY' },
 	growth: { monthly: 'STRIPE_PRICE_GROWTH_MONTHLY', yearly: 'STRIPE_PRICE_GROWTH_YEARLY' },
 	portfolio: { monthly: 'STRIPE_PRICE_PORTFOLIO_MONTHLY', yearly: 'STRIPE_PRICE_PORTFOLIO_YEARLY' },
 };
 
-// metadata key written to the Stripe subscription when the cron pushes a
-// deferred tier change. the webhook reads this to know it should NOT update the
-// displayed tier yet — display flips only when invoice.payment_succeeded fires
-// for the new period.
+const AUTO_TIERS: readonly string[] = ['starter', 'growth', 'portfolio'];
+
+// written to the Stripe subscription when the cron pushes a change; the webhook keeps
+// showing the old tier, price and cycle until the renewal invoice is paid
 export const DEFERRED_TIER_METADATA_KEY = 'deferred_tier_change';
 
-// minimum lead time before renewal at which the cron is allowed to push the
-// new price into Stripe. 2 hours is enough to be safely "before" the renewal
-// invoice gets generated, while still letting the cron pick the change up the
-// same day if it needs to.
+export const CLEARED_PENDING = {
+	pending_tier: null,
+	pending_price_id: null,
+	pending_unit_amount: null,
+	pending_effective_at: null,
+	pending_notified_at: null,
+} as const;
+
+// the cron pushes a change this close to renewal, before Stripe drafts the renewal invoice.
+// it runs hourly, so every renewal gets at least one run inside the window
 const CRON_LEAD_TIME_MS = 2 * 60 * 60 * 1000;
+
+// how long before renewal the customer hears about a change
+export const NOTICE_WINDOW_MS: Record<BillingCycle, number> = {
+	monthly: 7 * 24 * 60 * 60 * 1000,
+	yearly: 30 * 24 * 60 * 60 * 1000,
+};
+
+// a renewal the cron missed by a few runs (deploy, outage) still gets looked at
+const MISSED_RENEWAL_GRACE_MS = 6 * 60 * 60 * 1000;
 
 export interface PendingTier {
 	tier: TierSlug;
 	tierName: string;
+	billingCycle: BillingCycle;
 	monthlyDollars: number | null;
 	yearlyDollars: number | null;
 	effectiveAt: string;
@@ -39,323 +69,287 @@ export interface TierStatus {
 	currentTierName: string;
 	currentTierMaxProperties: number | null;
 	currentMonthlyDollars: number | null;
+	// the tier the count falls in, which can be enterprise
 	resolvedTier: TierSlug;
 	resolvedTierName: string;
-	resolvedMonthlyDollars: number | null;
-	resolvedYearlyDollars: number | null;
-	// True when the customer's actual property count exceeds the max of their
-	// current paid tier. Always false for legacy customers (we never surface
-	// overage for them — that decision is intentional).
+	// the tier the next renewal bills; enterprise never applies automatically, so it stays current
+	targetTier: TierSlug;
+	targetTierName: string;
+	targetMonthlyDollars: number | null;
+	targetYearlyDollars: number | null;
+	// count is above the current tier's limit
 	isOverage: boolean;
-	// True when the resolved tier is enterprise — we can't auto-upgrade those,
-	// they need to contact sales.
+	change: 'up' | 'down' | null;
 	needsContactSales: boolean;
-	// ISO date — next renewal, when the auto-upgrade will take effect.
-	upgradeAt: string | null;
-	// ISO date — when the new price will start being charged. Same as upgradeAt
-	// unless billing_cycle == yearly, in which case it's the same renewal date
-	// but the customer should know it's a yearly bill.
-	billingCycle: 'monthly' | 'yearly';
-	// Set when a pending tier row exists in DB. The UI should prefer this for
-	// banner copy because it's the deterministic, persisted record of what's
-	// about to happen.
+	renewsAt: string;
+	billingCycle: BillingCycle;
+	targetBillingCycle: BillingCycle;
 	pending: PendingTier | null;
 }
 
-const computeMonthlyDollars = (cents: number | null, billingCycle: 'monthly' | 'yearly'): number | null => {
-	if (cents == null) return null;
-	return Math.round(cents / 100 / (billingCycle === 'yearly' ? 12 : 1));
-};
+const cyclePriceCents = (tier: Tier, cycle: BillingCycle) => (cycle === 'yearly' ? tier.yearlyPriceCents : tier.monthlyPriceCents);
 
-const tierMonthlyCents = (tier: Tier, billingCycle: 'monthly' | 'yearly'): number | null => {
-	return billingCycle === 'yearly' ? tier.yearlyPriceCents : tier.monthlyPriceCents;
-};
+const monthlyDollars = (cents: number | null, cycle: BillingCycle): number | null =>
+	cents == null ? null : Math.round(cents / 100 / (cycle === 'yearly' ? 12 : 1));
 
-const resolvePriceIdForTier = (env: Env, tier: TierSlug, billingCycle: 'monthly' | 'yearly'): string | null => {
+const yearlyDollars = (tier: Tier) => (tier.yearlyPriceCents != null ? Math.round(tier.yearlyPriceCents / 100) : null);
+
+const resolvePriceId = (env: Env, tier: TierSlug, cycle: BillingCycle): string | null => {
 	if (tier === 'enterprise') return null;
-	const envVars = TIER_PRICE_ENV_VARS[tier];
-	const priceId = env[billingCycle === 'yearly' ? envVars.yearly : envVars.monthly];
+	const priceId = env[TIER_PRICE_ENV_VARS[tier][cycle]];
 	return typeof priceId === 'string' && priceId ? priceId : null;
 };
 
-// Returns null when the customer should be invisible to reconciliation:
-// no subscription, cancelled/past_due, exempt, legacy during grandfather,
-// missing period data, trialing (defer until conversion), or zero properties
-// (sync hasn't completed).
+const asCycle = (value: unknown): BillingCycle => (value === 'yearly' ? 'yearly' : 'monthly');
+
+// null when the subscription is outside automatic tiering: none, not active, exempt,
+// legacy, enterprise-priced, or no properties synced yet
 export async function getTierStatus(supabase: SupabaseClient, tenantId: string): Promise<TierStatus | null> {
-	// exempt tenants are entirely outside the billing system
-	const { data: tenant } = await supabase.from('tenants').select('subscription_exempt').eq('id', tenantId).single();
+	const { data: tenant } = await supabase.from('tenants').select('subscription_exempt').eq('id', tenantId).maybeSingle();
 	if (tenant?.subscription_exempt === true) return null;
 
-	const { data: subscription } = await supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).single();
-	if (!subscription) return null;
-	// trialing customers haven't converted yet — defer all tier judgments until
-	// they become active. they'll get the right tier when their first invoice
-	// is generated post-trial.
-	if (subscription.status !== 'active') return null;
-	if (!subscription.current_period_end) return null;
-
-	// Legacy customers (everyone who subscribed before tiered pricing launched)
-	// are intentionally invisible to this machinery — no overage banner, no
-	// pending row, no cron push. Migration is human-driven: ops emails the
-	// customer with their new price, then updates subscriptions.tier from
-	// 'legacy' to the appropriate purchasable slug. Once that DB flip happens,
-	// reconciliation picks them up on the next /subscription read automatically.
-	// See LEGACY_MIGRATION_TARGET_DATE in packages/constants/src/tiers.ts.
-	const currentTierSlug = subscription.tier as TierSlug | 'legacy' | null;
-	if (!currentTierSlug || currentTierSlug === 'legacy') return null;
-	const currentTier = getTierBySlug(currentTierSlug);
+	const { data: subscription } = await supabase.from('subscriptions').select('*').eq('tenant_id', tenantId).maybeSingle();
+	if (!subscription || subscription.status !== 'active' || !subscription.current_period_end) return null;
+	if (!AUTO_TIERS.includes(subscription.tier)) return null;
+	const currentTier = getTierBySlug(subscription.tier);
 	if (!currentTier) return null;
 
 	const propertyCount = await countBillableProperties(supabase, tenantId);
-
-	// skip during initial sync — wait for at least one property to exist before
-	// making any tier judgments
 	if (propertyCount === 0) return null;
 
 	const resolvedTier = resolveTierForPropertyCount(propertyCount);
-	const billingCycle: 'monthly' | 'yearly' = subscription.billing_cycle === 'yearly' ? 'yearly' : 'monthly';
+	const needsContactSales = resolvedTier.contactSales;
+	const targetTier = needsContactSales ? currentTier : resolvedTier;
+	const billingCycle = asCycle(subscription.billing_cycle);
+	const targetBillingCycle = subscription.preferred_billing_cycle ? asCycle(subscription.preferred_billing_cycle) : billingCycle;
+	const rankChange = getTierRank(targetTier.slug) - getTierRank(currentTier.slug);
 
-	// overage = property count exceeds the current tier's max AND the resolved
-	// tier is strictly higher (rank-wise) than the current tier. The rank check
-	// enforces "only auto-upgrade, never auto-downgrade".
-	const isOverage =
-		currentTier.maxProperties !== null &&
-		propertyCount > currentTier.maxProperties &&
-		getTierRank(resolvedTier.slug) > getTierRank(currentTier.slug);
-
-	// bring along whatever pending row already exists in the DB so the UI can
-	// render a deterministic banner. trust the DB — pending is updated by
-	// markPendingTierIfNeeded on the same code path that produces this result.
-	let pending: PendingTier | null = null;
-	if (subscription.pending_tier && subscription.pending_effective_at) {
-		const pendingTierObj = getTierBySlug(subscription.pending_tier as string);
-		if (pendingTierObj) {
-			pending = {
-				tier: pendingTierObj.slug,
-				tierName: pendingTierObj.name,
-				monthlyDollars: computeMonthlyDollars(subscription.pending_unit_amount, billingCycle),
-				yearlyDollars: pendingTierObj.yearlyPriceCents != null ? Math.round(pendingTierObj.yearlyPriceCents / 100) : null,
-				effectiveAt: subscription.pending_effective_at,
-			};
-		}
-	}
+	const pendingTier = subscription.pending_tier && subscription.pending_effective_at ? getTierBySlug(subscription.pending_tier) : undefined;
 
 	return {
 		propertyCount,
 		currentTier: currentTier.slug,
 		currentTierName: currentTier.name,
 		currentTierMaxProperties: currentTier.maxProperties,
-		currentMonthlyDollars: computeMonthlyDollars(subscription.unit_amount, billingCycle),
+		currentMonthlyDollars: monthlyDollars(subscription.unit_amount, billingCycle),
 		resolvedTier: resolvedTier.slug,
 		resolvedTierName: resolvedTier.name,
-		resolvedMonthlyDollars: computeMonthlyDollars(tierMonthlyCents(resolvedTier, billingCycle), billingCycle),
-		resolvedYearlyDollars: resolvedTier.yearlyPriceCents != null ? Math.round(resolvedTier.yearlyPriceCents / 100) : null,
-		isOverage,
-		needsContactSales: resolvedTier.slug === 'enterprise',
-		upgradeAt: subscription.current_period_end,
+		targetTier: targetTier.slug,
+		targetTierName: targetTier.name,
+		targetMonthlyDollars: monthlyDollars(cyclePriceCents(targetTier, targetBillingCycle), targetBillingCycle),
+		targetYearlyDollars: yearlyDollars(targetTier),
+		isOverage: currentTier.maxProperties !== null && propertyCount > currentTier.maxProperties,
+		change: rankChange > 0 ? 'up' : rankChange < 0 ? 'down' : null,
+		needsContactSales,
+		renewsAt: subscription.current_period_end,
 		billingCycle,
-		pending,
+		targetBillingCycle,
+		pending: pendingTier
+			? {
+					tier: pendingTier.slug,
+					tierName: pendingTier.name,
+					billingCycle: targetBillingCycle,
+					monthlyDollars: monthlyDollars(subscription.pending_unit_amount, targetBillingCycle),
+					yearlyDollars: yearlyDollars(pendingTier),
+					effectiveAt: subscription.pending_effective_at,
+				}
+			: null,
 	};
 }
 
-// Lazy DB-only reconciliation. Called on the /subscription read path. Writes
-// pending_* columns to record an upcoming tier change, but never touches
-// Stripe — that's the cron's job. Idempotent: if the pending row already
-// matches the resolved state, this is a no-op. If overage has cleared, this
-// removes any stale pending row. Returns the freshly-computed TierStatus
-// (with the in-memory pending field updated to reflect the write) so callers
-// can serve it directly without a second getTierStatus round trip.
-export async function markPendingTierIfNeeded(env: Env, supabase: SupabaseClient, tenantId: string): Promise<TierStatus | null> {
-	const status = await getTierStatus(supabase, tenantId);
+const priceLabel = (pending: PendingTier) =>
+	pending.billingCycle === 'yearly' ? `$${pending.yearlyDollars} a year` : `$${pending.monthlyDollars} a month`;
 
-	// load current pending state for comparison. we need this even when status
-	// is null so we can clean up stale pending rows for tenants who became
-	// exempt, downgraded their property count, etc.
+// claims a notification flag before sending so two concurrent runs can't both send,
+// and releases it if the send fails so the next run retries
+async function notifyOnce(
+	supabase: SupabaseClient,
+	tenantId: string,
+	column: 'pending_notified_at' | 'contact_sales_notified_at',
+	send: () => Promise<boolean>,
+): Promise<void> {
+	const { data: claimed } = await supabase
+		.from('subscriptions')
+		.update({ [column]: new Date().toISOString() })
+		.eq('tenant_id', tenantId)
+		.is(column, null)
+		.select('tenant_id');
+	if (!claimed?.length) return;
+	if (!(await send())) {
+		await supabase
+			.from('subscriptions')
+			.update({ [column]: null })
+			.eq('tenant_id', tenantId);
+	}
+}
+
+async function tenantEmail(supabase: SupabaseClient, tenantId: string): Promise<string | null> {
+	const { data } = await supabase.from('tenants').select('email').eq('id', tenantId).maybeSingle();
+	return data?.email || null;
+}
+
+// Records the change due at the next renewal (or clears a stale one) and sends any notice
+// that is due. Never touches Stripe. Returns the status and the price the renewal should bill.
+export async function reconcileTier(
+	env: Env,
+	supabase: SupabaseClient,
+	tenantId: string,
+	now = Date.now(),
+): Promise<{ status: TierStatus | null; pendingPriceId: string | null }> {
+	const status = await getTierStatus(supabase, tenantId);
 	const { data: sub } = await supabase
 		.from('subscriptions')
-		.select('pending_tier, pending_price_id, current_period_end')
+		.select('pending_tier, pending_price_id, pending_effective_at, pending_notified_at, contact_sales_notified_at, current_period_end')
 		.eq('tenant_id', tenantId)
-		.single();
-	if (!sub) return status;
+		.maybeSingle();
+	if (!sub) return { status, pendingPriceId: null };
 
-	const clearPending = async (): Promise<void> => {
-		if (sub.pending_tier == null) return;
+	const email = env.RESEND_API_KEY ? new EmailService(env.RESEND_API_KEY) : null;
+
+	if (status?.needsContactSales) {
+		if (email && !sub.contact_sales_notified_at) {
+			await notifyOnce(supabase, tenantId, 'contact_sales_notified_at', () =>
+				email.sendOpsAlert(
+					`${status.propertyCount} properties on ${status.currentTierName}: enterprise pricing`,
+					`Tenant ${tenantId} has ${status.propertyCount} active properties and is still billed ${status.currentTierName} (${status.billingCycle}). Plans don't change automatically above 19 properties, so reach out about enterprise pricing.`,
+				),
+			);
+		}
+	} else if (sub.contact_sales_notified_at) {
+		await supabase.from('subscriptions').update({ contact_sales_notified_at: null }).eq('tenant_id', tenantId);
+	}
+
+	const hasChange = status != null && (status.change !== null || status.targetBillingCycle !== status.billingCycle);
+	if (!status || !hasChange) {
+		if (sub.pending_tier != null || sub.pending_notified_at != null) {
+			await supabase.from('subscriptions').update(CLEARED_PENDING).eq('tenant_id', tenantId);
+		}
+		if (status) status.pending = null;
+		return { status, pendingPriceId: null };
+	}
+
+	const pendingPriceId = resolvePriceId(env, status.targetTier, status.targetBillingCycle);
+	const targetTier = getTierBySlug(status.targetTier);
+	if (!pendingPriceId || !targetTier) {
+		console.error(`reconcileTier: missing price env var for tier=${status.targetTier} cycle=${status.targetBillingCycle}`);
+		return { status, pendingPriceId: null };
+	}
+
+	let notified = !!sub.pending_notified_at;
+	// a new change, or the same change carried to a later renewal, gets its own notice
+	if (sub.pending_price_id !== pendingPriceId || sub.pending_effective_at !== sub.current_period_end) {
+		const pendingUnitAmount = cyclePriceCents(targetTier, status.targetBillingCycle);
 		await supabase
 			.from('subscriptions')
 			.update({
-				pending_tier: null,
-				pending_price_id: null,
-				pending_unit_amount: null,
-				pending_effective_at: null,
+				pending_tier: targetTier.slug,
+				pending_price_id: pendingPriceId,
+				pending_unit_amount: pendingUnitAmount,
+				pending_effective_at: sub.current_period_end,
+				pending_notified_at: null,
 			})
 			.eq('tenant_id', tenantId);
-	};
-
-	// no status, no overage, or contact-sales (we can't auto-upgrade enterprise)
-	// → clear any stale pending row
-	if (!status?.isOverage || status.needsContactSales) {
-		await clearPending();
-		if (status) status.pending = null;
-		return status;
+		notified = false;
+		status.pending = {
+			tier: targetTier.slug,
+			tierName: targetTier.name,
+			billingCycle: status.targetBillingCycle,
+			monthlyDollars: monthlyDollars(pendingUnitAmount, status.targetBillingCycle),
+			yearlyDollars: yearlyDollars(targetTier),
+			effectiveAt: sub.current_period_end,
+		};
 	}
 
-	const newPriceId = resolvePriceIdForTier(env, status.resolvedTier, status.billingCycle);
-	if (!newPriceId) {
-		console.error(`markPendingTier: missing price env var for tier=${status.resolvedTier} cycle=${status.billingCycle}`);
-		return status;
+	const pending = status.pending;
+	const withinNotice = pending && new Date(pending.effectiveAt).getTime() - now <= NOTICE_WINDOW_MS[status.billingCycle];
+	if (email && pending && withinNotice && !notified) {
+		const to = await tenantEmail(supabase, tenantId);
+		if (to) {
+			await notifyOnce(supabase, tenantId, 'pending_notified_at', () =>
+				email.sendTierChangeNotice(to, {
+					propertyCount: status.propertyCount,
+					fromTierName: status.currentTierName,
+					toTierName: pending.tierName,
+					fromCycle: status.billingCycle,
+					toCycle: pending.billingCycle,
+					priceLabel: priceLabel(pending),
+					effectiveAt: pending.effectiveAt,
+				}),
+			);
+		}
 	}
 
-	// already pending the right tier on the right price → no-op. status.pending
-	// is already populated from the DB read inside getTierStatus.
-	if (sub.pending_tier === status.resolvedTier && sub.pending_price_id === newPriceId) {
-		return status;
-	}
-
-	const tierObj = getTierBySlug(status.resolvedTier);
-	if (!tierObj) return status;
-	const newUnitAmount = status.billingCycle === 'yearly' ? tierObj.yearlyPriceCents : tierObj.monthlyPriceCents;
-
-	await supabase
-		.from('subscriptions')
-		.update({
-			pending_tier: status.resolvedTier,
-			pending_price_id: newPriceId,
-			pending_unit_amount: newUnitAmount,
-			pending_effective_at: sub.current_period_end,
-		})
-		.eq('tenant_id', tenantId);
-
-	// patch the in-memory status so callers see the write we just made without
-	// needing to re-query.
-	status.pending = {
-		tier: tierObj.slug,
-		tierName: tierObj.name,
-		monthlyDollars: computeMonthlyDollars(newUnitAmount, status.billingCycle),
-		yearlyDollars: tierObj.yearlyPriceCents != null ? Math.round(tierObj.yearlyPriceCents / 100) : null,
-		effectiveAt: sub.current_period_end,
-	};
-
-	return status;
+	return { status, pendingPriceId };
 }
 
-interface PendingApplyResult {
+// the read paths only need the status
+export async function markPendingTierIfNeeded(env: Env, supabase: SupabaseClient, tenantId: string): Promise<TierStatus | null> {
+	return (await reconcileTier(env, supabase, tenantId)).status;
+}
+
+interface RenewalResult {
 	applied: number;
 	skipped: number;
 	errors: number;
 }
 
-// Cron entrypoint. Finds subscriptions whose pending tier should now be pushed
-// into Stripe and updates them. Tags each Stripe subscription with metadata so
-// the resulting webhook knows to suppress the displayed tier change until the
-// new period invoice is paid.
-export async function applyPendingTierUpgrades(supabase: SupabaseClient, stripe: Stripe): Promise<PendingApplyResult> {
-	const result: PendingApplyResult = { applied: 0, skipped: 0, errors: 0 };
+// Cron entrypoint. Reconciles every automatic-tier subscription renewing within the longest
+// notice window (sending notices as they come due), and pushes the pending price into Stripe
+// for those inside the lead window.
+export async function reconcileRenewals(env: Env, supabase: SupabaseClient, stripe: Stripe, now = Date.now()): Promise<RenewalResult> {
+	const result: RenewalResult = { applied: 0, skipped: 0, errors: 0 };
 
-	// window: pending_effective_at is when the row was created (= the
-	// current_period_end at the time of detection). actual renewal happens at
-	// current_period_end of the LIVE sub, which may have shifted. we look for
-	// anything whose recorded effective_at is within CRON_LEAD_TIME_MS of now,
-	// then re-check the live sub before pushing.
-	const cutoff = new Date(Date.now() + CRON_LEAD_TIME_MS).toISOString();
-
-	const { data: dueSubs, error } = await supabase
+	const { data: renewing, error } = await supabase
 		.from('subscriptions')
-		.select('tenant_id, stripe_subscription_id, pending_tier, pending_price_id, pending_effective_at')
-		.not('pending_tier', 'is', null)
-		.lte('pending_effective_at', cutoff);
+		.select('tenant_id, stripe_subscription_id')
+		.eq('status', 'active')
+		.in('tier', AUTO_TIERS as string[])
+		.gte('current_period_end', new Date(now - MISSED_RENEWAL_GRACE_MS).toISOString())
+		.lte('current_period_end', new Date(now + NOTICE_WINDOW_MS.yearly).toISOString());
 
 	if (error) {
-		console.error('applyPendingTierUpgrades: failed to query pending subs', error);
+		console.error('reconcileRenewals: failed to query renewing subscriptions', error);
 		return result;
 	}
-	if (!dueSubs || dueSubs.length === 0) return result;
 
-	for (const sub of dueSubs) {
-		if (!sub.stripe_subscription_id || !sub.pending_price_id || !sub.pending_tier) {
-			result.skipped++;
-			continue;
-		}
-
+	for (const sub of renewing ?? []) {
 		try {
-			// re-validate against the live sub. property counts may have changed
-			// since the pending row was created (customer removed a unit, etc.).
-			const status = await getTierStatus(supabase, sub.tenant_id);
-			if (!status?.isOverage || status.resolvedTier !== sub.pending_tier) {
-				// no longer applicable. clear pending and move on.
-				await supabase
-					.from('subscriptions')
-					.update({
-						pending_tier: null,
-						pending_price_id: null,
-						pending_unit_amount: null,
-						pending_effective_at: null,
-					})
-					.eq('tenant_id', sub.tenant_id);
+			const { status, pendingPriceId } = await reconcileTier(env, supabase, sub.tenant_id, now);
+			if (!status?.pending || !pendingPriceId || !sub.stripe_subscription_id) {
+				result.skipped++;
+				continue;
+			}
+			// cheap check against our copy of the renewal date before asking Stripe
+			if (new Date(status.renewsAt).getTime() - now > CRON_LEAD_TIME_MS) {
 				result.skipped++;
 				continue;
 			}
 
-			let live: Stripe.Subscription;
-			try {
-				live = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
-			} catch (err) {
-				console.error(`applyPendingTier: retrieve failed for ${sub.tenant_id}`, err);
-				result.errors++;
+			const live = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+			const item = live.items.data[0];
+			const liveRenewalMs = item?.current_period_end != null ? item.current_period_end * 1000 : null;
+			if (!item || liveRenewalMs == null || liveRenewalMs - now > CRON_LEAD_TIME_MS) {
+				result.skipped++;
 				continue;
 			}
-
-			// only push within the lead-time window relative to the LIVE renewal
-			// date — protects against the recorded effective_at being stale.
-			// stripe SDK v19+ moved current_period_end to SubscriptionItem
-			const liveItem = live.items.data[0];
-			const liveRenewalMs = liveItem?.current_period_end != null ? liveItem.current_period_end * 1000 : null;
-			if (liveRenewalMs == null || liveRenewalMs - Date.now() > CRON_LEAD_TIME_MS) {
-				// not yet within the lead window — leave for next cron tick
+			// already pushed on an earlier run; the webhook promotes it once the invoice is paid
+			if (item.price.id === pendingPriceId) {
 				result.skipped++;
 				continue;
 			}
 
-			const itemId = live.items.data[0]?.id;
-			const currentPriceId = live.items.data[0]?.price.id;
-			if (!itemId) {
-				result.skipped++;
-				continue;
-			}
-
-			// Stripe already on the target price? could happen if a portal change
-			// beat us to it. clear pending so we don't keep retrying.
-			if (currentPriceId === sub.pending_price_id) {
-				await supabase
-					.from('subscriptions')
-					.update({
-						pending_tier: null,
-						pending_price_id: null,
-						pending_unit_amount: null,
-						pending_effective_at: null,
-					})
-					.eq('tenant_id', sub.tenant_id);
-				result.skipped++;
-				continue;
-			}
-
-			// push the new price. proration_behavior: 'none' + billing_cycle_anchor
-			// 'unchanged' makes the change invisible until the next renewal. the
-			// metadata flag tells the webhook to NOT advance the displayed tier
-			// until the next invoice clears.
+			// a change between monthly and yearly starts the new cycle now, which is at most the
+			// lead time early. otherwise the price swaps with no proration and bills at renewal
+			const cycleChanges = status.targetBillingCycle !== status.billingCycle;
 			await stripe.subscriptions.update(sub.stripe_subscription_id, {
-				items: [{ id: itemId, price: sub.pending_price_id }],
+				items: [{ id: item.id, price: pendingPriceId }],
 				proration_behavior: 'none',
-				billing_cycle_anchor: 'unchanged',
-				metadata: {
-					...(live.metadata ?? {}),
-					[DEFERRED_TIER_METADATA_KEY]: sub.pending_tier,
-				},
+				billing_cycle_anchor: cycleChanges ? 'now' : 'unchanged',
+				metadata: { ...(live.metadata ?? {}), [DEFERRED_TIER_METADATA_KEY]: status.pending.tier },
 			});
-
 			result.applied++;
 		} catch (err) {
-			console.error(`applyPendingTier: failed for ${sub.tenant_id}`, err);
+			console.error(`reconcileRenewals: failed for ${sub.tenant_id}`, err);
 			result.errors++;
 		}
 	}

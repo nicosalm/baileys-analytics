@@ -10,9 +10,13 @@ export interface SubscriptionInfo {
   stripe_price_id?: string | null
 }
 
+export type BillingCycle = 'monthly' | 'yearly'
+
+// the change the next renewal bills; mirrors api/src/services/tier-reconciliation.ts
 export interface PendingTier {
   tier: TierSlug
   tierName: string
+  billingCycle: BillingCycle
   monthlyDollars: number | null
   yearlyDollars: number | null
   effectiveAt: string
@@ -24,14 +28,20 @@ export interface TierStatus {
   currentTierName: string
   currentTierMaxProperties: number | null
   currentMonthlyDollars: number | null
+  // the tier the count falls in, which can be enterprise
   resolvedTier: TierSlug
   resolvedTierName: string
-  resolvedMonthlyDollars: number | null
-  resolvedYearlyDollars: number | null
+  // the tier the next renewal bills
+  targetTier: TierSlug
+  targetTierName: string
+  targetMonthlyDollars: number | null
+  targetYearlyDollars: number | null
   isOverage: boolean
+  change: 'up' | 'down' | null
   needsContactSales: boolean
-  upgradeAt: string | null
-  billingCycle: 'monthly' | 'yearly'
+  renewsAt: string
+  billingCycle: BillingCycle
+  targetBillingCycle: BillingCycle
   pending: PendingTier | null
 }
 
@@ -119,6 +129,16 @@ class BillingClient {
     })
     if (!result.success) throw new BillingError(result.error, result.code)
     return result.data.hasActivePlan
+  }
+
+  // takes effect at the next renewal; returns the updated status for the banner
+  async setBillingCycle(cycle: BillingCycle): Promise<TierStatus | null> {
+    const result = await api.request<{ tierStatus: TierStatus | null }>('/billing/billing-cycle', {
+      method: 'POST',
+      body: JSON.stringify({ cycle }),
+    })
+    if (!result.success) throw new BillingError(result.error, result.code)
+    return result.data.tierStatus
   }
 
   async createPortalSession() {

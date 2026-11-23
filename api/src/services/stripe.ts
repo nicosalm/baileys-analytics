@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { DEFERRED_TIER_METADATA_KEY } from './tier-reconciliation';
+import { CLEARED_PENDING, DEFERRED_TIER_METADATA_KEY } from './tier-reconciliation';
 
 export class StripeService {
 	readonly stripe: Stripe;
@@ -344,6 +344,7 @@ export class StripeService {
 		let tierWrite: string | null;
 		let unitAmountWrite: number | null;
 		let stripePriceIdWrite: string | null;
+		let billingCycleWrite: string = billing_cycle;
 
 		if (isDeferredInFlight) {
 			// preserve the customer-facing tier/amount; only the cron's pending
@@ -354,13 +355,15 @@ export class StripeService {
 			// blanking out the tier columns.
 			const { data: existing } = await this.supabase
 				.from('subscriptions')
-				.select('tier, unit_amount, stripe_price_id')
+				.select('tier, unit_amount, stripe_price_id, billing_cycle')
 				.eq('tenant_id', tenantId)
 				.single();
 			if (existing?.tier != null) {
 				tierWrite = existing.tier as string;
 				unitAmountWrite = (existing.unit_amount as number | null) ?? unit_amount;
 				stripePriceIdWrite = (existing.stripe_price_id as string | null) ?? stripe_price_id;
+				// a switch between monthly and yearly is also held until the invoice clears
+				billingCycleWrite = (existing.billing_cycle as string | null) ?? billing_cycle;
 			} else {
 				tierWrite = livePriceTier;
 				unitAmountWrite = unit_amount;
@@ -381,7 +384,7 @@ export class StripeService {
 				tenant_id: tenantId,
 				stripe_subscription_id: subscription.id,
 				stripe_customer_id: subscription.customer as string,
-				billing_cycle: billing_cycle,
+				billing_cycle: billingCycleWrite,
 				tier: tierWrite,
 				unit_amount: unitAmountWrite,
 				stripe_price_id: stripePriceIdWrite,
@@ -446,10 +449,8 @@ export class StripeService {
 				status: 'canceled',
 				canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : new Date().toISOString(),
 				ended_at: subscription.ended_at ? new Date(subscription.ended_at * 1000).toISOString() : new Date().toISOString(),
-				pending_tier: null,
-				pending_price_id: null,
-				pending_unit_amount: null,
-				pending_effective_at: null,
+				...CLEARED_PENDING,
+				preferred_billing_cycle: null,
 			})
 			.eq('stripe_subscription_id', subscription.id);
 
@@ -521,7 +522,7 @@ export class StripeService {
 	}
 
 	// Reads the live Stripe sub; if it's tagged with DEFERRED_TIER_METADATA_KEY,
-	// copies pending_* → tier/unit_amount/stripe_price_id, clears the pending
+	// copies the live price into tier/unit_amount/stripe_price_id/billing_cycle, clears the pending
 	// row, and strips the metadata flag from Stripe. Idempotent: a no-op if the
 	// metadata isn't set.
 	private async promoteDeferredTierChangeIfAny(tenantId: string, subscriptionId: string): Promise<void> {
@@ -537,15 +538,7 @@ export class StripeService {
 			await this.stripe.subscriptions.update(subscriptionId, {
 				metadata: { ...live.metadata, [DEFERRED_TIER_METADATA_KEY]: null },
 			});
-			await this.supabase
-				.from('subscriptions')
-				.update({
-					pending_tier: null,
-					pending_price_id: null,
-					pending_unit_amount: null,
-					pending_effective_at: null,
-				})
-				.eq('tenant_id', tenantId);
+			await this.supabase.from('subscriptions').update(CLEARED_PENDING).eq('tenant_id', tenantId);
 			return;
 		}
 
@@ -557,10 +550,9 @@ export class StripeService {
 				tier: deferredTier,
 				unit_amount: priceObj?.unit_amount ?? null,
 				stripe_price_id: priceObj?.id ?? null,
-				pending_tier: null,
-				pending_price_id: null,
-				pending_unit_amount: null,
-				pending_effective_at: null,
+				billing_cycle: priceObj?.recurring?.interval === 'year' ? 'yearly' : 'monthly',
+				...CLEARED_PENDING,
+				preferred_billing_cycle: null,
 			})
 			.eq('tenant_id', tenantId);
 
