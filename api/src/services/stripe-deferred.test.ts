@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { memorySupabase } from '../test-support/memory-supabase';
-import { StripeService } from './stripe';
+
+const sendWelcomeEmail = vi.fn(async (..._args: unknown[]) => true);
+vi.mock('./email', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./email')>()),
+	EmailService: class {
+		sendWelcomeEmail = sendWelcomeEmail;
+	},
+}));
+
+const { StripeService } = await import('./stripe');
 
 // crypto.subtle.timingSafeEqual is a Workers extension; node lacks it
 if (!(crypto.subtle as any).timingSafeEqual) {
@@ -8,7 +17,7 @@ if (!(crypto.subtle as any).timingSafeEqual) {
 }
 
 const SECRET = 'whsec_test';
-const env = { STRIPE_SECRET_KEY: 'sk_test', STRIPE_WEBHOOK_SECRET: SECRET } as Env;
+const env = { STRIPE_SECRET_KEY: 'sk_test', STRIPE_WEBHOOK_SECRET: SECRET, RESEND_API_KEY: 're_test' } as Env;
 const PERIOD_END = Math.floor(Date.parse('2026-12-03T00:00:00Z') / 1000);
 
 async function sign(payload: string) {
@@ -57,8 +66,9 @@ async function deliver(type: string, object: unknown) {
 
 beforeEach(() => {
 	stripeUpdate.mockClear();
+	sendWelcomeEmail.mockClear();
 	tables = {
-		tenants: [{ id: 't1', first_subscription_at: '2026-04-01T00:00:00Z' }],
+		tenants: [{ id: 't1', email: 'owner@example.com', first_subscription_at: '2026-04-01T00:00:00Z' }],
 		stripe_customers: [{ tenant_id: 't1', stripe_customer_id: 'cus_1' }],
 		stripe_webhook_events: [],
 		billing_history: [],
@@ -134,5 +144,41 @@ describe('deferred plan changes', () => {
 			ended_at: PERIOD_END,
 		});
 		expect(row()).toMatchObject({ status: 'canceled', pending_tier: null, pending_notified_at: null, preferred_billing_cycle: null });
+	});
+});
+
+describe('welcome email', () => {
+	const subscription = (status: string) => ({
+		...liveSubscription(price('growth', 'month', 3900), 'growth'),
+		status,
+		metadata: { tenant_id: 't1' },
+	});
+
+	beforeEach(() => {
+		tables.tenants[0].first_subscription_at = null;
+		tables.subscriptions = [];
+	});
+
+	it('goes out once, when the first subscription becomes active', async () => {
+		await deliver('customer.subscription.created', subscription('active'));
+		await deliver('customer.subscription.updated', subscription('active'));
+		expect(sendWelcomeEmail).toHaveBeenCalledTimes(1);
+		expect(sendWelcomeEmail).toHaveBeenCalledWith('owner@example.com');
+		expect(tables.tenants[0].first_subscription_at).not.toBeNull();
+	});
+
+	it('waits while Checkout reports the subscription as incomplete', async () => {
+		await deliver('customer.subscription.created', subscription('incomplete'));
+		expect(sendWelcomeEmail).not.toHaveBeenCalled();
+		expect(tables.tenants[0].first_subscription_at).toBeNull();
+
+		await deliver('customer.subscription.updated', subscription('active'));
+		expect(sendWelcomeEmail).toHaveBeenCalledTimes(1);
+	});
+
+	it('is not sent again to a returning customer', async () => {
+		tables.tenants[0].first_subscription_at = '2026-04-01T00:00:00Z';
+		await deliver('customer.subscription.created', subscription('active'));
+		expect(sendWelcomeEmail).not.toHaveBeenCalled();
 	});
 });

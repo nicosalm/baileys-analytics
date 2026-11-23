@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CLEARED_PENDING, DEFERRED_TIER_METADATA_KEY } from './tier-reconciliation';
+import { EmailService } from './email';
 
 export class StripeService {
 	readonly stripe: Stripe;
@@ -418,14 +419,21 @@ export class StripeService {
 			})
 			.eq('id', tenantId);
 
-		// atomically set first_subscription_at only if it's still NULL
-		// this prevents race conditions from concurrent webhooks
-		if (!tenant?.first_subscription_at) {
-			await this.supabase
+		// first_subscription_at marks the first time the tenant is paid up, not just subscribed:
+		// Checkout can report a subscription as incomplete before the card clears. the conditional
+		// update lets exactly one of the webhook and confirm-checkout claim it, and the claimer
+		// sends the welcome email
+		if (!tenant?.first_subscription_at && subscription.status === 'active') {
+			const { data: claimed } = await this.supabase
 				.from('tenants')
 				.update({ first_subscription_at: new Date().toISOString() })
 				.eq('id', tenantId)
-				.is('first_subscription_at', null);
+				.is('first_subscription_at', null)
+				.select('email');
+			const email = claimed?.[0]?.email;
+			if (email && this.env.RESEND_API_KEY) {
+				await new EmailService(this.env.RESEND_API_KEY).sendWelcomeEmail(email);
+			}
 		}
 
 		return tenantId;

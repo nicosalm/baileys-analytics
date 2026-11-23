@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { createSupabaseClient } from '../services/supabase';
 import { authMiddleware } from '../middleware/auth';
-import { EmailService } from '../services/email';
 import type { AppEnv } from '../types';
 
 const oauth = new Hono<AppEnv>();
@@ -259,19 +258,7 @@ oauth.post('/callback', authMiddleware, async (c) => {
 			},
 		);
 
-		// send welcome email
-		if (c.env.RESEND_API_KEY) {
-			try {
-				const { data: userData } = await supabase.auth.admin.getUserById(oauthState.user_id);
-				if (userData?.user?.email) {
-					const emailService = new EmailService(c.env.RESEND_API_KEY);
-					await emailService.sendWelcomeEmail(userData.user.email, userData.user.user_metadata?.name);
-				}
-			} catch (emailError) {
-				console.error('Failed to send welcome email:', emailError);
-				// don't fail the request if email fails
-			}
-		}
+		// the welcome email waits for payment; see syncSubscription in services/stripe.ts
 
 		return c.json({
 			success: true,

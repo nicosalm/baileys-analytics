@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tierChangeEmail, type TierChangeNotice } from './email';
+import { tierChangeEmail, welcomeEmail, type TierChangeNotice } from './email';
+import { EMAIL_COLORS, renderEmail, renderText, SITE_URL } from './email-layout';
 
 const base: TierChangeNotice = {
 	propertyCount: 12,
@@ -40,5 +41,49 @@ describe('tierChangeEmail', () => {
 	it('uses no em dashes', () => {
 		const { subject, paragraphs } = tierChangeEmail(base);
 		expect([subject, ...paragraphs].join(' ')).not.toContain('—');
+	});
+});
+
+describe('welcomeEmail', () => {
+	const { subject, content } = welcomeEmail();
+
+	it('is written for someone who has just paid', () => {
+		expect(subject).toBe('Welcome to Baileys Analytics');
+		expect(content.paragraphs.join(' ')).toContain('importing four years');
+		expect(content.action).toEqual({ label: 'Open your dashboard', href: `${SITE_URL}/dashboard/overview` });
+	});
+
+	it('mentions no removed features, emoji or em dashes', () => {
+		const text = renderText(content);
+		expect(text).not.toMatch(/tax settings|tax rates/i);
+		expect(text).not.toMatch(/\p{Extended_Pictographic}/u);
+		expect(text).not.toContain('\u2014');
+	});
+});
+
+describe('renderEmail', () => {
+	const html = renderEmail({
+		preheader: 'Preview line',
+		heading: 'Confirm your email',
+		paragraphs: ['First paragraph.'],
+		action: { label: 'Confirm email', href: '{{ .ConfirmationURL }}' },
+		after: ['Small print.'],
+	});
+
+	it('uses the harbor mark and palette', () => {
+		expect(html).toContain(`${SITE_URL}/apple-touch-icon.png`);
+		expect(html).toContain(EMAIL_COLORS.primary);
+		expect(html).toContain(EMAIL_COLORS.background);
+		expect(html).not.toMatch(/#3b82f6|#f9fafb|#111827/i);
+	});
+
+	it('leaves template placeholders untouched for Supabase', () => {
+		expect(html).toContain('href="{{ .ConfirmationURL }}"');
+	});
+
+	it('gives text-only clients the link', () => {
+		expect(renderText({ preheader: '', heading: '', paragraphs: ['Hi.'], action: { label: 'Go', href: 'https://x.test' } })).toBe(
+			'Hi.\n\nGo: https://x.test',
+		);
 	});
 });
