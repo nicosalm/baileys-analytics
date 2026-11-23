@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { createSupabaseClient } from '../services/supabase';
-import Stripe from 'stripe';
 import { authMiddleware } from '../middleware/auth';
 import { OwnerRezService } from '../services/ownerrez';
 import { getValidOwnerRezToken } from '../services/ownerrez-token';
@@ -10,6 +9,8 @@ import { requestTenantDeletion, purgeTenant, StripeCancellationError } from '../
 import type { AppEnv } from '../types';
 
 const admin = new Hono<AppEnv>();
+
+const ERROR_LIMIT = 50;
 
 function isAdmin(env: Env, email: string | undefined): boolean {
 	const admins = env.ADMIN_EMAILS?.split(',').map((e) => e.trim().toLowerCase()) ?? [];
@@ -26,140 +27,53 @@ const adminMiddleware = createMiddleware<AppEnv>(async (c, next) => {
 
 admin.get('/verify', authMiddleware, (c) => c.json({ isAdmin: isAdmin(c.env, c.get('user').email) }));
 
-// get system metrics
-admin.get('/metrics', authMiddleware, adminMiddleware, async (c) => {
+// everything the Admin Dashboard shows, one row per tenant from admin_tenant_overview, plus the
+// latest failures from both webhook sources. the dashboard computes every widget from these same
+// rows, so a widget count always matches the users it filters to.
+admin.get('/overview', authMiddleware, adminMiddleware, async (c) => {
 	const supabase = createSupabaseClient(c.env);
 
 	try {
-		// db counts + exempt tenants
-		const [{ count: totalTenants }, { count: totalProperties }, { count: totalBookings }, { count: exemptCount }] = await Promise.all([
-			supabase.from('tenants').select('id', { count: 'exact', head: true }),
-			supabase.from('properties').select('id', { count: 'exact', head: true }),
-			supabase.from('bookings').select('id', { count: 'exact', head: true }),
-			supabase.from('tenants').select('id', { count: 'exact', head: true }).eq('subscription_exempt', true),
+		const [tenants, ownerrezErrors, stripeErrors] = await Promise.all([
+			supabase.from('admin_tenant_overview').select('*').order('created_at', { ascending: false }),
+			supabase
+				.from('webhook_events')
+				.select('tenant_id, created_at, entity_type, action, processing_error')
+				.not('processing_error', 'is', null)
+				.order('created_at', { ascending: false })
+				.limit(ERROR_LIMIT),
+			supabase
+				.from('stripe_webhook_events')
+				.select('tenant_id, created_at, event_type, processing_error')
+				.not('processing_error', 'is', null)
+				.order('created_at', { ascending: false })
+				.limit(ERROR_LIMIT),
 		]);
+		if (tenants.error) throw tenants.error;
 
-		// fetch active subscriptions from stripe for accurate MRR + tier breakdown
-		let mrr = 0;
-		const tierCounts: Record<string, number> = {};
-		let activeSubCount = 0;
+		const errors = [
+			...(ownerrezErrors.data ?? []).map((e) => ({
+				source: 'ownerrez' as const,
+				tenantId: e.tenant_id as string | null,
+				at: e.created_at as string,
+				event: [e.entity_type, e.action].filter(Boolean).join(' '),
+				message: e.processing_error as string,
+			})),
+			...(stripeErrors.data ?? []).map((e) => ({
+				source: 'stripe' as const,
+				tenantId: e.tenant_id as string | null,
+				at: e.created_at as string,
+				event: e.event_type as string,
+				message: e.processing_error as string,
+			})),
+		]
+			.sort((a, b) => b.at.localeCompare(a.at))
+			.slice(0, ERROR_LIMIT);
 
-		if (c.env.STRIPE_SECRET_KEY) {
-			const stripe = new Stripe(c.env.STRIPE_SECRET_KEY, {
-				apiVersion: '2025-10-29.clover',
-				httpClient: Stripe.createFetchHttpClient(),
-			});
-
-			const subs = await stripe.subscriptions.list({ status: 'active', limit: 100 });
-
-			for (const sub of subs.data) {
-				const priceObj = sub.items.data[0]?.price;
-				const cents = priceObj?.unit_amount ?? 0;
-				const interval = priceObj?.recurring?.interval;
-				const tier = (priceObj?.metadata?.tier as string) || 'legacy';
-
-				if (interval === 'month') {
-					mrr += cents / 100;
-				} else if (interval === 'year') {
-					mrr += cents / 100 / 12;
-				}
-
-				tierCounts[tier] = (tierCounts[tier] || 0) + 1;
-				activeSubCount++;
-			}
-		}
-
-		const inactive = Math.max(0, (totalTenants || 0) - activeSubCount - (exemptCount || 0));
-
-		const subscriptionMix = [
-			...Object.entries(tierCounts).map(([tier, count]) => ({ tier, count })),
-			...(exemptCount ? [{ tier: 'exempt', count: exemptCount }] : []),
-			...(inactive > 0 ? [{ tier: 'inactive', count: inactive }] : []),
-		];
-
-		// recent signups (last 7 days)
-		const sevenDaysAgo = new Date();
-		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-		const { count: recentSignups } = await supabase
-			.from('tenants')
-			.select('id', { count: 'exact', head: true })
-			.gte('created_at', sevenDaysAgo.toISOString());
-
-		return c.json({
-			metrics: {
-				totalUsers: totalTenants || 0,
-				totalTenants: totalTenants || 0,
-				totalProperties: totalProperties || 0,
-				totalBookings: totalBookings || 0,
-				activeSubscriptions: activeSubCount,
-				mrr: Math.round(mrr),
-				recentSignups: recentSignups || 0,
-				subscriptionMix,
-			},
-		});
+		return c.json({ tenants: tenants.data ?? [], errors, generatedAt: new Date().toISOString() });
 	} catch (error) {
-		console.error('Failed to get admin metrics:', error);
-		return c.json({ error: 'Failed to get metrics' }, 500);
-	}
-});
-
-// list all users
-admin.get('/users', authMiddleware, adminMiddleware, async (c) => {
-	const supabase = createSupabaseClient(c.env);
-	const page = parseInt(c.req.query('page') || '1', 10);
-	const limit = parseInt(c.req.query('limit') || '50', 10);
-	const search = c.req.query('search') || '';
-
-	try {
-		let query = supabase
-			.from('tenants')
-			.select(`
-        id,
-        email,
-        company_name,
-        created_at,
-        subscription_status,
-        subscription_exempt,
-        ownerrez_connected,
-        first_subscription_at
-      `)
-			.is('deletion_requested_at', null)
-			.order('created_at', { ascending: false })
-			.range((page - 1) * limit, page * limit - 1);
-
-		if (search) {
-			// sanitize search input to prevent postgrest filter injection
-			const sanitized = search.replace(/[^a-zA-Z0-9@._\-+\s]/g, '');
-			if (sanitized) {
-				query = query.ilike('email', `%${sanitized}%`);
-			}
-		}
-
-		const { data: users, error } = await query;
-
-		if (error) throw error;
-
-		// get subscription details for each user
-		const enrichedUsers = await Promise.all(
-			(users || []).map(async (user) => {
-				const { data: subscription } = await supabase
-					.from('subscriptions')
-					.select('billing_cycle, status, current_period_end')
-					.eq('tenant_id', user.id)
-					.maybeSingle();
-
-				return {
-					...user,
-					subscription,
-				};
-			}),
-		);
-
-		return c.json({ users: enrichedUsers });
-	} catch (error) {
-		console.error('Failed to list users:', error);
-		return c.json({ error: 'Failed to list users' }, 500);
+		console.error('Failed to build admin overview:', error);
+		return c.json({ error: 'Failed to load the admin overview' }, 500);
 	}
 });
 
@@ -248,124 +162,6 @@ admin.delete('/users/:tenantId', authMiddleware, adminMiddleware, async (c) => {
 
 	c.executionCtx.waitUntil(purgeTenant(supabase, tenantId));
 	return c.json({ success: true, message: 'Account deleted successfully' });
-});
-
-// signup trend — daily signups for last N days
-admin.get('/signup-trend', authMiddleware, adminMiddleware, async (c) => {
-	const supabase = createSupabaseClient(c.env);
-	const days = Math.min(parseInt(c.req.query('days') || '30', 10), 90);
-
-	try {
-		const startDate = new Date();
-		startDate.setDate(startDate.getDate() - days);
-
-		const { data: tenants } = await supabase
-			.from('tenants')
-			.select('created_at')
-			.gte('created_at', startDate.toISOString())
-			.order('created_at', { ascending: true });
-
-		// bucket by date
-		const buckets: Record<string, number> = {};
-		for (let i = 0; i < days; i++) {
-			const d = new Date(startDate);
-			d.setDate(d.getDate() + i);
-			buckets[d.toISOString().slice(0, 10)] = 0;
-		}
-
-		for (const t of tenants || []) {
-			const day = t.created_at.slice(0, 10);
-			if (buckets[day] !== undefined) buckets[day]++;
-		}
-
-		const trend = Object.entries(buckets).map(([date, count]) => ({ date, count }));
-		return c.json({ trend });
-	} catch (error) {
-		console.error('Failed to get signup trend:', error);
-		return c.json({ error: 'Failed to get signup trend' }, 500);
-	}
-});
-
-// sync health — aggregate sync status across all tenants
-admin.get('/sync-health', authMiddleware, adminMiddleware, async (c) => {
-	const supabase = createSupabaseClient(c.env);
-
-	try {
-		const { data: syncRows } = await supabase.from('sync_status').select('tenant_id, sync_type, status, last_sync, records_synced');
-
-		// group by tenant
-		const byTenant: Record<string, { statuses: string[]; lastSync: string | null; totalRecords: number }> = {};
-		for (const row of syncRows || []) {
-			if (!byTenant[row.tenant_id]) {
-				byTenant[row.tenant_id] = { statuses: [], lastSync: null, totalRecords: 0 };
-			}
-			byTenant[row.tenant_id].statuses.push(row.status);
-			byTenant[row.tenant_id].totalRecords += row.records_synced || 0;
-			if (!byTenant[row.tenant_id].lastSync || row.last_sync > byTenant[row.tenant_id].lastSync!) {
-				byTenant[row.tenant_id].lastSync = row.last_sync;
-			}
-		}
-
-		// classify each tenant
-		let healthy = 0;
-		let partial = 0;
-		let failing = 0;
-		let noSync = 0;
-		let stale = 0;
-
-		const now = Date.now();
-		const staleThreshold = 48 * 60 * 60 * 1000; // 48 hours
-
-		// get total tenants with ownerrez connected
-		const { count: connectedTenants } = await supabase
-			.from('tenants')
-			.select('id', { count: 'exact', head: true })
-			.eq('ownerrez_connected', true);
-
-		const tenantsWithSync = new Set(Object.keys(byTenant));
-
-		for (const [, info] of Object.entries(byTenant)) {
-			const hasFailure = info.statuses.includes('failure');
-			const hasPartial = info.statuses.includes('partial');
-			const isStale = info.lastSync && now - new Date(info.lastSync).getTime() > staleThreshold;
-
-			if (isStale) stale++;
-			else if (hasFailure) failing++;
-			else if (hasPartial) partial++;
-			else healthy++;
-		}
-
-		// tenants with ownerrez connected but no sync records
-		noSync = Math.max(0, (connectedTenants || 0) - tenantsWithSync.size);
-
-		return c.json({
-			syncHealth: { healthy, partial, failing, stale, noSync },
-			totalConnected: connectedTenants || 0,
-		});
-	} catch (error) {
-		console.error('Failed to get sync health:', error);
-		return c.json({ error: 'Failed to get sync health' }, 500);
-	}
-});
-
-// get recent errors (from logs or webhook events)
-admin.get('/errors', authMiddleware, adminMiddleware, async (c) => {
-	const supabase = createSupabaseClient(c.env);
-
-	try {
-		// get failed webhook events as proxy for errors
-		const { data: errors } = await supabase
-			.from('webhook_events')
-			.select('*')
-			.not('processing_error', 'is', null)
-			.order('created_at', { ascending: false })
-			.limit(50);
-
-		return c.json({ errors: errors || [] });
-	} catch (error) {
-		console.error('Failed to get errors:', error);
-		return c.json({ error: 'Failed to get errors' }, 500);
-	}
 });
 
 // reset initial sync state for a tenant and return an impersonation link.
