@@ -1,5 +1,9 @@
 # Baileys Analytics
 
+[![build](https://img.shields.io/github/actions/workflow/status/nicosalm/baileys-analytics/deploy-prod.yml?branch=main)](https://github.com/nicosalm/baileys-analytics/actions/workflows/deploy-prod.yml)
+[![release](https://img.shields.io/github/v/release/nicosalm/baileys-analytics)](https://github.com/nicosalm/baileys-analytics/releases)
+[![website](https://img.shields.io/website?url=https%3A%2F%2Fbaileysanalytics.com)](https://status.baileysanalytics.com/)
+
 Analytics for vacation rental hosts on OwnerRez. Connect an OwnerRez
 account and it pulls in your properties, bookings and guests, then shows
 revenue, occupancy, booking pace, cash flow and taxes. Live at
